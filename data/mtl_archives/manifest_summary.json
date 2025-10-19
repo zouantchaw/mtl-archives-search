@@ -1,0 +1,27 @@
+{
+  "metadata_files": 14822,
+  "image_found": 14822,
+  "image_missing": 0,
+  "zero_byte_images": 1,
+  "portal_matched": 109,
+  "portal_unmatched": 14713,
+  "name_present": 11112,
+  "description_present": 406,
+  "date_present": 11090,
+  "domains": {
+    "archivesdemontreal.com": 7834,
+    "depot.ville.montreal.qc.ca": 6988
+  },
+  "extensions": {
+    "jpg": 7945,
+    "tif": 6875,
+    "pdf": 2
+  },
+  "image_size_bytes": {
+    "min": 0,
+    "max": 123086611,
+    "median": 3785067.0,
+    "mean": 11052886.244299015,
+    "total": 163825879913
+  }
+}

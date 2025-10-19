@@ -1,0 +1,5 @@
+node_modules/
+.wrangler/
+data/mtl_archives/.wrangler-logs/
+cloudflare/d1/seed_manifest.sql
+.env

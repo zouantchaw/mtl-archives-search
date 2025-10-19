@@ -1,0 +1,9 @@
+HTTP/2 403 
+content-length: 19
+content-type: text/plain
+date: Thu, 16 Oct 2025 11:34:51 GMT
+server: istio-envoy
+x-envoy-upstream-service-time: 1
+via: 1.1 google
+alt-svc: h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+

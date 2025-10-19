@@ -1,0 +1,24 @@
+{
+  "rows": 14822,
+  "columns": [
+    "metadata_filename",
+    "image_filename",
+    "resolved_image_filename",
+    "image_size_bytes",
+    "name",
+    "description",
+    "date_value",
+    "credits",
+    "cote",
+    "external_url",
+    "portal_match",
+    "portal_title",
+    "portal_description",
+    "portal_date",
+    "portal_cote",
+    "aerial_datasets"
+  ],
+  "parquet_path": "data/mtl_archives/export/manifest_enriched.parquet",
+  "ndjson_path": "data/mtl_archives/export/manifest_enriched.ndjson",
+  "parquet_status": "written (pyarrow)"
+}

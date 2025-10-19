@@ -1,0 +1,30 @@
+{
+  "manifest_records": 14822,
+  "matched_records": 14713,
+  "unmatched_records": 109,
+  "dataset_match_counts": {
+    "aerial_1947_1949": 7834,
+    "aerial_obliques_1960_1992": 3921,
+    "aerial_1966": 898,
+    "aerial_1964": 544,
+    "aerial_1962": 476,
+    "aerial_1975": 338,
+    "aerial_1973": 271,
+    "aerial_1971": 249,
+    "aerial_1958": 96,
+    "aerial_1925_1935": 86
+  },
+  "dataset_entry_counts": {
+    "aerial_obliques_1960_1992": 5000,
+    "aerial_1947_1949": 3923,
+    "aerial_1966": 449,
+    "aerial_1975": 338,
+    "aerial_1964": 272,
+    "aerial_1973": 271,
+    "aerial_1971": 249,
+    "aerial_1962": 238,
+    "aerial_1969": 235,
+    "aerial_1958": 48,
+    "aerial_1925_1935": 43
+  }
+}
