@@ -9,6 +9,7 @@
     "d1:seed": "npm run generate:sql && WRANGLER_LOG_PATH=\"$(pwd)/data/mtl_archives/.wrangler-logs\" npx wrangler d1 execute mtl-archives --remote --file cloudflare/d1/seed_manifest.sql",
     "db:count": "WRANGLER_LOG_PATH=\"$(pwd)/data/mtl_archives/.wrangler-logs\" npx wrangler d1 execute mtl-archives --remote --command \"SELECT COUNT(*) AS total FROM manifest;\"",
     "pipeline": "npm run d1:seed",
+    "vectorize:ingest": "node scripts/vectorize_ingest.js",
     "typecheck": "tsc --noEmit"
   },
   "engines": {

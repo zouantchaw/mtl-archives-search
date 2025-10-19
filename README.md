@@ -45,22 +45,23 @@ wrangler login
 
 ## Commands
 
-| Command                | Description |
-| ---------------------- | ----------- |
-| `npm run generate:sql` | Regenerates `cloudflare/d1/seed_manifest.sql` from `data/mtl_archives/export/manifest_enriched.ndjson`. |
-| `npm run d1:seed`      | Regenerate SQL and bulk upload into the remote D1 database. |
-| `npm run db:count`     | Sanity-check the number of rows currently in D1. |
-| `npm run dev`          | Run the Worker locally with Wrangler dev. |
-| `npm run deploy`       | Deploy the Worker to Cloudflare (make sure variables/secrets are set). |
-| `npm run pipeline`     | Shortcut for `generate:sql` + remote D1 seed. |
-| `npm run typecheck`    | TypeScript type checking for the Worker code. |
+| Command                   | Description |
+| ------------------------- | ----------- |
+| `npm run generate:sql`    | Regenerates `cloudflare/d1/seed_manifest.sql` from `data/mtl_archives/export/manifest_enriched.ndjson`. |
+| `npm run d1:seed`         | Regenerate SQL and bulk upload into the remote D1 database. |
+| `npm run db:count`        | Sanity-check the number of rows currently in D1. |
+| `npm run pipeline`        | Shortcut for `generate:sql` + remote D1 seed. |
+| `npm run vectorize:ingest`| Generate embeddings with Workers AI and upsert them into Cloudflare Vectorize. |
+| `npm run dev`             | Run the Worker locally with Wrangler dev. |
+| `npm run deploy`          | Deploy the Worker to Cloudflare (make sure variables/secrets are set). |
+| `npm run typecheck`       | TypeScript type checking for the Worker code. |
 
 All scripts set `WRANGLER_LOG_PATH` to `data/mtl_archives/.wrangler-logs/` to avoid macOS permission issues.
 
 ## API Endpoints
 
 `GET /api/photos`
-: Returns paginated metadata ordered by `metadata_filename`.
+: Returns paginated metadata ordered by `metadata_filename`, embedding a signed (or public) R2 URL for each image under `imageUrl`.
 
 Query parameters:
 - `limit` (1–100, default 50)
@@ -87,7 +88,7 @@ Every response is JSON and includes `Access-Control-Allow-Origin: *` so the Work
      "/Volumes/FREE SPACE/mtl_archives_photographs" \
      s3://mtl-archives
    ```
-4. (Coming soon) Generate embeddings and push them to Vectorize so `/api/search?mode=semantic` can return meaningful results.
+4. Generate embeddings and push them to Vectorize so `/api/search?mode=semantic` can return meaningful results (see **Vectorize ingestion** below).
 
 ## Secrets & Environment Variables
 
@@ -96,15 +97,44 @@ Never commit raw credentials. Rotate any keys that previously lived in `data/mtl
 ```bash
 wrangler secret put R2_ACCESS_KEY_ID
 wrangler secret put R2_SECRET_ACCESS_KEY
-wrangler secret put VECTORIZE_API_TOKEN  # example when Vectorize ingestion is added
+wrangler secret put R2_ACCOUNT_ID
+wrangler secret put R2_BUCKET
+wrangler secret put R2_PUBLIC_DOMAIN  # optional: remove if using signed URLs exclusively
 ```
 
-Reference secrets from your Worker via `env` bindings or from CLI tooling via exported environment variables.
+The Worker signs R2 URLs automatically when no public domain is provided. Signing uses AWS Signature Version 4 so
+clients can access private imagery without exposing your credentials. Supply `R2_PUBLIC_DOMAIN` only if you intend
+to serve assets from a public bucket/domain.
+
+For local tooling, place the same values (plus `CLOUDFLARE_API_TOKEN` and any embedding model overrides) in a local
+`.env` file and export them before running the scripts, e.g.:
+
+```bash
+set -a
+source .env
+set +a
+```
+
+## Vectorize Ingestion
+
+Run `npm run vectorize:ingest` after updating `manifest_enriched.ndjson` to keep your semantic index in sync. The
+script uses Workers AI to generate embeddings (defaults to `@cf/baai/bge-large-en-v1.5`) and upserts them into the
+Vectorize index defined in `wrangler.toml`.
+
+Environment variables consumed:
+
+- `CLOUDFLARE_API_TOKEN` – must allow `AI:edit` + `Vectorize:write` scopes.
+- `CLOUDFLARE_R2_ACCOUNT_ID` – reused for AI/Vectorize REST endpoints.
+- `CLOUDFLARE_VECTORIZE_INDEX` – optional override of the index name (`mtl-archives` by default).
+- `CLOUDFLARE_EMBEDDING_MODEL` – optional embedding model name.
+- `VECTORIZE_BATCH_SIZE` / `VECTORIZE_LIMIT` – optional batching/tuning knobs.
+
+Embeddings are stored alongside lightweight metadata (name, date, image key) so Vectorize results can be joined
+with D1 rows or returned directly to clients.
 
 ## Next Steps
 
-- **Implement Vectorize ingestion** – add a script to create/update embeddings, call `env.VECTORIZE.query`, and wire the `/api/search` semantic branch.
-- **Signed image URLs** – produce signed URLs or asset manifests so the Worker can serve secure links to high-resolution images stored in R2.
+- **Fully enable semantic search** – `npm run vectorize:ingest` loads vectors, but `/api/search?mode=semantic` still needs an embedding provider at query time (Workers AI or an external service). Once you add that, swap the placeholder in `handleSemanticSearch` with a real Vectorize query.
 - **Automation** – wrap R2 sync + D1 seed + Vectorize ingestion into a CI-friendly workflow.
 - **Monitoring** – add logging/metrics (e.g., Workers Analytics Engine) and guardrails (rate limiting, auth) as you move towards production.
 

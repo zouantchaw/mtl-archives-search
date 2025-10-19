@@ -17,11 +17,17 @@ type PhotoRecord = {
   portalDate: string | null;
   portalCote: string | null;
   aerialDatasets: string[];
+  imageUrl: string;
 };
 
 type Env = {
   DB: D1Database;
   VECTORIZE?: VectorizeIndex;
+  CLOUDFLARE_R2_ACCESS_KEY?: string;
+  CLOUDFLARE_R2_SECRET_ACCESS_KEY?: string;
+  CLOUDFLARE_R2_ACCOUNT_ID?: string;
+  CLOUDFLARE_R2_BUCKET?: string;
+  CLOUDFLARE_R2_PUBLIC_DOMAIN?: string;
 };
 
 const JSON_HEADERS: HeadersInit = {
@@ -81,7 +87,7 @@ function jsonResponse(body: unknown, status = 200, extraHeaders: HeadersInit = {
   });
 }
 
-function toRecord(row: Record<string, unknown>): PhotoRecord {
+async function buildPhotoRecord(row: Record<string, unknown>, env: Env): Promise<PhotoRecord> {
   return {
     metadataFilename: String(row.metadata_filename),
     imageFilename: String(row.image_filename),
@@ -99,6 +105,7 @@ function toRecord(row: Record<string, unknown>): PhotoRecord {
     portalDate: row.portal_date != null ? String(row.portal_date) : null,
     portalCote: row.portal_cote != null ? String(row.portal_cote) : null,
     aerialDatasets: parseJsonArray(row.aerial_datasets),
+    imageUrl: await resolveImageUrl(String(row.resolved_image_filename ?? row.image_filename ?? ''), env),
   };
 }
 
@@ -137,7 +144,8 @@ async function handlePhotos(url: URL, env: Env): Promise<Response> {
 
   const { results = [] } = await env.DB.prepare(sql).bind(...params).all();
 
-  const items = results.slice(0, limit).map(toRecord);
+  const rows = results.slice(0, limit);
+  const items = await Promise.all(rows.map((row) => buildPhotoRecord(row, env)));
   const nextCursor = results.length > limit ? String(results[limit].metadata_filename) : null;
 
   return jsonResponse({ items, nextCursor });
@@ -170,7 +178,8 @@ async function handleSearch(url: URL, env: Env): Promise<Response> {
   );
 
   const { results = [] } = await statement.bind(likeParam, likeParam, likeParam, likeParam, limit).all();
-  return jsonResponse({ items: results.map(toRecord), mode: 'text' });
+  const items = await Promise.all(results.map((row) => buildPhotoRecord(row, env)));
+  return jsonResponse({ items, mode: 'text' });
 }
 
 function escapeForLike(value: string): string {
@@ -191,4 +200,118 @@ async function handleSemanticSearch(_query: string, _limit: number, env: Env): P
     },
     501
   );
+}
+
+async function resolveImageUrl(key: string, env: Env): Promise<string> {
+  if (!key) return '';
+
+  const sanitizedKey = key.replace(/^\/+/, '');
+
+  if (env.CLOUDFLARE_R2_PUBLIC_DOMAIN) {
+    return `https://${env.CLOUDFLARE_R2_PUBLIC_DOMAIN}/${encodePathComponent(sanitizedKey)}`;
+  }
+
+  if (
+    env.CLOUDFLARE_R2_ACCESS_KEY &&
+    env.CLOUDFLARE_R2_SECRET_ACCESS_KEY &&
+    env.CLOUDFLARE_R2_ACCOUNT_ID &&
+    env.CLOUDFLARE_R2_BUCKET
+  ) {
+    return signR2Url(sanitizedKey, env);
+  }
+
+  console.warn('R2 credentials missing; returning unsigned path');
+  return sanitizedKey;
+}
+
+async function signR2Url(key: string, env: Env, expiresInSeconds = 3600): Promise<string> {
+  const accessKey = env.CLOUDFLARE_R2_ACCESS_KEY as string;
+  const secretKey = env.CLOUDFLARE_R2_SECRET_ACCESS_KEY as string;
+  const accountId = env.CLOUDFLARE_R2_ACCOUNT_ID as string;
+  const bucket = env.CLOUDFLARE_R2_BUCKET as string;
+
+  const method = 'GET';
+  const service = 's3';
+  const region = 'auto';
+  const host = `${accountId}.r2.cloudflarestorage.com`;
+  const canonicalUri = `/${encodePathComponent(bucket)}/${encodePathComponent(key)}`;
+
+  const now = new Date();
+  const amzDate = toAmzDate(now);
+  const dateStamp = amzDate.slice(0, 8);
+  const credentialScope = `${dateStamp}/${region}/${service}/aws4_request`;
+  const credential = `${accessKey}/${credentialScope}`;
+
+  const queryParams: [string, string][] = [
+    ['X-Amz-Algorithm', 'AWS4-HMAC-SHA256'],
+    ['X-Amz-Credential', credential],
+    ['X-Amz-Date', amzDate],
+    ['X-Amz-Expires', String(expiresInSeconds)],
+    ['X-Amz-SignedHeaders', 'host'],
+  ];
+
+  const canonicalQueryString = queryParams
+    .map(([k, v]) => [encodeRfc3986(k), encodeRfc3986(v)] as const)
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([k, v]) => `${k}=${v}`)
+    .join('&');
+
+  const canonicalHeaders = `host:${host}\n`;
+  const signedHeaders = 'host';
+  const payloadHash = 'UNSIGNED-PAYLOAD';
+
+  const canonicalRequest = `${method}\n${canonicalUri}\n${canonicalQueryString}\n${canonicalHeaders}\n${signedHeaders}\n${payloadHash}`;
+  const hashedCanonicalRequest = await sha256Hex(canonicalRequest);
+
+  const stringToSign = `AWS4-HMAC-SHA256\n${amzDate}\n${credentialScope}\n${hashedCanonicalRequest}`;
+  const signingKey = await getSigningKey(secretKey, dateStamp, region, service);
+  const signature = await hmacHex(signingKey, stringToSign);
+
+  const signedQuery = `${canonicalQueryString}&X-Amz-Signature=${signature}`;
+  return `https://${host}${canonicalUri}?${signedQuery}`;
+}
+
+const encoder = new TextEncoder();
+
+async function sha256Hex(message: string): Promise<string> {
+  const hash = await crypto.subtle.digest('SHA-256', encoder.encode(message));
+  return toHex(new Uint8Array(hash));
+}
+
+async function hmacHex(key: ArrayBuffer, message: string): Promise<string> {
+  const cryptoKey = await crypto.subtle.importKey('raw', key, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const signature = await crypto.subtle.sign('HMAC', cryptoKey, encoder.encode(message));
+  return toHex(new Uint8Array(signature));
+}
+
+async function getSigningKey(secretKey: string, dateStamp: string, region: string, service: string): Promise<ArrayBuffer> {
+  const kDate = await hmacRaw(`AWS4${secretKey}`, dateStamp);
+  const kRegion = await hmacRaw(kDate, region);
+  const kService = await hmacRaw(kRegion, service);
+  return hmacRaw(kService, 'aws4_request');
+}
+
+async function hmacRaw(key: string | ArrayBuffer, message: string): Promise<ArrayBuffer> {
+  const rawKey = typeof key === 'string' ? encoder.encode(key) : key;
+  const cryptoKey = await crypto.subtle.importKey('raw', rawKey, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  return crypto.subtle.sign('HMAC', cryptoKey, encoder.encode(message));
+}
+
+function toHex(bytes: Uint8Array): string {
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+function encodePathComponent(value: string): string {
+  return encodeURIComponent(value).replace(/%2F/g, '/');
+}
+
+function encodeRfc3986(value: string): string {
+  return encodeURIComponent(value).replace(/[!'()*]/g, (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`);
+}
+
+function toAmzDate(date: Date): string {
+  const iso = date.toISOString().replace(/[-:]/g, '');
+  return `${iso.slice(0, 15)}Z`;
 }
