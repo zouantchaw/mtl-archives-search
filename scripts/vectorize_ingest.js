@@ -16,7 +16,7 @@ const fs = require('fs');
 const path = require('path');
 
 const ACCOUNT_ID = process.env.CLOUDFLARE_R2_ACCOUNT_ID || process.env.CLOUDFLARE_ACCOUNT_ID;
-const API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
+const API_TOKEN = process.env.CF_AI_TOKEN || process.env.CLOUDFLARE_API_TOKEN;
 const VECTORIZE_INDEX = process.env.CLOUDFLARE_VECTORIZE_INDEX || 'mtl-archives';
 const EMBEDDING_MODEL = process.env.CLOUDFLARE_EMBEDDING_MODEL || '@cf/baai/bge-large-en-v1.5';
 const BATCH_SIZE = Number(process.env.VECTORIZE_BATCH_SIZE || '16');
@@ -28,7 +28,7 @@ if (!ACCOUNT_ID) {
 }
 
 if (!API_TOKEN) {
-  console.error('Missing CLOUDFLARE_API_TOKEN.');
+  console.error('Missing CF_AI_TOKEN (preferred) or CLOUDFLARE_API_TOKEN.');
   process.exit(1);
 }
 
@@ -51,7 +51,8 @@ if (!total) {
   process.exit(0);
 }
 
-const aiEndpoint = `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/ai/run/${encodeURIComponent(EMBEDDING_MODEL)}`;
+const encodedModel = encodeURIComponent(EMBEDDING_MODEL).replace(/%2F/g, '/');
+const aiEndpoint = `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/ai/run/${encodedModel}`;
 const vectorEndpoint = `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/vectorize/indexes/${encodeURIComponent(VECTORIZE_INDEX)}/upsert`;
 
 async function generateEmbeddings(texts) {
@@ -60,6 +61,7 @@ async function generateEmbeddings(texts) {
     headers: {
       Authorization: `Bearer ${API_TOKEN}`,
       'Content-Type': 'application/json',
+      Accept: 'application/json',
     },
     body: JSON.stringify({ text: texts }),
   });
@@ -87,6 +89,7 @@ async function upsertVectors(vectors) {
     headers: {
       Authorization: `Bearer ${API_TOKEN}`,
       'Content-Type': 'application/json',
+      Accept: 'application/json',
     },
     body: JSON.stringify({ vectors }),
   });

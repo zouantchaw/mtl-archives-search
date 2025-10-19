@@ -115,6 +115,10 @@ source .env
 set +a
 ```
 
+> **Tip:** keep your deployment shell free of `CLOUDFLARE_API_TOKEN` so `wrangler deploy` continues using the OAuth
+> session from `wrangler login`. Store the Workers AI/Vectorize token in `CF_AI_TOKEN` and only export it when running
+> `npm run vectorize:ingest`.
+
 ## Vectorize Ingestion
 
 Run `npm run vectorize:ingest` after updating `manifest_enriched.ndjson` to keep your semantic index in sync. The
@@ -123,7 +127,7 @@ Vectorize index defined in `wrangler.toml`.
 
 Environment variables consumed:
 
-- `CLOUDFLARE_API_TOKEN` – must allow `AI:edit` + `Vectorize:write` scopes.
+- `CF_AI_TOKEN` *(preferred)* or `CLOUDFLARE_API_TOKEN` – must allow `Workers AI:Edit` and `Vectorize:Write`.
 - `CLOUDFLARE_R2_ACCOUNT_ID` – reused for AI/Vectorize REST endpoints.
 - `CLOUDFLARE_VECTORIZE_INDEX` – optional override of the index name (`mtl-archives` by default).
 - `CLOUDFLARE_EMBEDDING_MODEL` – optional embedding model name.
