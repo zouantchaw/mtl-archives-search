@@ -106,7 +106,7 @@ The Worker signs R2 URLs automatically when no public domain is provided. Signin
 clients can access private imagery without exposing your credentials. Supply `R2_PUBLIC_DOMAIN` only if you intend
 to serve assets from a public bucket/domain.
 
-For local tooling, place the same values (plus `CLOUDFLARE_API_TOKEN` and any embedding model overrides) in a local
+For local tooling, place the same values (plus `CLOUDFLARE_AI_TOKEN` and any embedding model overrides) in a local
 `.env` file and export them before running the scripts, e.g.:
 
 ```bash
@@ -116,22 +116,26 @@ set +a
 ```
 
 > **Tip:** keep your deployment shell free of `CLOUDFLARE_API_TOKEN` so `wrangler deploy` continues using the OAuth
-> session from `wrangler login`. Store the Workers AI/Vectorize token in `CF_AI_TOKEN` and only export it when running
+> session from `wrangler login`. Store the Workers AI/Vectorize token in `CLOUDFLARE_AI_TOKEN` (or `CF_AI_TOKEN`) and only export it when running
 > `npm run vectorize:ingest`.
 
 ## Vectorize Ingestion
 
 Run `npm run vectorize:ingest` after updating `manifest_enriched.ndjson` to keep your semantic index in sync. The
 script uses Workers AI to generate embeddings (defaults to `@cf/baai/bge-large-en-v1.5`) and upserts them into the
-Vectorize index defined in `wrangler.toml`.
+Vectorize index defined in `wrangler.toml`. The Vectorize API for this project runs on **v2**, so the script streams
+newline-delimited JSON (`application/x-ndjson`) to `/vectorize/v2/indexes/<name>/upsert`.
 
 Environment variables consumed:
 
-- `CF_AI_TOKEN` *(preferred)* or `CLOUDFLARE_API_TOKEN` – must allow `Workers AI:Edit` and `Vectorize:Write`.
+- `CLOUDFLARE_AI_TOKEN` *(preferred)*, `CF_AI_TOKEN`, or `CLOUDFLARE_API_TOKEN` – must allow `Workers AI:Edit` and `Vectorize:Write`.
 - `CLOUDFLARE_R2_ACCOUNT_ID` – reused for AI/Vectorize REST endpoints.
 - `CLOUDFLARE_VECTORIZE_INDEX` – optional override of the index name (`mtl-archives` by default).
 - `CLOUDFLARE_EMBEDDING_MODEL` – optional embedding model name.
 - `VECTORIZE_BATCH_SIZE` / `VECTORIZE_LIMIT` – optional batching/tuning knobs.
+- `VECTORIZE_REQUEST_TIMEOUT_MS` – optional fetch timeout (default 60000).
+
+The script loads variables from `.env` automatically; exported values in your shell take precedence if you need a temporary override.
 
 Embeddings are stored alongside lightweight metadata (name, date, image key) so Vectorize results can be joined
 with D1 rows or returned directly to clients.
