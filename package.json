@@ -4,13 +4,18 @@
   "description": "Cloudflare Worker, D1, and Vectorize pipeline for the Montréal archives dataset.",
   "scripts": {
     "dev": "npx wrangler dev",
+    "dev:remote": "npx wrangler dev --remote",
+    "dev:seed": "./scripts/seed_local_dev.sh",
+    "dev:seed:sample": "./scripts/seed_local_dev.sh --limit 100",
     "deploy": "npx wrangler deploy",
     "generate:sql": "node scripts/generate_manifest_sql.js",
     "d1:seed": "npm run generate:sql && WRANGLER_LOG_PATH=\"$(pwd)/data/mtl_archives/.wrangler-logs\" npx wrangler d1 execute mtl-archives --remote --file cloudflare/d1/seed_manifest.sql",
     "db:count": "WRANGLER_LOG_PATH=\"$(pwd)/data/mtl_archives/.wrangler-logs\" npx wrangler d1 execute mtl-archives --remote --command \"SELECT COUNT(*) AS total FROM manifest;\"",
     "pipeline": "npm run d1:seed",
     "vectorize:ingest": "node scripts/vectorize_ingest.js",
-    "typecheck": "tsc --noEmit"
+    "vectorize:eval": "node scripts/evaluate_semantic_search.js",
+    "typecheck": "tsc --noEmit",
+    "test:search": "node scripts/test_search_api.js"
   },
   "engines": {
     "node": ">=23.5.0"

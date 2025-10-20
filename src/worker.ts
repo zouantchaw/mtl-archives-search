@@ -40,36 +40,82 @@ const JSON_HEADERS: HeadersInit = {
 
 const SELECT_FIELDS = `metadata_filename, image_filename, resolved_image_filename, image_size_bytes, name, description, date_value, credits, cote, external_url, portal_match, portal_title, portal_description, portal_date, portal_cote, aerial_datasets`;
 
+type PerformanceMetrics = {
+  endpoint: string;
+  duration: number;
+  status: number;
+  mode?: string;
+  resultCount?: number;
+  embeddingTime?: number;
+  vectorizeTime?: number;
+  d1Time?: number;
+};
+
+function logMetrics(metrics: PerformanceMetrics): void {
+  const formatted = {
+    ...metrics,
+    timestamp: new Date().toISOString(),
+  };
+  console.log('[METRICS]', JSON.stringify(formatted));
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
+    const startTime = performance.now();
+    const url = new URL(request.url);
+    
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: JSON_HEADERS });
     }
 
-    const url = new URL(request.url);
-
     try {
+      let response: Response;
+      
       if (url.pathname === '/api/photos') {
         if (request.method !== 'GET') {
           return methodNotAllowed();
         }
-        return handlePhotos(url, env);
-      }
-
-      if (url.pathname === '/api/search') {
+        response = await handlePhotos(url, env);
+      } else if (url.pathname === '/api/search') {
         if (request.method !== 'GET') {
           return methodNotAllowed();
         }
-        return handleSearch(url, env);
+        response = await handleSearch(url, env);
+      } else if (url.pathname === '/' || url.pathname === '/health') {
+        response = jsonResponse({ status: 'ok', environment: env.DB ? 'connected' : 'unconfigured' });
+      } else {
+        response = jsonResponse({ error: 'Not found' }, 404);
       }
 
-      if (url.pathname === '/' || url.pathname === '/health') {
-        return jsonResponse({ status: 'ok' });
+      const duration = performance.now() - startTime;
+      
+      // Log metrics for monitoring
+      if (url.pathname.startsWith('/api/')) {
+        const metrics: PerformanceMetrics = {
+          endpoint: url.pathname,
+          duration: Math.round(duration),
+          status: response.status,
+        };
+        
+        // Add query-specific metrics if available
+        if (url.searchParams.has('mode')) {
+          metrics.mode = url.searchParams.get('mode') || 'unknown';
+        }
+        
+        logMetrics(metrics);
       }
 
-      return jsonResponse({ error: 'Not found' }, 404);
+      return response;
     } catch (error) {
+      const duration = performance.now() - startTime;
       console.error('Worker error', error);
+      
+      logMetrics({
+        endpoint: url.pathname,
+        duration: Math.round(duration),
+        status: 500,
+      });
+      
       return jsonResponse({ error: 'Internal Server Error' }, 500);
     }
   },
@@ -195,26 +241,41 @@ async function handleSemanticSearch(query: string, limit: number, env: Env): Pro
     );
   }
 
+  const timings = {
+    embedding: 0,
+    vectorize: 0,
+    d1: 0,
+    total: 0,
+  };
+  const overallStart = performance.now();
+
   try {
     // Generate embedding for the search query using Workers AI
+    const embeddingStart = performance.now();
     const embeddingResponse = await env.AI.run('@cf/baai/bge-large-en-v1.5', {
       text: [query],
     });
+    timings.embedding = performance.now() - embeddingStart;
 
     // Extract the embedding vector from the response
     const embedding = extractEmbedding(embeddingResponse);
     if (!embedding) {
+      console.error('[SEMANTIC_SEARCH] Failed to extract embedding from AI response');
       return jsonResponse({ error: 'Failed to generate query embedding' }, 500);
     }
 
     // Query Vectorize for similar vectors
+    const vectorizeStart = performance.now();
     const vectorResults = await env.VECTORIZE.query(embedding, {
       topK: limit,
       returnMetadata: true,
       returnValues: false,
     });
+    timings.vectorize = performance.now() - vectorizeStart;
 
     if (!vectorResults.matches || vectorResults.matches.length === 0) {
+      timings.total = performance.now() - overallStart;
+      console.log('[SEMANTIC_SEARCH]', JSON.stringify({ query, resultCount: 0, timings }));
       return jsonResponse({ items: [], mode: 'semantic', count: 0 });
     }
 
@@ -222,12 +283,14 @@ async function handleSemanticSearch(query: string, limit: number, env: Env): Pro
     const metadataFilenames = vectorResults.matches.map((match) => match.id);
 
     // Fetch full records from D1 using the IDs
+    const d1Start = performance.now();
     const placeholders = metadataFilenames.map(() => '?').join(',');
     const { results = [] } = await env.DB.prepare(
       `SELECT ${SELECT_FIELDS} FROM manifest WHERE metadata_filename IN (${placeholders})`
     )
       .bind(...metadataFilenames)
       .all();
+    timings.d1 = performance.now() - d1Start;
 
     // Build a map for quick lookup
     const recordMap = new Map<string, Record<string, unknown>>();
@@ -252,6 +315,21 @@ async function handleSemanticSearch(query: string, limit: number, env: Env): Pro
 
     // Filter out any null results
     const filteredItems = items.filter((item) => item !== null);
+    timings.total = performance.now() - overallStart;
+
+    // Log detailed metrics
+    const topScore = filteredItems.length > 0 ? filteredItems[0].score : 0;
+    console.log('[SEMANTIC_SEARCH]', JSON.stringify({
+      query,
+      resultCount: filteredItems.length,
+      topScore,
+      timings: {
+        embedding: Math.round(timings.embedding),
+        vectorize: Math.round(timings.vectorize),
+        d1: Math.round(timings.d1),
+        total: Math.round(timings.total),
+      },
+    }));
 
     return jsonResponse({
       items: filteredItems,
@@ -259,7 +337,8 @@ async function handleSemanticSearch(query: string, limit: number, env: Env): Pro
       count: filteredItems.length,
     });
   } catch (error) {
-    console.error('Semantic search error:', error);
+    timings.total = performance.now() - overallStart;
+    console.error('[SEMANTIC_SEARCH] Error:', error, 'Timings:', timings);
     return jsonResponse(
       {
         error: 'Semantic search failed',
