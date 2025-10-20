@@ -2,7 +2,6 @@ name = "mtl-archives-worker"
 main = "src/worker.ts"
 compatibility_date = "2025-10-17"
 
-# Production bindings (for deployment and --remote dev)
 [[d1_databases]]
 binding = "DB"
 database_name = "mtl-archives"

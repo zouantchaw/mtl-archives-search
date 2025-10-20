@@ -1,20 +1,13 @@
 # Montréal Archives Cloudflare Stack
 
-Cloudflare Worker, D1, R2, and Vectorize scaffolding for the Montréal city archives dataset. This project packages the outputs from the Logseq pipeline (`data/mtl_archives/...`) into production-friendly APIs with **semantic search** powered by Workers AI.
-
-## Quick Links
-
-- 📖 [**WORKFLOW.md**](./WORKFLOW.md) - Development, testing, and deployment guide
-- 📊 [**MONITORING.md**](./MONITORING.md) - Metrics, quality measurement, and observability
-- 🔗 [**Live API**](https://mtl-archives-worker.wiel.workers.dev)
+Cloudflare Worker, D1, R2, and Vectorize scaffolding for the Montréal city archives dataset. This project packages the outputs from the Logseq pipeline (`data/mtl_archives/...`) into production-friendly APIs, making it easy to launch web or ML experiments on top of Cloudflare infrastructure.
 
 ## Architecture
 
 - **R2** – canonical object store for the image corpus (mirrors the backup drive).
 - **D1** – structured metadata (`manifest` table) queried by Worker endpoints.
-- **Vectorize** – semantic search index with 14,822 embedded photo descriptions.
-- **Workers AI** – generates embeddings (`@cf/baai/bge-large-en-v1.5`) for queries and ingestion.
-- **Worker** – REST API (`/api/photos`, `/api/search`) serving metadata with both text and semantic search.
+- **Vectorize** – reserved binding for semantic search once embeddings are generated.
+- **Worker** – REST API (`/api/photos`, `/api/search`) that serves metadata and will orchestrate future search/index tasks.
 
 ## Repository Layout
 
@@ -50,64 +43,18 @@ npm install
 wrangler login
 ```
 
-## Development Workflow
-
-| Mode                   | Command              | What it Does                                        |
-| ---------------------- | -------------------- | --------------------------------------------------- |
-| **Local Dev (Empty)**  | `npm run dev`        | Local temporary D1 (empty), no Vectorize, remote AI |
-| **Local Dev (Seeded)** | See setup below      | Local D1 with real data, no Vectorize, remote AI    |
-| **Remote Dev**         | `npm run dev:remote` | Uses production resources (read-only testing)       |
-| **Production**         | `npm run deploy`     | Deploy to live API                                  |
-
-### Setting Up Local Dev with Data
-
-**Note:** Vectorize cannot run locally (Cloudflare limitation). For semantic search testing, use `npm run dev:remote`.
-
-To seed local D1 with production data:
-
-```bash
-# 1. Start dev server once to create local database
-npm run dev
-# Stop it (Ctrl+C)
-
-# 2. Seed with all data (14,822 records)
-npm run dev:seed
-
-# OR seed with sample data (100 records, faster)
-npm run dev:seed:sample
-
-# 3. Start dev server again - now with data!
-npm run dev
-```
-
-Now you can test `/api/photos` and text search locally with real data!
-
-See [WORKFLOW.md](./WORKFLOW.md) for details and [MONITORING.md](./MONITORING.md) for quality measurement.
-
 ## Commands
 
-**Development:**
-
-- `npm run dev` - Local dev server (empty temporary D1)
-- `npm run dev:seed` - Seed local D1 with all production data
-- `npm run dev:seed:sample` - Seed local D1 with 100 sample records
-- `npm run dev:remote` - Dev server with production data + Vectorize
-- `npm run typecheck` - TypeScript type checking
-
-**Testing:**
-
-- `npm run test:search` - Quick API smoke tests
-- `npm run vectorize:eval` - Evaluate semantic search quality
-
-**Data Pipeline:**
-
-- `npm run generate:sql` - Generate SQL from manifest
-- `npm run pipeline` - Seed production D1 database
-- `npm run vectorize:ingest` - Ingest vectors to production
-
-**Deployment:**
-
-- `npm run deploy` - Deploy to production
+| Command                    | Description                                                                                             |
+| -------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `npm run generate:sql`     | Regenerates `cloudflare/d1/seed_manifest.sql` from `data/mtl_archives/export/manifest_enriched.ndjson`. |
+| `npm run d1:seed`          | Regenerate SQL and bulk upload into the remote D1 database.                                             |
+| `npm run db:count`         | Sanity-check the number of rows currently in D1.                                                        |
+| `npm run pipeline`         | Shortcut for `generate:sql` + remote D1 seed.                                                           |
+| `npm run vectorize:ingest` | Generate embeddings with Workers AI and upsert them into Cloudflare Vectorize.                          |
+| `npm run dev`              | Run the Worker locally with Wrangler dev.                                                               |
+| `npm run deploy`           | Deploy the Worker to Cloudflare (make sure variables/secrets are set).                                  |
+| `npm run typecheck`        | TypeScript type checking for the Worker code.                                                           |
 
 All scripts set `WRANGLER_LOG_PATH` to `data/mtl_archives/.wrangler-logs/` to avoid macOS permission issues.
 
