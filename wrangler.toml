@@ -11,3 +11,6 @@ migrations_dir = "cloudflare/d1/migrations"
 [[vectorize]]
 binding = "VECTORIZE"
 index_name = "mtl-archives"
+
+[ai]
+binding = "AI"

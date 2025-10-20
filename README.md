@@ -45,16 +45,16 @@ wrangler login
 
 ## Commands
 
-| Command                   | Description |
-| ------------------------- | ----------- |
-| `npm run generate:sql`    | Regenerates `cloudflare/d1/seed_manifest.sql` from `data/mtl_archives/export/manifest_enriched.ndjson`. |
-| `npm run d1:seed`         | Regenerate SQL and bulk upload into the remote D1 database. |
-| `npm run db:count`        | Sanity-check the number of rows currently in D1. |
-| `npm run pipeline`        | Shortcut for `generate:sql` + remote D1 seed. |
-| `npm run vectorize:ingest`| Generate embeddings with Workers AI and upsert them into Cloudflare Vectorize. |
-| `npm run dev`             | Run the Worker locally with Wrangler dev. |
-| `npm run deploy`          | Deploy the Worker to Cloudflare (make sure variables/secrets are set). |
-| `npm run typecheck`       | TypeScript type checking for the Worker code. |
+| Command                    | Description                                                                                             |
+| -------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `npm run generate:sql`     | Regenerates `cloudflare/d1/seed_manifest.sql` from `data/mtl_archives/export/manifest_enriched.ndjson`. |
+| `npm run d1:seed`          | Regenerate SQL and bulk upload into the remote D1 database.                                             |
+| `npm run db:count`         | Sanity-check the number of rows currently in D1.                                                        |
+| `npm run pipeline`         | Shortcut for `generate:sql` + remote D1 seed.                                                           |
+| `npm run vectorize:ingest` | Generate embeddings with Workers AI and upsert them into Cloudflare Vectorize.                          |
+| `npm run dev`              | Run the Worker locally with Wrangler dev.                                                               |
+| `npm run deploy`           | Deploy the Worker to Cloudflare (make sure variables/secrets are set).                                  |
+| `npm run typecheck`        | TypeScript type checking for the Worker code.                                                           |
 
 All scripts set `WRANGLER_LOG_PATH` to `data/mtl_archives/.wrangler-logs/` to avoid macOS permission issues.
 
@@ -64,16 +64,30 @@ All scripts set `WRANGLER_LOG_PATH` to `data/mtl_archives/.wrangler-logs/` to av
 : Returns paginated metadata ordered by `metadata_filename`, embedding a signed (or public) R2 URL for each image under `imageUrl`.
 
 Query parameters:
+
 - `limit` (1–100, default 50)
 - `cursor` (use the `nextCursor` value from the previous page)
 
 `GET /api/search`
-: Text search across `name`, `description`, and portal fields.
+: Search across photos using text matching or semantic similarity.
 
 Query parameters:
-- `q` *(required)* – search term
+
+- `q` _(required)_ – search term
 - `limit` (1–100, default 25)
-- `mode` (`text` | `semantic`). Semantic mode returns HTTP 501 until Vectorize is wired in.
+- `mode` (`text` | `semantic`, default `text`)
+  - **`text`**: SQL `LIKE` queries across `name`, `description`, `portal_title`, and `portal_description` fields
+  - **`semantic`**: Uses Workers AI embeddings (`@cf/baai/bge-large-en-v1.5`) and Vectorize to find semantically similar photos. Returns results with similarity scores (0-1, higher is better).
+
+**Examples:**
+
+```bash
+# Text search
+curl "https://mtl-archives-worker.wiel.workers.dev/api/search?q=church&mode=text"
+
+# Semantic search - finds conceptually similar photos
+curl "https://mtl-archives-worker.wiel.workers.dev/api/search?q=old+cathedral+building&mode=semantic&limit=5"
+```
 
 Every response is JSON and includes `Access-Control-Allow-Origin: *` so the Worker can be called from browser prototypes.
 
@@ -128,7 +142,7 @@ newline-delimited JSON (`application/x-ndjson`) to `/vectorize/v2/indexes/<name>
 
 Environment variables consumed:
 
-- `CLOUDFLARE_AI_TOKEN` *(preferred)*, `CF_AI_TOKEN`, or `CLOUDFLARE_API_TOKEN` – must allow `Workers AI:Edit` and `Vectorize:Write`.
+- `CLOUDFLARE_AI_TOKEN` _(preferred)_, `CF_AI_TOKEN`, or `CLOUDFLARE_API_TOKEN` – must allow `Workers AI:Edit` and `Vectorize:Write`.
 - `CLOUDFLARE_R2_ACCOUNT_ID` – reused for AI/Vectorize REST endpoints.
 - `CLOUDFLARE_VECTORIZE_INDEX` – optional override of the index name (`mtl-archives` by default).
 - `CLOUDFLARE_EMBEDDING_MODEL` – optional embedding model name.
@@ -142,8 +156,9 @@ with D1 rows or returned directly to clients.
 
 ## Next Steps
 
-- **Fully enable semantic search** – `npm run vectorize:ingest` loads vectors, but `/api/search?mode=semantic` still needs an embedding provider at query time (Workers AI or an external service). Once you add that, swap the placeholder in `handleSemanticSearch` with a real Vectorize query.
+- ✅ **Semantic search** – COMPLETE! `/api/search?mode=semantic` now uses Workers AI and Vectorize to return semantically similar photos with similarity scores.
 - **Automation** – wrap R2 sync + D1 seed + Vectorize ingestion into a CI-friendly workflow.
 - **Monitoring** – add logging/metrics (e.g., Workers Analytics Engine) and guardrails (rate limiting, auth) as you move towards production.
+- **Frontend** – build a React/Next.js UI to showcase the photo collection with both text and semantic search capabilities.
 
-With the data pipeline encoded in this repo, you can now prototype new web or ML front-ends without disturbing the Logseq knowledge base.
+With the data pipeline and semantic search API complete, you can now prototype web or ML front-ends without disturbing the Logseq knowledge base.

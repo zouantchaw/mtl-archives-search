@@ -1,4 +1,4 @@
-import type { VectorizeIndex } from '@cloudflare/workers-types';
+import type { VectorizeIndex, Ai } from '@cloudflare/workers-types';
 
 type PhotoRecord = {
   metadataFilename: string;
@@ -22,6 +22,7 @@ type PhotoRecord = {
 
 type Env = {
   DB: D1Database;
+  AI: Ai;
   VECTORIZE?: VectorizeIndex;
   CLOUDFLARE_R2_ACCESS_KEY?: string;
   CLOUDFLARE_R2_SECRET_ACCESS_KEY?: string;
@@ -186,7 +187,7 @@ function escapeForLike(value: string): string {
   return value.replaceAll('\\', '\\\\').replaceAll('%', '\\%').replaceAll('_', '\\_');
 }
 
-async function handleSemanticSearch(_query: string, _limit: number, env: Env): Promise<Response> {
+async function handleSemanticSearch(query: string, limit: number, env: Env): Promise<Response> {
   if (!env.VECTORIZE) {
     return jsonResponse(
       { error: 'Semantic search is not configured. Bind a Cloudflare Vectorize index to enable this feature.' },
@@ -194,12 +195,104 @@ async function handleSemanticSearch(_query: string, _limit: number, env: Env): P
     );
   }
 
-  return jsonResponse(
-    {
-      error: 'Semantic search placeholder. Integrate embedding generation and vector queries before enabling this endpoint.',
-    },
-    501
-  );
+  try {
+    // Generate embedding for the search query using Workers AI
+    const embeddingResponse = await env.AI.run('@cf/baai/bge-large-en-v1.5', {
+      text: [query],
+    });
+
+    // Extract the embedding vector from the response
+    const embedding = extractEmbedding(embeddingResponse);
+    if (!embedding) {
+      return jsonResponse({ error: 'Failed to generate query embedding' }, 500);
+    }
+
+    // Query Vectorize for similar vectors
+    const vectorResults = await env.VECTORIZE.query(embedding, {
+      topK: limit,
+      returnMetadata: true,
+      returnValues: false,
+    });
+
+    if (!vectorResults.matches || vectorResults.matches.length === 0) {
+      return jsonResponse({ items: [], mode: 'semantic', count: 0 });
+    }
+
+    // Extract metadata_filenames (IDs) from vector matches
+    const metadataFilenames = vectorResults.matches.map((match) => match.id);
+
+    // Fetch full records from D1 using the IDs
+    const placeholders = metadataFilenames.map(() => '?').join(',');
+    const { results = [] } = await env.DB.prepare(
+      `SELECT ${SELECT_FIELDS} FROM manifest WHERE metadata_filename IN (${placeholders})`
+    )
+      .bind(...metadataFilenames)
+      .all();
+
+    // Build a map for quick lookup
+    const recordMap = new Map<string, Record<string, unknown>>();
+    for (const row of results) {
+      recordMap.set(String(row.metadata_filename), row);
+    }
+
+    // Build photo records in the same order as vector results, preserving scores
+    const items = await Promise.all(
+      vectorResults.matches.map(async (match) => {
+        const row = recordMap.get(match.id);
+        if (!row) {
+          return null;
+        }
+        const photo = await buildPhotoRecord(row, env);
+        return {
+          ...photo,
+          score: match.score,
+        };
+      })
+    );
+
+    // Filter out any null results
+    const filteredItems = items.filter((item) => item !== null);
+
+    return jsonResponse({
+      items: filteredItems,
+      mode: 'semantic',
+      count: filteredItems.length,
+    });
+  } catch (error) {
+    console.error('Semantic search error:', error);
+    return jsonResponse(
+      {
+        error: 'Semantic search failed',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
+      500
+    );
+  }
+}
+
+function extractEmbedding(response: unknown): number[] | null {
+  if (!response || typeof response !== 'object') {
+    return null;
+  }
+
+  const result = (response as { data?: unknown[] }).data;
+  if (!Array.isArray(result) || result.length === 0) {
+    return null;
+  }
+
+  const firstEntry = result[0];
+  if (Array.isArray(firstEntry)) {
+    return firstEntry;
+  }
+
+  if (firstEntry && typeof firstEntry === 'object' && 'embedding' in firstEntry) {
+    const embedding = (firstEntry as { embedding: unknown }).embedding;
+    if (Array.isArray(embedding)) {
+      return embedding;
+    }
+  }
+
+  return null;
 }
 
 async function resolveImageUrl(key: string, env: Env): Promise<string> {
