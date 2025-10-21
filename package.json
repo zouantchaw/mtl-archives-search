@@ -5,10 +5,13 @@
   "scripts": {
     "dev": "npx wrangler dev",
     "deploy": "npx wrangler deploy",
+    "metadata:clean": "python3 data/mtl_archives/clean_metadata.py",
+    "metadata:export": "python3 data/mtl_archives/export_manifest.py",
+    "metadata:audit": "python3 data/mtl_archives/audit_metadata_quality.py",
     "generate:sql": "node scripts/generate_manifest_sql.js",
     "d1:seed": "npm run generate:sql && WRANGLER_LOG_PATH=\"$(pwd)/data/mtl_archives/.wrangler-logs\" npx wrangler d1 execute mtl-archives --remote --file cloudflare/d1/seed_manifest.sql",
     "db:count": "WRANGLER_LOG_PATH=\"$(pwd)/data/mtl_archives/.wrangler-logs\" npx wrangler d1 execute mtl-archives --remote --command \"SELECT COUNT(*) AS total FROM manifest;\"",
-    "pipeline": "npm run d1:seed",
+    "pipeline": "npm run metadata:clean && npm run metadata:export && npm run metadata:audit && npm run d1:seed",
     "vectorize:ingest": "node scripts/vectorize_ingest.js",
     "typecheck": "tsc --noEmit"
   },

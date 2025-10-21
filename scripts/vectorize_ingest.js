@@ -72,12 +72,17 @@ if (!API_TOKEN) {
   process.exit(1);
 }
 
-const manifestPath = path.resolve('data/mtl_archives/export/manifest_enriched.ndjson');
+// Use cleaned manifest if it exists, otherwise fall back to enriched
+const cleanPath = path.resolve('data/mtl_archives/manifest_clean.jsonl');
+const enrichedPath = path.resolve('data/mtl_archives/export/manifest_enriched.ndjson');
+const manifestPath = fs.existsSync(cleanPath) ? cleanPath : enrichedPath;
+
 if (!fs.existsSync(manifestPath)) {
   console.error(`Cannot find manifest file at ${manifestPath}`);
   process.exit(1);
 }
 
+console.log(`Reading manifest from: ${manifestPath}`);
 const raw = fs.readFileSync(manifestPath, 'utf-8');
 const lines = raw.split('\n').filter(Boolean);
 let records = lines.map((line) => JSON.parse(line));

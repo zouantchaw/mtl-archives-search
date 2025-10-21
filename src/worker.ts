@@ -89,7 +89,7 @@ function jsonResponse(body: unknown, status = 200, extraHeaders: HeadersInit = {
 }
 
 async function buildPhotoRecord(row: Record<string, unknown>, env: Env): Promise<PhotoRecord> {
-  return {
+  const record: PhotoRecord = {
     metadataFilename: String(row.metadata_filename),
     imageFilename: String(row.image_filename),
     resolvedImageFilename: String(row.resolved_image_filename ?? row.image_filename ?? ''),
@@ -108,6 +108,33 @@ async function buildPhotoRecord(row: Record<string, unknown>, env: Env): Promise
     aerialDatasets: parseJsonArray(row.aerial_datasets),
     imageUrl: await resolveImageUrl(String(row.resolved_image_filename ?? row.image_filename ?? ''), env),
   };
+
+  validateMetadataQuality(record);
+  return record;
+}
+
+function validateMetadataQuality(record: PhotoRecord): void {
+  const description = record.description?.trim() ?? '';
+  if (!description) {
+    console.warn('metadata_quality_missing_description', {
+      metadataFilename: record.metadataFilename,
+      portalMatch: record.portalMatch,
+    });
+  } else if (description.length < 50) {
+    console.warn('metadata_quality_short_description', {
+      metadataFilename: record.metadataFilename,
+      length: description.length,
+      portalMatch: record.portalMatch,
+    });
+  }
+
+  const portalDescription = record.portalDescription?.trim() ?? '';
+  if (!portalDescription) {
+    console.warn('metadata_quality_missing_portal_description', {
+      metadataFilename: record.metadataFilename,
+      portalMatch: record.portalMatch,
+    });
+  }
 }
 
 function parseJsonArray(value: unknown): string[] {

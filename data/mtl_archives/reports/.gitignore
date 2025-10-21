@@ -1,0 +1,3 @@
+# Ignore generated reports; commit only the directory structure.
+*
+!.gitignore

@@ -7,14 +7,6 @@ import json
 from pathlib import Path
 
 try:
-  import pandas as pd  # type: ignore
-except Exception as exc:  # pylint: disable=broad-except
-  pd = None  # type: ignore
-  PANDAS_ERROR = str(exc)
-else:
-  PANDAS_ERROR = ""
-
-try:
   import pyarrow as pa  # type: ignore
   import pyarrow.parquet as pq  # type: ignore
 except Exception as exc:  # pylint: disable=broad-except
@@ -24,17 +16,30 @@ except Exception as exc:  # pylint: disable=broad-except
 else:
   PARQUET_ERROR = ""
 
-ENRICHED_PATH = Path("data/mtl_archives/manifest_enriched.jsonl")
+DEFAULT_INPUTS = (
+  Path("data/mtl_archives/manifest_clean.jsonl"),
+  Path("data/mtl_archives/manifest_enriched.jsonl"),
+)
 EXPORT_DIR = Path("data/mtl_archives/export")
 PARQUET_PATH = EXPORT_DIR / "manifest_enriched.parquet"
 NDJSON_PATH = EXPORT_DIR / "manifest_enriched.ndjson"
 SUMMARY_PATH = EXPORT_DIR / "export_summary.json"
 
 
+def resolve_input_path() -> Path:
+  for candidate in DEFAULT_INPUTS:
+    if candidate.exists():
+      return candidate
+  raise FileNotFoundError(
+    "No manifest found. Run data/mtl_archives/clean_metadata.py or ensure manifest_enriched.jsonl exists."
+  )
+
+
 def main() -> None:
   EXPORT_DIR.mkdir(parents=True, exist_ok=True)
   records = []
-  with ENRICHED_PATH.open() as f:
+  input_path = resolve_input_path()
+  with input_path.open() as f:
     for line in f:
       record = json.loads(line)
       record["aerial_dataset_labels"] = [m["dataset"] for m in record.get("aerial_matches", [])]
@@ -44,7 +49,7 @@ def main() -> None:
     attr_map = {attr.get("trait_type"): attr.get("value") for attr in record.get("attributes", [])}
     portal_rec = record.get("portal_record") or {}
     flat_rows.append({
-      "metadata_filename": record.get("metadata_filename"),
+      "metadata_filename": record.get("metadata_filename") or record.get("metadataFilename"),
       "image_filename": record.get("image_filename"),
       "resolved_image_filename": record.get("resolved_image_filename") or record.get("image_filename"),
       "image_size_bytes": record.get("image_size_bytes") or 0,
@@ -55,24 +60,13 @@ def main() -> None:
       "cote": "" if attr_map.get("Cote") in (None, "") else str(attr_map.get("Cote")),
       "external_url": record.get("external_url"),
       "portal_match": bool(record.get("portal_match")),
-      "portal_title": portal_rec.get("Titre") or "",
-      "portal_description": portal_rec.get("Description") or "",
-      "portal_date": portal_rec.get("Date") or "",
-      "portal_cote": portal_rec.get("Cote") or "",
+      "portal_title": portal_rec.get("Titre") or portal_rec.get("title") or "",
+      "portal_description": portal_rec.get("Description") or portal_rec.get("description") or "",
+      "portal_date": portal_rec.get("Date") or portal_rec.get("date") or "",
+      "portal_cote": portal_rec.get("Cote") or portal_rec.get("cote") or "",
       "aerial_datasets": record.get("aerial_dataset_labels", []),
     })
-  if pd is not None:
-    df = pd.DataFrame(flat_rows)
-    df.to_parquet(PARQUET_PATH, index=False)
-    df.to_json(NDJSON_PATH, orient="records", lines=True, force_ascii=False)
-    summary = {
-      "rows": len(df),
-      "columns": list(df.columns),
-      "parquet_path": str(PARQUET_PATH),
-      "ndjson_path": str(NDJSON_PATH),
-      "parquet_status": "written",
-    }
-  elif pa is not None and pq is not None:
+  if pa is not None and pq is not None:
     table = pa.Table.from_pylist(flat_rows)
     pq.write_table(table, PARQUET_PATH)
     with NDJSON_PATH.open("w", encoding="utf-8") as ndjson_file:
@@ -94,8 +88,9 @@ def main() -> None:
       "columns": list(records[0].keys()) if records else [],
       "parquet_path": None,
       "ndjson_path": str(NDJSON_PATH),
-      "parquet_status": f"skipped (pandas error: {PANDAS_ERROR or 'n/a'}, pyarrow error: {PARQUET_ERROR or 'n/a'})",
+      "parquet_status": f"skipped (pyarrow error: {PARQUET_ERROR or 'n/a'})",
     }
+  summary["input_path"] = str(input_path)
   SUMMARY_PATH.write_text(json.dumps(summary, indent=2, ensure_ascii=False))
 
 

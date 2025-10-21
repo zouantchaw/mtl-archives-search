@@ -1,6 +1,10 @@
 node_modules/
 .wrangler/
 data/mtl_archives/.wrangler-logs/
+data/mtl_archives/manifest_clean*.jsonl
+data/mtl_archives/manifest_clean_summary.json
+data/mtl_archives/reports/*
+!data/mtl_archives/reports/.gitignore
 cloudflare/d1/seed_manifest.sql
 .env
 .env

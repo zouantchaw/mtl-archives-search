@@ -45,16 +45,19 @@ wrangler login
 
 ## Commands
 
-| Command                    | Description                                                                                             |
-| -------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `npm run generate:sql`     | Regenerates `cloudflare/d1/seed_manifest.sql` from `data/mtl_archives/export/manifest_enriched.ndjson`. |
-| `npm run d1:seed`          | Regenerate SQL and bulk upload into the remote D1 database.                                             |
-| `npm run db:count`         | Sanity-check the number of rows currently in D1.                                                        |
-| `npm run pipeline`         | Shortcut for `generate:sql` + remote D1 seed.                                                           |
-| `npm run vectorize:ingest` | Generate embeddings with Workers AI and upsert them into Cloudflare Vectorize.                          |
-| `npm run dev`              | Run the Worker locally with Wrangler dev.                                                               |
-| `npm run deploy`           | Deploy the Worker to Cloudflare (make sure variables/secrets are set).                                  |
-| `npm run typecheck`        | TypeScript type checking for the Worker code.                                                           |
+| Command                    | Description                                                                                                                                          |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run metadata:clean`   | Normalize manifest strings, expand abbreviations, and synthesize fallback descriptions (`manifest_clean.jsonl`).                                    |
+| `npm run metadata:export`  | Flatten the cleaned manifest into NDJSON/Parquet for SQL/vector workflows (`data/mtl_archives/export/manifest_enriched.ndjson`).                     |
+| `npm run metadata:audit`   | Produce coverage/issue reports under `data/mtl_archives/reports/` for metadata quality tracking.                                                    |
+| `npm run generate:sql`     | Regenerates `cloudflare/d1/seed_manifest.sql` from the latest NDJSON export.                                                                       |
+| `npm run d1:seed`          | Regenerate SQL and bulk upload into the remote D1 database.                                                                                         |
+| `npm run db:count`         | Sanity-check the number of rows currently in D1.                                                                                                    |
+| `npm run pipeline`         | Full ingestion workflow: clean → export → SQL → audit → remote D1 seed.                                                                            |
+| `npm run vectorize:ingest` | Generate embeddings with Workers AI and upsert them into Cloudflare Vectorize.                                                                      |
+| `npm run dev`              | Run the Worker locally with Wrangler dev.                                                                                                           |
+| `npm run deploy`           | Deploy the Worker to Cloudflare (make sure variables/secrets are set).                                                                              |
+| `npm run typecheck`        | TypeScript type checking for the Worker code.                                                                                                       |
 
 All scripts set `WRANGLER_LOG_PATH` to `data/mtl_archives/.wrangler-logs/` to avoid macOS permission issues.
 
@@ -93,8 +96,8 @@ Every response is JSON and includes `Access-Control-Allow-Origin: *` so the Work
 
 ## Data Pipeline
 
-1. Produce fresh exports within your Logseq repo (`manifest_enriched.ndjson`, R2 sync artifacts, etc.).
-2. Run `npm run pipeline` to regenerate SQL and seed D1 remotely.
+1. Produce fresh exports within your Logseq repo (`manifest_enriched.jsonl`, R2 sync artifacts, etc.).
+2. Run `npm run pipeline` to clean metadata, export NDJSON/Parquet, regenerate SQL, audit outputs, and seed D1 remotely.
 3. Use AWS CLI or Cloudflare dashboard to sync imagery to R2, e.g.:
    ```bash
    aws --endpoint-url https://<account>.r2.cloudflarestorage.com \

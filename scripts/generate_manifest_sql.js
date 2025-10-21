@@ -2,9 +2,13 @@
 const fs = require('fs');
 const path = require('path');
 
-const INPUT_PATH = path.resolve('data/mtl_archives/export/manifest_enriched.ndjson');
+// Use cleaned manifest if it exists, otherwise fall back to enriched
+const CLEAN_PATH = path.resolve('data/mtl_archives/manifest_clean.jsonl');
+const ENRICHED_PATH = path.resolve('data/mtl_archives/export/manifest_enriched.ndjson');
+const INPUT_PATH = fs.existsSync(CLEAN_PATH) ? CLEAN_PATH : ENRICHED_PATH;
 const OUTPUT_PATH = path.resolve('cloudflare/d1/seed_manifest.sql');
-const CHUNK_SIZE = 250;
+// Reduced chunk size to avoid SQLITE_TOOBIG error with larger/cleaner descriptions
+const CHUNK_SIZE = 100;
 
 function escapeValue(value) {
   if (value === null || value === undefined) return 'NULL';
@@ -78,6 +82,7 @@ function buildInsertStatement(rows) {
 }
 
 function main() {
+  console.log(`Reading from: ${INPUT_PATH}`);
   const records = loadRecords();
   const statements = [];
 
@@ -87,6 +92,7 @@ function main() {
   }
 
   fs.writeFileSync(OUTPUT_PATH, statements.join('\n\n'));
+  console.log(`Generated ${statements.length} INSERT statements (${CHUNK_SIZE} records each)`);
   console.log(`Wrote ${records.length} records to ${OUTPUT_PATH}`);
 }
 
