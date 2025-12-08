@@ -1,19 +1,21 @@
 {
-  "name": "mtl-archives-cloudflare",
-  "version": "0.1.0",
-  "description": "Cloudflare Worker, D1, and Vectorize pipeline for the Montréal archives dataset.",
+  "name": "mtl-archives-search",
+  "version": "0.2.0",
+  "description": "Semantic and visual search API for the Montréal city archives photo collection (~15k historical images).",
   "scripts": {
     "dev": "npx wrangler dev",
     "deploy": "npx wrangler deploy",
-    "metadata:clean": "python3 data/mtl_archives/clean_metadata.py",
-    "metadata:export": "python3 data/mtl_archives/export_manifest.py",
-    "metadata:audit": "python3 data/mtl_archives/audit_metadata_quality.py",
-    "generate:sql": "node scripts/generate_manifest_sql.js",
-    "d1:seed": "npm run generate:sql && WRANGLER_LOG_PATH=\"$(pwd)/data/mtl_archives/.wrangler-logs\" npx wrangler d1 execute mtl-archives --remote --file cloudflare/d1/seed_manifest.sql",
+    "typecheck": "tsc --noEmit",
+    "etl:clean": "python3 pipelines/etl/clean_metadata.py",
+    "etl:export": "python3 pipelines/etl/export_manifest.py",
+    "etl:audit": "python3 pipelines/etl/audit_metadata_quality.py",
+    "etl:build": "python3 pipelines/etl/build_manifest.py",
+    "sql:generate": "node pipelines/sql/generate_manifest_sql.js",
+    "d1:seed": "npm run sql:generate && WRANGLER_LOG_PATH=\"$(pwd)/data/mtl_archives/.wrangler-logs\" npx wrangler d1 execute mtl-archives --remote --file infrastructure/d1/seed_manifest.sql",
     "db:count": "WRANGLER_LOG_PATH=\"$(pwd)/data/mtl_archives/.wrangler-logs\" npx wrangler d1 execute mtl-archives --remote --command \"SELECT COUNT(*) AS total FROM manifest;\"",
-    "pipeline": "npm run metadata:clean && npm run metadata:export && npm run metadata:audit && npm run d1:seed",
-    "vectorize:ingest": "node scripts/vectorize_ingest.js",
-    "typecheck": "tsc --noEmit"
+    "pipeline": "npm run etl:clean && npm run etl:export && npm run etl:audit && npm run d1:seed",
+    "vectorize:text": "node pipelines/vectorize/ingest_text.js",
+    "search:eval": "node pipelines/vectorize/evaluate_search_quality.js"
   },
   "engines": {
     "node": ">=23.5.0"
@@ -21,5 +23,15 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241018.0",
     "typescript": "^5.6.3"
-  }
+  },
+  "keywords": [
+    "cloudflare-workers",
+    "semantic-search",
+    "vectorize",
+    "montreal",
+    "archives",
+    "historical-photos"
+  ],
+  "author": "zouantchaw",
+  "license": "MIT"
 }

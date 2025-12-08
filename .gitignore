@@ -1,10 +1,46 @@
+# Dependencies
 node_modules/
+
+# Wrangler
 .wrangler/
 data/mtl_archives/.wrangler-logs/
-data/mtl_archives/manifest_clean*.jsonl
-data/mtl_archives/manifest_clean_summary.json
-data/mtl_archives/reports/*
-!data/mtl_archives/reports/.gitignore
-cloudflare/d1/seed_manifest.sql
+
+# Generated/large data files (keep out of repo)
+data/mtl_archives/manifest*.jsonl
+data/mtl_archives/manifest*_summary.json
+data/mtl_archives/export/
+data/mtl_archives/reports/
+infrastructure/d1/seed_manifest.sql
+
+# Raw source data (downloaded from external sources)
+data/mtl_archives/package_*.json
+data/mtl_archives/phototheque_*.json
+data/mtl_archives/phototheque_*.csv
+data/mtl_archives/phototheque_*.txt
+data/mtl_archives/vues_aeriennes_*.json
+data/mtl_archives/vues_aeriennes_*.csv
+data/mtl_archives/*_headers.txt
+data/mtl_archives/related_datasets.json
+
+# Environment
 .env
-.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# npm cache
+.npm-cache/

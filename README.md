@@ -1,88 +1,22 @@
-# Montréal Archives Cloudflare Stack
+# Montréal Archives Search
 
-Cloudflare Worker, D1, R2, and Vectorize scaffolding for the Montréal city archives dataset. This project packages the outputs from the Logseq pipeline (`data/mtl_archives/...`) into production-friendly APIs, making it easy to launch web or ML experiments on top of Cloudflare infrastructure.
+**Semantic and visual search API for the Montréal city archives photo collection (~15,000 historical images from 1870s-1990s).**
 
-## Architecture
+Built on Cloudflare's edge infrastructure: Workers, D1, Vectorize, R2, and Workers AI.
 
-- **R2** – canonical object store for the image corpus (mirrors the backup drive).
-- **D1** – structured metadata (`manifest` table) queried by Worker endpoints.
-- **Vectorize** – reserved binding for semantic search once embeddings are generated.
-- **Worker** – REST API (`/api/photos`, `/api/search`) that serves metadata and will orchestrate future search/index tasks.
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Node](https://img.shields.io/badge/node-%3E%3D23.5.0-green.svg)
+![Cloudflare Workers](https://img.shields.io/badge/cloudflare-workers-orange.svg)
 
-## Repository Layout
+## Features
 
-```
-cloudflare/              # D1 migrations and seed SQL
-  └── d1/
-      ├── migrations/    # Schema definition(s)
-      └── seed_manifest.sql
-data/
-  └── mtl_archives/      # Exports, staged assets, R2/R2 logs (gitignored where sensitive)
-scripts/                 # Node helpers (e.g., generate_manifest_sql.js)
-src/
-  └── worker.ts          # Worker entry point (module syntax)
-wrangler.toml            # Worker, D1, and Vectorize bindings
-.nvmrc                   # Node version (v23.5.0)
-```
+- **Text Search** — SQL-based keyword search across photo metadata
+- **Semantic Search** — Find conceptually similar photos using BGE text embeddings
+- **Visual Search** _(coming soon)_ — CLIP-based image similarity search
+- **Signed URLs** — Secure, time-limited access to R2-hosted images
+- **Edge Performance** — Sub-50ms response times globally via Cloudflare's network
 
-## Prerequisites
-
-1. **Node.js 23.5.0** – via `nvm use 23.5.0` (see `.nvmrc`).
-2. **Cloudflare Wrangler 4.43+** – `npm install -g wrangler` or rely on `npx` in the provided scripts.
-3. **AWS CLI** (optional) – for syncing R2 objects.
-4. **Cloudflare account** with:
-   - D1 database (`mtl-archives`) already created.
-   - R2 bucket (`mtl-archives`) populated with images.
-   - Vectorize index (placeholder binding `VECTORIZE`) for future semantic search.
-
-Clone or move this repo into a clean directory (e.g., `~/Development/mtl-archives-cloudflare`) and run:
-
-```bash
-nvm use 23.5.0
-npm install
-wrangler login
-```
-
-## Commands
-
-| Command                    | Description                                                                                                                                          |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run metadata:clean`   | Normalize manifest strings, expand abbreviations, and synthesize fallback descriptions (`manifest_clean.jsonl`).                                    |
-| `npm run metadata:export`  | Flatten the cleaned manifest into NDJSON/Parquet for SQL/vector workflows (`data/mtl_archives/export/manifest_enriched.ndjson`).                     |
-| `npm run metadata:audit`   | Produce coverage/issue reports under `data/mtl_archives/reports/` for metadata quality tracking.                                                    |
-| `npm run generate:sql`     | Regenerates `cloudflare/d1/seed_manifest.sql` from the latest NDJSON export.                                                                       |
-| `npm run d1:seed`          | Regenerate SQL and bulk upload into the remote D1 database.                                                                                         |
-| `npm run db:count`         | Sanity-check the number of rows currently in D1.                                                                                                    |
-| `npm run pipeline`         | Full ingestion workflow: clean → export → SQL → audit → remote D1 seed.                                                                            |
-| `npm run vectorize:ingest` | Generate embeddings with Workers AI and upsert them into Cloudflare Vectorize.                                                                      |
-| `npm run dev`              | Run the Worker locally with Wrangler dev.                                                                                                           |
-| `npm run deploy`           | Deploy the Worker to Cloudflare (make sure variables/secrets are set).                                                                              |
-| `npm run typecheck`        | TypeScript type checking for the Worker code.                                                                                                       |
-
-All scripts set `WRANGLER_LOG_PATH` to `data/mtl_archives/.wrangler-logs/` to avoid macOS permission issues.
-
-## API Endpoints
-
-`GET /api/photos`
-: Returns paginated metadata ordered by `metadata_filename`, embedding a signed (or public) R2 URL for each image under `imageUrl`.
-
-Query parameters:
-
-- `limit` (1–100, default 50)
-- `cursor` (use the `nextCursor` value from the previous page)
-
-`GET /api/search`
-: Search across photos using text matching or semantic similarity.
-
-Query parameters:
-
-- `q` _(required)_ – search term
-- `limit` (1–100, default 25)
-- `mode` (`text` | `semantic`, default `text`)
-  - **`text`**: SQL `LIKE` queries across `name`, `description`, `portal_title`, and `portal_description` fields
-  - **`semantic`**: Uses Workers AI embeddings (`@cf/baai/bge-large-en-v1.5`) and Vectorize to find semantically similar photos. Returns results with similarity scores (0-1, higher is better).
-
-**Examples:**
+## Live API
 
 ```bash
 # Text search
@@ -90,78 +24,136 @@ curl "https://mtl-archives-worker.wiel.workers.dev/api/search?q=church&mode=text
 
 # Semantic search - finds conceptually similar photos
 curl "https://mtl-archives-worker.wiel.workers.dev/api/search?q=old+cathedral+building&mode=semantic&limit=5"
+
+# Paginated listing
+curl "https://mtl-archives-worker.wiel.workers.dev/api/photos?limit=10"
 ```
 
-Every response is JSON and includes `Access-Control-Allow-Origin: *` so the Worker can be called from browser prototypes.
+## Architecture
+
+```
+┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│   Client     │────▶│   Worker     │────▶│     D1       │
+│  (Browser)   │     │   (Edge)     │     │  (Metadata)  │
+└──────────────┘     └──────┬───────┘     └──────────────┘
+                           │
+              ┌────────────┼────────────┐
+              ▼            ▼            ▼
+       ┌──────────┐  ┌──────────┐  ┌──────────┐
+       │Vectorize │  │Workers AI│  │    R2    │
+       │(Vectors) │  │(Embed)   │  │ (Images) │
+       └──────────┘  └──────────┘  └──────────┘
+```
+
+See [docs/architecture.md](docs/architecture.md) for detailed system design.
+
+## Quick Start
+
+```bash
+# Clone and install
+git clone https://github.com/zouantchaw/mtl-archives-search.git
+cd mtl-archives-search
+nvm use 23.5.0
+npm install
+
+# Local development
+wrangler login
+npm run dev
+
+# Deploy
+npm run deploy
+```
+
+## Project Structure
+
+```
+mtl-archives-search/
+├── api/                    # Cloudflare Worker (REST API)
+├── pipelines/
+│   ├── etl/               # Python: metadata cleaning & export
+│   ├── vectorize/         # Embedding generation (BGE, CLIP)
+│   └── sql/               # D1 seed generation
+├── infrastructure/        # Cloudflare D1 migrations
+├── data/                  # Local data (gitignored)
+└── docs/                  # Architecture & documentation
+```
+
+## API Reference
+
+### `GET /api/photos`
+
+Paginated photo listing with signed R2 URLs.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `limit` | number | 50 | Results per page (1-100) |
+| `cursor` | string | — | Pagination cursor from previous response |
+
+### `GET /api/search`
+
+Search photos by text or semantic similarity.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `q` | string | **required** | Search query |
+| `mode` | string | `text` | `text` or `semantic` |
+| `limit` | number | 25 | Max results (1-100) |
+
+**Response includes:**
+- Photo metadata (title, description, date, credits)
+- Signed R2 image URL
+- Similarity score (semantic mode only)
 
 ## Data Pipeline
 
-1. Produce fresh exports within your Logseq repo (`manifest_enriched.jsonl`, R2 sync artifacts, etc.).
-2. Run `npm run pipeline` to clean metadata, export NDJSON/Parquet, regenerate SQL, audit outputs, and seed D1 remotely.
-3. Use AWS CLI or Cloudflare dashboard to sync imagery to R2, e.g.:
-   ```bash
-   aws --endpoint-url https://<account>.r2.cloudflarestorage.com \
-     s3 sync \
-     "/Volumes/FREE SPACE/mtl_archives_photographs" \
-     s3://mtl-archives
-   ```
-4. Generate embeddings and push them to Vectorize so `/api/search?mode=semantic` can return meaningful results (see **Vectorize ingestion** below).
-
-## Secrets & Environment Variables
-
-Never commit raw credentials. Rotate any keys that previously lived in `data/mtl_archives/cloundflare.md`. Store required values using Wrangler secrets or your preferred secret manager:
-
 ```bash
-wrangler secret put R2_ACCESS_KEY_ID
-wrangler secret put R2_SECRET_ACCESS_KEY
-wrangler secret put R2_ACCOUNT_ID
-wrangler secret put R2_BUCKET
-wrangler secret put R2_PUBLIC_DOMAIN  # optional: remove if using signed URLs exclusively
+# Full pipeline: clean → export → audit → seed D1
+npm run pipeline
+
+# Individual steps
+npm run etl:clean       # Normalize metadata
+npm run etl:export      # Export to NDJSON
+npm run etl:audit       # Generate quality reports
+npm run d1:seed         # Seed remote D1
+
+# Vectorize
+npm run vectorize:text  # Generate BGE embeddings
 ```
 
-The Worker signs R2 URLs automatically when no public domain is provided. Signing uses AWS Signature Version 4 so
-clients can access private imagery without exposing your credentials. Supply `R2_PUBLIC_DOMAIN` only if you intend
-to serve assets from a public bucket/domain.
+## Technology Stack
 
-For local tooling, place the same values (plus `CLOUDFLARE_AI_TOKEN` and any embedding model overrides) in a local
-`.env` file and export them before running the scripts, e.g.:
+| Layer | Technology | Purpose |
+|-------|------------|---------|
+| API | Cloudflare Workers | Edge-deployed REST API |
+| Database | Cloudflare D1 | SQLite for metadata |
+| Vectors | Cloudflare Vectorize | Embedding storage & ANN search |
+| AI | Cloudflare Workers AI | BGE/CLIP embedding generation |
+| Storage | Cloudflare R2 | Image hosting with signed URLs |
+| ETL | Python 3.10+ | Metadata processing |
 
-```bash
-set -a
-source .env
-set +a
-```
+## Roadmap
 
-> **Tip:** keep your deployment shell free of `CLOUDFLARE_API_TOKEN` so `wrangler deploy` continues using the OAuth
-> session from `wrangler login`. Store the Workers AI/Vectorize token in `CLOUDFLARE_AI_TOKEN` (or `CF_AI_TOKEN`) and only export it when running
-> `npm run vectorize:ingest`.
+- [x] Text search (SQL LIKE)
+- [x] Semantic search (BGE text embeddings)
+- [ ] **CLIP visual search** — Search by image similarity
+- [ ] Frontend UI — React/Next.js photo browser
+- [ ] Geospatial search — Filter by location
+- [ ] Date range filtering
 
-## Vectorize Ingestion
+## Dataset
 
-Run `npm run vectorize:ingest` after updating `manifest_enriched.ndjson` to keep your semantic index in sync. The
-script uses Workers AI to generate embeddings (defaults to `@cf/baai/bge-large-en-v1.5`) and upserts them into the
-Vectorize index defined in `wrangler.toml`. The Vectorize API for this project runs on **v2**, so the script streams
-newline-delimited JSON (`application/x-ndjson`) to `/vectorize/v2/indexes/<name>/upsert`.
+The photo collection includes:
+- **14,822 photographs** from the Montréal city archives
+- Dates ranging from **1870s to 1990s**
+- Aerial views, street scenes, parks, buildings, events
+- French metadata with some English translations
 
-Environment variables consumed:
+Data sourced from [Montréal Open Data Portal](https://donnees.montreal.ca/).
 
-- `CLOUDFLARE_AI_TOKEN` _(preferred)_, `CF_AI_TOKEN`, or `CLOUDFLARE_API_TOKEN` – must allow `Workers AI:Edit` and `Vectorize:Write`.
-- `CLOUDFLARE_R2_ACCOUNT_ID` – reused for AI/Vectorize REST endpoints.
-- `CLOUDFLARE_VECTORIZE_INDEX` – optional override of the index name (`mtl-archives` by default).
-- `CLOUDFLARE_EMBEDDING_MODEL` – optional embedding model name.
-- `VECTORIZE_BATCH_SIZE` / `VECTORIZE_LIMIT` – optional batching/tuning knobs.
-- `VECTORIZE_REQUEST_TIMEOUT_MS` – optional fetch timeout (default 60000).
+## License
 
-The script loads variables from `.env` automatically; exported values in your shell take precedence if you need a temporary override.
+MIT — see [LICENSE](LICENSE) for details.
 
-Embeddings are stored alongside lightweight metadata (name, date, image key) so Vectorize results can be joined
-with D1 rows or returned directly to clients.
+---
 
-## Next Steps
-
-- ✅ **Semantic search** – COMPLETE! `/api/search?mode=semantic` now uses Workers AI and Vectorize to return semantically similar photos with similarity scores.
-- **Automation** – wrap R2 sync + D1 seed + Vectorize ingestion into a CI-friendly workflow.
-- **Monitoring** – add logging/metrics (e.g., Workers Analytics Engine) and guardrails (rate limiting, auth) as you move towards production.
-- **Frontend** – build a React/Next.js UI to showcase the photo collection with both text and semantic search capabilities.
-
-With the data pipeline and semantic search API complete, you can now prototype web or ML front-ends without disturbing the Logseq knowledge base.
+**Built by [@zouantchaw](https://github.com/zouantchaw)**
