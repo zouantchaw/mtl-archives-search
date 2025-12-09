@@ -44,3 +44,4 @@ __pycache__/
 
 # npm cache
 .npm-cache/
+.venv/
