@@ -24,6 +24,9 @@ type Env = {
   DB: D1Database;
   AI: Ai;
   VECTORIZE?: VectorizeIndex;
+  VECTORIZE_CLIP?: VectorizeIndex;
+  CLIP_EMBEDDING_URL?: string;
+  CLIP_EMBEDDING_TOKEN?: string;
   CLOUDFLARE_R2_ACCESS_KEY?: string;
   CLOUDFLARE_R2_SECRET_ACCESS_KEY?: string;
   CLOUDFLARE_R2_ACCOUNT_ID?: string;
@@ -193,6 +196,10 @@ async function handleSearch(url: URL, env: Env): Promise<Response> {
     return handleSemanticSearch(q, limit, env);
   }
 
+  if (mode === 'visual' || mode === 'clip') {
+    return handleVisualSearch(q, limit, env);
+  }
+
   const likeParam = `%${escapeForLike(q)}%`;
   const statement = env.DB.prepare(
     `SELECT ${SELECT_FIELDS}
@@ -294,6 +301,141 @@ async function handleSemanticSearch(query: string, limit: number, env: Env): Pro
       },
       500
     );
+  }
+}
+
+async function handleVisualSearch(query: string, limit: number, env: Env): Promise<Response> {
+  if (!env.VECTORIZE_CLIP) {
+    return jsonResponse(
+      { error: 'Visual search is not configured. Bind VECTORIZE_CLIP index to enable this feature.' },
+      501
+    );
+  }
+
+  if (!env.CLIP_EMBEDDING_URL) {
+    return jsonResponse(
+      { error: 'Visual search requires CLIP_EMBEDDING_URL secret pointing to a CLIP text embedding service (512-dim clip-vit-base-patch32)' },
+      501
+    );
+  }
+
+  try {
+    // Generate CLIP text embedding using custom embedding service
+    const embedding = await generateClipTextEmbedding(query, env);
+    if (!embedding) {
+      return jsonResponse({ error: 'Failed to generate CLIP text embedding from embedding service' }, 500);
+    }
+
+    // Query CLIP Vectorize for similar image vectors
+    const vectorResults = await env.VECTORIZE_CLIP.query(embedding, {
+      topK: limit,
+      returnMetadata: true,
+      returnValues: false,
+    });
+
+    if (!vectorResults.matches || vectorResults.matches.length === 0) {
+      return jsonResponse({ items: [], mode: 'visual', count: 0 });
+    }
+
+    // Extract metadata_filenames (IDs) from vector matches
+    const metadataFilenames = vectorResults.matches.map((match) => match.id);
+
+    // Fetch full records from D1
+    const placeholders = metadataFilenames.map(() => '?').join(',');
+    const { results = [] } = await env.DB.prepare(
+      `SELECT ${SELECT_FIELDS} FROM manifest WHERE metadata_filename IN (${placeholders})`
+    )
+      .bind(...metadataFilenames)
+      .all();
+
+    // Build a map for quick lookup
+    const recordMap = new Map<string, Record<string, unknown>>();
+    for (const row of results) {
+      recordMap.set(String(row.metadata_filename), row);
+    }
+
+    // Build photo records in the same order as vector results, preserving scores
+    const items = await Promise.all(
+      vectorResults.matches.map(async (match) => {
+        const row = recordMap.get(match.id);
+        if (!row) {
+          return null;
+        }
+        const photo = await buildPhotoRecord(row, env);
+        return {
+          ...photo,
+          score: match.score,
+        };
+      })
+    );
+
+    const filteredItems = items.filter((item) => item !== null);
+
+    return jsonResponse({
+      items: filteredItems,
+      mode: 'visual',
+      count: filteredItems.length,
+    });
+  } catch (error) {
+    console.error('Visual search error:', error);
+    return jsonResponse(
+      {
+        error: 'Visual search failed',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
+      500
+    );
+  }
+}
+
+async function generateClipTextEmbedding(text: string, env: Env): Promise<number[] | null> {
+  // CLIP text embedding service configuration
+  // Requires a custom endpoint that provides clip-vit-base-patch32 text embeddings (512-dim)
+  // Set CLIP_EMBEDDING_URL to your service URL (e.g., a FastAPI service running CLIP)
+  //
+  // Example service endpoint format:
+  // POST /embed { "text": "query" } -> { "embedding": [0.1, 0.2, ...] }
+
+  const CLIP_URL = env.CLIP_EMBEDDING_URL;
+
+  if (!CLIP_URL) {
+    console.error('CLIP_EMBEDDING_URL not configured - visual search requires a CLIP text embedding service');
+    return null;
+  }
+
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
+
+  // Add auth header if token provided
+  if (env.CLIP_EMBEDDING_TOKEN) {
+    headers['Authorization'] = `Bearer ${env.CLIP_EMBEDDING_TOKEN}`;
+  }
+
+  try {
+    const response = await fetch(CLIP_URL, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ text }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('CLIP embedding service error:', response.status, errorText);
+      return null;
+    }
+
+    const result = await response.json() as { embedding?: number[] };
+
+    if (result.embedding && Array.isArray(result.embedding) && result.embedding.length === 512) {
+      return result.embedding;
+    }
+
+    console.error('Unexpected CLIP response format:', typeof result);
+    return null;
+  } catch (error) {
+    console.error('CLIP embedding request failed:', error);
+    return null;
   }
 }
 
