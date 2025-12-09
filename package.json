@@ -15,6 +15,7 @@
     "db:count": "WRANGLER_LOG_PATH=\"$(pwd)/data/mtl_archives/.wrangler-logs\" npx wrangler d1 execute mtl-archives --remote --command \"SELECT COUNT(*) AS total FROM manifest;\"",
     "pipeline": "npm run etl:clean && npm run etl:export && npm run etl:audit && npm run d1:seed",
     "vectorize:text": "node pipelines/vectorize/ingest_text.js",
+    "vectorize:clip": "python3 pipelines/vectorize/ingest_clip.py",
     "search:eval": "node pipelines/vectorize/evaluate_search_quality.js"
   },
   "engines": {
@@ -22,7 +23,8 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241018.0",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "wrangler": "^4.53.0"
   },
   "keywords": [
     "cloudflare-workers",

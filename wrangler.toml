@@ -12,5 +12,9 @@ migrations_dir = "infrastructure/d1/migrations"
 binding = "VECTORIZE"
 index_name = "mtl-archives"
 
+[[vectorize]]
+binding = "VECTORIZE_CLIP"
+index_name = "mtl-archives-clip"
+
 [ai]
 binding = "AI"
