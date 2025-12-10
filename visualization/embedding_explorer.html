@@ -1,0 +1,1246 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Montreal Archives - Embedding Explorer</title>
+    <script src="https://unpkg.com/deck.gl@latest/dist.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script type="module">
+      import {
+        AutoTokenizer,
+        CLIPTextModelWithProjection,
+        env,
+      } from "https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1";
+      env.allowLocalModels = false;
+      window.AutoTokenizer = AutoTokenizer;
+      window.CLIPTextModelWithProjection = CLIPTextModelWithProjection;
+    </script>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap");
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --bg-primary: #000000;
+        --bg-secondary: rgba(28, 28, 30, 0.8);
+        --bg-tertiary: rgba(44, 44, 46, 0.6);
+        --text-primary: #ffffff;
+        --text-secondary: rgba(255, 255, 255, 0.6);
+        --text-tertiary: rgba(255, 255, 255, 0.4);
+        --accent: #0a84ff;
+        --accent-hover: #409cff;
+        --border: rgba(255, 255, 255, 0.1);
+        --shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      }
+
+      body {
+        font-family:
+          "Inter",
+          -apple-system,
+          BlinkMacSystemFont,
+          sans-serif;
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        overflow: hidden;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      #app {
+        width: 100vw;
+        height: 100vh;
+        position: relative;
+      }
+
+      #canvas-2d,
+      #canvas-3d {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        transition: opacity 0.5s ease;
+      }
+
+      #canvas-3d {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      #canvas-3d.active {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      #canvas-2d.hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      /* Search Bar - Top Center */
+      .search-container {
+        position: absolute;
+        top: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 100;
+      }
+
+      .search-bar {
+        display: flex;
+        align-items: center;
+        background: var(--bg-secondary);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 4px;
+        box-shadow: var(--shadow);
+        transition: all 0.3s ease;
+        width: 400px;
+      }
+
+      .search-bar:focus-within {
+        border-color: var(--accent);
+        box-shadow:
+          0 0 0 4px rgba(10, 132, 255, 0.15),
+          var(--shadow);
+      }
+
+      .search-icon {
+        padding: 12px 16px;
+        color: var(--text-tertiary);
+      }
+
+      .search-input {
+        flex: 1;
+        background: transparent;
+        border: none;
+        color: var(--text-primary);
+        font-size: 15px;
+        font-weight: 400;
+        padding: 12px 0;
+        outline: none;
+      }
+
+      .search-input::placeholder {
+        color: var(--text-tertiary);
+      }
+
+      .search-status {
+        padding: 8px 16px;
+        font-size: 12px;
+        color: var(--text-tertiary);
+        white-space: nowrap;
+      }
+
+      .search-status.loading {
+        color: var(--accent);
+      }
+
+      /* View Toggle */
+      .view-toggle {
+        position: absolute;
+        top: 24px;
+        left: 24px;
+        z-index: 100;
+        display: flex;
+        background: var(--bg-secondary);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 4px;
+        box-shadow: var(--shadow);
+      }
+
+      .view-btn {
+        padding: 10px 20px;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-secondary);
+        background: transparent;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .view-btn:hover {
+        color: var(--text-primary);
+      }
+
+      .view-btn.active {
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+      }
+
+      /* Info Panel - Bottom Left */
+      .info-panel {
+        position: absolute;
+        bottom: 24px;
+        left: 24px;
+        z-index: 100;
+        background: var(--bg-secondary);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: var(--shadow);
+        max-width: 280px;
+      }
+
+      .info-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 8px;
+      }
+
+      .info-stats {
+        font-size: 12px;
+        color: var(--text-secondary);
+        line-height: 1.6;
+      }
+
+      .info-stats strong {
+        color: var(--text-primary);
+        font-weight: 500;
+      }
+
+      /* Tooltip */
+      .tooltip {
+        position: absolute;
+        z-index: 200;
+        background: var(--bg-secondary);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 12px;
+        box-shadow: var(--shadow);
+        pointer-events: none;
+        opacity: 0;
+        transform: translateY(4px);
+        transition:
+          opacity 0.2s ease,
+          transform 0.2s ease;
+        max-width: 320px;
+      }
+
+      .tooltip.visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .tooltip-image {
+        width: 100%;
+        max-height: 180px;
+        object-fit: cover;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        background: var(--bg-tertiary);
+      }
+
+      .tooltip-name {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-primary);
+        margin-bottom: 4px;
+        line-height: 1.4;
+      }
+
+      .tooltip-meta {
+        font-size: 11px;
+        color: var(--text-tertiary);
+      }
+
+      /* Loading Overlay */
+      .loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: var(--bg-primary);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        transition: opacity 0.5s ease;
+      }
+
+      .loading-overlay.hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .loading-spinner {
+        width: 32px;
+        height: 32px;
+        border: 2px solid var(--border);
+        border-top-color: var(--text-primary);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin-bottom: 16px;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .loading-text {
+        font-size: 14px;
+        color: var(--text-secondary);
+      }
+
+      /* Model Loading Progress */
+      .model-status {
+        position: absolute;
+        bottom: 24px;
+        right: 24px;
+        z-index: 100;
+        background: var(--bg-secondary);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 12px 16px;
+        box-shadow: var(--shadow);
+        font-size: 12px;
+        color: var(--text-secondary);
+        transition: opacity 0.3s ease;
+      }
+
+      .model-status.ready {
+        color: #30d158;
+      }
+
+      .model-status.hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      /* Results Panel */
+      .results-panel {
+        position: absolute;
+        top: 88px;
+        right: 24px;
+        z-index: 100;
+        background: var(--bg-secondary);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        box-shadow: var(--shadow);
+        width: 320px;
+        max-height: calc(100vh - 140px);
+        overflow: hidden;
+        opacity: 0;
+        transform: translateY(-8px) scale(0.98);
+        pointer-events: none;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .results-panel.visible {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        pointer-events: auto;
+      }
+
+      .results-header {
+        padding: 16px 20px 12px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .results-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-primary);
+      }
+
+      .results-subtitle {
+        font-size: 11px;
+        color: var(--text-tertiary);
+      }
+
+      .results-close {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: var(--bg-tertiary);
+        border: none;
+        color: var(--text-secondary);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+      }
+
+      .results-close:hover {
+        background: rgba(255, 255, 255, 0.15);
+        color: var(--text-primary);
+      }
+
+      .results-list {
+        padding: 8px;
+        overflow-y: auto;
+        max-height: calc(100vh - 220px);
+      }
+
+      .result-item {
+        display: flex;
+        gap: 12px;
+        padding: 12px;
+        border-radius: 14px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+      }
+
+      .result-item:hover {
+        background: var(--bg-tertiary);
+      }
+
+      .result-item.active {
+        background: rgba(10, 132, 255, 0.15);
+      }
+
+      .result-rank {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        width: 20px;
+        height: 20px;
+        background: var(--accent);
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 600;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1;
+      }
+
+      .result-image {
+        width: 72px;
+        height: 72px;
+        border-radius: 10px;
+        object-fit: cover;
+        background: var(--bg-tertiary);
+        flex-shrink: 0;
+      }
+
+      .result-image.placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-tertiary);
+      }
+
+      .result-info {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 4px;
+      }
+
+      .result-name {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-primary);
+        line-height: 1.3;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+
+      .result-meta {
+        font-size: 11px;
+        color: var(--text-tertiary);
+      }
+
+      .result-score {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 8px;
+        background: rgba(48, 209, 88, 0.15);
+        color: #30d158;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 600;
+        margin-top: 4px;
+      }
+
+      .result-score-bar {
+        width: 40px;
+        height: 3px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 2px;
+        overflow: hidden;
+      }
+
+      .result-score-fill {
+        height: 100%;
+        background: #30d158;
+        border-radius: 2px;
+        transition: width 0.3s ease;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="canvas-2d"></canvas>
+      <div id="canvas-3d"></div>
+
+      <div class="loading-overlay" id="loading">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Loading embeddings...</div>
+      </div>
+
+      <div class="search-container">
+        <div class="search-bar">
+          <div class="search-icon">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.35-4.35"></path>
+            </svg>
+          </div>
+          <input
+            type="text"
+            class="search-input"
+            id="search"
+            placeholder="Search images with CLIP..."
+            autocomplete="off"
+          />
+          <div class="search-status" id="search-status"></div>
+        </div>
+      </div>
+
+      <div class="view-toggle">
+        <button class="view-btn active" data-view="2d">2D</button>
+        <button class="view-btn" data-view="3d">3D</button>
+      </div>
+
+      <div class="info-panel">
+        <div class="info-title">Montreal Archives</div>
+        <div class="info-stats" id="stats">
+          <strong id="point-count">0</strong> images<br />
+          CLIP embeddings projected to 2D via UMAP<br />
+          Scroll to zoom, drag to pan
+        </div>
+      </div>
+
+      <div class="tooltip" id="tooltip">
+        <img class="tooltip-image" id="tooltip-img" src="" alt="" />
+        <div class="tooltip-name" id="tooltip-name"></div>
+        <div class="tooltip-meta" id="tooltip-meta"></div>
+      </div>
+
+      <div class="model-status" id="model-status">Loading CLIP model...</div>
+
+      <div class="results-panel" id="results-panel">
+        <div class="results-header">
+          <div>
+            <div class="results-title">Top Matches</div>
+            <div class="results-subtitle" id="results-query"></div>
+          </div>
+          <button class="results-close" id="results-close">
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+            >
+              <path d="M18 6L6 18M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+        <div class="results-list" id="results-list"></div>
+      </div>
+    </div>
+
+    <script>
+      // ==================== CONFIG ====================
+      const SCALE = 1000;
+      const POINT_RADIUS = 4;
+
+      // ==================== STATE ====================
+      let allData = [];
+      let filteredData = [];
+      let embeddings = null; // Original 512D embeddings for search
+      let currentView = "2d";
+      let deckInstance = null;
+      let threeScene = null;
+      let clipTokenizer = null;
+      let clipTextModel = null;
+      let searchTimeout = null;
+      let topResults = [];
+      let selectedResultIndex = -1;
+
+      // ==================== CLIP MODEL ====================
+      async function loadClipModel() {
+        const statusEl = document.getElementById("model-status");
+        const MODEL_NAME = "Xenova/clip-vit-base-patch32";
+
+        try {
+          statusEl.textContent = "Loading CLIP tokenizer...";
+
+          // Wait for transformers to be ready
+          while (!window.AutoTokenizer || !window.CLIPTextModelWithProjection) {
+            await new Promise((r) => setTimeout(r, 100));
+          }
+
+          // Load tokenizer
+          clipTokenizer =
+            await window.AutoTokenizer.from_pretrained(MODEL_NAME);
+
+          statusEl.textContent = "Loading CLIP text model...";
+
+          // Load text model (quantized for smaller size)
+          clipTextModel =
+            await window.CLIPTextModelWithProjection.from_pretrained(
+              MODEL_NAME,
+              { quantized: true },
+            );
+
+          statusEl.textContent = "CLIP ready";
+          statusEl.classList.add("ready");
+          setTimeout(() => statusEl.classList.add("hidden"), 2000);
+        } catch (error) {
+          console.error("Failed to load CLIP:", error);
+          statusEl.textContent = "CLIP unavailable";
+          statusEl.style.color = "#FF453A";
+        }
+      }
+
+      async function encodeText(text) {
+        if (!clipTokenizer || !clipTextModel) return null;
+
+        try {
+          // Tokenize the text
+          const textInputs = clipTokenizer(text, {
+            padding: true,
+            truncation: true,
+            max_length: 77,
+          });
+
+          // Get text embeddings
+          const { text_embeds } = await clipTextModel(textInputs);
+
+          // Normalize the embedding
+          const embedding = Array.from(text_embeds.data);
+          const norm = Math.sqrt(embedding.reduce((sum, x) => sum + x * x, 0));
+          return embedding.map((x) => x / norm);
+        } catch (error) {
+          console.error("Encoding error:", error);
+          return null;
+        }
+      }
+
+      function cosineSimilarity(a, b) {
+        let dot = 0,
+          normA = 0,
+          normB = 0;
+        for (let i = 0; i < a.length; i++) {
+          dot += a[i] * b[i];
+          normA += a[i] * a[i];
+          normB += b[i] * b[i];
+        }
+        return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+      }
+
+      // ==================== DATA LOADING ====================
+      async function loadData() {
+        try {
+          const loadingText = document.querySelector(".loading-text");
+
+          // Load 2D coordinates
+          loadingText.textContent = "Loading 2D coordinates...";
+          const response = await fetch(
+            "../data/mtl_archives/embeddings_2d.json",
+          );
+          if (!response.ok) throw new Error("Failed to load 2D embeddings");
+          const raw = await response.json();
+
+          // Load 512D embeddings for search
+          loadingText.textContent = "Loading 512D embeddings (28MB)...";
+          const [embeddingsResponse, idsResponse] = await Promise.all([
+            fetch("../data/mtl_archives/embeddings_512d.bin"),
+            fetch("../data/mtl_archives/embeddings_ids.json"),
+          ]);
+
+          if (!embeddingsResponse.ok || !idsResponse.ok) {
+            throw new Error("Failed to load 512D embeddings");
+          }
+
+          const embeddingsBuffer = await embeddingsResponse.arrayBuffer();
+          const embeddingIds = await idsResponse.json();
+
+          // Parse binary: [num_vectors (4)] [dims (4)] [float32 data...]
+          const header = new Uint32Array(embeddingsBuffer, 0, 2);
+          const numVectors = header[0];
+          const dims = header[1];
+          console.log(`Loaded ${numVectors} vectors of ${dims} dimensions`);
+
+          // Create Float32Array view of the embeddings data (after 8-byte header)
+          embeddings = new Float32Array(embeddingsBuffer, 8);
+
+          // Create ID to index mapping
+          const idToIndex = {};
+          embeddingIds.forEach((id, i) => {
+            idToIndex[id] = i;
+          });
+
+          // Scale coordinates and add embedding index
+          allData = raw.map((d, i) => ({
+            ...d,
+            x: d.x * SCALE,
+            y: d.y * SCALE,
+            z: Math.random() * 100,
+            index: i,
+            embeddingIndex:
+              idToIndex[d.id] !== undefined ? idToIndex[d.id] : -1,
+          }));
+
+          filteredData = [...allData];
+
+          document.getElementById("point-count").textContent =
+            allData.length.toLocaleString();
+          document.getElementById("loading").classList.add("hidden");
+
+          init2D();
+          init3D();
+        } catch (error) {
+          console.error("Load error:", error);
+          document.getElementById("loading").innerHTML = `
+                    <div style="color: #FF453A; font-size: 14px;">Failed to load data</div>
+                    <div style="color: var(--text-tertiary); font-size: 12px; margin-top: 8px;">${error.message}</div>
+                `;
+        }
+      }
+
+      // ==================== 2D VISUALIZATION ====================
+      function init2D() {
+        const canvas = document.getElementById("canvas-2d");
+
+        deckInstance = new deck.Deck({
+          canvas,
+          initialViewState: {
+            target: [SCALE / 2, SCALE / 2, 0],
+            zoom: 0,
+            minZoom: -2,
+            maxZoom: 8,
+          },
+          controller: true,
+          views: new deck.OrthographicView(),
+          layers: [createScatterLayer()],
+          onHover: handleHover,
+          onClick: handleClick,
+          getCursor: ({ isHovering }) => (isHovering ? "pointer" : "grab"),
+        });
+      }
+
+      function createScatterLayer() {
+        return new deck.ScatterplotLayer({
+          id: "scatter",
+          data: filteredData,
+          getPosition: (d) => [d.x, d.y],
+          getRadius: POINT_RADIUS,
+          radiusMinPixels: 2,
+          radiusMaxPixels: 12,
+          getFillColor: (d) => getPointColor(d),
+          pickable: true,
+          updateTriggers: {
+            getFillColor: [filteredData, topResults, selectedResultIndex],
+            data: [filteredData],
+          },
+        });
+      }
+
+      function getPointColor(d) {
+        // Check if this is the selected result
+        if (
+          selectedResultIndex >= 0 &&
+          topResults[selectedResultIndex]?.id === d.id
+        ) {
+          return [255, 59, 48, 255]; // Bright red for selected
+        }
+
+        // Check if this is one of the top results
+        const topResultIndex = topResults.findIndex((r) => r.id === d.id);
+        if (topResultIndex >= 0) {
+          // Gold/orange gradient for top 5
+          const intensity = 1 - topResultIndex / 5;
+          return [255, 149 + intensity * 50, 0, 220 + intensity * 35];
+        }
+
+        // Highlight search results
+        if (d.similarity !== undefined) {
+          const intensity = Math.pow(d.similarity, 2);
+          return [
+            10 + intensity * 245,
+            132 - intensity * 50,
+            255 - intensity * 155,
+            200 + intensity * 55,
+          ];
+        }
+
+        // Color by date
+        if (d.date) {
+          const year = parseInt(d.date);
+          if (year < 1930) return [255, 149, 0, 180];
+          if (year < 1950) return [255, 214, 10, 180];
+          if (year < 1970) return [48, 209, 88, 180];
+          return [10, 132, 255, 180];
+        }
+
+        return [142, 142, 147, 150];
+      }
+
+      function update2D() {
+        if (deckInstance) {
+          deckInstance.setProps({ layers: [createScatterLayer()] });
+        }
+      }
+
+      // ==================== 3D VISUALIZATION ====================
+      function init3D() {
+        const container = document.getElementById("canvas-3d");
+
+        // Scene
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x000000);
+
+        // Camera
+        const camera = new THREE.PerspectiveCamera(
+          60,
+          window.innerWidth / window.innerHeight,
+          1,
+          10000,
+        );
+        camera.position.set(SCALE * 0.8, SCALE * 0.8, SCALE * 0.8);
+        camera.lookAt(SCALE / 2, SCALE / 2, 50);
+
+        // Renderer
+        const renderer = new THREE.WebGLRenderer({
+          antialias: true,
+          alpha: true,
+        });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        container.appendChild(renderer.domElement);
+
+        // Controls
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.target.set(SCALE / 2, SCALE / 2, 50);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxDistance = SCALE * 3;
+        controls.minDistance = 100;
+
+        // Points
+        const geometry = new THREE.BufferGeometry();
+        updatePointsGeometry(geometry, filteredData);
+
+        const material = new THREE.PointsMaterial({
+          size: 8,
+          vertexColors: true,
+          sizeAttenuation: true,
+          transparent: true,
+          opacity: 0.9,
+        });
+
+        const points = new THREE.Points(geometry, material);
+        scene.add(points);
+
+        // Subtle ambient light
+        scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+
+        // Store references
+        threeScene = { scene, camera, renderer, controls, points, geometry };
+
+        // Animation loop
+        function animate() {
+          requestAnimationFrame(animate);
+          controls.update();
+          renderer.render(scene, camera);
+        }
+        animate();
+
+        // Resize handler
+        window.addEventListener("resize", () => {
+          camera.aspect = window.innerWidth / window.innerHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+      }
+
+      function updatePointsGeometry(geometry, data) {
+        const positions = new Float32Array(data.length * 3);
+        const colors = new Float32Array(data.length * 3);
+
+        data.forEach((d, i) => {
+          positions[i * 3] = d.x;
+          positions[i * 3 + 1] = d.y;
+          positions[i * 3 + 2] = d.z || 50;
+
+          const color = getPointColor(d);
+          colors[i * 3] = color[0] / 255;
+          colors[i * 3 + 1] = color[1] / 255;
+          colors[i * 3 + 2] = color[2] / 255;
+        });
+
+        geometry.setAttribute(
+          "position",
+          new THREE.BufferAttribute(positions, 3),
+        );
+        geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+      }
+
+      function update3D() {
+        if (threeScene) {
+          updatePointsGeometry(threeScene.geometry, filteredData);
+        }
+      }
+
+      // ==================== SEARCH ====================
+      async function performSearch(query) {
+        const statusEl = document.getElementById("search-status");
+
+        if (!query.trim()) {
+          filteredData = allData.map((d) => ({ ...d, similarity: undefined }));
+          statusEl.textContent = "";
+          update2D();
+          update3D();
+          return;
+        }
+
+        if (!clipTokenizer || !clipTextModel) {
+          statusEl.textContent = "Model loading...";
+          statusEl.classList.add("loading");
+          return;
+        }
+
+        statusEl.textContent = "Searching...";
+        statusEl.classList.add("loading");
+
+        // Small delay to show loading state
+        await new Promise((r) => setTimeout(r, 50));
+
+        const queryEmbedding = await encodeText(query);
+
+        if (!queryEmbedding) {
+          statusEl.textContent = "Search failed";
+          statusEl.classList.remove("loading");
+          return;
+        }
+
+        if (!embeddings) {
+          statusEl.textContent = "Embeddings not loaded";
+          statusEl.classList.remove("loading");
+          return;
+        }
+
+        // Compute cosine similarity against all image embeddings
+        const DIMS = 512;
+        const scored = allData.map((d) => {
+          if (d.embeddingIndex < 0) {
+            return { ...d, similarity: 0 };
+          }
+
+          // Get the image embedding for this point
+          const offset = d.embeddingIndex * DIMS;
+          const imageEmb = embeddings.subarray(offset, offset + DIMS);
+
+          // Compute cosine similarity
+          let dot = 0,
+            normA = 0,
+            normB = 0;
+          for (let i = 0; i < DIMS; i++) {
+            dot += queryEmbedding[i] * imageEmb[i];
+            normA += queryEmbedding[i] * queryEmbedding[i];
+            normB += imageEmb[i] * imageEmb[i];
+          }
+          const sim = dot / (Math.sqrt(normA) * Math.sqrt(normB));
+
+          return { ...d, similarity: sim };
+        });
+
+        // Sort by similarity
+        scored.sort((a, b) => b.similarity - a.similarity);
+
+        // Find threshold for highlighting (top results)
+        const topScore = scored[0]?.similarity || 0;
+        const threshold = Math.max(topScore * 0.7, 0.15); // At least 70% of top or 0.15
+
+        // Highlight items above threshold
+        filteredData = scored.map((d) => ({
+          ...d,
+          similarity: d.similarity >= threshold ? d.similarity : undefined,
+        }));
+
+        const matchCount = filteredData.filter(
+          (d) => d.similarity !== undefined,
+        ).length;
+        statusEl.textContent = `${matchCount} matches (top: ${topScore.toFixed(3)})`;
+        statusEl.classList.remove("loading");
+
+        // Store top 5 results and show panel
+        topResults = scored.slice(0, 5);
+        selectedResultIndex = -1;
+        showResultsPanel(query, topScore);
+
+        update2D();
+        update3D();
+      }
+
+      // ==================== RESULTS PANEL ====================
+      function showResultsPanel(query, topScore) {
+        const panel = document.getElementById("results-panel");
+        const queryEl = document.getElementById("results-query");
+        const listEl = document.getElementById("results-list");
+
+        queryEl.textContent = `"${query}" · top: ${topScore.toFixed(3)}`;
+
+        // Render results
+        listEl.innerHTML = topResults
+          .map(
+            (result, i) => `
+          <div class="result-item" data-index="${i}" onclick="selectResult(${i})">
+            <div class="result-rank">${i + 1}</div>
+            ${
+              result.image_url
+                ? `<img class="result-image" src="${result.image_url}" alt="" loading="lazy" />`
+                : `<div class="result-image placeholder">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                    <path d="M21 15l-5-5L5 21"></path>
+                  </svg>
+                </div>`
+            }
+            <div class="result-info">
+              <div class="result-name">${result.name || "Untitled"}</div>
+              <div class="result-meta">${result.date || "Unknown date"}</div>
+              <div class="result-score">
+                ${(result.similarity * 100).toFixed(1)}%
+                <div class="result-score-bar">
+                  <div class="result-score-fill" style="width: ${Math.min((result.similarity / topResults[0].similarity) * 100, 100)}%"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `,
+          )
+          .join("");
+
+        panel.classList.add("visible");
+      }
+
+      function hideResultsPanel() {
+        document.getElementById("results-panel").classList.remove("visible");
+        topResults = [];
+        selectedResultIndex = -1;
+      }
+
+      function selectResult(index) {
+        const result = topResults[index];
+        if (!result) return;
+
+        selectedResultIndex = index;
+
+        // Update UI to show selection
+        document.querySelectorAll(".result-item").forEach((el, i) => {
+          el.classList.toggle("active", i === index);
+        });
+
+        // Zoom to the point in 2D view
+        if (currentView === "2d" && deckInstance) {
+          deckInstance.setProps({
+            initialViewState: {
+              target: [result.x, result.y, 0],
+              zoom: 4,
+              transitionDuration: 500,
+              transitionInterpolator: new deck.LinearInterpolator([
+                "target",
+                "zoom",
+              ]),
+            },
+          });
+        }
+
+        // In 3D, move camera to look at point
+        if (currentView === "3d" && threeScene) {
+          const targetPos = new THREE.Vector3(
+            result.x,
+            result.y,
+            result.z || 50,
+          );
+          threeScene.controls.target.copy(targetPos);
+          threeScene.camera.position.set(
+            result.x + 200,
+            result.y + 200,
+            (result.z || 50) + 200,
+          );
+        }
+
+        // Update visualizations to show selection
+        update2D();
+        update3D();
+
+        // Open image on double-click (use timeout to detect)
+        if (
+          selectResult.lastClick &&
+          Date.now() - selectResult.lastClick < 300
+        ) {
+          if (result.image_url) {
+            window.open(result.image_url, "_blank");
+          }
+        }
+        selectResult.lastClick = Date.now();
+      }
+
+      // ==================== INTERACTIONS ====================
+      function handleHover({ object, x, y }) {
+        const tooltip = document.getElementById("tooltip");
+
+        if (object) {
+          const img = document.getElementById("tooltip-img");
+          const name = document.getElementById("tooltip-name");
+          const meta = document.getElementById("tooltip-meta");
+
+          if (object.image_url) {
+            img.src = object.image_url;
+            img.style.display = "block";
+          } else {
+            img.style.display = "none";
+          }
+
+          name.textContent = object.name || "Untitled";
+          meta.textContent = object.date || "Unknown date";
+
+          tooltip.style.left = `${x + 16}px`;
+          tooltip.style.top = `${y + 16}px`;
+          tooltip.classList.add("visible");
+
+          // Keep in viewport
+          requestAnimationFrame(() => {
+            const rect = tooltip.getBoundingClientRect();
+            if (rect.right > window.innerWidth - 20) {
+              tooltip.style.left = `${x - rect.width - 16}px`;
+            }
+            if (rect.bottom > window.innerHeight - 20) {
+              tooltip.style.top = `${y - rect.height - 16}px`;
+            }
+          });
+        } else {
+          tooltip.classList.remove("visible");
+        }
+      }
+
+      function handleClick({ object }) {
+        if (object && object.image_url) {
+          window.open(object.image_url, "_blank");
+        }
+      }
+
+      // ==================== VIEW TOGGLE ====================
+      function switchView(view) {
+        currentView = view;
+
+        document.querySelectorAll(".view-btn").forEach((btn) => {
+          btn.classList.toggle("active", btn.dataset.view === view);
+        });
+
+        const canvas2d = document.getElementById("canvas-2d");
+        const canvas3d = document.getElementById("canvas-3d");
+
+        if (view === "3d") {
+          canvas2d.classList.add("hidden");
+          canvas3d.classList.add("active");
+        } else {
+          canvas2d.classList.remove("hidden");
+          canvas3d.classList.remove("active");
+        }
+      }
+
+      // ==================== EVENT LISTENERS ====================
+      document.querySelectorAll(".view-btn").forEach((btn) => {
+        btn.addEventListener("click", () => switchView(btn.dataset.view));
+      });
+
+      document.getElementById("search").addEventListener("input", (e) => {
+        clearTimeout(searchTimeout);
+        const query = e.target.value;
+        if (!query.trim()) {
+          hideResultsPanel();
+        }
+        searchTimeout = setTimeout(() => performSearch(query), 300);
+      });
+
+      document.getElementById("results-close").addEventListener("click", () => {
+        hideResultsPanel();
+      });
+
+      // Keyboard shortcuts
+      document.addEventListener("keydown", (e) => {
+        // Escape to close results panel
+        if (e.key === "Escape") {
+          hideResultsPanel();
+          document.getElementById("search").blur();
+        }
+        // Arrow keys to navigate results
+        if (topResults.length > 0) {
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            selectResult(
+              Math.min(selectedResultIndex + 1, topResults.length - 1),
+            );
+          }
+          if (e.key === "ArrowUp") {
+            e.preventDefault();
+            selectResult(Math.max(selectedResultIndex - 1, 0));
+          }
+          if (e.key === "Enter" && selectedResultIndex >= 0) {
+            const result = topResults[selectedResultIndex];
+            if (result?.image_url) {
+              window.open(result.image_url, "_blank");
+            }
+          }
+        }
+      });
+
+      // ==================== INIT ====================
+      loadData();
+      loadClipModel();
+    </script>
+  </body>
+</html>

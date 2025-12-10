@@ -26,12 +26,16 @@ except ImportError:
 
 ACCOUNT_ID = os.environ.get("CLOUDFLARE_ACCOUNT_ID")
 API_TOKEN = os.environ.get("CLOUDFLARE_API_TOKEN") or os.environ.get("CLOUDFLARE_AI_TOKEN")
+R2_PUBLIC_DOMAIN = os.environ.get("CLOUDFLARE_R2_PUBLIC_DOMAIN")
 VECTORIZE_INDEX = "mtl-archives-clip"
 MANIFEST_PATH = Path(__file__).parent.parent.parent / "data/mtl_archives/manifest_clean.jsonl"
 
 if not ACCOUNT_ID or not API_TOKEN:
     print("Error: Set CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN", file=sys.stderr)
     sys.exit(1)
+
+if not R2_PUBLIC_DOMAIN:
+    print("Warning: CLOUDFLARE_R2_PUBLIC_DOMAIN not set, URLs may not work", file=sys.stderr)
 
 # Load CLIP model
 print("Loading CLIP model...")
@@ -125,14 +129,17 @@ def main():
         record = manifest.get(metadata_filename, {})
         name = record.get("name") or vec_metadata.get("name", "Unknown")
         date = record.get("attributes_map", {}).get("Date") or vec_metadata.get("date", "")
-        external_url = record.get("external_url", "")
+
+        # Build R2 URL from image filename
+        image_filename = record.get("resolved_image_filename") or record.get("image_filename") or vec_metadata.get("image", "")
+        r2_url = f"https://{R2_PUBLIC_DOMAIN}/{image_filename}" if R2_PUBLIC_DOMAIN and image_filename else ""
 
         print(f"{i}. [{score:.4f}] {name}")
         if date:
             print(f"   Date: {date}")
-        if external_url:
-            print(f"   URL: {external_url}")
-            urls_to_open.append(external_url)
+        if r2_url:
+            print(f"   URL: {r2_url}")
+            urls_to_open.append(r2_url)
         print()
 
     if open_browser and urls_to_open:
