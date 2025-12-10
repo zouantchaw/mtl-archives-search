@@ -10,7 +10,11 @@ data/mtl_archives/manifest*.jsonl
 data/mtl_archives/manifest*_summary.json
 data/mtl_archives/export/
 data/mtl_archives/reports/
+data/mtl_archives/*.npz
 infrastructure/d1/seed_manifest.sql
+
+# Claude Code local settings
+.claude/settings.local.json
 
 # Raw source data (downloaded from external sources)
 data/mtl_archives/package_*.json
