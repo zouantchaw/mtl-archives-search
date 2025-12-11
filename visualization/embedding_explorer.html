@@ -737,7 +737,7 @@
           document.getElementById("loading").classList.add("hidden");
 
           init2D();
-          init3D();
+          // 3D is lazy-loaded on first use to save memory
         } catch (error) {
           console.error("Load error:", error);
           document.getElementById("loading").innerHTML = `
@@ -932,12 +932,16 @@
       }
 
       // ==================== SEARCH ====================
+      let isSearching = false;
+
       async function performSearch(query) {
         const statusEl = document.getElementById("search-status");
 
         if (!query.trim()) {
           filteredData = allData.map((d) => ({ ...d, similarity: undefined }));
+          topResults = [];
           statusEl.textContent = "";
+          hideResultsPanel();
           update2D();
           update3D();
           return;
@@ -949,23 +953,38 @@
           return;
         }
 
+        // Prevent concurrent searches
+        if (isSearching) return;
+        isSearching = true;
+
         statusEl.textContent = "Searching...";
         statusEl.classList.add("loading");
 
         // Small delay to show loading state
         await new Promise((r) => setTimeout(r, 50));
 
-        const queryEmbedding = await encodeText(query);
+        let queryEmbedding;
+        try {
+          queryEmbedding = await encodeText(query);
+        } catch (e) {
+          console.error("Encoding failed:", e);
+          statusEl.textContent = "Search failed";
+          statusEl.classList.remove("loading");
+          isSearching = false;
+          return;
+        }
 
         if (!queryEmbedding) {
           statusEl.textContent = "Search failed";
           statusEl.classList.remove("loading");
+          isSearching = false;
           return;
         }
 
         if (!embeddings) {
           statusEl.textContent = "Embeddings not loaded";
           statusEl.classList.remove("loading");
+          isSearching = false;
           return;
         }
 
@@ -1020,6 +1039,8 @@
 
         update2D();
         update3D();
+
+        isSearching = false;
       }
 
       // ==================== RESULTS PANEL ====================
@@ -1173,6 +1194,8 @@
       }
 
       // ==================== VIEW TOGGLE ====================
+      let threeInitialized = false;
+
       function switchView(view) {
         currentView = view;
 
@@ -1184,6 +1207,11 @@
         const canvas3d = document.getElementById("canvas-3d");
 
         if (view === "3d") {
+          // Lazy-init 3D on first use to save memory
+          if (!threeInitialized && allData.length > 0) {
+            init3D();
+            threeInitialized = true;
+          }
           canvas2d.classList.add("hidden");
           canvas3d.classList.add("active");
         } else {
