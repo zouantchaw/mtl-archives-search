@@ -11,7 +11,13 @@ data/mtl_archives/manifest*_summary.json
 data/mtl_archives/export/
 data/mtl_archives/reports/
 data/mtl_archives/*.npz
+data/mtl_archives/embeddings_*.json
+data/mtl_archives/embeddings_*.bin
 infrastructure/d1/seed_manifest.sql
+
+# Web app embedding data (should be served from CDN/R2)
+apps/web/public/embeddings_*.json
+apps/web/public/embeddings_*.bin
 
 # Claude Code local settings
 .claude/settings.local.json
