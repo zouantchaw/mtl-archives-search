@@ -1,52 +1,32 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { DeckGL } from '@deck.gl/react';
-import { ScatterplotLayer, PointCloudLayer } from '@deck.gl/layers';
-import { OrthographicView, OrbitView, OrthographicViewState, OrbitViewState, LinearInterpolator } from '@deck.gl/core';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { AutoTokenizer, CLIPTextModelWithProjection, env as transformersEnv } from '@xenova/transformers';
+import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
-// Transformers.js config
 transformersEnv.allowLocalModels = false;
 
-// Constants
-const DATA_URL_2D = '/embeddings_2d.json';
-const DATA_URL_512D = '/embeddings_512d.bin';
-const DATA_URL_IDS = '/embeddings_ids.json';
-
-const INITIAL_VIEW_STATE_2D: OrthographicViewState = {
-  target: [500, 500, 0],
-  zoom: 0,
-  minZoom: -2,
-  maxZoom: 8,
-};
-
-const INITIAL_VIEW_STATE_3D: OrbitViewState = {
-  target: [500, 500, 50],
-  rotationX: 45,
-  rotationOrbit: 45,
-  zoom: 0,
-  minZoom: -2,
-  maxZoom: 8,
-};
-
+// Data URLs
+const R2_BASE = 'https://pub-6a29793ea7664738880d1cc5afb21b87.r2.dev/embeddings';
+const DATA_URL_2D = `${R2_BASE}/embeddings_2d.json`;
+const DATA_URL_512D = `${R2_BASE}/embeddings_512d.bin`;
+const DATA_URL_IDS = `${R2_BASE}/embeddings_ids.json`;
 
 const SCALE = 1000;
-const POINT_RADIUS = 4;
+const TRANSITION_MS = 600;
 
 type Point = {
   id: string;
   x: number;
   y: number;
-  z: number; // Add Z for 3D
+  z: number;
   name: string;
   date: string;
   image_url: string;
   embeddingIndex: number;
-  similarity?: number;
 };
 
-type SearchResult = Point & { similarity: number };
+type ScoredPoint = Point & { similarity: number };
 
-// Helper Functions
 function cosineSimilarity(a: Float32Array, b: Float32Array): number {
   let dot = 0, normA = 0, normB = 0;
   for (let i = 0; i < a.length; i++) {
@@ -57,445 +37,664 @@ function cosineSimilarity(a: Float32Array, b: Float32Array): number {
   return dot / (Math.sqrt(normA) * Math.sqrt(normB));
 }
 
+function easeOutCubic(t: number): number {
+  return 1 - Math.pow(1 - t, 3);
+}
+
+function lerp(a: number, b: number, t: number): number {
+  return a + (b - a) * t;
+}
+
+// ============================================================
+// UI Components
+// ============================================================
+
+function SearchIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="11" cy="11" r="8" />
+      <path d="m21 21-4.35-4.35" />
+    </svg>
+  );
+}
+
+function ImagePlaceholder() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-white/30">
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <circle cx="8.5" cy="8.5" r="1.5" />
+      <path d="M21 15l-5-5L5 21" />
+    </svg>
+  );
+}
+
+function Spinner({ size = 'md' }: { size?: 'sm' | 'md' }) {
+  const dims = size === 'sm' ? 'w-4 h-4' : 'w-6 h-6';
+  return <div className={`${dims} border-2 border-white/20 border-t-white/80 rounded-full animate-spin`} />;
+}
+
+function GlassPanel({ children, className = '', style }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
+  return (
+    <div className={`bg-black/50 backdrop-blur-2xl border border-white/10 shadow-2xl ${className}`} style={style}>
+      {children}
+    </div>
+  );
+}
+
+// ============================================================
+// Main Component
+// ============================================================
+
 export function EmbeddingExplorer() {
+  // Data state
   const [data, setData] = useState<Point[]>([]);
-  const [hoverInfo, setHoverInfo] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadingText, setLoadingText] = useState('Loading embeddings...');
-
-  const [currentView, setCurrentView] = useState<'2d' | '3d'>('2d');
-  const [viewState2D, setViewState2D] = useState<OrthographicViewState>(INITIAL_VIEW_STATE_2D);
-  const [viewState3D, setViewState3D] = useState<OrbitViewState>(INITIAL_VIEW_STATE_3D);
-  const [selectedResultIndex, setSelectedResultIndex] = useState(-1);
-
-  // Search State
-  const [clipModel, setClipModel] = useState<{ tokenizer: any, model: any } | null>(null);
-  const [modelStatus, setModelStatus] = useState('Loading CLIP model...');
-  const [searchStatus, setSearchStatus] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
   const [embeddings, setEmbeddings] = useState<{ data: Float32Array; ids: string[]; dims: number } | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
+  // View state
+  const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
+  const [hoverPoint, setHoverPoint] = useState<Point | null>(null);
+  const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 });
+
+  // Three.js refs
+  const containerRef = useRef<HTMLDivElement>(null);
+  const sceneRef = useRef<{
+    scene: THREE.Scene;
+    camera: THREE.PerspectiveCamera;
+    renderer: THREE.WebGLRenderer;
+    controls: OrbitControls;
+    points: THREE.Points;
+    geometry: THREE.BufferGeometry;
+    raycaster: THREE.Raycaster;
+    mouse: THREE.Vector2;
+  } | null>(null);
+  const animFrameRef = useRef<number>(0);
+
+  // Animation state (using refs to avoid re-renders during animation)
+  const animStateRef = useRef({
+    currentMode: '2d' as '2d' | '3d',
+    transitioning: false,
+    transitionStart: 0,
+    fromMode: '2d' as '2d' | '3d',
+    toMode: '2d' as '2d' | '3d',
+  });
+
+  // Search state
+  const [clipModel, setClipModel] = useState<{ tokenizer: any; model: any } | null>(null);
+  const [modelStatus, setModelStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [query, setQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [results, setResults] = useState<ScoredPoint[]>([]);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+
+  const topResults = useMemo(() => results.slice(0, 5), [results]);
+
+  // --------------------------------------------------------
+  // Point Colors
+  // --------------------------------------------------------
+  const getColor = useCallback((d: Point): [number, number, number] => {
+    if (selectedIndex >= 0 && topResults[selectedIndex]?.id === d.id) {
+      return [255, 69, 58];
+    }
+
+    const topIdx = topResults.findIndex(r => r.id === d.id);
+    if (topIdx >= 0) {
+      const t = 1 - topIdx / 5;
+      return [255, 159 + t * 40, 10];
+    }
+
+    const match = results.find(r => r.id === d.id);
+    if (match) {
+      const t = match.similarity ** 2;
+      return [10 + t * 245, 132 - t * 40, 255 - t * 155];
+    }
+
+    if (d.date) {
+      const y = parseInt(d.date);
+      if (y < 1930) return [255, 149, 0];
+      if (y < 1950) return [255, 214, 10];
+      if (y < 1970) return [52, 199, 89];
+      return [10, 132, 255];
+    }
+
+    return [142, 142, 147];
+  }, [results, topResults, selectedIndex]);
+
+  // --------------------------------------------------------
   // Data Loading
+  // --------------------------------------------------------
   useEffect(() => {
-    async function loadAllData() {
+    async function load() {
       try {
-        setLoadingText('Loading 2D coordinates...');
-        const response2d = await fetch(DATA_URL_2D);
-        if (!response2d.ok) throw new Error('Failed to load 2D embeddings');
-
-        setLoadingText('Loading 512D embeddings (28MB)...');
-        const [response512d, responseIds] = await Promise.all([
+        const [res2d, res512d, resIds] = await Promise.all([
+          fetch(DATA_URL_2D),
           fetch(DATA_URL_512D),
           fetch(DATA_URL_IDS),
         ]);
 
-        if (!response512d.ok || !responseIds.ok) {
-          throw new Error('Failed to load 512D embeddings');
+        if (!res2d.ok || !res512d.ok || !resIds.ok) {
+          throw new Error('Failed to fetch embedding data');
         }
 
-        const raw2d = await response2d.json();
-        const buffer512d = await response512d.arrayBuffer();
-        const ids512d = await responseIds.json();
+        const [raw2d, buffer, ids] = await Promise.all([
+          res2d.json(),
+          res512d.arrayBuffer(),
+          resIds.json(),
+        ]);
 
-        // Parse 512D embeddings
-        const header = new Uint32Array(buffer512d, 0, 2);
-        const [numVectors, dims] = header;
-        console.log(`Loaded ${numVectors} vectors of ${dims} dimensions`);
-        const embeddingData = new Float32Array(buffer512d, 8);
-        setEmbeddings({ data: embeddingData, ids: ids512d, dims });
+        const header = new Uint32Array(buffer, 0, 2);
+        const dims = header[1];
+        const embData = new Float32Array(buffer, 8);
+        setEmbeddings({ data: embData, ids, dims });
 
-        const idToIndex = new Map(ids512d.map((id: string, i: number) => [id, i]));
-
-        const scaledData = raw2d.map((d: any) => ({
+        const idToIdx = new Map(ids.map((id: string, i: number) => [id, i]));
+        const scaled = raw2d.map((d: any) => ({
           ...d,
           x: d.x * SCALE,
           y: d.y * SCALE,
-          z: Math.random() * 100, // Random Z for now
-          embeddingIndex: idToIndex.get(d.id) ?? -1,
+          z: Math.random() * 100,
+          embeddingIndex: idToIdx.get(d.id) ?? -1,
         }));
-        setData(scaledData);
+
+        setData(scaled);
         setIsLoading(false);
       } catch (err) {
-        console.error(err);
-        setLoadingText(`Failed to load data: ${err}`);
+        setLoadError(err instanceof Error ? err.message : 'Unknown error');
       }
     }
-    loadAllData();
+    load();
   }, []);
 
+  // --------------------------------------------------------
   // CLIP Model Loading
+  // --------------------------------------------------------
   useEffect(() => {
     async function loadClip() {
       try {
-        setModelStatus('Loading CLIP tokenizer...');
         const tokenizer = await AutoTokenizer.from_pretrained('Xenova/clip-vit-base-patch32');
-        setModelStatus('Loading CLIP text model...');
         const model = await CLIPTextModelWithProjection.from_pretrained('Xenova/clip-vit-base-patch32', { quantized: true });
         setClipModel({ tokenizer, model });
-        setModelStatus('CLIP ready');
-      } catch (err) {
-        console.error('Failed to load CLIP:', err);
-        setModelStatus('CLIP unavailable');
+        setModelStatus('ready');
+      } catch {
+        setModelStatus('error');
       }
     }
     loadClip();
   }, []);
 
-  // Search Logic
-  const performSearch = useCallback(async (query: string) => {
-    if (!query.trim()) {
-      setSearchResults([]);
-      setSearchStatus('');
-      setSelectedResultIndex(-1);
-      return;
+  // --------------------------------------------------------
+  // Camera positions for each mode
+  // --------------------------------------------------------
+  const getCameraConfig = useCallback((mode: '2d' | '3d') => {
+    if (mode === '2d') {
+      return {
+        position: new THREE.Vector3(SCALE / 2, -SCALE * 0.1, SCALE * 1.2),
+        target: new THREE.Vector3(SCALE / 2, SCALE / 2, 0),
+        fov: 50,
+      };
+    } else {
+      return {
+        position: new THREE.Vector3(SCALE * 1.2, SCALE * 0.3, SCALE * 0.8),
+        target: new THREE.Vector3(SCALE / 2, SCALE / 2, 50),
+        fov: 60,
+      };
     }
+  }, []);
 
-    if (!clipModel) {
-      setSearchStatus('Model loading...');
-      return;
-    }
+  // --------------------------------------------------------
+  // Three.js Scene Setup
+  // --------------------------------------------------------
+  useEffect(() => {
+    if (!containerRef.current || data.length === 0 || sceneRef.current) return;
 
-    if (!embeddings) {
-      setSearchStatus('Embeddings not loaded');
-      return;
-    }
+    const container = containerRef.current;
+    const dataRef = data; // Capture for closure
 
-    // Prevent concurrent searches
-    if (isSearching) return;
-    setIsSearching(true);
+    // Scene
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x000000);
 
-    setSearchStatus('Searching...');
-    await new Promise(r => setTimeout(r, 50)); // Allow UI to update
+    // Camera - start in 2D config
+    const config2D = getCameraConfig('2d');
+    const camera = new THREE.PerspectiveCamera(config2D.fov, window.innerWidth / window.innerHeight, 1, 10000);
+    camera.position.copy(config2D.position);
+    camera.lookAt(config2D.target);
 
-    try {
-      const textInputs = clipModel.tokenizer(query, { padding: true, truncation: true, max_length: 77 });
-      const { text_embeds } = await clipModel.model(textInputs);
-      const queryEmbedding = text_embeds.data as Float32Array;
+    // Renderer
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    container.appendChild(renderer.domElement);
 
-      // Normalize query embedding
-      const norm = Math.sqrt(queryEmbedding.reduce((s, v) => s + v * v, 0));
-      for (let i = 0; i < queryEmbedding.length; i++) {
-        queryEmbedding[i] /= norm;
+    // Controls
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.copy(config2D.target);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.maxDistance = SCALE * 4;
+    controls.minDistance = 50;
+    controls.enableRotate = false; // Start in 2D mode
+
+    // Geometry - create points
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(dataRef.length * 3);
+    const colors = new Float32Array(dataRef.length * 3);
+
+    dataRef.forEach((d, i) => {
+      positions[i * 3] = d.x;
+      positions[i * 3 + 1] = d.y;
+      positions[i * 3 + 2] = 0; // Start flat
+      colors[i * 3] = 142 / 255;
+      colors[i * 3 + 1] = 142 / 255;
+      colors[i * 3 + 2] = 147 / 255;
+    });
+
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+    // Material
+    const material = new THREE.PointsMaterial({
+      size: 5,
+      vertexColors: true,
+      sizeAttenuation: true,
+      transparent: true,
+      opacity: 0.85,
+    });
+
+    const points = new THREE.Points(geometry, material);
+    scene.add(points);
+
+    // Raycaster
+    const raycaster = new THREE.Raycaster();
+    raycaster.params.Points!.threshold = 10;
+    const mouse = new THREE.Vector2();
+
+    sceneRef.current = { scene, camera, renderer, controls, points, geometry, raycaster, mouse };
+
+    // Animation loop
+    function animate() {
+      animFrameRef.current = requestAnimationFrame(animate);
+      const now = performance.now();
+      const anim = animStateRef.current;
+
+      // Handle transition animation
+      if (anim.transitioning) {
+        const elapsed = now - anim.transitionStart;
+        const progress = Math.min(elapsed / TRANSITION_MS, 1);
+        const t = easeOutCubic(progress);
+
+        const fromConfig = getCameraConfig(anim.fromMode);
+        const toConfig = getCameraConfig(anim.toMode);
+
+        // Animate camera position
+        camera.position.lerpVectors(fromConfig.position, toConfig.position, t);
+        controls.target.lerpVectors(fromConfig.target, toConfig.target, t);
+        camera.fov = lerp(fromConfig.fov, toConfig.fov, t);
+        camera.updateProjectionMatrix();
+
+        // Animate point Z positions
+        const posAttr = geometry.attributes.position as THREE.BufferAttribute;
+        const posArray = posAttr.array as Float32Array;
+        for (let i = 0; i < dataRef.length; i++) {
+          const fromZ = anim.fromMode === '2d' ? 0 : dataRef[i].z;
+          const toZ = anim.toMode === '2d' ? 0 : dataRef[i].z;
+          posArray[i * 3 + 2] = lerp(fromZ, toZ, t);
+        }
+        posAttr.needsUpdate = true;
+
+        // Transition complete
+        if (progress >= 1) {
+          anim.transitioning = false;
+          anim.currentMode = anim.toMode;
+          controls.enableRotate = anim.toMode === '3d';
+        }
       }
 
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    // Mouse handlers
+    const onMouseMove = (e: MouseEvent) => {
+      mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObject(points);
+
+      if (intersects.length > 0) {
+        const idx = intersects[0].index!;
+        setHoverPoint(dataRef[idx]);
+        setHoverPos({ x: e.clientX, y: e.clientY });
+        container.style.cursor = 'pointer';
+      } else {
+        setHoverPoint(null);
+        container.style.cursor = 'grab';
+      }
+    };
+
+    const onClick = (e: MouseEvent) => {
+      mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObject(points);
+
+      if (intersects.length > 0) {
+        const idx = intersects[0].index!;
+        const point = dataRef[idx];
+        if (point.image_url) {
+          window.open(point.image_url, '_blank');
+        }
+      }
+    };
+
+    const onResize = () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    };
+
+    container.addEventListener('mousemove', onMouseMove);
+    container.addEventListener('click', onClick);
+    window.addEventListener('resize', onResize);
+
+    return () => {
+      container.removeEventListener('mousemove', onMouseMove);
+      container.removeEventListener('click', onClick);
+      window.removeEventListener('resize', onResize);
+      cancelAnimationFrame(animFrameRef.current);
+      controls.dispose();
+      geometry.dispose();
+      material.dispose();
+      renderer.dispose();
+      renderer.domElement.remove();
+      sceneRef.current = null;
+    };
+  }, [data, getCameraConfig]);
+
+  // --------------------------------------------------------
+  // Handle view mode change - trigger transition
+  // --------------------------------------------------------
+  useEffect(() => {
+    const anim = animStateRef.current;
+
+    // Don't trigger if already in target mode or already transitioning to it
+    if (anim.currentMode === viewMode && !anim.transitioning) return;
+    if (anim.transitioning && anim.toMode === viewMode) return;
+
+    // Start transition
+    anim.transitioning = true;
+    anim.transitionStart = performance.now();
+    anim.fromMode = anim.transitioning ? anim.toMode : anim.currentMode; // Handle mid-transition switches
+    anim.toMode = viewMode;
+
+    // Immediately allow rotation when going to 3D
+    if (viewMode === '3d' && sceneRef.current) {
+      sceneRef.current.controls.enableRotate = true;
+    }
+  }, [viewMode]);
+
+  // --------------------------------------------------------
+  // Update colors when search results change
+  // --------------------------------------------------------
+  useEffect(() => {
+    if (!sceneRef.current || data.length === 0) return;
+
+    const { geometry } = sceneRef.current;
+    const colorAttr = geometry.attributes.color as THREE.BufferAttribute;
+    const colorArray = colorAttr.array as Float32Array;
+
+    data.forEach((d, i) => {
+      const color = getColor(d);
+      colorArray[i * 3] = color[0] / 255;
+      colorArray[i * 3 + 1] = color[1] / 255;
+      colorArray[i * 3 + 2] = color[2] / 255;
+    });
+
+    colorAttr.needsUpdate = true;
+  }, [data, results, topResults, selectedIndex, getColor]);
+
+  // --------------------------------------------------------
+  // Search
+  // --------------------------------------------------------
+  const search = useCallback(async (q: string) => {
+    if (!q.trim()) {
+      setResults([]);
+      setSelectedIndex(-1);
+      return;
+    }
+    if (!clipModel || !embeddings || isSearching) return;
+
+    setIsSearching(true);
+    await new Promise(r => setTimeout(r, 30));
+
+    try {
+      const inputs = clipModel.tokenizer(q, { padding: true, truncation: true, max_length: 77 });
+      const { text_embeds } = await clipModel.model(inputs);
+      const qEmb = text_embeds.data as Float32Array;
+
+      const norm = Math.sqrt(qEmb.reduce((s, v) => s + v * v, 0));
+      for (let i = 0; i < qEmb.length; i++) qEmb[i] /= norm;
+
       const scored = data
-        .map(point => {
-          if (point.embeddingIndex === -1) return null;
-
-          const offset = point.embeddingIndex * embeddings.dims;
-          const imageEmbedding = embeddings.data.subarray(offset, offset + embeddings.dims);
-
-          const similarity = cosineSimilarity(queryEmbedding, imageEmbedding);
-          return { ...point, similarity };
+        .filter(p => p.embeddingIndex >= 0)
+        .map(p => {
+          const off = p.embeddingIndex * embeddings.dims;
+          const sim = cosineSimilarity(qEmb, embeddings.data.subarray(off, off + embeddings.dims));
+          return { ...p, similarity: sim };
         })
-        .filter((p): p is SearchResult => p !== null)
-        .sort((a, b) => b.similarity - a.similarity);
+        .sort((a, b) => b.similarity - a.similarity)
+        .slice(0, 100);
 
-      const topScore = scored[0]?.similarity || 0;
-      const threshold = Math.max(topScore * 0.7, 0.15);
-      const matchCount = scored.filter(d => d.similarity >= threshold).length;
-
-      setSearchResults(scored.slice(0, 100)); // Keep top 100
-      setSelectedResultIndex(-1);
-      setSearchStatus(`${matchCount} matches (top: ${topScore.toFixed(3)})`);
-    } catch (err) {
-      console.error('Search error:', err);
-      setSearchStatus('Search failed');
+      setResults(scored);
+      setSelectedIndex(-1);
     } finally {
       setIsSearching(false);
     }
   }, [clipModel, embeddings, data, isSearching]);
 
   useEffect(() => {
-    const handler = setTimeout(() => performSearch(searchQuery), 300);
-    return () => clearTimeout(handler);
-  }, [searchQuery, performSearch]);
+    const t = setTimeout(() => search(query), 250);
+    return () => clearTimeout(t);
+  }, [query, search]);
 
+  // --------------------------------------------------------
+  // Selection & Navigation
+  // --------------------------------------------------------
+  const selectResult = useCallback((idx: number) => {
+    const r = topResults[idx];
+    if (!r || !sceneRef.current) return;
+    setSelectedIndex(idx);
 
-  const topResults = useMemo(() => searchResults.slice(0, 5), [searchResults]);
+    const { controls, camera } = sceneRef.current;
+    const anim = animStateRef.current;
+    const currentZ = anim.currentMode === '2d' ? 0 : r.z;
 
-  const getPointColor = useCallback((d: Point): [number, number, number, number] => {
-    // Check if this is the selected result
-    if (selectedResultIndex >= 0 && topResults[selectedResultIndex]?.id === d.id) {
-      return [255, 59, 48, 255]; // Bright red for selected
-    }
+    controls.target.set(r.x, r.y, currentZ);
 
-    // Check if this is one of the top results
-    const topResultIndex = topResults.findIndex(r => r.id === d.id);
-    if (topResultIndex >= 0) {
-      const intensity = 1 - topResultIndex / 5;
-      return [255, 149 + intensity * 50, 0, 220 + intensity * 35];
-    }
-
-    // Highlight search results
-    const searchResult = searchResults.find(r => r.id === d.id);
-    if (searchResult) {
-      const intensity = Math.pow(searchResult.similarity, 2);
-      return [
-        10 + intensity * 245,
-        132 - intensity * 50,
-        255 - intensity * 155,
-        200 + intensity * 55,
-      ];
-    }
-
-    // Color by date
-    if (d.date) {
-      const year = parseInt(d.date);
-      if (year < 1930) return [255, 149, 0, 180];
-      if (year < 1950) return [255, 214, 10, 180];
-      if (year < 1970) return [48, 209, 88, 180];
-      return [10, 132, 255, 180];
-    }
-
-    return [142, 142, 147, 150];
-  }, [searchResults, topResults, selectedResultIndex]);
-
-  const layers = useMemo(() => {
-    if (currentView === '3d') {
-      return [
-        new PointCloudLayer<Point>({
-          id: 'point-cloud',
-          data,
-          getPosition: d => [d.x, d.y, d.z],
-          getColor: getPointColor,
-          pointSize: 8,
-          pickable: true,
-          onHover: info => setHoverInfo(info),
-          onClick: ({ object }) => {
-            if (object?.image_url) window.open(object.image_url, '_blank')
-          },
-          updateTriggers: {
-            getColor: [searchResults, topResults, selectedResultIndex],
-          }
-        })
-      ];
-    }
-    return [
-      new ScatterplotLayer<Point>({
-        id: 'scatter',
-        data,
-        getPosition: d => [d.x, d.y],
-        getRadius: POINT_RADIUS,
-        getFillColor: getPointColor,
-        pickable: true,
-        onHover: info => setHoverInfo(info),
-        onClick: ({ object }) => {
-          if (object?.image_url) window.open(object.image_url, '_blank')
-        },
-        radiusMinPixels: 2,
-        radiusMaxPixels: 12,
-        updateTriggers: {
-          getFillColor: [searchResults, topResults, selectedResultIndex],
-        }
-      }),
-    ];
-  }, [data, searchResults, topResults, selectedResultIndex, getPointColor, currentView]);
-
-  // Handle result selection with zoom-to-point
-  const selectResult = useCallback((index: number) => {
-    const result = topResults[index];
-    if (!result) return;
-    setSelectedResultIndex(index);
-
-    if (currentView === '2d') {
-      setViewState2D(prev => ({
-        ...prev,
-        target: [result.x, result.y, 0],
-        zoom: 4,
-        transitionDuration: 500,
-        transitionInterpolator: new LinearInterpolator(['target', 'zoom']),
-      }));
+    if (anim.currentMode === '2d') {
+      camera.position.set(r.x, r.y - SCALE * 0.3, SCALE * 0.5);
     } else {
-      setViewState3D(prev => ({
-        ...prev,
-        target: [result.x, result.y, result.z],
-        zoom: 4,
-        transitionDuration: 500,
-        transitionInterpolator: new LinearInterpolator(['target', 'zoom']),
-      }));
+      camera.position.set(r.x + 150, r.y - 100, currentZ + 200);
     }
-  }, [topResults, currentView]);
+  }, [topResults]);
 
-  // Keyboard navigation
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setSearchResults([]);
-        setSelectedResultIndex(-1);
+        setResults([]);
+        setSelectedIndex(-1);
+        setQuery('');
       }
       if (topResults.length > 0) {
         if (e.key === 'ArrowDown') {
           e.preventDefault();
-          const newIndex = Math.min(selectedResultIndex + 1, topResults.length - 1);
-          selectResult(newIndex);
+          selectResult(Math.min(selectedIndex + 1, topResults.length - 1));
         }
         if (e.key === 'ArrowUp') {
           e.preventDefault();
-          const newIndex = Math.max(selectedResultIndex - 1, 0);
-          selectResult(newIndex);
+          selectResult(Math.max(selectedIndex - 1, 0));
         }
-        if (e.key === 'Enter' && selectedResultIndex >= 0) {
-          const result = topResults[selectedResultIndex];
-          if (result?.image_url) {
-            window.open(result.image_url, '_blank');
-          }
+        if (e.key === 'Enter' && selectedIndex >= 0 && topResults[selectedIndex]?.image_url) {
+          window.open(topResults[selectedIndex].image_url, '_blank');
         }
       }
     };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [topResults, selectedIndex, selectResult]);
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [topResults, selectedResultIndex, selectResult]);
-
-  const currentViewState = currentView === '2d' ? viewState2D : viewState3D;
-  const currentView$ = currentView === '2d'
-    ? new OrthographicView({ id: 'ortho' })
-    : new OrbitView({ id: 'orbit', orbitAxis: 'Z' });
+  // --------------------------------------------------------
+  // Render
+  // --------------------------------------------------------
+  if (loadError) {
+    return (
+      <div className="w-screen h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-400 text-sm mb-2">Failed to load</p>
+          <p className="text-white/40 text-xs">{loadError}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="relative w-screen h-screen bg-black">
-      {/* Loading overlay */}
+    <div className="w-screen h-screen bg-black text-white font-[-apple-system,BlinkMacSystemFont,'SF_Pro_Display',sans-serif] antialiased select-none">
+      {/* Loading */}
       {isLoading && (
-        <div className="absolute inset-0 bg-black z-50 flex flex-col items-center justify-center">
-          <div className="w-8 h-8 border-2 border-gray-700 border-t-white rounded-full animate-spin mb-4" />
-          <div className="text-gray-400 text-sm">{loadingText}</div>
+        <div className="absolute inset-0 z-50 bg-black flex flex-col items-center justify-center gap-4">
+          <Spinner />
+          <p className="text-white/50 text-sm">Loading embeddings...</p>
         </div>
       )}
 
-      <DeckGL
-        layers={layers}
-        views={currentView$}
-        viewState={currentViewState}
-        onViewStateChange={({ viewState }) => {
-          if (currentView === '2d') {
-            setViewState2D(viewState as OrthographicViewState);
-          } else {
-            setViewState3D(viewState as OrbitViewState);
-          }
-        }}
-        controller={true}
-        getCursor={({ isHovering }) => (isHovering ? 'pointer' : 'grab')}
-      >
-        {hoverInfo?.object && (
-          <div
-            className="absolute bg-gray-800/80 backdrop-blur-sm p-3 rounded-lg shadow-lg pointer-events-none"
-            style={{
-              left: hoverInfo.x + 10,
-              top: hoverInfo.y + 10,
-              maxWidth: 320,
-            }}
-          >
-            {hoverInfo.object.image_url && (
-              <img
-                src={hoverInfo.object.image_url}
-                alt={hoverInfo.object.name}
-                className="w-full h-auto rounded-md mb-2"
-              />
-            )}
-            <h3 className="text-white font-semibold text-sm">{hoverInfo.object.name || 'Untitled'}</h3>
-            <p className="text-gray-400 text-xs">{hoverInfo.object.date || 'Unknown date'}</p>
+      {/* Three.js Canvas */}
+      <div ref={containerRef} className="absolute inset-0" />
+
+      {/* Hover Tooltip */}
+      {hoverPoint && (
+        <GlassPanel
+          className="fixed z-40 rounded-2xl overflow-hidden pointer-events-none max-w-[280px]"
+          style={{ left: hoverPos.x + 16, top: hoverPos.y + 16 }}
+        >
+          {hoverPoint.image_url && (
+            <img src={hoverPoint.image_url} alt="" className="w-full h-40 object-cover" />
+          )}
+          <div className="p-3">
+            <p className="text-sm font-medium text-white leading-snug">{hoverPoint.name || 'Untitled'}</p>
+            <p className="text-xs text-white/50 mt-1">{hoverPoint.date || 'Unknown date'}</p>
           </div>
-        )}
-      </DeckGL>
+        </GlassPanel>
+      )}
 
-      <div className="absolute top-6 left-6 z-10 flex items-center gap-2">
-        <div className="flex items-center gap-1 p-1 bg-gray-800/80 backdrop-blur-sm rounded-lg border border-gray-700">
-          <button onClick={() => setCurrentView('2d')} className={`px-4 py-1.5 text-sm rounded-md ${currentView === '2d' ? 'bg-blue-500 text-white' : 'text-gray-300'}`}>2D</button>
-          <button onClick={() => setCurrentView('3d')} className={`px-4 py-1.5 text-sm rounded-md ${currentView === '3d' ? 'bg-blue-500 text-white' : 'text-gray-300'}`}>3D</button>
-        </div>
-      </div>
+      {/* View Toggle */}
+      <GlassPanel className="fixed top-5 left-5 z-30 rounded-xl p-1 flex">
+        {(['2d', '3d'] as const).map(v => (
+          <button
+            key={v}
+            onClick={() => setViewMode(v)}
+            className={`px-5 py-2 text-xs font-medium rounded-lg transition-all duration-200 ${
+              viewMode === v
+                ? 'bg-white/15 text-white'
+                : 'text-white/40 hover:text-white/70 hover:bg-white/5'
+            }`}
+          >
+            {v.toUpperCase()}
+          </button>
+        ))}
+      </GlassPanel>
 
-      <div className="absolute top-6 left-1/2 -translate-x-1/2 z-10">
-        <div className="flex items-center bg-gray-800/80 backdrop-blur-xl border border-gray-700 rounded-2xl px-1 shadow-xl w-[400px] focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-500/15 transition-all">
-          <div className="px-4 text-gray-500">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="11" cy="11" r="8"></circle>
-              <path d="m21 21-4.35-4.35"></path>
-            </svg>
+      {/* Search */}
+      <div className="fixed top-5 left-1/2 -translate-x-1/2 z-30 w-[400px]">
+        <GlassPanel className="rounded-2xl flex items-center transition-shadow duration-200 focus-within:ring-1 focus-within:ring-white/20">
+          <div className="pl-4 pr-2 text-white/40">
+            <SearchIcon />
           </div>
           <input
             type="text"
-            placeholder="Search images with CLIP..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 py-3 bg-transparent text-white text-sm placeholder-gray-500 focus:outline-none"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Search images..."
+            className="flex-1 py-3.5 pr-3 bg-transparent text-sm text-white placeholder:text-white/30 focus:outline-none"
           />
-          {searchStatus && (
-            <div className={`px-4 text-xs whitespace-nowrap ${isSearching ? 'text-blue-400' : 'text-gray-500'}`}>
-              {searchStatus}
+          {isSearching && (
+            <div className="pr-4">
+              <Spinner size="sm" />
             </div>
           )}
-        </div>
+          {!isSearching && results.length > 0 && (
+            <span className="pr-4 text-xs text-white/50">{results.length}</span>
+          )}
+        </GlassPanel>
       </div>
 
-      <div className="absolute bottom-6 left-6 z-10 p-4 bg-gray-800/80 backdrop-blur-xl rounded-2xl border border-gray-700 max-w-[280px]">
-        <h2 className="text-white font-semibold text-sm mb-1">Montreal Archives</h2>
-        <p className="text-gray-400 text-xs leading-relaxed">
-          <strong className="text-white">{data.length.toLocaleString()}</strong> images<br />
-          CLIP embeddings projected to 2D via UMAP<br />
-          Scroll to zoom, drag to pan
+      {/* Info Panel */}
+      <GlassPanel className="fixed bottom-5 left-5 z-30 rounded-2xl px-5 py-4">
+        <p className="text-sm font-semibold text-white mb-0.5">Montreal Archives</p>
+        <p className="text-xs text-white/50">
+          {data.length.toLocaleString()} images · CLIP embeddings
         </p>
-      </div>
+      </GlassPanel>
 
-      {/* Model status indicator */}
-      <div className={`absolute bottom-6 right-6 z-10 px-4 py-3 bg-gray-800/80 backdrop-blur-xl rounded-xl border border-gray-700 text-xs transition-opacity ${
-        modelStatus === 'CLIP ready' ? 'text-green-400' : 'text-gray-400'
-      } ${modelStatus === 'CLIP ready' ? 'opacity-0 pointer-events-none' : ''}`} style={{ transitionDelay: modelStatus === 'CLIP ready' ? '2000ms' : '0ms' }}>
-        {modelStatus}
-      </div>
+      {/* Model Status */}
+      {modelStatus !== 'ready' && (
+        <GlassPanel className="fixed bottom-5 right-5 z-30 rounded-xl px-4 py-2.5 flex items-center gap-2.5">
+          {modelStatus === 'loading' && <Spinner size="sm" />}
+          <span className={`text-xs ${modelStatus === 'error' ? 'text-red-400' : 'text-white/50'}`}>
+            {modelStatus === 'loading' ? 'Loading CLIP...' : 'CLIP unavailable'}
+          </span>
+        </GlassPanel>
+      )}
 
+      {/* Results Panel */}
       {topResults.length > 0 && (
-        <div className="absolute top-24 right-6 z-10 bg-gray-800/80 backdrop-blur-sm rounded-2xl border border-gray-700 w-80 max-h-[calc(100vh-150px)] overflow-hidden shadow-xl">
-          <div className="flex justify-between items-center px-5 py-4 border-b border-gray-700">
+        <GlassPanel className="fixed top-20 right-5 z-30 rounded-2xl w-[320px] overflow-hidden">
+          <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
             <div>
-              <h3 className="text-white font-semibold text-sm">Top Matches</h3>
-              <p className="text-gray-400 text-xs">"{searchQuery}" · top: {topResults[0]?.similarity.toFixed(3)}</p>
+              <p className="text-sm font-medium text-white">Results</p>
+              <p className="text-xs text-white/40 mt-0.5 truncate max-w-[200px]">"{query}"</p>
             </div>
             <button
-              onClick={() => { setSearchResults([]); setSelectedResultIndex(-1); }}
-              className="w-7 h-7 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center text-gray-400 hover:text-white"
+              onClick={() => { setResults([]); setQuery(''); setSelectedIndex(-1); }}
+              className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/15 flex items-center justify-center text-white/50 hover:text-white transition-colors"
             >
               ×
             </button>
           </div>
-          <div className="p-2 overflow-y-auto max-h-[calc(100vh-220px)]">
-            {topResults.map((result, i) => (
+          <div className="max-h-[calc(100vh-200px)] overflow-y-auto">
+            {topResults.map((r, i) => (
               <div
-                key={result.id}
-                className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-colors relative ${
-                  i === selectedResultIndex ? 'bg-blue-500/20' : 'hover:bg-gray-700/50'
-                }`}
+                key={r.id}
                 onClick={() => selectResult(i)}
-                onDoubleClick={() => result.image_url && window.open(result.image_url, '_blank')}
+                onDoubleClick={() => r.image_url && window.open(r.image_url, '_blank')}
+                className={`flex items-center gap-3 px-5 py-3 cursor-pointer transition-colors border-b border-white/5 last:border-0 ${
+                  i === selectedIndex ? 'bg-white/10' : 'hover:bg-white/5'
+                }`}
               >
-                <div className="absolute top-2 left-2 w-5 h-5 bg-blue-500 rounded-md flex items-center justify-center text-white text-xs font-semibold z-10">
-                  {i + 1}
+                <div className="relative flex-shrink-0">
+                  {r.image_url ? (
+                    <img src={r.image_url} alt="" className="w-14 h-14 rounded-xl object-cover" loading="lazy" />
+                  ) : (
+                    <div className="w-14 h-14 rounded-xl bg-white/5 flex items-center justify-center">
+                      <ImagePlaceholder />
+                    </div>
+                  )}
+                  <span className="absolute -top-1.5 -left-1.5 w-5 h-5 rounded-md bg-blue-500 text-[10px] font-bold flex items-center justify-center text-white">
+                    {i + 1}
+                  </span>
                 </div>
-                {result.image_url ? (
-                  <img src={result.image_url} className="w-16 h-16 object-cover rounded-lg bg-gray-700 flex-shrink-0" loading="lazy" />
-                ) : (
-                  <div className="w-16 h-16 rounded-lg bg-gray-700 flex items-center justify-center text-gray-500 flex-shrink-0">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                      <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                      <path d="M21 15l-5-5L5 21"></path>
-                    </svg>
-                  </div>
-                )}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-white font-medium line-clamp-2">{result.name || 'Untitled'}</p>
-                  <p className="text-xs text-gray-400">{result.date || 'Unknown date'}</p>
-                  <div className="flex items-center gap-1 mt-1">
-                    <span className="text-xs font-semibold text-green-400 bg-green-400/15 px-2 py-0.5 rounded">
-                      {(result.similarity * 100).toFixed(1)}%
-                    </span>
-                    <div className="w-10 h-1 bg-gray-700 rounded overflow-hidden">
+                  <p className="text-sm text-white font-medium truncate">{r.name || 'Untitled'}</p>
+                  <p className="text-xs text-white/40 mt-0.5">{r.date || 'Unknown'}</p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="text-xs font-semibold text-emerald-400">{(r.similarity * 100).toFixed(1)}%</span>
+                    <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-green-400 rounded"
-                        style={{ width: `${Math.min((result.similarity / topResults[0].similarity) * 100, 100)}%` }}
+                        className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                        style={{ width: `${(r.similarity / topResults[0].similarity) * 100}%` }}
                       />
                     </div>
                   </div>
@@ -503,7 +702,7 @@ export function EmbeddingExplorer() {
               </div>
             ))}
           </div>
-        </div>
+        </GlassPanel>
       )}
     </div>
   );
