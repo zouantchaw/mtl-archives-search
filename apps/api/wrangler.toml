@@ -1,12 +1,12 @@
 name = "mtl-archives-worker"
-main = "api/worker.ts"
+main = "src/worker.ts"
 compatibility_date = "2025-10-17"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "mtl-archives"
 database_id = "5c847f8e-5f2a-4d5e-8a7d-fae70025c398"
-migrations_dir = "infrastructure/d1/migrations"
+migrations_dir = "../../infrastructure/d1/migrations"
 
 [[vectorize]]
 binding = "VECTORIZE"

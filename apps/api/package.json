@@ -1,0 +1,16 @@
+{
+  "name": "mtl-archives-api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev --remote",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@mtl-archives/core": "*"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241018.0"
+  }
+}

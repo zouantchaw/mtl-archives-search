@@ -1,39 +1,27 @@
 {
-  "name": "mtl-archives-search",
-  "version": "0.2.0",
-  "description": "Semantic and visual search API for the Montréal city archives photo collection (~15k historical images).",
+  "name": "mtl-archives-search-monorepo",
+  "version": "0.3.0",
+  "private": true,
+  "description": "Semantic and visual search for Montreal city archives.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "npx wrangler dev",
-    "deploy": "npx wrangler deploy",
-    "typecheck": "tsc --noEmit",
-    "etl:clean": "python3 pipelines/etl/clean_metadata.py",
-    "etl:export": "python3 pipelines/etl/export_manifest.py",
-    "etl:audit": "python3 pipelines/etl/audit_metadata_quality.py",
-    "etl:build": "python3 pipelines/etl/build_manifest.py",
-    "sql:generate": "node pipelines/sql/generate_manifest_sql.js",
-    "d1:seed": "npm run sql:generate && WRANGLER_LOG_PATH=\"$(pwd)/data/mtl_archives/.wrangler-logs\" npx wrangler d1 execute mtl-archives --remote --file infrastructure/d1/seed_manifest.sql",
-    "db:count": "WRANGLER_LOG_PATH=\"$(pwd)/data/mtl_archives/.wrangler-logs\" npx wrangler d1 execute mtl-archives --remote --command \"SELECT COUNT(*) AS total FROM manifest;\"",
-    "pipeline": "npm run etl:clean && npm run etl:export && npm run etl:audit && npm run d1:seed",
-    "vectorize:text": "node pipelines/vectorize/ingest_text.js",
-    "vectorize:clip": "python3 pipelines/vectorize/ingest_clip.py",
-    "search:eval": "node pipelines/vectorize/evaluate_search_quality.js"
+    "dev": "npm run dev --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "deploy": "npm run deploy --workspace=apps/api"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "wrangler": "^4.53.0",
+    "@types/node": "^22.0.0"
   },
   "engines": {
     "node": ">=23.5.0"
   },
-  "devDependencies": {
-    "@cloudflare/workers-types": "^4.20241018.0",
-    "typescript": "^5.6.3",
-    "wrangler": "^4.53.0"
-  },
-  "keywords": [
-    "cloudflare-workers",
-    "semantic-search",
-    "vectorize",
-    "montreal",
-    "archives",
-    "historical-photos"
-  ],
   "author": "zouantchaw",
   "license": "MIT"
 }

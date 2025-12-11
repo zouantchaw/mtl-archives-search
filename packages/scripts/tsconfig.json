@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "moduleResolution": "NodeNext",
+    "module": "NodeNext",
+    "outDir": "dist"
+  },
+  "include": ["src/**/*"],
+  "ts-node": {
+    "esm": true
+  },
+  "references": [
+    { "path": "../../packages/core" }
+  ]
+}

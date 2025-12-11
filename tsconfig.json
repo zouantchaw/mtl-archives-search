@@ -1,16 +1,15 @@
 {
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "target": "ES2022",
-    "lib": ["ES2022"],
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "allowSyntheticDefaultImports": true,
-    "types": ["@cloudflare/workers-types"],
-    "forceConsistentCasingInFileNames": true
+    "baseUrl": ".",
+    "paths": {
+      "@mtl-archives/core": ["packages/core/src/index.ts"]
+    }
   },
-  "include": ["api/**/*.ts"],
-  "exclude": ["node_modules"]
+  "include": [],
+  "references": [
+    { "path": "./apps/api" },
+    { "path": "./packages/core" },
+    { "path": "./packages/scripts" }
+  ]
 }
