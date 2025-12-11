@@ -12,7 +12,12 @@
     "build": "npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "deploy": "npm run deploy --workspace=apps/api"
+    "deploy": "npm run deploy --workspace=apps/api",
+    "clean": "npm run clean --workspace=@mtl-archives/scripts",
+    "vectorize:clip": "npm run vectorize:clip --workspace=@mtl-archives/scripts",
+    "vectorize:text": "npm run vectorize:text --workspace=@mtl-archives/scripts",
+    "vectorize:export": "npm run vectorize:export --workspace=@mtl-archives/scripts",
+    "db:generate": "npm run db:generate --workspace=@mtl-archives/scripts"
   },
   "devDependencies": {
     "typescript": "^5.6.3",
