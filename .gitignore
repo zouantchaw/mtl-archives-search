@@ -60,4 +60,6 @@ __pycache__/
 # npm cache
 .npm-cache/
 .venv/
-localhost_Archive [25-12-12 11-26-48].har
+
+# Browser/network captures
+*.har
