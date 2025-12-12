@@ -22,6 +22,11 @@ apps/web/public/embeddings_*.bin
 # Claude Code local settings
 .claude/settings.local.json
 
+# AI assistant context files
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+
 # Raw source data (downloaded from external sources)
 data/mtl_archives/package_*.json
 data/mtl_archives/phototheque_*.json
@@ -55,3 +60,4 @@ __pycache__/
 # npm cache
 .npm-cache/
 .venv/
+localhost_Archive [25-12-12 11-26-48].har

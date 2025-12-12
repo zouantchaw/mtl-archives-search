@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, forwardRef } from 'react';
 import { AutoTokenizer, CLIPTextModelWithProjection, env as transformersEnv } from '@xenova/transformers';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -13,6 +13,7 @@ const DATA_URL_IDS = `${R2_BASE}/embeddings_ids.json`;
 
 const SCALE = 1000;
 const TRANSITION_MS = 600;
+const HOVER_IMAGE_DELAY_MS = 200;
 
 type Point = {
   id: string;
@@ -73,13 +74,15 @@ function Spinner({ size = 'md' }: { size?: 'sm' | 'md' }) {
   return <div className={`${dims} border-2 border-white/20 border-t-white/80 rounded-full animate-spin`} />;
 }
 
-function GlassPanel({ children, className = '', style }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
-  return (
-    <div className={`bg-black/50 backdrop-blur-2xl border border-white/10 shadow-2xl ${className}`} style={style}>
+const GlassPanel = forwardRef<HTMLDivElement, { children: React.ReactNode; className?: string; style?: React.CSSProperties }>(
+  ({ children, className = '', style }, ref) => (
+    <div ref={ref} className={`bg-black/50 backdrop-blur-2xl border border-white/10 shadow-2xl ${className}`} style={style}>
       {children}
     </div>
-  );
-}
+  ),
+);
+
+GlassPanel.displayName = 'GlassPanel';
 
 // ============================================================
 // Main Component
@@ -95,10 +98,15 @@ export function EmbeddingExplorer() {
   // View state
   const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
   const [hoverPoint, setHoverPoint] = useState<Point | null>(null);
-  const [hoverPos, setHoverPos] = useState({ x: 0, y: 0 });
+  const [hoverImageUrl, setHoverImageUrl] = useState<string | null>(null);
 
   // Three.js refs
   const containerRef = useRef<HTMLDivElement>(null);
+  const hoverTooltipRef = useRef<HTMLDivElement>(null);
+  const hoverIndexRef = useRef<number | null>(null);
+  const hoverImageTimerRef = useRef<number | null>(null);
+  const hoverPosRef = useRef({ x: 0, y: 0 });
+  const hoverPosRafRef = useRef<number | null>(null);
   const sceneRef = useRef<{
     scene: THREE.Scene;
     camera: THREE.PerspectiveCamera;
@@ -129,6 +137,48 @@ export function EmbeddingExplorer() {
   const [selectedIndex, setSelectedIndex] = useState(-1);
 
   const topResults = useMemo(() => results.slice(0, 5), [results]);
+
+  const scheduleHoverTooltipPosition = useCallback((x: number, y: number) => {
+    hoverPosRef.current.x = x;
+    hoverPosRef.current.y = y;
+    if (hoverPosRafRef.current != null) return;
+
+    hoverPosRafRef.current = requestAnimationFrame(() => {
+      hoverPosRafRef.current = null;
+      const tooltip = hoverTooltipRef.current;
+      if (!tooltip) return;
+      const { x: px, y: py } = hoverPosRef.current;
+      tooltip.style.transform = `translate3d(${px + 16}px, ${py + 16}px, 0)`;
+    });
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (hoverPosRafRef.current != null) {
+        cancelAnimationFrame(hoverPosRafRef.current);
+      }
+      if (hoverImageTimerRef.current != null) {
+        window.clearTimeout(hoverImageTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (hoverImageTimerRef.current != null) {
+      window.clearTimeout(hoverImageTimerRef.current);
+      hoverImageTimerRef.current = null;
+    }
+
+    setHoverImageUrl(null);
+
+    const url = hoverPoint?.image_url?.trim() ?? '';
+    if (!url) return;
+
+    hoverImageTimerRef.current = window.setTimeout(() => {
+      setHoverImageUrl(url);
+      hoverImageTimerRef.current = null;
+    }, HOVER_IMAGE_DELAY_MS);
+  }, [hoverPoint?.image_url]);
 
   // --------------------------------------------------------
   // Point Colors
@@ -366,11 +416,17 @@ export function EmbeddingExplorer() {
 
       if (intersects.length > 0) {
         const idx = intersects[0].index!;
-        setHoverPoint(dataRef[idx]);
-        setHoverPos({ x: e.clientX, y: e.clientY });
+        if (hoverIndexRef.current !== idx) {
+          hoverIndexRef.current = idx;
+          setHoverPoint(dataRef[idx]);
+        }
+        scheduleHoverTooltipPosition(e.clientX, e.clientY);
         container.style.cursor = 'pointer';
       } else {
-        setHoverPoint(null);
+        if (hoverIndexRef.current !== null) {
+          hoverIndexRef.current = null;
+          setHoverPoint(null);
+        }
         container.style.cursor = 'grab';
       }
     };
@@ -577,11 +633,17 @@ export function EmbeddingExplorer() {
       {/* Hover Tooltip */}
       {hoverPoint && (
         <GlassPanel
-          className="fixed z-40 rounded-2xl overflow-hidden pointer-events-none max-w-[280px]"
-          style={{ left: hoverPos.x + 16, top: hoverPos.y + 16 }}
+          ref={hoverTooltipRef}
+          className="fixed z-40 rounded-2xl overflow-hidden pointer-events-none max-w-[280px] -translate-x-[10000px] -translate-y-[10000px]"
         >
           {hoverPoint.image_url && (
-            <img src={hoverPoint.image_url} alt="" className="w-full h-40 object-cover" />
+            <div className="w-full h-40 bg-white/5 flex items-center justify-center">
+              {hoverImageUrl ? (
+                <img src={hoverImageUrl} alt="" className="w-full h-40 object-cover" decoding="async" />
+              ) : (
+                <Spinner size="sm" />
+              )}
+            </div>
           )}
           <div className="p-3">
             <p className="text-sm font-medium text-white leading-snug">{hoverPoint.name || 'Untitled'}</p>
