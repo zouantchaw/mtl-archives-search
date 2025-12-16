@@ -1,0 +1,59 @@
+%% MTL Archives Search - Runtime Architecture
+%% How the app works when deployed
+
+flowchart TB
+    subgraph Browser["Browser"]
+        UI["React App<br/>EmbeddingExplorer.tsx"]
+        THREE["Three.js<br/>3D Point Cloud"]
+        CLIP_LOCAL["Xenova CLIP<br/>(client-side)"]
+        EMB_CACHE[("Local Memory<br/>embeddings_512d.bin")]
+    end
+
+    subgraph R2["Cloudflare R2"]
+        STATIC["Static Assets<br/>React bundle"]
+        EMB["Embedding Files<br/>• embeddings_2d.json<br/>• embeddings_512d.bin<br/>• embeddings_ids.json"]
+        IMAGES[("~15k Images")]
+    end
+
+    subgraph Worker["Cloudflare Worker"]
+        direction TB
+        API["worker.ts"]
+        PHOTOS["/api/photos"]
+        SEARCH["/api/search"]
+        THUMB["/api/thumb"]
+    end
+
+    subgraph Services["Cloudflare Services"]
+        D1[("D1 Database<br/>Photo metadata")]
+        VEC_BGE[("Vectorize BGE<br/>1024-dim")]
+        VEC_CLIP[("Vectorize CLIP<br/>512-dim")]
+        AI["Workers AI"]
+    end
+
+    %% Initial load
+    UI -->|"1. load app"| STATIC
+    UI -->|"2. fetch embeddings"| EMB
+    EMB -->|"store in memory"| EMB_CACHE
+    EMB -->|"render points"| THREE
+
+    %% Visual search (client-side)
+    UI -->|"3a. search query"| CLIP_LOCAL
+    CLIP_LOCAL -->|"512-dim vector"| UI
+    UI -->|"cosine similarity"| EMB_CACHE
+    EMB_CACHE -->|"top-k matches"| THREE
+
+    %% Hover interaction
+    THREE -->|"3b. hover on point"| THUMB
+    THUMB -->|"resize + cache"| IMAGES
+
+    %% Text/Semantic search (server-side)
+    UI -->|"4. text search"| SEARCH
+    SEARCH -->|"mode=text"| D1
+    SEARCH -->|"mode=semantic"| AI
+    AI -->|"embed query"| VEC_BGE
+    VEC_BGE -->|"top-k IDs"| D1
+    D1 -->|"metadata"| UI
+
+    %% Pagination
+    UI -->|"5. browse photos"| PHOTOS
+    PHOTOS --> D1

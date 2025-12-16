@@ -9,7 +9,9 @@
     "vectorize:clip": "tsx src/vectorize/ingest-clip.ts",
     "vectorize:text": "tsx src/vectorize/ingest-text.ts",
     "vectorize:export": "tsx src/vectorize/export-embeddings.ts",
-    "db:generate": "tsx src/db/generate-sql.ts"
+    "db:generate": "tsx src/db/generate-sql.ts",
+    "vlm:caption": "tsx src/vlm/caption-images.ts",
+    "vlm:caption:dry": "tsx src/vlm/caption-images.ts --dry-run --limit 5"
   },
   "dependencies": {
     "@mtl-archives/core": "*",

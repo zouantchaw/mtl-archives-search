@@ -1,0 +1,56 @@
+%% MTL Archives Search - System Architecture
+%% Render each section separately in a Mermaid viewer
+
+%% ============================================
+%% DIAGRAM 1: ONE-TIME DATA PIPELINE
+%% ============================================
+%% Copy from "flowchart TB" to the "---" separator
+
+flowchart TB
+    subgraph Sources["1. Data Sources"]
+        PORTAL[("Montreal Open Data Portal<br/>~15k historical photos")]
+        HDD[["Physical Hard Drive<br/>(downloaded images)"]]
+    end
+
+    subgraph LocalMachine["2. Local Machine"]
+        MANIFEST[/"manifest_enriched.jsonl<br/>(raw metadata)"/]
+        CLEAN["clean-metadata.ts<br/>normalize + parse"]
+        MANIFEST_CLEAN[/"manifest_clean.jsonl"/]
+        GENSQL["generate-sql.ts"]
+        SEED_SQL[/"seed_manifest.sql"/]
+    end
+
+    subgraph GPU["3. Lambda Labs A100 GPU"]
+        CLIP_INGEST["ingest-clip.ts<br/>Xenova CLIP model<br/>512-dim embeddings<br/>~3 hrs / $3.93"]
+    end
+
+    subgraph Scripts["4. Vectorization Scripts"]
+        TEXT_INGEST["ingest-text.ts<br/>Workers AI BGE<br/>1024-dim embeddings"]
+        EXPORT["export-embeddings.ts<br/>UMAP 2D projection"]
+    end
+
+    subgraph CF["5. Cloudflare Storage"]
+        R2[("R2<br/>mtl-archives<br/>images")]
+        D1[("D1<br/>manifest table")]
+        VEC_BGE[("Vectorize<br/>mtl-archives<br/>1024-dim")]
+        VEC_CLIP[("Vectorize<br/>mtl-archives-clip<br/>512-dim")]
+        R2_EMB[("R2<br/>embedding files")]
+    end
+
+    %% Flow
+    PORTAL -->|download| MANIFEST
+    PORTAL -->|download| HDD
+    HDD -->|"wrangler r2 object put"| R2
+
+    MANIFEST --> CLEAN --> MANIFEST_CLEAN
+    MANIFEST_CLEAN --> GENSQL --> SEED_SQL
+    SEED_SQL -->|"wrangler d1 execute"| D1
+
+    MANIFEST_CLEAN --> TEXT_INGEST
+    TEXT_INGEST --> VEC_BGE
+
+    MANIFEST_CLEAN --> CLIP_INGEST
+    R2 -.->|fetch images| CLIP_INGEST
+    CLIP_INGEST --> VEC_CLIP
+
+    VEC_CLIP --> EXPORT --> R2_EMB
