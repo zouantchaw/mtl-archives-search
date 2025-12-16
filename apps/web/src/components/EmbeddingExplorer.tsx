@@ -11,6 +11,9 @@ const DATA_URL_2D = `${R2_BASE}/embeddings_2d.json`;
 const DATA_URL_512D = `${R2_BASE}/embeddings_512d.bin`;
 const DATA_URL_IDS = `${R2_BASE}/embeddings_ids.json`;
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
+const API_ORIGIN = API_BASE_URL ? API_BASE_URL.replace(/\/$/, '') : '';
+
 const SCALE = 1000;
 const TRANSITION_MS = 600;
 const HOVER_IMAGE_DELAY_MS = 200;
@@ -27,6 +30,18 @@ type Point = {
 };
 
 type ScoredPoint = Point & { similarity: number };
+
+function getThumbnailUrl(src: string): string {
+  const params = new URLSearchParams({
+    src,
+    w: '320',
+    h: '160',
+    fit: 'cover',
+    format: 'auto',
+    q: '70',
+  });
+  return `${API_ORIGIN}/api/thumb?${params.toString()}`;
+}
 
 function cosineSimilarity(a: Float32Array, b: Float32Array): number {
   let dot = 0, normA = 0, normB = 0;
@@ -175,7 +190,7 @@ export function EmbeddingExplorer() {
     if (!url) return;
 
     hoverImageTimerRef.current = window.setTimeout(() => {
-      setHoverImageUrl(url);
+      setHoverImageUrl(getThumbnailUrl(url));
       hoverImageTimerRef.current = null;
     }, HOVER_IMAGE_DELAY_MS);
   }, [hoverPoint?.image_url]);
@@ -215,12 +230,14 @@ export function EmbeddingExplorer() {
   // Data Loading
   // --------------------------------------------------------
   useEffect(() => {
+    const controller = new AbortController();
+
     async function load() {
       try {
         const [res2d, res512d, resIds] = await Promise.all([
-          fetch(DATA_URL_2D),
-          fetch(DATA_URL_512D),
-          fetch(DATA_URL_IDS),
+          fetch(DATA_URL_2D, { signal: controller.signal }),
+          fetch(DATA_URL_512D, { signal: controller.signal }),
+          fetch(DATA_URL_IDS, { signal: controller.signal }),
         ]);
 
         if (!res2d.ok || !res512d.ok || !resIds.ok) {
@@ -232,6 +249,8 @@ export function EmbeddingExplorer() {
           res512d.arrayBuffer(),
           resIds.json(),
         ]);
+
+        if (controller.signal.aborted) return;
 
         const header = new Uint32Array(buffer, 0, 2);
         const dims = header[1];
@@ -250,10 +269,15 @@ export function EmbeddingExplorer() {
         setData(scaled);
         setIsLoading(false);
       } catch (err) {
+        if (err && typeof err === 'object' && 'name' in err && (err as { name?: unknown }).name === 'AbortError') {
+          return;
+        }
         setLoadError(err instanceof Error ? err.message : 'Unknown error');
       }
     }
     load();
+
+    return () => controller.abort();
   }, []);
 
   // --------------------------------------------------------
@@ -738,7 +762,13 @@ export function EmbeddingExplorer() {
               >
                 <div className="relative flex-shrink-0">
                   {r.image_url ? (
-                    <img src={r.image_url} alt="" className="w-14 h-14 rounded-xl object-cover" loading="lazy" />
+                    <img
+                      src={getThumbnailUrl(r.image_url)}
+                      alt=""
+                      className="w-14 h-14 rounded-xl object-cover"
+                      loading="lazy"
+                      decoding="async"
+                    />
                   ) : (
                     <div className="w-14 h-14 rounded-xl bg-white/5 flex items-center justify-center">
                       <ImagePlaceholder />

@@ -13,13 +13,18 @@ type Env = {
   CLOUDFLARE_R2_ACCOUNT_ID?: string;
   CLOUDFLARE_R2_BUCKET?: string;
   CLOUDFLARE_R2_PUBLIC_DOMAIN?: string;
+  IMAGE_TRANSFORM_ZONE?: string;
+};
+
+const CORS_HEADERS: HeadersInit = {
+  'access-control-allow-origin': '*',
+  'access-control-allow-methods': 'GET, OPTIONS',
+  'access-control-allow-headers': 'Content-Type',
 };
 
 const JSON_HEADERS: HeadersInit = {
   'content-type': 'application/json; charset=utf-8',
-  'access-control-allow-origin': '*',
-  'access-control-allow-methods': 'GET, OPTIONS',
-  'access-control-allow-headers': 'Content-Type',
+  ...CORS_HEADERS,
 };
 
 const SELECT_FIELDS = `metadata_filename, image_filename, resolved_image_filename, image_size_bytes, name, description, date_value, credits, cote, external_url, portal_match, portal_title, portal_description, portal_date, portal_cote, aerial_datasets`;
@@ -45,6 +50,13 @@ export default {
           return methodNotAllowed();
         }
         return handleSearch(url, env);
+      }
+
+      if (url.pathname === '/api/thumb') {
+        if (request.method !== 'GET') {
+          return methodNotAllowed();
+        }
+        return handleThumbnail(url, env);
       }
 
       if (url.pathname === '/' || url.pathname === '/health') {
@@ -116,6 +128,18 @@ function clamp(num: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, num));
 }
 
+function clampInt(value: string | null, fallback: number, min: number, max: number): number {
+  const parsed = Number(value ?? '');
+  if (!Number.isFinite(parsed)) return fallback;
+  return clamp(Math.trunc(parsed), min, max);
+}
+
+function parseAllowedValue<T extends string>(value: string | null, allowed: readonly T[], fallback: T): T {
+  if (!value) return fallback;
+  const normalized = value.toLowerCase();
+  return (allowed as readonly string[]).includes(normalized) ? (normalized as T) : fallback;
+}
+
 async function handlePhotos(url: URL, env: Env): Promise<Response> {
   const limitParam = Number(url.searchParams.get('limit') ?? '50');
   const limit = clamp(Number.isFinite(limitParam) ? limitParam : 50, 1, 100);
@@ -174,6 +198,98 @@ async function handleSearch(url: URL, env: Env): Promise<Response> {
   const { results = [] } = await statement.bind(likeParam, likeParam, likeParam, likeParam, limit).all();
   const items = await Promise.all(results.map((row) => buildPhotoRecord(row, env)));
   return jsonResponse({ items, mode: 'text' });
+}
+
+async function handleThumbnail(url: URL, env: Env): Promise<Response> {
+  const src = (url.searchParams.get('src') ?? '').trim();
+  if (!src) {
+    return jsonResponse({ error: 'Missing required query parameter "src".' }, 400);
+  }
+
+  let srcUrl: URL;
+  try {
+    srcUrl = new URL(src);
+  } catch {
+    return jsonResponse({ error: 'Invalid "src" URL.' }, 400);
+  }
+
+  if (srcUrl.protocol !== 'https:' && srcUrl.protocol !== 'http:') {
+    return jsonResponse({ error: 'Invalid "src" protocol.' }, 400);
+  }
+
+  const isR2DevHost = srcUrl.hostname.endsWith('.r2.dev');
+  const isPublicHost = (env.CLOUDFLARE_R2_PUBLIC_DOMAIN && srcUrl.host === env.CLOUDFLARE_R2_PUBLIC_DOMAIN) || isR2DevHost;
+  const isSignedHost = Boolean(
+    env.CLOUDFLARE_R2_ACCOUNT_ID && srcUrl.host === `${env.CLOUDFLARE_R2_ACCOUNT_ID}.r2.cloudflarestorage.com`
+  );
+
+  if (!isPublicHost && !isSignedHost) {
+    return jsonResponse({ error: 'Forbidden "src" host.' }, 403);
+  }
+
+  if (isPublicHost) {
+    srcUrl.search = '';
+  }
+  srcUrl.hash = '';
+
+  const width = clampInt(url.searchParams.get('w') ?? url.searchParams.get('width'), 320, 1, 1024);
+  const height = clampInt(url.searchParams.get('h') ?? url.searchParams.get('height'), 160, 1, 1024);
+  const quality = clampInt(url.searchParams.get('q') ?? url.searchParams.get('quality'), 70, 1, 100);
+  const fit = parseAllowedValue(url.searchParams.get('fit'), ['cover', 'contain', 'scale-down'] as const, 'cover');
+  const requestedFormat = parseAllowedValue(
+    url.searchParams.get('format'),
+    ['auto', 'webp', 'avif', 'jpeg', 'png'] as const,
+    'auto'
+  );
+
+  let originResponse: Response;
+
+  // Use /cdn-cgi/image/ transform URL if IMAGE_TRANSFORM_ZONE is configured
+  if (env.IMAGE_TRANSFORM_ZONE) {
+    const formatOption = requestedFormat === 'auto' ? 'format=auto' : `format=${requestedFormat}`;
+    const transformOptions = `width=${width},height=${height},quality=${quality},fit=${fit},${formatOption}`;
+    const transformUrl = `https://${env.IMAGE_TRANSFORM_ZONE}/cdn-cgi/image/${transformOptions}/${srcUrl.toString()}`;
+
+    originResponse = await fetch(transformUrl, {
+      cf: {
+        cacheEverything: true,
+        cacheTtl: 60 * 60 * 24,
+      },
+    });
+  } else {
+    // Fallback to cf.image (only works on zones with Image Resizing enabled)
+    const format = requestedFormat === 'auto' ? undefined : requestedFormat;
+    originResponse = await fetch(srcUrl.toString(), {
+      cf: {
+        cacheEverything: true,
+        cacheTtl: 60 * 60 * 24,
+        image: {
+          width,
+          height,
+          fit,
+          quality,
+          format,
+        },
+      },
+    });
+  }
+
+  if (!originResponse.ok) {
+    return jsonResponse({ error: 'Failed to fetch thumbnail source.' }, 502);
+  }
+
+  const headers = new Headers(originResponse.headers);
+  headers.set('cache-control', 'public, max-age=86400');
+  headers.set('timing-allow-origin', '*');
+  headers.set('access-control-allow-origin', '*');
+  headers.set('access-control-allow-methods', 'GET, OPTIONS');
+  headers.set('access-control-allow-headers', 'Content-Type');
+  headers.delete('set-cookie');
+
+  return new Response(originResponse.body, {
+    status: originResponse.status,
+    headers,
+  });
 }
 
 function escapeForLike(value: string): string {
