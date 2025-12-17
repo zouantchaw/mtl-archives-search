@@ -21,11 +21,16 @@ flowchart TB
     end
 
     subgraph GPU["3. Lambda Labs A100 GPU"]
-        CLIP_INGEST["ingest-clip.ts<br/>Xenova CLIP model<br/>512-dim embeddings<br/>~3 hrs / $3.93"]
+        VLM_CAPTION["caption_images.py<br/>LLaVA 1.5 7B<br/>generates descriptions<br/>~8 hrs / $10"]
+        CLIP_INGEST["ingest-clip.ts<br/>Xenova CLIP model<br/>512-dim embeddings<br/>~3 hrs / $4"]
+    end
+
+    subgraph VLMOutput["3b. VLM Output"]
+        MANIFEST_VLM[/"manifest_vlm.jsonl<br/>(with vlm_caption)"/]
     end
 
     subgraph Scripts["4. Vectorization Scripts"]
-        TEXT_INGEST["ingest-text.ts<br/>Workers AI BGE<br/>1024-dim embeddings"]
+        TEXT_INGEST["ingest-text.ts<br/>Workers AI BGE<br/>1024-dim embeddings<br/>(uses vlm_caption)"]
         EXPORT["export-embeddings.ts<br/>UMAP 2D projection"]
     end
 
@@ -46,9 +51,16 @@ flowchart TB
     MANIFEST_CLEAN --> GENSQL --> SEED_SQL
     SEED_SQL -->|"wrangler d1 execute"| D1
 
-    MANIFEST_CLEAN --> TEXT_INGEST
+    %% VLM Captioning (for photos with synthetic descriptions)
+    MANIFEST_CLEAN --> VLM_CAPTION
+    PORTAL -.->|fetch images| VLM_CAPTION
+    VLM_CAPTION --> MANIFEST_VLM
+
+    %% Text embeddings use VLM captions
+    MANIFEST_VLM --> TEXT_INGEST
     TEXT_INGEST --> VEC_BGE
 
+    %% CLIP embeddings (visual search)
     MANIFEST_CLEAN --> CLIP_INGEST
     R2 -.->|fetch images| CLIP_INGEST
     CLIP_INGEST --> VEC_CLIP

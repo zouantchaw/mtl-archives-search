@@ -254,60 +254,84 @@ After training:
 
 ---
 
-## Part 7: Options for MTL Archives
+## Part 7: What We Built for MTL Archives
 
-### What You Have Now
+### What We Have Now
 
 ```
-✓ CLIP embeddings for all 15k photos
-✓ Visual search in browser
+✓ CLIP embeddings for all 15k photos (visual similarity search)
+✓ Visual search in browser via Xenova CLIP
 ✓ 3D point cloud visualization
-✓ BGE embeddings for text/metadata search
+✓ BGE embeddings for text/semantic search
+✓ VLM captions for photos with synthetic descriptions (NEW)
 ```
 
-### What You Could Add
+### The Problem We Solved
 
-#### Option A: Cloudflare Workers AI (Zero-Shot)
+97% of photos had **synthetic descriptions** like:
+> "Parc Lafontaine. Capturée ou datée de Décennie 1930"
+
+These are useless for semantic search — they just repeat the title + date.
+
+### The Solution: VLM Captioning
+
+We run **LLaVA 1.5 7B** on Lambda Labs A100 GPU to generate actual descriptions:
 
 ```
-You already have: env.AI binding
+Input:  [Image of park with trees and people]
+Prompt: "This is an archival photograph from Montreal's city archives.
+         It is titled 'Parc Lafontaine'. It is dated 1930s.
+         Describe what you see in 2-3 sentences..."
 
+Output: "A serene park scene showing tree-lined pathways with people
+         strolling. The image captures a wide grassy area with mature
+         deciduous trees providing shade..."
+```
+
+**Pipeline:**
+```
+manifest_clean.jsonl
+       ↓
+  caption_images.py (Lambda A100, ~8 hrs, ~$10)
+       ↓
+manifest_vlm.jsonl (adds vlm_caption field)
+       ↓
+  ingest-text.ts (uses vlm_caption for BGE embeddings)
+       ↓
+  Vectorize index (now searchable by visual content!)
+```
+
+### Future Options
+
+#### Option A: Zero-Shot Classification (Cloudflare Workers AI)
+
+Add category tags for filtering UI:
+
+```
 Model: @cf/meta/llama-3.2-11b-vision-instruct
 
 Pipeline:
-  1. For each photo in R2
-  2. Call Workers AI with image + classification prompt
-  3. Store result in D1: {photo_id, category, confidence}
-  4. Add category filters to your UI
+  1. For each photo, call Workers AI with classification prompt
+  2. Store result in D1: {photo_id, category: "church"}
+  3. Add category filters to UI
 ```
 
-**Effort:** Days
-**Cost:** Workers AI free tier, then usage-based
+**Effort:** Days | **Cost:** Workers AI usage-based
 
-#### Option B: Tinker + Qwen (Fine-Tuned)
+#### Option B: Fine-Tuned Classification (Tinker)
+
+Better accuracy with domain-specific training:
 
 ```
 Framework: tinker-cookbook/vlm_classifier
 
 Pipeline:
   1. Label 500-1000 photos manually
-  2. Create custom dataset class
-  3. Fine-tune Qwen-VL on GPU cluster
-  4. Run inference on all 15k photos
-  5. Store results in D1
+  2. Fine-tune Qwen-VL on GPU cluster
+  3. Run inference on all 15k photos
 ```
 
-**Effort:** Weeks
-**Cost:** GPU compute ($$), labeling time
-
-#### Option C: Hybrid
-
-```
-1. Start with zero-shot (Option A)
-2. Review results, correct mistakes
-3. Use corrections as training data
-4. Fine-tune if accuracy isn't good enough
-```
+**Effort:** Weeks | **Cost:** GPU compute + labeling time
 
 ---
 
@@ -317,8 +341,14 @@ Pipeline:
 |---------|--------------|---------------------|
 | **Embeddings** | Convert things to vectors | Similarity search |
 | **CLIP** | Same vector space for images & text | Visual search without metadata |
-| **VLM** | Image → language | (potential) Auto-tagging |
-| **Zero-shot** | Use model directly, no training | Quick classification |
+| **VLM Captioning** | Image → description | Generating searchable descriptions |
+| **VLM Classification** | Image → category | (future) Filtering by type |
+| **Zero-shot** | Use model directly, no training | Quick results |
 | **Fine-tuning** | Train on your data | Better accuracy |
 
-Your current CLIP-based search is powerful for **finding similar things**. VLM classification would add the ability to **label and filter things** — they're complementary tools.
+**What we have:**
+- CLIP embeddings → visual similarity search ("find photos that look like this")
+- VLM captions → semantic search ("find photos of churches") via BGE embeddings
+
+**What we could add:**
+- VLM classification → filtering UI ("show only churches")
