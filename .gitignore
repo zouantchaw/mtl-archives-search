@@ -1,6 +1,10 @@
 # Dependencies
 node_modules/
 
+# Build artifacts
+**/dist/
+**/*.tsbuildinfo
+
 # Wrangler
 .wrangler/
 data/mtl_archives/.wrangler-logs/

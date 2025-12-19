@@ -5,9 +5,13 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MONOREPO_ROOT = path.resolve(__dirname, '../../../../');
 
+// Prefer VLM-captioned manifest > clean > enriched
+const VLM_PATH = path.resolve(MONOREPO_ROOT, 'data/mtl_archives/manifest_vlm_complete.jsonl');
 const CLEAN_PATH = path.resolve(MONOREPO_ROOT, 'data/mtl_archives/manifest_clean.jsonl');
 const ENRICHED_PATH = path.resolve(MONOREPO_ROOT, 'data/mtl_archives/export/manifest_enriched.ndjson');
-const INPUT_PATH = fs.existsSync(CLEAN_PATH) ? CLEAN_PATH : ENRICHED_PATH;
+const INPUT_PATH = fs.existsSync(VLM_PATH) ? VLM_PATH
+  : fs.existsSync(CLEAN_PATH) ? CLEAN_PATH
+  : ENRICHED_PATH;
 
 // Ensure output directory exists
 const INFRA_DIR = path.resolve(MONOREPO_ROOT, 'infrastructure/d1');
@@ -32,7 +36,7 @@ function escapeValue(value: unknown): string {
     .replace(/'/g, "''")
     .replace(/\n/g, '\\n')
     .replace(/\r/g, '\\r');
-  return "'"${str}'";
+  return `'${str}'`;
 }
 
 function buildInsertStatement(rows: any[]) {
@@ -43,6 +47,7 @@ function buildInsertStatement(rows: any[]) {
     'image_size_bytes',
     'name',
     'description',
+    'vlm_caption',
     'date_value',
     'credits',
     'cote',
@@ -69,6 +74,7 @@ function buildInsertStatement(rows: any[]) {
       escapeValue(row.image_size_bytes ?? null),
       escapeValue(row.name ?? null),
       escapeValue(row.description ?? null),
+      escapeValue(row.vlm_caption ?? null),
       escapeValue(row.date_value ?? null),
       escapeValue(row.credits ?? null),
       escapeValue(row.cote ?? null),

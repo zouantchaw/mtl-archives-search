@@ -5,6 +5,7 @@ export type PhotoRecord = {
   imageSizeBytes: number | null;
   name: string | null;
   description: string | null;
+  vlmCaption: string | null;
   dateValue: string | null;
   credits: string | null;
   cote: string | null;

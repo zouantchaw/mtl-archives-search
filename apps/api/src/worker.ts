@@ -27,7 +27,7 @@ const JSON_HEADERS: HeadersInit = {
   ...CORS_HEADERS,
 };
 
-const SELECT_FIELDS = `metadata_filename, image_filename, resolved_image_filename, image_size_bytes, name, description, date_value, credits, cote, external_url, portal_match, portal_title, portal_description, portal_date, portal_cote, aerial_datasets`;
+const SELECT_FIELDS = `metadata_filename, image_filename, resolved_image_filename, image_size_bytes, name, description, vlm_caption, date_value, credits, cote, external_url, portal_match, portal_title, portal_description, portal_date, portal_cote, aerial_datasets`;
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -92,6 +92,7 @@ async function buildPhotoRecord(row: Record<string, unknown>, env: Env): Promise
     imageSizeBytes: row.image_size_bytes != null ? Number(row.image_size_bytes) : null,
     name: row.name != null ? String(row.name) : null,
     description: row.description != null ? String(row.description) : null,
+    vlmCaption: row.vlm_caption != null ? String(row.vlm_caption) : null,
     dateValue: row.date_value != null ? String(row.date_value) : null,
     credits: row.credits != null ? String(row.credits) : null,
     cote: row.cote != null ? String(row.cote) : null,

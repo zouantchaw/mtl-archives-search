@@ -16,7 +16,8 @@ const VECTORIZE_INDEX = process.env.CLOUDFLARE_VECTORIZE_INDEX || 'mtl-archives'
 const EMBEDDING_MODEL = process.env.CLOUDFLARE_EMBEDDING_MODEL || '@cf/baai/bge-large-en-v1.5';
 const BATCH_SIZE = Number(process.env.VECTORIZE_BATCH_SIZE || '16');
 
-// Defaults
+// Defaults - prefer VLM-captioned manifest
+const DEFAULT_VLM_PATH = path.resolve(MONOREPO_ROOT, 'data/mtl_archives/manifest_vlm_complete.jsonl');
 const DEFAULT_CLEAN_PATH = path.resolve(MONOREPO_ROOT, 'data/mtl_archives/manifest_clean.jsonl');
 const DEFAULT_ENRICHED_PATH = path.resolve(MONOREPO_ROOT, 'data/mtl_archives/export/manifest_enriched.ndjson');
 
@@ -82,6 +83,14 @@ async function upsertVectors(vectors: any[]) {
 }
 
 function buildText(record: any): string {
+  // Prefer VLM caption if available (actual description of image content)
+  if (record.vlm_caption) {
+    // Combine name + VLM caption for richer context
+    const name = record.name || '';
+    return name ? `${name}\n${record.vlm_caption}` : record.vlm_caption;
+  }
+
+  // Fallback to original metadata (for non-synthetic records)
   const parts = [
     record.name,
     record.description,
@@ -90,7 +99,7 @@ function buildText(record: any): string {
   ]
   .filter(Boolean)
   .map(v => String(v));
-  
+
   return parts.length ? parts.join('\n') : record.metadata_filename;
 }
 
@@ -103,9 +112,12 @@ async function main() {
     },
   });
 
-  const manifestPath = values.input 
+  // Prefer VLM-captioned manifest > clean > enriched
+  const manifestPath = values.input
     ? path.resolve(process.cwd(), values.input)
-    : (fs.existsSync(DEFAULT_CLEAN_PATH) ? DEFAULT_CLEAN_PATH : DEFAULT_ENRICHED_PATH);
+    : (fs.existsSync(DEFAULT_VLM_PATH) ? DEFAULT_VLM_PATH
+       : fs.existsSync(DEFAULT_CLEAN_PATH) ? DEFAULT_CLEAN_PATH
+       : DEFAULT_ENRICHED_PATH);
 
   const limit = values.limit ? parseInt(values.limit, 10) : undefined;
 
@@ -123,7 +135,10 @@ async function main() {
   }
 
   const total = records.length;
+  const withVlmCaption = records.filter(r => r.vlm_caption).length;
   console.log(`Ingesting ${total} records into index "${VECTORIZE_INDEX}"...`);
+  console.log(`  - ${withVlmCaption} with VLM captions (will use vlm_caption)`);
+  console.log(`  - ${total - withVlmCaption} without (will use original metadata)`);
 
   for (let i = 0; i < total; i += BATCH_SIZE) {
     const batch = records.slice(i, i + BATCH_SIZE);
