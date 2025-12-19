@@ -68,3 +68,6 @@ __pycache__/
 # Browser/network captures
 *.har
 docs/csapp-lessons-vlm.md
+
+# Backup files
+*.bak

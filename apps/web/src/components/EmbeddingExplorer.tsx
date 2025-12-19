@@ -637,17 +637,25 @@ export function EmbeddingExplorer() {
           searchApi(q, 'semantic'),
         ]);
 
-        // Merge and dedupe by id, combining scores
+        // Dynamic weighting: short queries favor CLIP (visual), longer queries favor BGE (semantic)
+        // - 1-2 words: 80% CLIP, 20% semantic (visual concepts like "church", "bridge")
+        // - 3-4 words: 60% CLIP, 40% semantic (mixed queries)
+        // - 5+ words: 40% CLIP, 60% semantic (descriptive queries)
+        const wordCount = q.trim().split(/\s+/).length;
+        const clipWeight = wordCount <= 2 ? 0.8 : wordCount <= 4 ? 0.6 : 0.4;
+        const semanticWeight = 1 - clipWeight;
+
+        // Merge and dedupe by id, combining weighted scores
         const merged = new Map<string, ScoredPoint>();
         for (const r of clipResults) {
-          merged.set(r.id, { ...r, similarity: r.similarity * 0.5 }); // Weight CLIP at 50%
+          merged.set(r.id, { ...r, similarity: r.similarity * clipWeight });
         }
         for (const r of semanticResults) {
           const existing = merged.get(r.id);
           if (existing) {
-            existing.similarity += r.similarity * 0.5; // Add semantic score
+            existing.similarity += r.similarity * semanticWeight;
           } else {
-            merged.set(r.id, { ...r, similarity: r.similarity * 0.5 });
+            merged.set(r.id, { ...r, similarity: r.similarity * semanticWeight });
           }
         }
         scored = Array.from(merged.values())

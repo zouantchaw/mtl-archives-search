@@ -169,7 +169,7 @@ async function main() {
       x: embedding2d[idx][0],
       y: embedding2d[idx][1],
       name: record.name || '',
-      date: record.attributes_map?.Date || record.date_value || '',
+      date: record.date_value || '',
       image_url: imgUrl,
       vlm_caption: captionPreview,
     };
