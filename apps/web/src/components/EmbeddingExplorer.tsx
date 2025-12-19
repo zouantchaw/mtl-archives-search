@@ -26,10 +26,22 @@ type Point = {
   name: string;
   date: string;
   image_url: string;
+  vlm_caption: string;
   embeddingIndex: number;
 };
 
 type ScoredPoint = Point & { similarity: number };
+
+type SearchMode = 'clip' | 'semantic' | 'hybrid';
+
+type ApiResult = {
+  metadataFilename: string;
+  name: string | null;
+  dateValue: string | null;
+  imageUrl: string;
+  vlmCaption: string | null;
+  score?: number;
+};
 
 function getThumbnailUrl(src: string): string {
   const params = new URLSearchParams({
@@ -148,8 +160,10 @@ export function EmbeddingExplorer() {
   const [modelStatus, setModelStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [query, setQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  const isSearchingRef = useRef(false);
   const [results, setResults] = useState<ScoredPoint[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [searchMode, setSearchMode] = useState<SearchMode>('clip');
 
   const topResults = useMemo(() => results.slice(0, 5), [results]);
 
@@ -540,41 +554,114 @@ export function EmbeddingExplorer() {
   // --------------------------------------------------------
   // Search
   // --------------------------------------------------------
+
+  // API-based search (semantic or visual)
+  const searchApi = useCallback(async (q: string, mode: 'semantic' | 'visual'): Promise<ScoredPoint[]> => {
+    const params = new URLSearchParams({ q, mode, limit: '50' });
+    const res = await fetch(`${API_ORIGIN}/api/search?${params}`);
+    if (!res.ok) return [];
+
+    const json = await res.json() as { items: ApiResult[] };
+    const idToPoint = new Map(data.map(p => [p.id, p]));
+
+    return json.items
+      .map(item => {
+        const point = idToPoint.get(item.metadataFilename);
+        if (point) {
+          return { ...point, similarity: item.score ?? 0.5 };
+        }
+        // Return a virtual point for API-only results
+        return {
+          id: item.metadataFilename,
+          x: SCALE / 2 + (Math.random() - 0.5) * 100,
+          y: SCALE / 2 + (Math.random() - 0.5) * 100,
+          z: 50,
+          name: item.name || '',
+          date: item.dateValue || '',
+          image_url: item.imageUrl || '',
+          vlm_caption: item.vlmCaption || '',
+          embeddingIndex: -1,
+          similarity: item.score ?? 0.5,
+        };
+      })
+      .filter((p): p is ScoredPoint => p !== null);
+  }, [data]);
+
+  // Client-side CLIP search
+  const searchClip = useCallback(async (q: string): Promise<ScoredPoint[]> => {
+    if (!clipModel || !embeddings) return [];
+
+    const inputs = clipModel.tokenizer(q, { padding: true, truncation: true, max_length: 77 });
+    const { text_embeds } = await clipModel.model(inputs);
+    const qEmb = text_embeds.data as Float32Array;
+
+    const norm = Math.sqrt(qEmb.reduce((s, v) => s + v * v, 0));
+    for (let i = 0; i < qEmb.length; i++) qEmb[i] /= norm;
+
+    return data
+      .filter(p => p.embeddingIndex >= 0)
+      .map(p => {
+        const off = p.embeddingIndex * embeddings.dims;
+        const sim = cosineSimilarity(qEmb, embeddings.data.subarray(off, off + embeddings.dims));
+        return { ...p, similarity: sim };
+      })
+      .sort((a, b) => b.similarity - a.similarity)
+      .slice(0, 100);
+  }, [clipModel, embeddings, data]);
+
+  // Main search handler
   const search = useCallback(async (q: string) => {
     if (!q.trim()) {
       setResults([]);
       setSelectedIndex(-1);
       return;
     }
-    if (!clipModel || !embeddings || isSearching) return;
+    if (isSearchingRef.current) return;
 
+    isSearchingRef.current = true;
     setIsSearching(true);
     await new Promise(r => setTimeout(r, 30));
 
     try {
-      const inputs = clipModel.tokenizer(q, { padding: true, truncation: true, max_length: 77 });
-      const { text_embeds } = await clipModel.model(inputs);
-      const qEmb = text_embeds.data as Float32Array;
+      let scored: ScoredPoint[] = [];
 
-      const norm = Math.sqrt(qEmb.reduce((s, v) => s + v * v, 0));
-      for (let i = 0; i < qEmb.length; i++) qEmb[i] /= norm;
+      if (searchMode === 'clip') {
+        if (!clipModel || !embeddings) return;
+        scored = await searchClip(q);
+      } else if (searchMode === 'semantic') {
+        scored = await searchApi(q, 'semantic');
+      } else if (searchMode === 'hybrid') {
+        // Run both CLIP and semantic in parallel, merge results
+        const [clipResults, semanticResults] = await Promise.all([
+          clipModel && embeddings ? searchClip(q) : Promise.resolve([]),
+          searchApi(q, 'semantic'),
+        ]);
 
-      const scored = data
-        .filter(p => p.embeddingIndex >= 0)
-        .map(p => {
-          const off = p.embeddingIndex * embeddings.dims;
-          const sim = cosineSimilarity(qEmb, embeddings.data.subarray(off, off + embeddings.dims));
-          return { ...p, similarity: sim };
-        })
-        .sort((a, b) => b.similarity - a.similarity)
-        .slice(0, 100);
+        // Merge and dedupe by id, combining scores
+        const merged = new Map<string, ScoredPoint>();
+        for (const r of clipResults) {
+          merged.set(r.id, { ...r, similarity: r.similarity * 0.5 }); // Weight CLIP at 50%
+        }
+        for (const r of semanticResults) {
+          const existing = merged.get(r.id);
+          if (existing) {
+            existing.similarity += r.similarity * 0.5; // Add semantic score
+          } else {
+            merged.set(r.id, { ...r, similarity: r.similarity * 0.5 });
+          }
+        }
+        scored = Array.from(merged.values())
+          .sort((a, b) => b.similarity - a.similarity)
+          .slice(0, 100);
+      }
 
       setResults(scored);
       setSelectedIndex(-1);
     } finally {
+      isSearchingRef.current = false;
       setIsSearching(false);
     }
-  }, [clipModel, embeddings, data, isSearching]);
+  }, [clipModel, embeddings, searchMode, searchClip, searchApi]);
 
   useEffect(() => {
     const t = setTimeout(() => search(query), 250);
@@ -672,6 +759,9 @@ export function EmbeddingExplorer() {
           <div className="p-3">
             <p className="text-sm font-medium text-white leading-snug">{hoverPoint.name || 'Untitled'}</p>
             <p className="text-xs text-white/50 mt-1">{hoverPoint.date || 'Unknown date'}</p>
+            {hoverPoint.vlm_caption && (
+              <p className="text-xs text-white/70 mt-2 leading-relaxed">{hoverPoint.vlm_caption}</p>
+            )}
           </div>
         </GlassPanel>
       )}
@@ -689,6 +779,28 @@ export function EmbeddingExplorer() {
             }`}
           >
             {v.toUpperCase()}
+          </button>
+        ))}
+      </GlassPanel>
+
+      {/* Search Mode Toggle */}
+      <GlassPanel className="fixed top-5 left-32 z-30 rounded-xl p-1 flex">
+        {([
+          { mode: 'clip' as const, label: 'Visual', title: 'Client-side CLIP image similarity' },
+          { mode: 'semantic' as const, label: 'Text', title: 'Server-side BGE text search (uses VLM captions)' },
+          { mode: 'hybrid' as const, label: 'Hybrid', title: 'Combined visual + text search' },
+        ]).map(({ mode, label, title }) => (
+          <button
+            key={mode}
+            onClick={() => setSearchMode(mode)}
+            title={title}
+            className={`px-4 py-2 text-xs font-medium rounded-lg transition-all duration-200 ${
+              searchMode === mode
+                ? 'bg-white/15 text-white'
+                : 'text-white/40 hover:text-white/70 hover:bg-white/5'
+            }`}
+          >
+            {label}
           </button>
         ))}
       </GlassPanel>
@@ -781,6 +893,9 @@ export function EmbeddingExplorer() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-white font-medium truncate">{r.name || 'Untitled'}</p>
                   <p className="text-xs text-white/40 mt-0.5">{r.date || 'Unknown'}</p>
+                  {r.vlm_caption && (
+                    <p className="text-xs text-white/60 mt-1 line-clamp-2">{r.vlm_caption}</p>
+                  )}
                   <div className="flex items-center gap-2 mt-2">
                     <span className="text-xs font-semibold text-emerald-400">{(r.similarity * 100).toFixed(1)}%</span>
                     <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">

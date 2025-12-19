@@ -21,12 +21,12 @@ flowchart TB
     end
 
     subgraph GPU["3. Lambda Labs A100 GPU"]
-        VLM_CAPTION["caption_images.py<br/>LLaVA 1.5 7B<br/>generates descriptions<br/>~8 hrs / $10"]
+        VLM_CAPTION["caption_images_r2.py<br/>LLaVA 1.5 7B<br/>generates descriptions<br/>~11 hrs / $14"]
         CLIP_INGEST["ingest-clip.ts<br/>Xenova CLIP model<br/>512-dim embeddings<br/>~3 hrs / $4"]
     end
 
     subgraph VLMOutput["3b. VLM Output"]
-        MANIFEST_VLM[/"manifest_vlm.jsonl<br/>(with vlm_caption)"/]
+        MANIFEST_VLM[/"manifest_vlm_complete.jsonl<br/>(14,822 records with vlm_caption)"/]
     end
 
     subgraph Scripts["4. Vectorization Scripts"]
@@ -53,7 +53,7 @@ flowchart TB
 
     %% VLM Captioning (for photos with synthetic descriptions)
     MANIFEST_CLEAN --> VLM_CAPTION
-    PORTAL -.->|fetch images| VLM_CAPTION
+    R2 -.->|fetch images| VLM_CAPTION
     VLM_CAPTION --> MANIFEST_VLM
 
     %% Text embeddings use VLM captions

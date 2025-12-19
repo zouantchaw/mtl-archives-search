@@ -15,7 +15,10 @@ const API_TOKEN = process.env.CLOUDFLARE_AI_TOKEN || process.env.CF_AI_TOKEN || 
 const VECTORIZE_INDEX = 'mtl-archives-clip'; // Visual embeddings
 const R2_PUBLIC_DOMAIN = process.env.CLOUDFLARE_R2_PUBLIC_DOMAIN;
 
-const MANIFEST_PATH = path.resolve(MONOREPO_ROOT, 'data/mtl_archives/manifest_clean.jsonl');
+// Prefer VLM-captioned manifest
+const VLM_MANIFEST_PATH = path.resolve(MONOREPO_ROOT, 'data/mtl_archives/manifest_vlm_complete.jsonl');
+const CLEAN_MANIFEST_PATH = path.resolve(MONOREPO_ROOT, 'data/mtl_archives/manifest_clean.jsonl');
+const MANIFEST_PATH = fs.existsSync(VLM_MANIFEST_PATH) ? VLM_MANIFEST_PATH : CLEAN_MANIFEST_PATH;
 const OUTPUT_PATH = path.resolve(MONOREPO_ROOT, 'data/mtl_archives/embeddings_2d.json');
 const CACHE_PATH = path.resolve(MONOREPO_ROOT, 'data/mtl_archives/vectors_cache.json');
 
@@ -155,13 +158,20 @@ async function main() {
     const imgFile = record.resolved_image_filename || record.image_filename;
     const imgUrl = (R2_PUBLIC_DOMAIN && imgFile) ? `https://${R2_PUBLIC_DOMAIN}/${imgFile}` : '';
 
+    // Truncate vlm_caption to first 200 chars for display
+    const vlmCaption = record.vlm_caption || '';
+    const captionPreview = vlmCaption.length > 200
+      ? vlmCaption.slice(0, 200).trim() + '...'
+      : vlmCaption;
+
     return {
       id,
       x: embedding2d[idx][0],
       y: embedding2d[idx][1],
       name: record.name || '',
-      date: record.attributes_map?.Date || '',
+      date: record.attributes_map?.Date || record.date_value || '',
       image_url: imgUrl,
+      vlm_caption: captionPreview,
     };
   });
 

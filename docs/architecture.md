@@ -5,15 +5,15 @@
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                              Client Applications                             │
-│                    (Web UI, Mobile App, ML Experiments)                      │
+│                         (Web UI, Mobile App, CLI)                            │
 └─────────────────────────────────────────────────────────────────────────────┘
                                        │
                                        ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                         Cloudflare Worker (api/worker.ts)                    │
+│                         Cloudflare Worker (apps/api)                         │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────────────────┐  │
-│  │  /api/photos    │  │  /api/search    │  │  /api/search/visual (TODO)  │  │
-│  │  (paginated)    │  │  ?mode=text     │  │  CLIP image search          │  │
+│  │  /api/photos    │  │  /api/search    │  │  /api/search?mode=visual    │  │
+│  │  (paginated)    │  │  ?mode=text     │  │  CLIP text→image search     │  │
 │  │                 │  │  ?mode=semantic │  │                             │  │
 │  └─────────────────┘  └─────────────────┘  └─────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -21,30 +21,28 @@
          │                      │                           │
          ▼                      ▼                           ▼
 ┌─────────────────┐   ┌─────────────────┐         ┌─────────────────┐
-│   Cloudflare    │   │   Cloudflare    │         │   Cloudflare    │
-│       D1        │   │    Vectorize    │         │   Workers AI    │
-│   (metadata)    │   │   (embeddings)  │         │  (BGE / CLIP)   │
-│                 │   │                 │         │                 │
-│  ┌───────────┐  │   │  ┌───────────┐  │         │  ┌───────────┐  │
-│  │ manifest  │  │   │  │ text idx  │  │         │  │ BGE-large │  │
-│  │  table    │  │   │  │ (BGE)     │  │         │  │  en-v1.5  │  │
-│  │  14,822   │  │   │  ├───────────┤  │         │  ├───────────┤  │
-│  │  records  │  │   │  │ clip idx  │  │         │  │   CLIP    │  │
-│  └───────────┘  │   │  │  (TODO)   │  │         │  │  (TODO)   │  │
-│                 │   │  └───────────┘  │         │  └───────────┘  │
-└─────────────────┘   └─────────────────┘         └─────────────────┘
-                                                           │
-                                                           │
-                              ┌─────────────────────────────┘
-                              ▼
-                    ┌─────────────────┐
-                    │   Cloudflare    │
-                    │       R2        │
-                    │    (images)     │
-                    │                 │
-                    │   ~15k photos   │
-                    │   Signed URLs   │
-                    └─────────────────┘
+│   Cloudflare    │   │   Cloudflare    │         │   External AI   │
+│       D1        │   │    Vectorize    │         │    Services     │
+│   (metadata)    │   │   (embeddings)  │         │                 │
+│                 │   │                 │         │  ┌───────────┐  │
+│  ┌───────────┐  │   │  ┌───────────┐  │         │  │ Workers AI│  │
+│  │ manifest  │  │   │  │mtl-archives│ │         │  │ (BGE)     │  │
+│  │  table    │  │   │  │ (BGE text)│  │         │  ├───────────┤  │
+│  │  14,822   │  │   │  ├───────────┤  │         │  │HuggingFace│  │
+│  │  records  │  │   │  │mtl-archives│ │         │  │ (CLIP)    │  │
+│  │           │  │   │  │-clip (img)│  │         │  └───────────┘  │
+│  └───────────┘  │   │  └───────────┘  │         └─────────────────┘
+└─────────────────┘   └─────────────────┘
+         │
+         ▼
+┌─────────────────┐
+│   Cloudflare    │
+│       R2        │
+│    (images)     │
+│                 │
+│   ~15k photos   │
+│   Public URLs   │
+└─────────────────┘
 ```
 
 ## Data Flow
@@ -64,22 +62,36 @@ Base (JSONL)          │             │              │
                       │                    │
                       │                    ▼
                       │             ┌──────────────┐                ┌─────────┐
-                      │             │  Clean &     │                │   D1    │
-                      └────────────▶│  Normalize   │───────────────▶│ (SQL)   │
+                      │             │  Clean &     │                │   R2    │
+                      └────────────▶│  Normalize   │───────────────▶│ (images)│
+                                    └──────────────┘                └─────────┘
+                                           │
+                                           ▼
+                                    ┌──────────────┐
+                                    │     VLM      │
+                                    │  Captioning  │  ◀── LLaVA 1.5 7B on Lambda Labs
+                                    │  (GPU job)   │      ~15k images → vlm_caption
+                                    └──────┬───────┘
+                                           │
+                                           ▼
+                                    ┌──────────────┐                ┌─────────┐
+                                    │  Generate    │                │   D1    │
+                                    │  Seed SQL    │───────────────▶│(metadata│
+                                    │              │                │+vlm_cap)│
                                     └──────────────┘                └─────────┘
                                            │
                                            ▼
                                     ┌──────────────┐                ┌─────────┐
                                     │  Generate    │                │Vectorize│
-                                    │  Embeddings  │───────────────▶│ (BGE)   │
-                                    │  (BGE text)  │                └─────────┘
-                                    └──────────────┘
+                                    │  Embeddings  │───────────────▶│mtl-     │
+                                    │  (BGE text)  │  Uses vlm_cap  │archives │
+                                    └──────────────┘                └─────────┘
                                            │
                                            ▼
                                     ┌──────────────┐                ┌─────────┐
                                     │  Generate    │                │Vectorize│
-                                    │  Embeddings  │───────────────▶│ (CLIP)  │
-                                    │  (CLIP img)  │                │  TODO   │
+                                    │  Embeddings  │───────────────▶│mtl-arch-│
+                                    │  (CLIP img)  │  From R2 URLs  │ives-clip│
                                     └──────────────┘                └─────────┘
 ```
 
@@ -92,55 +104,96 @@ User Query ──▶ SQL LIKE ──▶ D1 ──▶ Results + R2 URLs
 
 Semantic Search (?mode=semantic)
 ─────────────────────────────────
-User Query ──▶ Workers AI ──▶ BGE Embedding ──▶ Vectorize ──▶ D1 Hydration ──▶ Results
+User Query ──▶ Workers AI (BGE) ──▶ Vectorize ──▶ D1 Hydration ──▶ Results
+                                        │
+                            Searches vlm_caption embeddings
 
-Visual Search (?mode=visual) [TODO]
-────────────────────────────────────
-User Query/Image ──▶ Workers AI ──▶ CLIP Embedding ──▶ Vectorize ──▶ D1 Hydration ──▶ Results
+Visual Search (?mode=visual)
+────────────────────────────
+User Query ──▶ HuggingFace (CLIP text) ──▶ Vectorize CLIP ──▶ D1 Hydration ──▶ Results
+                                                │
+                                    Matches against image embeddings
+```
+
+## D1 Schema
+
+```sql
+CREATE TABLE manifest (
+  metadata_filename TEXT PRIMARY KEY,
+  image_filename TEXT,
+  resolved_image_filename TEXT,
+  image_size_bytes INTEGER,
+  name TEXT,
+  description TEXT,           -- Original/synthetic description
+  vlm_caption TEXT,           -- VLM-generated image description (98% coverage)
+  date_value TEXT,
+  credits TEXT,
+  cote TEXT,
+  external_url TEXT,
+  portal_match INTEGER,
+  portal_title TEXT,
+  portal_description TEXT,
+  portal_date TEXT,
+  portal_cote TEXT,
+  aerial_datasets TEXT        -- JSON array
+);
 ```
 
 ## Repository Structure
 
 ```
 mtl-archives-search/
-├── api/                          # Cloudflare Worker
-│   └── worker.ts                 # Single entry point, REST API
-├── pipelines/                    # Data processing scripts
-│   ├── etl/                      # Python: clean, export, audit metadata
-│   │   ├── clean_metadata.py
-│   │   ├── export_manifest.py
-│   │   └── audit_metadata_quality.py
-│   ├── vectorize/                # Embedding generation
-│   │   ├── ingest_text.js        # BGE text embeddings
-│   │   └── ingest_clip.js        # CLIP image embeddings (TODO)
-│   └── sql/                      # D1 seed generation
-│       └── generate_manifest_sql.js
-├── infrastructure/               # Cloudflare resources
-│   └── d1/
-│       └── migrations/
-├── data/                         # Local data (gitignored)
-│   └── mtl_archives/
+├── apps/
+│   ├── api/                      # Cloudflare Worker (REST API)
+│   │   ├── src/worker.ts         # Single entry point
+│   │   └── wrangler.toml         # Cloudflare bindings
+│   └── web/                      # React frontend
+│       └── src/
+├── packages/
+│   ├── core/                     # Shared types (PhotoRecord)
+│   └── scripts/                  # Node.js pipeline scripts
+│       └── src/
+│           ├── db/               # D1 seed generation
+│           └── vectorize/        # Embedding ingestion
+├── pipelines/
+│   ├── etl/                      # Python: clean, export, audit
+│   └── vlm/                      # VLM captioning scripts
+├── infrastructure/
+│   └── d1/migrations/            # D1 schema migrations
 ├── docs/                         # Documentation
-│   └── architecture.md           # This file
-├── wrangler.toml                 # Cloudflare bindings
-└── package.json                  # Scripts and dependencies
+└── data/                         # Local data (gitignored)
 ```
 
 ## Search Modes Comparison
 
-| Mode | Backend | Matches On | Best For |
-|------|---------|------------|----------|
-| `text` | D1 (SQL LIKE) | Exact keywords in metadata | Known terms, names, dates |
-| `semantic` | Vectorize (BGE) | Conceptually similar text | Fuzzy queries, synonyms |
-| `visual` (TODO) | Vectorize (CLIP) | Visual similarity | "Find similar photos", image upload |
+| Mode | Backend | Embedding | Matches On | Best For |
+|------|---------|-----------|------------|----------|
+| `text` | D1 (SQL LIKE) | None | Exact keywords | Known terms, names, dates |
+| `semantic` | Vectorize (BGE) | 1024-dim | VLM caption text | Conceptual queries, synonyms |
+| `visual` | Vectorize (CLIP) | 512-dim | Image content | "Show me X", visual similarity |
 
 ## Technology Stack
 
 - **Runtime**: Cloudflare Workers (Edge)
 - **Database**: Cloudflare D1 (SQLite)
 - **Vector Store**: Cloudflare Vectorize
-- **AI Models**: Cloudflare Workers AI
-  - BGE-large-en-v1.5 (text embeddings)
-  - CLIP (image embeddings, planned)
+  - `mtl-archives`: BGE text embeddings (1024-dim)
+  - `mtl-archives-clip`: CLIP image embeddings (512-dim)
+- **AI Models**:
+  - Workers AI: BGE-large-en-v1.5 (semantic search)
+  - HuggingFace Inference API: CLIP ViT-B/32 (visual search)
+  - LLaVA 1.5 7B: VLM captioning (offline, Lambda Labs A100)
 - **Object Storage**: Cloudflare R2
 - **ETL**: Python 3.10+, Node.js 23+
+
+## VLM Captioning Pipeline
+
+The semantic search quality depends on having good text descriptions for each image. Since ~85% of records had only synthetic/placeholder descriptions, we ran VLM captioning:
+
+1. **Input**: 14,822 images from R2
+2. **Model**: LLaVA 1.5 7B on Lambda Labs A100 (40GB)
+3. **Output**: `vlm_caption` field with 2-3 sentence descriptions
+4. **Coverage**: 98% of records now have VLM captions
+5. **Cost**: $14 for ~11 hours of GPU time
+
+See `docs/metrics/vlm-captioning/` for detailed run metrics.

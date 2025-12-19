@@ -4,14 +4,15 @@
 flowchart TB
     subgraph Browser["Browser"]
         UI["React App<br/>EmbeddingExplorer.tsx"]
+        MODE["Search Mode Toggle<br/>Visual | Text | Hybrid"]
         THREE["Three.js<br/>3D Point Cloud"]
         CLIP_LOCAL["Xenova CLIP<br/>(client-side)"]
-        EMB_CACHE[("Local Memory<br/>embeddings_512d.bin")]
+        EMB_CACHE[("Local Memory<br/>embeddings_512d.bin<br/>+ vlm_caption")]
     end
 
     subgraph R2["Cloudflare R2"]
         STATIC["Static Assets<br/>React bundle"]
-        EMB["Embedding Files<br/>• embeddings_2d.json<br/>• embeddings_512d.bin<br/>• embeddings_ids.json"]
+        EMB["Embedding Files<br/>• embeddings_2d.json (+ vlm_caption)<br/>• embeddings_512d.bin<br/>• embeddings_ids.json"]
         IMAGES[("~15k Images")]
     end
 
@@ -24,10 +25,11 @@ flowchart TB
     end
 
     subgraph Services["Cloudflare Services"]
-        D1[("D1 Database<br/>Photo metadata")]
-        VEC_BGE[("Vectorize BGE<br/>1024-dim")]
+        D1[("D1 Database<br/>Photo metadata<br/>+ vlm_caption")]
+        VEC_BGE[("Vectorize BGE<br/>1024-dim<br/>(vlm_caption embeddings)")]
         VEC_CLIP[("Vectorize CLIP<br/>512-dim")]
         AI["Workers AI"]
+        HF["HuggingFace API<br/>(CLIP text embed)"]
     end
 
     %% Initial load
@@ -35,25 +37,36 @@ flowchart TB
     UI -->|"2. fetch embeddings"| EMB
     EMB -->|"store in memory"| EMB_CACHE
     EMB -->|"render points"| THREE
+    UI --> MODE
 
-    %% Visual search (client-side)
-    UI -->|"3a. search query"| CLIP_LOCAL
+    %% Visual search (client-side CLIP)
+    MODE -->|"Visual mode"| CLIP_LOCAL
     CLIP_LOCAL -->|"512-dim vector"| UI
     UI -->|"cosine similarity"| EMB_CACHE
     EMB_CACHE -->|"top-k matches"| THREE
 
-    %% Hover interaction
-    THREE -->|"3b. hover on point"| THUMB
-    THUMB -->|"resize + cache"| IMAGES
-
-    %% Text/Semantic search (server-side)
-    UI -->|"4. text search"| SEARCH
-    SEARCH -->|"mode=text"| D1
+    %% Semantic search (server-side BGE)
+    MODE -->|"Text mode"| SEARCH
     SEARCH -->|"mode=semantic"| AI
     AI -->|"embed query"| VEC_BGE
     VEC_BGE -->|"top-k IDs"| D1
-    D1 -->|"metadata"| UI
+    D1 -->|"metadata + vlm_caption"| UI
+
+    %% Hybrid search (both in parallel)
+    MODE -->|"Hybrid mode"| UI
+    UI -->|"parallel: CLIP local"| CLIP_LOCAL
+    UI -->|"parallel: API semantic"| SEARCH
+    UI -->|"merge + rank results"| THREE
+
+    %% Hover interaction
+    THREE -->|"hover on point"| THUMB
+    THUMB -->|"resize + cache"| IMAGES
+
+    %% Visual search via API (alternative)
+    SEARCH -->|"mode=visual"| HF
+    HF -->|"CLIP text embed"| VEC_CLIP
+    VEC_CLIP -->|"top-k IDs"| D1
 
     %% Pagination
-    UI -->|"5. browse photos"| PHOTOS
+    UI -->|"browse photos"| PHOTOS
     PHOTOS --> D1

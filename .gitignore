@@ -67,3 +67,4 @@ __pycache__/
 
 # Browser/network captures
 *.har
+docs/csapp-lessons-vlm.md
