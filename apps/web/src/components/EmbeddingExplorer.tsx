@@ -101,6 +101,77 @@ function Spinner({ size = 'md' }: { size?: 'sm' | 'md' }) {
   return <div className={`${dims} border-2 border-white/20 border-t-white/80 rounded-full animate-spin`} />;
 }
 
+function CopyIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </svg>
+  );
+}
+
+function CheckIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
+function Toast({ message, visible }: { message: string; visible: boolean }) {
+  return (
+    <div
+      className={`fixed bottom-8 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-full bg-white/95 text-black text-sm font-medium shadow-lg backdrop-blur-xl transition-all duration-300 flex items-center gap-2 ${
+        visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
+      }`}
+    >
+      <span className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center text-white">
+        <CheckIcon size={12} />
+      </span>
+      {message}
+    </div>
+  );
+}
+
+function CopyButton({ text, label, onCopy }: { text: string; label: string; onCopy: (msg: string) => void }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      onCopy(label);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Fallback for older browsers
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      setCopied(true);
+      onCopy(label);
+      setTimeout(() => setCopied(false), 1500);
+    }
+  };
+
+  return (
+    <button
+      onClick={handleCopy}
+      className={`p-1.5 rounded-md transition-all duration-200 ${
+        copied
+          ? 'bg-emerald-500/20 text-emerald-400'
+          : 'bg-white/0 text-white/40 hover:bg-white/10 hover:text-white/80'
+      }`}
+      title={`Copy ${label}`}
+    >
+      {copied ? <CheckIcon size={12} /> : <CopyIcon size={12} />}
+    </button>
+  );
+}
+
 const GlassPanel = forwardRef<HTMLDivElement, { children: React.ReactNode; className?: string; style?: React.CSSProperties }>(
   ({ children, className = '', style }, ref) => (
     <div ref={ref} className={`bg-black/50 backdrop-blur-2xl border border-white/10 shadow-2xl ${className}`} style={style}>
@@ -164,6 +235,19 @@ export function EmbeddingExplorer() {
   const [results, setResults] = useState<ScoredPoint[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [searchMode, setSearchMode] = useState<SearchMode>('clip');
+  const [toast, setToast] = useState<{ message: string; visible: boolean }>({ message: '', visible: false });
+  const toastTimeoutRef = useRef<number | null>(null);
+
+  const showToast = useCallback((message: string) => {
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+    }
+    setToast({ message, visible: true });
+    toastTimeoutRef.current = window.setTimeout(() => {
+      setToast(t => ({ ...t, visible: false }));
+      toastTimeoutRef.current = null;
+    }, 2000);
+  }, []);
 
   const topResults = useMemo(() => results.slice(0, 5), [results]);
 
@@ -188,6 +272,9 @@ export function EmbeddingExplorer() {
       }
       if (hoverImageTimerRef.current != null) {
         window.clearTimeout(hoverImageTimerRef.current);
+      }
+      if (toastTimeoutRef.current != null) {
+        window.clearTimeout(toastTimeoutRef.current);
       }
     };
   }, []);
@@ -857,7 +944,7 @@ export function EmbeddingExplorer() {
 
       {/* Results Panel */}
       {topResults.length > 0 && (
-        <GlassPanel className="fixed top-20 right-5 z-30 rounded-2xl w-[320px] overflow-hidden">
+        <GlassPanel className="fixed top-20 right-5 z-30 rounded-2xl w-[360px] overflow-hidden">
           <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-white">Results</p>
@@ -871,54 +958,112 @@ export function EmbeddingExplorer() {
             </button>
           </div>
           <div className="max-h-[calc(100vh-200px)] overflow-y-auto">
-            {topResults.map((r, i) => (
-              <div
-                key={r.id}
-                onClick={() => selectResult(i)}
-                onDoubleClick={() => r.image_url && window.open(r.image_url, '_blank')}
-                className={`flex items-center gap-3 px-5 py-3 cursor-pointer transition-colors border-b border-white/5 last:border-0 ${
-                  i === selectedIndex ? 'bg-white/10' : 'hover:bg-white/5'
-                }`}
-              >
-                <div className="relative flex-shrink-0">
-                  {r.image_url ? (
-                    <img
-                      src={getThumbnailUrl(r.image_url)}
-                      alt=""
-                      className="w-14 h-14 rounded-xl object-cover"
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  ) : (
-                    <div className="w-14 h-14 rounded-xl bg-white/5 flex items-center justify-center">
-                      <ImagePlaceholder />
+            {topResults.map((r, i) => {
+              const allDetails = [
+                r.name && `Name: ${r.name}`,
+                r.date && `Date: ${r.date}`,
+                r.vlm_caption && `Description: ${r.vlm_caption}`,
+                r.image_url && `Image: ${r.image_url}`,
+              ].filter(Boolean).join('\n');
+
+              return (
+                <div
+                  key={r.id}
+                  onClick={() => selectResult(i)}
+                  onDoubleClick={() => r.image_url && window.open(r.image_url, '_blank')}
+                  className={`group px-5 py-4 cursor-pointer transition-colors border-b border-white/5 last:border-0 ${
+                    i === selectedIndex ? 'bg-white/10' : 'hover:bg-white/5'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    {/* Thumbnail */}
+                    <div className="relative flex-shrink-0">
+                      {r.image_url ? (
+                        <img
+                          src={getThumbnailUrl(r.image_url)}
+                          alt=""
+                          className="w-16 h-16 rounded-xl object-cover"
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      ) : (
+                        <div className="w-16 h-16 rounded-xl bg-white/5 flex items-center justify-center">
+                          <ImagePlaceholder />
+                        </div>
+                      )}
+                      <span className="absolute -top-1.5 -left-1.5 w-5 h-5 rounded-md bg-blue-500 text-[10px] font-bold flex items-center justify-center text-white">
+                        {i + 1}
+                      </span>
                     </div>
-                  )}
-                  <span className="absolute -top-1.5 -left-1.5 w-5 h-5 rounded-md bg-blue-500 text-[10px] font-bold flex items-center justify-center text-white">
-                    {i + 1}
-                  </span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-white font-medium truncate">{r.name || 'Untitled'}</p>
-                  <p className="text-xs text-white/40 mt-0.5">{r.date || 'Unknown'}</p>
-                  {r.vlm_caption && (
-                    <p className="text-xs text-white/60 mt-1 line-clamp-2">{r.vlm_caption}</p>
-                  )}
-                  <div className="flex items-center gap-2 mt-2">
-                    <span className="text-xs font-semibold text-emerald-400">{(r.similarity * 100).toFixed(1)}%</span>
-                    <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-emerald-500 rounded-full transition-all duration-300"
-                        style={{ width: `${(r.similarity / topResults[0].similarity) * 100}%` }}
-                      />
+
+                    {/* Details */}
+                    <div className="flex-1 min-w-0">
+                      {/* Name row */}
+                      {r.name && (
+                        <div className="flex items-center gap-1 group/row">
+                          <p className="text-sm text-white font-medium truncate flex-1">{r.name}</p>
+                          <div className="opacity-0 group-hover/row:opacity-100 transition-opacity">
+                            <CopyButton text={r.name} label="Name copied" onCopy={showToast} />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Date row */}
+                      {r.date && (
+                        <div className="flex items-center gap-1 mt-1 group/row">
+                          <p className="text-xs text-white/50 flex-1">{r.date}</p>
+                          <div className="opacity-0 group-hover/row:opacity-100 transition-opacity">
+                            <CopyButton text={r.date} label="Date copied" onCopy={showToast} />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Caption row */}
+                      {r.vlm_caption && (
+                        <div className="flex items-start gap-1 mt-2 group/row">
+                          <p className="text-xs text-white/60 flex-1 line-clamp-2 leading-relaxed">{r.vlm_caption}</p>
+                          <div className="opacity-0 group-hover/row:opacity-100 transition-opacity flex-shrink-0">
+                            <CopyButton text={r.vlm_caption} label="Description copied" onCopy={showToast} />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Similarity score */}
+                      <div className="flex items-center gap-2 mt-2.5">
+                        <span className="text-xs font-semibold text-emerald-400">{(r.similarity * 100).toFixed(1)}%</span>
+                        <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                            style={{ width: `${(r.similarity / topResults[0].similarity) * 100}%` }}
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
+
+                  {/* Copy All button - appears on hover */}
+                  <div className="mt-3 pt-3 border-t border-white/5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigator.clipboard.writeText(allDetails);
+                        showToast('All details copied');
+                      }}
+                      className="w-full py-2 rounded-lg bg-white/5 hover:bg-white/10 text-xs text-white/60 hover:text-white/90 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <CopyIcon size={12} />
+                      Copy All Details
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </GlassPanel>
       )}
+
+      {/* Toast notification */}
+      <Toast message={toast.message} visible={toast.visible} />
     </div>
   );
 }
