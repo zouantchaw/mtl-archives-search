@@ -13,7 +13,8 @@ dotenv.config({ path: path.resolve(MONOREPO_ROOT, '.env') });
 const ACCOUNT_ID = process.env.CLOUDFLARE_R2_ACCOUNT_ID || process.env.CLOUDFLARE_ACCOUNT_ID;
 const API_TOKEN = process.env.CLOUDFLARE_AI_TOKEN || process.env.CF_AI_TOKEN || process.env.CLOUDFLARE_API_TOKEN;
 const VECTORIZE_INDEX = process.env.CLOUDFLARE_VECTORIZE_INDEX || 'mtl-archives';
-const EMBEDDING_MODEL = process.env.CLOUDFLARE_EMBEDDING_MODEL || '@cf/baai/bge-large-en-v1.5';
+// Using bge-m3 for multilingual support (French/English for Quebec users)
+const EMBEDDING_MODEL = process.env.CLOUDFLARE_EMBEDDING_MODEL || '@cf/baai/bge-m3';
 const BATCH_SIZE = Number(process.env.VECTORIZE_BATCH_SIZE || '16');
 
 // Defaults - prefer VLM-captioned manifest

@@ -307,7 +307,8 @@ async function handleSemanticSearch(query: string, limit: number, env: Env): Pro
 
   try {
     // Generate embedding for the search query using Workers AI
-    const embeddingResponse = await env.AI.run('@cf/baai/bge-large-en-v1.5', {
+    // Using bge-m3 for multilingual support (French/English for Quebec users)
+    const embeddingResponse = await env.AI.run('@cf/baai/bge-m3', {
       text: [query],
     });
 
