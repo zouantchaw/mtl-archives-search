@@ -17,6 +17,9 @@ export type PhotoRecord = {
   portalCote: string | null;
   aerialDatasets: string[];
   imageUrl: string;
+  latitude: number | null;
+  longitude: number | null;
+  geocodeConfidence: number | null;
 };
 
 export function validateMetadataQuality(record: PhotoRecord): void {

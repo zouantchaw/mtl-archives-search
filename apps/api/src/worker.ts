@@ -27,7 +27,10 @@ const JSON_HEADERS: HeadersInit = {
   ...CORS_HEADERS,
 };
 
-const SELECT_FIELDS = `metadata_filename, image_filename, resolved_image_filename, image_size_bytes, name, description, vlm_caption, date_value, credits, cote, external_url, portal_match, portal_title, portal_description, portal_date, portal_cote, aerial_datasets`;
+const SELECT_FIELDS = `metadata_filename, image_filename, resolved_image_filename, image_size_bytes, name, description, vlm_caption, date_value, credits, cote, external_url, portal_match, portal_title, portal_description, portal_date, portal_cote, aerial_datasets, latitude, longitude, geocode_confidence`;
+
+// Lightweight fields for map pins (faster queries)
+const MAP_FIELDS = `metadata_filename, name, date_value, latitude, longitude, external_url, resolved_image_filename`;
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -57,6 +60,13 @@ export default {
           return methodNotAllowed();
         }
         return handleThumbnail(url, env);
+      }
+
+      if (url.pathname === '/api/map') {
+        if (request.method !== 'GET') {
+          return methodNotAllowed();
+        }
+        return handleMapPins(env);
       }
 
       if (url.pathname === '/' || url.pathname === '/health') {
@@ -104,6 +114,9 @@ async function buildPhotoRecord(row: Record<string, unknown>, env: Env): Promise
     portalCote: row.portal_cote != null ? String(row.portal_cote) : null,
     aerialDatasets: parseJsonArray(row.aerial_datasets),
     imageUrl: await resolveImageUrl(String(row.resolved_image_filename ?? row.image_filename ?? ''), env),
+    latitude: row.latitude != null ? Number(row.latitude) : null,
+    longitude: row.longitude != null ? Number(row.longitude) : null,
+    geocodeConfidence: row.geocode_confidence != null ? Number(row.geocode_confidence) : null,
   };
 
   validateMetadataQuality(record);
@@ -653,4 +666,28 @@ function encodeRfc3986(value: string): string {
 function toAmzDate(date: Date): string {
   const iso = date.toISOString().replace(/[-:]/g, '');
   return `${iso.slice(0, 15)}Z`;
+}
+
+async function handleMapPins(env: Env): Promise<Response> {
+  // Return all geolocated photos as lightweight map pins
+  const { results = [] } = await env.DB.prepare(
+    `SELECT ${MAP_FIELDS} FROM manifest WHERE latitude IS NOT NULL ORDER BY name`
+  ).all();
+
+  const pins = await Promise.all(
+    results.map(async (row) => ({
+      id: String(row.metadata_filename),
+      name: row.name != null ? String(row.name) : null,
+      dateValue: row.date_value != null ? String(row.date_value) : null,
+      latitude: Number(row.latitude),
+      longitude: Number(row.longitude),
+      externalUrl: row.external_url != null ? String(row.external_url) : null,
+      imageUrl: await resolveImageUrl(String(row.resolved_image_filename ?? ''), env),
+    }))
+  );
+
+  return jsonResponse({
+    pins,
+    count: pins.length,
+  });
 }
