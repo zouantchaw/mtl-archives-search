@@ -1,5 +1,5 @@
-import { ComponentExample } from "@/components/component-example";
+import { ArchiveMap } from "@/components/ArchiveMap";
 
 export default function Page() {
-return <ComponentExample />;
+  return <ArchiveMap />;
 }
