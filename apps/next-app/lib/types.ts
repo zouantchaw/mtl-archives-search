@@ -1,5 +1,7 @@
 // API response types
 
+export type SearchMode = 'semantic' | 'visual';
+
 export type MapPin = {
   id: string;
   name: string | null;
