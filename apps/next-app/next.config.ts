@@ -19,9 +19,23 @@ const nextConfig: NextConfig = {
   },
   async rewrites() {
     return [
+      // Proxy specific API routes to Cloudflare worker
+      // Local routes like /api/clip are handled by Next.js
       {
-        source: '/api/:path*',
-        destination: 'https://mtl-archives-worker.wiel.workers.dev/api/:path*',
+        source: '/api/photos',
+        destination: 'https://mtl-archives-worker.wiel.workers.dev/api/photos',
+      },
+      {
+        source: '/api/search',
+        destination: 'https://mtl-archives-worker.wiel.workers.dev/api/search',
+      },
+      {
+        source: '/api/thumb',
+        destination: 'https://mtl-archives-worker.wiel.workers.dev/api/thumb',
+      },
+      {
+        source: '/api/map',
+        destination: 'https://mtl-archives-worker.wiel.workers.dev/api/map',
       },
     ];
   },

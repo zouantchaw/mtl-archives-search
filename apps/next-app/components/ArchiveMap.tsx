@@ -96,7 +96,36 @@ export function ArchiveMap() {
           mode: searchMode,
           limit: '50',
         });
-        const res = await fetch(`${API_BASE}/api/search?${params}`);
+
+        let res: Response;
+
+        if (searchMode === 'visual') {
+          // For visual search, first get CLIP embedding from local API
+          const clipRes = await fetch('/api/clip', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: searchQuery }),
+          });
+
+          if (!clipRes.ok) {
+            console.error('CLIP embedding failed:', await clipRes.text());
+            setSearchResults([]);
+            return;
+          }
+
+          const { embedding } = await clipRes.json();
+
+          // Then search with the embedding
+          res = await fetch(`${API_BASE}/api/search?${params}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ embedding }),
+          });
+        } else {
+          // Semantic search - just use GET
+          res = await fetch(`${API_BASE}/api/search?${params}`);
+        }
+
         if (res.ok) {
           const data: SearchResponse = await res.json();
           setSearchResults(data.items);

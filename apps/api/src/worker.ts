@@ -18,7 +18,7 @@ type Env = {
 
 const CORS_HEADERS: HeadersInit = {
   'access-control-allow-origin': '*',
-  'access-control-allow-methods': 'GET, OPTIONS',
+  'access-control-allow-methods': 'GET, POST, OPTIONS',
   'access-control-allow-headers': 'Content-Type',
 };
 
@@ -49,10 +49,10 @@ export default {
       }
 
       if (url.pathname === '/api/search') {
-        if (request.method !== 'GET') {
+        if (request.method !== 'GET' && request.method !== 'POST') {
           return methodNotAllowed();
         }
-        return handleSearch(url, env);
+        return handleSearch(url, env, request);
       }
 
       if (url.pathname === '/api/thumb') {
@@ -82,9 +82,7 @@ export default {
 };
 
 function methodNotAllowed(): Response {
-  return jsonResponse({ error: 'Method not allowed' }, 405, {
-    'access-control-allow-methods': 'GET, OPTIONS',
-  });
+  return jsonResponse({ error: 'Method not allowed' }, 405);
 }
 
 function jsonResponse(body: unknown, status = 200, extraHeaders: HeadersInit = {}): Response {
@@ -179,7 +177,7 @@ async function handlePhotos(url: URL, env: Env): Promise<Response> {
   return jsonResponse({ items, nextCursor });
 }
 
-async function handleSearch(url: URL, env: Env): Promise<Response> {
+async function handleSearch(url: URL, env: Env, request: Request): Promise<Response> {
   const q = (url.searchParams.get('q') ?? '').trim();
   if (!q) {
     return jsonResponse({ error: 'Missing required query parameter "q".' }, 400);
@@ -194,7 +192,19 @@ async function handleSearch(url: URL, env: Env): Promise<Response> {
   }
 
   if (mode === 'visual' || mode === 'clip') {
-    return handleVisualSearch(q, limit, env);
+    // For visual search, check if embedding is provided in POST body
+    let embedding: number[] | undefined;
+    if (request.method === 'POST') {
+      try {
+        const body = await request.json() as { embedding?: number[] };
+        if (body.embedding && Array.isArray(body.embedding)) {
+          embedding = body.embedding;
+        }
+      } catch {
+        // Ignore JSON parse errors, will try to generate embedding
+      }
+    }
+    return handleVisualSearch(q, limit, env, embedding);
   }
 
   const likeParam = `%${escapeForLike(q)}%`;
@@ -394,7 +404,7 @@ async function handleSemanticSearch(query: string, limit: number, env: Env): Pro
   }
 }
 
-async function handleVisualSearch(query: string, limit: number, env: Env): Promise<Response> {
+async function handleVisualSearch(query: string, limit: number, env: Env, precomputedEmbedding?: number[]): Promise<Response> {
   if (!env.VECTORIZE_CLIP) {
     return jsonResponse(
       { error: 'Visual search is not configured. Bind VECTORIZE_CLIP index to enable this feature.' },
@@ -402,18 +412,27 @@ async function handleVisualSearch(query: string, limit: number, env: Env): Promi
     );
   }
 
-  if (!env.CLIP_EMBEDDING_URL) {
-    return jsonResponse(
-      { error: 'Visual search requires CLIP_EMBEDDING_URL secret pointing to a CLIP text embedding service (512-dim clip-vit-base-patch32)' },
-      501
-    );
-  }
-
   try {
-    // Generate CLIP text embedding using custom embedding service
-    const embedding = await generateClipTextEmbedding(query, env);
+    // Use pre-computed embedding if provided, otherwise try to generate one
+    let embedding = precomputedEmbedding;
+
     if (!embedding) {
-      return jsonResponse({ error: 'Failed to generate CLIP text embedding from embedding service' }, 500);
+      if (!env.CLIP_EMBEDDING_URL) {
+        return jsonResponse(
+          { error: 'Visual search requires either a pre-computed embedding or CLIP_EMBEDDING_URL secret' },
+          501
+        );
+      }
+      const generatedEmbedding = await generateClipTextEmbedding(query, env);
+      if (!generatedEmbedding) {
+        return jsonResponse({ error: 'Failed to generate CLIP text embedding' }, 500);
+      }
+      embedding = generatedEmbedding;
+    }
+
+    // Validate embedding dimension
+    if (embedding.length !== 512) {
+      return jsonResponse({ error: `Invalid embedding dimension: expected 512, got ${embedding.length}` }, 400);
     }
 
     // Query CLIP Vectorize for similar image vectors
@@ -479,12 +498,12 @@ async function handleVisualSearch(query: string, limit: number, env: Env): Promi
 }
 
 async function generateClipTextEmbedding(text: string, env: Env): Promise<number[] | null> {
-  // CLIP text embedding service configuration
-  // Requires a custom endpoint that provides clip-vit-base-patch32 text embeddings (512-dim)
-  // Set CLIP_EMBEDDING_URL to your service URL (e.g., a FastAPI service running CLIP)
+  // CLIP text embedding via HuggingFace Inference API
+  // Model: sentence-transformers/clip-ViT-B-32 (512-dim, compatible with our indexed image embeddings)
   //
-  // Example service endpoint format:
-  // POST /embed { "text": "query" } -> { "embedding": [0.1, 0.2, ...] }
+  // Set secrets:
+  //   CLIP_EMBEDDING_URL = https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/clip-ViT-B-32
+  //   CLIP_EMBEDDING_TOKEN = your HuggingFace API token
 
   const CLIP_URL = env.CLIP_EMBEDDING_URL;
 
@@ -497,16 +516,16 @@ async function generateClipTextEmbedding(text: string, env: Env): Promise<number
     'Content-Type': 'application/json',
   };
 
-  // Add auth header if token provided
   if (env.CLIP_EMBEDDING_TOKEN) {
     headers['Authorization'] = `Bearer ${env.CLIP_EMBEDDING_TOKEN}`;
   }
 
   try {
+    // HuggingFace Inference API format
     const response = await fetch(CLIP_URL, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ inputs: text }),
     });
 
     if (!response.ok) {
@@ -515,13 +534,29 @@ async function generateClipTextEmbedding(text: string, env: Env): Promise<number
       return null;
     }
 
-    const result = await response.json() as { embedding?: number[] };
+    const result = await response.json();
 
-    if (result.embedding && Array.isArray(result.embedding) && result.embedding.length === 512) {
-      return result.embedding;
+    // HuggingFace returns [[...]] for single input or [...] for some models
+    let embedding: number[] | null = null;
+
+    if (Array.isArray(result)) {
+      if (Array.isArray(result[0])) {
+        // Nested array: [[0.1, 0.2, ...]]
+        embedding = result[0];
+      } else if (typeof result[0] === 'number') {
+        // Flat array: [0.1, 0.2, ...]
+        embedding = result;
+      }
+    } else if (result && typeof result === 'object' && 'embedding' in result) {
+      // Custom format: { embedding: [...] }
+      embedding = (result as { embedding: number[] }).embedding;
     }
 
-    console.error('Unexpected CLIP response format:', typeof result);
+    if (embedding && Array.isArray(embedding) && embedding.length === 512) {
+      return embedding;
+    }
+
+    console.error('Unexpected CLIP response format:', JSON.stringify(result).slice(0, 200));
     return null;
   } catch (error) {
     console.error('CLIP embedding request failed:', error);
