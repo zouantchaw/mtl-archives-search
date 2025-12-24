@@ -1,0 +1,82 @@
+%% MTL Archives Search - Next.js Map App Runtime Architecture
+%% How the Next.js app works when deployed
+
+flowchart TB
+    subgraph Browser["Browser (Mobile/Desktop)"]
+        UI["React App<br/>ArchiveMap.tsx"]
+        MODE["Search Mode Toggle<br/>Semantic | Visual"]
+        MAP["react-map-gl<br/>Mapbox GL"]
+        DRAWER["Vaul Drawer<br/>(mobile bottom sheet)"]
+        PANEL["Side Panels<br/>(desktop)"]
+    end
+
+    subgraph NextJS["Next.js Server (Vercel/Node)"]
+        direction TB
+        NEXT_API["API Routes"]
+        CLIP_API["/api/clip<br/>Xenova CLIP<br/>text → 512-dim"]
+    end
+
+    subgraph Worker["Cloudflare Worker"]
+        direction TB
+        API["worker.ts"]
+        MAP_API["/api/map<br/>geolocated pins"]
+        SEARCH_API["/api/search<br/>?mode=semantic|visual"]
+        THUMB_API["/api/thumb<br/>image resizing"]
+        PHOTOS_API["/api/photos<br/>pagination"]
+    end
+
+    subgraph Services["Cloudflare Services"]
+        D1[("D1 Database<br/>Photo metadata<br/>+ vlm_caption")]
+        VEC_BGE[("Vectorize BGE<br/>1024-dim<br/>(text embeddings)")]
+        VEC_CLIP[("Vectorize CLIP<br/>512-dim<br/>(image embeddings)")]
+        AI["Workers AI<br/>BGE-M3"]
+    end
+
+    subgraph R2["Cloudflare R2"]
+        IMAGES[("~15k Images")]
+    end
+
+    %% Initial Load
+    UI -->|"1. mount"| MAP_API
+    MAP_API -->|"fetch pins"| D1
+    D1 -->|"162 geolocated photos"| MAP
+    UI --> MODE
+
+    %% Map Interaction
+    MAP -->|"click marker"| UI
+    UI -->|"show detail"| DRAWER
+    UI -->|"show detail"| PANEL
+
+    %% Semantic Search Flow
+    MODE -->|"Semantic mode"| SEARCH_API
+    SEARCH_API -->|"mode=semantic"| AI
+    AI -->|"embed query<br/>(BGE-M3)"| VEC_BGE
+    VEC_BGE -->|"top-k IDs"| D1
+    D1 -->|"PhotoRecord[]"| UI
+    UI -->|"highlight matches"| MAP
+
+    %% Visual Search Flow (2-step)
+    MODE -->|"Visual mode<br/>Step 1"| CLIP_API
+    CLIP_API -->|"512-dim embedding"| UI
+    UI -->|"Step 2: POST embedding"| SEARCH_API
+    SEARCH_API -->|"mode=visual"| VEC_CLIP
+    VEC_CLIP -->|"top-k IDs"| D1
+
+    %% Results Display
+    UI -->|"geolocated results"| MAP
+    UI -->|"all results"| PANEL
+    UI -->|"all results"| DRAWER
+
+    %% Thumbnail Loading
+    PANEL -->|"load thumbnails"| THUMB_API
+    DRAWER -->|"load thumbnails"| THUMB_API
+    THUMB_API -->|"resize + cache"| IMAGES
+
+    %% Responsive Behavior
+    UI -.->|"width < 768px"| DRAWER
+    UI -.->|"width >= 768px"| PANEL
+
+    style NextJS fill:#0070f3,color:#fff
+    style Worker fill:#f38020,color:#fff
+    style Services fill:#f38020,color:#fff
+    style R2 fill:#f38020,color:#fff
