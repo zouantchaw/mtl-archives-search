@@ -1,21 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // Cache the model at module level for reuse across requests
-let textModelPromise: Promise<any> | null = null;
+let modelPromise: Promise<any> | null = null;
 let tokenizerPromise: Promise<any> | null = null;
 
-async function getTextModel() {
-  if (!textModelPromise) {
-    // Dynamic import to avoid issues with SSR
-    const { CLIPTextModelWithProjection } = await import('@xenova/transformers');
-    textModelPromise = CLIPTextModelWithProjection.from_pretrained('Xenova/clip-vit-base-patch32');
+async function initTransformers() {
+  // Dynamic import to configure before loading models
+  const { env, CLIPTextModelWithProjection, AutoTokenizer } = await import('@huggingface/transformers');
+
+  // Force WASM backend (no native binaries)
+  if (env.backends?.onnx?.wasm) {
+    env.backends.onnx.wasm.numThreads = 1;
   }
-  return textModelPromise;
+
+  return { CLIPTextModelWithProjection, AutoTokenizer };
+}
+
+async function getModel() {
+  if (!modelPromise) {
+    const { CLIPTextModelWithProjection } = await initTransformers();
+    modelPromise = CLIPTextModelWithProjection.from_pretrained('Xenova/clip-vit-base-patch32', {
+      device: 'cpu',
+    });
+  }
+  return modelPromise;
 }
 
 async function getTokenizer() {
   if (!tokenizerPromise) {
-    const { AutoTokenizer } = await import('@xenova/transformers');
+    const { AutoTokenizer } = await initTransformers();
     tokenizerPromise = AutoTokenizer.from_pretrained('Xenova/clip-vit-base-patch32');
   }
   return tokenizerPromise;
@@ -34,7 +47,7 @@ export async function POST(request: NextRequest) {
 
     // Load model and tokenizer (cached after first load)
     const [model, tokenizer] = await Promise.all([
-      getTextModel(),
+      getModel(),
       getTokenizer(),
     ]);
 
