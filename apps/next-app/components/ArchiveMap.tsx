@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Map, { Marker, NavigationControl, type ViewStateChangeEvent, type MarkerEvent } from 'react-map-gl/mapbox';
-import { Search, X, MapPin, Calendar, ExternalLink, ChevronLeft, Eye, FileText, ImageIcon } from 'lucide-react';
+import { Search, X, MapPin, Calendar, ExternalLink, ChevronLeft, Eye, FileText, ImageIcon, Loader2 } from 'lucide-react';
 import type { MapPin as MapPinType, MapPinsResponse, PhotoRecord, SearchResponse, SearchMode } from '@/lib/types';
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
+import { useClipEmbedding } from '@/lib/use-clip';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
@@ -43,6 +44,9 @@ export function ArchiveMap() {
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
 
+  // CLIP embedding (client-side)
+  const { generateEmbedding, preloadModel, isModelReady } = useClipEmbedding();
+
   // UI state
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -56,6 +60,13 @@ export function ArchiveMap() {
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  // Preload CLIP model when visual search mode is selected
+  useEffect(() => {
+    if (searchMode === 'visual') {
+      preloadModel();
+    }
+  }, [searchMode, preloadModel]);
 
   // Load map pins on mount
   useEffect(() => {
@@ -100,20 +111,14 @@ export function ArchiveMap() {
         let res: Response;
 
         if (searchMode === 'visual') {
-          // For visual search, first get CLIP embedding from local API
-          const clipRes = await fetch('/api/clip', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: searchQuery }),
-          });
+          // Generate CLIP embedding client-side
+          const embedding = await generateEmbedding(searchQuery);
 
-          if (!clipRes.ok) {
-            console.error('CLIP embedding failed:', await clipRes.text());
+          if (!embedding) {
+            console.error('CLIP embedding failed');
             setSearchResults([]);
             return;
           }
-
-          const { embedding } = await clipRes.json();
 
           // Then search with the embedding
           res = await fetch(`${API_BASE}/api/search?${params}`, {
@@ -142,7 +147,7 @@ export function ArchiveMap() {
         clearTimeout(searchTimeoutRef.current);
       }
     };
-  }, [searchQuery, searchMode]);
+  }, [searchQuery, searchMode, generateEmbedding]);
 
   // Split search results into geolocated and non-geolocated
   const { geolocatedResults, nonGeolocatedResults } = useMemo(() => {
