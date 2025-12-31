@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useRef, useState } from 'react';
+import { clipEmbeddingCache } from './lru-cache';
 
 // Singleton promises for model and tokenizer
 let modelPromise: Promise<any> | null = null;
@@ -46,8 +47,17 @@ export function useClipEmbedding() {
     return initPromiseRef.current;
   }, []);
 
-  // Generate embedding for text
+  // Generate embedding for text (with LRU caching)
   const generateEmbedding = useCallback(async (text: string): Promise<number[] | null> => {
+    // Normalize text for cache key
+    const cacheKey = text.trim().toLowerCase();
+
+    // Check cache first
+    const cached = clipEmbeddingCache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     setIsLoading(true);
     try {
       const [model, tokenizer] = await Promise.all([getModel(), getTokenizer()]);
@@ -72,6 +82,9 @@ export function useClipEmbedding() {
       for (let i = 0; i < raw.length; i++) {
         embedding.push(raw[i] / norm);
       }
+
+      // Cache the result
+      clipEmbeddingCache.set(cacheKey, embedding);
 
       setIsModelReady(true);
       return embedding;

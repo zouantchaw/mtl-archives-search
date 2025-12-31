@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef, forwardRef } from 'r
 import { AutoTokenizer, CLIPTextModelWithProjection, env as transformersEnv } from '@xenova/transformers';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { clipEmbeddingCache } from '../lib/lru-cache';
 
 transformersEnv.allowLocalModels = false;
 
@@ -674,22 +675,35 @@ export function EmbeddingExplorer() {
       .filter((p): p is ScoredPoint => p !== null);
   }, [data]);
 
-  // Client-side CLIP search
+  // Client-side CLIP search (with LRU caching)
   const searchClip = useCallback(async (q: string): Promise<ScoredPoint[]> => {
     if (!clipModel || !embeddings) return [];
 
-    const inputs = clipModel.tokenizer(q, { padding: true, truncation: true, max_length: 77 });
-    const { text_embeds } = await clipModel.model(inputs);
-    const qEmb = text_embeds.data as Float32Array;
+    // Normalize query for cache key
+    const cacheKey = q.trim().toLowerCase();
 
-    const norm = Math.sqrt(qEmb.reduce((s, v) => s + v * v, 0));
-    for (let i = 0; i < qEmb.length; i++) qEmb[i] /= norm;
+    // Check cache first
+    let qEmb = clipEmbeddingCache.get(cacheKey);
+
+    if (!qEmb) {
+      // Generate embedding
+      const inputs = clipModel.tokenizer(q, { padding: true, truncation: true, max_length: 77 });
+      const { text_embeds } = await clipModel.model(inputs);
+      qEmb = text_embeds.data as Float32Array;
+
+      // L2 normalize
+      const norm = Math.sqrt(qEmb.reduce((s, v) => s + v * v, 0));
+      for (let i = 0; i < qEmb.length; i++) qEmb[i] /= norm;
+
+      // Cache the normalized embedding
+      clipEmbeddingCache.set(cacheKey, qEmb);
+    }
 
     return data
       .filter(p => p.embeddingIndex >= 0)
       .map(p => {
         const off = p.embeddingIndex * embeddings.dims;
-        const sim = cosineSimilarity(qEmb, embeddings.data.subarray(off, off + embeddings.dims));
+        const sim = cosineSimilarity(qEmb!, embeddings.data.subarray(off, off + embeddings.dims));
         return { ...p, similarity: sim };
       })
       .sort((a, b) => b.similarity - a.similarity)
