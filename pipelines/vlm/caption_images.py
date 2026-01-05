@@ -12,7 +12,6 @@ Requirements (install on Lambda):
 
 import argparse
 import json
-import os
 import sys
 from io import BytesIO
 from pathlib import Path
@@ -261,7 +260,7 @@ def main():
 
             out_f.write(json.dumps(record) + '\n')
 
-    print(f"\n=== Complete ===")
+    print("\n=== Complete ===")
     print(f"Captioned: {captioned}")
     print(f"Errors: {errors}")
     print(f"Output: {output_path}")

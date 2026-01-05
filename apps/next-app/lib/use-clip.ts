@@ -3,24 +3,38 @@
 import { useCallback, useRef, useState } from 'react';
 import { clipEmbeddingCache } from './lru-cache';
 
-// Singleton promises for model and tokenizer
-let modelPromise: Promise<any> | null = null;
-let tokenizerPromise: Promise<any> | null = null;
+// Minimal type definitions for HuggingFace transformers.js
+interface TokenizerFunction {
+  (text: string, options: { padding: boolean; truncation: boolean }): Promise<TokenizedInput>;
+}
 
-async function getModel() {
+interface TokenizedInput {
+  input_ids: unknown;
+  attention_mask: unknown;
+}
+
+interface CLIPModel {
+  (inputs: TokenizedInput): Promise<{ text_embeds: { data: Float32Array } }>;
+}
+
+// Singleton promises for model and tokenizer
+let modelPromise: Promise<CLIPModel> | null = null;
+let tokenizerPromise: Promise<TokenizerFunction> | null = null;
+
+async function getModel(): Promise<CLIPModel> {
   if (!modelPromise) {
     const { CLIPTextModelWithProjection } = await import('@huggingface/transformers');
     modelPromise = CLIPTextModelWithProjection.from_pretrained('Xenova/clip-vit-base-patch32', {
       device: 'wasm',
-    });
+    }) as Promise<CLIPModel>;
   }
   return modelPromise;
 }
 
-async function getTokenizer() {
+async function getTokenizer(): Promise<TokenizerFunction> {
   if (!tokenizerPromise) {
     const { AutoTokenizer } = await import('@huggingface/transformers');
-    tokenizerPromise = AutoTokenizer.from_pretrained('Xenova/clip-vit-base-patch32');
+    tokenizerPromise = AutoTokenizer.from_pretrained('Xenova/clip-vit-base-patch32') as Promise<TokenizerFunction>;
   }
   return tokenizerPromise;
 }

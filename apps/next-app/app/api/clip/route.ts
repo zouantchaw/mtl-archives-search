@@ -1,8 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// Minimal type definitions for HuggingFace transformers.js
+interface TokenizerFunction {
+  (text: string, options: { padding: boolean; truncation: boolean }): Promise<TokenizedInput>;
+}
+
+interface TokenizedInput {
+  input_ids: unknown;
+  attention_mask: unknown;
+}
+
+interface CLIPModel {
+  (inputs: TokenizedInput): Promise<{ text_embeds: { data: Float32Array } }>;
+}
+
 // Cache the model at module level for reuse across requests
-let modelPromise: Promise<any> | null = null;
-let tokenizerPromise: Promise<any> | null = null;
+let modelPromise: Promise<CLIPModel> | null = null;
+let tokenizerPromise: Promise<TokenizerFunction> | null = null;
 
 async function initTransformers() {
   // Dynamic import to configure before loading models
@@ -16,20 +30,20 @@ async function initTransformers() {
   return { CLIPTextModelWithProjection, AutoTokenizer };
 }
 
-async function getModel() {
+async function getModel(): Promise<CLIPModel> {
   if (!modelPromise) {
     const { CLIPTextModelWithProjection } = await initTransformers();
     modelPromise = CLIPTextModelWithProjection.from_pretrained('Xenova/clip-vit-base-patch32', {
       device: 'cpu',
-    });
+    }) as Promise<CLIPModel>;
   }
   return modelPromise;
 }
 
-async function getTokenizer() {
+async function getTokenizer(): Promise<TokenizerFunction> {
   if (!tokenizerPromise) {
     const { AutoTokenizer } = await initTransformers();
-    tokenizerPromise = AutoTokenizer.from_pretrained('Xenova/clip-vit-base-patch32');
+    tokenizerPromise = AutoTokenizer.from_pretrained('Xenova/clip-vit-base-patch32') as Promise<TokenizerFunction>;
   }
   return tokenizerPromise;
 }

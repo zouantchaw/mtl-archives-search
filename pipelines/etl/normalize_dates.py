@@ -204,19 +204,19 @@ def main():
             if len(failed_examples) < 10:
                 failed_examples.append(raw_date)
 
-    print(f"\n=== Results ===")
+    print("\n=== Results ===")
     print(f"Already had date_value: {already_has_date}")
     print(f"Extracted and normalized: {extracted_date}")
     print(f"No date source: {no_date_source}")
     print(f"Parse failed: {parse_failed}")
 
     if failed_examples:
-        print(f"\nFailed to parse examples:")
+        print("\nFailed to parse examples:")
         for ex in failed_examples:
             print(f"  - {ex}")
 
     # Sample of extracted dates
-    print(f"\nSample of extracted dates:")
+    print("\nSample of extracted dates:")
     count = 0
     for r in records:
         if r.get('date_value') and count < 10:

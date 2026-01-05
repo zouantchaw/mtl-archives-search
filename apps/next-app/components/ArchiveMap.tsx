@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Map, { Marker, NavigationControl, type ViewStateChangeEvent, type MarkerEvent } from 'react-map-gl/mapbox';
-import { Search, X, MapPin, Calendar, ExternalLink, ChevronLeft, Eye, FileText, ImageIcon, Loader2 } from 'lucide-react';
+import { Search, X, MapPin, Calendar, ExternalLink, ChevronLeft, Eye, FileText, ImageIcon } from 'lucide-react';
 import type { MapPin as MapPinType, MapPinsResponse, PhotoRecord, SearchResponse, SearchMode } from '@/lib/types';
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 import { useClipEmbedding } from '@/lib/use-clip';
+import Image from 'next/image';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
@@ -45,7 +46,7 @@ export function ArchiveMap() {
   const [hasSearched, setHasSearched] = useState(false);
 
   // CLIP embedding (client-side)
-  const { generateEmbedding, preloadModel, isModelReady } = useClipEmbedding();
+  const { generateEmbedding, preloadModel } = useClipEmbedding();
 
   // UI state
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -223,7 +224,7 @@ export function ArchiveMap() {
 
   if (!MAPBOX_TOKEN) {
     return (
-      <div className="flex h-[100dvh] items-center justify-center bg-neutral-950 text-white">
+      <div className="flex h-dvh items-center justify-center bg-neutral-950 text-white">
         <div className="px-6 text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-neutral-800">
             <MapPin className="h-6 w-6 text-neutral-400" />
@@ -238,7 +239,7 @@ export function ArchiveMap() {
   const showResultsPanel = hasSearched && (nonGeolocatedResults.length > 0 || geolocatedResults.length > 0);
 
   return (
-    <div className="relative h-[100dvh] w-full bg-neutral-950">
+    <div className="relative h-dvh w-full bg-neutral-950">
       {/* ========== HEADER ========== */}
       <header
         className="absolute top-0 left-0 right-0 z-20 bg-neutral-950/90 backdrop-blur-xl border-b border-white/10"
@@ -247,7 +248,7 @@ export function ArchiveMap() {
         <div className="flex items-center gap-3 px-4 py-3 md:px-6 md:py-4">
           {/* Logo - hidden on mobile when searching */}
           <div className={`flex items-center gap-2.5 shrink-0 ${isSearchFocused ? 'hidden md:flex' : 'flex'}`}>
-            <div className="flex h-8 w-8 md:h-9 md:w-9 items-center justify-center rounded-xl bg-gradient-to-br from-rose-500 to-rose-600">
+            <div className="flex h-8 w-8 md:h-9 md:w-9 items-center justify-center rounded-xl bg-linear-to-br from-rose-500 to-rose-600">
               <MapPin className="h-4 w-4 md:h-5 md:w-5 text-white" />
             </div>
             <div className="hidden sm:block">
@@ -620,11 +621,12 @@ function ResultCard({
       {/* Thumbnail */}
       <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-neutral-800 shrink-0">
         {result.imageUrl ? (
-          <img
+          <Image
             src={getThumbnailUrl(result.imageUrl, 64, 64)}
             alt=""
-            className="absolute inset-0 w-full h-full object-cover"
-            loading="lazy"
+            fill
+            className="object-cover"
+            unoptimized
           />
         ) : (
           <div className="flex h-full items-center justify-center">
@@ -677,11 +679,12 @@ function MobileResultCard({
     >
       <div className="relative aspect-square rounded-xl overflow-hidden bg-neutral-800">
         {result.imageUrl ? (
-          <img
+          <Image
             src={getThumbnailUrl(result.imageUrl, 128, 128)}
             alt=""
-            className="absolute inset-0 w-full h-full object-cover"
-            loading="lazy"
+            fill
+            className="object-cover"
+            unoptimized
           />
         ) : (
           <div className="flex h-full items-center justify-center">
@@ -749,12 +752,14 @@ function PhotoDetail({
       {/* Content */}
       <div className={`${isMobile ? '' : 'flex-1 overflow-y-auto'}`}>
         {/* Image */}
-        <div className={`relative bg-neutral-800 ${isMobile ? 'mx-4 rounded-2xl overflow-hidden aspect-[4/3]' : 'aspect-[4/3]'}`}>
+        <div className={`relative bg-neutral-800 ${isMobile ? 'mx-4 rounded-2xl overflow-hidden aspect-4/3' : 'aspect-4/3'}`}>
           {imageUrl ? (
-            <img
+            <Image
               src={getThumbnailUrl(imageUrl, 400, 300)}
               alt={name}
-              className="absolute inset-0 w-full h-full object-cover"
+              fill
+              className="object-cover"
+              unoptimized
             />
           ) : (
             <div className="flex h-full items-center justify-center">

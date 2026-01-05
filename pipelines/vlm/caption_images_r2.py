@@ -242,7 +242,7 @@ def main():
 
             out_f.write(json.dumps(record) + '\n')
 
-    print(f"\n=== Complete ===")
+    print("\n=== Complete ===")
     print(f"Captioned: {captioned}")
     print(f"Errors: {errors}")
     print(f"Output: {output_path}")

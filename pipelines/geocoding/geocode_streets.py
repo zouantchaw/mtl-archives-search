@@ -181,8 +181,8 @@ def geocode_mapbox(query: str, token: str) -> dict | None:
         f"https://api.mapbox.com/geocoding/v5/mapbox.places/{encoded_query}.json"
         f"?access_token={token}"
         f"&bbox={MONTREAL_BBOX}"
-        f"&limit=1"
-        f"&types=address,poi,neighborhood,locality"
+        "&limit=1"
+        "&types=address,poi,neighborhood,locality"
     )
 
     try:
@@ -217,7 +217,7 @@ def main():
     args = parser.parse_args()
 
     # Load token
-    token = os.environ.get('MAP_BOX_TOKEN')
+    token = os.environ.get('MAP_BOX_TOKEN', '')
     if not token and not args.dry_run:
         print("Error: MAP_BOX_TOKEN environment variable not set", file=sys.stderr)
         sys.exit(1)
@@ -321,7 +321,7 @@ def main():
     print(f"Geocoded:          {stats['geocoded']} ({100*stats['geocoded']/max(1,stats['parseable']):.1f}% of parseable)")
     print(f"Failed:            {stats['failed']}")
     print(f"Skipped (no street): {stats['skipped']}")
-    print(f"\nSources breakdown:")
+    print("\nSources breakdown:")
     for source, count in stats['sources'].items():
         if count > 0:
             print(f"  - {source}: {count}")
