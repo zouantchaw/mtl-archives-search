@@ -1,0 +1,147 @@
+# ETL Schema (Trust-First)
+
+This document defines the target schema for the redesigned ETL pipeline. It is additive and non-destructive: raw fields are retained, normalized fields are added, and provenance is explicit.
+
+## Stages and Outputs
+
+- **Raw ingest** -> `manifest_raw.jsonl` (current: `manifest.jsonl`)
+- **Canonical normalize** -> `manifest_canonical.jsonl`
+- **Record linkage** -> `manifest_linked.jsonl`
+- **Enrichment** -> `manifest_enriched.jsonl`
+- **Trust scoring** -> `manifest_scored.jsonl`
+- **Localization** -> `manifest_bilingual.jsonl`
+
+Each stage must write a new file; no stage should overwrite a prior output.
+
+## Core Identifier Fields (Required)
+
+- `metadata_filename` (string)
+  - Original metadata filename (stable primary ID).
+- `image_filename` (string)
+  - Source image filename from ingestion.
+- `resolved_image_filename` (string)
+  - Final filename used for storage and access.
+
+## Asset Fields
+
+- `external_url` (string)
+  - Source image URL (Montreal archive).
+- `image_exists` (bool)
+  - Whether the image was found at ingest time.
+- `image_size_bytes` (int)
+  - Size of the stored image.
+
+## Raw Text Fields
+
+- `title_raw` (string)
+  - Raw title/name field from source.
+- `description_raw` (string)
+  - Raw description from source.
+- `portal_title_raw` (string)
+- `portal_description_raw` (string)
+- `portal_date_raw` (string)
+- `portal_cote_raw` (string)
+- `portal_credits_raw` (string)
+
+## Normalized Text Fields
+
+- `title_normalized` (string)
+  - Cleaned, human-readable title (no codes).
+- `description_normalized` (string)
+  - Cleaned description. No synthetic padding here.
+- `description_source` (enum)
+  - `original` | `portal` | `synthetic` | `vlm` | `ocr`
+- `description_language` (string)
+  - `fr` | `en` | `unknown`
+
+## Attribute Fields
+
+- `attributes` (array)
+  - Raw attributes array from source metadata.
+- `attributes_map` (object)
+  - Normalized key/value map for attribute lookup.
+
+## Date Fields
+
+- `date_raw` (string)
+  - Raw date string as provided by source.
+- `date_value` (string)
+  - Normalized date (year or year range).
+- `date_confidence` (float)
+  - Confidence in normalized date (0-1).
+
+## Credits / Cote Fields
+
+- `credits` (string)
+- `cote` (string)
+
+## Portal Linkage Fields
+
+- `portal_match` (bool)
+  - Whether a portal record is linked.
+- `portal_record` (object)
+  - Raw portal record payload (if available).
+- `record_link_id` (string)
+  - Linked portal or external record ID.
+- `record_link_confidence` (float)
+  - Confidence score for linkage.
+- `record_link_evidence` (object)
+  - Evidence used (filename match, cote match, embedding similarity).
+
+## Aerial Match Fields
+
+- `aerial_matches` (array)
+  - Matches to aerial datasets with evidence.
+
+## VLM Fields
+
+- `vlm_caption` (string)
+  - AI-generated caption (English by default).
+- `vlm_caption_source` (string)
+  - Model or run identifier.
+- `vlm_captioned_at` (string)
+  - ISO timestamp of generation.
+- `vlm_caption_confidence` (float)
+  - Overall confidence (0-1).
+- `vlm_tags` (object)
+  - Structured tags: `objects`, `setting`, `actions`, `landmarks`.
+- `vlm_error` (string)
+  - Error message, if any.
+
+## OCR Fields (Planned)
+
+- `ocr_text` (string)
+- `ocr_confidence` (float)
+- `ocr_source` (string)
+
+## Geocoding Fields
+
+- `geo_lat` (float)
+- `geo_lng` (float)
+- `geo_source` (string)
+  - `name` | `description` | `portal`
+- `geo_confidence` (float)
+- `geo_place_name` (string)
+
+## Trust Scoring Fields
+
+- `trust_score` (float)
+  - Overall trust of the record (0-1).
+- `field_confidence` (object)
+  - Confidence per field (title, description, date, location).
+- `display_policy` (object)
+  - `show_description`, `show_vlm_caption`, `show_location`.
+
+## Localization Fields
+
+- `description_fr`, `description_en`
+- `vlm_caption_fr`, `vlm_caption_en`
+- `lang_primary`, `lang_secondary`
+
+## Schema Invariants
+
+- Never overwrite raw fields; add normalized versions.
+- Synthetic text must never replace an original description.
+- Any AI-generated field must carry a confidence + source.
+- UI should be gated on `display_policy`, not raw fields.
+

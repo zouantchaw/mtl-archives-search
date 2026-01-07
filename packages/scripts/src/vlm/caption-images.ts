@@ -310,6 +310,7 @@ async function main() {
       limit: { type: 'string' },
       offset: { type: 'string', default: '0' },
       'only-synthetic': { type: 'boolean', default: true },
+      all: { type: 'boolean', default: false },
       'dry-run': { type: 'boolean', default: false },
     },
   });
@@ -318,7 +319,7 @@ async function main() {
   const outputPath = values.output!;
   const limit = values.limit ? parseInt(values.limit, 10) : undefined;
   const offset = parseInt(values.offset!, 10);
-  const onlySynthetic = values['only-synthetic'];
+  const onlySynthetic = values['only-synthetic'] && !values.all;
   const dryRun = values['dry-run'];
 
   if (!fs.existsSync(inputPath)) {
@@ -330,6 +331,9 @@ async function main() {
   console.log(`Writing to: ${outputPath}`);
   console.log(`Model: ${VLM_MODEL}`);
   console.log(`Only synthetic: ${onlySynthetic}`);
+  if (values.all) {
+    console.log('All records: true (override only-synthetic)');
+  }
   console.log(`Dry run: ${dryRun}`);
   console.log(`Rate limit: ${REQUESTS_PER_MINUTE} req/min (${DELAY_MS}ms delay)`);
   console.log('');
