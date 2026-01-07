@@ -5,6 +5,7 @@ This document defines the target schema for the redesigned ETL pipeline. It is a
 ## Stages and Outputs
 
 - **Raw ingest** -> `manifest_raw.jsonl` (current: `manifest.jsonl`)
+- **Missing ingest** -> `manifest_missing.jsonl` + `manifest_extended.jsonl`
 - **Canonical normalize** -> `manifest_canonical.jsonl`
 - **Date normalize** -> `manifest_dated.jsonl`
 - **Record linkage** -> `manifest_linked.jsonl`
