@@ -143,9 +143,10 @@ Deliverables:
 - Avoid using VLM captions for final marketing copy; use human metadata when present.
 
 ## Immediate Next Steps (Suggested Order)
-1) Build `source_inventory.md` + `etl-schema.md`.
-2) Implement canonical normalization output.
-3) Implement record linkage + evidence tracking.
-4) Add OCR + structured VLM tags.
-5) Compute trust score + display policy.
-
+1) Refresh CKAN datastore snapshots (`npm run open-data:fetch`) and rebuild `manifest_enriched.jsonl` (`npm run open-data:match`).
+2) Dedupe by `external_url` for a canonical record set (`npm run manifest:dedupe`).
+3) Build `source_inventory.md` + `etl-schema.md`.
+4) Implement canonical normalization output.
+5) Implement record linkage + evidence tracking.
+6) Add OCR + structured VLM tags.
+7) Compute trust score + display policy.

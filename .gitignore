@@ -35,9 +35,15 @@ GEMINI.md
 data/mtl_archives/package_*.json
 data/mtl_archives/phototheque_*.json
 data/mtl_archives/phototheque_*.csv
+data/mtl_archives/phototheque_*.xls
+data/mtl_archives/phototheque_*.xlsx
 data/mtl_archives/phototheque_*.txt
+data/mtl_archives/*.xls
+data/mtl_archives/*.xlsx
 data/mtl_archives/vues_aeriennes_*.json
 data/mtl_archives/vues_aeriennes_*.csv
+data/mtl_archives/vues_aeriennes_*.xls
+data/mtl_archives/vues_aeriennes_*.xlsx
 data/mtl_archives/*_headers.txt
 data/mtl_archives/related_datasets.json
 

@@ -6,8 +6,10 @@ This document defines the target schema for the redesigned ETL pipeline. It is a
 
 - **Raw ingest** -> `manifest_raw.jsonl` (current: `manifest.jsonl`)
 - **Canonical normalize** -> `manifest_canonical.jsonl`
+- **Date normalize** -> `manifest_dated.jsonl`
 - **Record linkage** -> `manifest_linked.jsonl`
 - **Enrichment** -> `manifest_enriched.jsonl`
+- **Deduplication (optional)** -> `manifest_deduped.jsonl`
 - **Trust scoring** -> `manifest_scored.jsonl`
 - **Localization** -> `manifest_bilingual.jsonl`
 
@@ -42,15 +44,19 @@ Each stage must write a new file; no stage should overwrite a prior output.
 - `portal_date_raw` (string)
 - `portal_cote_raw` (string)
 - `portal_credits_raw` (string)
+- `portal_title_normalized` (string)
+- `portal_description_normalized` (string)
 
 ## Normalized Text Fields
 
 - `title_normalized` (string)
   - Cleaned, human-readable title (no codes).
+- `title_is_code_like` (bool)
+  - True when `title_raw` looks like a code/filename.
 - `description_normalized` (string)
   - Cleaned description. No synthetic padding here.
 - `description_source` (enum)
-  - `original` | `portal` | `synthetic` | `vlm` | `ocr`
+  - `original` | `portal` | `aerial` | `synthetic` | `vlm` | `ocr` | `missing`
 - `description_language` (string)
   - `fr` | `en` | `unknown`
 
@@ -65,6 +71,8 @@ Each stage must write a new file; no stage should overwrite a prior output.
 
 - `date_raw` (string)
   - Raw date string as provided by source.
+- `date_raw_source` (string)
+  - `attributes` | `portal` | `missing`
 - `date_value` (string)
   - Normalized date (year or year range).
 - `date_confidence` (float)
@@ -92,6 +100,14 @@ Each stage must write a new file; no stage should overwrite a prior output.
 
 - `aerial_matches` (array)
   - Matches to aerial datasets with evidence.
+- `aerial_title` (string)
+- `aerial_description` (string)
+- `aerial_date_raw` (string)
+- `aerial_date_value` (string)
+- `aerial_date_confidence` (float)
+- `aerial_credits` (string)
+- `aerial_cote` (string)
+- `aerial_source_dataset` (string)
 
 ## VLM Fields
 
@@ -132,6 +148,23 @@ Each stage must write a new file; no stage should overwrite a prior output.
 - `display_policy` (object)
   - `show_description`, `show_vlm_caption`, `show_location`.
 
+## Quality Flags
+
+- `metadata_quality` (object)
+  - `quality_flags` (array)
+  - Examples: `code-like-title`, `missing-description`, `short-description`
+
+## Deduplication Fields
+
+- `dedupe_key` (string)
+  - Normalized `external_url` used for dedupe grouping.
+- `dedupe_count` (int)
+  - Number of records collapsed into this record.
+- `dedupe_metadata_filenames` (array)
+  - All `metadata_filename` values in the group.
+- `dedupe_image_filenames` (array)
+  - All `image_filename` values in the group.
+
 ## Localization Fields
 
 - `description_fr`, `description_en`
@@ -144,4 +177,3 @@ Each stage must write a new file; no stage should overwrite a prior output.
 - Synthetic text must never replace an original description.
 - Any AI-generated field must carry a confidence + source.
 - UI should be gated on `display_policy`, not raw fields.
-
