@@ -5,6 +5,10 @@ node_modules/
 **/dist/
 **/*.tsbuildinfo
 
+# Logs and PID files
+*.log
+*.pid
+
 # Wrangler
 .wrangler/
 data/mtl_archives/.wrangler-logs/
