@@ -9,7 +9,7 @@ This document defines the target schema for the redesigned ETL pipeline. It is a
 - **Canonical normalize** -> `manifest_canonical.jsonl`
 - **Date normalize** -> `manifest_dated.jsonl`
 - **Record linkage** -> `manifest_linked.jsonl`
-- **Enrichment** -> `manifest_enriched.jsonl`
+- **Enrichment** -> `manifest_enriched.jsonl` (current: `manifest_enriched_v3.jsonl`)
 - **Deduplication (optional)** -> `manifest_deduped.jsonl`
 - **Trust scoring** -> `manifest_scored.jsonl`
 - **Localization** -> `manifest_bilingual.jsonl`
@@ -96,6 +96,7 @@ Each stage must write a new file; no stage should overwrite a prior output.
   - Confidence score for linkage.
 - `record_link_evidence` (object)
   - Evidence used (filename match, cote match, embedding similarity).
+  - `record_link_evidence.portal.bge_similarity` stores cosine similarity when BGE matching is used.
 
 ## Aerial Match Fields
 
@@ -122,14 +123,27 @@ Each stage must write a new file; no stage should overwrite a prior output.
   - Overall confidence (0-1).
 - `vlm_tags` (object)
   - Structured tags: `objects`, `setting`, `actions`, `landmarks`.
+- `vlm_tags_source` (string)
+- `vlm_tags_generated_at` (string)
+- `vlm_tags_confidence` (float)
+- `vlm_tags_error` (string)
 - `vlm_error` (string)
   - Error message, if any.
 
-## OCR Fields (Planned)
+## OCR Fields
 
 - `ocr_text` (string)
 - `ocr_confidence` (float)
+- `ocr_word_count` (int)
+- `ocr_language` (string)
 - `ocr_source` (string)
+- `ocr_generated_at` (string)
+- `ocr_error` (string)
+- `ocr_original_width` (int)
+- `ocr_original_height` (int)
+- `ocr_processed_width` (int)
+- `ocr_processed_height` (int)
+- `ocr_downscaled` (bool)
 
 ## Geocoding Fields
 

@@ -20,6 +20,17 @@ Reference reports:
 - Deterministic runs: inputs + code versions yield reproducible output.
 - Bilingual safety: never show English AI text when UI is French unless labeled.
 
+## Current Status (Jan 2026)
+- Done: CKAN refresh + matching, dedupe by `external_url`, missing image ingestion to R2.
+- Done: VLM missing captions merged; enriched + trust-scored manifests regenerated.
+- Done: canonical normalization + date normalization (`manifest_canonical.jsonl`, `manifest_dated.jsonl`).
+- Done: text embeddings regenerated; D1 seed regenerated.
+- Done: CLIP image embeddings (GPU pipeline) for `mtl-archives-clip`.
+- Done: record linkage run with BGE similarity (0 new links at threshold 0.82).
+- Done: record linkage report generated (only 2 unmatched candidates ≥0.70; no auto-links).
+- In progress: structured VLM tags retry + OCR capture (running on remote instance).
+- Pending: merge + trust scoring after VLM/OCR, bilingual localization, QA loop.
+
 ## Proposed Pipeline (High-Level)
 1) **Ingest & Normalize (Raw -> Canonical)**
 2) **Record Linkage (Canonical -> Linked)**
@@ -86,8 +97,11 @@ Tasks:
   - Require "unknown" for uncertain fields.
 - OCR pass for visible text (street names, storefronts, addresses).
 - Only generate free-form `vlm_caption` from structured tags + OCR text.
+- Track retryable errors (JSON parse failures, 404s) for follow-up runs.
 Deliverables:
-- `manifest_enriched.jsonl`
+- `manifest_vlm_structured.jsonl`
+- `manifest_ocr.jsonl`
+- `manifest_enriched_v3.jsonl`
 - `reports/vlm_structured_samples.md`
 Acceptance:
 - Manual review of 50 records: <10% factual errors.
@@ -143,11 +157,13 @@ Deliverables:
 - Avoid using VLM captions for final marketing copy; use human metadata when present.
 
 ## Immediate Next Steps (Suggested Order)
-1) Refresh CKAN datastore snapshots (`npm run open-data:fetch`) and rebuild `manifest_enriched.jsonl` (`npm run open-data:match`).
-2) Dedupe by `external_url` for a canonical record set (`npm run manifest:dedupe`).
-3) Generate missing image report + ingest missing CKAN images into R2 (`npm run open-data:missing`, `npm run open-data:ingest-missing`).
-4) Build `source_inventory.md` + `etl-schema.md`.
-5) Implement canonical normalization output.
-6) Implement record linkage + evidence tracking.
-7) Add OCR + structured VLM tags.
-8) Compute trust score + display policy.
+1) [x] Refresh CKAN datastore snapshots (`npm run open-data:fetch`) and rebuild `manifest_enriched.jsonl` (`npm run open-data:match`).
+2) [x] Dedupe by `external_url` for a canonical record set (`npm run manifest:dedupe`).
+3) [x] Generate missing image report + ingest missing CKAN images into R2 (`npm run open-data:missing`, `npm run open-data:ingest-missing`).
+4) [x] Build `source_inventory.md` + `etl-schema.md`.
+5) [x] Implement canonical normalization output.
+6) [x] Run record linkage + evidence tracking with BGE similarity (`link-records --bge`).
+7) [x] Generate `reports/record_linkage_report.md` for threshold calibration.
+8) [ ] Add OCR + structured VLM tags (running on Lambda; VLM retry + OCR in progress).
+9) [x] Compute trust score + display policy.
+10) [x] Finish CLIP image embeddings (GPU), verify Vectorize coverage, then shut down instance.
