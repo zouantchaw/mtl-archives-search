@@ -24,14 +24,17 @@
 │   Cloudflare    │   │   Cloudflare    │         │   External AI   │
 │       D1        │   │    Vectorize    │         │    Services     │
 │   (metadata)    │   │   (embeddings)  │         │                 │
-│                 │   │                 │         │  ┌───────────┐  │
-│  ┌───────────┐  │   │  ┌───────────┐  │         │  │ Workers AI│  │
-│  │ manifest  │  │   │  │mtl-archives│ │         │  │ (BGE)     │  │
-│  │  table    │  │   │  │ (BGE text)│  │         │  ├───────────┤  │
-│  │  14,822   │  │   │  ├───────────┤  │         │  │HuggingFace│  │
-│  │  records  │  │   │  │mtl-archives│ │         │  │ (CLIP)    │  │
-│  │           │  │   │  │-clip (img)│  │         │  └───────────┘  │
-│  └───────────┘  │   │  └───────────┘  │         └─────────────────┘
+│                 │   │                 │         │  ┌────────────┐ │
+│  ┌───────────┐  │   │  ┌───────────┐  │         │  │ Workers AI │ │
+│  │ manifest  │  │   │  │mtl-archives│ │         │  │ (BGE + VLM)│ │
+│  │  table    │  │   │  │ (BGE text)│  │         │  ├────────────┤ │
+│  │  14,822   │  │   │  ├───────────┤  │         │  │ HuggingFace│ │
+│  │  records  │  │   │  │mtl-archives│ │         │  │ (CLIP text)│ │
+│  │           │  │   │  │-clip (img)│  │         │  ├────────────┤ │
+│  │           │  │   │  │           │  │         │  │ Tesseract  │ │
+│  │           │  │   │  │           │  │         │  │ (OCR)      │ │
+│  └───────────┘  │   │  └───────────┘  │         │  └────────────┘ │
+│                 │   │                 │         └─────────────────┘
 └─────────────────┘   └─────────────────┘
          │
          ▼
@@ -56,7 +59,7 @@ External Sources                    Processing                      Storage
 Montreal Open Data  ──┐             ┌──────────────┐
 (CSV, JSON)           │             │              │
                       ├────────────▶│  ETL Scripts │
-Logseq Knowledge    ──┤             │  (Python)    │
+Logseq Knowledge    ──┤             │ (Node/Python)│
 Base (JSONL)          │             │              │
                       │             └──────┬───────┘
                       │                    │
@@ -68,9 +71,15 @@ Base (JSONL)          │             │              │
                                            │
                                            ▼
                                     ┌──────────────┐
-                                    │     VLM      │
-                                    │  Captioning  │  ◀── LLaVA 1.5 7B on Lambda Labs
-                                    │  (GPU job)   │      ~15k images → vlm_caption
+                                    │ Vision       │
+                                    │ Enrichment   │  ◀── Workers AI VLM tags + Tesseract OCR
+                                    │ (offline)    │      → vlm_tags + ocr_text
+                                    └──────┬───────┘
+                                           │
+                                           ▼
+                                    ┌──────────────┐
+                                    │ Merge +      │
+                                    │ Trust Score  │
                                     └──────┬───────┘
                                            │
                                            ▼
@@ -84,7 +93,7 @@ Base (JSONL)          │             │              │
                                     ┌──────────────┐                ┌─────────┐
                                     │  Generate    │                │Vectorize│
                                     │  Embeddings  │───────────────▶│mtl-     │
-                                    │  (BGE text)  │  Uses vlm_cap  │archives │
+                                    │  (BGE text)  │  Uses desc+cap │archives │
                                     └──────────────┘                └─────────┘
                                            │
                                            ▼
@@ -106,7 +115,7 @@ Semantic Search (?mode=semantic)
 ─────────────────────────────────
 User Query ──▶ Workers AI (BGE) ──▶ Vectorize ──▶ D1 Hydration ──▶ Results
                                         │
-                            Searches vlm_caption embeddings
+                            Searches description + vlm_caption embeddings
 
 Visual Search (?mode=visual)
 ────────────────────────────
@@ -139,6 +148,9 @@ CREATE TABLE manifest (
 );
 ```
 
+Note: D1 currently stores core fields plus `vlm_caption`. Structured VLM tags and OCR outputs live in
+`manifest_enriched_v3.jsonl` and `manifest_scored.jsonl` until the schema is expanded.
+
 ## Repository Structure
 
 ```
@@ -147,6 +159,8 @@ mtl-archives-search/
 │   ├── api/                      # Cloudflare Worker (REST API)
 │   │   ├── src/worker.ts         # Single entry point
 │   │   └── wrangler.toml         # Cloudflare bindings
+│   ├── next-app/                 # Next.js UI (map + search)
+│   │   └── src/
 │   └── web/                      # React frontend
 │       └── src/
 ├── packages/
@@ -157,6 +171,9 @@ mtl-archives-search/
 │           └── vectorize/        # Embedding ingestion
 ├── pipelines/
 │   ├── etl/                      # Python: clean, export, audit
+│   ├── geocoding/                # Geocode helpers
+│   ├── ocr/                      # OCR pipeline (Tesseract)
+│   ├── vectorize/                # CLIP GPU vectorization
 │   └── vlm/                      # VLM captioning scripts
 ├── infrastructure/
 │   └── d1/migrations/            # D1 schema migrations
@@ -169,7 +186,7 @@ mtl-archives-search/
 | Mode | Backend | Embedding | Matches On | Best For |
 |------|---------|-----------|------------|----------|
 | `text` | D1 (SQL LIKE) | None | Exact keywords | Known terms, names, dates |
-| `semantic` | Vectorize (BGE) | 1024-dim | VLM caption text | Conceptual queries, synonyms |
+| `semantic` | Vectorize (BGE) | 1024-dim | Description + VLM caption text | Conceptual queries, synonyms |
 | `visual` | Vectorize (CLIP) | 512-dim | Image content | "Show me X", visual similarity |
 
 ## Technology Stack
@@ -180,20 +197,22 @@ mtl-archives-search/
   - `mtl-archives`: BGE text embeddings (1024-dim)
   - `mtl-archives-clip`: CLIP image embeddings (512-dim)
 - **AI Models**:
-  - Workers AI: BGE-large-en-v1.5 (semantic search)
+  - Workers AI: BGE-M3 (semantic search + linkage)
+  - Workers AI: uform-gen2-qwen-500m (structured VLM tags)
   - HuggingFace Inference API: CLIP ViT-B/32 (visual search)
-  - LLaVA 1.5 7B: VLM captioning (offline, Lambda Labs A100)
+  - Tesseract OCR (offline text extraction)
+  - Legacy: LLaVA 1.5 7B captioning run (see metrics)
 - **Object Storage**: Cloudflare R2
 - **ETL**: Python 3.10+, Node.js 23+
 
-## VLM Captioning Pipeline
+## Vision Enrichment Pipeline
 
-The semantic search quality depends on having good text descriptions for each image. Since ~85% of records had only synthetic/placeholder descriptions, we ran VLM captioning:
+The trust-first pipeline now augments records with structured vision signals and OCR for evidence-backed descriptions.
 
-1. **Input**: 14,822 images from R2
-2. **Model**: LLaVA 1.5 7B on Lambda Labs A100 (40GB)
-3. **Output**: `vlm_caption` field with 2-3 sentence descriptions
-4. **Coverage**: 98% of records now have VLM captions
-5. **Cost**: $14 for ~11 hours of GPU time
+1. **Input**: `manifest_linked.jsonl` (canonical + linked records)
+2. **VLM tags**: Workers AI model → `manifest_vlm_structured.jsonl`
+3. **OCR**: Tesseract OCR → `manifest_ocr.jsonl`
+4. **Merge + score**: `manifest_enriched_v3.jsonl` + `manifest_scored.jsonl`
+5. **Legacy**: LLaVA 1.5 7B captions in `manifest_vlm_complete.jsonl` still back the current text embeddings until reseeded.
 
 See `docs/metrics/vlm-captioning/` for detailed run metrics.

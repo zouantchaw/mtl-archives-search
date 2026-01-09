@@ -13,28 +13,36 @@ flowchart TB
     end
 
     subgraph LocalMachine["2. Local Machine"]
-        MANIFEST[/"manifest_enriched.jsonl<br/>(raw metadata)"/]
-        CLEAN["clean-metadata.ts<br/>normalize + parse"]
-        MANIFEST_CLEAN[/"manifest_clean.jsonl"/]
+        MANIFEST_RAW[/"manifest_enriched.jsonl<br/>(raw + portal metadata)"/]
+        CANONICAL["canonicalize-metadata.ts<br/>normalize + parse"]
+        MANIFEST_CANONICAL[/"manifest_canonical.jsonl"/]
+        DATES["normalize_dates.py"]
+        MANIFEST_DATED[/"manifest_dated.jsonl"/]
+        LINK["link-records.ts<br/>rules + BGE"]
+        MANIFEST_LINKED[/"manifest_linked.jsonl"/]
         GENSQL["generate-sql.ts"]
         SEED_SQL[/"seed_manifest.sql"/]
     end
 
-    subgraph GPU["3. Lambda Labs A100 GPU"]
-        VLM_CAPTION["caption_images_r2.py<br/>LLaVA 1.5 7B<br/>generates descriptions<br/>~11 hrs / $14"]
-        CLIP_INGEST["ingest-clip.ts<br/>Xenova CLIP model<br/>512-dim embeddings<br/>~3 hrs / $4"]
+    subgraph Vision["3. Vision Enrichment (Offline)"]
+        VLM_TAGS["tag-images.ts<br/>Workers AI VLM tags"]
+        OCR["ocr-images.py<br/>Tesseract OCR"]
+        MERGE["merge-vision-enrichments.ts"]
+        MANIFEST_ENRICHED[/"manifest_enriched_v3.jsonl"/]
+        SCORE["score-trust.ts"]
+        MANIFEST_SCORED[/"manifest_scored.jsonl"/]
     end
 
-    subgraph VLMOutput["3b. VLM Output"]
-        MANIFEST_VLM[/"manifest_vlm_complete.jsonl<br/>(14,822 records with vlm_caption)"/]
+    subgraph CLIP["4. CLIP Embedding (GPU/CPU)"]
+        CLIP_INGEST["pipelines/vectorize/ingest_clip.py<br/>OpenAI CLIP ViT-B/32<br/>512-dim embeddings"]
     end
 
-    subgraph Scripts["4. Vectorization Scripts"]
-        TEXT_INGEST["ingest-text.ts<br/>Workers AI BGE<br/>1024-dim embeddings<br/>(uses vlm_caption)"]
+    subgraph Scripts["5. Vectorization Scripts"]
+        TEXT_INGEST["ingest-text.ts<br/>Workers AI BGE<br/>1024-dim embeddings"]
         EXPORT["export-embeddings.ts<br/>UMAP 2D projection"]
     end
 
-    subgraph CF["5. Cloudflare Storage"]
+    subgraph CF["6. Cloudflare Storage"]
         R2[("R2<br/>mtl-archives<br/>images")]
         D1[("D1<br/>manifest table")]
         VEC_BGE[("Vectorize<br/>mtl-archives<br/>1024-dim")]
@@ -43,25 +51,25 @@ flowchart TB
     end
 
     %% Flow
-    PORTAL -->|download| MANIFEST
+    PORTAL -->|download| MANIFEST_RAW
     PORTAL -->|download| HDD
     HDD -->|"wrangler r2 object put"| R2
 
-    MANIFEST --> CLEAN --> MANIFEST_CLEAN
-    MANIFEST_CLEAN --> GENSQL --> SEED_SQL
+    MANIFEST_RAW --> CANONICAL --> MANIFEST_CANONICAL --> DATES --> MANIFEST_DATED --> LINK --> MANIFEST_LINKED
+
+    MANIFEST_LINKED --> VLM_TAGS
+    MANIFEST_LINKED --> OCR
+    VLM_TAGS --> MERGE
+    OCR --> MERGE
+    MERGE --> MANIFEST_ENRICHED --> SCORE --> MANIFEST_SCORED
+
+    MANIFEST_LINKED --> GENSQL --> SEED_SQL
     SEED_SQL -->|"wrangler d1 execute"| D1
 
-    %% VLM Captioning (for photos with synthetic descriptions)
-    MANIFEST_CLEAN --> VLM_CAPTION
-    R2 -.->|fetch images| VLM_CAPTION
-    VLM_CAPTION --> MANIFEST_VLM
-
-    %% Text embeddings use VLM captions
-    MANIFEST_VLM --> TEXT_INGEST
+    MANIFEST_ENRICHED --> TEXT_INGEST
     TEXT_INGEST --> VEC_BGE
 
-    %% CLIP embeddings (visual search)
-    MANIFEST_CLEAN --> CLIP_INGEST
+    MANIFEST_LINKED --> CLIP_INGEST
     R2 -.->|fetch images| CLIP_INGEST
     CLIP_INGEST --> VEC_CLIP
 
