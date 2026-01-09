@@ -222,6 +222,4 @@ docs/metrics/vlm-captioning/
 
 ## Related Documentation
 
-- [CSAPP Lessons from VLM Captioning](../../csapp-lessons-vlm.md) - Systems programming concepts learned
-- [Vision AI Primer](../../vision-ai-primer.md) - Understanding VLMs, CLIP, and embeddings
 - [Architecture Diagram](../../architecture.mmd) - Full data pipeline including VLM step

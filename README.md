@@ -12,18 +12,21 @@ Built on Cloudflare's edge infrastructure: Workers, D1, Vectorize, R2, and Worke
 
 - **Text Search** — SQL-based keyword search across photo metadata
 - **Semantic Search** — Find conceptually similar photos using BGE text embeddings
-- **Visual Search** _(coming soon)_ — CLIP-based image similarity search
+- **Visual Search** — CLIP-based image similarity search (512-dim embeddings)
 - **Signed URLs** — Secure, time-limited access to R2-hosted images
 - **Edge Performance** — Sub-50ms response times globally via Cloudflare's network
 
 ## Live API
 
 ```bash
-# Text search
+# Text search (SQL LIKE)
 curl "https://mtl-archives-worker.wiel.workers.dev/api/search?q=church&mode=text"
 
-# Semantic search - finds conceptually similar photos
+# Semantic search (BGE embeddings)
 curl "https://mtl-archives-worker.wiel.workers.dev/api/search?q=old+cathedral+building&mode=semantic&limit=5"
+
+# Visual search (CLIP embeddings)
+curl "https://mtl-archives-worker.wiel.workers.dev/api/search?q=snowy+park&mode=visual&limit=5"
 
 # Paginated listing
 curl "https://mtl-archives-worker.wiel.workers.dev/api/photos?limit=10"
@@ -96,7 +99,7 @@ Search photos by text or semantic similarity.
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `q` | string | **required** | Search query |
-| `mode` | string | `text` | `text` or `semantic` |
+| `mode` | string | `text` | `text`, `semantic`, or `visual` |
 | `limit` | number | 25 | Max results (1-100) |
 
 **Response includes:**
@@ -135,10 +138,12 @@ npm run vectorize:text  # Generate BGE embeddings
 
 - [x] Text search (SQL LIKE)
 - [x] Semantic search (BGE text embeddings)
-- [ ] **CLIP visual search** — Search by image similarity
-- [ ] Frontend UI — React/Next.js photo browser
-- [ ] Geospatial search — Filter by location
-- [ ] Date range filtering
+- [x] CLIP visual search (512-dim image embeddings)
+- [x] VLM captioning (LLaVA 1.5 7B)
+- [x] OCR text extraction (Tesseract)
+- [ ] Next.js UI with map visualization
+- [ ] Geocoding + geospatial filtering
+- [ ] FR/EN localization
 
 ## Dataset
 
