@@ -17,6 +17,10 @@
     "canonicalize": "npm run canonicalize --workspace=@mtl-archives/scripts",
     "normalize-dates": "npm run normalize-dates --workspace=@mtl-archives/scripts",
     "link-records": "npm run link-records --workspace=@mtl-archives/scripts",
+    "link-records:report": "npm run link-records:report --workspace=@mtl-archives/scripts",
+    "vlm:tags": "npm run vlm:tags --workspace=@mtl-archives/scripts",
+    "merge-vision": "npm run merge-vision --workspace=@mtl-archives/scripts",
+    "ocr:run": "python3 pipelines/ocr/ocr-images.py",
     "apply-aerial": "npm run apply-aerial --workspace=@mtl-archives/scripts",
     "merge-enrichments": "npm run merge-enrichments --workspace=@mtl-archives/scripts",
     "score-trust": "npm run score-trust --workspace=@mtl-archives/scripts",
@@ -28,7 +32,8 @@
     "vectorize:clip": "npm run vectorize:clip --workspace=@mtl-archives/scripts",
     "vectorize:text": "npm run vectorize:text --workspace=@mtl-archives/scripts",
     "vectorize:export": "npm run vectorize:export --workspace=@mtl-archives/scripts",
-    "db:generate": "npm run db:generate --workspace=@mtl-archives/scripts"
+    "db:generate": "npm run db:generate --workspace=@mtl-archives/scripts",
+    "vlm:merge": "node node_modules/tsx/dist/cli.mjs packages/scripts/src/vlm/merge-captions.ts"
   },
   "devDependencies": {
     "typescript": "^5.6.3",
