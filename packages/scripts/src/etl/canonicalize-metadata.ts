@@ -6,7 +6,10 @@ import { parseArgs } from 'node:util';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MONOREPO_ROOT = path.resolve(__dirname, '../../../../');
 
-const DEFAULT_INPUT = path.resolve(MONOREPO_ROOT, 'data/mtl_archives/manifest_enriched.jsonl');
+const ENRICHED_V2 = path.resolve(MONOREPO_ROOT, 'data/mtl_archives/manifest_enriched_v2.jsonl');
+const DEFAULT_INPUT = fs.existsSync(ENRICHED_V2)
+  ? ENRICHED_V2
+  : path.resolve(MONOREPO_ROOT, 'data/mtl_archives/manifest_enriched.jsonl');
 const DEFAULT_OUTPUT = path.resolve(MONOREPO_ROOT, 'data/mtl_archives/manifest_canonical.jsonl');
 const DEFAULT_SUMMARY = path.resolve(MONOREPO_ROOT, 'data/mtl_archives/manifest_canonical_summary.json');
 
