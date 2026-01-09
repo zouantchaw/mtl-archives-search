@@ -16,13 +16,13 @@ const API_TOKEN = process.env.CLOUDFLARE_API_TOKEN || process.env.CLOUDFLARE_AI_
 // Options: '@cf/meta/llama-3.2-11b-vision-instruct' (requires license), '@cf/unum/uform-gen2-qwen-500m', '@cf/llava-hf/llava-1.5-7b-hf'
 const VLM_MODEL = process.env.VLM_MODEL || '@cf/unum/uform-gen2-qwen-500m';
 const R2_PUBLIC_DOMAIN = process.env.CLOUDFLARE_R2_PUBLIC_DOMAIN;
+const VLM_PREFER_R2 = process.env.VLM_PREFER_R2 === '1' || process.env.VLM_PREFER_R2 === 'true';
 
 const DEFAULT_INPUT = path.resolve(MONOREPO_ROOT, 'data/mtl_archives/manifest_clean.jsonl');
 const DEFAULT_OUTPUT = path.resolve(MONOREPO_ROOT, 'data/mtl_archives/manifest_vlm.jsonl');
 
-// Rate limiting
-const REQUESTS_PER_MINUTE = 30; // Conservative limit for Workers AI
-const DELAY_MS = Math.ceil(60000 / REQUESTS_PER_MINUTE);
+// Rate limiting defaults (can be overridden via CLI/env)
+const DEFAULT_REQUESTS_PER_MINUTE = 30; // Conservative limit for Workers AI
 
 if (!ACCOUNT_ID) {
   console.error('Missing CLOUDFLARE_ACCOUNT_ID');
@@ -90,8 +90,22 @@ function isRealName(name: string): boolean {
 /**
  * Extract a clean date string from various formats
  */
+function buildAttributesMap(record: any): Record<string, string> {
+  if (record.attributes_map && typeof record.attributes_map === 'object') {
+    return record.attributes_map;
+  }
+  const map: Record<string, string> = {};
+  for (const attr of record.attributes || []) {
+    if (attr && typeof attr === 'object' && attr.trait_type) {
+      map[attr.trait_type] = String(attr.value ?? '').trim();
+    }
+  }
+  return map;
+}
+
 function extractDate(record: any): string | null {
-  const dateValue = record.attributes_map?.Date || record.portal_record?.Date;
+  const attributesMap = buildAttributesMap(record);
+  const dateValue = attributesMap.Date || record.portal_record?.Date;
   if (!dateValue) return null;
 
   // Clean up common patterns
@@ -139,13 +153,17 @@ function buildPrompt(record: any): string {
  * Get the image URL for a record
  */
 function getImageUrl(record: any): string | null {
+  const filename = record.resolved_image_filename || record.image_filename;
+  if (filename && R2_PUBLIC_DOMAIN && VLM_PREFER_R2) {
+    return `https://${R2_PUBLIC_DOMAIN}/${encodeURIComponent(filename)}`;
+  }
+
   // Prefer external_url (Montreal's servers - authoritative source)
   if (record.external_url) {
     return record.external_url;
   }
 
   // Fallback to R2 if configured
-  const filename = record.resolved_image_filename || record.image_filename;
   if (filename && R2_PUBLIC_DOMAIN) {
     return `https://${R2_PUBLIC_DOMAIN}/${encodeURIComponent(filename)}`;
   }
@@ -301,6 +319,40 @@ async function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+function createRateLimiter(intervalMs: number): () => Promise<void> {
+  let nextAvailable = 0;
+
+  return async () => {
+    const now = Date.now();
+    const waitMs = Math.max(0, nextAvailable - now);
+    nextAvailable = Math.max(nextAvailable, now) + intervalMs;
+    if (waitMs > 0) {
+      await sleep(waitMs);
+    }
+  };
+}
+
+function loadProcessedIds(outputPath: string): Set<string> {
+  const processed = new Set<string>();
+  if (!fs.existsSync(outputPath)) return processed;
+
+  const raw = fs.readFileSync(outputPath, 'utf-8').trim();
+  if (!raw) return processed;
+
+  for (const line of raw.split('\n')) {
+    try {
+      const record = JSON.parse(line);
+      if (record && record.metadata_filename) {
+        processed.add(record.metadata_filename);
+      }
+    } catch (err) {
+      console.warn(`Skipping malformed JSONL line in ${outputPath}`);
+    }
+  }
+
+  return processed;
+}
+
 async function main() {
   const { values } = parseArgs({
     args: process.argv.slice(2),
@@ -312,6 +364,9 @@ async function main() {
       'only-synthetic': { type: 'boolean', default: true },
       all: { type: 'boolean', default: false },
       'dry-run': { type: 'boolean', default: false },
+      resume: { type: 'boolean', default: false },
+      concurrency: { type: 'string', default: '1' },
+      'requests-per-minute': { type: 'string' },
     },
   });
 
@@ -321,6 +376,12 @@ async function main() {
   const offset = parseInt(values.offset!, 10);
   const onlySynthetic = values['only-synthetic'] && !values.all;
   const dryRun = values['dry-run'];
+  const resume = values.resume;
+  const concurrency = Math.max(1, parseInt(values.concurrency!, 10) || 1);
+  const requestsPerMinute = values['requests-per-minute']
+    ? Math.max(1, parseInt(values['requests-per-minute'], 10))
+    : (process.env.VLM_REQUESTS_PER_MINUTE ? Math.max(1, parseInt(process.env.VLM_REQUESTS_PER_MINUTE, 10)) : DEFAULT_REQUESTS_PER_MINUTE);
+  const delayMs = Math.ceil(60000 / requestsPerMinute);
 
   if (!fs.existsSync(inputPath)) {
     console.error(`Input file not found: ${inputPath}`);
@@ -335,7 +396,11 @@ async function main() {
     console.log('All records: true (override only-synthetic)');
   }
   console.log(`Dry run: ${dryRun}`);
-  console.log(`Rate limit: ${REQUESTS_PER_MINUTE} req/min (${DELAY_MS}ms delay)`);
+  console.log(`Rate limit: ${requestsPerMinute} req/min (${delayMs}ms delay)`);
+  console.log(`Concurrency: ${concurrency}`);
+  if (resume) {
+    console.log('Resume: true');
+  }
   console.log('');
 
   // Read all records
@@ -359,7 +424,12 @@ async function main() {
     : records;
 
   console.log(`Total records: ${records.length}`);
-  console.log(`Records to caption: ${toProcess.length}`);
+  const processedIds = resume ? loadProcessedIds(outputPath) : new Set<string>();
+  const remainingToCaption = toProcess.filter(record => !processedIds.has(record.metadata_filename));
+  if (resume) {
+    console.log(`Already written: ${processedIds.size}`);
+  }
+  console.log(`Records to caption: ${remainingToCaption.length}`);
   console.log('');
 
   // Accept model license agreement (required for some models like Llama)
@@ -383,66 +453,90 @@ async function main() {
   }
 
   // Process records
-  const outputStream = fs.createWriteStream(outputPath, { encoding: 'utf-8' });
+  const outputStream = fs.createWriteStream(outputPath, {
+    encoding: 'utf-8',
+    flags: resume ? 'a' : 'w',
+  });
 
+  const rateLimiter = createRateLimiter(delayMs);
+  let handled = 0;
   let processed = 0;
   let captioned = 0;
+  let skipped = 0;
   let errors = 0;
   const startTime = Date.now();
+  let cursor = 0;
 
-  for (const record of records) {
-    const shouldCaption = !onlySynthetic || needsCaptioning(record);
+  const workers = Array.from({ length: concurrency }, async () => {
+    while (true) {
+      const index = cursor;
+      cursor += 1;
+      if (index >= records.length) break;
 
-    if (shouldCaption) {
-      const imageUrl = getImageUrl(record);
+      const record = records[index];
+      const recordId = record.metadata_filename;
 
-      if (!imageUrl) {
-        console.warn(`No image URL for ${record.metadata_filename}, skipping`);
-        record.vlm_caption = null;
-        record.vlm_error = 'no_image_url';
-      } else {
-        try {
-          const prompt = buildPrompt(record);
-          const caption = await captionImage(imageUrl, prompt);
+      if (resume && processedIds.has(recordId)) {
+        skipped++;
+        handled++;
+        continue;
+      }
 
-          record.vlm_caption = caption;
-          record.vlm_captioned_at = new Date().toISOString();
-          captioned++;
+      const shouldCaption = !onlySynthetic || needsCaptioning(record);
 
-          console.log(`[${captioned}/${toProcess.length}] ${record.metadata_filename}: ${caption.slice(0, 80)}...`);
+      if (shouldCaption) {
+        const imageUrl = getImageUrl(record);
 
-          // Rate limiting
-          await sleep(DELAY_MS);
-
-        } catch (err: any) {
-          console.error(`Error captioning ${record.metadata_filename}: ${err.message}`);
+        if (!imageUrl) {
+          console.warn(`No image URL for ${record.metadata_filename}, skipping`);
           record.vlm_caption = null;
-          record.vlm_error = err.message;
-          errors++;
+          record.vlm_error = 'no_image_url';
+        } else {
+          try {
+            await rateLimiter();
+            const prompt = buildPrompt(record);
+            const caption = await captionImage(imageUrl, prompt);
 
-          // Back off on errors
-          await sleep(DELAY_MS * 2);
+            record.vlm_caption = caption;
+            record.vlm_captioned_at = new Date().toISOString();
+            captioned++;
+
+            console.log(`[${captioned}/${remainingToCaption.length}] ${record.metadata_filename}: ${caption.slice(0, 80)}...`);
+          } catch (err: any) {
+            console.error(`Error captioning ${record.metadata_filename}: ${err.message}`);
+            record.vlm_caption = null;
+            record.vlm_error = err.message;
+            errors++;
+
+            // Back off on errors
+            await sleep(delayMs * 2);
+          }
         }
       }
-    }
 
-    outputStream.write(JSON.stringify(record) + '\n');
-    processed++;
+      outputStream.write(JSON.stringify(record) + '\n');
+      processed++;
+      handled++;
 
-    // Progress update every 100 records
-    if (processed % 100 === 0) {
-      const elapsed = (Date.now() - startTime) / 1000;
-      const rate = captioned / elapsed * 60;
-      console.log(`\nProgress: ${processed}/${records.length} processed, ${captioned} captioned, ${errors} errors`);
-      console.log(`Rate: ${rate.toFixed(1)} captions/min, Elapsed: ${elapsed.toFixed(0)}s\n`);
+      // Progress update every 100 records handled
+      if (handled % 100 === 0) {
+        const elapsed = (Date.now() - startTime) / 1000;
+        const rate = captioned / elapsed * 60;
+        console.log(`\nProgress: ${handled}/${records.length} handled, ${processed} written, ${skipped} skipped, ${captioned} captioned, ${errors} errors`);
+        console.log(`Rate: ${rate.toFixed(1)} captions/min, Elapsed: ${elapsed.toFixed(0)}s\n`);
+      }
     }
-  }
+  });
+
+  await Promise.all(workers);
 
   outputStream.end();
 
   const totalTime = (Date.now() - startTime) / 1000;
   console.log('\n=== Complete ===');
-  console.log(`Processed: ${processed}`);
+  console.log(`Handled: ${handled}`);
+  console.log(`Written: ${processed}`);
+  console.log(`Skipped: ${skipped}`);
   console.log(`Captioned: ${captioned}`);
   console.log(`Errors: ${errors}`);
   console.log(`Time: ${totalTime.toFixed(1)}s`);
