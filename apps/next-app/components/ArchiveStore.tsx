@@ -9,16 +9,38 @@ import Image from 'next/image';
 const API_BASE = '';
 
 // ============================================================
+// Flag Icons
+// ============================================================
+function FlagQC() {
+  return (
+    <svg width="20" height="14" viewBox="0 0 20 14" className="rounded-[2px] shadow-sm">
+      <rect width="20" height="14" fill="#003DA5" />
+      <path d="M10 0v14M0 7h20" stroke="white" strokeWidth="2" />
+      {/* Fleur-de-lis simplified */}
+      <circle cx="5" cy="3.5" r="1.2" fill="white" />
+      <circle cx="15" cy="3.5" r="1.2" fill="white" />
+      <circle cx="5" cy="10.5" r="1.2" fill="white" />
+      <circle cx="15" cy="10.5" r="1.2" fill="white" />
+    </svg>
+  );
+}
+
+function FlagEN() {
+  return (
+    <svg width="20" height="14" viewBox="0 0 20 14" className="rounded-[2px] shadow-sm">
+      <rect width="20" height="14" fill="white" />
+      <path d="M10 0v14M0 7h20" stroke="#C8102E" strokeWidth="2.5" />
+    </svg>
+  );
+}
+
+// ============================================================
 // i18n - French primary, English secondary
 // ============================================================
 type Lang = 'fr' | 'en';
 
 const translations = {
   fr: {
-    title: 'Montréal, 1920–1990',
-    subtitle: 'Parcourez 14 822 photographies historiques.',
-    subtitleLine2: 'Trouvez votre rue, votre immeuble, votre histoire.',
-    searchPlaceholder: 'Rue, quartier ou description...',
     textSearch: 'Texte',
     visualSearch: 'Visuel',
     featured: 'À la une',
@@ -40,6 +62,9 @@ const translations = {
     viewArchives: 'Voir dans les Archives',
     credits: 'Crédits',
     reference: 'Référence',
+    portalTitle: 'Titre (Portail)',
+    portalDescription: 'Description (Portail)',
+    portalDate: 'Date (Portail)',
     loadMore: 'Charger plus',
     loading: 'Chargement...',
     instagram: 'Instagram',
@@ -47,10 +72,6 @@ const translations = {
     contact: 'Contact',
   },
   en: {
-    title: 'Montréal, 1920–1990',
-    subtitle: 'Browse 14,822 historical photographs.',
-    subtitleLine2: 'Find your street, your building, your history.',
-    searchPlaceholder: 'Street, neighborhood, or describe...',
     textSearch: 'Text',
     visualSearch: 'Visual',
     featured: 'Featured',
@@ -72,6 +93,9 @@ const translations = {
     viewArchives: 'View in City Archives',
     credits: 'Credits',
     reference: 'Reference',
+    portalTitle: 'Title (Portal)',
+    portalDescription: 'Description (Portal)',
+    portalDate: 'Date (Portal)',
     loadMore: 'Load more',
     loading: 'Loading...',
     instagram: 'Instagram',
@@ -132,6 +156,32 @@ export function ArchiveStore() {
   // Refs
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Animated placeholder
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
+  const placeholders = lang === 'fr' ? [
+    'Rue Sainte-Catherine...',
+    'église en hiver...',
+    'tramway années 50...',
+    'Vieux-Port de Montréal...',
+    'construction du métro...',
+    '14 822 photos à explorer...',
+  ] : [
+    'Sainte-Catherine Street...',
+    'church in winter...',
+    '1950s tramway...',
+    'Old Port of Montreal...',
+    'metro construction...',
+    '14,822 photos to explore...',
+  ];
+
+  useEffect(() => {
+    if (searchQuery) return; // Don't animate when user is typing
+    const interval = setInterval(() => {
+      setPlaceholderIndex((i) => (i + 1) % placeholders.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [searchQuery, placeholders.length]);
 
   // Load initial photos
   useEffect(() => {
@@ -288,98 +338,163 @@ export function ArchiveStore() {
 
   return (
     <div className="min-h-screen bg-[#fafafa]">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-[#fafafa]/95 backdrop-blur-sm">
-        <div className="flex items-center justify-between h-12 px-4 md:px-6">
-          <a href="/" className="text-xs font-medium tracking-[0.15em] uppercase">
+      {/* Header with Search */}
+      <header className="sticky top-0 z-50 bg-[#fafafa]/95 backdrop-blur-sm border-b border-neutral-100">
+        {/* Mobile: stacked layout */}
+        <div className="flex flex-col sm:hidden">
+          {/* Top row: logo + lang + IG */}
+          <div className="flex items-center justify-between h-11 px-3">
+            <a href="/" className="text-[11px] font-medium tracking-[0.1em] uppercase">
+              MTL Archives
+            </a>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')}
+                className="flex items-center gap-1 px-1.5 py-1 hover:bg-neutral-100 rounded transition-colors"
+                title={lang === 'fr' ? 'Switch to English' : 'Passer au français'}
+              >
+                {lang === 'fr' ? <FlagEN /> : <FlagQC />}
+              </button>
+              <a
+                href="https://instagram.com/mtlarchives"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[10px] tracking-wide text-neutral-400 hover:text-neutral-900 transition-colors"
+              >
+                @mtlarchives
+              </a>
+            </div>
+          </div>
+          {/* Bottom row: full-width search */}
+          <div className="px-3 pb-2.5">
+            <div className="flex items-center bg-white border border-neutral-200 focus-within:border-neutral-400 transition-colors h-10 rounded-sm">
+              <Search className="ml-3 h-4 w-4 text-neutral-400 shrink-0" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder={placeholders[placeholderIndex]}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="flex-1 px-2 text-[15px] bg-transparent outline-none placeholder:text-neutral-300"
+              />
+              {isSearching && (
+                <div className="mr-3 h-4 w-4 border-2 border-neutral-200 border-t-neutral-900 rounded-full animate-spin shrink-0" />
+              )}
+              {searchQuery && !isSearching && (
+                <button onClick={clearSearch} className="mr-2 p-1 hover:bg-neutral-100 rounded">
+                  <X className="h-4 w-4 text-neutral-400" />
+                </button>
+              )}
+              {/* Mode Toggle */}
+              <div className="flex border-l border-neutral-200 h-full">
+                <button
+                  onClick={() => setSearchMode('semantic')}
+                  className={`px-3 text-[10px] uppercase tracking-wide transition-colors ${
+                    searchMode === 'semantic'
+                      ? 'bg-neutral-900 text-white'
+                      : 'text-neutral-400 active:bg-neutral-100'
+                  }`}
+                >
+                  {t.textSearch}
+                </button>
+                <button
+                  onClick={() => setSearchMode('visual')}
+                  className={`px-3 text-[10px] uppercase tracking-wide transition-colors ${
+                    searchMode === 'visual'
+                      ? 'bg-neutral-900 text-white'
+                      : 'text-neutral-400 active:bg-neutral-100'
+                  }`}
+                >
+                  {t.visualSearch}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Tablet/Desktop: single row */}
+        <div className="hidden sm:flex items-center h-14 px-4 lg:px-6 gap-4 lg:gap-6">
+          {/* Logo */}
+          <a href="/" className="text-xs font-medium tracking-[0.12em] uppercase shrink-0">
             MTL Archives
           </a>
 
-          <div className="flex items-center gap-4">
-            {/* Language Toggle */}
+          {/* Search Bar - centered with max-width */}
+          <div className="flex-1 flex justify-center">
+            <div className="w-full max-w-md lg:max-w-lg xl:max-w-xl">
+              <div className="flex items-center bg-white border border-neutral-200 focus-within:border-neutral-400 transition-colors h-9">
+                <Search className="ml-3 h-3.5 w-3.5 text-neutral-400 shrink-0" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  placeholder={placeholders[placeholderIndex]}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="flex-1 px-2.5 text-sm bg-transparent outline-none placeholder:text-neutral-300 transition-all"
+                />
+                {isSearching && (
+                  <div className="mr-3 h-3.5 w-3.5 border border-neutral-300 border-t-neutral-900 rounded-full animate-spin shrink-0" />
+                )}
+                {searchQuery && !isSearching && (
+                  <button onClick={clearSearch} className="mr-2 p-0.5 hover:bg-neutral-100 rounded">
+                    <X className="h-3.5 w-3.5 text-neutral-400" />
+                  </button>
+                )}
+                {/* Mode Toggle */}
+                <div className="flex border-l border-neutral-200 h-full">
+                  <button
+                    onClick={() => setSearchMode('semantic')}
+                    className={`px-3 text-[10px] uppercase tracking-wide transition-colors ${
+                      searchMode === 'semantic'
+                        ? 'bg-neutral-900 text-white'
+                        : 'text-neutral-400 hover:text-neutral-900 hover:bg-neutral-50'
+                    }`}
+                  >
+                    {t.textSearch}
+                  </button>
+                  <button
+                    onClick={() => setSearchMode('visual')}
+                    className={`px-3 text-[10px] uppercase tracking-wide transition-colors ${
+                      searchMode === 'visual'
+                        ? 'bg-neutral-900 text-white'
+                        : 'text-neutral-400 hover:text-neutral-900 hover:bg-neutral-50'
+                    }`}
+                  >
+                    {t.visualSearch}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right side */}
+          <div className="flex items-center gap-3 shrink-0">
             <button
               onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')}
-              className="text-xs tracking-wide text-neutral-400 hover:text-neutral-900 transition-colors uppercase"
+              className="flex items-center gap-1.5 px-2 py-1 hover:bg-neutral-100 rounded transition-colors"
+              title={lang === 'fr' ? 'Switch to English' : 'Passer au français'}
             >
-              {lang === 'fr' ? 'EN' : 'FR'}
+              {lang === 'fr' ? <FlagEN /> : <FlagQC />}
+              <span className="text-[10px] text-neutral-500 uppercase">
+                {lang === 'fr' ? 'EN' : 'FR'}
+              </span>
             </button>
-
             <a
               href="https://instagram.com/mtlarchives"
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden sm:block text-xs tracking-wide text-neutral-400 hover:text-neutral-900 transition-colors uppercase"
+              className="text-[10px] tracking-wide text-neutral-400 hover:text-neutral-900 transition-colors"
             >
-              {t.instagram}
+              @mtlarchives
             </a>
           </div>
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="pt-16 pb-12 md:pt-24 md:pb-16 px-4">
-        <div className="max-w-md mx-auto text-center">
-          <h1 className="text-2xl md:text-3xl font-light tracking-tight mb-3">
-            {t.title}
-          </h1>
-          <p className="text-sm text-neutral-500 mb-8">
-            {t.subtitle}<br />
-            {t.subtitleLine2}
-          </p>
-
-          {/* Search */}
-          <div className="relative">
-            <div className="flex items-center bg-white border border-neutral-200 focus-within:border-neutral-900 transition-colors">
-              <Search className="ml-4 h-4 w-4 text-neutral-400 shrink-0" />
-              <input
-                ref={searchInputRef}
-                type="text"
-                placeholder={t.searchPlaceholder}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="flex-1 px-3 py-3 text-sm bg-transparent outline-none placeholder:text-neutral-400"
-              />
-              {isSearching && (
-                <div className="mr-4 h-4 w-4 border border-neutral-300 border-t-neutral-900 rounded-full animate-spin shrink-0" />
-              )}
-              {searchQuery && !isSearching && (
-                <button onClick={clearSearch} className="mr-3 p-1 hover:bg-neutral-100">
-                  <X className="h-4 w-4 text-neutral-400" />
-                </button>
-              )}
-            </div>
-
-            {/* Mode Toggle */}
-            <div className="flex justify-center gap-1 mt-3">
-              <button
-                onClick={() => setSearchMode('semantic')}
-                className={`px-4 py-1.5 text-xs uppercase tracking-wide transition-colors ${
-                  searchMode === 'semantic'
-                    ? 'bg-neutral-900 text-white'
-                    : 'text-neutral-400 hover:text-neutral-900'
-                }`}
-              >
-                {t.textSearch}
-              </button>
-              <button
-                onClick={() => setSearchMode('visual')}
-                className={`px-4 py-1.5 text-xs uppercase tracking-wide transition-colors ${
-                  searchMode === 'visual'
-                    ? 'bg-neutral-900 text-white'
-                    : 'text-neutral-400 hover:text-neutral-900'
-                }`}
-              >
-                {t.visualSearch}
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Grid */}
-      <section className="px-1 sm:px-2 pb-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-3 px-3">
+      <section className="pt-2 pb-8">
+        {/* Results header */}
+        <div className="flex items-center justify-between mb-2 px-2 sm:px-3">
           {hasSearched ? (
             <>
               <span className="text-xs text-neutral-400 uppercase tracking-wide">
@@ -396,8 +511,8 @@ export function ArchiveStore() {
 
         {/* Empty State */}
         {hasSearched && searchResults.length === 0 && !isSearching && (
-          <div className="text-center py-20">
-            <p className="text-neutral-500 text-sm mb-4">{t.noResults} &ldquo;{searchQuery}&rdquo;</p>
+          <div className="text-center py-16 px-4">
+            <p className="text-neutral-500 text-sm mb-3">{t.noResults} &ldquo;{searchQuery}&rdquo;</p>
             <button onClick={clearSearch} className="text-xs text-neutral-400 hover:text-neutral-900 underline underline-offset-4 uppercase tracking-wide">
               {t.clearSearch}
             </button>
@@ -406,14 +521,14 @@ export function ArchiveStore() {
 
         {/* Initial Loading */}
         {initialLoading && (
-          <div className="text-center py-20">
+          <div className="text-center py-16">
             <div className="inline-block h-5 w-5 border border-neutral-300 border-t-neutral-900 rounded-full animate-spin" />
           </div>
         )}
 
         {/* Photo Grid */}
         {!initialLoading && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-0.5 sm:gap-1">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-0.5">
             {displayPhotos.map((photo, i) => (
               <button
                 key={photo.metadataFilename}
@@ -471,7 +586,7 @@ function ProductDetail({
   onBack: () => void;
   getThumbnailUrl: (src: string, w?: number, h?: number) => string;
   lang: Lang;
-  t: typeof translations.fr;
+  t: typeof translations[Lang];
 }) {
   const [selectedSize, setSelectedSize] = useState(PRINT_OPTIONS[1].id);
   const [selectedFrame, setSelectedFrame] = useState('none');
@@ -483,13 +598,25 @@ function ProductDetail({
   const totalPrice = selectedPrint.price + selectedFrameOption.price;
 
   const buildCaption = () => {
-    const parts = [];
-    if (photo.name) parts.push(photo.name);
-    if (photo.dateValue) parts.push(photo.dateValue);
-    if (photo.description && photo.description !== 'S/O') parts.push(photo.description);
-    parts.push('');
-    parts.push('#Montréal #MontrealHistory #MTLArchives');
-    return parts.join('\n');
+    const lines = [];
+    // Title line
+    const title = photo.name || photo.portalTitle || 'Sans titre';
+    const date = photo.dateValue || photo.portalDate;
+    lines.push(date ? `${title}, ${date}` : title);
+    lines.push('');
+    // Description
+    const desc = photo.description && photo.description !== 'S/O'
+      ? photo.description
+      : photo.portalDescription;
+    if (desc) lines.push(desc);
+    lines.push('');
+    // Credits and reference
+    if (photo.credits) lines.push(`📷 ${photo.credits}`);
+    if (photo.cote) lines.push(`📁 ${photo.cote}`);
+    lines.push('');
+    // Hashtags
+    lines.push('#Montréal #MontrealHistory #MTLArchives #VieuxMontréal #HistoireduQuébec');
+    return lines.join('\n');
   };
 
   const handleCopy = async () => {
@@ -498,8 +625,21 @@ function ProductDetail({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleDownload = () => {
-    if (photo.imageUrl) {
+  const handleDownload = async () => {
+    if (!photo.imageUrl) return;
+    try {
+      const res = await fetch(photo.imageUrl);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = photo.resolvedImageFilename || `mtl-archives-${photo.metadataFilename}.jpg`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      // Fallback to opening in new tab if download fails
       window.open(photo.imageUrl, '_blank');
     }
   };
@@ -552,6 +692,15 @@ function ProductDetail({
             <div className="space-y-1 mb-6 text-xs text-neutral-400">
               {photo.credits && <p>{t.credits}: {photo.credits}</p>}
               {photo.cote && <p>{t.reference}: {photo.cote}</p>}
+              {photo.portalTitle && photo.portalTitle !== photo.name && (
+                <p>{t.portalTitle}: {photo.portalTitle}</p>
+              )}
+              {photo.portalDescription && photo.portalDescription !== photo.description && (
+                <p>{t.portalDescription}: {photo.portalDescription}</p>
+              )}
+              {photo.portalDate && photo.portalDate !== photo.dateValue && (
+                <p>{t.portalDate}: {photo.portalDate}</p>
+              )}
             </div>
 
             {/* Actions */}

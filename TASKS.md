@@ -6,15 +6,15 @@ Source of truth for the v1 launch. Goal: sellable B2B platform for Montreal real
 
 ### P0: Demo-Ready (must have for any sales call)
 
-- [ ] **Copy caption button** - One-click copy of photo metadata for social posts
-- [ ] **Download button** - Direct download without browser context menu
-- [ ] **Show full metadata** - Display all fields: description, credits, cote, portal info, dates
-- [ ] **Mobile QA** - Test map pinch/zoom, bottom sheets, touch interactions
+- [x] **Copy caption button** - One-click copy with title, date, description, credits, cote, hashtags
+- [x] **Download button** - Actual file download with proper filename
+- [x] **Show full metadata** - Display all fields including portal title/description/date
+- [ ] **Mobile QA** - Test pinch/zoom, touch interactions on iOS/Android
 - [ ] **Deploy Next.js app** - Production URL (Vercel or Cloudflare Pages)
 
 ### P1: Polish (before first paid demo)
 
-- [ ] **Bilingual UI** - FR/EN toggle (Montreal market expects French)
+- [x] **Bilingual UI** - FR/EN toggle with French as primary
 - [ ] **Branding placeholder** - "Your Logo Here" mockup area for realtor demos
 - [ ] **Share button** - Shareable deep links to search results
 - [ ] **Expand geocoding** - More map pins = more visual impact (155 → 400+ records)
@@ -56,3 +56,8 @@ Source of truth for the v1 launch. Goal: sellable B2B platform for Montreal real
 - [x] Three search modes: text, semantic, visual
 - [x] Map UI with search + detail panel
 - [x] Responsive design (mobile + desktop)
+- [x] Store UI with infinite scroll + lazy loading
+- [x] FR/EN localization (French primary)
+- [x] WebP optimization via Cloudflare /api/thumb
+- [x] Copy caption with enriched metadata + hashtags
+- [x] Direct download with proper filenames
