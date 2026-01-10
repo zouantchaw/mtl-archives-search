@@ -1,51 +1,58 @@
 # Tasks
 
-Source of truth for active work. For deeper background, see `docs/etl-redesign-trust-plan.md`.
+Source of truth for the v1 launch. Goal: sellable B2B platform for Montreal real estate.
 
-## Active (Jan 2026)
-- [ ] Define FR/EN localization policy with AI labeling and trust gating.
-- [ ] Investigate larger VLM model for structured tagging (uform-500m insufficient).
+## V1 Launch Checklist
 
-## QA Report (2026-01-10)
+### P0: Demo-Ready (must have for any sales call)
 
-50-record sample + full dataset analysis. See `pipelines/qa/qa_report.json`.
+- [ ] **Copy caption button** - One-click copy of photo metadata for social posts
+- [ ] **Download button** - Direct download without browser context menu
+- [ ] **Show full metadata** - Display all fields: description, credits, cote, portal info, dates
+- [ ] **Mobile QA** - Test map pinch/zoom, bottom sheets, touch interactions
+- [ ] **Deploy Next.js app** - Production URL (Vercel or Cloudflare Pages)
 
-**VLM Structured Tags**:
-- 50.1% returned JSON, 49.9% errors (`no_json_object` - model returns prose)
-- Of successful JSON, 37.9% are placeholder values (`"..."`, `[object Object]`)
-- Effective useful rate: ~12% (1,656 records with real content)
-- Confidence: 0.00 (uform-500m doesn't emit confidence scores)
-- **Verdict**: uform-500m is too small for reliable structured output
+### P1: Polish (before first paid demo)
 
-**OCR (Tesseract fra+eng)**:
-- 2.7% high confidence (>0.5) with actual text (368 records)
-- These are mostly city stamps on aerial photos ("SERVICE DE L'HABITATION...")
-- 97% are noise extraction from images without text
-- **Verdict**: OCR works when text exists, but most archive images don't have text
+- [ ] **Bilingual UI** - FR/EN toggle (Montreal market expects French)
+- [ ] **Branding placeholder** - "Your Logo Here" mockup area for realtor demos
+- [ ] **Share button** - Shareable deep links to search results
+- [ ] **Expand geocoding** - More map pins = more visual impact (155 → 400+ records)
 
-**Trust Scores**:
-- High (>0.7): 1.8% (239 records)
-- Medium (0.4-0.7): 1.1% (146 records)
-- Low (<0.4): 97.1% (13,114 records)
-- Low scores reflect poor VLM output quality
+### P2: Nice-to-have (after first paying customer)
 
-## Next
-- [ ] Add OCR text to D1 (batch update for high-confidence records only).
-- [ ] Build a gold set (300 records) + automated QA checks.
-- [ ] Improve geocoding coverage and confidence scoring.
-- [ ] Revisit portal linkage if new authoritative datasets become available.
-- [ ] Re-run VLM tagging with larger model (LLaVA-7B or Qwen-VL-7B).
+- [ ] Date range filter
+- [ ] Neighborhood/area filter
+- [ ] "Find similar" button (use CLIP similarity)
+- [ ] Favorites/collection feature
+- [ ] Batch export for bulk downloads
 
-## Done (recent)
-- [x] QA sample analysis complete (50 records + full dataset stats logged).
-- [x] OCR pass complete (13.5k images, 2.7% with high-confidence text).
-- [x] VLM structured tags complete (50% JSON rate, ~12% usable).
-- [x] Vision enrichments merged into `manifest_enriched_v3.jsonl`.
-- [x] Trust scores generated in `manifest_scored.jsonl`.
-- [x] D1 schema updated (added `ocr_text`, `trust_score` columns).
-- [x] D1 seeded with 13,499 records + trust scores.
-- [x] BGE text embeddings refreshed (13,499 vectors).
-- [x] BGE record linkage + calibration report.
-- [x] Structured VLM tagging + OCR pipelines implemented.
-- [x] CLIP vectorize GPU pipeline added.
-- [x] Architecture + trust docs refreshed.
+---
+
+## Sales Assets (parallel track)
+
+- [ ] **60-90s demo video** (Loom) - "Find a historical photo of your listing in 10 seconds"
+- [ ] **One-pager PDF** - "Own Montreal's History" with stats + screenshot + pricing
+- [ ] **Transfer guide** - README for handing over R2/D1/code access
+
+---
+
+## Tech Debt (deprioritized)
+
+- [x] ~~VLM structured tags~~ - Paused (uform-500m too small, only 12% usable)
+- [x] ~~OCR text extraction~~ - Complete (2.7% high-confidence, mostly city stamps)
+- [ ] Re-run VLM with larger model (LLaVA-7B) - **deferred until after v1 sale**
+- [ ] Add high-confidence OCR to D1 - **deferred**
+
+---
+
+## Done
+
+- [x] QA sample analysis (50 records + full dataset stats)
+- [x] D1 seeded with 13,499 records + trust scores
+- [x] BGE text embeddings (13,499 vectors)
+- [x] CLIP image embeddings (~13,400 vectors)
+- [x] API endpoints: /photos, /search, /thumb, /map
+- [x] Three search modes: text, semantic, visual
+- [x] Map UI with search + detail panel
+- [x] Responsive design (mobile + desktop)
