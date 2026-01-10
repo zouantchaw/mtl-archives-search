@@ -36,8 +36,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${figtree.variable} dark`}>
-      <body className="font-sans antialiased bg-neutral-950 text-white overflow-hidden">
+    <html lang="en" className={`${figtree.variable}`}>
+      <body className="font-sans antialiased bg-neutral-50 text-neutral-900 min-h-screen">
         {children}
       </body>
     </html>
