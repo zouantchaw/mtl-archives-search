@@ -1,5 +1,5 @@
-import { ArchiveMap } from "@/components/ArchiveMap";
+import { ArchiveStore } from "@/components/ArchiveStore";
 
 export default function Page() {
-  return <ArchiveMap />;
+  return <ArchiveStore />;
 }
