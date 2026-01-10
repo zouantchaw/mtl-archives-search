@@ -5,11 +5,13 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MONOREPO_ROOT = path.resolve(__dirname, '../../../../');
 
-// Prefer VLM-captioned manifest > clean > enriched
+// Prefer scored manifest (with OCR + VLM) > VLM-captioned > clean > enriched
+const SCORED_PATH = path.resolve(MONOREPO_ROOT, 'data/mtl_archives/manifest_scored.jsonl');
 const VLM_PATH = path.resolve(MONOREPO_ROOT, 'data/mtl_archives/manifest_vlm_complete.jsonl');
 const CLEAN_PATH = path.resolve(MONOREPO_ROOT, 'data/mtl_archives/manifest_clean.jsonl');
 const ENRICHED_PATH = path.resolve(MONOREPO_ROOT, 'data/mtl_archives/export/manifest_enriched.ndjson');
-const INPUT_PATH = fs.existsSync(VLM_PATH) ? VLM_PATH
+const INPUT_PATH = fs.existsSync(SCORED_PATH) ? SCORED_PATH
+  : fs.existsSync(VLM_PATH) ? VLM_PATH
   : fs.existsSync(CLEAN_PATH) ? CLEAN_PATH
   : ENRICHED_PATH;
 
@@ -20,7 +22,8 @@ if (!fs.existsSync(INFRA_DIR)) {
 }
 const OUTPUT_PATH = path.resolve(INFRA_DIR, 'seed_manifest.sql');
 
-const CHUNK_SIZE = 100;
+const CHUNK_SIZE = 10; // Moderate chunks with truncated OCR text
+const MAX_OCR_LENGTH = 8000; // Truncate OCR text to avoid huge statements
 
 function escapeValue(value: unknown): string {
   if (value === null || value === undefined) return 'NULL';
@@ -48,6 +51,8 @@ function buildInsertStatement(rows: any[]) {
     'name',
     'description',
     'vlm_caption',
+    'ocr_text',
+    'trust_score',
     'date_value',
     'credits',
     'cote',
@@ -75,6 +80,8 @@ function buildInsertStatement(rows: any[]) {
       escapeValue(row.name ?? null),
       escapeValue(row.description ?? null),
       escapeValue(row.vlm_caption ?? null),
+      escapeValue(null), // OCR text omitted for initial seed - too large
+      escapeValue(row.trust_score ?? null),
       escapeValue(row.date_value ?? null),
       escapeValue(row.credits ?? null),
       escapeValue(row.cote ?? null),
