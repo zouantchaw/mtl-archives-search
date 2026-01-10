@@ -1,0 +1,192 @@
+{
+  "generated_at": "2026-01-10T09:43:18.652692",
+  "sample_size": 50,
+  "seed": 42,
+  "ocr": {
+    "total": 50,
+    "has_ocr": 50,
+    "ocr_errors": 0,
+    "avg_confidence": 0.267774,
+    "avg_word_count": 2181.32,
+    "language_distribution": {
+      "fra+eng": 50
+    },
+    "error_types": {},
+    "samples_with_text": [
+      {
+        "image": "mtl_archives_image_15921.jpg",
+        "text_preview": "Ya | RER = ai es 6 : Tes SSS ae fit id Ne Le LEE ER ais! Hat agua Sera ea bed | al = \u00bb Se 2) | a oN EE Rio t \u2019 I _ = ae TR D nn a0 8 iM | + se NN eee i = Win ia i i aX D Fe Le Ea EUR DL \u00e0: 4 Fa ay l F...",
+        "confidence": 0.3019,
+        "word_count": 421,
+        "language": "fra+eng"
+      },
+      {
+        "image": "mtl_archives_image_11981.jpg",
+        "text_preview": "ne nie Cul TER ESS A ng ng SIP A oe yo ei ae cs SO NONI aS RE mere seis wim re ais Nek nie Siang Se Se \u2014_\u2014\u2014 \u2014 TS Phare AR RE TT am A Pe! = Se ea ee = eee ee ee Se eee eo \u00c0 eR eae = Rte de = eS see = =...",
+        "confidence": 0.2517,
+        "word_count": 614,
+        "language": "fra+eng"
+      },
+      {
+        "image": "mtl_archives_image_10365.jpg",
+        "text_preview": "eS DD LL DS\" D Sr # 7. ae MO a a ig ee ee ee aE en Cio SO Be CR gee Oe Sa re SS ee ee Se te, FE ee oe, : a -_\u2014- -\u2014 . [ Se. 2 Ke _ ie Oe, an OO : e..lhlLUClC O\u201dCt\u2014\u201c\u2018\u201c\u2018\u201c\u2018i\u2122OSOSCSSS\u2014\u2014~S~\u00e9<i;~\u2122~sst~S~S 1,...",
+        "confidence": 0.2473,
+        "word_count": 10250,
+        "language": "fra+eng"
+      },
+      {
+        "image": "mtl_archives_image_17594.jpg",
+        "text_preview": "Fire et ns 5 = - 3 et Ait i \u2014 mn ni +R ee R\u00c9 Re eee EE ae oe ae \u2014 ed ee Pie = RE EE | Es Er ay rte 5 3 i, rel a \u201c ea ae eg Eh ae =~ = \u2014\u2014\u2014 a tm ore ae =. W mire \u00c0 et ee eee \u2014< = eek a nei Eee D ee | th...",
+        "confidence": 0.2919,
+        "word_count": 1004,
+        "language": "fra+eng"
+      },
+      {
+        "image": "mtl_archives_image_14396.jpg",
+        "text_preview": "+ : LE \u2014\u2014\u2014\u2014\u2014 et = \u00e0 - ee ed ==. R RS: tes LE | A my D \u00c0 eo PP ag St FE EE us #| oy. J MS RE SES LL - ; a Se ee i a a ae, ne Ss ae ee ; igor F Le oe 4 mn en L Poors 1 Ss ea ae \u201cals D mt \u2014 SS ae et TS P...",
+        "confidence": 0.2711,
+        "word_count": 687,
+        "language": "fra+eng"
+      }
+    ],
+    "samples_with_errors": []
+  },
+  "vlm": {
+    "total": 50,
+    "has_tags": 29,
+    "vlm_errors": 21,
+    "avg_confidence": 0.0,
+    "error_types": {
+      "no_json_object": 20,
+      "Expected ',' or '}' after property value in JSON at position 167 (line 1 column 168)": 1
+    },
+    "tag_field_coverage": {},
+    "samples_with_tags": [
+      {
+        "image": "mtl_archives_image_10365.jpg",
+        "tags": {
+          "objects": [
+            "..."
+          ],
+          "setting": "...",
+          "actions": [
+            "..."
+          ],
+          "landmarks": [
+            "..."
+          ],
+          "time_period_guess": "...",
+          "visible_text_guess": "..."
+        },
+        "confidence": 0
+      },
+      {
+        "image": "mtl_archives_image_13950.jpg",
+        "tags": {
+          "objects": [
+            "[object Object]",
+            "[object Object]"
+          ],
+          "setting": "daytime",
+          "actions": [
+            "view"
+          ],
+          "landmarks": [
+            "history"
+          ],
+          "time_period_guess": "2015",
+          "visible_text_guess": "no"
+        },
+        "confidence": 0
+      },
+      {
+        "image": "mtl_archives_image_13630.jpg",
+        "tags": {
+          "objects": [
+            "..."
+          ],
+          "setting": "...",
+          "actions": [
+            "..."
+          ],
+          "landmarks": [
+            "..."
+          ],
+          "time_period_guess": "...",
+          "visible_text_guess": "..."
+        },
+        "confidence": 0
+      },
+      {
+        "image": "mtl_archives_image_11850.jpg",
+        "tags": {
+          "objects": [
+            "..."
+          ],
+          "setting": "...",
+          "actions": [
+            "..."
+          ],
+          "landmarks": [
+            "..."
+          ],
+          "time_period_guess": "...",
+          "visible_text_guess": "..."
+        },
+        "confidence": 0
+      },
+      {
+        "image": "mtl_archives_image_11620.jpg",
+        "tags": {
+          "objects": [
+            "unknown"
+          ],
+          "setting": "unknown",
+          "actions": [
+            "unknown"
+          ],
+          "landmarks": [
+            "unknown"
+          ],
+          "time_period_guess": "unknown",
+          "visible_text_guess": "unknown"
+        },
+        "confidence": 0
+      }
+    ],
+    "samples_with_errors": [
+      {
+        "image": "mtl_archives_image_15921.jpg",
+        "error": "no_json_object"
+      },
+      {
+        "image": "mtl_archives_image_11981.jpg",
+        "error": "no_json_object"
+      },
+      {
+        "image": "mtl_archives_image_17594.jpg",
+        "error": "Expected ',' or '}' after property value in JSON at position 167 (line 1 column 168)"
+      },
+      {
+        "image": "mtl_archives_image_14396.jpg",
+        "error": "no_json_object"
+      },
+      {
+        "image": "mtl_archives_image_12397.jpg",
+        "error": "no_json_object"
+      }
+    ]
+  },
+  "trust": {
+    "total": 50,
+    "with_score": 50,
+    "min": 0.135,
+    "max": 0.695,
+    "avg": 0.2022,
+    "distribution": {
+      "high (>0.7)": 0,
+      "medium (0.4-0.7)": 1,
+      "low (<0.4)": 49
+    }
+  }
+}
