@@ -157,15 +157,23 @@ async function handlePhotos(url: URL, env: Env): Promise<Response> {
   const limit = clamp(Number.isFinite(limitParam) ? limitParam : 50, 1, 100);
   const cursor = url.searchParams.get('cursor');
 
-  let sql = `SELECT ${SELECT_FIELDS} FROM manifest`;
+  // Filter out records without valid images and prioritize quality photos
+  // - Exclude records where resolved_image_filename is empty
+  // - Exclude aerial-only records (no name/description)
+  // - Order by: portal_match first (verified), then by name for variety (not filename)
+  let sql = `SELECT ${SELECT_FIELDS} FROM manifest
+    WHERE resolved_image_filename IS NOT NULL
+    AND resolved_image_filename != ''
+    AND (name IS NOT NULL OR portal_title IS NOT NULL)`;
   const params: unknown[] = [];
 
   if (cursor) {
-    sql += ' WHERE metadata_filename > ?';
+    sql += ' AND metadata_filename > ?';
     params.push(cursor);
   }
 
-  sql += ' ORDER BY metadata_filename LIMIT ?';
+  // Order by portal_match DESC (verified photos first), then name for variety
+  sql += ' ORDER BY portal_match DESC, COALESCE(name, portal_title), metadata_filename LIMIT ?';
   params.push(limit + 1);
 
   const { results = [] } = await env.DB.prepare(sql).bind(...params).all();

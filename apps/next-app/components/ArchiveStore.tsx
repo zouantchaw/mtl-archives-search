@@ -1,12 +1,27 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Search, X, Download, Copy, Check, ArrowLeft, ExternalLink } from 'lucide-react';
 import type { PhotoRecord, SearchResponse, SearchMode } from '@/lib/types';
 import { useClipEmbedding } from '@/lib/use-clip';
 import Image from 'next/image';
 
 const API_BASE = '';
+
+// Shuffle array using Fisher-Yates (seeded for consistency per session)
+function shuffleArray<T>(array: T[], seed?: number): T[] {
+  const result = [...array];
+  let currentSeed = seed ?? Date.now();
+  const random = () => {
+    currentSeed = (currentSeed * 9301 + 49297) % 233280;
+    return currentSeed / 233280;
+  };
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
 
 // ============================================================
 // Flag Icons
@@ -31,6 +46,53 @@ function FlagEN() {
       <rect width="20" height="14" fill="white" />
       <path d="M10 0v14M0 7h20" stroke="#C8102E" strokeWidth="2.5" />
     </svg>
+  );
+}
+
+// ============================================================
+// Photo Card with error handling
+// ============================================================
+function PhotoCard({
+  photo,
+  thumbnailUrl,
+  priority,
+  onClick,
+}: {
+  photo: PhotoRecord;
+  thumbnailUrl: string;
+  priority: boolean;
+  onClick: () => void;
+}) {
+  const [hasError, setHasError] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // Don't render if image failed to load
+  if (hasError || !photo.imageUrl) {
+    return null;
+  }
+
+  return (
+    <button
+      onClick={onClick}
+      className="group relative aspect-square bg-neutral-100 overflow-hidden focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:ring-inset"
+    >
+      <Image
+        src={thumbnailUrl}
+        alt={photo.name || ''}
+        fill
+        className={`object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+        unoptimized
+        loading={priority ? 'eager' : 'lazy'}
+        onLoad={() => setIsLoaded(true)}
+        onError={() => setHasError(true)}
+      />
+      {/* Loading placeholder */}
+      {!isLoaded && (
+        <div className="absolute inset-0 bg-neutral-100 animate-pulse" />
+      )}
+      {/* Hover overlay */}
+      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200" />
+    </button>
   );
 }
 
@@ -321,7 +383,15 @@ export function ArchiveStore() {
     return `${API_BASE}/api/thumb?${params}`;
   }, []);
 
-  const displayPhotos = hasSearched ? searchResults : photos;
+  // Shuffle initial photos for variety (only first batch, not search results)
+  const shuffledPhotos = useMemo(() => {
+    if (photos.length === 0) return [];
+    // Use a daily seed so shuffle is consistent per day
+    const daySeed = Math.floor(Date.now() / (1000 * 60 * 60 * 24));
+    return shuffleArray(photos, daySeed);
+  }, [photos]);
+
+  const displayPhotos = hasSearched ? searchResults : shuffledPhotos;
 
   // Product detail view
   if (selectedPhoto) {
@@ -530,24 +600,13 @@ export function ArchiveStore() {
         {!initialLoading && (
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-0.5">
             {displayPhotos.map((photo, i) => (
-              <button
+              <PhotoCard
                 key={photo.metadataFilename}
+                photo={photo}
+                thumbnailUrl={getThumbnailUrl(photo.imageUrl, 400, 400)}
+                priority={i < 12}
                 onClick={() => setSelectedPhoto(photo)}
-                className="group relative aspect-square bg-neutral-100 overflow-hidden focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:ring-inset"
-              >
-                {photo.imageUrl && (
-                  <Image
-                    src={getThumbnailUrl(photo.imageUrl, 400, 400)}
-                    alt={photo.name || ''}
-                    fill
-                    className="object-cover"
-                    unoptimized
-                    loading={i < 12 ? 'eager' : 'lazy'}
-                  />
-                )}
-                {/* Hover overlay - minimal */}
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200" />
-              </button>
+              />
             ))}
           </div>
         )}
