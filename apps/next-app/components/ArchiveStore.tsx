@@ -14,6 +14,62 @@ const MOBILE_MAX_IMAGES = 27;
 const DESKTOP_PAGE_SIZE = 20;
 
 // ============================================================
+// Typewriter Hook - with pause capability
+// ============================================================
+function useTypewriter(
+  texts: readonly string[],
+  isActive: boolean,
+  typingSpeed = 80,
+  deletingSpeed = 40,
+  pauseDuration = 2000
+) {
+  const [displayText, setDisplayText] = useState('');
+  const [textIndex, setTextIndex] = useState(0);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+
+  useEffect(() => {
+    // Stop all animation when not active
+    if (!isActive) return;
+
+    const currentFullText = texts[textIndex];
+    
+    if (isPaused) {
+      const pauseTimer = setTimeout(() => {
+        setIsPaused(false);
+        setIsDeleting(true);
+      }, pauseDuration);
+      return () => clearTimeout(pauseTimer);
+    }
+
+    if (isDeleting) {
+      if (displayText.length === 0) {
+        setIsDeleting(false);
+        setTextIndex((prev) => (prev + 1) % texts.length);
+        return;
+      }
+      const deleteTimer = setTimeout(() => {
+        setDisplayText((prev) => prev.slice(0, -1));
+      }, deletingSpeed);
+      return () => clearTimeout(deleteTimer);
+    }
+
+    // Typing
+    if (displayText.length < currentFullText.length) {
+      const typeTimer = setTimeout(() => {
+        setDisplayText(currentFullText.slice(0, displayText.length + 1));
+      }, typingSpeed);
+      return () => clearTimeout(typeTimer);
+    }
+
+    // Finished typing, pause before deleting
+    setIsPaused(true);
+  }, [displayText, textIndex, isDeleting, isPaused, texts, isActive, typingSpeed, deletingSpeed, pauseDuration]);
+
+  return displayText;
+}
+
+// ============================================================
 // Translations
 // ============================================================
 type Lang = 'fr' | 'en';
@@ -22,13 +78,15 @@ const translations = {
   fr: {
     textSearch: 'Texte',
     visualSearch: 'Visuel',
-    featured: 'A la une',
-    results: 'resultats',
-    result: 'resultat',
+    featured: 'À la une',
+    results: 'résultats',
+    result: 'résultat',
     clear: 'Effacer',
-    noResults: 'Aucune photo trouvee pour',
+    noResults: 'Aucune photo trouvée pour',
     clearSearch: 'Effacer la recherche',
     loadMore: 'Voir plus',
+    photoCount: '14 822 photos',
+    searchPlaceholder: 'Rechercher...',
   },
   en: {
     textSearch: 'Text',
@@ -40,7 +98,47 @@ const translations = {
     noResults: 'No photos found for',
     clearSearch: 'Clear search',
     loadMore: 'Load more',
+    photoCount: '14,822 photos',
+    searchPlaceholder: 'Search...',
   },
+} as const;
+
+// Typewriter search examples - localized
+const searchExamples = {
+  fr: [
+    'Rue Sainte-Catherine',
+    'tramway années 50',
+    'Vieux-Port',
+    'église en hiver',
+    'Mont-Royal',
+    'marché Jean-Talon',
+    'construction du métro',
+    'Expo 67',
+    'gare Windsor',
+    'rue Saint-Denis',
+    'hôtel de ville',
+    'pont Jacques-Cartier',
+    'parc La Fontaine',
+    'stade olympique',
+    'rue Sherbrooke',
+  ],
+  en: [
+    'Sainte-Catherine Street',
+    '1950s tramway',
+    'Old Port',
+    'church in winter',
+    'Mount Royal',
+    'Jean-Talon Market',
+    'metro construction',
+    'Expo 67',
+    'Windsor Station',
+    'Saint-Denis Street',
+    'city hall',
+    'Jacques-Cartier Bridge',
+    'La Fontaine Park',
+    'Olympic Stadium',
+    'Sherbrooke Street',
+  ],
 } as const;
 
 // ============================================================
@@ -120,6 +218,9 @@ function ArchiveStoreInner() {
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitialMount = useRef(true);
 
+  // Focus state for search input
+  const [isInputFocused, setIsInputFocused] = useState(false);
+
   // URL helper
   const updateUrl = useCallback((q: string, mode: SearchMode, currentLang: Lang) => {
     const params = new URLSearchParams();
@@ -129,17 +230,15 @@ function ArchiveStoreInner() {
     router.replace(params.toString() ? `/?${params}` : '/', { scroll: false });
   }, [router]);
 
-  // Placeholder animation
-  const [placeholderIndex, setPlaceholderIndex] = useState(0);
-  const placeholders = lang === 'fr'
-    ? ['Rue Sainte-Catherine...', 'tramway...', 'Vieux-Port...', '14 822 photos...']
-    : ['Sainte-Catherine Street...', 'tramway...', 'Old Port...', '14,822 photos...'];
-
-  useEffect(() => {
-    if (searchQuery) return;
-    const interval = setInterval(() => setPlaceholderIndex(i => (i + 1) % placeholders.length), 3000);
-    return () => clearInterval(interval);
-  }, [searchQuery, placeholders.length]);
+  // Typewriter placeholder - pauses when input is focused
+  const placeholders = useMemo(() => searchExamples[lang], [lang]);
+  const isTypewriterActive = !searchQuery && !isInputFocused;
+  const typewriterText = useTypewriter(placeholders, isTypewriterActive, 70, 35, 1800);
+  
+  // Show typewriter only when not focused and no query
+  const showTypewriter = !searchQuery && !isInputFocused;
+  // Show static placeholder when focused but empty
+  const showFocusedPlaceholder = isInputFocused && !searchQuery;
 
   // Load initial photos
   useEffect(() => {
@@ -272,7 +371,10 @@ function ArchiveStoreInner() {
         {/* Mobile */}
         <div className="flex flex-col sm:hidden">
           <div className="flex items-center justify-between h-11 px-3">
-            <a href="/" className="text-[11px] font-medium tracking-[0.1em] uppercase">MTL Archives</a>
+            <div className="flex items-center gap-2">
+              <a href="/" className="text-[11px] font-medium tracking-[0.1em] uppercase">MTL Archives</a>
+              <span className="text-[9px] text-neutral-400 tracking-wide">{t.photoCount}</span>
+            </div>
             <div className="flex items-center gap-2">
               <button onClick={handleLangChange} className="p-1">
                 {lang === 'fr' ? <FlagEN /> : <FlagQC />}
@@ -281,20 +383,45 @@ function ArchiveStoreInner() {
             </div>
           </div>
           <div className="px-3 pb-2.5">
-            <div className="flex items-center bg-white border border-neutral-200 h-10 rounded-sm">
-              <Search className="ml-3 h-4 w-4 text-neutral-400" />
-              <input
-                ref={searchInputRef}
-                type="text"
-                placeholder={placeholders[placeholderIndex]}
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="flex-1 px-2 text-[15px] bg-transparent outline-none placeholder:text-neutral-300"
-              />
+            <div className={`flex items-center bg-white border h-10 rounded-sm relative transition-all duration-200 ${
+              isInputFocused ? 'border-neutral-400 shadow-sm' : 'border-neutral-200'
+            }`}>
+              <Search className={`ml-3 h-4 w-4 transition-colors duration-200 ${
+                isInputFocused ? 'text-neutral-600' : 'text-neutral-400'
+              }`} />
+              <div className="flex-1 relative h-full">
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  onFocus={() => setIsInputFocused(true)}
+                  onBlur={() => setIsInputFocused(false)}
+                  className="w-full h-full px-2 text-[15px] bg-transparent outline-none"
+                  aria-label={t.searchPlaceholder}
+                />
+                {/* Typewriter animation - fades out on focus */}
+                <div className={`absolute inset-0 flex items-center px-2 pointer-events-none transition-opacity duration-200 ${
+                  showTypewriter ? 'opacity-100' : 'opacity-0'
+                }`}>
+                  <span className="text-[15px] text-neutral-400">{typewriterText}</span>
+                  <span className="text-[15px] text-neutral-900 animate-blink">|</span>
+                </div>
+                {/* Static placeholder when focused */}
+                <div className={`absolute inset-0 flex items-center px-2 pointer-events-none transition-opacity duration-200 ${
+                  showFocusedPlaceholder ? 'opacity-100' : 'opacity-0'
+                }`}>
+                  <span className="text-[15px] text-neutral-300">{t.searchPlaceholder}</span>
+                </div>
+              </div>
               {isSearching && <div className="mr-3 h-4 w-4 border-2 border-neutral-200 border-t-neutral-900 rounded-full animate-spin" />}
               {searchQuery && !isSearching && (
-                <button onClick={clearSearch} className="mr-2 p-1">
-                  <X className="h-4 w-4 text-neutral-400" />
+                <button 
+                  onClick={clearSearch} 
+                  className="mr-2 p-1.5 hover:bg-neutral-100 rounded-full transition-colors"
+                  aria-label={t.clear}
+                >
+                  <X className="h-4 w-4 text-neutral-500" />
                 </button>
               )}
             </div>
@@ -303,38 +430,93 @@ function ArchiveStoreInner() {
 
         {/* Desktop */}
         <div className="hidden sm:flex items-center h-14 px-4 lg:px-6 gap-4">
-          <a href="/" className="text-xs font-medium tracking-[0.12em] uppercase">MTL Archives</a>
+          <div className="flex items-center gap-2.5 shrink-0">
+            <a href="/" className="text-xs font-medium tracking-[0.12em] uppercase">MTL Archives</a>
+            <span className="text-[10px] text-neutral-400 tracking-wide">{t.photoCount}</span>
+          </div>
           <div className="flex-1 flex justify-center">
             <div className="w-full max-w-lg">
-              <div className="flex items-center bg-white border border-neutral-200 h-9">
-                <Search className="ml-3 h-3.5 w-3.5 text-neutral-400" />
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  placeholder={placeholders[placeholderIndex]}
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  className="flex-1 px-2.5 text-sm bg-transparent outline-none placeholder:text-neutral-300"
-                />
+              <div className={`flex items-center bg-white border h-9 transition-all duration-200 ${
+                isInputFocused ? 'border-neutral-400 shadow-sm' : 'border-neutral-200'
+              }`}>
+                <Search className={`ml-3 h-3.5 w-3.5 transition-colors duration-200 ${
+                  isInputFocused ? 'text-neutral-600' : 'text-neutral-400'
+                }`} />
+                <div className="flex-1 relative h-full">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    onFocus={() => setIsInputFocused(true)}
+                    onBlur={() => setIsInputFocused(false)}
+                    className="w-full h-full px-2.5 text-sm bg-transparent outline-none"
+                    aria-label={t.searchPlaceholder}
+                  />
+                  {/* Typewriter animation - fades out on focus */}
+                  <div className={`absolute inset-0 flex items-center px-2.5 pointer-events-none transition-opacity duration-200 ${
+                    showTypewriter ? 'opacity-100' : 'opacity-0'
+                  }`}>
+                    <span className="text-sm text-neutral-400">{typewriterText}</span>
+                    <span className="text-sm text-neutral-900 animate-blink">|</span>
+                  </div>
+                  {/* Static placeholder when focused */}
+                  <div className={`absolute inset-0 flex items-center px-2.5 pointer-events-none transition-opacity duration-200 ${
+                    showFocusedPlaceholder ? 'opacity-100' : 'opacity-0'
+                  }`}>
+                    <span className="text-sm text-neutral-300">{t.searchPlaceholder}</span>
+                  </div>
+                </div>
                 {isSearching && <div className="mr-3 h-3.5 w-3.5 border border-neutral-300 border-t-neutral-900 rounded-full animate-spin" />}
                 {searchQuery && !isSearching && (
-                  <button onClick={clearSearch} className="mr-2 p-0.5">
-                    <X className="h-3.5 w-3.5 text-neutral-400" />
+                  <button 
+                    onClick={clearSearch} 
+                    className="mr-2 p-1 hover:bg-neutral-100 rounded-full transition-colors"
+                    aria-label={t.clear}
+                  >
+                    <X className="h-3.5 w-3.5 text-neutral-500" />
                   </button>
                 )}
                 <div className="flex border-l border-neutral-200 h-full">
-                  <button onClick={() => handleModeChange('semantic')} className={`px-3 text-[10px] uppercase ${searchMode === 'semantic' ? 'bg-neutral-900 text-white' : 'text-neutral-400'}`}>{t.textSearch}</button>
-                  <button onClick={() => handleModeChange('visual')} className={`px-3 text-[10px] uppercase ${searchMode === 'visual' ? 'bg-neutral-900 text-white' : 'text-neutral-400'}`}>{t.visualSearch}</button>
+                  <button 
+                    onClick={() => handleModeChange('semantic')} 
+                    className={`px-3 text-[10px] uppercase tracking-wide transition-colors ${
+                      searchMode === 'semantic' 
+                        ? 'bg-neutral-900 text-white' 
+                        : 'text-neutral-400 hover:text-neutral-600 hover:bg-neutral-50'
+                    }`}
+                  >
+                    {t.textSearch}
+                  </button>
+                  <button 
+                    onClick={() => handleModeChange('visual')} 
+                    className={`px-3 text-[10px] uppercase tracking-wide transition-colors ${
+                      searchMode === 'visual' 
+                        ? 'bg-neutral-900 text-white' 
+                        : 'text-neutral-400 hover:text-neutral-600 hover:bg-neutral-50'
+                    }`}
+                  >
+                    {t.visualSearch}
+                  </button>
                 </div>
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <button onClick={handleLangChange} className="flex items-center gap-1.5 px-2 py-1">
+          <div className="flex items-center gap-3 shrink-0">
+            <button 
+              onClick={handleLangChange} 
+              className="flex items-center gap-1.5 px-2 py-1 hover:bg-neutral-100 rounded transition-colors"
+            >
               {lang === 'fr' ? <FlagEN /> : <FlagQC />}
               <span className="text-[10px] text-neutral-500 uppercase">{lang === 'fr' ? 'EN' : 'FR'}</span>
             </button>
-            <a href="https://instagram.com/mtlarchives" target="_blank" rel="noopener noreferrer" className="text-[10px] text-neutral-400">@mtlarchives</a>
+            <a 
+              href="https://instagram.com/mtlarchives" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="text-[10px] text-neutral-400 hover:text-neutral-600 transition-colors"
+            >
+              @mtlarchives
+            </a>
           </div>
         </div>
       </header>

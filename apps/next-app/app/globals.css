@@ -124,3 +124,15 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Typewriter cursor blink animation - Apple-style */
+@keyframes blink {
+  0%, 45% { opacity: 1; }
+  50%, 95% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.animate-blink {
+  animation: blink 1.1s ease-in-out infinite;
+  font-weight: 300;
+}
