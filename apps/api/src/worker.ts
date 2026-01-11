@@ -521,12 +521,15 @@ async function handleVisualSearch(query: string, limit: number, env: Env, precom
 }
 
 async function generateClipTextEmbedding(text: string, env: Env): Promise<number[] | null> {
-  // CLIP text embedding via HuggingFace Inference API
-  // Model: sentence-transformers/clip-ViT-B-32 (512-dim, compatible with our indexed image embeddings)
+  // CLIP text embedding - supports multiple providers:
   //
-  // Set secrets:
-  //   CLIP_EMBEDDING_URL = https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/clip-ViT-B-32
-  //   CLIP_EMBEDDING_TOKEN = your HuggingFace API token
+  // Option 1: Replicate (recommended, ~$0.0002/request)
+  //   CLIP_EMBEDDING_URL = https://api.replicate.com/v1/models/andreasjansson/clip-features/predictions
+  //   CLIP_EMBEDDING_TOKEN = your Replicate API token
+  //
+  // Option 2: Custom endpoint returning 512-dim CLIP embeddings
+  //   CLIP_EMBEDDING_URL = your endpoint
+  //   CLIP_EMBEDDING_TOKEN = your token
 
   const CLIP_URL = env.CLIP_EMBEDDING_URL;
 
@@ -541,14 +544,31 @@ async function generateClipTextEmbedding(text: string, env: Env): Promise<number
 
   if (env.CLIP_EMBEDDING_TOKEN) {
     headers['Authorization'] = `Bearer ${env.CLIP_EMBEDDING_TOKEN}`;
+    // Replicate also accepts Token prefix
+    if (CLIP_URL.includes('replicate.com')) {
+      headers['Authorization'] = `Token ${env.CLIP_EMBEDDING_TOKEN}`;
+    }
   }
 
   try {
-    // HuggingFace Inference API format
+    // Determine request format based on URL
+    let body: string;
+    if (CLIP_URL.includes('replicate.com')) {
+      // Replicate API format - requires model version
+      // andreasjansson/clip-features version
+      body = JSON.stringify({
+        version: '75b33f253f7714a281ad3e9b28f63e3232d583716ef6718f2e46641077ea040a',
+        input: { inputs: text }
+      });
+    } else {
+      // Generic/HuggingFace format
+      body = JSON.stringify({ inputs: text });
+    }
+
     const response = await fetch(CLIP_URL, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ inputs: text }),
+      body,
     });
 
     if (!response.ok) {
@@ -557,9 +577,42 @@ async function generateClipTextEmbedding(text: string, env: Env): Promise<number
       return null;
     }
 
-    const result = await response.json();
+    let result = await response.json();
 
-    // HuggingFace returns [[...]] for single input or [...] for some models
+    // Replicate returns async prediction - need to poll for result
+    if (CLIP_URL.includes('replicate.com') && result && typeof result === 'object') {
+      const prediction = result as { id?: string; status?: string; output?: unknown; urls?: { get?: string } };
+
+      // Poll for completion (max 30 seconds)
+      const maxAttempts = 30;
+      let attempts = 0;
+      while (prediction.status !== 'succeeded' && prediction.status !== 'failed' && attempts < maxAttempts) {
+        if (!prediction.urls?.get) break;
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        const pollResponse = await fetch(prediction.urls.get, { headers });
+        if (!pollResponse.ok) break;
+        const pollResult = await pollResponse.json() as typeof prediction;
+        prediction.status = pollResult.status;
+        prediction.output = pollResult.output;
+        attempts++;
+      }
+
+      if (prediction.status === 'failed') {
+        console.error('Replicate prediction failed');
+        return null;
+      }
+
+      // Replicate output format: [{ input: "...", embedding: [...] }]
+      if (Array.isArray(prediction.output) && prediction.output.length > 0) {
+        const first = prediction.output[0] as { embedding?: number[] };
+        if (first.embedding && Array.isArray(first.embedding)) {
+          return first.embedding.length === 512 ? first.embedding : null;
+        }
+      }
+      return null;
+    }
+
+    // Parse non-Replicate response formats
     let embedding: number[] | null = null;
 
     if (Array.isArray(result)) {
