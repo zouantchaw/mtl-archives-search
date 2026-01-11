@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Figtree } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
+import { CartProvider } from "@/lib/cart-context";
+import { CartDrawer } from "@/components/CartDrawer";
 
 const figtree = Figtree({
   subsets: ['latin'],
@@ -118,7 +120,10 @@ export default function RootLayout({
         />
       </head>
       <body className="font-sans antialiased bg-neutral-50 text-neutral-900 min-h-screen">
-        {children}
+        <CartProvider>
+          {children}
+          <CartDrawer />
+        </CartProvider>
       </body>
     </html>
   );

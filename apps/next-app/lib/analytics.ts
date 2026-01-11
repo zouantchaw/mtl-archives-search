@@ -28,6 +28,9 @@ export const events = {
   photoDownloaded: (photoId: string, photoName: string | null) =>
     track('photo: downloaded', { photoId, photoName }),
 
+  photoShared: (photoId: string, photoName: string | null) =>
+    track('photo: shared', { photoId, photoName }),
+
   captionCopied: (photoId: string) =>
     track('photo: caption copied', { photoId }),
 
@@ -38,12 +41,18 @@ export const events = {
   searchCleared: () =>
     track('search: cleared'),
 
+  searchModeChanged: (mode: string) =>
+    track('search: mode changed', { mode }),
+
   // Navigation
   loadMoreClicked: (currentCount: number) =>
     track('gallery: load more', { currentCount }),
 
   languageChanged: (from: string, to: string) =>
     track('settings: language changed', { from, to }),
+
+  aboutOpened: () =>
+    track('about: opened'),
 
   // E-commerce (print orders)
   printSizeSelected: (size: string, price: number) =>
@@ -55,10 +64,25 @@ export const events = {
   addToCartClicked: (photoId: string, size: string, frame: string, totalPrice: number) =>
     track('cart: item added', { photoId, size, frame, totalPrice }),
 
+  cartOpened: () =>
+    track('cart: opened'),
+
+  cartItemRemoved: (photoId: string) =>
+    track('cart: item removed', { photoId }),
+
+  cartCleared: (itemCount: number) =>
+    track('cart: cleared', { itemCount }),
+
+  checkoutClicked: (total: number, itemCount: number) =>
+    track('cart: checkout clicked', { total, itemCount }),
+
   // External links
   archiveLinkClicked: (photoId: string, url: string) =>
     track('link: archives clicked', { photoId, url }),
 
   instagramClicked: () =>
     track('link: instagram clicked'),
+
+  facebookClicked: () =>
+    track('link: facebook clicked'),
 };

@@ -2,121 +2,113 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Download, Copy, Check, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Share, ChevronDown } from 'lucide-react';
 import Image from 'next/image';
 import type { PhotoRecord } from '@/lib/types';
 import { events } from '@/lib/analytics';
+import { useCart } from '@/lib/cart-context';
 
 const API_BASE = '';
 
-// Clean text: remove escaped newlines, normalize whitespace
 function cleanText(text: string | null | undefined): string {
   if (!text) return '';
-  return text
-    .replace(/\\n/g, ' ')      // Replace literal \n with space
-    .replace(/\s+/g, ' ')      // Normalize multiple spaces
-    .trim();
+  return text.replace(/\\n/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-// ============================================================
-// i18n
-// ============================================================
 type Lang = 'fr' | 'en';
 
 const translations = {
   fr: {
     back: 'Retour',
-    copy: 'Copier',
-    copied: 'Copie',
-    download: 'Telecharger',
-    orderPrint: 'Commander une impression',
+    share: 'Partager',
+    orderPrint: 'Commander',
     size: 'Format',
     frame: 'Cadre',
-    noFrame: 'Sans cadre',
-    addToCart: 'Ajouter au panier',
-    freeShipping: 'Livraison gratuite des 150$ - Expedition 5-7 jours',
-    viewArchives: 'Voir dans les Archives',
-    credits: 'Credits',
-    reference: 'Reference',
-    portalTitle: 'Titre (Portail)',
-    portalDescription: 'Description (Portail)',
-    portalDate: 'Date (Portail)',
-    notFound: 'Photo non trouvee',
-    loading: 'Chargement...',
+    addToCart: 'Ajouter',
+    added: 'Ajouté',
+    viewInArchives: 'Voir aux Archives',
+    description: 'Description',
+    notFound: 'Photo non trouvée',
+    untitled: 'Sans titre',
+    imageUnavailable: 'Image non disponible',
   },
   en: {
     back: 'Back',
-    copy: 'Copy',
-    copied: 'Copied',
-    download: 'Download',
+    share: 'Share',
     orderPrint: 'Order Print',
     size: 'Size',
     frame: 'Frame',
-    noFrame: 'No Frame',
     addToCart: 'Add to Cart',
-    freeShipping: 'Free shipping over $150 - Ships in 5-7 days',
-    viewArchives: 'View in City Archives',
-    credits: 'Credits',
-    reference: 'Reference',
-    portalTitle: 'Title (Portal)',
-    portalDescription: 'Description (Portal)',
-    portalDate: 'Date (Portal)',
+    added: 'Added',
+    viewInArchives: 'View in Archives',
+    description: 'Description',
     notFound: 'Photo not found',
-    loading: 'Loading...',
+    untitled: 'Untitled',
+    imageUnavailable: 'Image unavailable',
   },
 } as const;
 
-const PRINT_OPTIONS = [
-  { id: 'small', name: '8x10"', price: 45 },
-  { id: 'medium', name: '12x16"', price: 75 },
-  { id: 'large', name: '18x24"', price: 120 },
-  { id: 'xlarge', name: '24x36"', price: 180 },
+const PRINT_SIZES = [
+  { id: '8x10', name: '8×10"', price: 45 },
+  { id: '12x16', name: '12×16"', price: 75 },
+  { id: '18x24', name: '18×24"', price: 120 },
+  { id: '24x36', name: '24×36"', price: 180 },
 ];
 
-const FRAME_OPTIONS_FR = [
-  { id: 'none', name: 'Sans cadre', price: 0 },
-  { id: 'black', name: 'Noir', price: 45 },
-  { id: 'white', name: 'Blanc', price: 45 },
-  { id: 'natural', name: 'Bois naturel', price: 60 },
-];
-
-const FRAME_OPTIONS_EN = [
-  { id: 'none', name: 'No Frame', price: 0 },
-  { id: 'black', name: 'Black', price: 45 },
-  { id: 'white', name: 'White', price: 45 },
-  { id: 'natural', name: 'Natural Wood', price: 60 },
-];
-
+const FRAME_OPTIONS = {
+  fr: [
+    { id: 'none', name: 'Sans cadre', price: 0 },
+    { id: 'black', name: 'Noir', price: 45 },
+    { id: 'white', name: 'Blanc', price: 45 },
+    { id: 'natural', name: 'Naturel', price: 60 },
+  ],
+  en: [
+    { id: 'none', name: 'No frame', price: 0 },
+    { id: 'black', name: 'Black', price: 45 },
+    { id: 'white', name: 'White', price: 45 },
+    { id: 'natural', name: 'Natural', price: 60 },
+  ],
+};
 
 export default function PhotoPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { addItem } = useCart();
 
   const [photo, setPhoto] = useState<PhotoRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [photoId, setPhotoId] = useState<string | null>(null);
+  const [imageError, setImageError] = useState(false);
 
-  // Get lang from URL or default to 'fr'
+  // Print options
+  const [selectedSize, setSelectedSize] = useState(PRINT_SIZES[1].id);
+  const [selectedFrame, setSelectedFrame] = useState('none');
+  const [showDetails, setShowDetails] = useState(false);
+  const [justAdded, setJustAdded] = useState(false);
+
   const lang = (searchParams.get('lang') as Lang) || 'fr';
   const t = translations[lang];
+  const frameOptions = FRAME_OPTIONS[lang];
 
-  // Unwrap params (Next.js 15 async params)
+  const selectedPrint = PRINT_SIZES.find(p => p.id === selectedSize)!;
+  const selectedFrameOpt = frameOptions.find(f => f.id === selectedFrame)!;
+  const totalPrice = selectedPrint.price + selectedFrameOpt.price;
+
+  // Unwrap params
   useEffect(() => {
     params.then(p => setPhotoId(p.id));
   }, [params]);
 
-  // Fetch photo by ID
+  // Fetch photo
   useEffect(() => {
     if (!photoId) return;
-
     const fetchPhoto = async () => {
       try {
-        const decodedId = decodeURIComponent(photoId);
-        const res = await fetch(`${API_BASE}/api/photos?id=${encodeURIComponent(decodedId)}`);
+        const res = await fetch(`${API_BASE}/api/photos?id=${encodeURIComponent(decodeURIComponent(photoId))}`);
         if (res.ok) {
           const data = await res.json();
-          if (data.items && data.items.length > 0) {
+          if (data.items?.[0]) {
             setPhoto(data.items[0]);
           } else {
             setError(true);
@@ -133,79 +125,58 @@ export default function PhotoPage({ params }: { params: Promise<{ id: string }> 
     fetchPhoto();
   }, [photoId]);
 
-  const [selectedSize, setSelectedSize] = useState(PRINT_OPTIONS[1].id);
-  const [selectedFrame, setSelectedFrame] = useState('none');
-  const [copied, setCopied] = useState(false);
-  const [imageError, setImageError] = useState(false);
-
-  const frameOptions = lang === 'fr' ? FRAME_OPTIONS_FR : FRAME_OPTIONS_EN;
-  const selectedPrint = PRINT_OPTIONS.find(p => p.id === selectedSize)!;
-  const selectedFrameOption = frameOptions.find(f => f.id === selectedFrame)!;
-  const totalPrice = selectedPrint.price + selectedFrameOption.price;
-
-
-  const buildCaption = () => {
-    if (!photo) return '';
-    const lines = [];
-    const title = cleanText(photo.name) || cleanText(photo.portalTitle) || 'Sans titre';
-    const date = cleanText(photo.dateValue) || cleanText(photo.portalDate);
-    lines.push(date ? `${title}, ${date}` : title);
-    lines.push('');
-    const desc = photo.description && photo.description !== 'S/O'
-      ? cleanText(photo.description)
-      : cleanText(photo.portalDescription);
-    if (desc) lines.push(desc);
-    lines.push('');
-    if (photo.credits) lines.push(`Photo: ${cleanText(photo.credits)}`);
-    if (photo.cote) lines.push(`Ref: ${photo.cote}`);
-    lines.push('');
-    lines.push('#Montreal #MontrealHistory #MTLArchives #VieuxMontreal #HistoireduQuebec');
-    return lines.join('\n');
-  };
-
-  const handleCopy = async () => {
-    if (photo) events.captionCopied(photo.metadataFilename);
-    await navigator.clipboard.writeText(buildCaption());
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleDownload = async () => {
-    if (!photo?.imageUrl) return;
-    events.photoDownloaded(photo.metadataFilename, photo.name);
-    try {
-      const res = await fetch(photo.imageUrl);
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = photo.resolvedImageFilename || `mtl-archives-${photo.metadataFilename}.jpg`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch {
-      window.open(photo.imageUrl, '_blank');
-    }
-  };
-
   const handleBack = () => {
-    // Preserve search params when going back
     const q = searchParams.get('q');
     const mode = searchParams.get('mode');
     const backParams = new URLSearchParams();
     if (q) backParams.set('q', q);
     if (mode) backParams.set('mode', mode);
     if (lang !== 'fr') backParams.set('lang', lang);
+    router.push(backParams.toString() ? `/?${backParams}` : '/');
+  };
 
-    const backUrl = backParams.toString() ? `/?${backParams}` : '/';
-    router.push(backUrl);
+  const handleShare = async () => {
+    if (!photo) return;
+    const url = window.location.href;
+    const title = cleanText(photo.name) || 'MTL Archives';
+    
+    events.photoShared(photo.metadataFilename, photo.name);
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, url });
+      } catch {
+        // User cancelled or error
+      }
+    } else {
+      await navigator.clipboard.writeText(url);
+    }
+  };
+
+  const handleAddToCart = () => {
+    if (!photo) return;
+    
+    addItem({
+      photoId: photo.metadataFilename,
+      photoName: cleanText(photo.name) || 'Sans titre',
+      photoUrl: photo.imageUrl || '',
+      size: selectedPrint.name,
+      sizeId: selectedPrint.id,
+      frame: selectedFrameOpt.name,
+      frameId: selectedFrameOpt.id,
+      price: totalPrice,
+    });
+    
+    events.addToCartClicked(photo.metadataFilename, selectedPrint.name, selectedFrameOpt.name, totalPrice);
+    
+    setJustAdded(true);
+    setTimeout(() => setJustAdded(false), 2000);
   };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-[#fafafa] flex items-center justify-center">
-        <div className="h-6 w-6 border-2 border-neutral-300 border-t-neutral-900 rounded-full animate-spin" />
+        <div className="h-5 w-5 border-2 border-neutral-200 border-t-neutral-900 rounded-full animate-spin" />
       </div>
     );
   }
@@ -213,185 +184,164 @@ export default function PhotoPage({ params }: { params: Promise<{ id: string }> 
   if (error || !photo) {
     return (
       <div className="min-h-screen bg-[#fafafa] flex flex-col items-center justify-center gap-4">
-        <p className="text-neutral-500">{t.notFound}</p>
-        <button
-          onClick={handleBack}
-          className="flex items-center gap-2 text-xs uppercase tracking-wide text-neutral-400 hover:text-neutral-900"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          {t.back}
+        <p className="text-neutral-400 text-sm">{t.notFound}</p>
+        <button onClick={handleBack} className="text-xs uppercase tracking-wide text-neutral-900">
+          ← {t.back}
         </button>
       </div>
     );
   }
 
+  const title = cleanText(photo.name) || t.untitled;
+  const date = cleanText(photo.dateValue) || cleanText(photo.portalDate);
+  const description = photo.description && photo.description !== 'S/O' 
+    ? cleanText(photo.description) 
+    : cleanText(photo.portalDescription);
+
   return (
     <div className="min-h-screen bg-[#fafafa]">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-[#fafafa]/95 backdrop-blur-sm">
-        <div className="flex items-center h-12 px-4 md:px-6">
+      {/* Minimal Header */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-[#fafafa]/90 backdrop-blur-sm">
+        <div className="flex items-center justify-between h-12 px-4">
           <button
             onClick={handleBack}
-            className="flex items-center gap-2 text-xs uppercase tracking-wide text-neutral-400 hover:text-neutral-900"
+            className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-neutral-500 hover:text-neutral-900 transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
-            {t.back}
+            <span className="hidden sm:inline">{t.back}</span>
+          </button>
+          
+          <button
+            onClick={handleShare}
+            className="p-2 text-neutral-400 hover:text-neutral-900 transition-colors"
+            aria-label={t.share}
+          >
+            <Share className="h-4 w-4" />
           </button>
         </div>
       </header>
 
-      {/* Content */}
-      <div className="max-w-5xl mx-auto px-4 py-8 md:py-12">
-        <div className="grid md:grid-cols-2 gap-8 md:gap-12">
-          {/* Image - Vercel optimizes automatically */}
-          <div className="relative aspect-square bg-neutral-100">
-            {photo.imageUrl && !imageError ? (
-              <Image
-                src={photo.imageUrl}
-                alt={photo.name || ''}
-                fill
-                sizes="(max-width: 768px) 100vw, 50vw"
-                className="object-contain"
-                priority
-                onError={() => setImageError(true)}
-              />
-            ) : (
-              <div className="absolute inset-0 flex items-center justify-center text-neutral-400">
-                <p className="text-sm">Image non disponible</p>
-              </div>
-            )}
+      {/* Main Content */}
+      <main className="pt-12">
+        {/* Image - Full width on mobile, constrained on desktop */}
+        <div className="relative bg-neutral-100 aspect-square sm:aspect-[4/3] md:aspect-[16/10] max-h-[70vh]">
+          {photo.imageUrl && !imageError ? (
+            <Image
+              src={photo.imageUrl}
+              alt={title}
+              fill
+              sizes="100vw"
+              className="object-contain"
+              priority
+              onError={() => setImageError(true)}
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center text-neutral-300">
+              <span className="text-sm">{t.imageUnavailable}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Info + Purchase Section */}
+        <div className="max-w-lg mx-auto px-4 py-6">
+          {/* Title & Date */}
+          <div className="mb-6">
+            <h1 className="text-lg font-medium text-neutral-900 leading-tight">{title}</h1>
+            {date && <p className="text-sm text-neutral-400 mt-1">{date}</p>}
           </div>
 
-          {/* Details */}
-          <div>
-            <h1 className="text-xl md:text-2xl font-light mb-1">
-              {cleanText(photo.name) || 'Sans titre'}
-            </h1>
-            {photo.dateValue && (
-              <p className="text-neutral-500 text-sm mb-4">{cleanText(photo.dateValue)}</p>
-            )}
-
-            {photo.description && photo.description !== 'S/O' && (
-              <p className="text-neutral-600 text-sm mb-6 leading-relaxed">
-                {cleanText(photo.description)}
-              </p>
-            )}
-
-            {/* Meta */}
-            <div className="space-y-1 mb-6 text-xs text-neutral-400">
-              {photo.credits && <p>{t.credits}: {cleanText(photo.credits)}</p>}
-              {photo.cote && <p>{t.reference}: {photo.cote}</p>}
-              {photo.portalTitle && photo.portalTitle !== photo.name && (
-                <p>{t.portalTitle}: {cleanText(photo.portalTitle)}</p>
-              )}
-              {photo.portalDescription && photo.portalDescription !== photo.description && (
-                <p>{t.portalDescription}: {cleanText(photo.portalDescription)}</p>
-              )}
-              {photo.portalDate && photo.portalDate !== photo.dateValue && (
-                <p>{t.portalDate}: {cleanText(photo.portalDate)}</p>
+          {/* Expandable Description */}
+          {description && (
+            <div className="mb-6">
+              <button
+                onClick={() => setShowDetails(!showDetails)}
+                className="flex items-center gap-1 text-xs uppercase tracking-wide text-neutral-400 hover:text-neutral-600 transition-colors"
+              >
+                {t.description}
+                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showDetails ? 'rotate-180' : ''}`} />
+              </button>
+              {showDetails && (
+                <p className="text-sm text-neutral-500 mt-3 leading-relaxed">{description}</p>
               )}
             </div>
+          )}
 
-            {/* Actions */}
-            <div className="flex gap-2 mb-8">
-              <button
-                onClick={handleCopy}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-xs uppercase tracking-wide transition-colors"
-              >
-                {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                {copied ? t.copied : t.copy}
-              </button>
-              <button
-                onClick={handleDownload}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-xs uppercase tracking-wide transition-colors"
-              >
-                <Download className="h-3.5 w-3.5" />
-                {t.download}
-              </button>
-            </div>
-
-            {/* Print Options */}
-            <div className="border-t border-neutral-200 pt-6">
-              <h2 className="text-sm font-medium uppercase tracking-wide mb-4">{t.orderPrint}</h2>
-
-              {/* Size */}
-              <div className="mb-4">
-                <p className="text-xs text-neutral-400 uppercase tracking-wide mb-2">{t.size}</p>
-                <div className="grid grid-cols-4 gap-1">
-                  {PRINT_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.id}
-                      onClick={() => {
-                        setSelectedSize(opt.id);
-                        events.printSizeSelected(opt.name, opt.price);
-                      }}
-                      className={`py-2 text-xs transition-colors ${
-                        selectedSize === opt.id
-                          ? 'bg-neutral-900 text-white'
-                          : 'bg-white border border-neutral-200 hover:border-neutral-400'
-                      }`}
-                    >
-                      <div>{opt.name}</div>
-                      <div className="opacity-60">${opt.price}</div>
-                    </button>
-                  ))}
-                </div>
+          {/* Print Options - Compact */}
+          <div className="border-t border-neutral-100 pt-6">
+            {/* Size Selection */}
+            <div className="mb-4">
+              <p className="text-[10px] uppercase tracking-wider text-neutral-400 mb-2">{t.size}</p>
+              <div className="flex gap-1">
+                {PRINT_SIZES.map((size) => (
+                  <button
+                    key={size.id}
+                    onClick={() => {
+                      setSelectedSize(size.id);
+                      events.printSizeSelected(size.name, size.price);
+                    }}
+                    className={`flex-1 py-2.5 text-[11px] font-medium transition-all ${
+                      selectedSize === size.id
+                        ? 'bg-neutral-900 text-white'
+                        : 'bg-white border border-neutral-200 text-neutral-600 hover:border-neutral-400'
+                    }`}
+                  >
+                    {size.name}
+                  </button>
+                ))}
               </div>
-
-              {/* Frame */}
-              <div className="mb-6">
-                <p className="text-xs text-neutral-400 uppercase tracking-wide mb-2">{t.frame}</p>
-                <div className="grid grid-cols-4 gap-1">
-                  {frameOptions.map((opt) => (
-                    <button
-                      key={opt.id}
-                      onClick={() => {
-                        setSelectedFrame(opt.id);
-                        events.printFrameSelected(opt.name, opt.price);
-                      }}
-                      className={`py-2 text-xs transition-colors ${
-                        selectedFrame === opt.id
-                          ? 'bg-neutral-900 text-white'
-                          : 'bg-white border border-neutral-200 hover:border-neutral-400'
-                      }`}
-                    >
-                      <div>{opt.name}</div>
-                      <div className="opacity-60">{opt.price === 0 ? '-' : `+$${opt.price}`}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Add to Cart */}
-              <button
-                onClick={() => {
-                  if (photo) events.addToCartClicked(photo.metadataFilename, selectedPrint.name, selectedFrameOption.name, totalPrice);
-                }}
-                className="w-full py-3 bg-neutral-900 text-white text-xs font-medium uppercase tracking-wide hover:bg-neutral-800 transition-colors"
-              >
-                {t.addToCart} - ${totalPrice}
-              </button>
-
-              <p className="text-[10px] text-neutral-400 text-center mt-3 uppercase tracking-wide">
-                {t.freeShipping}
-              </p>
-
-              {photo.externalUrl && (
-                <a
-                  href={photo.externalUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => events.archiveLinkClicked(photo.metadataFilename, photo.externalUrl!)}
-                  className="flex items-center justify-center gap-2 mt-4 text-xs text-neutral-400 hover:text-neutral-900 uppercase tracking-wide"
-                >
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  {t.viewArchives}
-                </a>
-              )}
             </div>
+
+            {/* Frame Selection */}
+            <div className="mb-6">
+              <p className="text-[10px] uppercase tracking-wider text-neutral-400 mb-2">{t.frame}</p>
+              <div className="flex gap-1">
+                {frameOptions.map((frame) => (
+                  <button
+                    key={frame.id}
+                    onClick={() => {
+                      setSelectedFrame(frame.id);
+                      events.printFrameSelected(frame.name, frame.price);
+                    }}
+                    className={`flex-1 py-2.5 text-[11px] font-medium transition-all ${
+                      selectedFrame === frame.id
+                        ? 'bg-neutral-900 text-white'
+                        : 'bg-white border border-neutral-200 text-neutral-600 hover:border-neutral-400'
+                    }`}
+                  >
+                    {frame.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Add to Cart Button */}
+            <button
+              onClick={handleAddToCart}
+              disabled={justAdded}
+              className={`w-full py-4 text-sm font-medium uppercase tracking-wide transition-all ${
+                justAdded
+                  ? 'bg-green-600 text-white'
+                  : 'bg-neutral-900 text-white hover:bg-neutral-800 active:scale-[0.98]'
+              }`}
+            >
+              {justAdded ? `✓ ${t.added}` : `${t.addToCart} · $${totalPrice}`}
+            </button>
+
+            {/* Archive Link */}
+            {photo.externalUrl && (
+              <a
+                href={photo.externalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => events.archiveLinkClicked(photo.metadataFilename, photo.externalUrl!)}
+                className="block text-center text-[11px] uppercase tracking-wide text-neutral-400 hover:text-neutral-600 mt-4 transition-colors"
+              >
+                {t.viewInArchives} →
+              </a>
+            )}
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

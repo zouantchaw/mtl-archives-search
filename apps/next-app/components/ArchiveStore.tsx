@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Search, X } from 'lucide-react';
+import { Search, X, ShoppingBag } from 'lucide-react';
 import Image from 'next/image';
 import type { PhotoRecord, SearchResponse, SearchMode } from '@/lib/types';
 import { events } from '@/lib/analytics';
+import { useCart } from '@/lib/cart-context';
 
 const API_BASE = '';
 
@@ -104,6 +105,10 @@ const translations = {
     sourceText: 'Photos provenant des Archives de la Ville de Montréal.',
     visitArchives: 'Visiter les archives',
     close: 'Fermer',
+    // Footer & aria labels
+    cart: 'Panier',
+    instagram: 'Instagram',
+    facebook: 'Facebook',
   },
   en: {
     textSearch: 'Text',
@@ -133,6 +138,10 @@ const translations = {
     sourceText: 'Photos sourced from the City of Montreal Archives.',
     visitArchives: 'Visit archives',
     close: 'Close',
+    // Footer & aria labels
+    cart: 'Cart',
+    instagram: 'Instagram',
+    facebook: 'Facebook',
   },
 } as const;
 
@@ -454,6 +463,7 @@ function SkeletonGrid() {
 function ArchiveStoreInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { itemCount, openCart } = useCart();
 
   // Detect mobile ONCE on mount
   const [isMobile, setIsMobile] = useState(true); // Default to mobile-safe
@@ -650,20 +660,25 @@ function ArchiveStoreInner() {
         {/* Mobile */}
         <div className="flex flex-col sm:hidden">
           <div className="flex items-center justify-between h-11 px-3">
-            <div className="flex items-center gap-2">
-              <a href="/" className="text-[11px] font-medium tracking-[0.1em] uppercase">MTL Archives</a>
-              <span className="text-[9px] text-neutral-400 tracking-wide">{t.photoCount}</span>
-            </div>
+            <a href="/" className="text-[11px] font-medium tracking-[0.1em] uppercase">MTL Archives</a>
             <div className="flex items-center gap-0.5">
               <button onClick={handleLangChange} className="p-1.5">
                 {lang === 'fr' ? <FlagEN /> : <FlagQC />}
               </button>
-              <button 
-                onClick={() => setIsAboutOpen(true)}
-                className="p-1.5 text-neutral-400 hover:text-neutral-600 transition-colors"
-                aria-label={t.about}
+              <button
+                onClick={() => {
+                  events.cartOpened();
+                  openCart();
+                }}
+                className="p-1.5 text-neutral-400 hover:text-neutral-600 transition-colors relative"
+                aria-label={t.cart}
               >
-                <IconInfo className="h-4 w-4" />
+                <ShoppingBag className="h-4 w-4" />
+                {itemCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 h-4 w-4 bg-neutral-900 text-white text-[9px] font-medium rounded-full flex items-center justify-center">
+                    {itemCount > 9 ? '9+' : itemCount}
+                  </span>
+                )}
               </button>
             </div>
           </div>
@@ -740,10 +755,7 @@ function ArchiveStoreInner() {
 
         {/* Desktop */}
         <div className="hidden sm:flex items-center h-14 px-4 lg:px-6 gap-4">
-          <div className="flex items-center gap-2.5 shrink-0">
-            <a href="/" className="text-xs font-medium tracking-[0.12em] uppercase">MTL Archives</a>
-            <span className="text-[10px] text-neutral-400 tracking-wide">{t.photoCount}</span>
-          </div>
+          <a href="/" className="text-xs font-medium tracking-[0.12em] uppercase shrink-0">MTL Archives</a>
           <div className="flex-1 flex justify-center">
             <div className="w-full max-w-lg">
               <div className={`flex items-center bg-white border h-9 rounded-lg transition-all duration-200 ${
@@ -822,11 +834,19 @@ function ArchiveStoreInner() {
               <span className="text-[10px] text-neutral-500 uppercase">{lang === 'fr' ? 'EN' : 'FR'}</span>
             </button>
             <button
-              onClick={() => setIsAboutOpen(true)}
-              className="p-2 text-neutral-400 hover:text-neutral-600 transition-colors"
-              aria-label={t.about}
+              onClick={() => {
+                events.cartOpened();
+                openCart();
+              }}
+              className="p-2 text-neutral-400 hover:text-neutral-600 transition-colors relative"
+              aria-label={t.cart}
             >
-              <IconInfo className="h-4 w-4" />
+              <ShoppingBag className="h-4 w-4" />
+              {itemCount > 0 && (
+                <span className="absolute top-0.5 right-0.5 h-4 w-4 bg-neutral-900 text-white text-[9px] font-medium rounded-full flex items-center justify-center">
+                  {itemCount > 9 ? '9+' : itemCount}
+                </span>
+              )}
             </button>
           </div>
         </div>
@@ -904,14 +924,15 @@ function ArchiveStoreInner() {
       {/* Footer */}
       <footer className="py-8 px-4">
         <div className="flex flex-col items-center gap-4">
-          {/* Social links */}
+          {/* Links */}
           <div className="flex items-center gap-4">
             <a
               href="https://instagram.com/mtlarchives"
               target="_blank"
               rel="noopener noreferrer"
+              onClick={() => events.instagramClicked()}
               className="text-neutral-300 hover:text-neutral-500 transition-colors"
-              aria-label="Instagram"
+              aria-label={t.instagram}
             >
               <IconInstagram className="h-5 w-5" />
             </a>
@@ -919,11 +940,22 @@ function ArchiveStoreInner() {
               href="https://www.facebook.com/mtlarchives/"
               target="_blank"
               rel="noopener noreferrer"
+              onClick={() => events.facebookClicked()}
               className="text-neutral-300 hover:text-neutral-500 transition-colors"
-              aria-label="Facebook"
+              aria-label={t.facebook}
             >
               <IconFacebook className="h-5 w-5" />
             </a>
+            <button
+              onClick={() => {
+                events.aboutOpened();
+                setIsAboutOpen(true);
+              }}
+              className="text-neutral-300 hover:text-neutral-500 transition-colors"
+              aria-label={t.about}
+            >
+              <IconInfo className="h-5 w-5" />
+            </button>
           </div>
           {/* Copyright */}
           <p className="text-[10px] text-neutral-300 tracking-wide">© {new Date().getFullYear()} MTL Archives</p>
