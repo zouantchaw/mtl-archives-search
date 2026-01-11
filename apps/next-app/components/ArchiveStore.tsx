@@ -167,6 +167,39 @@ function FlagEN() {
   );
 }
 
+// ============================================================
+// Social Icons
+// ============================================================
+function IconInstagram({ className }: { className?: string }) {
+  return (
+    <svg 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+      className={className}
+    >
+      <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+      <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+    </svg>
+  );
+}
+
+function IconFacebook({ className }: { className?: string }) {
+  return (
+    <svg 
+      viewBox="0 0 24 24" 
+      fill="currentColor"
+      className={className}
+    >
+      <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+    </svg>
+  );
+}
+
 
 // ============================================================
 // Main Component
@@ -400,7 +433,28 @@ function ArchiveStoreInner() {
               <button onClick={handleLangChange} className="p-1">
                 {lang === 'fr' ? <FlagEN /> : <FlagQC />}
               </button>
-              <a href="https://instagram.com/mtlarchives" target="_blank" rel="noopener noreferrer" className="text-[10px] text-neutral-400" data-sln-event="link: instagram clicked">@mtlarchives</a>
+              <div className="flex items-center gap-1">
+                <a 
+                  href="https://instagram.com/mtlarchives" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="p-1.5 text-neutral-400 hover:text-neutral-600 transition-colors"
+                  aria-label="Instagram"
+                  data-sln-event="link: instagram clicked"
+                >
+                  <IconInstagram className="h-4 w-4" />
+                </a>
+                <a 
+                  href="https://www.facebook.com/mtlarchives/" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="p-1.5 text-neutral-400 hover:text-neutral-600 transition-colors"
+                  aria-label="Facebook"
+                  data-sln-event="link: facebook clicked"
+                >
+                  <IconFacebook className="h-4 w-4" />
+                </a>
+              </div>
             </div>
           </div>
           <div className="px-3 pb-2.5">
@@ -522,7 +576,7 @@ function ArchiveStoreInner() {
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
             <button 
               onClick={handleLangChange} 
               className="flex items-center gap-1.5 px-2 py-1 hover:bg-neutral-100 rounded transition-colors"
@@ -530,15 +584,28 @@ function ArchiveStoreInner() {
               {lang === 'fr' ? <FlagEN /> : <FlagQC />}
               <span className="text-[10px] text-neutral-500 uppercase">{lang === 'fr' ? 'EN' : 'FR'}</span>
             </button>
-            <a
-              href="https://instagram.com/mtlarchives"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[10px] text-neutral-400 hover:text-neutral-600 transition-colors"
-              data-sln-event="link: instagram clicked"
-            >
-              @mtlarchives
-            </a>
+            <div className="flex items-center">
+              <a
+                href="https://instagram.com/mtlarchives"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 text-neutral-400 hover:text-neutral-600 transition-colors"
+                aria-label="Instagram"
+                data-sln-event="link: instagram clicked"
+              >
+                <IconInstagram className="h-4 w-4" />
+              </a>
+              <a
+                href="https://www.facebook.com/mtlarchives/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 text-neutral-400 hover:text-neutral-600 transition-colors"
+                aria-label="Facebook"
+                data-sln-event="link: facebook clicked"
+              >
+                <IconFacebook className="h-4 w-4" />
+              </a>
+            </div>
           </div>
         </div>
       </header>
