@@ -11,23 +11,42 @@ export const size = {
 
 export const contentType = 'image/png';
 
-export default function OGImage() {
+// API endpoint for fetching photos
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mtl-archives-worker.wiel.workers.dev';
+
+type PhotoData = {
+  imageUrl?: string;
+  name?: string;
+};
+
+async function getPhotos(): Promise<PhotoData[]> {
+  try {
+    const res = await fetch(`${API_BASE}/api/photos?limit=6`, {
+      next: { revalidate: 3600 }, // Cache for 1 hour
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.items || [];
+  } catch {
+    return [];
+  }
+}
+
+export default async function OGImage() {
+  const photos = await getPhotos();
+  
   return new ImageResponse(
     (
       <div
         style={{
-          background: 'linear-gradient(135deg, #171717 0%, #262626 100%)',
+          background: '#171717',
           width: '100%',
           height: '100%',
           display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontFamily: 'system-ui, sans-serif',
           position: 'relative',
         }}
       >
-        {/* Background pattern */}
+        {/* Photo grid background */}
         <div
           style={{
             position: 'absolute',
@@ -35,33 +54,78 @@ export default function OGImage() {
             left: 0,
             right: 0,
             bottom: 0,
-            opacity: 0.03,
-            backgroundImage: 'radial-gradient(circle at 25px 25px, #fafafa 2px, transparent 0)',
-            backgroundSize: '50px 50px',
+            display: 'flex',
+            flexWrap: 'wrap',
+          }}
+        >
+          {photos.slice(0, 6).map((photo, i) => (
+            <div
+              key={i}
+              style={{
+                width: '33.333%',
+                height: '50%',
+                position: 'relative',
+                overflow: 'hidden',
+              }}
+            >
+              {photo.imageUrl && (
+                <img
+                  src={photo.imageUrl}
+                  alt=""
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    filter: 'brightness(0.6)',
+                  }}
+                />
+              )}
+            </div>
+          ))}
+        </div>
+        
+        {/* Center overlay */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'radial-gradient(ellipse at center, rgba(23,23,23,0.95) 0%, rgba(23,23,23,0.7) 50%, rgba(23,23,23,0.4) 100%)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
           }}
         />
         
         {/* Content */}
         <div
           style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: 24,
+            gap: 20,
           }}
         >
           {/* Logo mark */}
           <div
             style={{
-              width: 120,
-              height: 120,
+              width: 100,
+              height: 100,
               background: '#fafafa',
-              borderRadius: 24,
+              borderRadius: 20,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: 72,
+              fontSize: 60,
               fontWeight: 700,
               color: '#171717',
             }}
@@ -72,7 +136,7 @@ export default function OGImage() {
           {/* Title */}
           <div
             style={{
-              fontSize: 64,
+              fontSize: 56,
               fontWeight: 600,
               color: '#fafafa',
               letterSpacing: '0.05em',
@@ -84,16 +148,16 @@ export default function OGImage() {
           {/* Subtitle */}
           <div
             style={{
-              fontSize: 28,
+              fontSize: 24,
               color: '#a3a3a3',
-              letterSpacing: '0.1em',
+              letterSpacing: '0.15em',
             }}
           >
             14 822 PHOTOS HISTORIQUES DE MONTRÉAL
           </div>
         </div>
         
-        {/* Bottom accent */}
+        {/* Bottom accent - Quebec flag colors */}
         <div
           style={{
             position: 'absolute',
