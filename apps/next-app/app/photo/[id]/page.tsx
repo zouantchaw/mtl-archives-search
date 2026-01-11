@@ -9,6 +9,15 @@ import { events } from '@/lib/analytics';
 
 const API_BASE = '';
 
+// Clean text: remove escaped newlines, normalize whitespace
+function cleanText(text: string | null | undefined): string {
+  if (!text) return '';
+  return text
+    .replace(/\\n/g, ' ')      // Replace literal \n with space
+    .replace(/\s+/g, ' ')      // Normalize multiple spaces
+    .trim();
+}
+
 // ============================================================
 // i18n
 // ============================================================
@@ -137,16 +146,16 @@ export default function PhotoPage({ params }: { params: Promise<{ id: string }> 
   const buildCaption = () => {
     if (!photo) return '';
     const lines = [];
-    const title = photo.name || photo.portalTitle || 'Sans titre';
-    const date = photo.dateValue || photo.portalDate;
+    const title = cleanText(photo.name) || cleanText(photo.portalTitle) || 'Sans titre';
+    const date = cleanText(photo.dateValue) || cleanText(photo.portalDate);
     lines.push(date ? `${title}, ${date}` : title);
     lines.push('');
     const desc = photo.description && photo.description !== 'S/O'
-      ? photo.description
-      : photo.portalDescription;
+      ? cleanText(photo.description)
+      : cleanText(photo.portalDescription);
     if (desc) lines.push(desc);
     lines.push('');
-    if (photo.credits) lines.push(`Photo: ${photo.credits}`);
+    if (photo.credits) lines.push(`Photo: ${cleanText(photo.credits)}`);
     if (photo.cote) lines.push(`Ref: ${photo.cote}`);
     lines.push('');
     lines.push('#Montreal #MontrealHistory #MTLArchives #VieuxMontreal #HistoireduQuebec');
@@ -250,30 +259,30 @@ export default function PhotoPage({ params }: { params: Promise<{ id: string }> 
           {/* Details */}
           <div>
             <h1 className="text-xl md:text-2xl font-light mb-1">
-              {photo.name || 'Sans titre'}
+              {cleanText(photo.name) || 'Sans titre'}
             </h1>
             {photo.dateValue && (
-              <p className="text-neutral-500 text-sm mb-4">{photo.dateValue}</p>
+              <p className="text-neutral-500 text-sm mb-4">{cleanText(photo.dateValue)}</p>
             )}
 
             {photo.description && photo.description !== 'S/O' && (
               <p className="text-neutral-600 text-sm mb-6 leading-relaxed">
-                {photo.description}
+                {cleanText(photo.description)}
               </p>
             )}
 
             {/* Meta */}
             <div className="space-y-1 mb-6 text-xs text-neutral-400">
-              {photo.credits && <p>{t.credits}: {photo.credits}</p>}
+              {photo.credits && <p>{t.credits}: {cleanText(photo.credits)}</p>}
               {photo.cote && <p>{t.reference}: {photo.cote}</p>}
               {photo.portalTitle && photo.portalTitle !== photo.name && (
-                <p>{t.portalTitle}: {photo.portalTitle}</p>
+                <p>{t.portalTitle}: {cleanText(photo.portalTitle)}</p>
               )}
               {photo.portalDescription && photo.portalDescription !== photo.description && (
-                <p>{t.portalDescription}: {photo.portalDescription}</p>
+                <p>{t.portalDescription}: {cleanText(photo.portalDescription)}</p>
               )}
               {photo.portalDate && photo.portalDate !== photo.dateValue && (
-                <p>{t.portalDate}: {photo.portalDate}</p>
+                <p>{t.portalDate}: {cleanText(photo.portalDate)}</p>
               )}
             </div>
 

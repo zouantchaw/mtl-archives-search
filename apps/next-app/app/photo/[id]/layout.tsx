@@ -3,6 +3,15 @@ import type { Metadata } from 'next';
 // API endpoint for fetching photo data
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mtl-archives-worker.wiel.workers.dev';
 
+// Clean text: remove escaped newlines, normalize whitespace
+function cleanText(text: string | null | undefined): string {
+  if (!text) return '';
+  return text
+    .replace(/\\n/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 type PhotoData = {
   name?: string;
   dateValue?: string;
@@ -32,11 +41,11 @@ export async function generateMetadata({
   const { id } = await params;
   const photo = await getPhoto(decodeURIComponent(id));
   
-  const title = photo?.name || photo?.portalTitle || 'Photo historique';
-  const date = photo?.dateValue ? ` (${photo.dateValue})` : '';
-  const description = photo?.description && photo.description !== 'S/O' 
-    ? photo.description 
-    : photo?.portalDescription || 'Photo historique des archives de Montréal';
+  const title = cleanText(photo?.name) || cleanText(photo?.portalTitle) || 'Photo historique';
+  const date = photo?.dateValue ? ` (${cleanText(photo.dateValue)})` : '';
+  const description = photo?.description && photo.description !== 'S/O'
+    ? cleanText(photo.description)
+    : cleanText(photo?.portalDescription) || 'Photo historique des archives de Montréal';
 
   return {
     title: `${title}${date}`,
