@@ -136,6 +136,7 @@ export default function PhotoPage({ params }: { params: Promise<{ id: string }> 
   const [selectedSize, setSelectedSize] = useState(PRINT_OPTIONS[1].id);
   const [selectedFrame, setSelectedFrame] = useState('none');
   const [copied, setCopied] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   const frameOptions = lang === 'fr' ? FRAME_OPTIONS_FR : FRAME_OPTIONS_EN;
   const selectedPrint = PRINT_OPTIONS.find(p => p.id === selectedSize)!;
@@ -244,7 +245,7 @@ export default function PhotoPage({ params }: { params: Promise<{ id: string }> 
         <div className="grid md:grid-cols-2 gap-8 md:gap-12">
           {/* Image - Vercel optimizes automatically */}
           <div className="relative aspect-square bg-neutral-100">
-            {photo.imageUrl && (
+            {photo.imageUrl && !imageError ? (
               <Image
                 src={photo.imageUrl}
                 alt={photo.name || ''}
@@ -252,7 +253,12 @@ export default function PhotoPage({ params }: { params: Promise<{ id: string }> 
                 sizes="(max-width: 768px) 100vw, 50vw"
                 className="object-contain"
                 priority
+                onError={() => setImageError(true)}
               />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center text-neutral-400">
+                <p className="text-sm">Image non disponible</p>
+              </div>
             )}
           </div>
 

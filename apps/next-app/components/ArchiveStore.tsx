@@ -261,6 +261,7 @@ function ArchiveStoreInner() {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
 
   const t = translations[lang];
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -387,10 +388,15 @@ function ArchiveStoreInner() {
     const seen = new Set<string>();
     return source.filter(p => {
       if (seen.has(p.metadataFilename)) return false;
+      if (failedImages.has(p.metadataFilename)) return false;
       seen.add(p.metadataFilename);
       return true;
     });
-  }, [hasSearched, searchResults, photos]);
+  }, [hasSearched, searchResults, photos, failedImages]);
+
+  const handleImageError = useCallback((photoId: string) => {
+    setFailedImages(prev => new Set(prev).add(photoId));
+  }, []);
 
   // Navigate to photo
   const handlePhotoClick = useCallback((photo: PhotoRecord) => {
@@ -651,6 +657,7 @@ function ArchiveStoreInner() {
                   className="object-cover"
                   priority={index < 6}
                   loading={index < 6 ? undefined : 'lazy'}
+                  onError={() => handleImageError(photo.metadataFilename)}
                 />
               )}
             </button>
