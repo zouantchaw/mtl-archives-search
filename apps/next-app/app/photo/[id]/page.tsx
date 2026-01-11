@@ -1,15 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Download, Copy, Check, ExternalLink } from 'lucide-react';
 import Image from 'next/image';
 import type { PhotoRecord } from '@/lib/types';
 
-// API calls go through Vercel rewrite
 const API_BASE = '';
-// Images load directly from Cloudflare (bypasses Vercel proxy)
-const THUMB_BASE = 'https://mtl-archives-worker.wiel.workers.dev';
 
 // ============================================================
 // i18n
@@ -80,15 +77,6 @@ const FRAME_OPTIONS_EN = [
   { id: 'natural', name: 'Natural Wood', price: 60 },
 ];
 
-// Detect low-memory device
-const getIsLowMemoryDevice = (): boolean => {
-  if (typeof window === 'undefined') return false;
-  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-  const isSmallScreen = window.innerWidth < 768;
-  const deviceMemory = (navigator as { deviceMemory?: number }).deviceMemory;
-  const isLowMemory = deviceMemory !== undefined && deviceMemory < 4;
-  return isMobile || isSmallScreen || isLowMemory;
-};
 
 export default function PhotoPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -97,7 +85,6 @@ export default function PhotoPage({ params }: { params: Promise<{ id: string }> 
   const [photo, setPhoto] = useState<PhotoRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [isLowMemory, setIsLowMemory] = useState(false);
   const [photoId, setPhotoId] = useState<string | null>(null);
 
   // Get lang from URL or default to 'fr'
@@ -108,10 +95,6 @@ export default function PhotoPage({ params }: { params: Promise<{ id: string }> 
   useEffect(() => {
     params.then(p => setPhotoId(p.id));
   }, [params]);
-
-  useEffect(() => {
-    setIsLowMemory(getIsLowMemoryDevice());
-  }, []);
 
   // Fetch photo by ID
   useEffect(() => {
@@ -149,21 +132,6 @@ export default function PhotoPage({ params }: { params: Promise<{ id: string }> 
   const selectedFrameOption = frameOptions.find(f => f.id === selectedFrame)!;
   const totalPrice = selectedPrint.price + selectedFrameOption.price;
 
-  const detailImageSize = isLowMemory ? 600 : 1000;
-
-  const getThumbnailUrl = useCallback((src: string, w = 400, h = 400) => {
-    if (!src) return '';
-    const urlParams = new URLSearchParams({
-      src,
-      w: String(w),
-      h: String(h),
-      fit: 'cover',
-      format: 'webp',
-      q: '75'
-    });
-    // Bypass Vercel - load direct from Cloudflare
-    return `${THUMB_BASE}/api/thumb?${urlParams}`;
-  }, []);
 
   const buildCaption = () => {
     if (!photo) return '';
@@ -262,16 +230,15 @@ export default function PhotoPage({ params }: { params: Promise<{ id: string }> 
       {/* Content */}
       <div className="max-w-5xl mx-auto px-4 py-8 md:py-12">
         <div className="grid md:grid-cols-2 gap-8 md:gap-12">
-          {/* Image */}
+          {/* Image - Vercel optimizes automatically */}
           <div className="relative aspect-square bg-neutral-100">
             {photo.imageUrl && (
               <Image
-                src={getThumbnailUrl(photo.imageUrl, detailImageSize, detailImageSize)}
+                src={photo.imageUrl}
                 alt={photo.name || ''}
                 fill
-                sizes={isLowMemory ? '(max-width: 768px) 100vw, 400px' : '(max-width: 768px) 100vw, 600px'}
+                sizes="(max-width: 768px) 100vw, 50vw"
                 className="object-contain"
-                unoptimized
                 priority
               />
             )}
