@@ -641,7 +641,8 @@ function ArchiveStoreInner() {
     const newLang = lang === 'fr' ? 'en' : 'fr';
     events.languageChanged(lang, newLang);
     setLang(newLang);
-    if (searchQuery) updateUrl(searchQuery, searchMode, newLang);
+    // Always update URL so CartDrawer and other components get the new language
+    updateUrl(searchQuery, searchMode, newLang);
   }, [lang, searchQuery, searchMode, updateUrl]);
 
   const handleModeChange = useCallback((newMode: SearchMode) => {
