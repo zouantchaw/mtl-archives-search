@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { X, Minus, Plus, ShoppingBag } from 'lucide-react';
 import Image from 'next/image';
@@ -36,7 +36,16 @@ const translations = {
   },
 } as const;
 
+// Wrapper component to handle Suspense boundary for useSearchParams
 export function CartDrawer() {
+  return (
+    <Suspense fallback={null}>
+      <CartDrawerInner />
+    </Suspense>
+  );
+}
+
+function CartDrawerInner() {
   const searchParams = useSearchParams();
   const lang = (searchParams.get('lang') as Lang) || 'fr';
   const t = translations[lang];
