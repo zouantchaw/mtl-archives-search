@@ -254,11 +254,11 @@ async function main() {
 
   if (useBge) {
     const portalCandidates: PortalCandidate[] = portalRecords
-      .map(record => ({
+      .map((record: any) => ({
         record,
         text: buildPortalText(record),
       }))
-      .filter(entry => entry.text.length >= MIN_BGE_TEXT_LENGTH);
+      .filter((entry: { record: any; text: string }) => entry.text.length >= MIN_BGE_TEXT_LENGTH);
 
     summary.bge_portal_candidates = portalCandidates.length;
     console.log(`Loaded ${records.length} records.`);

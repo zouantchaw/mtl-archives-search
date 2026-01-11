@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Figtree } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 
 const figtree = Figtree({
@@ -37,6 +38,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${figtree.variable}`}>
+      <head>
+        <Script
+          src="https://cdn.seline.com/seline.js"
+          data-token="ba441af9ffc2d81"
+          strategy="afterInteractive"
+        />
+      </head>
       <body className="font-sans antialiased bg-neutral-50 text-neutral-900 min-h-screen">
         {children}
       </body>

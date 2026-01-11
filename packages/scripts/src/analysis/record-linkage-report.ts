@@ -267,11 +267,11 @@ async function main() {
   const portalRecords = loadPortalRecords();
   const { byCote, byFilename } = buildPortalIndexes(portalRecords);
   const portalCandidates: PortalCandidate[] = portalRecords
-    .map(record => ({
+    .map((record: any) => ({
       record,
       text: buildPortalText(record),
     }))
-    .filter(entry => entry.text.length >= minText);
+    .filter((entry: { record: any; text: string }) => entry.text.length >= minText);
 
   const encodedModel = encodeURIComponent(EMBEDDING_MODEL).replace(/%2F/g, '/');
   const aiEndpoint = `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/ai/run/${encodedModel}`;

@@ -20,6 +20,7 @@ let tokenizerPromise: Promise<TokenizerFunction> | null = null;
 
 async function initTransformers() {
   // Dynamic import to configure before loading models
+  // @ts-expect-error - types provided manually above
   const { env, CLIPTextModelWithProjection, AutoTokenizer } = await import('@huggingface/transformers');
 
   // Force WASM backend (no native binaries)

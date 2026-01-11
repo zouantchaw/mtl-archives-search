@@ -79,7 +79,20 @@ function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function fetchJson(url: string) {
+interface DatastoreResponse {
+  success?: boolean;
+  help?: string;
+  result?: {
+    total?: number;
+    include_total?: boolean;
+    records_format?: string;
+    total_was_estimated?: boolean;
+    fields?: unknown[];
+    records?: unknown[];
+  };
+}
+
+async function fetchJson(url: string): Promise<DatastoreResponse> {
   const response = await fetch(url, {
     headers: {
       'User-Agent': 'mtl-archives-scripts/1.0',
@@ -88,7 +101,7 @@ async function fetchJson(url: string) {
   if (!response.ok) {
     throw new Error(`Request failed (${response.status}) ${url}`);
   }
-  return response.json();
+  return response.json() as Promise<DatastoreResponse>;
 }
 
 async function fetchDataset(dataset: DatasetConfig, pageSize: number, delayMs: number) {

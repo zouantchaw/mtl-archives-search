@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Search, X } from 'lucide-react';
 import Image from 'next/image';
 import type { PhotoRecord, SearchResponse, SearchMode } from '@/lib/types';
+import { events } from '@/lib/analytics';
 
 const API_BASE = '';
 
@@ -186,6 +187,21 @@ function LoadingSpinner() {
   );
 }
 
+function SkeletonGrid() {
+  // Show skeleton placeholders matching the grid layout
+  const skeletonCount = 12;
+  return (
+    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-0.5 px-0.5">
+      {Array.from({ length: skeletonCount }).map((_, i) => (
+        <div
+          key={i}
+          className="relative aspect-square bg-neutral-200 animate-pulse"
+        />
+      ))}
+    </div>
+  );
+}
+
 function ArchiveStoreInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -260,6 +276,7 @@ function ArchiveStoreInner() {
     // On mobile, enforce max limit
     if (isMobile && photos.length >= MOBILE_MAX_IMAGES) return;
 
+    events.loadMoreClicked(photos.length);
     setIsLoadingMore(true);
     try {
       const pageSize = isMobile ? MOBILE_PAGE_SIZE : DESKTOP_PAGE_SIZE;
@@ -310,6 +327,7 @@ function ArchiveStoreInner() {
         if (res.ok) {
           const data: SearchResponse = await res.json();
           setSearchResults(data.items);
+          events.searchPerformed(searchQuery, mode, data.items.length);
         }
       } catch (err) {
         console.error('Search failed:', err);
@@ -322,6 +340,7 @@ function ArchiveStoreInner() {
   }, [searchQuery, searchMode, updateUrl, lang, initialQuery, isMobile]);
 
   const clearSearch = useCallback(() => {
+    events.searchCleared();
     setSearchQuery('');
     setSearchResults([]);
     setHasSearched(false);
@@ -342,6 +361,7 @@ function ArchiveStoreInner() {
 
   // Navigate to photo
   const handlePhotoClick = useCallback((photo: PhotoRecord) => {
+    events.photoViewed(photo.metadataFilename, photo.name);
     const params = new URLSearchParams();
     if (searchQuery) params.set('q', searchQuery);
     if (searchMode !== 'semantic') params.set('mode', searchMode);
@@ -351,6 +371,7 @@ function ArchiveStoreInner() {
 
   const handleLangChange = useCallback(() => {
     const newLang = lang === 'fr' ? 'en' : 'fr';
+    events.languageChanged(lang, newLang);
     setLang(newLang);
     if (searchQuery) updateUrl(searchQuery, searchMode, newLang);
   }, [lang, searchQuery, searchMode, updateUrl]);
@@ -379,7 +400,7 @@ function ArchiveStoreInner() {
               <button onClick={handleLangChange} className="p-1">
                 {lang === 'fr' ? <FlagEN /> : <FlagQC />}
               </button>
-              <a href="https://instagram.com/mtlarchives" target="_blank" rel="noopener noreferrer" className="text-[10px] text-neutral-400">@mtlarchives</a>
+              <a href="https://instagram.com/mtlarchives" target="_blank" rel="noopener noreferrer" className="text-[10px] text-neutral-400" data-sln-event="link: instagram clicked">@mtlarchives</a>
             </div>
           </div>
           <div className="px-3 pb-2.5">
@@ -509,11 +530,12 @@ function ArchiveStoreInner() {
               {lang === 'fr' ? <FlagEN /> : <FlagQC />}
               <span className="text-[10px] text-neutral-500 uppercase">{lang === 'fr' ? 'EN' : 'FR'}</span>
             </button>
-            <a 
-              href="https://instagram.com/mtlarchives" 
-              target="_blank" 
-              rel="noopener noreferrer" 
+            <a
+              href="https://instagram.com/mtlarchives"
+              target="_blank"
+              rel="noopener noreferrer"
               className="text-[10px] text-neutral-400 hover:text-neutral-600 transition-colors"
+              data-sln-event="link: instagram clicked"
             >
               @mtlarchives
             </a>
@@ -541,17 +563,13 @@ function ArchiveStoreInner() {
         </div>
       )}
 
-      {/* Loading */}
-      {initialLoading && (
-        <div className="text-center py-16">
-          <div className="inline-block h-5 w-5 border border-neutral-300 border-t-neutral-900 rounded-full animate-spin" />
-        </div>
-      )}
+      {/* Loading skeleton */}
+      {initialLoading && <SkeletonGrid />}
 
       {/* Simple Grid - Using Next.js Image for automatic optimization */}
       {!initialLoading && displayPhotos.length > 0 && (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-0.5 px-0.5">
-          {displayPhotos.map(photo => (
+          {displayPhotos.map((photo, index) => (
             <button
               key={photo.metadataFilename}
               onClick={() => handlePhotoClick(photo)}
@@ -564,7 +582,8 @@ function ArchiveStoreInner() {
                   fill
                   sizes="(max-width: 640px) 33vw, (max-width: 768px) 25vw, (max-width: 1024px) 20vw, 14vw"
                   className="object-cover"
-                  loading="lazy"
+                  priority={index < 6}
+                  loading={index < 6 ? undefined : 'lazy'}
                 />
               )}
             </button>

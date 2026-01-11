@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Download, Copy, Check, ExternalLink } from 'lucide-react';
 import Image from 'next/image';
 import type { PhotoRecord } from '@/lib/types';
+import { events } from '@/lib/analytics';
 
 const API_BASE = '';
 
@@ -153,6 +154,7 @@ export default function PhotoPage({ params }: { params: Promise<{ id: string }> 
   };
 
   const handleCopy = async () => {
+    if (photo) events.captionCopied(photo.metadataFilename);
     await navigator.clipboard.writeText(buildCaption());
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -160,6 +162,7 @@ export default function PhotoPage({ params }: { params: Promise<{ id: string }> 
 
   const handleDownload = async () => {
     if (!photo?.imageUrl) return;
+    events.photoDownloaded(photo.metadataFilename, photo.name);
     try {
       const res = await fetch(photo.imageUrl);
       const blob = await res.blob();
@@ -303,7 +306,10 @@ export default function PhotoPage({ params }: { params: Promise<{ id: string }> 
                   {PRINT_OPTIONS.map((opt) => (
                     <button
                       key={opt.id}
-                      onClick={() => setSelectedSize(opt.id)}
+                      onClick={() => {
+                        setSelectedSize(opt.id);
+                        events.printSizeSelected(opt.name, opt.price);
+                      }}
                       className={`py-2 text-xs transition-colors ${
                         selectedSize === opt.id
                           ? 'bg-neutral-900 text-white'
@@ -324,7 +330,10 @@ export default function PhotoPage({ params }: { params: Promise<{ id: string }> 
                   {frameOptions.map((opt) => (
                     <button
                       key={opt.id}
-                      onClick={() => setSelectedFrame(opt.id)}
+                      onClick={() => {
+                        setSelectedFrame(opt.id);
+                        events.printFrameSelected(opt.name, opt.price);
+                      }}
                       className={`py-2 text-xs transition-colors ${
                         selectedFrame === opt.id
                           ? 'bg-neutral-900 text-white'
@@ -339,7 +348,12 @@ export default function PhotoPage({ params }: { params: Promise<{ id: string }> 
               </div>
 
               {/* Add to Cart */}
-              <button className="w-full py-3 bg-neutral-900 text-white text-xs font-medium uppercase tracking-wide hover:bg-neutral-800 transition-colors">
+              <button
+                onClick={() => {
+                  if (photo) events.addToCartClicked(photo.metadataFilename, selectedPrint.name, selectedFrameOption.name, totalPrice);
+                }}
+                className="w-full py-3 bg-neutral-900 text-white text-xs font-medium uppercase tracking-wide hover:bg-neutral-800 transition-colors"
+              >
                 {t.addToCart} - ${totalPrice}
               </button>
 
@@ -352,6 +366,7 @@ export default function PhotoPage({ params }: { params: Promise<{ id: string }> 
                   href={photo.externalUrl}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={() => events.archiveLinkClicked(photo.metadataFilename, photo.externalUrl!)}
                   className="flex items-center justify-center gap-2 mt-4 text-xs text-neutral-400 hover:text-neutral-900 uppercase tracking-wide"
                 >
                   <ExternalLink className="h-3.5 w-3.5" />
