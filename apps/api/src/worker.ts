@@ -153,6 +153,21 @@ function parseAllowedValue<T extends string>(value: string | null, allowed: read
 }
 
 async function handlePhotos(url: URL, env: Env): Promise<Response> {
+  // Support fetching a single photo by ID
+  const id = url.searchParams.get('id');
+  if (id) {
+    const { results = [] } = await env.DB.prepare(
+      `SELECT ${SELECT_FIELDS} FROM manifest WHERE metadata_filename = ?`
+    ).bind(id).all();
+
+    if (results.length === 0) {
+      return jsonResponse({ items: [], error: 'Photo not found' }, 404);
+    }
+
+    const items = await Promise.all(results.map((row) => buildPhotoRecord(row, env)));
+    return jsonResponse({ items });
+  }
+
   const limitParam = Number(url.searchParams.get('limit') ?? '50');
   const limit = clamp(Number.isFinite(limitParam) ? limitParam : 50, 1, 100);
   const cursor = url.searchParams.get('cursor');

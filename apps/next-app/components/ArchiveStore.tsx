@@ -1,43 +1,29 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Search, X, Download, Copy, Check, ArrowLeft, ExternalLink } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef, useMemo, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Search, X } from 'lucide-react';
 import type { PhotoRecord, SearchResponse, SearchMode } from '@/lib/types';
 import { useClipEmbedding } from '@/lib/use-clip';
 import Image from 'next/image';
 
 const API_BASE = '';
 
-// Memory management: limit total images in DOM to prevent mobile crashes
-const MAX_IMAGES_IN_DOM = 150;
-const IMAGES_PER_PAGE = 30;
+// Memory management: stricter limits to prevent mobile crashes
+const MAX_IMAGES_IN_DOM = 120;
+const MAX_IMAGES_MOBILE = 60;
+const IMAGES_PER_PAGE = 24;
+const IMAGES_PER_PAGE_MOBILE = 18;
 
 // Detect if we're on a low-memory device (mobile/tablet)
 const getIsLowMemoryDevice = (): boolean => {
   if (typeof window === 'undefined') return false;
-  // Check for mobile user agent or small screen
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   const isSmallScreen = window.innerWidth < 768;
-  // Check device memory if available (in GB)
   const deviceMemory = (navigator as { deviceMemory?: number }).deviceMemory;
   const isLowMemory = deviceMemory !== undefined && deviceMemory < 4;
   return isMobile || isSmallScreen || isLowMemory;
 };
-
-// Shuffle array using Fisher-Yates (seeded for consistency per session)
-function shuffleArray<T>(array: T[], seed?: number): T[] {
-  const result = [...array];
-  let currentSeed = seed ?? Date.now();
-  const random = () => {
-    currentSeed = (currentSeed * 9301 + 49297) % 233280;
-    return currentSeed / 233280;
-  };
-  for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(random() * (i + 1));
-    [result[i], result[j]] = [result[j], result[i]];
-  }
-  return result;
-}
 
 // ============================================================
 // Flag Icons
@@ -158,33 +144,12 @@ const translations = {
   fr: {
     textSearch: 'Texte',
     visualSearch: 'Visuel',
-    featured: 'À la une',
-    results: 'résultats',
-    result: 'résultat',
+    featured: 'A la une',
+    results: 'resultats',
+    result: 'resultat',
     clear: 'Effacer',
-    noResults: 'Aucune photo trouvée pour',
+    noResults: 'Aucune photo trouvee pour',
     clearSearch: 'Effacer la recherche',
-    back: 'Retour',
-    copy: 'Copier',
-    copied: 'Copié',
-    download: 'Télécharger',
-    orderPrint: 'Commander une impression',
-    size: 'Format',
-    frame: 'Cadre',
-    noFrame: 'Sans cadre',
-    addToCart: 'Ajouter au panier',
-    freeShipping: 'Livraison gratuite dès 150$ · Expédition 5-7 jours',
-    viewArchives: 'Voir dans les Archives',
-    credits: 'Crédits',
-    reference: 'Référence',
-    portalTitle: 'Titre (Portail)',
-    portalDescription: 'Description (Portail)',
-    portalDate: 'Date (Portail)',
-    loadMore: 'Charger plus',
-    loading: 'Chargement...',
-    instagram: 'Instagram',
-    about: 'À propos',
-    contact: 'Contact',
   },
   en: {
     textSearch: 'Text',
@@ -195,72 +160,46 @@ const translations = {
     clear: 'Clear',
     noResults: 'No photos found for',
     clearSearch: 'Clear search',
-    back: 'Back',
-    copy: 'Copy',
-    copied: 'Copied',
-    download: 'Download',
-    orderPrint: 'Order Print',
-    size: 'Size',
-    frame: 'Frame',
-    noFrame: 'No Frame',
-    addToCart: 'Add to Cart',
-    freeShipping: 'Free shipping over $150 · Ships in 5-7 days',
-    viewArchives: 'View in City Archives',
-    credits: 'Credits',
-    reference: 'Reference',
-    portalTitle: 'Title (Portal)',
-    portalDescription: 'Description (Portal)',
-    portalDate: 'Date (Portal)',
-    loadMore: 'Load more',
-    loading: 'Loading...',
-    instagram: 'Instagram',
-    about: 'About',
-    contact: 'Contact',
   },
 } as const;
 
-const PRINT_OPTIONS = [
-  { id: 'small', name: '8×10"', price: 45 },
-  { id: 'medium', name: '12×16"', price: 75 },
-  { id: 'large', name: '18×24"', price: 120 },
-  { id: 'xlarge', name: '24×36"', price: 180 },
-];
-
-const FRAME_OPTIONS_FR = [
-  { id: 'none', name: 'Sans cadre', price: 0 },
-  { id: 'black', name: 'Noir', price: 45 },
-  { id: 'white', name: 'Blanc', price: 45 },
-  { id: 'natural', name: 'Bois naturel', price: 60 },
-];
-
-const FRAME_OPTIONS_EN = [
-  { id: 'none', name: 'No Frame', price: 0 },
-  { id: 'black', name: 'Black', price: 45 },
-  { id: 'white', name: 'White', price: 45 },
-  { id: 'natural', name: 'Natural Wood', price: 60 },
-];
-
 // ============================================================
-// Main Component
+// Main Component (wrapped with Suspense for useSearchParams)
 // ============================================================
 export function ArchiveStore() {
-  // Language state - French default
-  const [lang, setLang] = useState<Lang>('fr');
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#fafafa] flex items-center justify-center"><div className="h-6 w-6 border-2 border-neutral-300 border-t-neutral-900 rounded-full animate-spin" /></div>}>
+      <ArchiveStoreInner />
+    </Suspense>
+  );
+}
+
+function ArchiveStoreInner() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Initialize state from URL params
+  const initialQuery = searchParams.get('q') || '';
+  const initialMode = (searchParams.get('mode') as SearchMode) || 'semantic';
+  const initialLang = (searchParams.get('lang') as Lang) || 'fr';
+
+  // Language state
+  const [lang, setLang] = useState<Lang>(initialLang);
   const t = translations[lang];
 
   // Memory state - detect low-memory devices
   const [isLowMemory, setIsLowMemory] = useState(false);
-  
+
   useEffect(() => {
     setIsLowMemory(getIsLowMemoryDevice());
   }, []);
 
-  // Search state
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchMode, setSearchMode] = useState<SearchMode>('semantic');
+  // Search state - initialized from URL
+  const [searchQuery, setSearchQuery] = useState(initialQuery);
+  const [searchMode, setSearchMode] = useState<SearchMode>(initialMode);
   const [searchResults, setSearchResults] = useState<PhotoRecord[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
+  const [hasSearched, setHasSearched] = useState(!!initialQuery);
 
   // Infinite scroll state with memory limit
   const [photos, setPhotos] = useState<PhotoRecord[]>([]);
@@ -269,9 +208,6 @@ export function ArchiveStore() {
   const [initialLoading, setInitialLoading] = useState(true);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
-  // Selected product
-  const [selectedPhoto, setSelectedPhoto] = useState<PhotoRecord | null>(null);
-
   // CLIP embedding - only load when actually needed
   const { generateEmbedding, preloadModel, isModelReady } = useClipEmbedding();
   const [clipModelLoading, setClipModelLoading] = useState(false);
@@ -279,16 +215,28 @@ export function ArchiveStore() {
   // Refs
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isInitialMount = useRef(true);
+
+  // Update URL when search params change (but not on initial mount)
+  const updateUrl = useCallback((q: string, mode: SearchMode, currentLang: Lang) => {
+    const params = new URLSearchParams();
+    if (q) params.set('q', q);
+    if (mode !== 'semantic') params.set('mode', mode);
+    if (currentLang !== 'fr') params.set('lang', currentLang);
+
+    const newUrl = params.toString() ? `/?${params}` : '/';
+    router.replace(newUrl, { scroll: false });
+  }, [router]);
 
   // Animated placeholder
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const placeholders = lang === 'fr' ? [
     'Rue Sainte-Catherine...',
-    'église en hiver...',
-    'tramway années 50...',
-    'Vieux-Port de Montréal...',
-    'construction du métro...',
-    '14 822 photos à explorer...',
+    'eglise en hiver...',
+    'tramway annees 50...',
+    'Vieux-Port de Montreal...',
+    'construction du metro...',
+    '14 822 photos a explorer...',
   ] : [
     'Sainte-Catherine Street...',
     'church in winter...',
@@ -299,7 +247,7 @@ export function ArchiveStore() {
   ];
 
   useEffect(() => {
-    if (searchQuery) return; // Don't animate when user is typing
+    if (searchQuery) return;
     const interval = setInterval(() => {
       setPlaceholderIndex((i) => (i + 1) % placeholders.length);
     }, 3000);
@@ -310,8 +258,7 @@ export function ArchiveStore() {
   useEffect(() => {
     const fetchInitial = async () => {
       try {
-        // Start with fewer photos on mobile to reduce initial memory pressure
-        const initialLimit = isLowMemory ? 18 : IMAGES_PER_PAGE;
+        const initialLimit = isLowMemory ? IMAGES_PER_PAGE_MOBILE : IMAGES_PER_PAGE;
         const res = await fetch(`${API_BASE}/api/photos?limit=${initialLimit}`);
         if (res.ok) {
           const data = await res.json();
@@ -348,22 +295,20 @@ export function ArchiveStore() {
     if (!nextCursor || isLoadingMore) return;
     setIsLoadingMore(true);
     try {
-      const res = await fetch(`${API_BASE}/api/photos?limit=${IMAGES_PER_PAGE}&cursor=${encodeURIComponent(nextCursor)}`);
+      const pageSize = isLowMemory ? IMAGES_PER_PAGE_MOBILE : IMAGES_PER_PAGE;
+      const res = await fetch(`${API_BASE}/api/photos?limit=${pageSize}&cursor=${encodeURIComponent(nextCursor)}`);
       if (res.ok) {
         const data = await res.json();
         const newItems: PhotoRecord[] = data.items || [];
-        
+
         setPhotos(prev => {
-          // Deduplicate by metadataFilename to prevent key collisions
           const existingKeys = new Set(prev.map(p => p.metadataFilename));
           const uniqueNewItems = newItems.filter(p => !existingKeys.has(p.metadataFilename));
           const combined = [...prev, ...uniqueNewItems];
-          
-          // Memory management: limit total images in DOM
-          // On low-memory devices, keep fewer images
-          const maxImages = isLowMemory ? Math.floor(MAX_IMAGES_IN_DOM * 0.6) : MAX_IMAGES_IN_DOM;
+
+          // Stricter memory limits
+          const maxImages = isLowMemory ? MAX_IMAGES_MOBILE : MAX_IMAGES_IN_DOM;
           if (combined.length > maxImages) {
-            // Remove oldest images to stay under limit
             return combined.slice(-maxImages);
           }
           return combined;
@@ -378,7 +323,6 @@ export function ArchiveStore() {
   };
 
   // Preload CLIP only on desktop when visual mode selected
-  // On mobile, we defer loading until user actually searches
   useEffect(() => {
     if (searchMode === 'visual' && !isLowMemory && !isModelReady) {
       setClipModelLoading(true);
@@ -386,7 +330,7 @@ export function ArchiveStore() {
     }
   }, [searchMode, preloadModel, isLowMemory, isModelReady]);
 
-  // Debounced search
+  // Debounced search with URL sync
   useEffect(() => {
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
@@ -395,14 +339,24 @@ export function ArchiveStore() {
     if (!searchQuery.trim()) {
       setSearchResults([]);
       setHasSearched(false);
+      // Update URL when clearing search (skip on initial mount)
+      if (!isInitialMount.current) {
+        updateUrl('', searchMode, lang);
+      }
       return;
     }
 
     searchTimeoutRef.current = setTimeout(async () => {
       setIsSearching(true);
       setHasSearched(true);
+
+      // Update URL with search params (skip on initial mount if already has query)
+      if (!isInitialMount.current || !initialQuery) {
+        updateUrl(searchQuery, searchMode, lang);
+      }
+      isInitialMount.current = false;
+
       try {
-        // Use fewer results on low-memory devices
         const searchLimit = isLowMemory ? 30 : 50;
         const params = new URLSearchParams({
           q: searchQuery,
@@ -413,7 +367,6 @@ export function ArchiveStore() {
         let res: Response;
 
         if (searchMode === 'visual') {
-          // On mobile, the model loads here (deferred loading)
           const embedding = await generateEmbedding(searchQuery);
           if (!embedding) {
             setSearchResults([]);
@@ -444,14 +397,15 @@ export function ArchiveStore() {
         clearTimeout(searchTimeoutRef.current);
       }
     };
-  }, [searchQuery, searchMode, generateEmbedding]);
+  }, [searchQuery, searchMode, generateEmbedding, isLowMemory, updateUrl, lang, initialQuery]);
 
   const clearSearch = useCallback(() => {
     setSearchQuery('');
     setSearchResults([]);
     setHasSearched(false);
+    updateUrl('', searchMode, lang);
     searchInputRef.current?.focus();
-  }, []);
+  }, [updateUrl, searchMode, lang]);
 
   // Cloudflare-optimized thumbnail URL
   const getThumbnailUrl = useCallback((src: string, w = 400, h = 400) => {
@@ -461,29 +415,23 @@ export function ArchiveStore() {
       w: String(w),
       h: String(h),
       fit: 'cover',
-      format: 'webp', // Force WebP for better compression
+      format: 'webp',
       q: '80'
     });
     return `${API_BASE}/api/thumb?${params}`;
   }, []);
 
-  // Shuffle initial photos for variety (only first batch, not search results)
-  // Also deduplicate to prevent React key warnings
-  const shuffledPhotos = useMemo(() => {
-    if (photos.length === 0) return [];
-    // Deduplicate by metadataFilename
+  // Deduplicate photos (no shuffle - preserves cursor order for stable pagination)
+  const uniquePhotos = useMemo(() => {
     const seen = new Set<string>();
-    const uniquePhotos = photos.filter(p => {
+    return photos.filter(p => {
       if (seen.has(p.metadataFilename)) return false;
       seen.add(p.metadataFilename);
       return true;
     });
-    // Use a daily seed so shuffle is consistent per day
-    const daySeed = Math.floor(Date.now() / (1000 * 60 * 60 * 24));
-    return shuffleArray(uniquePhotos, daySeed);
   }, [photos]);
 
-  // Deduplicate search results as well
+  // Deduplicate search results
   const uniqueSearchResults = useMemo(() => {
     const seen = new Set<string>();
     return searchResults.filter(p => {
@@ -493,21 +441,35 @@ export function ArchiveStore() {
     });
   }, [searchResults]);
 
-  const displayPhotos = hasSearched ? uniqueSearchResults : shuffledPhotos;
+  const displayPhotos = hasSearched ? uniqueSearchResults : uniquePhotos;
 
-  // Product detail view
-  if (selectedPhoto) {
-    return (
-      <ProductDetail
-        photo={selectedPhoto}
-        onBack={() => setSelectedPhoto(null)}
-        getThumbnailUrl={getThumbnailUrl}
-        lang={lang}
-        t={t}
-        isLowMemory={isLowMemory}
-      />
-    );
-  }
+  // Navigate to photo detail page
+  const handlePhotoClick = useCallback((photo: PhotoRecord) => {
+    const params = new URLSearchParams();
+    if (searchQuery) params.set('q', searchQuery);
+    if (searchMode !== 'semantic') params.set('mode', searchMode);
+    if (lang !== 'fr') params.set('lang', lang);
+
+    const photoUrl = `/photo/${encodeURIComponent(photo.metadataFilename)}${params.toString() ? `?${params}` : ''}`;
+    router.push(photoUrl);
+  }, [router, searchQuery, searchMode, lang]);
+
+  // Handle language change
+  const handleLangChange = useCallback(() => {
+    const newLang = lang === 'fr' ? 'en' : 'fr';
+    setLang(newLang);
+    if (searchQuery) {
+      updateUrl(searchQuery, searchMode, newLang);
+    }
+  }, [lang, searchQuery, searchMode, updateUrl]);
+
+  // Handle mode change
+  const handleModeChange = useCallback((newMode: SearchMode) => {
+    setSearchMode(newMode);
+    if (searchQuery) {
+      updateUrl(searchQuery, newMode, lang);
+    }
+  }, [searchQuery, lang, updateUrl]);
 
   return (
     <div className="min-h-screen bg-[#fafafa]">
@@ -522,9 +484,9 @@ export function ArchiveStore() {
             </a>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')}
+                onClick={handleLangChange}
                 className="flex items-center gap-1 px-1.5 py-1 hover:bg-neutral-100 rounded transition-colors"
-                title={lang === 'fr' ? 'Switch to English' : 'Passer au français'}
+                title={lang === 'fr' ? 'Switch to English' : 'Passer au francais'}
               >
                 {lang === 'fr' ? <FlagEN /> : <FlagQC />}
               </button>
@@ -561,7 +523,7 @@ export function ArchiveStore() {
               {/* Mode Toggle */}
               <div className="flex border-l border-neutral-200 h-full">
                 <button
-                  onClick={() => setSearchMode('semantic')}
+                  onClick={() => handleModeChange('semantic')}
                   className={`px-3 text-[10px] uppercase tracking-wide transition-colors ${
                     searchMode === 'semantic'
                       ? 'bg-neutral-900 text-white'
@@ -571,13 +533,13 @@ export function ArchiveStore() {
                   {t.textSearch}
                 </button>
                 <button
-                  onClick={() => setSearchMode('visual')}
+                  onClick={() => handleModeChange('visual')}
                   className={`px-3 text-[10px] uppercase tracking-wide transition-colors flex items-center justify-center gap-1 ${
                     searchMode === 'visual'
                       ? 'bg-neutral-900 text-white'
                       : 'text-neutral-400 active:bg-neutral-100'
                   }`}
-                  title={isLowMemory ? (lang === 'fr' ? 'Utilise plus de mémoire' : 'Uses more memory') : ''}
+                  title={isLowMemory ? (lang === 'fr' ? 'Utilise plus de memoire' : 'Uses more memory') : ''}
                 >
                   {clipModelLoading && searchMode === 'visual' && (
                     <div className="h-2.5 w-2.5 border border-current border-t-transparent rounded-full animate-spin" />
@@ -620,7 +582,7 @@ export function ArchiveStore() {
                 {/* Mode Toggle */}
                 <div className="flex border-l border-neutral-200 h-full">
                   <button
-                    onClick={() => setSearchMode('semantic')}
+                    onClick={() => handleModeChange('semantic')}
                     className={`px-3 text-[10px] uppercase tracking-wide transition-colors ${
                       searchMode === 'semantic'
                         ? 'bg-neutral-900 text-white'
@@ -630,7 +592,7 @@ export function ArchiveStore() {
                     {t.textSearch}
                   </button>
                   <button
-                    onClick={() => setSearchMode('visual')}
+                    onClick={() => handleModeChange('visual')}
                     className={`px-3 text-[10px] uppercase tracking-wide transition-colors flex items-center justify-center gap-1.5 ${
                       searchMode === 'visual'
                         ? 'bg-neutral-900 text-white'
@@ -650,9 +612,9 @@ export function ArchiveStore() {
           {/* Right side */}
           <div className="flex items-center gap-3 shrink-0">
             <button
-              onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')}
+              onClick={handleLangChange}
               className="flex items-center gap-1.5 px-2 py-1 hover:bg-neutral-100 rounded transition-colors"
-              title={lang === 'fr' ? 'Switch to English' : 'Passer au français'}
+              title={lang === 'fr' ? 'Switch to English' : 'Passer au francais'}
             >
               {lang === 'fr' ? <FlagEN /> : <FlagQC />}
               <span className="text-[10px] text-neutral-500 uppercase">
@@ -715,7 +677,7 @@ export function ArchiveStore() {
                 photo={photo}
                 getThumbnailUrl={getThumbnailUrl}
                 priority={i < (isLowMemory ? 6 : 12)}
-                onClick={() => setSelectedPhoto(photo)}
+                onClick={() => handlePhotoClick(photo)}
                 isLowMemory={isLowMemory}
               />
             ))}
@@ -738,235 +700,6 @@ export function ArchiveStore() {
           © {new Date().getFullYear()} MTL Archives
         </p>
       </footer>
-    </div>
-  );
-}
-
-// ============================================================
-// Product Detail
-// ============================================================
-function ProductDetail({
-  photo,
-  onBack,
-  getThumbnailUrl,
-  lang,
-  t,
-  isLowMemory,
-}: {
-  photo: PhotoRecord;
-  onBack: () => void;
-  getThumbnailUrl: (src: string, w?: number, h?: number) => string;
-  lang: Lang;
-  t: typeof translations[Lang];
-  isLowMemory: boolean;
-}) {
-  const [selectedSize, setSelectedSize] = useState(PRINT_OPTIONS[1].id);
-  const [selectedFrame, setSelectedFrame] = useState('none');
-  const [copied, setCopied] = useState(false);
-
-  const frameOptions = lang === 'fr' ? FRAME_OPTIONS_FR : FRAME_OPTIONS_EN;
-  const selectedPrint = PRINT_OPTIONS.find(p => p.id === selectedSize)!;
-  const selectedFrameOption = frameOptions.find(f => f.id === selectedFrame)!;
-  const totalPrice = selectedPrint.price + selectedFrameOption.price;
-  
-  // Use smaller detail image on low-memory devices
-  const detailImageSize = isLowMemory ? 600 : 1000;
-
-  const buildCaption = () => {
-    const lines = [];
-    // Title line
-    const title = photo.name || photo.portalTitle || 'Sans titre';
-    const date = photo.dateValue || photo.portalDate;
-    lines.push(date ? `${title}, ${date}` : title);
-    lines.push('');
-    // Description
-    const desc = photo.description && photo.description !== 'S/O'
-      ? photo.description
-      : photo.portalDescription;
-    if (desc) lines.push(desc);
-    lines.push('');
-    // Credits and reference
-    if (photo.credits) lines.push(`📷 ${photo.credits}`);
-    if (photo.cote) lines.push(`📁 ${photo.cote}`);
-    lines.push('');
-    // Hashtags
-    lines.push('#Montréal #MontrealHistory #MTLArchives #VieuxMontréal #HistoireduQuébec');
-    return lines.join('\n');
-  };
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(buildCaption());
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleDownload = async () => {
-    if (!photo.imageUrl) return;
-    try {
-      const res = await fetch(photo.imageUrl);
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = photo.resolvedImageFilename || `mtl-archives-${photo.metadataFilename}.jpg`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      // Fallback to opening in new tab if download fails
-      window.open(photo.imageUrl, '_blank');
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-[#fafafa]">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-[#fafafa]/95 backdrop-blur-sm">
-        <div className="flex items-center h-12 px-4 md:px-6">
-          <button onClick={onBack} className="flex items-center gap-2 text-xs uppercase tracking-wide text-neutral-400 hover:text-neutral-900">
-            <ArrowLeft className="h-4 w-4" />
-            {t.back}
-          </button>
-        </div>
-      </header>
-
-      {/* Content */}
-      <div className="max-w-5xl mx-auto px-4 py-8 md:py-12">
-        <div className="grid md:grid-cols-2 gap-8 md:gap-12">
-          {/* Image */}
-          <div className="relative aspect-square bg-neutral-100">
-            {photo.imageUrl && (
-              <Image
-                src={getThumbnailUrl(photo.imageUrl, detailImageSize, detailImageSize)}
-                alt={photo.name || ''}
-                fill
-                sizes={isLowMemory ? '(max-width: 768px) 100vw, 400px' : '(max-width: 768px) 100vw, 600px'}
-                className="object-contain"
-                unoptimized
-                priority
-              />
-            )}
-          </div>
-
-          {/* Details */}
-          <div>
-            <h1 className="text-xl md:text-2xl font-light mb-1">
-              {photo.name || 'Sans titre'}
-            </h1>
-            {photo.dateValue && (
-              <p className="text-neutral-500 text-sm mb-4">{photo.dateValue}</p>
-            )}
-
-            {photo.description && photo.description !== 'S/O' && (
-              <p className="text-neutral-600 text-sm mb-6 leading-relaxed">
-                {photo.description}
-              </p>
-            )}
-
-            {/* Meta */}
-            <div className="space-y-1 mb-6 text-xs text-neutral-400">
-              {photo.credits && <p>{t.credits}: {photo.credits}</p>}
-              {photo.cote && <p>{t.reference}: {photo.cote}</p>}
-              {photo.portalTitle && photo.portalTitle !== photo.name && (
-                <p>{t.portalTitle}: {photo.portalTitle}</p>
-              )}
-              {photo.portalDescription && photo.portalDescription !== photo.description && (
-                <p>{t.portalDescription}: {photo.portalDescription}</p>
-              )}
-              {photo.portalDate && photo.portalDate !== photo.dateValue && (
-                <p>{t.portalDate}: {photo.portalDate}</p>
-              )}
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-2 mb-8">
-              <button
-                onClick={handleCopy}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-xs uppercase tracking-wide transition-colors"
-              >
-                {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                {copied ? t.copied : t.copy}
-              </button>
-              <button
-                onClick={handleDownload}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-xs uppercase tracking-wide transition-colors"
-              >
-                <Download className="h-3.5 w-3.5" />
-                {t.download}
-              </button>
-            </div>
-
-            {/* Print Options */}
-            <div className="border-t border-neutral-200 pt-6">
-              <h2 className="text-sm font-medium uppercase tracking-wide mb-4">{t.orderPrint}</h2>
-
-              {/* Size */}
-              <div className="mb-4">
-                <p className="text-xs text-neutral-400 uppercase tracking-wide mb-2">{t.size}</p>
-                <div className="grid grid-cols-4 gap-1">
-                  {PRINT_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.id}
-                      onClick={() => setSelectedSize(opt.id)}
-                      className={`py-2 text-xs transition-colors ${
-                        selectedSize === opt.id
-                          ? 'bg-neutral-900 text-white'
-                          : 'bg-white border border-neutral-200 hover:border-neutral-400'
-                      }`}
-                    >
-                      <div>{opt.name}</div>
-                      <div className="opacity-60">${opt.price}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Frame */}
-              <div className="mb-6">
-                <p className="text-xs text-neutral-400 uppercase tracking-wide mb-2">{t.frame}</p>
-                <div className="grid grid-cols-4 gap-1">
-                  {frameOptions.map((opt) => (
-                    <button
-                      key={opt.id}
-                      onClick={() => setSelectedFrame(opt.id)}
-                      className={`py-2 text-xs transition-colors ${
-                        selectedFrame === opt.id
-                          ? 'bg-neutral-900 text-white'
-                          : 'bg-white border border-neutral-200 hover:border-neutral-400'
-                      }`}
-                    >
-                      <div>{opt.name}</div>
-                      <div className="opacity-60">{opt.price === 0 ? '—' : `+$${opt.price}`}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Add to Cart */}
-              <button className="w-full py-3 bg-neutral-900 text-white text-xs font-medium uppercase tracking-wide hover:bg-neutral-800 transition-colors">
-                {t.addToCart} — ${totalPrice}
-              </button>
-
-              <p className="text-[10px] text-neutral-400 text-center mt-3 uppercase tracking-wide">
-                {t.freeShipping}
-              </p>
-
-              {photo.externalUrl && (
-                <a
-                  href={photo.externalUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 mt-4 text-xs text-neutral-400 hover:text-neutral-900 uppercase tracking-wide"
-                >
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  {t.viewArchives}
-                </a>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
