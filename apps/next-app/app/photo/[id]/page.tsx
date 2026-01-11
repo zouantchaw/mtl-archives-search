@@ -6,7 +6,10 @@ import { ArrowLeft, Download, Copy, Check, ExternalLink } from 'lucide-react';
 import Image from 'next/image';
 import type { PhotoRecord } from '@/lib/types';
 
+// API calls go through Vercel rewrite
 const API_BASE = '';
+// Images load directly from Cloudflare (bypasses Vercel proxy)
+const THUMB_BASE = 'https://mtl-archives-worker.wiel.workers.dev';
 
 // ============================================================
 // i18n
@@ -156,9 +159,10 @@ export default function PhotoPage({ params }: { params: Promise<{ id: string }> 
       h: String(h),
       fit: 'cover',
       format: 'webp',
-      q: '80'
+      q: '75'
     });
-    return `${API_BASE}/api/thumb?${urlParams}`;
+    // Bypass Vercel - load direct from Cloudflare
+    return `${THUMB_BASE}/api/thumb?${urlParams}`;
   }, []);
 
   const buildCaption = () => {

@@ -5,11 +5,15 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Search, X } from 'lucide-react';
 import type { PhotoRecord, SearchResponse, SearchMode } from '@/lib/types';
 
+// API calls go through Vercel rewrite (small JSON responses)
 const API_BASE = '';
 
-// Ultra-conservative limits for mobile Safari
-const MOBILE_PAGE_SIZE = 9;
-const MOBILE_MAX_IMAGES = 27;
+// Images load DIRECTLY from Cloudflare Worker (bypasses Vercel proxy)
+const THUMB_BASE = 'https://mtl-archives-worker.wiel.workers.dev';
+
+// Conservative limits
+const MOBILE_PAGE_SIZE = 12;
+const MOBILE_MAX_IMAGES = 36;
 const DESKTOP_PAGE_SIZE = 24;
 
 // ============================================================
@@ -68,11 +72,12 @@ function FlagEN() {
 }
 
 // ============================================================
-// Thumbnail URL
+// Thumbnail URL - loads DIRECTLY from Cloudflare (no Vercel proxy)
 // ============================================================
 function getThumbUrl(src: string, size: number): string {
   if (!src) return '';
-  return `${API_BASE}/api/thumb?src=${encodeURIComponent(src)}&w=${size}&h=${size}&fit=cover&format=webp&q=70`;
+  // Bypass Vercel entirely for images - load direct from Cloudflare CDN
+  return `${THUMB_BASE}/api/thumb?src=${encodeURIComponent(src)}&w=${size}&h=${size}&fit=cover&format=webp&q=65`;
 }
 
 // ============================================================
