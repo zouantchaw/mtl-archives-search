@@ -683,21 +683,21 @@ function ArchiveStoreInner() {
                   onChange={e => setSearchQuery(e.target.value)}
                   onFocus={() => setIsInputFocused(true)}
                   onBlur={() => setIsInputFocused(false)}
-                  className="w-full h-full px-2 text-[15px] bg-transparent outline-none"
+                  className="w-full h-full px-2 text-base bg-transparent outline-none"
                   aria-label={t.searchPlaceholder}
                 />
                 {/* Typewriter animation - fades out on focus */}
                 <div className={`absolute inset-0 flex items-center px-2 pointer-events-none transition-opacity duration-200 ${
                   showTypewriter ? 'opacity-100' : 'opacity-0'
                 }`}>
-                  <span className="text-[15px] text-neutral-400 truncate">{typewriterText}</span>
-                  <span className="text-[15px] text-neutral-900 animate-blink">|</span>
+                  <span className="text-base text-neutral-400 truncate">{typewriterText}</span>
+                  <span className="text-base text-neutral-900 animate-blink">|</span>
                 </div>
                 {/* Static placeholder when focused */}
                 <div className={`absolute inset-0 flex items-center px-2 pointer-events-none transition-opacity duration-200 ${
                   showFocusedPlaceholder ? 'opacity-100' : 'opacity-0'
                 }`}>
-                  <span className="text-[15px] text-neutral-300">{t.searchPlaceholder}</span>
+                  <span className="text-base text-neutral-300">{t.searchPlaceholder}</span>
                 </div>
               </div>
               {isSearching && <div className="mr-2 h-4 w-4 border-2 border-neutral-200 border-t-neutral-900 rounded-full animate-spin flex-shrink-0" />}
