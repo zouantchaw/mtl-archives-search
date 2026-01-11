@@ -8,6 +8,22 @@ import Image from 'next/image';
 
 const API_BASE = '';
 
+// Memory management: limit total images in DOM to prevent mobile crashes
+const MAX_IMAGES_IN_DOM = 150;
+const IMAGES_PER_PAGE = 30;
+
+// Detect if we're on a low-memory device (mobile/tablet)
+const getIsLowMemoryDevice = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  // Check for mobile user agent or small screen
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  const isSmallScreen = window.innerWidth < 768;
+  // Check device memory if available (in GB)
+  const deviceMemory = (navigator as { deviceMemory?: number }).deviceMemory;
+  const isLowMemory = deviceMemory !== undefined && deviceMemory < 4;
+  return isMobile || isSmallScreen || isLowMemory;
+};
+
 // Shuffle array using Fisher-Yates (seeded for consistency per session)
 function shuffleArray<T>(array: T[], seed?: number): T[] {
   const result = [...array];
@@ -50,45 +66,82 @@ function FlagEN() {
 }
 
 // ============================================================
-// Photo Card with error handling
+// Photo Card with error handling and memory optimization
 // ============================================================
 function PhotoCard({
   photo,
-  thumbnailUrl,
+  getThumbnailUrl,
   priority,
   onClick,
+  isLowMemory,
 }: {
   photo: PhotoRecord;
-  thumbnailUrl: string;
+  getThumbnailUrl: (src: string, w?: number, h?: number) => string;
   priority: boolean;
   onClick: () => void;
+  isLowMemory: boolean;
 }) {
   const [hasError, setHasError] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isVisible, setIsVisible] = useState(priority);
+  const cardRef = useRef<HTMLButtonElement>(null);
 
-  // Don't render if image failed to load
+  // Use IntersectionObserver for better lazy loading control
+  useEffect(() => {
+    if (priority || !cardRef.current) {
+      setIsVisible(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setIsVisible(true);
+            observer.disconnect();
+          }
+        });
+      },
+      { rootMargin: '100px' } // Start loading 100px before visible
+    );
+
+    observer.observe(cardRef.current);
+    return () => observer.disconnect();
+  }, [priority]);
+
+  // Don't render if image failed to load or no URL
   if (hasError || !photo.imageUrl) {
     return null;
   }
 
+  // Use smaller thumbnails on low-memory devices
+  const thumbSize = isLowMemory ? 250 : 400;
+  const thumbnailUrl = getThumbnailUrl(photo.imageUrl, thumbSize, thumbSize);
+
   return (
     <button
+      ref={cardRef}
       onClick={onClick}
       className="group relative aspect-square bg-neutral-100 overflow-hidden focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:ring-inset"
+      aria-label={photo.name || 'Archive photo'}
+      tabIndex={0}
     >
-      <Image
-        src={thumbnailUrl}
-        alt={photo.name || ''}
-        fill
-        className={`object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
-        unoptimized
-        loading={priority ? 'eager' : 'lazy'}
-        onLoad={() => setIsLoaded(true)}
-        onError={() => setHasError(true)}
-      />
+      {isVisible ? (
+        <Image
+          src={thumbnailUrl}
+          alt={photo.name || ''}
+          fill
+          sizes={isLowMemory ? '(max-width: 640px) 33vw, 150px' : '(max-width: 640px) 33vw, 200px'}
+          className={`object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+          unoptimized
+          loading={priority ? 'eager' : 'lazy'}
+          onLoad={() => setIsLoaded(true)}
+          onError={() => setHasError(true)}
+        />
+      ) : null}
       {/* Loading placeholder */}
-      {!isLoaded && (
-        <div className="absolute inset-0 bg-neutral-100 animate-pulse" />
+      {(!isLoaded || !isVisible) && (
+        <div className="absolute inset-0 bg-neutral-100" />
       )}
       {/* Hover overlay */}
       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200" />
@@ -195,6 +248,13 @@ export function ArchiveStore() {
   const [lang, setLang] = useState<Lang>('fr');
   const t = translations[lang];
 
+  // Memory state - detect low-memory devices
+  const [isLowMemory, setIsLowMemory] = useState(false);
+  
+  useEffect(() => {
+    setIsLowMemory(getIsLowMemoryDevice());
+  }, []);
+
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
   const [searchMode, setSearchMode] = useState<SearchMode>('semantic');
@@ -202,7 +262,7 @@ export function ArchiveStore() {
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
 
-  // Infinite scroll state
+  // Infinite scroll state with memory limit
   const [photos, setPhotos] = useState<PhotoRecord[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -212,8 +272,9 @@ export function ArchiveStore() {
   // Selected product
   const [selectedPhoto, setSelectedPhoto] = useState<PhotoRecord | null>(null);
 
-  // CLIP embedding
-  const { generateEmbedding, preloadModel } = useClipEmbedding();
+  // CLIP embedding - only load when actually needed
+  const { generateEmbedding, preloadModel, isModelReady } = useClipEmbedding();
+  const [clipModelLoading, setClipModelLoading] = useState(false);
 
   // Refs
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -245,11 +306,13 @@ export function ArchiveStore() {
     return () => clearInterval(interval);
   }, [searchQuery, placeholders.length]);
 
-  // Load initial photos
+  // Load initial photos - fewer on low-memory devices
   useEffect(() => {
     const fetchInitial = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/photos?limit=30`);
+        // Start with fewer photos on mobile to reduce initial memory pressure
+        const initialLimit = isLowMemory ? 18 : IMAGES_PER_PAGE;
+        const res = await fetch(`${API_BASE}/api/photos?limit=${initialLimit}`);
         if (res.ok) {
           const data = await res.json();
           setPhotos(data.items || []);
@@ -262,7 +325,7 @@ export function ArchiveStore() {
       }
     };
     fetchInitial();
-  }, []);
+  }, [isLowMemory]);
 
   // Infinite scroll - load more when sentinel is visible
   useEffect(() => {
@@ -285,10 +348,26 @@ export function ArchiveStore() {
     if (!nextCursor || isLoadingMore) return;
     setIsLoadingMore(true);
     try {
-      const res = await fetch(`${API_BASE}/api/photos?limit=30&cursor=${encodeURIComponent(nextCursor)}`);
+      const res = await fetch(`${API_BASE}/api/photos?limit=${IMAGES_PER_PAGE}&cursor=${encodeURIComponent(nextCursor)}`);
       if (res.ok) {
         const data = await res.json();
-        setPhotos(prev => [...prev, ...(data.items || [])]);
+        const newItems: PhotoRecord[] = data.items || [];
+        
+        setPhotos(prev => {
+          // Deduplicate by metadataFilename to prevent key collisions
+          const existingKeys = new Set(prev.map(p => p.metadataFilename));
+          const uniqueNewItems = newItems.filter(p => !existingKeys.has(p.metadataFilename));
+          const combined = [...prev, ...uniqueNewItems];
+          
+          // Memory management: limit total images in DOM
+          // On low-memory devices, keep fewer images
+          const maxImages = isLowMemory ? Math.floor(MAX_IMAGES_IN_DOM * 0.6) : MAX_IMAGES_IN_DOM;
+          if (combined.length > maxImages) {
+            // Remove oldest images to stay under limit
+            return combined.slice(-maxImages);
+          }
+          return combined;
+        });
         setNextCursor(data.nextCursor || null);
       }
     } catch (err) {
@@ -298,12 +377,14 @@ export function ArchiveStore() {
     }
   };
 
-  // Preload CLIP when visual mode selected
+  // Preload CLIP only on desktop when visual mode selected
+  // On mobile, we defer loading until user actually searches
   useEffect(() => {
-    if (searchMode === 'visual') {
-      preloadModel();
+    if (searchMode === 'visual' && !isLowMemory && !isModelReady) {
+      setClipModelLoading(true);
+      preloadModel().finally(() => setClipModelLoading(false));
     }
-  }, [searchMode, preloadModel]);
+  }, [searchMode, preloadModel, isLowMemory, isModelReady]);
 
   // Debounced search
   useEffect(() => {
@@ -321,15 +402,18 @@ export function ArchiveStore() {
       setIsSearching(true);
       setHasSearched(true);
       try {
+        // Use fewer results on low-memory devices
+        const searchLimit = isLowMemory ? 30 : 50;
         const params = new URLSearchParams({
           q: searchQuery,
           mode: searchMode,
-          limit: '50',
+          limit: String(searchLimit),
         });
 
         let res: Response;
 
         if (searchMode === 'visual') {
+          // On mobile, the model loads here (deferred loading)
           const embedding = await generateEmbedding(searchQuery);
           if (!embedding) {
             setSearchResults([]);
@@ -384,14 +468,32 @@ export function ArchiveStore() {
   }, []);
 
   // Shuffle initial photos for variety (only first batch, not search results)
+  // Also deduplicate to prevent React key warnings
   const shuffledPhotos = useMemo(() => {
     if (photos.length === 0) return [];
+    // Deduplicate by metadataFilename
+    const seen = new Set<string>();
+    const uniquePhotos = photos.filter(p => {
+      if (seen.has(p.metadataFilename)) return false;
+      seen.add(p.metadataFilename);
+      return true;
+    });
     // Use a daily seed so shuffle is consistent per day
     const daySeed = Math.floor(Date.now() / (1000 * 60 * 60 * 24));
-    return shuffleArray(photos, daySeed);
+    return shuffleArray(uniquePhotos, daySeed);
   }, [photos]);
 
-  const displayPhotos = hasSearched ? searchResults : shuffledPhotos;
+  // Deduplicate search results as well
+  const uniqueSearchResults = useMemo(() => {
+    const seen = new Set<string>();
+    return searchResults.filter(p => {
+      if (seen.has(p.metadataFilename)) return false;
+      seen.add(p.metadataFilename);
+      return true;
+    });
+  }, [searchResults]);
+
+  const displayPhotos = hasSearched ? uniqueSearchResults : shuffledPhotos;
 
   // Product detail view
   if (selectedPhoto) {
@@ -402,6 +504,7 @@ export function ArchiveStore() {
         getThumbnailUrl={getThumbnailUrl}
         lang={lang}
         t={t}
+        isLowMemory={isLowMemory}
       />
     );
   }
@@ -469,12 +572,16 @@ export function ArchiveStore() {
                 </button>
                 <button
                   onClick={() => setSearchMode('visual')}
-                  className={`px-3 text-[10px] uppercase tracking-wide transition-colors ${
+                  className={`px-3 text-[10px] uppercase tracking-wide transition-colors flex items-center justify-center gap-1 ${
                     searchMode === 'visual'
                       ? 'bg-neutral-900 text-white'
                       : 'text-neutral-400 active:bg-neutral-100'
                   }`}
+                  title={isLowMemory ? (lang === 'fr' ? 'Utilise plus de mémoire' : 'Uses more memory') : ''}
                 >
+                  {clipModelLoading && searchMode === 'visual' && (
+                    <div className="h-2.5 w-2.5 border border-current border-t-transparent rounded-full animate-spin" />
+                  )}
                   {t.visualSearch}
                 </button>
               </div>
@@ -524,12 +631,15 @@ export function ArchiveStore() {
                   </button>
                   <button
                     onClick={() => setSearchMode('visual')}
-                    className={`px-3 text-[10px] uppercase tracking-wide transition-colors ${
+                    className={`px-3 text-[10px] uppercase tracking-wide transition-colors flex items-center justify-center gap-1.5 ${
                       searchMode === 'visual'
                         ? 'bg-neutral-900 text-white'
                         : 'text-neutral-400 hover:text-neutral-900 hover:bg-neutral-50'
                     }`}
                   >
+                    {clipModelLoading && searchMode === 'visual' && (
+                      <div className="h-2.5 w-2.5 border border-current border-t-transparent rounded-full animate-spin" />
+                    )}
                     {t.visualSearch}
                   </button>
                 </div>
@@ -603,9 +713,10 @@ export function ArchiveStore() {
               <PhotoCard
                 key={photo.metadataFilename}
                 photo={photo}
-                thumbnailUrl={getThumbnailUrl(photo.imageUrl, 400, 400)}
-                priority={i < 12}
+                getThumbnailUrl={getThumbnailUrl}
+                priority={i < (isLowMemory ? 6 : 12)}
                 onClick={() => setSelectedPhoto(photo)}
+                isLowMemory={isLowMemory}
               />
             ))}
           </div>
@@ -640,12 +751,14 @@ function ProductDetail({
   getThumbnailUrl,
   lang,
   t,
+  isLowMemory,
 }: {
   photo: PhotoRecord;
   onBack: () => void;
   getThumbnailUrl: (src: string, w?: number, h?: number) => string;
   lang: Lang;
   t: typeof translations[Lang];
+  isLowMemory: boolean;
 }) {
   const [selectedSize, setSelectedSize] = useState(PRINT_OPTIONS[1].id);
   const [selectedFrame, setSelectedFrame] = useState('none');
@@ -655,6 +768,9 @@ function ProductDetail({
   const selectedPrint = PRINT_OPTIONS.find(p => p.id === selectedSize)!;
   const selectedFrameOption = frameOptions.find(f => f.id === selectedFrame)!;
   const totalPrice = selectedPrint.price + selectedFrameOption.price;
+  
+  // Use smaller detail image on low-memory devices
+  const detailImageSize = isLowMemory ? 600 : 1000;
 
   const buildCaption = () => {
     const lines = [];
@@ -722,9 +838,10 @@ function ProductDetail({
           <div className="relative aspect-square bg-neutral-100">
             {photo.imageUrl && (
               <Image
-                src={getThumbnailUrl(photo.imageUrl, 1000, 1000)}
+                src={getThumbnailUrl(photo.imageUrl, detailImageSize, detailImageSize)}
                 alt={photo.name || ''}
                 fill
+                sizes={isLowMemory ? '(max-width: 768px) 100vw, 400px' : '(max-width: 768px) 100vw, 600px'}
                 className="object-contain"
                 unoptimized
                 priority
