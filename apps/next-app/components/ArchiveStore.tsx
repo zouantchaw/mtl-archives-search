@@ -9,11 +9,11 @@ import Image from 'next/image';
 
 const API_BASE = '';
 
-// Memory management: stricter limits to prevent mobile crashes
-const MAX_IMAGES_IN_DOM = 120;
-const MAX_IMAGES_MOBILE = 60;
+// Memory management: aggressive limits for mobile stability
+const MAX_IMAGES_DESKTOP = 100;
+const MAX_IMAGES_MOBILE = 36; // Very conservative for Safari
 const IMAGES_PER_PAGE = 24;
-const IMAGES_PER_PAGE_MOBILE = 18;
+const IMAGES_PER_PAGE_MOBILE = 12;
 
 // Detect if we're on a low-memory device (mobile/tablet)
 const getIsLowMemoryDevice = (): boolean => {
@@ -52,7 +52,7 @@ function FlagEN() {
 }
 
 // ============================================================
-// Photo Card with error handling and memory optimization
+// Photo Card - Lightweight for mobile, richer for desktop
 // ============================================================
 function PhotoCard({
   photo,
@@ -68,68 +68,52 @@ function PhotoCard({
   isLowMemory: boolean;
 }) {
   const [hasError, setHasError] = useState(false);
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [isVisible, setIsVisible] = useState(priority);
-  const cardRef = useRef<HTMLButtonElement>(null);
 
-  // Use IntersectionObserver for better lazy loading control
-  useEffect(() => {
-    if (priority || !cardRef.current) {
-      setIsVisible(true);
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setIsVisible(true);
-            observer.disconnect();
-          }
-        });
-      },
-      { rootMargin: '100px' } // Start loading 100px before visible
-    );
-
-    observer.observe(cardRef.current);
-    return () => observer.disconnect();
-  }, [priority]);
-
-  // Don't render if image failed to load or no URL
   if (hasError || !photo.imageUrl) {
     return null;
   }
 
-  // Use smaller thumbnails on low-memory devices
-  const thumbSize = isLowMemory ? 250 : 400;
+  // Smaller thumbnails on mobile
+  const thumbSize = isLowMemory ? 200 : 400;
   const thumbnailUrl = getThumbnailUrl(photo.imageUrl, thumbSize, thumbSize);
 
+  // Mobile: Use native img with loading="lazy" - much lighter than Next.js Image
+  if (isLowMemory) {
+    return (
+      <button
+        onClick={onClick}
+        className="relative aspect-square bg-neutral-100 overflow-hidden focus:outline-none"
+        aria-label={photo.name || 'Archive photo'}
+      >
+        <img
+          src={thumbnailUrl}
+          alt={photo.name || ''}
+          loading={priority ? 'eager' : 'lazy'}
+          decoding="async"
+          onError={() => setHasError(true)}
+          className="w-full h-full object-cover"
+        />
+      </button>
+    );
+  }
+
+  // Desktop: Use Next.js Image for optimization
   return (
     <button
-      ref={cardRef}
       onClick={onClick}
       className="group relative aspect-square bg-neutral-100 overflow-hidden focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:ring-inset"
       aria-label={photo.name || 'Archive photo'}
-      tabIndex={0}
     >
-      {isVisible ? (
-        <Image
-          src={thumbnailUrl}
-          alt={photo.name || ''}
-          fill
-          sizes={isLowMemory ? '(max-width: 640px) 33vw, 150px' : '(max-width: 640px) 33vw, 200px'}
-          className={`object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
-          unoptimized
-          loading={priority ? 'eager' : 'lazy'}
-          onLoad={() => setIsLoaded(true)}
-          onError={() => setHasError(true)}
-        />
-      ) : null}
-      {/* Loading placeholder */}
-      {(!isLoaded || !isVisible) && (
-        <div className="absolute inset-0 bg-neutral-100" />
-      )}
-      {/* Hover overlay */}
+      <Image
+        src={thumbnailUrl}
+        alt={photo.name || ''}
+        fill
+        sizes="(max-width: 640px) 33vw, 200px"
+        className="object-cover"
+        unoptimized
+        loading={priority ? 'eager' : 'lazy'}
+        onError={() => setHasError(true)}
+      />
       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200" />
     </button>
   );
@@ -150,6 +134,7 @@ const translations = {
     clear: 'Effacer',
     noResults: 'Aucune photo trouvee pour',
     clearSearch: 'Effacer la recherche',
+    loadMore: 'Voir plus',
   },
   en: {
     textSearch: 'Text',
@@ -160,6 +145,7 @@ const translations = {
     clear: 'Clear',
     noResults: 'No photos found for',
     clearSearch: 'Clear search',
+    loadMore: 'Load more',
   },
 } as const;
 
@@ -274,9 +260,11 @@ function ArchiveStoreInner() {
     fetchInitial();
   }, [isLowMemory]);
 
-  // Infinite scroll - load more when sentinel is visible
+  // Infinite scroll - ONLY on desktop (auto-load when sentinel visible)
+  // On mobile, use manual "Load More" button to prevent memory issues
   useEffect(() => {
-    if (!loadMoreRef.current || hasSearched) return;
+    // Skip on mobile - use button instead
+    if (isLowMemory || !loadMoreRef.current || hasSearched) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -289,7 +277,7 @@ function ArchiveStoreInner() {
 
     observer.observe(loadMoreRef.current);
     return () => observer.disconnect();
-  }, [nextCursor, isLoadingMore, hasSearched]);
+  }, [nextCursor, isLoadingMore, hasSearched, isLowMemory]);
 
   const loadMore = async () => {
     if (!nextCursor || isLoadingMore) return;
@@ -306,8 +294,8 @@ function ArchiveStoreInner() {
           const uniqueNewItems = newItems.filter(p => !existingKeys.has(p.metadataFilename));
           const combined = [...prev, ...uniqueNewItems];
 
-          // Stricter memory limits
-          const maxImages = isLowMemory ? MAX_IMAGES_MOBILE : MAX_IMAGES_IN_DOM;
+          // Strict memory limits
+          const maxImages = isLowMemory ? MAX_IMAGES_MOBILE : MAX_IMAGES_DESKTOP;
           if (combined.length > maxImages) {
             return combined.slice(-maxImages);
           }
@@ -684,13 +672,34 @@ function ArchiveStoreInner() {
           </div>
         )}
 
-        {/* Load more sentinel */}
+        {/* Load more - Button on mobile, auto-scroll sentinel on desktop */}
         {!hasSearched && nextCursor && (
-          <div ref={loadMoreRef} className="flex justify-center py-8">
-            {isLoadingMore && (
-              <div className="h-5 w-5 border border-neutral-300 border-t-neutral-900 rounded-full animate-spin" />
+          <>
+            {/* Mobile: Manual load more button */}
+            {isLowMemory && (
+              <div className="flex justify-center py-6">
+                <button
+                  onClick={loadMore}
+                  disabled={isLoadingMore}
+                  className="px-6 py-2.5 bg-neutral-900 text-white text-xs uppercase tracking-wide hover:bg-neutral-800 disabled:opacity-50 transition-colors"
+                >
+                  {isLoadingMore ? (
+                    <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    t.loadMore
+                  )}
+                </button>
+              </div>
             )}
-          </div>
+            {/* Desktop: Auto-scroll sentinel */}
+            {!isLowMemory && (
+              <div ref={loadMoreRef} className="flex justify-center py-8">
+                {isLoadingMore && (
+                  <div className="h-5 w-5 border border-neutral-300 border-t-neutral-900 rounded-full animate-spin" />
+                )}
+              </div>
+            )}
+          </>
         )}
       </section>
 
