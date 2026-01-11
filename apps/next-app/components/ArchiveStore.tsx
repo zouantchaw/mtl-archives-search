@@ -3,18 +3,15 @@
 import { useState, useEffect, useCallback, useRef, useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Search, X } from 'lucide-react';
+import Image from 'next/image';
 import type { PhotoRecord, SearchResponse, SearchMode } from '@/lib/types';
 
-// API calls go through Vercel rewrite (small JSON responses)
 const API_BASE = '';
 
-// Images load DIRECTLY from Cloudflare Worker (bypasses Vercel proxy)
-const THUMB_BASE = 'https://mtl-archives-worker.wiel.workers.dev';
-
-// Conservative limits
-const MOBILE_PAGE_SIZE = 12;
-const MOBILE_MAX_IMAGES = 36;
-const DESKTOP_PAGE_SIZE = 24;
+// Conservative limits for mobile
+const MOBILE_PAGE_SIZE = 9;
+const MOBILE_MAX_IMAGES = 27;
+const DESKTOP_PAGE_SIZE = 20;
 
 // ============================================================
 // Translations
@@ -71,14 +68,6 @@ function FlagEN() {
   );
 }
 
-// ============================================================
-// Thumbnail URL - loads DIRECTLY from Cloudflare (no Vercel proxy)
-// ============================================================
-function getThumbUrl(src: string, size: number): string {
-  if (!src) return '';
-  // Bypass Vercel entirely for images - load direct from Cloudflare CDN
-  return `${THUMB_BASE}/api/thumb?src=${encodeURIComponent(src)}&w=${size}&h=${size}&fit=cover&format=webp&q=65`;
-}
 
 // ============================================================
 // Main Component
@@ -274,7 +263,6 @@ function ArchiveStoreInner() {
     if (searchQuery) updateUrl(searchQuery, newMode, lang);
   }, [searchQuery, lang, updateUrl, isMobile]);
 
-  const thumbSize = isMobile ? 150 : 400;
   const canLoadMore = nextCursor && !hasSearched && (!isMobile || photos.length < MOBILE_MAX_IMAGES);
 
   return (
@@ -378,7 +366,7 @@ function ArchiveStoreInner() {
         </div>
       )}
 
-      {/* Simple Grid - No virtualization */}
+      {/* Simple Grid - Using Next.js Image for automatic optimization */}
       {!initialLoading && displayPhotos.length > 0 && (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-0.5 px-0.5">
           {displayPhotos.map(photo => (
@@ -388,12 +376,13 @@ function ArchiveStoreInner() {
               className="relative aspect-square bg-neutral-100 overflow-hidden"
             >
               {photo.imageUrl && (
-                <img
-                  src={getThumbUrl(photo.imageUrl, thumbSize)}
-                  alt=""
+                <Image
+                  src={photo.imageUrl}
+                  alt={photo.name || ''}
+                  fill
+                  sizes="(max-width: 640px) 33vw, (max-width: 768px) 25vw, (max-width: 1024px) 20vw, 14vw"
+                  className="object-cover"
                   loading="lazy"
-                  decoding="async"
-                  className="w-full h-full object-cover"
                 />
               )}
             </button>
