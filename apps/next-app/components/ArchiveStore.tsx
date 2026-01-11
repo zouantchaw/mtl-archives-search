@@ -88,6 +88,22 @@ const translations = {
     loadMore: 'Voir plus',
     photoCount: '14 822 photos',
     searchPlaceholder: 'Rechercher...',
+    // About drawer
+    about: 'À propos',
+    aboutTitle: 'MTL Archives',
+    aboutDescription: 'Une collection de plus de 14 000 photos historiques de Montréal, numérisées et rendues accessibles au public.',
+    howToUseTitle: 'Comment utiliser',
+    howToUseText: 'Recherchez par rue, quartier, monument ou époque. Utilisez la recherche textuelle pour des termes précis, ou la recherche visuelle pour trouver des images similaires.',
+    howToUseTextSearch: 'Recherche Texte',
+    howToUseTextSearchDesc: 'Trouvez des photos par mots-clés, noms de rues ou descriptions.',
+    howToUseVisualSearch: 'Recherche Visuelle',
+    howToUseVisualSearchDesc: 'Utilisez l\'IA pour trouver des photos visuellement similaires.',
+    printsTitle: 'Tirages',
+    printsText: 'Des reproductions haute qualité sont disponibles à l\'achat. Cliquez sur une photo pour voir les options d\'impression.',
+    sourceTitle: 'Source',
+    sourceText: 'Photos provenant des Archives de la Ville de Montréal.',
+    visitArchives: 'Visiter les archives',
+    close: 'Fermer',
   },
   en: {
     textSearch: 'Text',
@@ -101,6 +117,22 @@ const translations = {
     loadMore: 'Load more',
     photoCount: '14,822 photos',
     searchPlaceholder: 'Search...',
+    // About drawer
+    about: 'About',
+    aboutTitle: 'MTL Archives',
+    aboutDescription: 'A collection of over 14,000 historical photos of Montreal, digitized and made accessible to the public.',
+    howToUseTitle: 'How to use',
+    howToUseText: 'Search by street, neighborhood, landmark, or era. Use text search for precise terms, or visual search to find similar images.',
+    howToUseTextSearch: 'Text Search',
+    howToUseTextSearchDesc: 'Find photos by keywords, street names, or descriptions.',
+    howToUseVisualSearch: 'Visual Search',
+    howToUseVisualSearchDesc: 'Use AI to find visually similar photos.',
+    printsTitle: 'Prints',
+    printsText: 'High-quality reproductions are available for purchase. Click on any photo to see print options.',
+    sourceTitle: 'Source',
+    sourceText: 'Photos sourced from the City of Montreal Archives.',
+    visitArchives: 'Visit archives',
+    close: 'Close',
   },
 } as const;
 
@@ -200,6 +232,190 @@ function IconFacebook({ className }: { className?: string }) {
   );
 }
 
+function IconInfo({ className }: { className?: string }) {
+  return (
+    <svg 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+      className={className}
+    >
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 16v-4" />
+      <path d="M12 8h.01" />
+    </svg>
+  );
+}
+
+// ============================================================
+// About Drawer Component
+// ============================================================
+function AboutDrawer({ 
+  isOpen, 
+  onClose, 
+  t 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  t: (typeof translations)[Lang];
+}) {
+  // Prevent body scroll when drawer is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div 
+        className={`fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] transition-opacity duration-300 ${
+          isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={onClose}
+      />
+      
+      {/* Mobile: Bottom drawer */}
+      <div 
+        className={`fixed inset-x-0 bottom-0 z-[70] bg-white rounded-t-2xl max-h-[85vh] overflow-hidden sm:hidden transform transition-transform duration-300 ease-out ${
+          isOpen ? 'translate-y-0' : 'translate-y-full'
+        }`}
+      >
+        {/* Handle */}
+        <div className="flex justify-center pt-3 pb-2">
+          <div className="w-10 h-1 bg-neutral-200 rounded-full" />
+        </div>
+        
+        {/* Content */}
+        <div className="overflow-y-auto max-h-[calc(85vh-40px)] px-5 pb-8">
+          <AboutContent t={t} onClose={onClose} />
+        </div>
+      </div>
+
+      {/* Desktop: Right drawer */}
+      <div 
+        className={`fixed inset-y-0 right-0 z-[70] bg-white w-full max-w-md shadow-2xl hidden sm:block transform transition-transform duration-300 ease-out ${
+          isOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between h-14 px-5 border-b border-neutral-100">
+          <span className="text-xs font-medium tracking-[0.1em] uppercase">{t.about}</span>
+          <button 
+            onClick={onClose}
+            className="p-2 hover:bg-neutral-100 rounded-full transition-colors"
+            aria-label={t.close}
+          >
+            <X className="h-4 w-4 text-neutral-500" />
+          </button>
+        </div>
+        
+        {/* Content */}
+        <div className="overflow-y-auto h-[calc(100vh-56px)] px-5 py-6">
+          <AboutContent t={t} onClose={onClose} />
+        </div>
+      </div>
+    </>
+  );
+}
+
+function AboutContent({ t, onClose }: { t: (typeof translations)[Lang]; onClose: () => void }) {
+  return (
+    <div className="space-y-6">
+      {/* About section */}
+      <section>
+        <h2 className="text-base font-semibold text-neutral-900 mb-1.5">{t.aboutTitle}</h2>
+        <p className="text-[13px] text-neutral-500 leading-relaxed">{t.aboutDescription}</p>
+      </section>
+
+      {/* Divider */}
+      <div className="h-px bg-neutral-100" />
+
+      {/* How to use - Apple Settings style list */}
+      <section>
+        <h3 className="text-[11px] font-medium tracking-[0.05em] uppercase text-neutral-400 mb-3">{t.howToUseTitle}</h3>
+        <div className="space-y-0 bg-white rounded-xl border border-neutral-200 overflow-hidden">
+          <div className="flex items-center gap-3 px-4 py-3">
+            <div className="w-7 h-7 bg-neutral-900 rounded-md flex items-center justify-center flex-shrink-0">
+              <Search className="h-3.5 w-3.5 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4 className="text-[13px] font-medium text-neutral-900">{t.howToUseTextSearch}</h4>
+              <p className="text-[11px] text-neutral-400 mt-0.5 leading-tight">{t.howToUseTextSearchDesc}</p>
+            </div>
+          </div>
+          <div className="h-px bg-neutral-100 ml-14" />
+          <div className="flex items-center gap-3 px-4 py-3">
+            <div className="w-7 h-7 bg-neutral-900 rounded-md flex items-center justify-center flex-shrink-0">
+              <svg className="h-3.5 w-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <path d="M21 15l-5-5L5 21" />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4 className="text-[13px] font-medium text-neutral-900">{t.howToUseVisualSearch}</h4>
+              <p className="text-[11px] text-neutral-400 mt-0.5 leading-tight">{t.howToUseVisualSearchDesc}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Prints */}
+      <section>
+        <h3 className="text-[11px] font-medium tracking-[0.05em] uppercase text-neutral-400 mb-2">{t.printsTitle}</h3>
+        <p className="text-[13px] text-neutral-500 leading-relaxed">{t.printsText}</p>
+      </section>
+
+      {/* Divider */}
+      <div className="h-px bg-neutral-100" />
+
+      {/* Source - Apple style row */}
+      <section>
+        <a 
+          href="https://archivesdemontreal.ica-atom.org/" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="flex items-center justify-between py-2 group"
+        >
+          <div>
+            <h3 className="text-[13px] font-medium text-neutral-900">{t.sourceTitle}</h3>
+            <p className="text-[11px] text-neutral-400 mt-0.5">{t.sourceText}</p>
+          </div>
+          <svg className="h-4 w-4 text-neutral-300 group-hover:text-neutral-500 transition-colors flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M7 17L17 7M17 7H7M17 7v10" />
+          </svg>
+        </a>
+      </section>
+
+      {/* Version/Credits - very subtle, Apple style */}
+      <section className="pt-2">
+        <p className="text-[10px] text-neutral-300 text-center">
+          MTL Archives · v1.0
+        </p>
+      </section>
+
+      {/* Close button - mobile only, Apple style */}
+      <button 
+        onClick={onClose}
+        className="w-full py-3.5 bg-neutral-100 text-neutral-900 text-[15px] font-medium rounded-xl sm:hidden active:bg-neutral-200 transition-colors"
+      >
+        {t.close}
+      </button>
+    </div>
+  );
+}
 
 // ============================================================
 // Main Component
@@ -270,6 +486,9 @@ function ArchiveStoreInner() {
 
   // Focus state for search input
   const [isInputFocused, setIsInputFocused] = useState(false);
+  
+  // About drawer state
+  const [isAboutOpen, setIsAboutOpen] = useState(false);
 
   // URL helper
   const updateUrl = useCallback((q: string, mode: SearchMode, currentLang: Lang) => {
@@ -315,7 +534,7 @@ function ArchiveStoreInner() {
     try {
       const pageSize = isMobile ? MOBILE_PAGE_SIZE : DESKTOP_PAGE_SIZE;
       const res = await fetch(`${API_BASE}/api/photos?limit=${pageSize}&cursor=${encodeURIComponent(nextCursor)}`);
-      const data = await res.json();
+          const data = await res.json();
       const newItems: PhotoRecord[] = data.items || [];
 
       setPhotos(prev => {
@@ -329,7 +548,7 @@ function ArchiveStoreInner() {
         return combined;
       });
       setNextCursor(data.nextCursor || null);
-    } catch (err) {
+      } catch (err) {
       console.error('Failed to load more:', err);
     } finally {
       setIsLoadingMore(false);
@@ -435,32 +654,17 @@ function ArchiveStoreInner() {
               <a href="/" className="text-[11px] font-medium tracking-[0.1em] uppercase">MTL Archives</a>
               <span className="text-[9px] text-neutral-400 tracking-wide">{t.photoCount}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <button onClick={handleLangChange} className="p-1">
+            <div className="flex items-center gap-0.5">
+              <button onClick={handleLangChange} className="p-1.5">
                 {lang === 'fr' ? <FlagEN /> : <FlagQC />}
               </button>
-              <div className="flex items-center gap-1">
-                <a 
-                  href="https://instagram.com/mtlarchives" 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="p-1.5 text-neutral-400 hover:text-neutral-600 transition-colors"
-                  aria-label="Instagram"
-                  data-sln-event="link: instagram clicked"
-                >
-                  <IconInstagram className="h-4 w-4" />
-                </a>
-                <a 
-                  href="https://www.facebook.com/mtlarchives/" 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="p-1.5 text-neutral-400 hover:text-neutral-600 transition-colors"
-                  aria-label="Facebook"
-                  data-sln-event="link: facebook clicked"
-                >
-                  <IconFacebook className="h-4 w-4" />
-                </a>
-              </div>
+              <button 
+                onClick={() => setIsAboutOpen(true)}
+                className="p-1.5 text-neutral-400 hover:text-neutral-600 transition-colors"
+                aria-label={t.about}
+              >
+                <IconInfo className="h-4 w-4" />
+              </button>
             </div>
           </div>
           <div className="px-3 pb-2.5">
@@ -472,10 +676,10 @@ function ArchiveStoreInner() {
                 isInputFocused ? 'text-neutral-600' : 'text-neutral-400'
               }`} />
               <div className="flex-1 relative h-full min-w-0">
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  value={searchQuery}
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   onFocus={() => setIsInputFocused(true)}
                   onBlur={() => setIsInputFocused(false)}
@@ -508,27 +712,27 @@ function ArchiveStoreInner() {
               )}
               {/* Integrated mode toggle - Apple-style segmented control */}
               <div className="flex items-center h-full border-l border-neutral-100 flex-shrink-0">
-                <button
+              <button
                   onClick={() => handleModeChange('semantic')}
                   className={`h-full px-2.5 text-[10px] font-medium uppercase tracking-wider transition-colors ${
-                    searchMode === 'semantic'
+                  searchMode === 'semantic'
                       ? 'text-neutral-900'
                       : 'text-neutral-400'
-                  }`}
-                >
+                }`}
+              >
                   {t.textSearch}
-                </button>
+              </button>
                 <div className="w-px h-4 bg-neutral-100" />
-                <button
+              <button
                   onClick={() => handleModeChange('visual')}
                   className={`h-full px-2.5 text-[10px] font-medium uppercase tracking-wider transition-colors ${
-                    searchMode === 'visual'
+                  searchMode === 'visual'
                       ? 'text-neutral-900'
                       : 'text-neutral-400'
-                  }`}
-                >
+                }`}
+              >
                   {t.visualSearch}
-                </button>
+              </button>
               </div>
             </div>
           </div>
@@ -564,27 +768,27 @@ function ArchiveStoreInner() {
                   }`}>
                     <span className="text-sm text-neutral-400">{typewriterText}</span>
                     <span className="text-sm text-neutral-900 animate-blink">|</span>
-                  </div>
+        </div>
                   {/* Static placeholder when focused */}
                   <div className={`absolute inset-0 flex items-center px-2.5 pointer-events-none transition-opacity duration-200 ${
                     showFocusedPlaceholder ? 'opacity-100' : 'opacity-0'
                   }`}>
                     <span className="text-sm text-neutral-300">{t.searchPlaceholder}</span>
-                  </div>
-                </div>
+          </div>
+        </div>
                 {isSearching && <div className="mr-3 h-3.5 w-3.5 border border-neutral-300 border-t-neutral-900 rounded-full animate-spin flex-shrink-0" />}
                 {searchQuery && !isSearching && (
-                  <button 
+    <button
                     onClick={clearSearch} 
                     className="mr-1.5 p-1 hover:bg-neutral-100 rounded-full transition-colors flex-shrink-0"
                     aria-label={t.clear}
                   >
                     <X className="h-3.5 w-3.5 text-neutral-500" />
-                  </button>
+            </button>
                 )}
                 {/* Mode toggle - subtle text style */}
                 <div className="flex items-center h-full border-l border-neutral-100 flex-shrink-0">
-                  <button 
+              <button
                     onClick={() => handleModeChange('semantic')} 
                     className={`h-full px-3 text-[10px] uppercase tracking-wider font-medium transition-colors ${
                       searchMode === 'semantic' 
@@ -595,7 +799,7 @@ function ArchiveStoreInner() {
                     {t.textSearch}
                   </button>
                   <div className="w-px h-3.5 bg-neutral-200" />
-                  <button 
+                  <button
                     onClick={() => handleModeChange('visual')} 
                     className={`h-full px-3 text-[10px] uppercase tracking-wider font-medium transition-colors ${
                       searchMode === 'visual' 
@@ -609,7 +813,7 @@ function ArchiveStoreInner() {
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-0.5 shrink-0">
             <button 
               onClick={handleLangChange} 
               className="flex items-center gap-1.5 px-2 py-1 hover:bg-neutral-100 rounded transition-colors"
@@ -617,31 +821,19 @@ function ArchiveStoreInner() {
               {lang === 'fr' ? <FlagEN /> : <FlagQC />}
               <span className="text-[10px] text-neutral-500 uppercase">{lang === 'fr' ? 'EN' : 'FR'}</span>
             </button>
-            <div className="flex items-center">
-              <a
-                href="https://instagram.com/mtlarchives"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-2 text-neutral-400 hover:text-neutral-600 transition-colors"
-                aria-label="Instagram"
-                data-sln-event="link: instagram clicked"
-              >
-                <IconInstagram className="h-4 w-4" />
-              </a>
-              <a
-                href="https://www.facebook.com/mtlarchives/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-2 text-neutral-400 hover:text-neutral-600 transition-colors"
-                aria-label="Facebook"
-                data-sln-event="link: facebook clicked"
-              >
-                <IconFacebook className="h-4 w-4" />
-              </a>
-            </div>
+            <button
+              onClick={() => setIsAboutOpen(true)}
+              className="p-2 text-neutral-400 hover:text-neutral-600 transition-colors"
+              aria-label={t.about}
+            >
+              <IconInfo className="h-4 w-4" />
+            </button>
           </div>
         </div>
       </header>
+      
+      {/* About Drawer */}
+      <AboutDrawer isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} t={t} />
 
       {/* Results header */}
       <div className="flex items-center justify-between py-2 px-2 sm:px-3">
@@ -689,7 +881,7 @@ function ArchiveStoreInner() {
               )}
             </button>
           ))}
-        </div>
+          </div>
       )}
 
       {/* Load More Button */}
@@ -710,8 +902,32 @@ function ArchiveStoreInner() {
       )}
 
       {/* Footer */}
-      <footer className="py-6 px-4 text-center">
-        <p className="text-xs text-neutral-300 uppercase">© {new Date().getFullYear()} MTL Archives</p>
+      <footer className="py-8 px-4">
+        <div className="flex flex-col items-center gap-4">
+          {/* Social links */}
+          <div className="flex items-center gap-4">
+            <a
+              href="https://instagram.com/mtlarchives"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-neutral-300 hover:text-neutral-500 transition-colors"
+              aria-label="Instagram"
+            >
+              <IconInstagram className="h-5 w-5" />
+            </a>
+            <a
+              href="https://www.facebook.com/mtlarchives/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-neutral-300 hover:text-neutral-500 transition-colors"
+              aria-label="Facebook"
+            >
+              <IconFacebook className="h-5 w-5" />
+            </a>
+          </div>
+          {/* Copyright */}
+          <p className="text-[10px] text-neutral-300 tracking-wide">© {new Date().getFullYear()} MTL Archives</p>
+        </div>
       </footer>
     </div>
   );
