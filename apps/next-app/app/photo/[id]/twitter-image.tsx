@@ -24,7 +24,7 @@ type PhotoData = {
 async function getPhoto(id: string): Promise<PhotoData | null> {
   try {
     const res = await fetch(`${API_BASE}/api/photos?id=${encodeURIComponent(id)}`, {
-      next: { revalidate: 3600 }, // Cache for 1 hour
+      next: { revalidate: 3600 },
     });
     if (!res.ok) return null;
     const data = await res.json();
@@ -50,11 +50,12 @@ export default async function TwitterImage({ params }: { params: Promise<{ id: s
           width: '100%',
           height: '100%',
           display: 'flex',
+          flexDirection: 'column',
           position: 'relative',
         }}
       >
         {/* Photo as background */}
-        {imageUrl && (
+        {imageUrl ? (
           <img
             src={imageUrl}
             alt=""
@@ -67,7 +68,7 @@ export default async function TwitterImage({ params }: { params: Promise<{ id: s
               objectFit: 'cover',
             }}
           />
-        )}
+        ) : null}
         
         {/* Gradient overlay */}
         <div
@@ -102,28 +103,24 @@ export default async function TwitterImage({ params }: { params: Promise<{ id: s
               fontWeight: 600,
               color: '#fafafa',
               lineHeight: 1.1,
-              maxWidth: '80%',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              display: '-webkit-box',
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical',
+              display: 'flex',
             }}
           >
-            {title}
+            {title.length > 60 ? title.substring(0, 60) + '...' : title}
           </div>
           
           {/* Date */}
-          {date && (
+          {date ? (
             <div
               style={{
                 fontSize: 24,
                 color: '#a3a3a3',
+                display: 'flex',
               }}
             >
               {date}
             </div>
-          )}
+          ) : null}
           
           {/* Branding */}
           <div
@@ -155,6 +152,7 @@ export default async function TwitterImage({ params }: { params: Promise<{ id: s
                 fontSize: 20,
                 color: '#a3a3a3',
                 letterSpacing: '0.1em',
+                display: 'flex',
               }}
             >
               MTL ARCHIVES

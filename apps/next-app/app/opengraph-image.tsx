@@ -22,7 +22,7 @@ type PhotoData = {
 async function getPhotos(): Promise<PhotoData[]> {
   try {
     const res = await fetch(`${API_BASE}/api/photos?limit=6`, {
-      next: { revalidate: 3600 }, // Cache for 1 hour
+      next: { revalidate: 3600 },
     });
     if (!res.ok) return [];
     const data = await res.json();
@@ -43,6 +43,7 @@ export default async function OGImage() {
           width: '100%',
           height: '100%',
           display: 'flex',
+          flexDirection: 'column',
           position: 'relative',
         }}
       >
@@ -64,11 +65,11 @@ export default async function OGImage() {
               style={{
                 width: '33.333%',
                 height: '50%',
-                position: 'relative',
+                display: 'flex',
                 overflow: 'hidden',
               }}
             >
-              {photo.imageUrl && (
+              {photo.imageUrl ? (
                 <img
                   src={photo.imageUrl}
                   alt=""
@@ -79,7 +80,7 @@ export default async function OGImage() {
                     filter: 'brightness(0.6)',
                   }}
                 />
-              )}
+              ) : null}
             </div>
           ))}
         </div>
@@ -140,6 +141,7 @@ export default async function OGImage() {
               fontWeight: 600,
               color: '#fafafa',
               letterSpacing: '0.05em',
+              display: 'flex',
             }}
           >
             MTL ARCHIVES
@@ -151,6 +153,7 @@ export default async function OGImage() {
               fontSize: 24,
               color: '#a3a3a3',
               letterSpacing: '0.15em',
+              display: 'flex',
             }}
           >
             14 822 PHOTOS HISTORIQUES DE MONTRÉAL
@@ -166,6 +169,7 @@ export default async function OGImage() {
             right: 0,
             height: 6,
             background: 'linear-gradient(90deg, #003DA5 0%, #003DA5 25%, #fafafa 25%, #fafafa 50%, #003DA5 50%, #003DA5 75%, #fafafa 75%, #fafafa 100%)',
+            display: 'flex',
           }}
         />
       </div>
