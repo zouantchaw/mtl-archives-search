@@ -464,13 +464,14 @@ function ArchiveStoreInner() {
             </div>
           </div>
           <div className="px-3 pb-2.5">
-            <div className={`flex items-center bg-white border h-10 rounded-sm relative transition-all duration-200 ${
-              isInputFocused ? 'border-neutral-400 shadow-sm' : 'border-neutral-200'
+            {/* Search input with integrated mode toggle */}
+            <div className={`flex items-center bg-white border h-11 rounded-xl relative transition-all duration-200 ${
+              isInputFocused ? 'border-neutral-300 shadow-sm' : 'border-neutral-200'
             }`}>
-              <Search className={`ml-3 h-4 w-4 transition-colors duration-200 ${
+              <Search className={`ml-3 h-4 w-4 flex-shrink-0 transition-colors duration-200 ${
                 isInputFocused ? 'text-neutral-600' : 'text-neutral-400'
               }`} />
-              <div className="flex-1 relative h-full">
+              <div className="flex-1 relative h-full min-w-0">
                 <input
                   ref={searchInputRef}
                   type="text"
@@ -485,7 +486,7 @@ function ArchiveStoreInner() {
                 <div className={`absolute inset-0 flex items-center px-2 pointer-events-none transition-opacity duration-200 ${
                   showTypewriter ? 'opacity-100' : 'opacity-0'
                 }`}>
-                  <span className="text-[15px] text-neutral-400">{typewriterText}</span>
+                  <span className="text-[15px] text-neutral-400 truncate">{typewriterText}</span>
                   <span className="text-[15px] text-neutral-900 animate-blink">|</span>
                 </div>
                 {/* Static placeholder when focused */}
@@ -495,16 +496,40 @@ function ArchiveStoreInner() {
                   <span className="text-[15px] text-neutral-300">{t.searchPlaceholder}</span>
                 </div>
               </div>
-              {isSearching && <div className="mr-3 h-4 w-4 border-2 border-neutral-200 border-t-neutral-900 rounded-full animate-spin" />}
+              {isSearching && <div className="mr-2 h-4 w-4 border-2 border-neutral-200 border-t-neutral-900 rounded-full animate-spin flex-shrink-0" />}
               {searchQuery && !isSearching && (
                 <button 
                   onClick={clearSearch} 
-                  className="mr-2 p-1.5 hover:bg-neutral-100 rounded-full transition-colors"
+                  className="mr-1 p-1.5 hover:bg-neutral-100 rounded-full transition-colors flex-shrink-0"
                   aria-label={t.clear}
                 >
                   <X className="h-4 w-4 text-neutral-500" />
                 </button>
               )}
+              {/* Integrated mode toggle - Apple-style segmented control */}
+              <div className="flex items-center h-full border-l border-neutral-100 flex-shrink-0">
+                <button
+                  onClick={() => handleModeChange('semantic')}
+                  className={`h-full px-2.5 text-[10px] font-medium uppercase tracking-wider transition-colors ${
+                    searchMode === 'semantic'
+                      ? 'text-neutral-900'
+                      : 'text-neutral-400'
+                  }`}
+                >
+                  {t.textSearch}
+                </button>
+                <div className="w-px h-4 bg-neutral-100" />
+                <button
+                  onClick={() => handleModeChange('visual')}
+                  className={`h-full px-2.5 text-[10px] font-medium uppercase tracking-wider transition-colors ${
+                    searchMode === 'visual'
+                      ? 'text-neutral-900'
+                      : 'text-neutral-400'
+                  }`}
+                >
+                  {t.visualSearch}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -517,13 +542,13 @@ function ArchiveStoreInner() {
           </div>
           <div className="flex-1 flex justify-center">
             <div className="w-full max-w-lg">
-              <div className={`flex items-center bg-white border h-9 transition-all duration-200 ${
-                isInputFocused ? 'border-neutral-400 shadow-sm' : 'border-neutral-200'
+              <div className={`flex items-center bg-white border h-9 rounded-lg transition-all duration-200 ${
+                isInputFocused ? 'border-neutral-300 shadow-sm' : 'border-neutral-200'
               }`}>
-                <Search className={`ml-3 h-3.5 w-3.5 transition-colors duration-200 ${
+                <Search className={`ml-3 h-3.5 w-3.5 flex-shrink-0 transition-colors duration-200 ${
                   isInputFocused ? 'text-neutral-600' : 'text-neutral-400'
                 }`} />
-                <div className="flex-1 relative h-full">
+                <div className="flex-1 relative h-full min-w-0">
                   <input
                     type="text"
                     value={searchQuery}
@@ -547,33 +572,35 @@ function ArchiveStoreInner() {
                     <span className="text-sm text-neutral-300">{t.searchPlaceholder}</span>
                   </div>
                 </div>
-                {isSearching && <div className="mr-3 h-3.5 w-3.5 border border-neutral-300 border-t-neutral-900 rounded-full animate-spin" />}
+                {isSearching && <div className="mr-3 h-3.5 w-3.5 border border-neutral-300 border-t-neutral-900 rounded-full animate-spin flex-shrink-0" />}
                 {searchQuery && !isSearching && (
                   <button 
                     onClick={clearSearch} 
-                    className="mr-2 p-1 hover:bg-neutral-100 rounded-full transition-colors"
+                    className="mr-1.5 p-1 hover:bg-neutral-100 rounded-full transition-colors flex-shrink-0"
                     aria-label={t.clear}
                   >
                     <X className="h-3.5 w-3.5 text-neutral-500" />
                   </button>
                 )}
-                <div className="flex border-l border-neutral-200 h-full">
+                {/* Mode toggle - subtle text style */}
+                <div className="flex items-center h-full border-l border-neutral-100 flex-shrink-0">
                   <button 
                     onClick={() => handleModeChange('semantic')} 
-                    className={`px-3 text-[10px] uppercase tracking-wide transition-colors ${
+                    className={`h-full px-3 text-[10px] uppercase tracking-wider font-medium transition-colors ${
                       searchMode === 'semantic' 
-                        ? 'bg-neutral-900 text-white' 
-                        : 'text-neutral-400 hover:text-neutral-600 hover:bg-neutral-50'
+                        ? 'text-neutral-900' 
+                        : 'text-neutral-400 hover:text-neutral-600'
                     }`}
                   >
                     {t.textSearch}
                   </button>
+                  <div className="w-px h-3.5 bg-neutral-200" />
                   <button 
                     onClick={() => handleModeChange('visual')} 
-                    className={`px-3 text-[10px] uppercase tracking-wide transition-colors ${
+                    className={`h-full px-3 text-[10px] uppercase tracking-wider font-medium transition-colors ${
                       searchMode === 'visual' 
-                        ? 'bg-neutral-900 text-white' 
-                        : 'text-neutral-400 hover:text-neutral-600 hover:bg-neutral-50'
+                        ? 'text-neutral-900' 
+                        : 'text-neutral-400 hover:text-neutral-600'
                     }`}
                   >
                     {t.visualSearch}
