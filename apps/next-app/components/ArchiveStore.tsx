@@ -513,7 +513,7 @@ function ArchiveStoreInner() {
   const placeholders = useMemo(() => searchExamples[lang], [lang]);
   const isTypewriterActive = !searchQuery && !isInputFocused;
   const typewriterText = useTypewriter(placeholders, isTypewriterActive, 70, 35, 1800);
-  
+
   // Show typewriter only when not focused and no query
   const showTypewriter = !searchQuery && !isInputFocused;
   // Show static placeholder when focused but empty
@@ -847,7 +847,7 @@ function ArchiveStoreInner() {
                 <span className="absolute top-0.5 right-0.5 h-4 w-4 bg-neutral-900 text-white text-[9px] font-medium rounded-full flex items-center justify-center">
                   {itemCount > 9 ? '9+' : itemCount}
                 </span>
-              )}
+            )}
             </button>
           </div>
         </div>

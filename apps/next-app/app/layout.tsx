@@ -121,7 +121,7 @@ export default function RootLayout({
       </head>
       <body className="font-sans antialiased bg-neutral-50 text-neutral-900 min-h-screen">
         <CartProvider>
-          {children}
+        {children}
           <CartDrawer />
         </CartProvider>
       </body>
