@@ -312,70 +312,40 @@ const ProductFrame = ({ product, children, inRoom = false }: ProductFrameProps) 
       );
 
     case 'framed':
-      // Premium wooden frame with white mat
+      // Floater frame - canvas recessed inside black frame
+      const frameWidth = inRoom ? 4 : 6;
+      const gapWidth = inRoom ? 2 : 3;
+      const totalInset = frameWidth + gapWidth;
+      
       return (
-        <div
+        <div 
           className="relative transition-all duration-300"
           style={{
-            padding: `${(inRoom ? 2.5 : 3.5)}%`,
-            backgroundColor: '#fafafa',
-            border: `${Math.round(8 * scale)}px solid #1a1a1a`,
+            padding: totalInset,
+            backgroundColor: '#0a0a0a',
             boxShadow: `
-              inset 0 0 0 1px rgba(0,0,0,0.05),
-              0 2px 4px rgba(0,0,0,0.05),
-              0 ${8 * scale}px ${16 * scale}px rgba(0,0,0,0.1),
-              0 ${20 * scale}px ${40 * scale}px rgba(0,0,0,0.15)
+              0 2px 4px rgba(0,0,0,0.08),
+              0 ${8 * scale}px ${16 * scale}px rgba(0,0,0,0.12),
+              0 ${20 * scale}px ${40 * scale}px rgba(0,0,0,0.16)
             `,
           }}
         >
-          {children}
-        </div>
-      );
-
-    case 'canvas':
-      // Gallery-wrapped canvas with visible depth
-      const canvasDepth = inRoom ? 6 : 10;
-      return (
-        <div className="relative transition-all duration-300">
-          {/* Canvas wrap - visible white/cream edges */}
-          <div 
-            className="absolute inset-0"
+          {/* Frame border */}
+          <div
+            className="absolute inset-0 pointer-events-none"
             style={{
-              transform: `translate(${canvasDepth}px, ${canvasDepth}px)`,
-              background: 'linear-gradient(135deg, #e8e4df 0%, #d4cfc8 100%)',
-              boxShadow: `
-                0 ${4 * scale}px ${8 * scale}px rgba(0,0,0,0.1),
-                0 ${12 * scale}px ${24 * scale}px rgba(0,0,0,0.15)
-              `,
+              border: `${frameWidth}px solid #1a1a1a`,
             }}
           />
-          {/* Right edge - darker for depth */}
-          <div 
-            className="absolute top-0 bottom-0"
-            style={{
-              left: '100%',
-              width: `${canvasDepth}px`,
-              background: 'linear-gradient(90deg, #c9c4bd 0%, #b8b3ab 100%)',
-              transform: 'skewY(-45deg)',
-              transformOrigin: 'top left',
-            }}
-          />
-          {/* Bottom edge - darkest for depth */}
-          <div 
-            className="absolute left-0 right-0"
-            style={{
-              top: '100%',
-              height: `${canvasDepth}px`,
-              background: 'linear-gradient(180deg, #b8b3ab 0%, #a8a39b 100%)',
-              transform: 'skewX(-45deg)',
-              transformOrigin: 'top left',
-            }}
-          />
-          {/* Main canvas surface */}
-          <div 
+          
+          {/* Canvas with recessed shadow */}
+          <div
             className="relative"
             style={{
-              boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.03)',
+              boxShadow: `
+                inset 0 1px 3px rgba(0,0,0,0.3),
+                inset 0 0 1px rgba(0,0,0,0.2)
+              `,
             }}
           >
             {children}

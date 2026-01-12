@@ -102,7 +102,7 @@ export type ProductType = {
   price: number;
   // Visual styling for preview
   style: {
-    type: 'poster' | 'framed' | 'canvas' | 'hanger';
+    type: 'poster' | 'framed' | 'hanger';
     frameColor?: string;
     frameWidth?: number;
     matColor?: string;
@@ -115,7 +115,7 @@ export const PRODUCT_TYPES: ProductType[] = [
   {
     id: 'fine-art',
     name: { fr: 'Affiche Fine Art', en: 'Fine Art Poster' },
-    shortName: { fr: 'Fine Art', en: 'Fine Art' },
+    shortName: { fr: 'Affiche', en: 'Poster' },
     price: 0, // Base price, included in size price
     style: {
       type: 'poster',
@@ -123,26 +123,15 @@ export const PRODUCT_TYPES: ProductType[] = [
     },
   },
   {
-    id: 'framed',
-    name: { fr: 'Cadre en Bois', en: 'Wooden Frame' },
-    shortName: { fr: 'Cadre', en: 'Framed' },
+    id: 'framed-canvas',
+    name: { fr: 'Canvas Encadré', en: 'Framed Canvas' },
+    shortName: { fr: 'Encadré', en: 'Framed' },
     price: 45,
     style: {
       type: 'framed',
       frameColor: '#1a1a1a',
-      frameWidth: 8,
-      matColor: '#ffffff',
+      frameWidth: 10,
       shadowIntensity: 0.3,
-    },
-  },
-  {
-    id: 'canvas',
-    name: { fr: 'Toile Canvas', en: 'Canvas' },
-    shortName: { fr: 'Canvas', en: 'Canvas' },
-    price: 35,
-    style: {
-      type: 'canvas',
-      shadowIntensity: 0.25,
     },
   },
   {
