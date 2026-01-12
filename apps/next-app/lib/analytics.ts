@@ -55,6 +55,9 @@ export const events = {
     track('about: opened'),
 
   // E-commerce (print orders)
+  roomBackgroundChanged: (roomId: string) =>
+    track('print: room preview changed', { roomId }),
+
   printSizeSelected: (size: string, price: number) =>
     track('print: size selected', { size, price }),
 
