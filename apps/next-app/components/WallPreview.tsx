@@ -129,7 +129,7 @@ export const WallPreview = ({
       </div>
 
       {/* Dot Indicators */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2">
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 px-3 py-2 bg-black/30 backdrop-blur-sm rounded-full">
         {slides.map((slide, index) => (
           <button
             key={slide.type === 'original' ? 'original' : slide.room.id}
@@ -137,7 +137,7 @@ export const WallPreview = ({
             className={`transition-all duration-300 ${
               index === currentIndex
                 ? 'w-6 h-2 bg-white rounded-full'
-                : 'w-2 h-2 bg-white/40 rounded-full hover:bg-white/60'
+                : 'w-2 h-2 bg-white/50 rounded-full hover:bg-white/80'
             }`}
             aria-label={slide.type === 'original' 
               ? (lang === 'fr' ? 'Voir photo originale' : 'View original photo')
