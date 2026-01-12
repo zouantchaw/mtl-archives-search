@@ -291,18 +291,20 @@ type ProductFrameProps = {
 
 const ProductFrame = ({ product, children, inRoom = false }: ProductFrameProps) => {
   const { style } = product;
-  const shadowBase = inRoom ? 12 : 20;
-  const shadowBlur = shadowBase * style.shadowIntensity * 3;
-  const shadowSpread = shadowBase * style.shadowIntensity;
+  const scale = inRoom ? 0.7 : 1;
 
   switch (style.type) {
     case 'poster':
-      // Simple poster with subtle shadow
+      // Fine art poster - clean with subtle shadow
       return (
         <div
           className="relative transition-all duration-300"
           style={{
-            boxShadow: `0 ${shadowSpread}px ${shadowBlur}px rgba(0,0,0,${style.shadowIntensity})`,
+            boxShadow: `
+              0 1px 2px rgba(0,0,0,0.04),
+              0 4px 8px rgba(0,0,0,0.04),
+              0 ${12 * scale}px ${24 * scale}px rgba(0,0,0,0.08)
+            `,
           }}
         >
           {children}
@@ -310,15 +312,20 @@ const ProductFrame = ({ product, children, inRoom = false }: ProductFrameProps) 
       );
 
     case 'framed':
-      // Wooden frame with mat
+      // Premium wooden frame with white mat
       return (
         <div
           className="relative transition-all duration-300"
           style={{
-            padding: style.matColor ? (inRoom ? '3%' : '4%') : 0,
-            backgroundColor: style.matColor || 'transparent',
-            border: `${style.frameWidth || 8}px solid ${style.frameColor || '#1a1a1a'}`,
-            boxShadow: `0 ${shadowSpread}px ${shadowBlur}px rgba(0,0,0,${style.shadowIntensity})`,
+            padding: `${(inRoom ? 2.5 : 3.5)}%`,
+            backgroundColor: '#fafafa',
+            border: `${Math.round(8 * scale)}px solid #1a1a1a`,
+            boxShadow: `
+              inset 0 0 0 1px rgba(0,0,0,0.05),
+              0 2px 4px rgba(0,0,0,0.05),
+              0 ${8 * scale}px ${16 * scale}px rgba(0,0,0,0.1),
+              0 ${20 * scale}px ${40 * scale}px rgba(0,0,0,0.15)
+            `,
           }}
         >
           {children}
@@ -326,62 +333,137 @@ const ProductFrame = ({ product, children, inRoom = false }: ProductFrameProps) 
       );
 
     case 'canvas':
-      // Canvas with wrapped edge effect
-      return (
-        <div
-          className="relative transition-all duration-300"
-          style={{
-            boxShadow: `
-              ${inRoom ? 3 : 5}px ${inRoom ? 3 : 5}px 0 rgba(0,0,0,0.1),
-              0 ${shadowSpread}px ${shadowBlur}px rgba(0,0,0,${style.shadowIntensity})
-            `,
-          }}
-        >
-          {/* Canvas depth effect */}
-          <div 
-            className="absolute -right-1 top-1 bottom-1 w-2 bg-neutral-300"
-            style={{ transform: 'skewY(-45deg)', transformOrigin: 'top left' }}
-          />
-          <div 
-            className="absolute left-1 right-1 -bottom-1 h-2 bg-neutral-400"
-            style={{ transform: 'skewX(-45deg)', transformOrigin: 'top left' }}
-          />
-          <div className="relative">{children}</div>
-        </div>
-      );
-
-    case 'hanger':
-      // Poster with wooden hanger
+      // Gallery-wrapped canvas with visible depth
+      const canvasDepth = inRoom ? 6 : 10;
       return (
         <div className="relative transition-all duration-300">
-          {/* Top hanger */}
-          <div
-            className="absolute -top-2 left-1/2 -translate-x-1/2 h-3 rounded-sm z-10"
+          {/* Canvas wrap - visible white/cream edges */}
+          <div 
+            className="absolute inset-0"
             style={{
-              width: '110%',
-              backgroundColor: style.hangerColor || '#c4a77d',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+              transform: `translate(${canvasDepth}px, ${canvasDepth}px)`,
+              background: 'linear-gradient(135deg, #e8e4df 0%, #d4cfc8 100%)',
+              boxShadow: `
+                0 ${4 * scale}px ${8 * scale}px rgba(0,0,0,0.1),
+                0 ${12 * scale}px ${24 * scale}px rgba(0,0,0,0.15)
+              `,
             }}
           />
-          {/* Hanging string */}
-          <div className="absolute -top-6 left-1/2 -translate-x-1/2 w-px h-4 bg-neutral-400" />
-          {/* Poster */}
-          <div
+          {/* Right edge - darker for depth */}
+          <div 
+            className="absolute top-0 bottom-0"
             style={{
-              boxShadow: `0 ${shadowSpread}px ${shadowBlur}px rgba(0,0,0,${style.shadowIntensity})`,
+              left: '100%',
+              width: `${canvasDepth}px`,
+              background: 'linear-gradient(90deg, #c9c4bd 0%, #b8b3ab 100%)',
+              transform: 'skewY(-45deg)',
+              transformOrigin: 'top left',
+            }}
+          />
+          {/* Bottom edge - darkest for depth */}
+          <div 
+            className="absolute left-0 right-0"
+            style={{
+              top: '100%',
+              height: `${canvasDepth}px`,
+              background: 'linear-gradient(180deg, #b8b3ab 0%, #a8a39b 100%)',
+              transform: 'skewX(-45deg)',
+              transformOrigin: 'top left',
+            }}
+          />
+          {/* Main canvas surface */}
+          <div 
+            className="relative"
+            style={{
+              boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.03)',
             }}
           >
             {children}
           </div>
-          {/* Bottom hanger */}
+        </div>
+      );
+
+    case 'hanger':
+      // Magnetic poster hanger using actual wood rail image
+      const railHeight = inRoom ? 8 : 12;
+      const railOverhang = inRoom ? 3 : 5;
+      const cordHeight = inRoom ? 12 : 18;
+      
+      return (
+        <div 
+          className="relative transition-all duration-300" 
+          style={{ 
+            paddingTop: cordHeight + railHeight,
+            paddingBottom: railHeight, // Space for bottom rail
+          }}
+        >
+          {/* Hanging string - simple black cord */}
+          <svg 
+            className="absolute left-1/2 -translate-x-1/2"
+            style={{ top: 0, width: 50 * scale, height: cordHeight + 2 }}
+            viewBox="0 0 50 20"
+            fill="none"
+          >
+            <path 
+              d="M10 18 L25 4 L40 18" 
+              stroke="#2a2a2a"
+              strokeWidth="1"
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          
+          {/* Top hanger rail - actual wood image */}
           <div
-            className="absolute -bottom-2 left-1/2 -translate-x-1/2 h-2 rounded-sm"
+            className="absolute left-1/2 -translate-x-1/2 z-10"
             style={{
-              width: '110%',
-              backgroundColor: style.hangerColor || '#c4a77d',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+              top: cordHeight,
+              width: `calc(100% + ${railOverhang * 2}px)`,
+              height: railHeight,
             }}
-          />
+          >
+            <img
+              src="/images/items/wooden-hanger-rail.png"
+              alt=""
+              className="w-full h-full object-fill"
+              style={{
+                filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.15))',
+              }}
+            />
+          </div>
+          
+          {/* Poster */}
+          <div
+            style={{
+              boxShadow: `
+                0 2px 4px rgba(0,0,0,0.03),
+                0 ${4 * scale}px ${8 * scale}px rgba(0,0,0,0.05),
+                0 ${8 * scale}px ${16 * scale}px rgba(0,0,0,0.06)
+              `,
+            }}
+          >
+            {children}
+          </div>
+          
+          {/* Bottom hanger rail - actual wood image, positioned at bottom edge of poster */}
+          <div
+            className="absolute left-1/2 -translate-x-1/2"
+            style={{
+              bottom: 0,
+              width: `calc(100% + ${railOverhang * 2}px)`,
+              height: railHeight,
+            }}
+          >
+            <img
+              src="/images/items/wooden-hanger-rail.png"
+              alt=""
+              className="w-full h-full object-fill"
+              style={{
+                filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.12))',
+              }}
+            />
+          </div>
         </div>
       );
 
