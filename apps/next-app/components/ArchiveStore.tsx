@@ -78,8 +78,6 @@ type Lang = 'fr' | 'en';
 
 const translations = {
   fr: {
-    textSearch: 'Texte',
-    visualSearch: 'Visuel',
     featured: 'À la une',
     results: 'résultats',
     result: 'résultat',
@@ -93,12 +91,10 @@ const translations = {
     about: 'À propos',
     aboutTitle: 'MTL Archives',
     aboutDescription: 'Une collection de plus de 14 000 photos historiques de Montréal, numérisées et rendues accessibles au public.',
-    howToUseTitle: 'Comment utiliser',
-    howToUseText: 'Recherchez par rue, quartier, monument ou époque. Utilisez la recherche textuelle pour des termes précis, ou la recherche visuelle pour trouver des images similaires.',
-    howToUseTextSearch: 'Recherche Texte',
-    howToUseTextSearchDesc: 'Trouvez des photos par mots-clés, noms de rues ou descriptions.',
-    howToUseVisualSearch: 'Recherche Visuelle',
-    howToUseVisualSearchDesc: 'Utilisez l\'IA pour trouver des photos visuellement similaires.',
+    howToUseTitle: 'Comment chercher',
+    howToUseText: 'Décrivez ce que vous cherchez en français ou en anglais. Essayez des lieux, des époques ou même des ambiances.',
+    examplesTitle: 'Exemples',
+    examplesText: 'église en hiver • tramway années 50 • Expo 67 • pont Jacques-Cartier • rue animée',
     printsTitle: 'Tirages',
     printsText: 'Des reproductions haute qualité sont disponibles à l\'achat. Cliquez sur une photo pour voir les options d\'impression.',
     sourceTitle: 'Source',
@@ -111,8 +107,6 @@ const translations = {
     facebook: 'Facebook',
   },
   en: {
-    textSearch: 'Text',
-    visualSearch: 'Visual',
     featured: 'Featured',
     results: 'results',
     result: 'result',
@@ -126,12 +120,10 @@ const translations = {
     about: 'About',
     aboutTitle: 'MTL Archives',
     aboutDescription: 'A collection of over 14,000 historical photos of Montreal, digitized and made accessible to the public.',
-    howToUseTitle: 'How to use',
-    howToUseText: 'Search by street, neighborhood, landmark, or era. Use text search for precise terms, or visual search to find similar images.',
-    howToUseTextSearch: 'Text Search',
-    howToUseTextSearchDesc: 'Find photos by keywords, street names, or descriptions.',
-    howToUseVisualSearch: 'Visual Search',
-    howToUseVisualSearchDesc: 'Use AI to find visually similar photos.',
+    howToUseTitle: 'How to search',
+    howToUseText: 'Describe what you\'re looking for in English or French. Try places, eras, or even moods.',
+    examplesTitle: 'Examples',
+    examplesText: 'church in winter • 1950s tramway • Expo 67 • Jacques-Cartier Bridge • busy street',
     printsTitle: 'Prints',
     printsText: 'High-quality reproductions are available for purchase. Click on any photo to see print options.',
     sourceTitle: 'Source',
@@ -145,41 +137,41 @@ const translations = {
   },
 } as const;
 
-// Typewriter search examples - localized
+// Typewriter search examples - localized, mix of places and visual concepts
 const searchExamples = {
   fr: [
-    'Rue Sainte-Catherine',
-    'tramway années 50',
-    'Vieux-Port',
     'église en hiver',
-    'Mont-Royal',
-    'marché Jean-Talon',
-    'construction du métro',
+    'rue animée',
+    'tramway',
+    'neige',
     'Expo 67',
-    'gare Windsor',
-    'rue Saint-Denis',
-    'hôtel de ville',
     'pont Jacques-Cartier',
-    'parc La Fontaine',
-    'stade olympique',
-    'rue Sherbrooke',
+    'Mont-Royal',
+    'vieilles voitures',
+    'marché',
+    'construction',
+    'parc en été',
+    'bâtiment historique',
+    'gare Windsor',
+    'fleuve Saint-Laurent',
+    'rue Sainte-Catherine',
   ],
   en: [
-    'Sainte-Catherine Street',
-    '1950s tramway',
-    'Old Port',
     'church in winter',
-    'Mount Royal',
-    'Jean-Talon Market',
-    'metro construction',
+    'busy street',
+    'tramway',
+    'snow',
     'Expo 67',
-    'Windsor Station',
-    'Saint-Denis Street',
-    'city hall',
     'Jacques-Cartier Bridge',
-    'La Fontaine Park',
-    'Olympic Stadium',
-    'Sherbrooke Street',
+    'Mount Royal',
+    'old cars',
+    'market',
+    'construction',
+    'park in summer',
+    'historic building',
+    'Windsor Station',
+    'St. Lawrence River',
+    'Sainte-Catherine Street',
   ],
 } as const;
 
@@ -351,33 +343,13 @@ function AboutContent({ t, onClose }: { t: (typeof translations)[Lang]; onClose:
       {/* Divider */}
       <div className="h-px bg-neutral-100" />
 
-      {/* How to use - Apple Settings style list */}
+      {/* How to search - simplified */}
       <section>
-        <h3 className="text-[11px] font-medium tracking-[0.05em] uppercase text-neutral-400 mb-3">{t.howToUseTitle}</h3>
-        <div className="space-y-0 bg-white rounded-xl border border-neutral-200 overflow-hidden">
-          <div className="flex items-center gap-3 px-4 py-3">
-            <div className="w-7 h-7 bg-neutral-900 rounded-md flex items-center justify-center flex-shrink-0">
-              <Search className="h-3.5 w-3.5 text-white" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h4 className="text-[13px] font-medium text-neutral-900">{t.howToUseTextSearch}</h4>
-              <p className="text-[11px] text-neutral-400 mt-0.5 leading-tight">{t.howToUseTextSearchDesc}</p>
-            </div>
-          </div>
-          <div className="h-px bg-neutral-100 ml-14" />
-          <div className="flex items-center gap-3 px-4 py-3">
-            <div className="w-7 h-7 bg-neutral-900 rounded-md flex items-center justify-center flex-shrink-0">
-              <svg className="h-3.5 w-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <rect x="3" y="3" width="18" height="18" rx="2" />
-                <circle cx="8.5" cy="8.5" r="1.5" />
-                <path d="M21 15l-5-5L5 21" />
-              </svg>
-            </div>
-            <div className="flex-1 min-w-0">
-              <h4 className="text-[13px] font-medium text-neutral-900">{t.howToUseVisualSearch}</h4>
-              <p className="text-[11px] text-neutral-400 mt-0.5 leading-tight">{t.howToUseVisualSearchDesc}</p>
-            </div>
-          </div>
+        <h3 className="text-[11px] font-medium tracking-[0.05em] uppercase text-neutral-400 mb-2">{t.howToUseTitle}</h3>
+        <p className="text-[13px] text-neutral-500 leading-relaxed mb-3">{t.howToUseText}</p>
+        <div className="bg-neutral-50 rounded-lg px-3 py-2.5">
+          <p className="text-[11px] font-medium text-neutral-400 uppercase tracking-wide mb-1">{t.examplesTitle}</p>
+          <p className="text-[12px] text-neutral-600 leading-relaxed">{t.examplesText}</p>
         </div>
       </section>
 
@@ -474,7 +446,7 @@ function ArchiveStoreInner() {
 
   // State from URL
   const initialQuery = searchParams.get('q') || '';
-  const initialMode = (searchParams.get('mode') as SearchMode) || 'semantic';
+  const initialMode = (searchParams.get('mode') as SearchMode) || 'smart';
   const initialLang = (searchParams.get('lang') as Lang) || 'fr';
 
   const [lang, setLang] = useState<Lang>(initialLang);
@@ -583,14 +555,12 @@ function ArchiveStoreInner() {
       isInitialMount.current = false;
 
       try {
-        // On mobile, force semantic mode (no CLIP)
-        const mode = isMobile ? 'semantic' : searchMode;
-        const params = new URLSearchParams({ q: searchQuery, mode, limit: isMobile ? '20' : '50' });
+        const params = new URLSearchParams({ q: searchQuery, mode: searchMode, limit: isMobile ? '20' : '50' });
         const res = await fetch(`${API_BASE}/api/search?${params}`);
         if (res.ok) {
           const data: SearchResponse = await res.json();
           setSearchResults(data.items);
-          events.searchPerformed(searchQuery, mode, data.items.length);
+          events.searchPerformed(searchQuery, searchMode, data.items.length);
         }
       } catch (err) {
         console.error('Search failed:', err);
@@ -646,11 +616,9 @@ function ArchiveStoreInner() {
   }, [lang, searchQuery, searchMode, updateUrl]);
 
   const handleModeChange = useCallback((newMode: SearchMode) => {
-    // On mobile, ignore visual mode
-    if (isMobile && newMode === 'visual') return;
     setSearchMode(newMode);
     if (searchQuery) updateUrl(searchQuery, newMode, lang);
-  }, [searchQuery, lang, updateUrl, isMobile]);
+  }, [searchQuery, lang, updateUrl]);
 
   const canLoadMore = nextCursor && !hasSearched && (!isMobile || photos.length < MOBILE_MAX_IMAGES);
 
@@ -718,38 +686,14 @@ function ArchiveStoreInner() {
               </div>
               {isSearching && <div className="mr-2 h-4 w-4 border-2 border-neutral-200 border-t-neutral-900 rounded-full animate-spin flex-shrink-0" />}
               {searchQuery && !isSearching && (
-                <button 
-                  onClick={clearSearch} 
-                  className="mr-1 p-1.5 hover:bg-neutral-100 rounded-full transition-colors flex-shrink-0"
+                <button
+                  onClick={clearSearch}
+                  className="mr-2 p-1.5 hover:bg-neutral-100 rounded-full transition-colors flex-shrink-0"
                   aria-label={t.clear}
                 >
                   <X className="h-4 w-4 text-neutral-500" />
                 </button>
               )}
-              {/* Integrated mode toggle - Apple-style segmented control */}
-              <div className="flex items-center h-full border-l border-neutral-100 flex-shrink-0">
-              <button
-                  onClick={() => handleModeChange('semantic')}
-                  className={`h-full px-2.5 text-[10px] font-medium uppercase tracking-wider transition-colors ${
-                  searchMode === 'semantic'
-                      ? 'text-neutral-900'
-                      : 'text-neutral-400'
-                }`}
-              >
-                  {t.textSearch}
-              </button>
-                <div className="w-px h-4 bg-neutral-100" />
-              <button
-                  onClick={() => handleModeChange('visual')}
-                  className={`h-full px-2.5 text-[10px] font-medium uppercase tracking-wider transition-colors ${
-                  searchMode === 'visual'
-                      ? 'text-neutral-900'
-                      : 'text-neutral-400'
-                }`}
-              >
-                  {t.visualSearch}
-              </button>
-              </div>
             </div>
           </div>
         </div>
@@ -791,38 +735,14 @@ function ArchiveStoreInner() {
         </div>
                 {isSearching && <div className="mr-3 h-3.5 w-3.5 border border-neutral-300 border-t-neutral-900 rounded-full animate-spin flex-shrink-0" />}
                 {searchQuery && !isSearching && (
-    <button
-                    onClick={clearSearch} 
-                    className="mr-1.5 p-1 hover:bg-neutral-100 rounded-full transition-colors flex-shrink-0"
+                  <button
+                    onClick={clearSearch}
+                    className="mr-2 p-1 hover:bg-neutral-100 rounded-full transition-colors flex-shrink-0"
                     aria-label={t.clear}
                   >
                     <X className="h-3.5 w-3.5 text-neutral-500" />
-            </button>
+                  </button>
                 )}
-                {/* Mode toggle - subtle text style */}
-                <div className="flex items-center h-full border-l border-neutral-100 flex-shrink-0">
-              <button
-                    onClick={() => handleModeChange('semantic')} 
-                    className={`h-full px-3 text-[10px] uppercase tracking-wider font-medium transition-colors ${
-                      searchMode === 'semantic' 
-                        ? 'text-neutral-900' 
-                        : 'text-neutral-400 hover:text-neutral-600'
-                    }`}
-                  >
-                    {t.textSearch}
-                  </button>
-                  <div className="w-px h-3.5 bg-neutral-200" />
-                  <button
-                    onClick={() => handleModeChange('visual')} 
-                    className={`h-full px-3 text-[10px] uppercase tracking-wider font-medium transition-colors ${
-                      searchMode === 'visual' 
-                        ? 'text-neutral-900' 
-                        : 'text-neutral-400 hover:text-neutral-600'
-                    }`}
-                  >
-                    {t.visualSearch}
-                  </button>
-                </div>
               </div>
             </div>
           </div>
@@ -860,7 +780,7 @@ function ArchiveStoreInner() {
       <div className="flex items-center justify-between py-2 px-2 sm:px-3">
         {hasSearched ? (
           <>
-            <span className="text-xs text-neutral-400 uppercase">{searchResults.length} {searchResults.length === 1 ? t.result : t.results}</span>
+            <span className="text-xs text-neutral-400 uppercase" translate="no">{displayPhotos.length} {displayPhotos.length === 1 ? t.result : t.results}</span>
             <button onClick={clearSearch} className="text-xs text-neutral-400 uppercase">{t.clear}</button>
           </>
         ) : (
@@ -869,7 +789,7 @@ function ArchiveStoreInner() {
       </div>
 
       {/* Empty state */}
-      {hasSearched && searchResults.length === 0 && !isSearching && (
+      {hasSearched && displayPhotos.length === 0 && !isSearching && (
         <div className="text-center py-16 px-4">
           <p className="text-neutral-500 text-sm mb-3">{t.noResults} &ldquo;{searchQuery}&rdquo;</p>
           <button onClick={clearSearch} className="text-xs text-neutral-400 underline uppercase">{t.clearSearch}</button>

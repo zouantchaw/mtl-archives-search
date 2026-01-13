@@ -8,6 +8,7 @@ type Env = {
   VECTORIZE_CLIP?: VectorizeIndex;
   CLIP_EMBEDDING_URL?: string;
   CLIP_EMBEDDING_TOKEN?: string;
+  HF_API_TOKEN?: string;
   CLOUDFLARE_R2_ACCESS_KEY?: string;
   CLOUDFLARE_R2_SECRET_ACCESS_KEY?: string;
   CLOUDFLARE_R2_ACCOUNT_ID?: string;
@@ -206,9 +207,14 @@ async function handleSearch(url: URL, env: Env, request: Request): Promise<Respo
     return jsonResponse({ error: 'Missing required query parameter "q".' }, 400);
   }
 
-  const mode = (url.searchParams.get('mode') ?? 'text').toLowerCase();
+  const mode = (url.searchParams.get('mode') ?? 'smart').toLowerCase();
   const limitParam = Number(url.searchParams.get('limit') ?? '25');
   const limit = clamp(Number.isFinite(limitParam) ? limitParam : 25, 1, 100);
+
+  // Smart mode: combine visual + semantic for best results
+  if (mode === 'smart') {
+    return handleSmartSearch(q, limit, env);
+  }
 
   if (mode === 'semantic') {
     return handleSemanticSearch(q, limit, env);
@@ -230,6 +236,7 @@ async function handleSearch(url: URL, env: Env, request: Request): Promise<Respo
     return handleVisualSearch(q, limit, env, embedding);
   }
 
+  // Text mode: exact SQL LIKE matching
   const likeParam = `%${escapeForLike(q)}%`;
   const statement = env.DB.prepare(
     `SELECT ${SELECT_FIELDS}
@@ -341,6 +348,133 @@ async function handleThumbnail(url: URL, env: Env): Promise<Response> {
 
 function escapeForLike(value: string): string {
   return value.replaceAll('\\', '\\\\').replaceAll('%', '\\%').replaceAll('_', '\\_');
+}
+
+// Smart search: combines visual (CLIP) + semantic (BGE) for best results
+async function handleSmartSearch(query: string, limit: number, env: Env): Promise<Response> {
+  // Run visual and semantic searches in parallel
+  const [visualResult, semanticResult] = await Promise.allSettled([
+    getVisualResults(query, limit, env),
+    getSemanticResults(query, limit, env),
+  ]);
+
+  type ScoredPhoto = PhotoRecord & { score?: number; source?: string };
+  const seen = new Set<string>();
+  const merged: ScoredPhoto[] = [];
+
+  // Visual results first (tend to be more visually relevant)
+  if (visualResult.status === 'fulfilled' && visualResult.value) {
+    for (const item of visualResult.value) {
+      if (!seen.has(item.metadataFilename)) {
+        seen.add(item.metadataFilename);
+        merged.push({ ...item, source: 'visual' });
+      }
+    }
+  }
+
+  // Then semantic results (fill in gaps)
+  if (semanticResult.status === 'fulfilled' && semanticResult.value) {
+    for (const item of semanticResult.value) {
+      if (!seen.has(item.metadataFilename)) {
+        seen.add(item.metadataFilename);
+        merged.push({ ...item, source: 'semantic' });
+      }
+    }
+  }
+
+  // Fallback: if both failed, return empty
+  if (merged.length === 0) {
+    return jsonResponse({ items: [], mode: 'smart', count: 0 });
+  }
+
+  return jsonResponse({
+    items: merged.slice(0, limit),
+    mode: 'smart',
+    count: Math.min(merged.length, limit),
+  });
+}
+
+// Helper: get visual search results without Response wrapper
+async function getVisualResults(query: string, limit: number, env: Env): Promise<(PhotoRecord & { score?: number })[] | null> {
+  if (!env.VECTORIZE_CLIP || !env.CLIP_EMBEDDING_URL) return null;
+
+  try {
+    const embedding = await generateClipTextEmbedding(query, env);
+    if (!embedding || embedding.length !== 512) return null;
+
+    const vectorResults = await env.VECTORIZE_CLIP.query(embedding, {
+      topK: limit,
+      returnMetadata: true,
+      returnValues: false,
+    });
+
+    if (!vectorResults.matches?.length) return null;
+
+    const metadataFilenames = vectorResults.matches.map((m) => m.id);
+    const placeholders = metadataFilenames.map(() => '?').join(',');
+    const { results = [] } = await env.DB.prepare(
+      `SELECT ${SELECT_FIELDS} FROM manifest WHERE metadata_filename IN (${placeholders})`
+    ).bind(...metadataFilenames).all();
+
+    const recordMap = new Map<string, Record<string, unknown>>();
+    for (const row of results) recordMap.set(String(row.metadata_filename), row);
+
+    const items = await Promise.all(
+      vectorResults.matches.map(async (match) => {
+        const row = recordMap.get(match.id);
+        if (!row) return null;
+        const photo = await buildPhotoRecord(row, env);
+        return { ...photo, score: match.score };
+      })
+    );
+
+    return items.filter((i): i is PhotoRecord & { score: number } => i !== null);
+  } catch (e) {
+    console.error('Smart search visual error:', e);
+    return null;
+  }
+}
+
+// Helper: get semantic search results without Response wrapper
+async function getSemanticResults(query: string, limit: number, env: Env): Promise<(PhotoRecord & { score?: number })[] | null> {
+  if (!env.VECTORIZE || !env.AI) return null;
+
+  try {
+    const embeddingResponse = await env.AI.run('@cf/baai/bge-m3', { text: [query] });
+    const embedding = extractEmbedding(embeddingResponse);
+    if (!embedding) return null;
+
+    const vectorResults = await env.VECTORIZE.query(embedding, {
+      topK: limit,
+      returnMetadata: true,
+      returnValues: false,
+    });
+
+    if (!vectorResults.matches?.length) return null;
+
+    const metadataFilenames = vectorResults.matches.map((m) => m.id);
+    const placeholders = metadataFilenames.map(() => '?').join(',');
+    const { results = [] } = await env.DB.prepare(
+      `SELECT ${SELECT_FIELDS} FROM manifest WHERE metadata_filename IN (${placeholders})`
+    ).bind(...metadataFilenames).all();
+
+    const recordMap = new Map<string, Record<string, unknown>>();
+    for (const row of results) recordMap.set(String(row.metadata_filename), row);
+
+    const items = await Promise.all(
+      vectorResults.matches.map(async (match) => {
+        const row = recordMap.get(match.id);
+        if (!row) return null;
+        const photo = await buildPhotoRecord(row, env);
+        return { ...photo, score: match.score };
+      })
+    );
+
+    return items.filter((i): i is PhotoRecord & { score: number } => i !== null);
+  } catch (e) {
+    console.error('Smart search semantic error:', e);
+    return null;
+  }
 }
 
 async function handleSemanticSearch(query: string, limit: number, env: Env): Promise<Response> {
@@ -523,13 +657,13 @@ async function handleVisualSearch(query: string, limit: number, env: Env, precom
 async function generateClipTextEmbedding(text: string, env: Env): Promise<number[] | null> {
   // CLIP text embedding - supports multiple providers:
   //
-  // Option 1: Replicate (recommended, ~$0.0002/request)
-  //   CLIP_EMBEDDING_URL = https://api.replicate.com/v1/models/andreasjansson/clip-features/predictions
-  //   CLIP_EMBEDDING_TOKEN = your Replicate API token
+  // Option 1: HuggingFace Inference API (512-dim ViT-B/32, multilingual)
+  //   CLIP_EMBEDDING_URL = https://router.huggingface.co/hf-inference/models/sentence-transformers/clip-ViT-B-32-multilingual-v1
+  //   CLIP_EMBEDDING_TOKEN = your HuggingFace API token
   //
-  // Option 2: Custom endpoint returning 512-dim CLIP embeddings
-  //   CLIP_EMBEDDING_URL = your endpoint
-  //   CLIP_EMBEDDING_TOKEN = your token
+  // Option 2: DeepInfra (OpenAI-compatible format)
+  //   CLIP_EMBEDDING_URL = https://api.deepinfra.com/v1/openai/embeddings
+  //   CLIP_EMBEDDING_TOKEN = your DeepInfra API token
 
   const CLIP_URL = env.CLIP_EMBEDDING_URL;
 
@@ -542,26 +676,25 @@ async function generateClipTextEmbedding(text: string, env: Env): Promise<number
     'Content-Type': 'application/json',
   };
 
-  if (env.CLIP_EMBEDDING_TOKEN) {
-    headers['Authorization'] = `Bearer ${env.CLIP_EMBEDDING_TOKEN}`;
-    // Replicate also accepts Token prefix
-    if (CLIP_URL.includes('replicate.com')) {
-      headers['Authorization'] = `Token ${env.CLIP_EMBEDDING_TOKEN}`;
-    }
+  // Use CLIP_EMBEDDING_TOKEN or fall back to HF_API_TOKEN
+  const token = env.CLIP_EMBEDDING_TOKEN || env.HF_API_TOKEN;
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
   }
 
   try {
-    // Determine request format based on URL
     let body: string;
-    if (CLIP_URL.includes('replicate.com')) {
-      // Replicate API format - requires model version
-      // andreasjansson/clip-features version
+    const isDeepInfra = CLIP_URL.includes('deepinfra.com');
+
+    if (isDeepInfra) {
+      // OpenAI-compatible format for DeepInfra
       body = JSON.stringify({
-        version: '75b33f253f7714a281ad3e9b28f63e3232d583716ef6718f2e46641077ea040a',
-        input: { inputs: text }
+        input: text,
+        model: 'sentence-transformers/clip-ViT-B-32-multilingual-v1',
+        encoding_format: 'float'
       });
     } else {
-      // Generic/HuggingFace format
+      // HuggingFace Inference API format
       body = JSON.stringify({ inputs: text });
     }
 
@@ -572,67 +705,33 @@ async function generateClipTextEmbedding(text: string, env: Env): Promise<number
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('CLIP embedding service error:', response.status, errorText);
+      console.error('CLIP embedding service error:', response.status);
       return null;
     }
 
-    let result = await response.json();
+    const result = await response.json();
 
-    // Replicate returns async prediction - need to poll for result
-    if (CLIP_URL.includes('replicate.com') && result && typeof result === 'object') {
-      const prediction = result as { id?: string; status?: string; output?: unknown; urls?: { get?: string } };
-
-      // Poll for completion (max 30 seconds)
-      const maxAttempts = 30;
-      let attempts = 0;
-      while (prediction.status !== 'succeeded' && prediction.status !== 'failed' && attempts < maxAttempts) {
-        if (!prediction.urls?.get) break;
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        const pollResponse = await fetch(prediction.urls.get, { headers });
-        if (!pollResponse.ok) break;
-        const pollResult = await pollResponse.json() as typeof prediction;
-        prediction.status = pollResult.status;
-        prediction.output = pollResult.output;
-        attempts++;
-      }
-
-      if (prediction.status === 'failed') {
-        console.error('Replicate prediction failed');
-        return null;
-      }
-
-      // Replicate output format: [{ input: "...", embedding: [...] }]
-      if (Array.isArray(prediction.output) && prediction.output.length > 0) {
-        const first = prediction.output[0] as { embedding?: number[] };
-        if (first.embedding && Array.isArray(first.embedding)) {
-          return first.embedding.length === 512 ? first.embedding : null;
-        }
-      }
-      return null;
+    // HuggingFace returns flat array: [0.1, 0.2, ...]
+    if (Array.isArray(result) && result.length > 0 && typeof result[0] === 'number') {
+      return result.length === 512 ? result : null;
     }
 
-    // Parse non-Replicate response formats
-    let embedding: number[] | null = null;
+    // HuggingFace may return nested array: [[0.1, 0.2, ...]]
+    if (Array.isArray(result) && result.length > 0 && Array.isArray(result[0])) {
+      const embedding = result[0];
+      return embedding.length === 512 ? embedding : null;
+    }
 
-    if (Array.isArray(result)) {
-      if (Array.isArray(result[0])) {
-        // Nested array: [[0.1, 0.2, ...]]
-        embedding = result[0];
-      } else if (typeof result[0] === 'number') {
-        // Flat array: [0.1, 0.2, ...]
-        embedding = result;
+    // OpenAI-compatible format: { data: [{ embedding: [...] }] }
+    const typedResult = result as { data?: Array<{ embedding?: number[] }>; embedding?: number[] };
+    if (typedResult.data && Array.isArray(typedResult.data) && typedResult.data.length > 0) {
+      const embedding = typedResult.data[0].embedding;
+      if (embedding && Array.isArray(embedding)) {
+        return embedding.length === 512 ? embedding : null;
       }
-    } else if (result && typeof result === 'object' && 'embedding' in result) {
-      // Custom format: { embedding: [...] }
-      embedding = (result as { embedding: number[] }).embedding;
     }
 
-    if (embedding && Array.isArray(embedding) && embedding.length === 512) {
-      return embedding;
-    }
-
-    console.error('Unexpected CLIP response format:', JSON.stringify(result).slice(0, 200));
+    console.error('Unexpected CLIP response format');
     return null;
   } catch (error) {
     console.error('CLIP embedding request failed:', error);
