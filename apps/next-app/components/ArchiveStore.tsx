@@ -3,10 +3,10 @@
 import { useState, useEffect, useCallback, useRef, useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Search, X, ShoppingBag } from 'lucide-react';
-import Image from 'next/image';
 import type { PhotoRecord, SearchResponse, SearchMode } from '@/lib/types';
 import { events } from '@/lib/analytics';
 import { useCart } from '@/lib/cart-context';
+import { PhotoTile } from './PhotoTile';
 
 const API_BASE = '';
 
@@ -429,13 +429,17 @@ function LoadingSpinner() {
 
 function SkeletonGrid() {
   // Show skeleton placeholders matching the grid layout
-  const skeletonCount = 12;
+  // Staggered animation for organic Apple-like feel
+  const skeletonCount = 24;
   return (
     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-0.5 px-0.5">
       {Array.from({ length: skeletonCount }).map((_, i) => (
         <div
           key={i}
-          className="relative aspect-square bg-neutral-200 animate-pulse"
+          className="relative aspect-square skeleton"
+          style={{
+            animationDelay: `${(i % 8) * 0.1}s`,
+          }}
         />
       ))}
     </div>
@@ -816,31 +820,22 @@ function ArchiveStoreInner() {
       {/* Loading skeleton */}
       {initialLoading && <SkeletonGrid />}
 
-      {/* Simple Grid - Using Next.js Image for automatic optimization */}
+      {/* Photo Grid - with smooth fade-in loading */}
       {!initialLoading && displayPhotos.length > 0 && (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-0.5 px-0.5">
           {displayPhotos.map((photo, index) => (
-            <button
-              key={photo.metadataFilename}
-              onClick={() => handlePhotoClick(photo)}
-              className="relative aspect-square bg-neutral-100 overflow-hidden"
-            >
-              {photo.imageUrl && (
-                <Image
-                  src={getThumbnailUrl(photo.imageUrl, 400)}
-                  alt={photo.name || ''}
-                  fill
-                  sizes="(max-width: 640px) 33vw, (max-width: 768px) 25vw, (max-width: 1024px) 20vw, 14vw"
-                  className="object-cover"
-                  priority={index < 6}
-                  loading={index < 6 ? undefined : 'lazy'}
-                  onError={() => handleImageError(photo.metadataFilename)}
-                  unoptimized
-                />
-              )}
-            </button>
+            photo.imageUrl && (
+              <PhotoTile
+                key={photo.metadataFilename}
+                src={getThumbnailUrl(photo.imageUrl, 400)}
+                alt={photo.name || ''}
+                priority={index < 6}
+                onClick={() => handlePhotoClick(photo)}
+                onError={() => handleImageError(photo.metadataFilename)}
+              />
+            )
           ))}
-          </div>
+        </div>
       )}
 
       {/* Shuffle Button - Apple-style understated call to action */}
