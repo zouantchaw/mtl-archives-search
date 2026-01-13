@@ -413,6 +413,7 @@ async function handleSmartSearch(query: string, limit: number, env: Env): Promis
 }
 
 // Helper: get visual search results without Response wrapper
+// Note: Vectorize topK is capped at 50
 async function getVisualResults(query: string, limit: number, env: Env): Promise<(PhotoRecord & { score?: number })[] | null> {
   if (!env.VECTORIZE_CLIP || !env.CLIP_EMBEDDING_URL) return null;
 
@@ -421,7 +422,7 @@ async function getVisualResults(query: string, limit: number, env: Env): Promise
     if (!embedding || embedding.length !== 512) return null;
 
     const vectorResults = await env.VECTORIZE_CLIP.query(embedding, {
-      topK: limit,
+      topK: Math.min(limit, 50),
       returnMetadata: true,
       returnValues: false,
     });
@@ -454,6 +455,7 @@ async function getVisualResults(query: string, limit: number, env: Env): Promise
 }
 
 // Helper: get semantic search results without Response wrapper
+// Note: Vectorize topK is capped at 50
 async function getSemanticResults(query: string, limit: number, env: Env): Promise<(PhotoRecord & { score?: number })[] | null> {
   if (!env.VECTORIZE || !env.AI) return null;
 
@@ -463,7 +465,7 @@ async function getSemanticResults(query: string, limit: number, env: Env): Promi
     if (!embedding) return null;
 
     const vectorResults = await env.VECTORIZE.query(embedding, {
-      topK: limit,
+      topK: Math.min(limit, 50),
       returnMetadata: true,
       returnValues: false,
     });
@@ -516,9 +518,9 @@ async function handleSemanticSearch(query: string, limit: number, env: Env): Pro
       return jsonResponse({ error: 'Failed to generate query embedding' }, 500);
     }
 
-    // Query Vectorize for similar vectors
+    // Query Vectorize for similar vectors (topK capped at 50)
     const vectorResults = await env.VECTORIZE.query(embedding, {
-      topK: limit,
+      topK: Math.min(limit, 50),
       returnMetadata: true,
       returnValues: false,
     });
@@ -610,9 +612,9 @@ async function handleVisualSearch(query: string, limit: number, env: Env, precom
       return jsonResponse({ error: `Invalid embedding dimension: expected 512, got ${embedding.length}` }, 400);
     }
 
-    // Query CLIP Vectorize for similar image vectors
+    // Query CLIP Vectorize for similar image vectors (topK capped at 50)
     const vectorResults = await env.VECTORIZE_CLIP.query(embedding, {
-      topK: limit,
+      topK: Math.min(limit, 50),
       returnMetadata: true,
       returnValues: false,
     });
