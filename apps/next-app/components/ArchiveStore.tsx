@@ -81,14 +81,14 @@ type Lang = 'fr' | 'en';
 
 const translations = {
   fr: {
-    featured: 'À la une',
+    featured: 'À découvrir',
     results: 'résultats',
     result: 'résultat',
     clear: 'Effacer',
     noResults: 'Aucune photo trouvée pour',
     clearSearch: 'Effacer la recherche',
-    loadMore: 'Voir plus',
-    photoCount: '14 822 photos',
+    shuffle: 'Mélanger',
+    photos: 'photos',
     searchPlaceholder: 'Rechercher...',
     // About drawer
     about: 'À propos',
@@ -110,14 +110,14 @@ const translations = {
     facebook: 'Facebook',
   },
   en: {
-    featured: 'Featured',
+    featured: 'Discover',
     results: 'results',
     result: 'result',
     clear: 'Clear',
     noResults: 'No photos found for',
     clearSearch: 'Clear search',
-    loadMore: 'Load more',
-    photoCount: '14,822 photos',
+    shuffle: 'Shuffle',
+    photos: 'photos',
     searchPlaceholder: 'Search...',
     // About drawer
     about: 'About',
@@ -459,8 +459,6 @@ function ArchiveStoreInner() {
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(!!initialQuery);
   const [photos, setPhotos] = useState<PhotoRecord[]>([]);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
 
@@ -494,51 +492,29 @@ function ArchiveStoreInner() {
   // Show static placeholder when focused but empty
   const showFocusedPlaceholder = isInputFocused && !searchQuery;
 
-  // Load initial photos
-  useEffect(() => {
-    const pageSize = isMobile ? MOBILE_PAGE_SIZE : DESKTOP_PAGE_SIZE;
-    fetch(`${API_BASE}/api/photos?limit=${pageSize}`)
-      .then(res => res.json())
-      .then(data => {
-        setPhotos(data.items || []);
-        setNextCursor(data.nextCursor || null);
-      })
-      .catch(err => console.error('Failed to fetch:', err))
-      .finally(() => setInitialLoading(false));
-  }, [isMobile]);
+  // Total photo count for display
+  const [totalPhotos, setTotalPhotos] = useState<number | null>(null);
 
-  // Load more - with bounded limits for both mobile and desktop
-  const loadMore = useCallback(async () => {
-    if (!nextCursor || isLoadingMore) return;
-
-    const maxImages = isMobile ? MOBILE_MAX_IMAGES : DESKTOP_MAX_IMAGES;
-    if (photos.length >= maxImages) return;
-
-    events.loadMoreClicked(photos.length);
-    setIsLoadingMore(true);
+  // Load photos with shuffle for fresh content each visit
+  const loadShuffled = useCallback(async () => {
+    setInitialLoading(true);
     try {
       const pageSize = isMobile ? MOBILE_PAGE_SIZE : DESKTOP_PAGE_SIZE;
-      const res = await fetch(`${API_BASE}/api/photos?limit=${pageSize}&cursor=${encodeURIComponent(nextCursor)}`);
+      const res = await fetch(`${API_BASE}/api/photos?limit=${pageSize}&shuffle=true`);
       const data = await res.json();
-      const newItems: PhotoRecord[] = data.items || [];
-
-      setPhotos(prev => {
-        const existing = new Set(prev.map(p => p.metadataFilename));
-        const unique = newItems.filter(p => !existing.has(p.metadataFilename));
-        const combined = [...prev, ...unique];
-        // Enforce max limit
-        if (combined.length > maxImages) {
-          return combined.slice(0, maxImages);
-        }
-        return combined;
-      });
-      setNextCursor(data.nextCursor || null);
+      setPhotos(data.items || []);
+      setTotalPhotos(data.total || null);
     } catch (err) {
-      console.error('Failed to load more:', err);
+      console.error('Failed to fetch:', err);
     } finally {
-      setIsLoadingMore(false);
+      setInitialLoading(false);
     }
-  }, [nextCursor, isLoadingMore, isMobile, photos.length]);
+  }, [isMobile]);
+
+  useEffect(() => {
+    loadShuffled();
+  }, [loadShuffled]);
+
 
   // Search (semantic only on mobile - no CLIP)
   useEffect(() => {
@@ -624,8 +600,6 @@ function ArchiveStoreInner() {
     if (searchQuery) updateUrl(searchQuery, newMode, lang);
   }, [searchQuery, lang, updateUrl]);
 
-  const maxImages = isMobile ? MOBILE_MAX_IMAGES : DESKTOP_MAX_IMAGES;
-  const canLoadMore = nextCursor && !hasSearched && photos.length < maxImages;
 
   return (
     <div className="min-h-screen bg-[#fafafa]">
@@ -789,7 +763,30 @@ function ArchiveStoreInner() {
             <button onClick={clearSearch} className="text-xs text-neutral-400 uppercase">{t.clear}</button>
           </>
         ) : (
-          <span className="text-xs text-neutral-400 uppercase">{t.featured}</span>
+          <>
+            <span className="text-xs text-neutral-400 uppercase">
+              {t.featured}
+              {totalPhotos && (
+                <span className="ml-1.5 text-neutral-300" translate="no">
+                  · {totalPhotos.toLocaleString()} {t.photos}
+                </span>
+              )}
+            </span>
+            <button
+              onClick={loadShuffled}
+              disabled={initialLoading}
+              className="flex items-center gap-1 text-xs text-neutral-400 hover:text-neutral-600 uppercase transition-colors disabled:opacity-50"
+            >
+              <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="16 3 21 3 21 8" />
+                <line x1="4" y1="20" x2="21" y2="3" />
+                <polyline points="21 16 21 21 16 21" />
+                <line x1="15" y1="15" x2="21" y2="21" />
+                <line x1="4" y1="4" x2="9" y2="9" />
+              </svg>
+              {t.shuffle}
+            </button>
+          </>
         )}
       </div>
 
@@ -830,19 +827,21 @@ function ArchiveStoreInner() {
           </div>
       )}
 
-      {/* Load More Button */}
-      {canLoadMore && (
+      {/* Shuffle Button - Apple-style understated call to action */}
+      {!hasSearched && !initialLoading && (
         <div className="flex justify-center py-8">
           <button
-            onClick={loadMore}
-            disabled={isLoadingMore}
-            className="px-6 py-2.5 bg-neutral-900 text-white text-xs uppercase tracking-wide disabled:opacity-50"
+            onClick={loadShuffled}
+            className="flex items-center gap-2 px-5 py-2.5 text-neutral-500 hover:text-neutral-900 text-xs uppercase tracking-wide transition-colors"
           >
-            {isLoadingMore ? (
-              <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            ) : (
-              t.loadMore
-            )}
+            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="16 3 21 3 21 8" />
+              <line x1="4" y1="20" x2="21" y2="3" />
+              <polyline points="21 16 21 21 16 21" />
+              <line x1="15" y1="15" x2="21" y2="21" />
+              <line x1="4" y1="4" x2="9" y2="9" />
+            </svg>
+            {t.shuffle}
           </button>
         </div>
       )}

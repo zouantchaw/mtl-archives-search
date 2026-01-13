@@ -172,15 +172,33 @@ async function handlePhotos(url: URL, env: Env): Promise<Response> {
   const limitParam = Number(url.searchParams.get('limit') ?? '50');
   const limit = clamp(Number.isFinite(limitParam) ? limitParam : 50, 1, 100);
   const cursor = url.searchParams.get('cursor');
+  const shuffle = url.searchParams.get('shuffle') === 'true';
 
-  // Filter out records without valid images and prioritize quality photos
-  // - Exclude records where resolved_image_filename is empty
-  // - Exclude aerial-only records (no name/description)
-  // - Order by: portal_match first (verified), then by name for variety (not filename)
-  let sql = `SELECT ${SELECT_FIELDS} FROM manifest
-    WHERE resolved_image_filename IS NOT NULL
+  // Base query: filter out records without valid images
+  const baseWhere = `resolved_image_filename IS NOT NULL
     AND resolved_image_filename != ''
     AND (name IS NOT NULL OR portal_title IS NOT NULL)`;
+
+  // Shuffle mode: return random photos for discovery
+  if (shuffle) {
+    const sql = `SELECT ${SELECT_FIELDS} FROM manifest
+      WHERE ${baseWhere}
+      ORDER BY RANDOM()
+      LIMIT ?`;
+    const { results = [] } = await env.DB.prepare(sql).bind(limit).all();
+    const items = await Promise.all(results.map((row) => buildPhotoRecord(row, env)));
+
+    // Get total count for the first shuffle request
+    const countResult = await env.DB.prepare(
+      `SELECT COUNT(*) as total FROM manifest WHERE ${baseWhere}`
+    ).first<{ total: number }>();
+    const total = countResult?.total ?? 0;
+
+    return jsonResponse({ items, total, shuffle: true });
+  }
+
+  // Regular paginated mode
+  let sql = `SELECT ${SELECT_FIELDS} FROM manifest WHERE ${baseWhere}`;
   const params: unknown[] = [];
 
   if (cursor) {
