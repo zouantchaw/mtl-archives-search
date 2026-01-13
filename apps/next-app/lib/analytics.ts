@@ -89,6 +89,12 @@ export const events = {
   checkoutClicked: (total: number, itemCount: number) =>
     track('cart: checkout clicked', { total, itemCount }),
 
+  checkoutCompleted: (orderId: string, total: number, itemCount: number) =>
+    track('order: completed', { orderId, total, itemCount }),
+
+  checkoutFailed: (error: string) =>
+    track('order: failed', { error }),
+
   // External links
   archiveLinkClicked: (photoId: string, url: string) =>
     track('link: archives clicked', { photoId, url }),

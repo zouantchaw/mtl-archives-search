@@ -198,15 +198,18 @@ function CartDrawerInner() {
       const data = await response.json();
 
       if (data.success) {
+        events.checkoutCompleted(data.orderId, total, itemCount);
         setOrderId(data.orderId);
         setCheckoutState('success');
         clearCart();
       } else {
+        events.checkoutFailed(data.error || 'Unknown error');
         setErrorMessage(data.error || t.errorMessage);
         setCheckoutState('error');
       }
     } catch (error) {
       console.error('Checkout error:', error);
+      events.checkoutFailed(error instanceof Error ? error.message : 'Network error');
       setErrorMessage(t.errorMessage);
       setCheckoutState('error');
     }
