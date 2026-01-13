@@ -29,17 +29,19 @@ const translations = {
     emailPlaceholder: 'jean@exemple.com',
     phone: 'Telephone (optionnel)',
     phonePlaceholder: '514-555-1234',
-    address: 'Adresse (optionnel)',
-    addressPlaceholder: '123 Rue Exemple, Montreal',
+    address: 'Adresse de livraison',
+    addressPlaceholder: '123 Rue Exemple, Montreal, QC H2X 1Y2',
     notes: 'Notes (optionnel)',
     notesPlaceholder: 'Instructions speciales, questions...',
     submitOrder: 'Envoyer la commande',
     processing: 'Traitement en cours...',
     required: 'Requis',
     // Success
-    orderSuccess: 'Commande envoyee!',
-    orderSuccessMessage: 'Nous avons recu votre commande et vous avons envoye un courriel de confirmation. Nous vous contacterons sous peu!',
+    orderSuccess: 'Commande recue!',
+    orderSuccessMessage: 'Merci! Un courriel de confirmation a ete envoye a votre adresse.',
+    orderSuccessDetails: 'Notre equipe examinera votre commande et vous contactera dans les 24-48 heures pour finaliser le paiement et la livraison.',
     orderNumber: 'Numero de commande',
+    checkEmail: 'Verifiez votre boite de reception',
     continueShopping: 'Continuer a explorer',
     // Errors
     errorTitle: 'Erreur',
@@ -65,17 +67,19 @@ const translations = {
     emailPlaceholder: 'john@example.com',
     phone: 'Phone (optional)',
     phonePlaceholder: '514-555-1234',
-    address: 'Address (optional)',
-    addressPlaceholder: '123 Example St, Montreal',
+    address: 'Delivery Address',
+    addressPlaceholder: '123 Example St, Montreal, QC H2X 1Y2',
     notes: 'Notes (optional)',
     notesPlaceholder: 'Special instructions, questions...',
     submitOrder: 'Submit Order',
     processing: 'Processing...',
     required: 'Required',
     // Success
-    orderSuccess: 'Order Submitted!',
-    orderSuccessMessage: 'We have received your order and sent you a confirmation email. We will contact you shortly!',
+    orderSuccess: 'Order Received!',
+    orderSuccessMessage: 'Thank you! A confirmation email has been sent to your address.',
+    orderSuccessDetails: 'Our team will review your order and contact you within 24-48 hours to finalize payment and delivery.',
     orderNumber: 'Order Number',
+    checkEmail: 'Check your inbox',
     continueShopping: 'Continue Exploring',
     // Errors
     errorTitle: 'Error',
@@ -162,7 +166,7 @@ function CartDrawerInner() {
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!name.trim() || !email.trim()) return;
+    if (!name.trim() || !email.trim() || !address.trim()) return;
 
     setCheckoutState('submitting');
     setErrorMessage('');
@@ -175,7 +179,7 @@ function CartDrawerInner() {
           customerName: name.trim(),
           customerEmail: email.trim(),
           customerPhone: phone.trim() || undefined,
-          customerAddress: address.trim() || undefined,
+          customerAddress: address.trim(),
           customerNotes: notes.trim() || undefined,
           items: items.map(item => ({
             photoId: item.photoId,
@@ -255,24 +259,30 @@ function CartDrawerInner() {
           {/* Success State */}
           {checkoutState === 'success' && (
             <div className="flex flex-col items-center justify-center h-full px-6 text-center">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-6">
-                <Check className="h-8 w-8 text-green-600" />
+              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-6">
+                <Check className="h-10 w-10 text-green-600" />
               </div>
-              <h2 className="text-lg font-medium text-neutral-900 mb-2">
+              <h2 className="text-xl font-semibold text-neutral-900 mb-2">
                 {t.orderSuccess}
               </h2>
-              <p className="text-sm text-neutral-500 mb-6">
+              <p className="text-sm text-neutral-600 mb-2">
                 {t.orderSuccessMessage}
               </p>
-              <div className="bg-neutral-100 px-4 py-2 rounded-lg mb-8">
-                <p className="text-xs text-neutral-500 uppercase tracking-wide">
+              <p className="text-sm text-neutral-500 mb-6 max-w-xs">
+                {t.orderSuccessDetails}
+              </p>
+              <div className="bg-green-50 border border-green-200 px-6 py-4 rounded-xl mb-6 w-full max-w-xs">
+                <p className="text-xs text-green-700 uppercase tracking-wide mb-1">
                   {t.orderNumber}
                 </p>
-                <p className="text-sm font-mono font-medium">{orderId}</p>
+                <p className="text-lg font-mono font-semibold text-green-800">{orderId}</p>
               </div>
+              <p className="text-xs text-neutral-400 mb-6">
+                {t.checkEmail}
+              </p>
               <button
                 onClick={closeCart}
-                className="px-6 py-3 bg-neutral-900 text-white text-sm font-medium rounded-full hover:bg-neutral-800 transition-colors"
+                className="px-8 py-3 bg-neutral-900 text-white text-sm font-medium rounded-full hover:bg-neutral-800 transition-colors"
               >
                 {t.continueShopping}
               </button>
@@ -353,15 +363,16 @@ function CartDrawerInner() {
               {/* Address */}
               <div>
                 <label className="block text-xs font-medium text-neutral-500 uppercase tracking-wide mb-1.5">
-                  {t.address}
+                  {t.address} <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
+                <textarea
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   placeholder={t.addressPlaceholder}
+                  required
+                  rows={2}
                   disabled={checkoutState === 'submitting'}
-                  className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent disabled:opacity-50"
+                  className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent disabled:opacity-50 resize-none"
                 />
               </div>
 
@@ -394,7 +405,7 @@ function CartDrawerInner() {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={checkoutState === 'submitting' || !name.trim() || !email.trim()}
+                disabled={checkoutState === 'submitting' || !name.trim() || !email.trim() || !address.trim()}
                 className="w-full py-4 bg-neutral-900 text-white text-sm font-medium uppercase tracking-wide rounded-lg hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {checkoutState === 'submitting' ? (

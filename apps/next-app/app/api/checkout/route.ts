@@ -22,7 +22,7 @@ interface CheckoutRequest {
   customerName: string;
   customerEmail: string;
   customerPhone?: string;
-  customerAddress?: string;
+  customerAddress: string;
   customerNotes?: string;
   items: OrderItem[];
   subtotal: number;
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // Validate required fields
-    if (!customerName || !customerEmail || !items || items.length === 0) {
+    if (!customerName || !customerEmail || !customerAddress || !items || items.length === 0) {
       return NextResponse.json(
         { success: false, error: 'Missing required fields' },
         { status: 400 }

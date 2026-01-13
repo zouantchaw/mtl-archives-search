@@ -6,6 +6,7 @@ import {
   Hr,
   Html,
   Img,
+  Link,
   Preview,
   Section,
   Text,
@@ -25,7 +26,7 @@ interface OrderConfirmationEmailProps {
   customerName: string;
   customerEmail: string;
   customerPhone?: string;
-  customerAddress?: string;
+  customerAddress: string;
   items: OrderItem[];
   subtotal: number;
   orderId: string;
@@ -35,56 +36,78 @@ interface OrderConfirmationEmailProps {
 
 const translations = {
   fr: {
-    preview: 'Confirmation de votre commande - MTL Archives',
-    heading: 'Confirmation de commande',
+    preview: 'Confirmation de votre commande #{orderId} - MTL Archives',
+    heading: 'Merci pour votre commande!',
     greeting: 'Bonjour',
-    thanks: 'Merci pour votre commande! Nous avons bien recu votre demande et nous vous contacterons sous peu pour finaliser le paiement et la livraison.',
-    orderDetails: 'Details de la commande',
-    orderId: 'Numero de commande',
+    intro: 'Nous avons bien recu votre demande d\'impression. Voici les details de votre commande.',
+    whatHappensNext: 'Que se passe-t-il ensuite?',
+    step1Title: 'Examen de la commande',
+    step1Desc: 'Notre equipe verifiera votre commande et preparera un devis final.',
+    step2Title: 'Prise de contact',
+    step2Desc: 'Nous vous contacterons par courriel ou telephone dans les 24-48 heures pour confirmer les details et le mode de paiement.',
+    step3Title: 'Paiement',
+    step3Desc: 'Nous acceptons les virements Interac et les paiements par carte de credit.',
+    step4Title: 'Production et livraison',
+    step4Desc: 'Vos impressions seront preparees avec soin et livrees a l\'adresse indiquee, ou disponibles pour cueillette.',
+    orderSummary: 'Resume de la commande',
+    orderId: 'Commande',
     date: 'Date',
-    items: 'Articles commandes',
+    yourPrints: 'Vos impressions',
     quantity: 'Qte',
-    summary: 'Resume',
-    subtotal: 'Sous-total',
-    contact: 'Vos coordonnees',
+    size: 'Format',
+    frame: 'Encadrement',
+    estimatedTotal: 'Total estime',
+    taxesNote: '* Le total final sera confirme avec les taxes et frais de livraison applicables.',
+    deliveryAddress: 'Adresse de livraison',
+    contactInfo: 'Vos coordonnees',
     name: 'Nom',
     email: 'Courriel',
     phone: 'Telephone',
-    address: 'Adresse',
-    nextSteps: 'Prochaines etapes',
-    step1: 'Notre equipe examinera votre commande',
-    step2: 'Nous vous contacterons pour confirmer les details et le paiement',
-    step3: 'Vos impressions seront preparees avec soin',
-    step4: 'Livraison ou cueillette selon votre preference',
-    questions: 'Des questions? Repondez a ce courriel ou contactez-nous a',
-    closing: 'Merci de votre confiance!',
+    aboutPrints: 'A propos de vos impressions',
+    aboutPrintsDesc: 'Chaque impression est realisee sur papier archive de haute qualite, garantissant une reproduction fidele des photos historiques de Montreal. Nos encadrements sont fabriques localement avec des materiaux de qualite musee.',
+    questions: 'Des questions?',
+    questionsDesc: 'Repondez simplement a ce courriel ou contactez-nous a',
+    viewArchive: 'Explorez plus de photos',
+    closing: 'Merci de contribuer a la preservation de l\'histoire de Montreal!',
     team: 'L\'equipe MTL Archives',
+    footerText: 'Vous recevez ce courriel car vous avez passe une commande sur mtlarchives.com',
   },
   en: {
-    preview: 'Your order confirmation - MTL Archives',
-    heading: 'Order Confirmation',
+    preview: 'Order Confirmation #{orderId} - MTL Archives',
+    heading: 'Thank you for your order!',
     greeting: 'Hello',
-    thanks: 'Thank you for your order! We have received your request and will contact you shortly to finalize payment and delivery.',
-    orderDetails: 'Order Details',
-    orderId: 'Order Number',
+    intro: 'We have received your print order request. Here are the details of your order.',
+    whatHappensNext: 'What happens next?',
+    step1Title: 'Order Review',
+    step1Desc: 'Our team will review your order and prepare a final quote.',
+    step2Title: 'We\'ll Be in Touch',
+    step2Desc: 'We will contact you by email or phone within 24-48 hours to confirm details and payment method.',
+    step3Title: 'Payment',
+    step3Desc: 'We accept Interac e-Transfers and credit card payments.',
+    step4Title: 'Production & Delivery',
+    step4Desc: 'Your prints will be carefully prepared and delivered to the address provided, or available for pickup.',
+    orderSummary: 'Order Summary',
+    orderId: 'Order',
     date: 'Date',
-    items: 'Items Ordered',
+    yourPrints: 'Your Prints',
     quantity: 'Qty',
-    summary: 'Summary',
-    subtotal: 'Subtotal',
-    contact: 'Your Contact Information',
+    size: 'Size',
+    frame: 'Frame',
+    estimatedTotal: 'Estimated Total',
+    taxesNote: '* Final total will be confirmed with applicable taxes and shipping.',
+    deliveryAddress: 'Delivery Address',
+    contactInfo: 'Your Contact Information',
     name: 'Name',
     email: 'Email',
     phone: 'Phone',
-    address: 'Address',
-    nextSteps: 'Next Steps',
-    step1: 'Our team will review your order',
-    step2: 'We will contact you to confirm details and payment',
-    step3: 'Your prints will be carefully prepared',
-    step4: 'Delivery or pickup based on your preference',
-    questions: 'Questions? Reply to this email or contact us at',
-    closing: 'Thank you for your trust!',
+    aboutPrints: 'About Your Prints',
+    aboutPrintsDesc: 'Each print is produced on high-quality archival paper, ensuring faithful reproduction of Montreal\'s historic photos. Our frames are locally crafted with museum-quality materials.',
+    questions: 'Questions?',
+    questionsDesc: 'Simply reply to this email or contact us at',
+    viewArchive: 'Explore more photos',
+    closing: 'Thank you for helping preserve Montreal\'s history!',
     team: 'The MTL Archives Team',
+    footerText: 'You are receiving this email because you placed an order on mtlarchives.com',
   },
 };
 
@@ -100,105 +123,204 @@ export function OrderConfirmationEmail({
   lang = 'fr',
 }: OrderConfirmationEmailProps) {
   const t = translations[lang];
-  const formattedSubtotal = new Intl.NumberFormat('en-CA', {
+  const formattedSubtotal = new Intl.NumberFormat(lang === 'fr' ? 'fr-CA' : 'en-CA', {
     style: 'currency',
     currency: 'CAD',
   }).format(subtotal);
+  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
     <Html>
       <Head />
-      <Preview>{t.preview}</Preview>
+      <Preview>{t.preview.replace('{orderId}', orderId)}</Preview>
       <Body style={main}>
         <Container style={container}>
+          {/* Header with Logo */}
+          <Section style={headerSection}>
+            <Text style={logoText}>MTL ARCHIVES</Text>
+            <Text style={tagline}>
+              {lang === 'fr' ? 'Photos historiques de Montreal' : 'Historic Montreal Photography'}
+            </Text>
+          </Section>
+
           <Section style={content}>
-            {/* Header */}
+            {/* Main Heading */}
             <Heading style={heading}>{t.heading}</Heading>
 
             <Text style={paragraph}>
               {t.greeting} {customerName},
             </Text>
-            <Text style={paragraph}>{t.thanks}</Text>
+            <Text style={paragraph}>{t.intro}</Text>
 
-            {/* Order Details */}
-            <Section style={detailsContainer}>
-              <Heading as="h3" style={subheading}>
-                {t.orderDetails}
-              </Heading>
-              <Text style={detailRow}>
-                <strong>{t.orderId}:</strong> {orderId}
-              </Text>
-              <Text style={detailRow}>
-                <strong>{t.date}:</strong> {orderDate}
-              </Text>
+            {/* Order Reference Box */}
+            <Section style={orderRefBox}>
+              <table style={orderRefTable}>
+                <tbody>
+                  <tr>
+                    <td style={orderRefCell}>
+                      <Text style={orderRefLabel}>{t.orderId}</Text>
+                      <Text style={orderRefValue}>{orderId}</Text>
+                    </td>
+                    <td style={orderRefCell}>
+                      <Text style={orderRefLabel}>{t.date}</Text>
+                      <Text style={orderRefValueSmall}>{orderDate}</Text>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </Section>
 
-            {/* Items */}
-            <Section style={detailsContainer}>
-              <Heading as="h3" style={subheading}>
-                {t.items}
+            {/* What Happens Next */}
+            <Section style={stepsSection}>
+              <Heading as="h2" style={sectionHeading}>
+                {t.whatHappensNext}
               </Heading>
-              {items.map((item, index) => (
-                <div key={index} style={itemRow}>
-                  <Text style={detailRow}>
-                    <strong>{item.photoName}</strong>
-                  </Text>
-                  <Text style={itemDetails}>
-                    {item.size} · {item.frame} · {t.quantity}: {item.quantity}
-                  </Text>
-                  <Text style={itemPrice}>
-                    ${(item.price * item.quantity).toFixed(2)}
-                  </Text>
+
+              <div style={stepItem}>
+                <Text style={stepNumber}>1</Text>
+                <div style={stepContent}>
+                  <Text style={stepTitle}>{t.step1Title}</Text>
+                  <Text style={stepDesc}>{t.step1Desc}</Text>
                 </div>
-              ))}
-              <Hr style={hr} />
-              <Text style={totalRow}>
-                <strong>{t.subtotal}:</strong> {formattedSubtotal}
-              </Text>
-            </Section>
+              </div>
 
-            {/* Contact Info */}
-            <Section style={detailsContainer}>
-              <Heading as="h3" style={subheading}>
-                {t.contact}
-              </Heading>
-              <Text style={detailRow}>
-                <strong>{t.name}:</strong> {customerName}
-              </Text>
-              <Text style={detailRow}>
-                <strong>{t.email}:</strong> {customerEmail}
-              </Text>
-              {customerPhone && (
-                <Text style={detailRow}>
-                  <strong>{t.phone}:</strong> {customerPhone}
-                </Text>
-              )}
-              {customerAddress && (
-                <Text style={detailRow}>
-                  <strong>{t.address}:</strong> {customerAddress}
-                </Text>
-              )}
-            </Section>
+              <div style={stepItem}>
+                <Text style={stepNumber}>2</Text>
+                <div style={stepContent}>
+                  <Text style={stepTitle}>{t.step2Title}</Text>
+                  <Text style={stepDesc}>{t.step2Desc}</Text>
+                </div>
+              </div>
 
-            {/* Next Steps */}
-            <Section style={stepsContainer}>
-              <Heading as="h3" style={subheading}>
-                {t.nextSteps}
-              </Heading>
-              <Text style={stepItem}>1. {t.step1}</Text>
-              <Text style={stepItem}>2. {t.step2}</Text>
-              <Text style={stepItem}>3. {t.step3}</Text>
-              <Text style={stepItem}>4. {t.step4}</Text>
+              <div style={stepItem}>
+                <Text style={stepNumber}>3</Text>
+                <div style={stepContent}>
+                  <Text style={stepTitle}>{t.step3Title}</Text>
+                  <Text style={stepDesc}>{t.step3Desc}</Text>
+                </div>
+              </div>
+
+              <div style={stepItem}>
+                <Text style={stepNumber}>4</Text>
+                <div style={stepContent}>
+                  <Text style={stepTitle}>{t.step4Title}</Text>
+                  <Text style={stepDesc}>{t.step4Desc}</Text>
+                </div>
+              </div>
             </Section>
 
             <Hr style={hr} />
 
-            <Text style={paragraph}>
-              {t.questions} <strong>support@mtlarchives.com</strong>
-            </Text>
+            {/* Your Prints */}
+            <Section style={printsSection}>
+              <Heading as="h2" style={sectionHeading}>
+                {t.yourPrints}
+              </Heading>
 
-            <Text style={paragraph}>{t.closing}</Text>
+              {items.map((item, index) => (
+                <div key={index} style={printItem}>
+                  <div style={printDetails}>
+                    <Text style={printName}>{item.photoName}</Text>
+                    <Text style={printMeta}>
+                      {t.size}: {item.size} | {t.frame}: {item.frame}
+                    </Text>
+                    <Text style={printMeta}>
+                      {t.quantity}: {item.quantity}
+                    </Text>
+                  </div>
+                  <Text style={printPrice}>
+                    ${(item.price * item.quantity).toFixed(2)}
+                  </Text>
+                </div>
+              ))}
+
+              <Hr style={subtotalHr} />
+
+              <div style={totalRow}>
+                <Text style={totalLabel}>{t.estimatedTotal}</Text>
+                <Text style={totalValue}>{formattedSubtotal}</Text>
+              </div>
+
+              <Text style={taxesNote}>{t.taxesNote}</Text>
+            </Section>
+
+            <Hr style={hr} />
+
+            {/* Delivery Address */}
+            <Section style={addressSection}>
+              <Heading as="h3" style={smallHeading}>
+                {t.deliveryAddress}
+              </Heading>
+              <Text style={addressText}>{customerAddress}</Text>
+            </Section>
+
+            {/* Contact Info */}
+            <Section style={contactSection}>
+              <Heading as="h3" style={smallHeading}>
+                {t.contactInfo}
+              </Heading>
+              <Text style={contactText}>
+                <strong>{t.name}:</strong> {customerName}
+              </Text>
+              <Text style={contactText}>
+                <strong>{t.email}:</strong> {customerEmail}
+              </Text>
+              {customerPhone && (
+                <Text style={contactText}>
+                  <strong>{t.phone}:</strong> {customerPhone}
+                </Text>
+              )}
+            </Section>
+
+            <Hr style={hr} />
+
+            {/* About Your Prints */}
+            <Section style={aboutSection}>
+              <Heading as="h3" style={smallHeading}>
+                {t.aboutPrints}
+              </Heading>
+              <Text style={aboutText}>{t.aboutPrintsDesc}</Text>
+            </Section>
+
+            {/* Questions */}
+            <Section style={questionsSection}>
+              <Heading as="h3" style={smallHeading}>
+                {t.questions}
+              </Heading>
+              <Text style={questionsText}>
+                {t.questionsDesc}{' '}
+                <Link href="mailto:support@mtlarchives.com" style={emailLink}>
+                  support@mtlarchives.com
+                </Link>
+              </Text>
+            </Section>
+
+            {/* CTA Button */}
+            <Section style={ctaSection}>
+              <Link href="https://www.mtlarchives.com" style={ctaButton}>
+                {t.viewArchive}
+              </Link>
+            </Section>
+
+            <Hr style={hr} />
+
+            {/* Closing */}
+            <Text style={closingText}>{t.closing}</Text>
             <Text style={signature}>{t.team}</Text>
+          </Section>
+
+          {/* Footer */}
+          <Section style={footer}>
+            <Text style={footerText}>{t.footerText}</Text>
+            <Text style={footerLinks}>
+              <Link href="https://www.mtlarchives.com" style={footerLink}>
+                mtlarchives.com
+              </Link>
+              {' | '}
+              <Link href="https://www.instagram.com/mtlarchives" style={footerLink}>
+                @mtlarchives
+              </Link>
+            </Text>
           </Section>
         </Container>
       </Body>
@@ -206,8 +328,9 @@ export function OrderConfirmationEmail({
   );
 }
 
+// Styles
 const main = {
-  backgroundColor: '#f6f9fc',
+  backgroundColor: '#f4f4f5',
   fontFamily:
     '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Ubuntu,sans-serif',
 };
@@ -215,102 +338,335 @@ const main = {
 const container = {
   backgroundColor: '#ffffff',
   margin: '0 auto',
-  padding: '20px 0 48px',
-  marginBottom: '64px',
   maxWidth: '600px',
+  borderRadius: '8px',
+  overflow: 'hidden',
+  marginTop: '40px',
+  marginBottom: '40px',
+  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
 };
 
-const content = {
-  padding: '0 48px',
-};
-
-const heading = {
-  fontSize: '24px',
-  letterSpacing: '-0.5px',
-  lineHeight: '1.3',
-  fontWeight: '600',
-  color: '#171717',
-  padding: '17px 0 0',
+const headerSection = {
+  backgroundColor: '#171717',
+  padding: '32px 48px',
   textAlign: 'center' as const,
 };
 
-const subheading = {
-  fontSize: '16px',
-  letterSpacing: '-0.5px',
-  lineHeight: '1.3',
+const logoText = {
+  color: '#ffffff',
+  fontSize: '24px',
+  fontWeight: '700',
+  letterSpacing: '2px',
+  margin: '0 0 4px',
+};
+
+const tagline = {
+  color: '#a3a3a3',
+  fontSize: '12px',
+  letterSpacing: '1px',
+  margin: '0',
+  textTransform: 'uppercase' as const,
+};
+
+const content = {
+  padding: '40px 48px',
+};
+
+const heading = {
+  fontSize: '28px',
+  fontWeight: '600',
+  color: '#171717',
+  margin: '0 0 24px',
+  textAlign: 'center' as const,
+};
+
+const sectionHeading = {
+  fontSize: '18px',
+  fontWeight: '600',
+  color: '#171717',
+  margin: '0 0 16px',
+};
+
+const smallHeading = {
+  fontSize: '14px',
   fontWeight: '600',
   color: '#171717',
   margin: '0 0 12px',
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.5px',
 };
 
 const paragraph = {
-  margin: '0 0 15px',
   fontSize: '15px',
-  lineHeight: '1.5',
-  color: '#3c4149',
+  lineHeight: '1.6',
+  color: '#3f3f46',
+  margin: '0 0 16px',
 };
 
-const detailsContainer = {
-  padding: '20px',
+const orderRefBox = {
   backgroundColor: '#fafafa',
   borderRadius: '8px',
-  marginBottom: '20px',
-};
-
-const stepsContainer = {
   padding: '20px',
-  backgroundColor: '#f0f9ff',
-  borderRadius: '8px',
-  marginBottom: '20px',
-  border: '1px solid #bae6fd',
+  marginBottom: '32px',
+  border: '1px solid #e4e4e7',
 };
 
-const detailRow = {
-  margin: '0 0 8px',
-  fontSize: '14px',
-  color: '#3c4149',
+const orderRefTable = {
+  width: '100%',
+  borderCollapse: 'collapse' as const,
 };
 
-const itemRow = {
-  marginBottom: '16px',
-  paddingBottom: '12px',
-  borderBottom: '1px solid #e5e5e5',
+const orderRefCell = {
+  padding: '0 12px',
+  verticalAlign: 'top' as const,
 };
 
-const itemDetails = {
-  margin: '4px 0',
-  fontSize: '13px',
-  color: '#737373',
+const orderRefLabel = {
+  fontSize: '11px',
+  fontWeight: '600',
+  color: '#71717a',
+  textTransform: 'uppercase' as const,
+  letterSpacing: '0.5px',
+  margin: '0 0 4px',
 };
 
-const itemPrice = {
-  margin: '4px 0 0',
-  fontSize: '14px',
+const orderRefValue = {
+  fontSize: '18px',
   fontWeight: '600',
   color: '#171717',
+  fontFamily: 'monospace',
+  margin: '0',
 };
 
-const totalRow = {
-  margin: '0',
-  fontSize: '16px',
+const orderRefValueSmall = {
+  fontSize: '14px',
+  fontWeight: '500',
   color: '#171717',
-  textAlign: 'right' as const,
+  margin: '0',
+};
+
+const stepsSection = {
+  marginBottom: '32px',
 };
 
 const stepItem = {
-  margin: '0 0 8px',
+  display: 'flex',
+  marginBottom: '16px',
+};
+
+const stepNumber = {
+  width: '28px',
+  height: '28px',
+  backgroundColor: '#171717',
+  color: '#ffffff',
+  borderRadius: '50%',
+  fontSize: '13px',
+  fontWeight: '600',
+  textAlign: 'center' as const,
+  lineHeight: '28px',
+  margin: '0 12px 0 0',
+  flexShrink: 0,
+};
+
+const stepContent = {
+  flex: 1,
+};
+
+const stepTitle = {
   fontSize: '14px',
+  fontWeight: '600',
+  color: '#171717',
+  margin: '0 0 2px',
+};
+
+const stepDesc = {
+  fontSize: '13px',
+  color: '#71717a',
+  margin: '0',
+  lineHeight: '1.5',
+};
+
+const printsSection = {
+  marginBottom: '24px',
+};
+
+const printItem = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'flex-start',
+  padding: '16px 0',
+  borderBottom: '1px solid #e4e4e7',
+};
+
+const printDetails = {
+  flex: 1,
+};
+
+const printName = {
+  fontSize: '15px',
+  fontWeight: '600',
+  color: '#171717',
+  margin: '0 0 4px',
+};
+
+const printMeta = {
+  fontSize: '13px',
+  color: '#71717a',
+  margin: '0 0 2px',
+};
+
+const printPrice = {
+  fontSize: '15px',
+  fontWeight: '600',
+  color: '#171717',
+  margin: '0',
+  textAlign: 'right' as const,
+};
+
+const subtotalHr = {
+  borderColor: '#e4e4e7',
+  margin: '16px 0',
+};
+
+const totalRow = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginBottom: '8px',
+};
+
+const totalLabel = {
+  fontSize: '16px',
+  fontWeight: '600',
+  color: '#171717',
+  margin: '0',
+};
+
+const totalValue = {
+  fontSize: '20px',
+  fontWeight: '700',
+  color: '#171717',
+  margin: '0',
+};
+
+const taxesNote = {
+  fontSize: '12px',
+  color: '#71717a',
+  fontStyle: 'italic' as const,
+  margin: '0',
+};
+
+const addressSection = {
+  backgroundColor: '#fafafa',
+  borderRadius: '8px',
+  padding: '16px 20px',
+  marginBottom: '16px',
+};
+
+const addressText = {
+  fontSize: '14px',
+  color: '#3f3f46',
+  margin: '0',
+  whiteSpace: 'pre-wrap' as const,
+  lineHeight: '1.5',
+};
+
+const contactSection = {
+  marginBottom: '24px',
+};
+
+const contactText = {
+  fontSize: '14px',
+  color: '#3f3f46',
+  margin: '0 0 6px',
+};
+
+const aboutSection = {
+  backgroundColor: '#f0f9ff',
+  borderRadius: '8px',
+  padding: '20px',
+  marginBottom: '24px',
+  border: '1px solid #bae6fd',
+};
+
+const aboutText = {
+  fontSize: '13px',
   color: '#0369a1',
+  margin: '0',
+  lineHeight: '1.6',
+};
+
+const questionsSection = {
+  marginBottom: '24px',
+};
+
+const questionsText = {
+  fontSize: '14px',
+  color: '#3f3f46',
+  margin: '0',
+};
+
+const emailLink = {
+  color: '#171717',
+  fontWeight: '600',
+  textDecoration: 'underline',
+};
+
+const ctaSection = {
+  textAlign: 'center' as const,
+  marginBottom: '24px',
+};
+
+const ctaButton = {
+  backgroundColor: '#171717',
+  borderRadius: '6px',
+  color: '#ffffff',
+  display: 'inline-block',
+  fontSize: '14px',
+  fontWeight: '600',
+  padding: '12px 32px',
+  textDecoration: 'none',
 };
 
 const hr = {
-  borderColor: '#e6ebf1',
-  margin: '20px 0',
+  borderColor: '#e4e4e7',
+  margin: '24px 0',
+};
+
+const closingText = {
+  fontSize: '15px',
+  color: '#3f3f46',
+  margin: '0 0 8px',
+  textAlign: 'center' as const,
 };
 
 const signature = {
-  margin: '0',
   fontSize: '14px',
-  color: '#737373',
+  color: '#71717a',
   fontStyle: 'italic' as const,
+  margin: '0',
+  textAlign: 'center' as const,
+};
+
+const footer = {
+  backgroundColor: '#fafafa',
+  padding: '24px 48px',
+  textAlign: 'center' as const,
+};
+
+const footerText = {
+  fontSize: '12px',
+  color: '#a1a1aa',
+  margin: '0 0 8px',
+};
+
+const footerLinks = {
+  fontSize: '12px',
+  color: '#71717a',
+  margin: '0',
+};
+
+const footerLink = {
+  color: '#71717a',
+  textDecoration: 'underline',
 };

@@ -24,7 +24,7 @@ interface AdminOrderNotificationEmailProps {
   customerName: string;
   customerEmail: string;
   customerPhone?: string;
-  customerAddress?: string;
+  customerAddress: string;
   customerNotes?: string;
   items: OrderItem[];
   subtotal: number;
@@ -93,11 +93,9 @@ export function AdminOrderNotificationEmail({
                   <strong>Phone:</strong> {customerPhone}
                 </Text>
               )}
-              {customerAddress && (
-                <Text style={detailRow}>
-                  <strong>Address:</strong> {customerAddress}
-                </Text>
-              )}
+              <Text style={detailRow}>
+                <strong>Address:</strong> {customerAddress}
+              </Text>
               {customerNotes && (
                 <>
                   <Hr style={hr} />
