@@ -103,6 +103,47 @@ export const metadata: Metadata = {
   // verification: {
   //   google: 'your-google-verification-code',
   // },
+
+  // Alternate languages for hreflang
+  alternates: {
+    canonical: siteUrl,
+    languages: {
+      'fr-CA': `${siteUrl}?lang=fr`,
+      'en-CA': `${siteUrl}?lang=en`,
+      'x-default': siteUrl,
+    },
+  },
+};
+
+// Organization JSON-LD for homepage
+const organizationJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: 'MTL Archives',
+  url: siteUrl,
+  logo: `${siteUrl}/icon-512.png`,
+  description: 'Explorez 14 822 photos historiques de Montréal. Recherchez par rue, quartier ou lieu emblématique.',
+  sameAs: [
+    'https://twitter.com/mtlarchives',
+  ],
+};
+
+// CollectionPage JSON-LD for the photo archive
+const collectionJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'CollectionPage',
+  name: 'MTL Archives — Photos historiques de Montréal',
+  description: 'Collection de 14 822 photos historiques des archives de la Ville de Montréal.',
+  url: siteUrl,
+  publisher: {
+    '@type': 'Organization',
+    name: 'Archives de la Ville de Montréal',
+  },
+  about: {
+    '@type': 'Place',
+    name: 'Montréal, Québec, Canada',
+  },
+  inLanguage: ['fr-CA', 'en-CA'],
 };
 
 export default function RootLayout({
@@ -117,6 +158,18 @@ export default function RootLayout({
           src="https://cdn.seline.com/seline.js"
           data-token="ba441af9ffc2d81"
           strategy="afterInteractive"
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(organizationJsonLd),
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(collectionJsonLd),
+          }}
         />
       </head>
       <body className="font-sans antialiased bg-neutral-50 text-neutral-900 min-h-screen">

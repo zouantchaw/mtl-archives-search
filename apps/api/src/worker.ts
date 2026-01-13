@@ -70,6 +70,13 @@ export default {
         return handleMapPins(env);
       }
 
+      if (url.pathname === '/api/sitemap') {
+        if (request.method !== 'GET') {
+          return methodNotAllowed();
+        }
+        return handleSitemap(env);
+      }
+
       if (url.pathname === '/' || url.pathname === '/health') {
         return jsonResponse({ status: 'ok' });
       }
@@ -919,5 +926,26 @@ async function handleMapPins(env: Env): Promise<Response> {
   return jsonResponse({
     pins,
     count: pins.length,
+  });
+}
+
+// Lightweight endpoint for sitemap generation - returns all photo IDs and basic metadata
+async function handleSitemap(env: Env): Promise<Response> {
+  const { results = [] } = await env.DB.prepare(
+    `SELECT metadata_filename, resolved_image_filename, name, date_value FROM manifest ORDER BY name`
+  ).all();
+
+  const items = await Promise.all(
+    results.map(async (row) => ({
+      id: String(row.metadata_filename).replace('.json', ''),
+      imageUrl: await resolveImageUrl(String(row.resolved_image_filename ?? ''), env),
+      name: row.name != null ? String(row.name) : null,
+      dateValue: row.date_value != null ? String(row.date_value) : null,
+    }))
+  );
+
+  return jsonResponse({
+    items,
+    count: items.length,
   });
 }
