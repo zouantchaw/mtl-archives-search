@@ -180,6 +180,9 @@ async function handlePhotos(url: URL, env: Env): Promise<Response> {
   const limit = clamp(Number.isFinite(limitParam) ? limitParam : 50, 1, 100);
   const cursor = url.searchParams.get('cursor');
   const shuffle = url.searchParams.get('shuffle') === 'true';
+  // maxSize in bytes - default 1.5MB for mobile-friendly images
+  const maxSizeParam = Number(url.searchParams.get('maxSize') ?? '0');
+  const maxSize = Number.isFinite(maxSizeParam) && maxSizeParam > 0 ? maxSizeParam : 0;
 
   // Base query: filter out records without valid images
   const baseWhere = `resolved_image_filename IS NOT NULL
@@ -188,8 +191,10 @@ async function handlePhotos(url: URL, env: Env): Promise<Response> {
 
   // Shuffle mode: return random photos for discovery
   if (shuffle) {
+    // If maxSize specified, filter out large images (for mobile)
+    const sizeFilter = maxSize > 0 ? `AND image_size_bytes <= ${maxSize}` : '';
     const sql = `SELECT ${SELECT_FIELDS} FROM manifest
-      WHERE ${baseWhere}
+      WHERE ${baseWhere} ${sizeFilter}
       ORDER BY RANDOM()
       LIMIT ?`;
     const { results = [] } = await env.DB.prepare(sql).bind(limit).all();

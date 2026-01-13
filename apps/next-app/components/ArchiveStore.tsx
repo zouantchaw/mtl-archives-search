@@ -500,7 +500,9 @@ function ArchiveStoreInner() {
     setInitialLoading(true);
     try {
       const pageSize = isMobile ? MOBILE_PAGE_SIZE : DESKTOP_PAGE_SIZE;
-      const res = await fetch(`${API_BASE}/api/photos?limit=${pageSize}&shuffle=true`);
+      // On mobile, limit image size to 1MB to prevent browser crashes
+      const sizeLimit = isMobile ? '&maxSize=1000000' : '';
+      const res = await fetch(`${API_BASE}/api/photos?limit=${pageSize}&shuffle=true${sizeLimit}`);
       const data = await res.json();
       setPhotos(data.items || []);
       setTotalPhotos(data.total || null);
