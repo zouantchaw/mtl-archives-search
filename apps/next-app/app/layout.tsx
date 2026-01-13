@@ -154,11 +154,6 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${figtree.variable}`}>
       <head>
-        <Script
-          src="https://cdn.seline.com/seline.js"
-          data-token="ba441af9ffc2d81"
-          strategy="afterInteractive"
-        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -173,6 +168,11 @@ export default function RootLayout({
         />
       </head>
       <body className="font-sans antialiased bg-neutral-50 text-neutral-900 min-h-screen">
+        <Script
+          src="https://cdn.seline.com/seline.js"
+          data-token="ba441af9ffc2d81"
+          strategy="afterInteractive"
+        />
         <CartProvider>
         {children}
           <CartDrawer />
