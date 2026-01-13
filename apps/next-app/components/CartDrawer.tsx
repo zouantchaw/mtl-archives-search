@@ -104,7 +104,7 @@ function CartDrawerInner() {
   const lang = (searchParams.get('lang') as Lang) || 'fr';
   const t = translations[lang];
 
-  const { items, itemCount, total, isOpen, closeCart, removeItem, updateQuantity, clearCart } = useCart();
+  const { items, itemCount, total, isOpen, closeCart, removeItem, updateQuantity, clearItems, clearCart } = useCart();
 
   // Checkout state
   const [checkoutState, setCheckoutState] = useState<CheckoutState>('cart');
@@ -201,7 +201,7 @@ function CartDrawerInner() {
         events.checkoutCompleted(data.orderId, total, itemCount);
         setOrderId(data.orderId);
         setCheckoutState('success');
-        clearCart();
+        clearItems(); // Clear items but keep drawer open to show success
       } else {
         events.checkoutFailed(data.error || 'Unknown error');
         setErrorMessage(data.error || t.errorMessage);

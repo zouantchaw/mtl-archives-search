@@ -26,6 +26,7 @@ type CartContextType = {
   addItem: (item: Omit<CartItem, 'id' | 'quantity'>) => void;
   removeItem: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
+  clearItems: () => void;
   clearCart: () => void;
 };
 
@@ -111,6 +112,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const clearItems = useCallback(() => {
+    setItems([]);
+  }, []);
+
   const clearCart = useCallback(() => {
     setItems([]);
     setIsOpen(false);
@@ -129,6 +134,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         addItem,
         removeItem,
         updateQuantity,
+        clearItems,
         clearCart,
       }}
     >
