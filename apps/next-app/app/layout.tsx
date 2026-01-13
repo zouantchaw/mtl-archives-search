@@ -11,7 +11,7 @@ const figtree = Figtree({
   display: 'swap',
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://mtlarchives.com';
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.mtlarchives.com';
 
 export const viewport: Viewport = {
   width: 'device-width',

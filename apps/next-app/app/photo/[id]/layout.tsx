@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 
 // API endpoint for fetching photo data
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mtl-archives-worker.wiel.workers.dev';
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://mtl-archives.com';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.mtlarchives.com';
 
 // Clean text: remove escaped newlines, normalize whitespace
 function cleanText(text: string | null | undefined): string {
