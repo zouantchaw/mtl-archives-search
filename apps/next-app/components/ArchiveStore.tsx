@@ -10,10 +10,13 @@ import { useCart } from '@/lib/cart-context';
 
 const API_BASE = '';
 
-// Conservative limits for mobile
-const MOBILE_PAGE_SIZE = 9;
-const MOBILE_MAX_IMAGES = 27;
-const DESKTOP_PAGE_SIZE = 20;
+// Image loading limits - balanced for performance and exploration
+// Mobile: Conservative due to memory constraints
+// Desktop: More generous but still bounded
+const MOBILE_PAGE_SIZE = 12;      // 4 rows of 3
+const MOBILE_MAX_IMAGES = 36;     // 12 rows max
+const DESKTOP_PAGE_SIZE = 24;     // Good batch size
+const DESKTOP_MAX_IMAGES = 72;    // Generous but bounded
 
 // ============================================================
 // Typewriter Hook - with pause capability
@@ -504,33 +507,33 @@ function ArchiveStoreInner() {
       .finally(() => setInitialLoading(false));
   }, [isMobile]);
 
-  // Load more
+  // Load more - with bounded limits for both mobile and desktop
   const loadMore = useCallback(async () => {
     if (!nextCursor || isLoadingMore) return;
 
-    // On mobile, enforce max limit
-    if (isMobile && photos.length >= MOBILE_MAX_IMAGES) return;
+    const maxImages = isMobile ? MOBILE_MAX_IMAGES : DESKTOP_MAX_IMAGES;
+    if (photos.length >= maxImages) return;
 
     events.loadMoreClicked(photos.length);
     setIsLoadingMore(true);
     try {
       const pageSize = isMobile ? MOBILE_PAGE_SIZE : DESKTOP_PAGE_SIZE;
       const res = await fetch(`${API_BASE}/api/photos?limit=${pageSize}&cursor=${encodeURIComponent(nextCursor)}`);
-          const data = await res.json();
+      const data = await res.json();
       const newItems: PhotoRecord[] = data.items || [];
 
       setPhotos(prev => {
         const existing = new Set(prev.map(p => p.metadataFilename));
         const unique = newItems.filter(p => !existing.has(p.metadataFilename));
         const combined = [...prev, ...unique];
-        // Enforce mobile limit
-        if (isMobile && combined.length > MOBILE_MAX_IMAGES) {
-          return combined.slice(0, MOBILE_MAX_IMAGES);
+        // Enforce max limit
+        if (combined.length > maxImages) {
+          return combined.slice(0, maxImages);
         }
         return combined;
       });
       setNextCursor(data.nextCursor || null);
-      } catch (err) {
+    } catch (err) {
       console.error('Failed to load more:', err);
     } finally {
       setIsLoadingMore(false);
@@ -555,7 +558,8 @@ function ArchiveStoreInner() {
       isInitialMount.current = false;
 
       try {
-        const params = new URLSearchParams({ q: searchQuery, mode: searchMode, limit: isMobile ? '20' : '50' });
+        const searchLimit = isMobile ? String(MOBILE_MAX_IMAGES) : String(DESKTOP_MAX_IMAGES);
+        const params = new URLSearchParams({ q: searchQuery, mode: searchMode, limit: searchLimit });
         const res = await fetch(`${API_BASE}/api/search?${params}`);
         if (res.ok) {
           const data: SearchResponse = await res.json();
@@ -620,7 +624,8 @@ function ArchiveStoreInner() {
     if (searchQuery) updateUrl(searchQuery, newMode, lang);
   }, [searchQuery, lang, updateUrl]);
 
-  const canLoadMore = nextCursor && !hasSearched && (!isMobile || photos.length < MOBILE_MAX_IMAGES);
+  const maxImages = isMobile ? MOBILE_MAX_IMAGES : DESKTOP_MAX_IMAGES;
+  const canLoadMore = nextCursor && !hasSearched && photos.length < maxImages;
 
   return (
     <div className="min-h-screen bg-[#fafafa]">
