@@ -37,6 +37,10 @@ const nextConfig: NextConfig = {
         source: '/api/map',
         destination: 'https://mtl-archives-worker.wiel.workers.dev/api/map',
       },
+      {
+        source: '/api/sitemap',
+        destination: 'https://mtl-archives-worker.wiel.workers.dev/api/sitemap',
+      },
     ];
   },
 };

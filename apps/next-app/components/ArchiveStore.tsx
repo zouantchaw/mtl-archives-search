@@ -10,6 +10,13 @@ import { useCart } from '@/lib/cart-context';
 
 const API_BASE = '';
 
+// Generate thumbnail URL via Cloudflare Image Resizing
+// This prevents loading 50MB+ aerial photos - resizing happens at the edge
+const getThumbnailUrl = (imageUrl: string, width = 400) => {
+  if (!imageUrl) return '';
+  return `/api/thumb?src=${encodeURIComponent(imageUrl)}&w=${width}&q=75&format=auto`;
+};
+
 // Image loading limits - balanced for performance and exploration
 // Mobile: Conservative due to memory constraints
 // Desktop: More generous but still bounded
@@ -814,7 +821,7 @@ function ArchiveStoreInner() {
             >
               {photo.imageUrl && (
                 <Image
-                  src={photo.imageUrl}
+                  src={getThumbnailUrl(photo.imageUrl, 400)}
                   alt={photo.name || ''}
                   fill
                   sizes="(max-width: 640px) 33vw, (max-width: 768px) 25vw, (max-width: 1024px) 20vw, 14vw"
@@ -822,6 +829,7 @@ function ArchiveStoreInner() {
                   priority={index < 6}
                   loading={index < 6 ? undefined : 'lazy'}
                   onError={() => handleImageError(photo.metadataFilename)}
+                  unoptimized
                 />
               )}
             </button>
