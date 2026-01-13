@@ -9,8 +9,9 @@ Source of truth for the v1 launch. Goal: sellable B2B platform for Montreal real
 - [x] **Copy caption button** - One-click copy with title, date, description, credits, cote, hashtags
 - [x] **Download button** - Actual file download with proper filename
 - [x] **Show full metadata** - Display all fields including portal title/description/date
+- [x] **Mobile stability** - Filter large aerial images (<1MB) to prevent browser crashes
+- [x] **Deploy Next.js app** - Live at https://www.mtlarchives.com/
 - [ ] **Mobile QA** - Test pinch/zoom, touch interactions on iOS/Android
-- [ ] **Deploy Next.js app** - Production URL (Vercel or Cloudflare Pages)
 
 ### P1: Polish (before first paid demo)
 
@@ -52,7 +53,7 @@ Source of truth for the v1 launch. Goal: sellable B2B platform for Montreal real
 - [x] D1 seeded with 13,499 records + trust scores
 - [x] BGE text embeddings (13,499 vectors)
 - [x] CLIP image embeddings (~13,400 vectors)
-- [x] API endpoints: /photos, /search, /thumb, /map
+- [x] API endpoints: /photos, /search, /thumb, /map, /sitemap
 - [x] Three search modes: text, semantic, visual
 - [x] Map UI with search + detail panel
 - [x] Responsive design (mobile + desktop)
@@ -61,3 +62,8 @@ Source of truth for the v1 launch. Goal: sellable B2B platform for Montreal real
 - [x] WebP optimization via Cloudflare /api/thumb
 - [x] Copy caption with enriched metadata + hashtags
 - [x] Direct download with proper filenames
+- [x] SEO: Dynamic sitemap (13,499 photos), JSON-LD structured data, hreflang
+- [x] Google Search Console integration
+- [x] Photo page redesign with viewing/ordering toggle modes
+- [x] Shuffle button for discovering random photos
+- [x] Seline analytics events for all interactions

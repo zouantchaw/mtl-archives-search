@@ -520,6 +520,12 @@ function ArchiveStoreInner() {
     }
   }, [isMobile]);
 
+  // Handle user-initiated shuffle (with analytics)
+  const handleShuffle = useCallback(() => {
+    events.shuffleClicked();
+    loadShuffled();
+  }, [loadShuffled]);
+
   useEffect(() => {
     loadShuffled();
   }, [loadShuffled]);
@@ -782,7 +788,7 @@ function ArchiveStoreInner() {
               )}
             </span>
             <button
-              onClick={loadShuffled}
+              onClick={handleShuffle}
               disabled={initialLoading}
               className="flex items-center gap-1 text-xs text-neutral-400 hover:text-neutral-600 uppercase transition-colors disabled:opacity-50"
             >
@@ -841,7 +847,7 @@ function ArchiveStoreInner() {
       {!hasSearched && !initialLoading && (
         <div className="flex justify-center py-8">
           <button
-            onClick={loadShuffled}
+            onClick={handleShuffle}
             className="flex items-center gap-2 px-5 py-2.5 text-neutral-500 hover:text-neutral-900 text-xs uppercase tracking-wide transition-colors"
           >
             <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

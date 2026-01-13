@@ -44,9 +44,19 @@ export const events = {
   searchModeChanged: (mode: string) =>
     track('search: mode changed', { mode }),
 
-  // Navigation
+  // Navigation / Discovery
   loadMoreClicked: (currentCount: number) =>
     track('gallery: load more', { currentCount }),
+
+  shuffleClicked: () =>
+    track('gallery: shuffle clicked'),
+
+  // Photo page modes
+  orderModeEntered: (photoId: string) =>
+    track('photo: order mode entered', { photoId }),
+
+  orderModeExited: (photoId: string, addedToCart: boolean) =>
+    track('photo: order mode exited', { photoId, addedToCart }),
 
   languageChanged: (from: string, to: string) =>
     track('settings: language changed', { from, to }),
