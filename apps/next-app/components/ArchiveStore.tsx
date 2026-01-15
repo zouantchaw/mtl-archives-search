@@ -506,8 +506,33 @@ function ArchiveStoreInner() {
   // Total photo count for display
   const [totalPhotos, setTotalPhotos] = useState<number | null>(null);
 
-  // Load photos with shuffle for fresh content each visit
-  const loadShuffled = useCallback(async () => {
+  // Session storage keys for persisting shuffle state
+  const STORAGE_KEY_PHOTOS = 'mtl-archives-photos';
+  const STORAGE_KEY_TOTAL = 'mtl-archives-total';
+
+  // Load photos - restores from session or fetches new shuffled set
+  const loadPhotos = useCallback(async (forceRefresh = false) => {
+    // Try to restore from session storage first (unless forcing refresh)
+    if (!forceRefresh && typeof window !== 'undefined') {
+      try {
+        const cachedPhotos = sessionStorage.getItem(STORAGE_KEY_PHOTOS);
+        const cachedTotal = sessionStorage.getItem(STORAGE_KEY_TOTAL);
+        if (cachedPhotos) {
+          const parsed = JSON.parse(cachedPhotos);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setPhotos(parsed);
+            setTotalPhotos(cachedTotal ? parseInt(cachedTotal, 10) : null);
+            setInitialLoading(false);
+            return;
+          }
+        }
+      } catch (err) {
+        // Session storage unavailable or corrupted, proceed with fetch
+        console.warn('Failed to restore from session:', err);
+      }
+    }
+
+    // Fetch fresh shuffled photos
     setInitialLoading(true);
     try {
       const pageSize = isMobile ? MOBILE_PAGE_SIZE : DESKTOP_PAGE_SIZE;
@@ -515,8 +540,22 @@ function ArchiveStoreInner() {
       const sizeLimit = isMobile ? '&maxSize=1000000' : '';
       const res = await fetch(`${API_BASE}/api/photos?limit=${pageSize}&shuffle=true${sizeLimit}`);
       const data = await res.json();
-      setPhotos(data.items || []);
-      setTotalPhotos(data.total || null);
+      const items = data.items || [];
+      const total = data.total || null;
+
+      setPhotos(items);
+      setTotalPhotos(total);
+
+      // Cache in session storage for back navigation
+      if (typeof window !== 'undefined') {
+        try {
+          sessionStorage.setItem(STORAGE_KEY_PHOTOS, JSON.stringify(items));
+          if (total) sessionStorage.setItem(STORAGE_KEY_TOTAL, String(total));
+        } catch (err) {
+          // Session storage full or unavailable, continue without caching
+          console.warn('Failed to cache photos:', err);
+        }
+      }
     } catch (err) {
       console.error('Failed to fetch:', err);
     } finally {
@@ -524,15 +563,15 @@ function ArchiveStoreInner() {
     }
   }, [isMobile]);
 
-  // Handle user-initiated shuffle (with analytics)
+  // Handle user-initiated shuffle (with analytics) - always fetches fresh
   const handleShuffle = useCallback(() => {
     events.shuffleClicked();
-    loadShuffled();
-  }, [loadShuffled]);
+    loadPhotos(true); // Force refresh
+  }, [loadPhotos]);
 
   useEffect(() => {
-    loadShuffled();
-  }, [loadShuffled]);
+    loadPhotos(false); // Try to restore from cache first
+  }, [loadPhotos]);
 
 
   // Search (semantic only on mobile - no CLIP)
