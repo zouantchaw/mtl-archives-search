@@ -19,6 +19,12 @@ const SCALE = 1000;
 const TRANSITION_MS = 600;
 const HOVER_IMAGE_DELAY_MS = 200;
 
+// Mobile detection
+const isMobileDevice = () => {
+  if (typeof window === 'undefined') return false;
+  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
+};
+
 type Point = {
   id: string;
   x: number;
@@ -33,7 +39,7 @@ type Point = {
 
 type ScoredPoint = Point & { similarity: number };
 
-type SearchMode = 'clip' | 'semantic' | 'hybrid';
+type SearchMode = 'visual' | 'semantic';
 
 type ApiResult = {
   metadataFilename: string;
@@ -43,6 +49,9 @@ type ApiResult = {
   vlmCaption: string | null;
   score?: number;
 };
+
+type ClipStatus = 'idle' | 'loading' | 'ready' | 'error' | 'unavailable';
+type EmbeddingsStatus = 'idle' | 'loading' | 'ready' | 'error';
 
 function getThumbnailUrl(src: string): string {
   const params = new URLSearchParams({
@@ -119,6 +128,140 @@ function CheckIcon({ size = 14 }: { size?: number }) {
   );
 }
 
+function DownloadIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
+    </svg>
+  );
+}
+
+function HelpIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+      <line x1="12" y1="17" x2="12.01" y2="17" />
+    </svg>
+  );
+}
+
+function CloseIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
+
+// Onboarding modal for first-time users
+function WelcomeModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-[#1a1a1a] border border-white/10 rounded-3xl max-w-md w-full p-8 shadow-2xl">
+        <div className="text-center mb-6">
+          <h2 className="text-2xl font-semibold text-white mb-2">Montreal Archives Explorer</h2>
+          <p className="text-white/50 text-sm">Explore 14,000+ historical photos of Montreal</p>
+        </div>
+
+        <div className="space-y-4 mb-8">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+              <span className="text-blue-400 text-sm">🔍</span>
+            </div>
+            <div>
+              <p className="text-white text-sm font-medium">Search by text</p>
+              <p className="text-white/50 text-xs mt-0.5">Type any keyword like "church" or "1950s" to find matching photos</p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+              <span className="text-emerald-400 text-sm">🎨</span>
+            </div>
+            <div>
+              <p className="text-white text-sm font-medium">Visual similarity search</p>
+              <p className="text-white/50 text-xs mt-0.5">Describe what you want to see - "snowy street" or "busy market"</p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center flex-shrink-0">
+              <span className="text-purple-400 text-sm">🗺️</span>
+            </div>
+            <div>
+              <p className="text-white text-sm font-medium">Explore the point cloud</p>
+              <p className="text-white/50 text-xs mt-0.5">Each dot is a photo. Similar photos cluster together. Click to view.</p>
+            </div>
+          </div>
+        </div>
+
+        <button
+          onClick={onClose}
+          className="w-full py-3 rounded-xl bg-white text-black font-medium text-sm hover:bg-white/90 transition-colors"
+        >
+          Start Exploring
+        </button>
+
+        <p className="text-center text-white/30 text-xs mt-4">
+          Press <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-white/50">?</kbd> anytime for help
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// Help panel with keyboard shortcuts
+function HelpPanel({ onClose, isMobile }: { onClose: () => void; isMobile: boolean }) {
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl max-w-sm w-full p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-white">Keyboard Shortcuts</h3>
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-white/10 text-white/50 hover:text-white transition-colors">
+            <CloseIcon size={18} />
+          </button>
+        </div>
+
+        <div className="space-y-3">
+          {!isMobile && (
+            <>
+              <div className="flex items-center justify-between">
+                <span className="text-white/70 text-sm">Navigate results</span>
+                <div className="flex gap-1">
+                  <kbd className="px-2 py-1 rounded bg-white/10 text-white/70 text-xs">↑</kbd>
+                  <kbd className="px-2 py-1 rounded bg-white/10 text-white/70 text-xs">↓</kbd>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-white/70 text-sm">Open selected photo</span>
+                <kbd className="px-2 py-1 rounded bg-white/10 text-white/70 text-xs">Enter</kbd>
+              </div>
+            </>
+          )}
+          <div className="flex items-center justify-between">
+            <span className="text-white/70 text-sm">Clear search</span>
+            <kbd className="px-2 py-1 rounded bg-white/10 text-white/70 text-xs">Esc</kbd>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-white/70 text-sm">Show help</span>
+            <kbd className="px-2 py-1 rounded bg-white/10 text-white/70 text-xs">?</kbd>
+          </div>
+        </div>
+
+        <div className="border-t border-white/10 mt-4 pt-4">
+          <p className="text-white/50 text-xs">
+            <strong className="text-white/70">Tip:</strong> Click any point to open the original photo. Drag to pan, scroll to zoom.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Toast({ message, visible }: { message: string; visible: boolean }) {
   return (
     <div
@@ -145,7 +288,6 @@ function CopyButton({ text, label, onCopy }: { text: string; label: string; onCo
       onCopy(label);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      // Fallback for older browsers
       const textarea = document.createElement('textarea');
       textarea.value = text;
       document.body.appendChild(textarea);
@@ -183,15 +325,50 @@ const GlassPanel = forwardRef<HTMLDivElement, { children: React.ReactNode; class
 
 GlassPanel.displayName = 'GlassPanel';
 
+// Progress bar component
+function ProgressBar({ progress, label }: { progress: number; label: string }) {
+  return (
+    <div className="w-64">
+      <div className="flex justify-between text-xs text-white/50 mb-1">
+        <span>{label}</span>
+        <span>{Math.round(progress * 100)}%</span>
+      </div>
+      <div className="h-1 bg-white/10 rounded-full overflow-hidden">
+        <div
+          className="h-full bg-white/50 rounded-full transition-all duration-300"
+          style={{ width: `${progress * 100}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 // ============================================================
 // Main Component
 // ============================================================
 
 export function EmbeddingExplorer() {
-  // Data state
+  // Device detection
+  const [isMobile] = useState(() => isMobileDevice());
+
+  // Onboarding state
+  const [showWelcome, setShowWelcome] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return !localStorage.getItem('mtl-explorer-visited');
+  });
+  const [showHelp, setShowHelp] = useState(false);
+
+  const dismissWelcome = useCallback(() => {
+    localStorage.setItem('mtl-explorer-visited', 'true');
+    setShowWelcome(false);
+  }, []);
+
+  // Data state - split into phases
   const [data, setData] = useState<Point[]>([]);
   const [embeddings, setEmbeddings] = useState<{ data: Float32Array; ids: string[]; dims: number } | null>(null);
+  const [embeddingsStatus, setEmbeddingsStatus] = useState<EmbeddingsStatus>('idle');
   const [isLoading, setIsLoading] = useState(true);
+  const [loadProgress, setLoadProgress] = useState(0);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   // View state
@@ -218,7 +395,7 @@ export function EmbeddingExplorer() {
   } | null>(null);
   const animFrameRef = useRef<number>(0);
 
-  // Animation state (using refs to avoid re-renders during animation)
+  // Animation state
   const animStateRef = useRef({
     currentMode: '2d' as '2d' | '3d',
     transitioning: false,
@@ -227,15 +404,15 @@ export function EmbeddingExplorer() {
     toMode: '2d' as '2d' | '3d',
   });
 
-  // Search state
+  // Search state - default to semantic (server-side)
   const [clipModel, setClipModel] = useState<{ tokenizer: any; model: any } | null>(null);
-  const [modelStatus, setModelStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [clipStatus, setClipStatus] = useState<ClipStatus>(isMobile ? 'unavailable' : 'idle');
   const [query, setQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const isSearchingRef = useRef(false);
   const [results, setResults] = useState<ScoredPoint[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(-1);
-  const [searchMode, setSearchMode] = useState<SearchMode>('clip');
+  const [searchMode, setSearchMode] = useState<SearchMode>('semantic'); // Default to server-side
   const [toast, setToast] = useState<{ message: string; visible: boolean }>({ message: '', visible: false });
   const toastTimeoutRef = useRef<number | null>(null);
 
@@ -268,15 +445,9 @@ export function EmbeddingExplorer() {
 
   useEffect(() => {
     return () => {
-      if (hoverPosRafRef.current != null) {
-        cancelAnimationFrame(hoverPosRafRef.current);
-      }
-      if (hoverImageTimerRef.current != null) {
-        window.clearTimeout(hoverImageTimerRef.current);
-      }
-      if (toastTimeoutRef.current != null) {
-        window.clearTimeout(toastTimeoutRef.current);
-      }
+      if (hoverPosRafRef.current != null) cancelAnimationFrame(hoverPosRafRef.current);
+      if (hoverImageTimerRef.current != null) window.clearTimeout(hoverImageTimerRef.current);
+      if (toastTimeoutRef.current != null) window.clearTimeout(toastTimeoutRef.current);
     };
   }, []);
 
@@ -285,12 +456,9 @@ export function EmbeddingExplorer() {
       window.clearTimeout(hoverImageTimerRef.current);
       hoverImageTimerRef.current = null;
     }
-
     setHoverImageUrl(null);
-
     const url = hoverPoint?.image_url?.trim() ?? '';
     if (!url) return;
-
     hoverImageTimerRef.current = window.setTimeout(() => {
       setHoverImageUrl(getThumbnailUrl(url));
       hoverImageTimerRef.current = null;
@@ -304,19 +472,16 @@ export function EmbeddingExplorer() {
     if (selectedIndex >= 0 && topResults[selectedIndex]?.id === d.id) {
       return [255, 69, 58];
     }
-
     const topIdx = topResults.findIndex(r => r.id === d.id);
     if (topIdx >= 0) {
       const t = 1 - topIdx / 5;
       return [255, 159 + t * 40, 10];
     }
-
     const match = results.find(r => r.id === d.id);
     if (match) {
       const t = match.similarity ** 2;
       return [10 + t * 245, 132 - t * 40, 255 - t * 155];
     }
-
     if (d.date) {
       const y = parseInt(d.date);
       if (y < 1930) return [255, 149, 0];
@@ -324,40 +489,39 @@ export function EmbeddingExplorer() {
       if (y < 1970) return [52, 199, 89];
       return [10, 132, 255];
     }
-
     return [142, 142, 147];
   }, [results, topResults, selectedIndex]);
 
   // --------------------------------------------------------
-  // Data Loading
+  // Phase 1: Load 2D positions only (fast initial load)
   // --------------------------------------------------------
   useEffect(() => {
     const controller = new AbortController();
 
-    async function load() {
+    async function loadInitialData() {
       try {
-        const [res2d, res512d, resIds] = await Promise.all([
+        setLoadProgress(0);
+
+        // Only load 2D positions and IDs - skip the heavy 512D embeddings
+        const [res2d, resIds] = await Promise.all([
           fetch(DATA_URL_2D, { signal: controller.signal }),
-          fetch(DATA_URL_512D, { signal: controller.signal }),
           fetch(DATA_URL_IDS, { signal: controller.signal }),
         ]);
 
-        if (!res2d.ok || !res512d.ok || !resIds.ok) {
-          throw new Error('Failed to fetch embedding data');
+        if (!res2d.ok || !resIds.ok) {
+          throw new Error('Failed to fetch data');
         }
 
-        const [raw2d, buffer, ids] = await Promise.all([
+        setLoadProgress(0.5);
+
+        const [raw2d, ids] = await Promise.all([
           res2d.json(),
-          res512d.arrayBuffer(),
           resIds.json(),
         ]);
 
         if (controller.signal.aborted) return;
 
-        const header = new Uint32Array(buffer, 0, 2);
-        const dims = header[1];
-        const embData = new Float32Array(buffer, 8);
-        setEmbeddings({ data: embData, ids, dims });
+        setLoadProgress(0.8);
 
         const idToIdx = new Map(ids.map((id: string, i: number) => [id, i]));
         const scaled = raw2d.map((d: any) => ({
@@ -369,38 +533,82 @@ export function EmbeddingExplorer() {
         }));
 
         setData(scaled);
+        setLoadProgress(1);
         setIsLoading(false);
       } catch (err) {
-        if (err && typeof err === 'object' && 'name' in err && (err as { name?: unknown }).name === 'AbortError') {
-          return;
-        }
+        if (err && typeof err === 'object' && 'name' in err && (err as any).name === 'AbortError') return;
         setLoadError(err instanceof Error ? err.message : 'Unknown error');
       }
     }
-    load();
+    loadInitialData();
 
     return () => controller.abort();
   }, []);
 
   // --------------------------------------------------------
-  // CLIP Model Loading
+  // Phase 2: Load 512D embeddings on demand (for visual search)
   // --------------------------------------------------------
-  useEffect(() => {
-    async function loadClip() {
-      try {
-        const tokenizer = await AutoTokenizer.from_pretrained('Xenova/clip-vit-base-patch32');
-        const model = await CLIPTextModelWithProjection.from_pretrained('Xenova/clip-vit-base-patch32', { quantized: true });
-        setClipModel({ tokenizer, model });
-        setModelStatus('ready');
-      } catch {
-        setModelStatus('error');
-      }
+  const loadEmbeddings = useCallback(async () => {
+    if (embeddingsStatus !== 'idle' || isMobile) return;
+
+    setEmbeddingsStatus('loading');
+
+    try {
+      const res = await fetch(DATA_URL_512D);
+      if (!res.ok) throw new Error('Failed to fetch embeddings');
+
+      const buffer = await res.arrayBuffer();
+      const header = new Uint32Array(buffer, 0, 2);
+      const dims = header[1];
+      const embData = new Float32Array(buffer, 8);
+
+      setEmbeddings({ data: embData, ids: [], dims });
+      setEmbeddingsStatus('ready');
+    } catch (err) {
+      console.error('Failed to load embeddings:', err);
+      setEmbeddingsStatus('error');
     }
-    loadClip();
-  }, []);
+  }, [embeddingsStatus, isMobile]);
 
   // --------------------------------------------------------
-  // Camera positions for each mode
+  // Load CLIP model on demand (lazy loading)
+  // --------------------------------------------------------
+  const loadClipModel = useCallback(async () => {
+    if (clipStatus !== 'idle' || isMobile) return;
+
+    setClipStatus('loading');
+
+    try {
+      const tokenizer = await AutoTokenizer.from_pretrained('Xenova/clip-vit-base-patch32');
+      const model = await CLIPTextModelWithProjection.from_pretrained('Xenova/clip-vit-base-patch32', { quantized: true });
+      setClipModel({ tokenizer, model });
+      setClipStatus('ready');
+    } catch (err) {
+      console.error('Failed to load CLIP:', err);
+      setClipStatus('error');
+    }
+  }, [clipStatus, isMobile]);
+
+  // --------------------------------------------------------
+  // Enable visual search (loads both embeddings and CLIP)
+  // --------------------------------------------------------
+  const enableVisualSearch = useCallback(async () => {
+    if (isMobile) {
+      showToast('Visual search unavailable on mobile');
+      return;
+    }
+
+    setSearchMode('visual');
+
+    // Load both in parallel
+    await Promise.all([
+      loadEmbeddings(),
+      loadClipModel(),
+    ]);
+  }, [loadEmbeddings, loadClipModel, isMobile, showToast]);
+
+  // --------------------------------------------------------
+  // Camera positions
   // --------------------------------------------------------
   const getCameraConfig = useCallback((mode: '2d' | '3d') => {
     if (mode === '2d') {
@@ -425,34 +633,29 @@ export function EmbeddingExplorer() {
     if (!containerRef.current || data.length === 0 || sceneRef.current) return;
 
     const container = containerRef.current;
-    const dataRef = data; // Capture for closure
+    const dataRef = data;
 
-    // Scene
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x000000);
+    scene.background = new THREE.Color(0x0a0a0a);
 
-    // Camera - start in 2D config
     const config2D = getCameraConfig('2d');
     const camera = new THREE.PerspectiveCamera(config2D.fov, window.innerWidth / window.innerHeight, 1, 10000);
     camera.position.copy(config2D.position);
     camera.lookAt(config2D.target);
 
-    // Renderer
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: !isMobile }); // Disable AA on mobile
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
     container.appendChild(renderer.domElement);
 
-    // Controls
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.target.copy(config2D.target);
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
     controls.maxDistance = SCALE * 4;
     controls.minDistance = 50;
-    controls.enableRotate = false; // Start in 2D mode
+    controls.enableRotate = false;
 
-    // Geometry - create points
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(dataRef.length * 3);
     const colors = new Float32Array(dataRef.length * 3);
@@ -460,7 +663,7 @@ export function EmbeddingExplorer() {
     dataRef.forEach((d, i) => {
       positions[i * 3] = d.x;
       positions[i * 3 + 1] = d.y;
-      positions[i * 3 + 2] = 0; // Start flat
+      positions[i * 3 + 2] = 0;
       colors[i * 3] = 142 / 255;
       colors[i * 3 + 1] = 142 / 255;
       colors[i * 3 + 2] = 147 / 255;
@@ -469,9 +672,8 @@ export function EmbeddingExplorer() {
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
-    // Material
     const material = new THREE.PointsMaterial({
-      size: 5,
+      size: isMobile ? 8 : 5, // Larger points on mobile for touch
       vertexColors: true,
       sizeAttenuation: true,
       transparent: true,
@@ -481,20 +683,17 @@ export function EmbeddingExplorer() {
     const points = new THREE.Points(geometry, material);
     scene.add(points);
 
-    // Raycaster
     const raycaster = new THREE.Raycaster();
-    raycaster.params.Points!.threshold = 10;
+    raycaster.params.Points!.threshold = isMobile ? 20 : 10; // Larger threshold on mobile
     const mouse = new THREE.Vector2();
 
     sceneRef.current = { scene, camera, renderer, controls, points, geometry, raycaster, mouse };
 
-    // Animation loop
     function animate() {
       animFrameRef.current = requestAnimationFrame(animate);
       const now = performance.now();
       const anim = animStateRef.current;
 
-      // Handle transition animation
       if (anim.transitioning) {
         const elapsed = now - anim.transitionStart;
         const progress = Math.min(elapsed / TRANSITION_MS, 1);
@@ -503,13 +702,11 @@ export function EmbeddingExplorer() {
         const fromConfig = getCameraConfig(anim.fromMode);
         const toConfig = getCameraConfig(anim.toMode);
 
-        // Animate camera position
         camera.position.lerpVectors(fromConfig.position, toConfig.position, t);
         controls.target.lerpVectors(fromConfig.target, toConfig.target, t);
         camera.fov = lerp(fromConfig.fov, toConfig.fov, t);
         camera.updateProjectionMatrix();
 
-        // Animate point Z positions
         const posAttr = geometry.attributes.position as THREE.BufferAttribute;
         const posArray = posAttr.array as Float32Array;
         for (let i = 0; i < dataRef.length; i++) {
@@ -519,7 +716,6 @@ export function EmbeddingExplorer() {
         }
         posAttr.needsUpdate = true;
 
-        // Transition complete
         if (progress >= 1) {
           anim.transitioning = false;
           anim.currentMode = anim.toMode;
@@ -532,8 +728,8 @@ export function EmbeddingExplorer() {
     }
     animate();
 
-    // Mouse handlers
-    const onMouseMove = (e: MouseEvent) => {
+    // Mouse/touch handlers
+    const onPointerMove = (e: PointerEvent) => {
       mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
       mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
 
@@ -546,7 +742,7 @@ export function EmbeddingExplorer() {
           hoverIndexRef.current = idx;
           setHoverPoint(dataRef[idx]);
         }
-        scheduleHoverTooltipPosition(e.clientX, e.clientY);
+        if (!isMobile) scheduleHoverTooltipPosition(e.clientX, e.clientY);
         container.style.cursor = 'pointer';
       } else {
         if (hoverIndexRef.current !== null) {
@@ -579,12 +775,12 @@ export function EmbeddingExplorer() {
       renderer.setSize(window.innerWidth, window.innerHeight);
     };
 
-    container.addEventListener('mousemove', onMouseMove);
+    container.addEventListener('pointermove', onPointerMove);
     container.addEventListener('click', onClick);
     window.addEventListener('resize', onResize);
 
     return () => {
-      container.removeEventListener('mousemove', onMouseMove);
+      container.removeEventListener('pointermove', onPointerMove);
       container.removeEventListener('click', onClick);
       window.removeEventListener('resize', onResize);
       cancelAnimationFrame(animFrameRef.current);
@@ -595,32 +791,28 @@ export function EmbeddingExplorer() {
       renderer.domElement.remove();
       sceneRef.current = null;
     };
-  }, [data, getCameraConfig]);
+  }, [data, getCameraConfig, isMobile, scheduleHoverTooltipPosition]);
 
   // --------------------------------------------------------
-  // Handle view mode change - trigger transition
+  // View mode transitions
   // --------------------------------------------------------
   useEffect(() => {
     const anim = animStateRef.current;
-
-    // Don't trigger if already in target mode or already transitioning to it
     if (anim.currentMode === viewMode && !anim.transitioning) return;
     if (anim.transitioning && anim.toMode === viewMode) return;
 
-    // Start transition
     anim.transitioning = true;
     anim.transitionStart = performance.now();
-    anim.fromMode = anim.transitioning ? anim.toMode : anim.currentMode; // Handle mid-transition switches
+    anim.fromMode = anim.transitioning ? anim.toMode : anim.currentMode;
     anim.toMode = viewMode;
 
-    // Immediately allow rotation when going to 3D
     if (viewMode === '3d' && sceneRef.current) {
       sceneRef.current.controls.enableRotate = true;
     }
   }, [viewMode]);
 
   // --------------------------------------------------------
-  // Update colors when search results change
+  // Update colors
   // --------------------------------------------------------
   useEffect(() => {
     if (!sceneRef.current || data.length === 0) return;
@@ -640,12 +832,10 @@ export function EmbeddingExplorer() {
   }, [data, results, topResults, selectedIndex, getColor]);
 
   // --------------------------------------------------------
-  // Search
+  // Search functions
   // --------------------------------------------------------
-
-  // API-based search (semantic or visual)
-  const searchApi = useCallback(async (q: string, mode: 'semantic' | 'visual'): Promise<ScoredPoint[]> => {
-    const params = new URLSearchParams({ q, mode, limit: '50' });
+  const searchApi = useCallback(async (q: string): Promise<ScoredPoint[]> => {
+    const params = new URLSearchParams({ q, mode: 'semantic', limit: '50' });
     const res = await fetch(`${API_ORIGIN}/api/search?${params}`);
     if (!res.ok) return [];
 
@@ -658,7 +848,6 @@ export function EmbeddingExplorer() {
         if (point) {
           return { ...point, similarity: item.score ?? 0.5 };
         }
-        // Return a virtual point for API-only results
         return {
           id: item.metadataFilename,
           x: SCALE / 2 + (Math.random() - 0.5) * 100,
@@ -675,27 +864,20 @@ export function EmbeddingExplorer() {
       .filter((p): p is ScoredPoint => p !== null);
   }, [data]);
 
-  // Client-side CLIP search (with LRU caching)
   const searchClip = useCallback(async (q: string): Promise<ScoredPoint[]> => {
     if (!clipModel || !embeddings) return [];
 
-    // Normalize query for cache key
     const cacheKey = q.trim().toLowerCase();
-
-    // Check cache first
     let qEmb = clipEmbeddingCache.get(cacheKey);
 
     if (!qEmb) {
-      // Generate embedding
       const inputs = clipModel.tokenizer(q, { padding: true, truncation: true, max_length: 77 });
       const { text_embeds } = await clipModel.model(inputs);
       qEmb = text_embeds.data as Float32Array;
 
-      // L2 normalize
       const norm = Math.sqrt(qEmb.reduce((s, v) => s + v * v, 0));
       for (let i = 0; i < qEmb.length; i++) qEmb[i] /= norm;
 
-      // Cache the normalized embedding
       clipEmbeddingCache.set(cacheKey, qEmb);
     }
 
@@ -710,7 +892,6 @@ export function EmbeddingExplorer() {
       .slice(0, 100);
   }, [clipModel, embeddings, data]);
 
-  // Main search handler
   const search = useCallback(async (q: string) => {
     if (!q.trim()) {
       setResults([]);
@@ -726,42 +907,11 @@ export function EmbeddingExplorer() {
     try {
       let scored: ScoredPoint[] = [];
 
-      if (searchMode === 'clip') {
-        if (!clipModel || !embeddings) return;
+      if (searchMode === 'visual' && clipModel && embeddings) {
         scored = await searchClip(q);
-      } else if (searchMode === 'semantic') {
-        scored = await searchApi(q, 'semantic');
-      } else if (searchMode === 'hybrid') {
-        // Run both CLIP and semantic in parallel, merge results
-        const [clipResults, semanticResults] = await Promise.all([
-          clipModel && embeddings ? searchClip(q) : Promise.resolve([]),
-          searchApi(q, 'semantic'),
-        ]);
-
-        // Dynamic weighting: short queries favor CLIP (visual), longer queries favor BGE (semantic)
-        // - 1-2 words: 80% CLIP, 20% semantic (visual concepts like "church", "bridge")
-        // - 3-4 words: 60% CLIP, 40% semantic (mixed queries)
-        // - 5+ words: 40% CLIP, 60% semantic (descriptive queries)
-        const wordCount = q.trim().split(/\s+/).length;
-        const clipWeight = wordCount <= 2 ? 0.8 : wordCount <= 4 ? 0.6 : 0.4;
-        const semanticWeight = 1 - clipWeight;
-
-        // Merge and dedupe by id, combining weighted scores
-        const merged = new Map<string, ScoredPoint>();
-        for (const r of clipResults) {
-          merged.set(r.id, { ...r, similarity: r.similarity * clipWeight });
-        }
-        for (const r of semanticResults) {
-          const existing = merged.get(r.id);
-          if (existing) {
-            existing.similarity += r.similarity * semanticWeight;
-          } else {
-            merged.set(r.id, { ...r, similarity: r.similarity * semanticWeight });
-          }
-        }
-        scored = Array.from(merged.values())
-          .sort((a, b) => b.similarity - a.similarity)
-          .slice(0, 100);
+      } else {
+        // Fallback to semantic search
+        scored = await searchApi(q);
       }
 
       setResults(scored);
@@ -800,11 +950,34 @@ export function EmbeddingExplorer() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setResults([]);
-        setSelectedIndex(-1);
-        setQuery('');
+      // Don't handle shortcuts when typing in input
+      if (e.target instanceof HTMLInputElement) {
+        if (e.key === 'Escape') {
+          setResults([]);
+          setSelectedIndex(-1);
+          setQuery('');
+          (e.target as HTMLInputElement).blur();
+        }
+        return;
       }
+
+      if (e.key === '?') {
+        e.preventDefault();
+        setShowHelp(h => !h);
+        return;
+      }
+
+      if (e.key === 'Escape') {
+        if (showHelp) {
+          setShowHelp(false);
+        } else {
+          setResults([]);
+          setSelectedIndex(-1);
+          setQuery('');
+        }
+        return;
+      }
+
       if (topResults.length > 0) {
         if (e.key === 'ArrowDown') {
           e.preventDefault();
@@ -821,7 +994,7 @@ export function EmbeddingExplorer() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [topResults, selectedIndex, selectResult]);
+  }, [topResults, selectedIndex, selectResult, showHelp]);
 
   // --------------------------------------------------------
   // Render
@@ -837,21 +1010,27 @@ export function EmbeddingExplorer() {
     );
   }
 
+  const visualSearchReady = clipStatus === 'ready' && embeddingsStatus === 'ready';
+  const visualSearchLoading = clipStatus === 'loading' || embeddingsStatus === 'loading';
+
   return (
-    <div className="w-screen h-screen bg-black text-white font-[-apple-system,BlinkMacSystemFont,'SF_Pro_Display',sans-serif] antialiased select-none">
+    <div className="w-screen h-screen bg-[#0a0a0a] text-white font-[-apple-system,BlinkMacSystemFont,'SF_Pro_Display',sans-serif] antialiased select-none">
       {/* Loading */}
       {isLoading && (
-        <div className="absolute inset-0 z-50 bg-black flex flex-col items-center justify-center gap-4">
-          <Spinner />
-          <p className="text-white/50 text-sm">Loading embeddings...</p>
+        <div className="absolute inset-0 z-50 bg-[#0a0a0a] flex flex-col items-center justify-center gap-6">
+          <div className="text-center mb-4">
+            <h1 className="text-xl font-semibold mb-2">Montreal Archives</h1>
+            <p className="text-white/50 text-sm">Loading visualization...</p>
+          </div>
+          <ProgressBar progress={loadProgress} label="Loading points" />
         </div>
       )}
 
       {/* Three.js Canvas */}
       <div ref={containerRef} className="absolute inset-0" />
 
-      {/* Hover Tooltip */}
-      {hoverPoint && (
+      {/* Hover Tooltip - Desktop only */}
+      {!isMobile && hoverPoint && (
         <GlassPanel
           ref={hoverTooltipRef}
           className="fixed z-40 rounded-2xl overflow-hidden pointer-events-none max-w-[280px] -translate-x-[10000px] -translate-y-[10000px]"
@@ -869,96 +1048,131 @@ export function EmbeddingExplorer() {
             <p className="text-sm font-medium text-white leading-snug">{hoverPoint.name || 'Untitled'}</p>
             <p className="text-xs text-white/50 mt-1">{hoverPoint.date || 'Unknown date'}</p>
             {hoverPoint.vlm_caption && (
-              <p className="text-xs text-white/70 mt-2 leading-relaxed">{hoverPoint.vlm_caption}</p>
+              <p className="text-xs text-white/70 mt-2 leading-relaxed line-clamp-2">{hoverPoint.vlm_caption}</p>
             )}
           </div>
         </GlassPanel>
       )}
 
-      {/* View Toggle */}
-      <GlassPanel className="fixed top-5 left-5 z-30 rounded-xl p-1 flex">
-        {(['2d', '3d'] as const).map(v => (
-          <button
-            key={v}
-            onClick={() => setViewMode(v)}
-            className={`px-5 py-2 text-xs font-medium rounded-lg transition-all duration-200 ${
-              viewMode === v
-                ? 'bg-white/15 text-white'
-                : 'text-white/40 hover:text-white/70 hover:bg-white/5'
-            }`}
-          >
-            {v.toUpperCase()}
-          </button>
-        ))}
-      </GlassPanel>
-
-      {/* Search Mode Toggle */}
-      <GlassPanel className="fixed top-5 left-32 z-30 rounded-xl p-1 flex">
-        {([
-          { mode: 'clip' as const, label: 'Visual', title: 'Client-side CLIP image similarity' },
-          { mode: 'semantic' as const, label: 'Text', title: 'Server-side BGE text search (uses VLM captions)' },
-          { mode: 'hybrid' as const, label: 'Hybrid', title: 'Combined visual + text search' },
-        ]).map(({ mode, label, title }) => (
-          <button
-            key={mode}
-            onClick={() => setSearchMode(mode)}
-            title={title}
-            className={`px-4 py-2 text-xs font-medium rounded-lg transition-all duration-200 ${
-              searchMode === mode
-                ? 'bg-white/15 text-white'
-                : 'text-white/40 hover:text-white/70 hover:bg-white/5'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </GlassPanel>
-
-      {/* Search */}
-      <div className="fixed top-5 left-1/2 -translate-x-1/2 z-30 w-[400px]">
-        <GlassPanel className="rounded-2xl flex items-center transition-shadow duration-200 focus-within:ring-1 focus-within:ring-white/20">
-          <div className="pl-4 pr-2 text-white/40">
-            <SearchIcon />
-          </div>
-          <input
-            type="text"
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder="Search images..."
-            className="flex-1 py-3.5 pr-3 bg-transparent text-sm text-white placeholder:text-white/30 focus:outline-none"
-          />
-          {isSearching && (
-            <div className="pr-4">
-              <Spinner size="sm" />
-            </div>
-          )}
-          {!isSearching && results.length > 0 && (
-            <span className="pr-4 text-xs text-white/50">{results.length}</span>
-          )}
+      {/* Top Controls */}
+      <div className="fixed top-5 left-5 right-5 z-30 flex items-start justify-between gap-4">
+        {/* Left side - View toggle */}
+        <GlassPanel className="rounded-xl p-1 flex shrink-0">
+          {(['2d', '3d'] as const).map(v => (
+            <button
+              key={v}
+              onClick={() => setViewMode(v)}
+              className={`px-4 py-2 text-xs font-medium rounded-lg transition-all duration-200 ${
+                viewMode === v
+                  ? 'bg-white/15 text-white'
+                  : 'text-white/40 hover:text-white/70 hover:bg-white/5'
+              }`}
+            >
+              {v.toUpperCase()}
+            </button>
+          ))}
         </GlassPanel>
+
+        {/* Center - Search */}
+        <div className={`flex-1 ${isMobile ? 'max-w-full' : 'max-w-md'}`}>
+          <GlassPanel className="rounded-2xl flex items-center transition-shadow duration-200 focus-within:ring-1 focus-within:ring-white/20">
+            <div className="pl-4 pr-2 text-white/40">
+              <SearchIcon />
+            </div>
+            <input
+              type="text"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder={searchMode === 'visual' ? 'Search by visual concept...' : 'Search archives...'}
+              className="flex-1 py-3 pr-3 bg-transparent text-sm text-white placeholder:text-white/30 focus:outline-none"
+            />
+            {isSearching && (
+              <div className="pr-4">
+                <Spinner size="sm" />
+              </div>
+            )}
+            {!isSearching && results.length > 0 && (
+              <span className="pr-4 text-xs text-white/50">{results.length}</span>
+            )}
+          </GlassPanel>
+        </div>
+
+        {/* Right side - Search mode toggle (desktop only) */}
+        {!isMobile && (
+          <GlassPanel className="rounded-xl p-1 flex shrink-0">
+            <button
+              onClick={() => setSearchMode('semantic')}
+              className={`px-4 py-2 text-xs font-medium rounded-lg transition-all duration-200 ${
+                searchMode === 'semantic'
+                  ? 'bg-white/15 text-white'
+                  : 'text-white/40 hover:text-white/70 hover:bg-white/5'
+              }`}
+            >
+              Text
+            </button>
+            <button
+              onClick={() => {
+                if (visualSearchReady) {
+                  setSearchMode('visual');
+                } else if (!visualSearchLoading) {
+                  enableVisualSearch();
+                }
+              }}
+              disabled={visualSearchLoading}
+              className={`px-4 py-2 text-xs font-medium rounded-lg transition-all duration-200 flex items-center gap-2 ${
+                searchMode === 'visual'
+                  ? 'bg-white/15 text-white'
+                  : 'text-white/40 hover:text-white/70 hover:bg-white/5'
+              } ${visualSearchLoading ? 'opacity-50' : ''}`}
+            >
+              {visualSearchLoading ? (
+                <>
+                  <Spinner size="sm" />
+                  Loading...
+                </>
+              ) : !visualSearchReady ? (
+                <>
+                  <DownloadIcon size={12} />
+                  Visual
+                </>
+              ) : (
+                'Visual'
+              )}
+            </button>
+          </GlassPanel>
+        )}
       </div>
 
       {/* Info Panel */}
       <GlassPanel className="fixed bottom-5 left-5 z-30 rounded-2xl px-5 py-4">
-        <p className="text-sm font-semibold text-white mb-0.5">Montreal Archives</p>
-        <p className="text-xs text-white/50">
-          {data.length.toLocaleString()} images · CLIP embeddings
-        </p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-white mb-0.5">Montreal Archives</p>
+            <p className="text-xs text-white/50">
+              {data.length.toLocaleString()} historical photos
+            </p>
+            <a
+              href="https://mtlarchives.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-blue-400 hover:text-blue-300 mt-1 block"
+            >
+              mtlarchives.com →
+            </a>
+          </div>
+          <button
+            onClick={() => setShowHelp(true)}
+            className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/70 transition-colors"
+            title="Help (press ?)"
+          >
+            <HelpIcon size={16} />
+          </button>
+        </div>
       </GlassPanel>
-
-      {/* Model Status */}
-      {modelStatus !== 'ready' && (
-        <GlassPanel className="fixed bottom-5 right-5 z-30 rounded-xl px-4 py-2.5 flex items-center gap-2.5">
-          {modelStatus === 'loading' && <Spinner size="sm" />}
-          <span className={`text-xs ${modelStatus === 'error' ? 'text-red-400' : 'text-white/50'}`}>
-            {modelStatus === 'loading' ? 'Loading CLIP...' : 'CLIP unavailable'}
-          </span>
-        </GlassPanel>
-      )}
 
       {/* Results Panel */}
       {topResults.length > 0 && (
-        <GlassPanel className="fixed top-20 right-5 z-30 rounded-2xl w-[360px] overflow-hidden">
+        <GlassPanel className={`fixed top-20 z-30 rounded-2xl overflow-hidden ${isMobile ? 'left-5 right-5' : 'right-5 w-[360px]'}`}>
           <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-white">Results</p>
@@ -971,7 +1185,7 @@ export function EmbeddingExplorer() {
               ×
             </button>
           </div>
-          <div className="max-h-[calc(100vh-200px)] overflow-y-auto">
+          <div className={`overflow-y-auto ${isMobile ? 'max-h-[50vh]' : 'max-h-[calc(100vh-200px)]'}`}>
             {topResults.map((r, i) => {
               const allDetails = [
                 r.name && `Name: ${r.name}`,
@@ -990,7 +1204,6 @@ export function EmbeddingExplorer() {
                   }`}
                 >
                   <div className="flex items-start gap-3">
-                    {/* Thumbnail */}
                     <div className="relative flex-shrink-0">
                       {r.image_url ? (
                         <img
@@ -1010,40 +1223,23 @@ export function EmbeddingExplorer() {
                       </span>
                     </div>
 
-                    {/* Details */}
                     <div className="flex-1 min-w-0">
-                      {/* Name row */}
                       {r.name && (
                         <div className="flex items-center gap-1 group/row">
                           <p className="text-sm text-white font-medium truncate flex-1">{r.name}</p>
-                          <div className="opacity-0 group-hover/row:opacity-100 transition-opacity">
-                            <CopyButton text={r.name} label="Name copied" onCopy={showToast} />
-                          </div>
+                          {!isMobile && (
+                            <div className="opacity-0 group-hover/row:opacity-100 transition-opacity">
+                              <CopyButton text={r.name} label="Name copied" onCopy={showToast} />
+                            </div>
+                          )}
                         </div>
                       )}
 
-                      {/* Date row */}
                       {r.date && (
-                        <div className="flex items-center gap-1 mt-1 group/row">
-                          <p className="text-xs text-white/50 flex-1">{r.date}</p>
-                          <div className="opacity-0 group-hover/row:opacity-100 transition-opacity">
-                            <CopyButton text={r.date} label="Date copied" onCopy={showToast} />
-                          </div>
-                        </div>
+                        <p className="text-xs text-white/50 mt-1">{r.date}</p>
                       )}
 
-                      {/* Caption row */}
-                      {r.vlm_caption && (
-                        <div className="flex items-start gap-1 mt-2 group/row">
-                          <p className="text-xs text-white/60 flex-1 line-clamp-2 leading-relaxed">{r.vlm_caption}</p>
-                          <div className="opacity-0 group-hover/row:opacity-100 transition-opacity flex-shrink-0">
-                            <CopyButton text={r.vlm_caption} label="Description copied" onCopy={showToast} />
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Similarity score */}
-                      <div className="flex items-center gap-2 mt-2.5">
+                      <div className="flex items-center gap-2 mt-2">
                         <span className="text-xs font-semibold text-emerald-400">{(r.similarity * 100).toFixed(1)}%</span>
                         <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
                           <div
@@ -1055,20 +1251,21 @@ export function EmbeddingExplorer() {
                     </div>
                   </div>
 
-                  {/* Copy All button - appears on hover */}
-                  <div className="mt-3 pt-3 border-t border-white/5 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigator.clipboard.writeText(allDetails);
-                        showToast('All details copied');
-                      }}
-                      className="w-full py-2 rounded-lg bg-white/5 hover:bg-white/10 text-xs text-white/60 hover:text-white/90 transition-colors flex items-center justify-center gap-2"
-                    >
-                      <CopyIcon size={12} />
-                      Copy All Details
-                    </button>
-                  </div>
+                  {!isMobile && (
+                    <div className="mt-3 pt-3 border-t border-white/5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigator.clipboard.writeText(allDetails);
+                          showToast('All details copied');
+                        }}
+                        className="w-full py-2 rounded-lg bg-white/5 hover:bg-white/10 text-xs text-white/60 hover:text-white/90 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <CopyIcon size={12} />
+                        Copy All Details
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -1078,6 +1275,12 @@ export function EmbeddingExplorer() {
 
       {/* Toast notification */}
       <Toast message={toast.message} visible={toast.visible} />
+
+      {/* Welcome modal for first-time users */}
+      {showWelcome && <WelcomeModal onClose={dismissWelcome} />}
+
+      {/* Help panel */}
+      {showHelp && <HelpPanel onClose={() => setShowHelp(false)} isMobile={isMobile} />}
     </div>
   );
 }
