@@ -53,6 +53,7 @@ type ApiResult = {
 type ClipStatus = 'idle' | 'loading' | 'ready' | 'error' | 'unavailable';
 type EmbeddingsStatus = 'idle' | 'loading' | 'ready' | 'error';
 
+// Small thumbnails for hover tooltips and result cards
 function getThumbnailUrl(src: string): string {
   const params = new URLSearchParams({
     src,
@@ -61,6 +62,17 @@ function getThumbnailUrl(src: string): string {
     fit: 'cover',
     format: 'auto',
     q: '70',
+  });
+  return `${API_ORIGIN}/api/thumb?${params.toString()}`;
+}
+
+// Larger optimized image for viewing (opens in new tab)
+function getPreviewUrl(src: string): string {
+  const params = new URLSearchParams({
+    src,
+    w: '1600',
+    format: 'auto',
+    q: '85',
   });
   return `${API_ORIGIN}/api/thumb?${params.toString()}`;
 }
@@ -764,7 +776,7 @@ export function EmbeddingExplorer() {
         const idx = intersects[0].index!;
         const point = dataRef[idx];
         if (point.image_url) {
-          window.open(point.image_url, '_blank');
+          window.open(getPreviewUrl(point.image_url), '_blank');
         }
       }
     };
@@ -988,7 +1000,7 @@ export function EmbeddingExplorer() {
           selectResult(Math.max(selectedIndex - 1, 0));
         }
         if (e.key === 'Enter' && selectedIndex >= 0 && topResults[selectedIndex]?.image_url) {
-          window.open(topResults[selectedIndex].image_url, '_blank');
+          window.open(getPreviewUrl(topResults[selectedIndex].image_url), '_blank');
         }
       }
     };
@@ -1198,7 +1210,7 @@ export function EmbeddingExplorer() {
                 <div
                   key={r.id}
                   onClick={() => selectResult(i)}
-                  onDoubleClick={() => r.image_url && window.open(r.image_url, '_blank')}
+                  onDoubleClick={() => r.image_url && window.open(getPreviewUrl(r.image_url), '_blank')}
                   className={`group px-5 py-4 cursor-pointer transition-colors border-b border-white/5 last:border-0 ${
                     i === selectedIndex ? 'bg-white/10' : 'hover:bg-white/5'
                   }`}
