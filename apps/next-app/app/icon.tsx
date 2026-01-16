@@ -9,25 +9,38 @@ export const size = {
 
 export const contentType = 'image/png';
 
+// Dot-based M icon representing the point cloud
 export default function Icon() {
   return new ImageResponse(
     (
       <div
         style={{
-          fontSize: 22,
-          background: '#171717',
           width: '100%',
           height: '100%',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: '#fafafa',
-          fontWeight: 700,
-          fontFamily: 'system-ui, sans-serif',
+          background: '#0a0a0a',
           borderRadius: 6,
+          position: 'relative',
         }}
       >
-        M
+        {/* Left vertical */}
+        <div style={{ position: 'absolute', left: 5, top: 4, width: 5, height: 5, borderRadius: '50%', background: '#ff9500' }} />
+        <div style={{ position: 'absolute', left: 5, top: 10, width: 4, height: 4, borderRadius: '50%', background: '#ffd60a' }} />
+        <div style={{ position: 'absolute', left: 5, top: 15, width: 5, height: 5, borderRadius: '50%', background: '#34c759' }} />
+        <div style={{ position: 'absolute', left: 5, top: 21, width: 4, height: 4, borderRadius: '50%', background: '#0a84ff' }} />
+
+        {/* Center V */}
+        <div style={{ position: 'absolute', left: 10, top: 7, width: 4, height: 4, borderRadius: '50%', background: '#ffd60a' }} />
+        <div style={{ position: 'absolute', left: 14, top: 12, width: 5, height: 5, borderRadius: '50%', background: '#fafafa' }} />
+        <div style={{ position: 'absolute', left: 18, top: 7, width: 4, height: 4, borderRadius: '50%', background: '#ffd60a' }} />
+
+        {/* Right vertical */}
+        <div style={{ position: 'absolute', right: 5, top: 4, width: 5, height: 5, borderRadius: '50%', background: '#ff9500' }} />
+        <div style={{ position: 'absolute', right: 5, top: 10, width: 4, height: 4, borderRadius: '50%', background: '#ffd60a' }} />
+        <div style={{ position: 'absolute', right: 5, top: 15, width: 5, height: 5, borderRadius: '50%', background: '#34c759' }} />
+        <div style={{ position: 'absolute', right: 5, top: 21, width: 4, height: 4, borderRadius: '50%', background: '#0a84ff' }} />
       </div>
     ),
     {
