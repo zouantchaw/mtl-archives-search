@@ -1,0 +1,19 @@
+{
+  "name": "Montreal Archives Explorer",
+  "short_name": "MTL Explorer",
+  "description": "Explore Montreal's history through an interactive 3D visualization of 14,000+ archival photos",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "entertainment", "photo"]
+}

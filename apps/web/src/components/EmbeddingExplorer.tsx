@@ -3,6 +3,7 @@ import { AutoTokenizer, CLIPTextModelWithProjection, env as transformersEnv } fr
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { clipEmbeddingCache } from '../lib/lru-cache';
+import { events as analytics } from '../lib/analytics';
 
 transformersEnv.allowLocalModels = false;
 
@@ -166,6 +167,136 @@ function CloseIcon({ size = 16 }: { size?: number }) {
       <line x1="18" y1="6" x2="6" y2="18" />
       <line x1="6" y1="6" x2="18" y2="18" />
     </svg>
+  );
+}
+
+function FullscreenIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+      <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
+      <path d="M3 16v3a2 2 0 0 0 2 2h3" />
+      <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+    </svg>
+  );
+}
+
+function ExitFullscreenIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 3v3a2 2 0 0 1-2 2H3" />
+      <path d="M21 8h-3a2 2 0 0 1-2-2V3" />
+      <path d="M3 16h3a2 2 0 0 1 2 2v3" />
+      <path d="M16 21v-3a2 2 0 0 1 2-2h3" />
+    </svg>
+  );
+}
+
+function FilterIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+    </svg>
+  );
+}
+
+// Color legend component
+function ColorLegend({ show, onToggle }: { show: boolean; onToggle: () => void }) {
+  const colors = [
+    { color: '#ff9500', label: 'Before 1930' },
+    { color: '#ffd60a', label: '1930-1950' },
+    { color: '#34c759', label: '1950-1970' },
+    { color: '#0a84ff', label: 'After 1970' },
+    { color: '#8e8e93', label: 'Unknown date' },
+  ];
+
+  return (
+    <div className="relative">
+      <button
+        onClick={onToggle}
+        className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/70 transition-colors"
+        title="Color legend"
+      >
+        <div className="w-4 h-4 rounded-full bg-gradient-to-r from-orange-500 via-yellow-500 to-blue-500" />
+      </button>
+      {show && (
+        <div className="absolute bottom-full left-0 mb-2 bg-black/80 backdrop-blur-xl border border-white/10 rounded-xl p-3 min-w-[140px]">
+          <p className="text-xs font-medium text-white/70 mb-2">Photo dates</p>
+          <div className="space-y-1.5">
+            {colors.map(({ color, label }) => (
+              <div key={label} className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
+                <span className="text-xs text-white/60">{label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Photo detail modal
+function PhotoModal({
+  photo,
+  onClose,
+  onOpenOriginal,
+}: {
+  photo: { id: string; name: string; date: string; image_url: string; vlm_caption: string } | null;
+  onClose: () => void;
+  onOpenOriginal: () => void;
+}) {
+  if (!photo) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
+        {/* Image */}
+        <div className="relative aspect-[4/3] bg-black">
+          <img
+            src={`${import.meta.env.VITE_API_BASE_URL || ''}/api/thumb?src=${encodeURIComponent(photo.image_url)}&w=800&q=85&format=auto`}
+            alt={photo.name || 'Historical photo'}
+            className="w-full h-full object-contain"
+          />
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center text-white/70 hover:text-white transition-colors"
+          >
+            <CloseIcon size={20} />
+          </button>
+        </div>
+
+        {/* Details */}
+        <div className="p-6">
+          <h3 className="text-lg font-semibold text-white mb-1">
+            {photo.name || 'Untitled'}
+          </h3>
+          {photo.date && (
+            <p className="text-sm text-white/50 mb-3">{photo.date}</p>
+          )}
+          {photo.vlm_caption && (
+            <p className="text-sm text-white/70 leading-relaxed mb-4">{photo.vlm_caption}</p>
+          )}
+
+          <div className="flex gap-3">
+            <button
+              onClick={onOpenOriginal}
+              className="flex-1 py-3 rounded-xl bg-white text-black font-medium text-sm hover:bg-white/90 transition-colors"
+            >
+              View Full Size
+            </button>
+            <a
+              href={`https://mtlarchives.com/photo/${photo.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 py-3 rounded-xl bg-white/10 text-white font-medium text-sm hover:bg-white/15 transition-colors text-center"
+            >
+              Order Print
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -369,10 +500,42 @@ export function EmbeddingExplorer() {
     return !localStorage.getItem('mtl-explorer-visited');
   });
   const [showHelp, setShowHelp] = useState(false);
+  const [showLegend, setShowLegend] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [dateRange, setDateRange] = useState<[number, number]>([1900, 1980]);
+  const [selectedPhoto, setSelectedPhoto] = useState<{
+    id: string;
+    name: string;
+    date: string;
+    image_url: string;
+    vlm_caption: string;
+  } | null>(null);
 
   const dismissWelcome = useCallback(() => {
     localStorage.setItem('mtl-explorer-visited', 'true');
     setShowWelcome(false);
+  }, []);
+
+  // Fullscreen handling
+  const toggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+      setIsFullscreen(true);
+      analytics.fullscreenToggled(true);
+    } else {
+      document.exitFullscreen();
+      setIsFullscreen(false);
+      analytics.fullscreenToggled(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
   }, []);
 
   // Data state - split into phases
@@ -427,6 +590,24 @@ export function EmbeddingExplorer() {
   const [searchMode, setSearchMode] = useState<SearchMode>('semantic'); // Default to server-side
   const [toast, setToast] = useState<{ message: string; visible: boolean }>({ message: '', visible: false });
   const toastTimeoutRef = useRef<number | null>(null);
+
+  // URL state sync - read on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get('q');
+    const mode = params.get('mode') as '2d' | '3d' | null;
+    if (q) setQuery(q);
+    if (mode === '2d' || mode === '3d') setViewMode(mode);
+  }, []);
+
+  // URL state sync - write on change
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (query) params.set('q', query);
+    if (viewMode !== '2d') params.set('mode', viewMode);
+    const newUrl = params.toString() ? `?${params.toString()}` : window.location.pathname;
+    window.history.replaceState({}, '', newUrl);
+  }, [query, viewMode]);
 
   const showToast = useCallback((message: string) => {
     if (toastTimeoutRef.current) {
@@ -776,7 +957,14 @@ export function EmbeddingExplorer() {
         const idx = intersects[0].index!;
         const point = dataRef[idx];
         if (point.image_url) {
-          window.open(getPreviewUrl(point.image_url), '_blank');
+          setSelectedPhoto({
+            id: point.id,
+            name: point.name,
+            date: point.date,
+            image_url: point.image_url,
+            vlm_caption: point.vlm_caption,
+          });
+          analytics.photoClicked(point.id);
         }
       }
     };
@@ -928,6 +1116,7 @@ export function EmbeddingExplorer() {
 
       setResults(scored);
       setSelectedIndex(-1);
+      analytics.searchPerformed(q, searchMode === 'visual' ? 'visual' : 'text', scored.length);
     } finally {
       isSearchingRef.current = false;
       setIsSearching(false);
@@ -1000,7 +1189,15 @@ export function EmbeddingExplorer() {
           selectResult(Math.max(selectedIndex - 1, 0));
         }
         if (e.key === 'Enter' && selectedIndex >= 0 && topResults[selectedIndex]?.image_url) {
-          window.open(getPreviewUrl(topResults[selectedIndex].image_url), '_blank');
+          const r = topResults[selectedIndex];
+          setSelectedPhoto({
+            id: r.id,
+            name: r.name,
+            date: r.date,
+            image_url: r.image_url,
+            vlm_caption: r.vlm_caption,
+          });
+          analytics.photoClicked(r.id);
         }
       }
     };
@@ -1172,13 +1369,23 @@ export function EmbeddingExplorer() {
               mtlarchives.com →
             </a>
           </div>
-          <button
-            onClick={() => setShowHelp(true)}
-            className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/70 transition-colors"
-            title="Help (press ?)"
-          >
-            <HelpIcon size={16} />
-          </button>
+          <div className="flex items-center gap-1">
+            <ColorLegend show={showLegend} onToggle={() => setShowLegend(!showLegend)} />
+            <button
+              onClick={toggleFullscreen}
+              className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/70 transition-colors"
+              title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+            >
+              {isFullscreen ? <ExitFullscreenIcon size={16} /> : <FullscreenIcon size={16} />}
+            </button>
+            <button
+              onClick={() => setShowHelp(true)}
+              className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/70 transition-colors"
+              title="Help (press ?)"
+            >
+              <HelpIcon size={16} />
+            </button>
+          </div>
         </div>
       </GlassPanel>
 
@@ -1210,7 +1417,13 @@ export function EmbeddingExplorer() {
                 <div
                   key={r.id}
                   onClick={() => selectResult(i)}
-                  onDoubleClick={() => r.image_url && window.open(getPreviewUrl(r.image_url), '_blank')}
+                  onDoubleClick={() => r.image_url && setSelectedPhoto({
+                    id: r.id,
+                    name: r.name,
+                    date: r.date,
+                    image_url: r.image_url,
+                    vlm_caption: r.vlm_caption,
+                  })}
                   className={`group px-5 py-4 cursor-pointer transition-colors border-b border-white/5 last:border-0 ${
                     i === selectedIndex ? 'bg-white/10' : 'hover:bg-white/5'
                   }`}
@@ -1293,6 +1506,17 @@ export function EmbeddingExplorer() {
 
       {/* Help panel */}
       {showHelp && <HelpPanel onClose={() => setShowHelp(false)} isMobile={isMobile} />}
+
+      {/* Photo detail modal */}
+      {selectedPhoto && (
+        <PhotoModal
+          photo={selectedPhoto}
+          onClose={() => setSelectedPhoto(null)}
+          onOpenOriginal={() => {
+            window.open(getPreviewUrl(selectedPhoto.image_url), '_blank');
+          }}
+        />
+      )}
     </div>
   );
 }
