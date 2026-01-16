@@ -53,6 +53,7 @@ type ApiResult = {
 
 type ClipStatus = 'idle' | 'loading' | 'ready' | 'error' | 'unavailable';
 type EmbeddingsStatus = 'idle' | 'loading' | 'ready' | 'error';
+type ColorMode = 'date' | 'subject' | 'depth';
 
 // Small thumbnails for hover tooltips and result cards
 function getThumbnailUrl(src: string): string {
@@ -94,6 +95,35 @@ function easeOutCubic(t: number): number {
 
 function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
+}
+
+// Convert year to Z position (1890-1990 → 0-200)
+function yearToZ(dateStr: string | null | undefined): number {
+  if (!dateStr) return 100; // Unknown dates in middle
+  const year = parseInt(dateStr);
+  if (isNaN(year)) return 100;
+  // Clamp to 1890-1990 range and map to 0-200
+  const normalized = Math.max(0, Math.min(1, (year - 1890) / 100));
+  return normalized * 200;
+}
+
+// Subject categories for filtering
+const SUBJECT_CATEGORIES = [
+  { id: 'church', label: 'Churches', keywords: ['church', 'cathedral', 'chapel', 'basilica'], color: '#af52de' },
+  { id: 'street', label: 'Streets', keywords: ['street', 'avenue', 'road', 'boulevard', 'sidewalk'], color: '#ff9500' },
+  { id: 'building', label: 'Buildings', keywords: ['building', 'house', 'apartment', 'office', 'tower', 'skyscraper'], color: '#0a84ff' },
+  { id: 'people', label: 'People', keywords: ['people', 'crowd', 'person', 'man', 'woman', 'child', 'group'], color: '#ff3b30' },
+  { id: 'vehicle', label: 'Vehicles', keywords: ['car', 'vehicle', 'truck', 'bus', 'train', 'automobile', 'streetcar'], color: '#ffd60a' },
+  { id: 'nature', label: 'Nature', keywords: ['park', 'tree', 'garden', 'nature', 'river', 'mountain', 'forest'], color: '#34c759' },
+  { id: 'winter', label: 'Winter', keywords: ['snow', 'winter', 'ice', 'skating', 'cold'], color: '#5ac8fa' },
+] as const;
+
+function detectSubjects(caption: string | null | undefined): string[] {
+  if (!caption) return [];
+  const lower = caption.toLowerCase();
+  return SUBJECT_CATEGORIES
+    .filter(cat => cat.keywords.some(kw => lower.includes(kw)))
+    .map(cat => cat.id);
 }
 
 // ============================================================
@@ -200,30 +230,214 @@ function FilterIcon({ size = 16 }: { size?: number }) {
   );
 }
 
-// Color legend component
-function ColorLegend({ show, onToggle }: { show: boolean; onToggle: () => void }) {
-  const colors = [
-    { color: '#ff9500', label: 'Before 1930' },
-    { color: '#ffd60a', label: '1930-1950' },
-    { color: '#34c759', label: '1950-1970' },
-    { color: '#0a84ff', label: 'After 1970' },
-    { color: '#8e8e93', label: 'Unknown date' },
-  ];
+function ConstellationIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="6" cy="6" r="2" />
+      <circle cx="18" cy="6" r="2" />
+      <circle cx="12" cy="18" r="2" />
+      <circle cx="12" cy="12" r="1.5" />
+      <line x1="7.5" y1="7.5" x2="10.5" y2="10.5" />
+      <line x1="13.5" y1="10.5" x2="16.5" y2="7.5" />
+      <line x1="12" y1="13.5" x2="12" y2="16" />
+    </svg>
+  );
+}
+
+function PlayIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" stroke="none">
+      <polygon points="6 3 20 12 6 21 6 3" />
+    </svg>
+  );
+}
+
+function PauseIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" stroke="none">
+      <rect x="6" y="4" width="4" height="16" />
+      <rect x="14" y="4" width="4" height="16" />
+    </svg>
+  );
+}
+
+// Filter panel with subject chips and date slider
+function FilterPanel({
+  show,
+  onClose,
+  activeSubjects,
+  onSubjectToggle,
+  dateRange,
+  onDateRangeChange,
+}: {
+  show: boolean;
+  onClose: () => void;
+  activeSubjects: Set<string>;
+  onSubjectToggle: (subject: string) => void;
+  dateRange: [number, number];
+  onDateRangeChange: (range: [number, number]) => void;
+}) {
+  if (!show) return null;
+
+  return (
+    <GlassPanel className="fixed bottom-20 left-5 z-30 rounded-2xl p-4 w-[280px]">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold text-white">Filters</h3>
+        <button onClick={onClose} className="p-1 rounded-lg hover:bg-white/10 text-white/50 hover:text-white">
+          <CloseIcon size={16} />
+        </button>
+      </div>
+
+      {/* Subject chips */}
+      <div className="mb-4">
+        <p className="text-xs text-white/50 mb-2">Subjects {activeSubjects.size > 0 && `(${activeSubjects.size})`}</p>
+        <div className="flex flex-wrap gap-1.5">
+          {SUBJECT_CATEGORIES.map(cat => (
+            <button
+              key={cat.id}
+              onClick={() => onSubjectToggle(cat.id)}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                activeSubjects.has(cat.id)
+                  ? 'text-white ring-1 ring-white/30'
+                  : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white/70'
+              }`}
+              style={{
+                backgroundColor: activeSubjects.has(cat.id) ? `${cat.color}40` : undefined,
+              }}
+            >
+              <span className="inline-block w-2 h-2 rounded-full mr-1.5" style={{ backgroundColor: cat.color }} />
+              {cat.label}
+            </button>
+          ))}
+        </div>
+        {activeSubjects.size > 0 && (
+          <button
+            onClick={() => SUBJECT_CATEGORIES.forEach(cat => {
+              if (activeSubjects.has(cat.id)) onSubjectToggle(cat.id);
+            })}
+            className="text-xs text-white/40 hover:text-white/60 mt-2"
+          >
+            Clear all
+          </button>
+        )}
+      </div>
+
+      {/* Date range slider */}
+      <div>
+        <p className="text-xs text-white/50 mb-2">Date range: {dateRange[0]} - {dateRange[1]}</p>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-white/40 w-10">{dateRange[0]}</span>
+            <input
+              type="range"
+              min="1890"
+              max="1990"
+              value={dateRange[0]}
+              onChange={e => {
+                const val = parseInt(e.target.value);
+                if (val < dateRange[1]) onDateRangeChange([val, dateRange[1]]);
+              }}
+              className="flex-1 h-1 bg-white/10 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-white/40 w-10">{dateRange[1]}</span>
+            <input
+              type="range"
+              min="1890"
+              max="1990"
+              value={dateRange[1]}
+              onChange={e => {
+                const val = parseInt(e.target.value);
+                if (val > dateRange[0]) onDateRangeChange([dateRange[0], val]);
+              }}
+              className="flex-1 h-1 bg-white/10 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
+            />
+          </div>
+        </div>
+      </div>
+    </GlassPanel>
+  );
+}
+
+// Color legend component with mode support
+function ColorLegend({
+  show,
+  onToggle,
+  colorMode,
+  onColorModeChange
+}: {
+  show: boolean;
+  onToggle: () => void;
+  colorMode: ColorMode;
+  onColorModeChange: (mode: ColorMode) => void;
+}) {
+  const legends: Record<ColorMode, { title: string; items: { color: string; label: string }[] }> = {
+    date: {
+      title: 'Photo dates',
+      items: [
+        { color: '#ff9500', label: 'Before 1930' },
+        { color: '#ffd60a', label: '1930-1950' },
+        { color: '#34c759', label: '1950-1970' },
+        { color: '#0a84ff', label: 'After 1970' },
+        { color: '#8e8e93', label: 'Unknown' },
+      ],
+    },
+    subject: {
+      title: 'Subject type',
+      items: [
+        { color: '#af52de', label: 'Churches' },
+        { color: '#ff9500', label: 'Streets' },
+        { color: '#0a84ff', label: 'Buildings' },
+        { color: '#ff3b30', label: 'People' },
+        { color: '#ffd60a', label: 'Vehicles' },
+        { color: '#34c759', label: 'Nature' },
+        { color: '#5ac8fa', label: 'Winter' },
+      ],
+    },
+    depth: {
+      title: 'Time depth',
+      items: [
+        { color: '#ff6b6b', label: '1890s (front)' },
+        { color: '#c77dff', label: '1940s (middle)' },
+        { color: '#4dabf7', label: '1990s (back)' },
+      ],
+    },
+  };
+
+  const legend = legends[colorMode];
 
   return (
     <div className="relative">
       <button
         onClick={onToggle}
         className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/70 transition-colors"
-        title="Color legend"
+        title="Color legend & modes"
       >
         <div className="w-4 h-4 rounded-full bg-gradient-to-r from-orange-500 via-yellow-500 to-blue-500" />
       </button>
       {show && (
-        <div className="absolute bottom-full left-0 mb-2 bg-black/80 backdrop-blur-xl border border-white/10 rounded-xl p-3 min-w-[140px]">
-          <p className="text-xs font-medium text-white/70 mb-2">Photo dates</p>
+        <div className="absolute bottom-full left-0 mb-2 bg-black/90 backdrop-blur-xl border border-white/10 rounded-xl p-3 min-w-[160px]">
+          {/* Mode selector */}
+          <div className="flex gap-1 mb-3 pb-2 border-b border-white/10">
+            {(['date', 'subject', 'depth'] as ColorMode[]).map(mode => (
+              <button
+                key={mode}
+                onClick={() => onColorModeChange(mode)}
+                className={`px-2 py-1 text-[10px] font-medium rounded-md transition-colors ${
+                  colorMode === mode
+                    ? 'bg-white/20 text-white'
+                    : 'text-white/40 hover:text-white/70 hover:bg-white/5'
+                }`}
+              >
+                {mode.charAt(0).toUpperCase() + mode.slice(1)}
+              </button>
+            ))}
+          </div>
+
+          <p className="text-xs font-medium text-white/70 mb-2">{legend.title}</p>
           <div className="space-y-1.5">
-            {colors.map(({ color, label }) => (
+            {legend.items.map(({ color, label }) => (
               <div key={label} className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
                 <span className="text-xs text-white/60">{label}</span>
@@ -509,7 +723,84 @@ export function EmbeddingExplorer() {
   const [showLegend, setShowLegend] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  const [dateRange, setDateRange] = useState<[number, number]>([1900, 1980]);
+  const [dateRange, setDateRange] = useState<[number, number]>([1890, 1990]);
+  const [activeSubjects, setActiveSubjects] = useState<Set<string>>(new Set());
+  const [showConstellations, setShowConstellations] = useState(true);
+  const [isTimeTraveling, setIsTimeTraveling] = useState(false);
+  const timeTravelRef = useRef<number | null>(null);
+
+  const toggleSubject = useCallback((subject: string) => {
+    setActiveSubjects(prev => {
+      const next = new Set(prev);
+      if (next.has(subject)) {
+        next.delete(subject);
+      } else {
+        next.add(subject);
+      }
+      return next;
+    });
+  }, []);
+
+  // Time travel animation - sweep through decades
+  const startTimeTravel = useCallback(() => {
+    if (isTimeTraveling) {
+      // Stop
+      if (timeTravelRef.current) {
+        clearInterval(timeTravelRef.current);
+        timeTravelRef.current = null;
+      }
+      setIsTimeTraveling(false);
+      setDateRange([1890, 1990]);
+      return;
+    }
+
+    // Start
+    setIsTimeTraveling(true);
+    setDateRange([1890, 1890]); // Start from beginning
+
+    let currentYear = 1890;
+    timeTravelRef.current = window.setInterval(() => {
+      currentYear += 2; // Advance 2 years per tick
+      if (currentYear > 1990) {
+        // Loop back or stop
+        clearInterval(timeTravelRef.current!);
+        timeTravelRef.current = null;
+        setIsTimeTraveling(false);
+        setDateRange([1890, 1990]);
+        return;
+      }
+      setDateRange([1890, currentYear]);
+    }, 150); // 150ms per tick for smooth animation
+  }, [isTimeTraveling]);
+
+  // Cleanup time travel on unmount
+  useEffect(() => {
+    return () => {
+      if (timeTravelRef.current) {
+        clearInterval(timeTravelRef.current);
+      }
+    };
+  }, []);
+
+  // Check if a point passes the current filters
+  const passesFilters = useCallback((d: Point): boolean => {
+    // Date filter
+    const year = d.date ? parseInt(d.date) : null;
+    if (year !== null && (year < dateRange[0] || year > dateRange[1])) {
+      return false;
+    }
+
+    // Subject filter (if any subjects are selected)
+    if (activeSubjects.size > 0) {
+      const subjects = detectSubjects(d.vlm_caption);
+      if (!subjects.some(s => activeSubjects.has(s))) {
+        return false;
+      }
+    }
+
+    return true;
+  }, [dateRange, activeSubjects]);
+
   const [selectedPhoto, setSelectedPhoto] = useState<{
     id: string;
     name: string;
@@ -554,6 +845,7 @@ export function EmbeddingExplorer() {
 
   // View state
   const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
+  const [colorMode, setColorMode] = useState<ColorMode>('date');
   const [hoverPoint, setHoverPoint] = useState<Point | null>(null);
   const [hoverImageUrl, setHoverImageUrl] = useState<string | null>(null);
 
@@ -573,6 +865,7 @@ export function EmbeddingExplorer() {
     geometry: THREE.BufferGeometry;
     raycaster: THREE.Raycaster;
     mouse: THREE.Vector2;
+    constellationLines?: THREE.LineSegments;
   } | null>(null);
   const animFrameRef = useRef<number>(0);
 
@@ -639,6 +932,19 @@ export function EmbeddingExplorer() {
       .slice(0, 5);
   }, [results, failedImages]);
 
+  // Compute stats about visible points
+  const filterStats = useMemo(() => {
+    const hasFilters = activeSubjects.size > 0 || dateRange[0] > 1890 || dateRange[1] < 1990;
+    if (!hasFilters || data.length === 0) return null;
+
+    const visible = data.filter(passesFilters);
+    return {
+      total: data.length,
+      visible: visible.length,
+      percentage: Math.round((visible.length / data.length) * 100),
+    };
+  }, [data, passesFilters, activeSubjects, dateRange]);
+
   const scheduleHoverTooltipPosition = useCallback((x: number, y: number) => {
     hoverPosRef.current.x = x;
     hoverPosRef.current.y = y;
@@ -676,31 +982,83 @@ export function EmbeddingExplorer() {
   }, [hoverPoint?.image_url]);
 
   // --------------------------------------------------------
-  // Point Colors
+  // Point Colors (supports multiple modes + filtering)
   // --------------------------------------------------------
   const getColor = useCallback((d: Point): [number, number, number] => {
+    // Check if point passes filters - dim if not
+    const passes = passesFilters(d);
+    const dimFactor = passes ? 1 : 0.15; // Very dim for filtered-out points
+
+    // Search results always override base color
     if (selectedIndex >= 0 && topResults[selectedIndex]?.id === d.id) {
-      return [255, 69, 58];
+      return [255 * dimFactor, 69 * dimFactor, 58 * dimFactor]; // Red for selected
     }
     const topIdx = topResults.findIndex(r => r.id === d.id);
     if (topIdx >= 0) {
       const t = 1 - topIdx / 5;
-      return [255, 159 + t * 40, 10];
+      return [(255 * dimFactor), ((159 + t * 40) * dimFactor), (10 * dimFactor)]; // Orange gradient for top results
     }
     const match = results.find(r => r.id === d.id);
     if (match) {
       const t = match.similarity ** 2;
-      return [10 + t * 245, 132 - t * 40, 255 - t * 155];
+      return [((10 + t * 245) * dimFactor), ((132 - t * 40) * dimFactor), ((255 - t * 155) * dimFactor)]; // Blue-to-purple for matches
     }
-    if (d.date) {
-      const y = parseInt(d.date);
-      if (y < 1930) return [255, 149, 0];
-      if (y < 1950) return [255, 214, 10];
-      if (y < 1970) return [52, 199, 89];
-      return [10, 132, 255];
+
+    // Helper to apply dim factor
+    const dim = (rgb: [number, number, number]): [number, number, number] =>
+      [rgb[0] * dimFactor, rgb[1] * dimFactor, rgb[2] * dimFactor];
+
+    // Base color depends on color mode
+    if (colorMode === 'date') {
+      if (d.date) {
+        const y = parseInt(d.date);
+        if (y < 1930) return dim([255, 149, 0]);   // Orange - early
+        if (y < 1950) return dim([255, 214, 10]);  // Yellow - 30s-40s
+        if (y < 1970) return dim([52, 199, 89]);   // Green - 50s-60s
+        return dim([10, 132, 255]);                 // Blue - 70s+
+      }
+      return dim([142, 142, 147]); // Gray for unknown
     }
-    return [142, 142, 147];
-  }, [results, topResults, selectedIndex]);
+
+    if (colorMode === 'subject') {
+      const caption = (d.vlm_caption || '').toLowerCase();
+      // Detect subject from VLM caption
+      if (caption.includes('church') || caption.includes('cathedral') || caption.includes('chapel')) {
+        return dim([175, 82, 222]); // Purple - religious
+      }
+      if (caption.includes('street') || caption.includes('avenue') || caption.includes('road') || caption.includes('boulevard')) {
+        return dim([255, 149, 0]); // Orange - streets
+      }
+      if (caption.includes('building') || caption.includes('house') || caption.includes('apartment') || caption.includes('office')) {
+        return dim([10, 132, 255]); // Blue - buildings
+      }
+      if (caption.includes('people') || caption.includes('crowd') || caption.includes('person') || caption.includes('man') || caption.includes('woman')) {
+        return dim([255, 59, 48]); // Red - people
+      }
+      if (caption.includes('car') || caption.includes('vehicle') || caption.includes('truck') || caption.includes('bus') || caption.includes('train')) {
+        return dim([255, 214, 10]); // Yellow - vehicles
+      }
+      if (caption.includes('park') || caption.includes('tree') || caption.includes('garden') || caption.includes('nature')) {
+        return dim([52, 199, 89]); // Green - nature
+      }
+      if (caption.includes('snow') || caption.includes('winter') || caption.includes('ice')) {
+        return dim([90, 200, 250]); // Light blue - winter
+      }
+      return dim([142, 142, 147]); // Gray for unclassified
+    }
+
+    if (colorMode === 'depth') {
+      // Color by Z position (year-based depth)
+      const t = d.z / 200; // Normalize 0-200 to 0-1
+      // Gradient from warm (old) to cool (new)
+      const r = Math.round(255 * (1 - t));
+      const g = Math.round(100 + 100 * Math.sin(t * Math.PI));
+      const b = Math.round(255 * t);
+      return dim([r, g, b]);
+    }
+
+    return dim([142, 142, 147]);
+  }, [results, topResults, selectedIndex, colorMode, passesFilters]);
 
   // --------------------------------------------------------
   // Phase 1: Load 2D positions only (fast initial load)
@@ -738,7 +1096,7 @@ export function EmbeddingExplorer() {
           ...d,
           x: d.x * SCALE,
           y: d.y * SCALE,
-          z: Math.random() * 100,
+          z: yearToZ(d.date), // Year-based Z for time-layered 3D view
           embeddingIndex: idToIdx.get(d.id) ?? -1,
         }));
 
@@ -1047,6 +1405,80 @@ export function EmbeddingExplorer() {
 
     colorAttr.needsUpdate = true;
   }, [data, results, topResults, selectedIndex, getColor]);
+
+  // --------------------------------------------------------
+  // Constellation Lines (connect search results)
+  // --------------------------------------------------------
+  useEffect(() => {
+    if (!sceneRef.current) return;
+    const scene = sceneRef.current.scene;
+
+    // Remove existing lines
+    if (sceneRef.current.constellationLines) {
+      scene.remove(sceneRef.current.constellationLines);
+      sceneRef.current.constellationLines.geometry.dispose();
+      (sceneRef.current.constellationLines.material as THREE.Material).dispose();
+      sceneRef.current.constellationLines = undefined;
+    }
+
+    // Only show lines if we have results and feature is enabled
+    if (!showConstellations || topResults.length < 2) return;
+
+    const anim = animStateRef.current;
+
+    // Create line segments connecting top results
+    const positions: number[] = [];
+    const colors: number[] = [];
+
+    // Connect each result to the next (creates a path through similarity)
+    for (let i = 0; i < topResults.length - 1; i++) {
+      const p1 = topResults[i];
+      const p2 = topResults[i + 1];
+
+      const z1 = anim.currentMode === '2d' ? 0 : p1.z;
+      const z2 = anim.currentMode === '2d' ? 0 : p2.z;
+
+      positions.push(p1.x, p1.y, z1);
+      positions.push(p2.x, p2.y, z2);
+
+      // Gradient from bright to dim along the path
+      const t1 = 1 - i / topResults.length;
+      const t2 = 1 - (i + 1) / topResults.length;
+      colors.push(1, 0.8 * t1, 0.2, 1, 0.8 * t2, 0.2); // Orange gradient
+    }
+
+    // Also connect top result back to others (star pattern)
+    if (topResults.length >= 3) {
+      const center = topResults[0];
+      const centerZ = anim.currentMode === '2d' ? 0 : center.z;
+
+      for (let i = 2; i < topResults.length; i++) {
+        const p = topResults[i];
+        const pZ = anim.currentMode === '2d' ? 0 : p.z;
+
+        positions.push(center.x, center.y, centerZ);
+        positions.push(p.x, p.y, pZ);
+
+        const t = p.similarity / topResults[0].similarity;
+        colors.push(1, 0.6, 0.2, t * 0.6, t * 0.4, t * 0.1);
+      }
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+
+    const material = new THREE.LineBasicMaterial({
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.4,
+      linewidth: 1,
+    });
+
+    const lines = new THREE.LineSegments(geometry, material);
+    scene.add(lines);
+    sceneRef.current.constellationLines = lines;
+  }, [topResults, showConstellations, viewMode]);
 
   // --------------------------------------------------------
   // Search functions
@@ -1381,7 +1813,23 @@ export function EmbeddingExplorer() {
           <div>
             <p className="text-sm font-semibold text-white mb-0.5">Montreal Archives</p>
             <p className="text-xs text-white/50">
-              {data.length.toLocaleString()} historical photos
+              {isTimeTraveling ? (
+                <span className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-emerald-400 font-mono font-medium">{dateRange[1]}</span>
+                  <span className="text-white/30">|</span>
+                  <span>{filterStats?.visible.toLocaleString() ?? 0} photos</span>
+                </span>
+              ) : filterStats ? (
+                <>
+                  <span className="text-white font-medium">{filterStats.visible.toLocaleString()}</span>
+                  <span className="text-white/30"> / </span>
+                  {filterStats.total.toLocaleString()} photos
+                  <span className="text-white/30"> ({filterStats.percentage}%)</span>
+                </>
+              ) : (
+                <>{data.length.toLocaleString()} historical photos</>
+              )}
             </p>
             <a
               href="https://mtlarchives.com"
@@ -1393,7 +1841,48 @@ export function EmbeddingExplorer() {
             </a>
           </div>
           <div className="flex items-center gap-1">
-            <ColorLegend show={showLegend} onToggle={() => setShowLegend(!showLegend)} />
+            <button
+              onClick={startTimeTravel}
+              className={`p-2 rounded-lg transition-colors ${
+                isTimeTraveling
+                  ? 'bg-emerald-500/20 text-emerald-400'
+                  : 'bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/70'
+              }`}
+              title={isTimeTraveling ? 'Stop time travel' : 'Time travel through decades'}
+            >
+              {isTimeTraveling ? <PauseIcon size={16} /> : <PlayIcon size={16} />}
+            </button>
+            <button
+              onClick={() => setShowConstellations(!showConstellations)}
+              className={`p-2 rounded-lg transition-colors ${
+                showConstellations
+                  ? 'bg-orange-500/20 text-orange-400'
+                  : 'bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/70'
+              }`}
+              title={showConstellations ? 'Hide connections' : 'Show connections'}
+            >
+              <ConstellationIcon size={16} />
+            </button>
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`p-2 rounded-lg transition-colors relative ${
+                showFilters || activeSubjects.size > 0 || dateRange[0] > 1890 || dateRange[1] < 1990
+                  ? 'bg-blue-500/20 text-blue-400'
+                  : 'bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/70'
+              }`}
+              title="Filters"
+            >
+              <FilterIcon size={16} />
+              {(activeSubjects.size > 0 || dateRange[0] > 1890 || dateRange[1] < 1990) && (
+                <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-blue-500" />
+              )}
+            </button>
+            <ColorLegend
+              show={showLegend}
+              onToggle={() => setShowLegend(!showLegend)}
+              colorMode={colorMode}
+              onColorModeChange={setColorMode}
+            />
             <button
               onClick={toggleFullscreen}
               className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/70 transition-colors"
@@ -1530,6 +2019,16 @@ export function EmbeddingExplorer() {
 
       {/* Help panel */}
       {showHelp && <HelpPanel onClose={() => setShowHelp(false)} isMobile={isMobile} />}
+
+      {/* Filter panel */}
+      <FilterPanel
+        show={showFilters}
+        onClose={() => setShowFilters(false)}
+        activeSubjects={activeSubjects}
+        onSubjectToggle={toggleSubject}
+        dateRange={dateRange}
+        onDateRangeChange={setDateRange}
+      />
 
       {/* Photo detail modal */}
       {selectedPhoto && (
