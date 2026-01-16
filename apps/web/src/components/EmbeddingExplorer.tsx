@@ -241,10 +241,12 @@ function PhotoModal({
   photo,
   onClose,
   onOpenOriginal,
+  onImageError,
 }: {
   photo: { id: string; name: string; date: string; image_url: string; vlm_caption: string } | null;
   onClose: () => void;
   onOpenOriginal: () => void;
+  onImageError?: (id: string) => void;
 }) {
   if (!photo) return null;
 
@@ -257,6 +259,10 @@ function PhotoModal({
             src={`${import.meta.env.VITE_API_BASE_URL || ''}/api/thumb?src=${encodeURIComponent(photo.image_url)}&w=800&q=85&format=auto`}
             alt={photo.name || 'Historical photo'}
             className="w-full h-full object-contain"
+            onError={() => {
+              onImageError?.(photo.id);
+              onClose();
+            }}
           />
           <button
             onClick={onClose}
@@ -591,6 +597,12 @@ export function EmbeddingExplorer() {
   const [toast, setToast] = useState<{ message: string; visible: boolean }>({ message: '', visible: false });
   const toastTimeoutRef = useRef<number | null>(null);
 
+  // Track failed images to filter them out
+  const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+  const handleImageError = useCallback((imageId: string) => {
+    setFailedImages(prev => new Set(prev).add(imageId));
+  }, []);
+
   // URL state sync - read on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -620,7 +632,12 @@ export function EmbeddingExplorer() {
     }, 2000);
   }, []);
 
-  const topResults = useMemo(() => results.slice(0, 5), [results]);
+  // Filter out failed images from results
+  const topResults = useMemo(() => {
+    return results
+      .filter(r => !failedImages.has(r.id))
+      .slice(0, 5);
+  }, [results, failedImages]);
 
   const scheduleHoverTooltipPosition = useCallback((x: number, y: number) => {
     hoverPosRef.current.x = x;
@@ -1247,7 +1264,13 @@ export function EmbeddingExplorer() {
           {hoverPoint.image_url && (
             <div className="w-full h-40 bg-white/5 flex items-center justify-center">
               {hoverImageUrl ? (
-                <img src={hoverImageUrl} alt="" className="w-full h-40 object-cover" decoding="async" />
+                <img
+                  src={hoverImageUrl}
+                  alt=""
+                  className="w-full h-40 object-cover"
+                  decoding="async"
+                  onError={() => hoverPoint && handleImageError(hoverPoint.id)}
+                />
               ) : (
                 <Spinner size="sm" />
               )}
@@ -1437,6 +1460,7 @@ export function EmbeddingExplorer() {
                           className="w-16 h-16 rounded-xl object-cover"
                           loading="lazy"
                           decoding="async"
+                          onError={() => handleImageError(r.id)}
                         />
                       ) : (
                         <div className="w-16 h-16 rounded-xl bg-white/5 flex items-center justify-center">
@@ -1515,6 +1539,7 @@ export function EmbeddingExplorer() {
           onOpenOriginal={() => {
             window.open(getPreviewUrl(selectedPhoto.image_url), '_blank');
           }}
+          onImageError={handleImageError}
         />
       )}
     </div>
