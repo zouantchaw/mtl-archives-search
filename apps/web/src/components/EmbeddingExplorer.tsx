@@ -97,14 +97,14 @@ function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
 }
 
-// Convert year to Z position (1890-1990 → 0-200)
+// Convert year to Z position (1890-1990 → 0-800 for better 3D spread)
 function yearToZ(dateStr: string | null | undefined): number {
-  if (!dateStr) return 100; // Unknown dates in middle
+  if (!dateStr) return 400; // Unknown dates in middle
   const year = parseInt(dateStr);
-  if (isNaN(year)) return 100;
-  // Clamp to 1890-1990 range and map to 0-200
+  if (isNaN(year)) return 400;
+  // Clamp to 1890-1990 range and map to 0-800 (similar scale to X/Y)
   const normalized = Math.max(0, Math.min(1, (year - 1890) / 100));
-  return normalized * 200;
+  return normalized * 800;
 }
 
 // Subject categories for filtering
@@ -1049,7 +1049,7 @@ export function EmbeddingExplorer() {
 
     if (colorMode === 'depth') {
       // Color by Z position (year-based depth)
-      const t = d.z / 200; // Normalize 0-200 to 0-1
+      const t = d.z / 800; // Normalize 0-800 to 0-1
       // Gradient from warm (old) to cool (new)
       const r = Math.round(255 * (1 - t));
       const g = Math.round(100 + 100 * Math.sin(t * Math.PI));
@@ -1186,10 +1186,11 @@ export function EmbeddingExplorer() {
         fov: 50,
       };
     } else {
+      // 3D view - camera positioned to see the full time-layered cloud
       return {
-        position: new THREE.Vector3(SCALE * 1.2, SCALE * 0.3, SCALE * 0.8),
-        target: new THREE.Vector3(SCALE / 2, SCALE / 2, 50),
-        fov: 60,
+        position: new THREE.Vector3(SCALE * 1.5, -SCALE * 0.3, SCALE * 1.2),
+        target: new THREE.Vector3(SCALE / 2, SCALE / 2, 400), // Center of Z range (0-800)
+        fov: 65,
       };
     }
   }, []);
@@ -1407,7 +1408,7 @@ export function EmbeddingExplorer() {
   }, [data, results, topResults, selectedIndex, getColor]);
 
   // --------------------------------------------------------
-  // Constellation Lines (connect search results)
+  // Constellation Lines (connect search results with bright visible lines)
   // --------------------------------------------------------
   useEffect(() => {
     if (!sceneRef.current) return;
@@ -1441,27 +1442,26 @@ export function EmbeddingExplorer() {
       positions.push(p1.x, p1.y, z1);
       positions.push(p2.x, p2.y, z2);
 
-      // Gradient from bright to dim along the path
-      const t1 = 1 - i / topResults.length;
-      const t2 = 1 - (i + 1) / topResults.length;
-      colors.push(1, 0.8 * t1, 0.2, 1, 0.8 * t2, 0.2); // Orange gradient
+      // Bright orange/yellow gradient
+      colors.push(1, 0.6, 0.1); // Start - bright orange
+      colors.push(1, 0.8, 0.2); // End - golden
     }
 
-    // Also connect top result back to others (star pattern)
-    if (topResults.length >= 3) {
-      const center = topResults[0];
-      const centerZ = anim.currentMode === '2d' ? 0 : center.z;
+    // Also connect top result to ALL others (star pattern from #1)
+    const center = topResults[0];
+    const centerZ = anim.currentMode === '2d' ? 0 : center.z;
 
-      for (let i = 2; i < topResults.length; i++) {
-        const p = topResults[i];
-        const pZ = anim.currentMode === '2d' ? 0 : p.z;
+    for (let i = 1; i < topResults.length; i++) {
+      const p = topResults[i];
+      const pZ = anim.currentMode === '2d' ? 0 : p.z;
 
-        positions.push(center.x, center.y, centerZ);
-        positions.push(p.x, p.y, pZ);
+      positions.push(center.x, center.y, centerZ);
+      positions.push(p.x, p.y, pZ);
 
-        const t = p.similarity / topResults[0].similarity;
-        colors.push(1, 0.6, 0.2, t * 0.6, t * 0.4, t * 0.1);
-      }
+      // Color by similarity - brighter = more similar
+      const t = p.similarity / topResults[0].similarity;
+      colors.push(1, 0.5, 0.1);     // Center - orange
+      colors.push(t, t * 0.8, 0.1); // Endpoint - fades based on similarity
     }
 
     const geometry = new THREE.BufferGeometry();
@@ -1471,8 +1471,8 @@ export function EmbeddingExplorer() {
     const material = new THREE.LineBasicMaterial({
       vertexColors: true,
       transparent: true,
-      opacity: 0.4,
-      linewidth: 1,
+      opacity: 0.85, // Much more visible
+      linewidth: 2,  // Note: may not work on all GPUs
     });
 
     const lines = new THREE.LineSegments(geometry, material);
@@ -1594,7 +1594,8 @@ export function EmbeddingExplorer() {
     if (anim.currentMode === '2d') {
       camera.position.set(r.x, r.y - SCALE * 0.3, SCALE * 0.5);
     } else {
-      camera.position.set(r.x + 150, r.y - 100, currentZ + 200);
+      // Better viewing angle for the larger Z range
+      camera.position.set(r.x + 300, r.y - 200, currentZ + 400);
     }
   }, [topResults]);
 
