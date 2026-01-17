@@ -107,24 +107,17 @@ function yearToZ(dateStr: string | null | undefined): number {
   return normalized * 800;
 }
 
-// Subject categories for filtering
+// Subject categories - these are search terms that get combined with user query
 const SUBJECT_CATEGORIES = [
-  { id: 'church', label: 'Churches', keywords: ['church', 'cathedral', 'chapel', 'basilica'], color: '#af52de' },
-  { id: 'street', label: 'Streets', keywords: ['street', 'avenue', 'road', 'boulevard', 'sidewalk'], color: '#ff9500' },
-  { id: 'building', label: 'Buildings', keywords: ['building', 'house', 'apartment', 'office', 'tower', 'skyscraper'], color: '#0a84ff' },
-  { id: 'people', label: 'People', keywords: ['people', 'crowd', 'person', 'man', 'woman', 'child', 'group'], color: '#ff3b30' },
-  { id: 'vehicle', label: 'Vehicles', keywords: ['car', 'vehicle', 'truck', 'bus', 'train', 'automobile', 'streetcar'], color: '#ffd60a' },
-  { id: 'nature', label: 'Nature', keywords: ['park', 'tree', 'garden', 'nature', 'river', 'mountain', 'forest'], color: '#34c759' },
-  { id: 'winter', label: 'Winter', keywords: ['snow', 'winter', 'ice', 'skating', 'cold'], color: '#5ac8fa' },
+  { id: 'church', label: 'Churches', searchTerm: 'church cathedral', color: '#af52de' },
+  { id: 'street', label: 'Streets', searchTerm: 'street avenue road', color: '#ff9500' },
+  { id: 'building', label: 'Buildings', searchTerm: 'building architecture', color: '#0a84ff' },
+  { id: 'people', label: 'People', searchTerm: 'people crowd portrait', color: '#ff3b30' },
+  { id: 'vehicle', label: 'Vehicles', searchTerm: 'car automobile streetcar train', color: '#ffd60a' },
+  { id: 'park', label: 'Parks', searchTerm: 'park garden nature trees', color: '#34c759' },
+  { id: 'winter', label: 'Winter', searchTerm: 'snow winter ice', color: '#5ac8fa' },
+  { id: 'aerial', label: 'Aerial', searchTerm: 'aerial view panorama skyline', color: '#ff6b6b' },
 ] as const;
-
-function detectSubjects(caption: string | null | undefined): string[] {
-  if (!caption) return [];
-  const lower = caption.toLowerCase();
-  return SUBJECT_CATEGORIES
-    .filter(cat => cat.keywords.some(kw => lower.includes(kw)))
-    .map(cat => cat.id);
-}
 
 // ============================================================
 // UI Components
@@ -261,101 +254,69 @@ function PauseIcon({ size = 16 }: { size?: number }) {
   );
 }
 
-// Filter panel with subject chips and date slider
-function FilterPanel({
+// Quick search panel - subject buttons trigger actual API searches
+function QuickSearchPanel({
   show,
   onClose,
-  activeSubjects,
-  onSubjectToggle,
-  dateRange,
-  onDateRangeChange,
+  activeSubject,
+  onSubjectSearch,
+  currentQuery,
 }: {
   show: boolean;
   onClose: () => void;
-  activeSubjects: Set<string>;
-  onSubjectToggle: (subject: string) => void;
-  dateRange: [number, number];
-  onDateRangeChange: (range: [number, number]) => void;
+  activeSubject: string | null;
+  onSubjectSearch: (subjectId: string | null) => void;
+  currentQuery: string;
 }) {
   if (!show) return null;
 
   return (
-    <GlassPanel className="fixed bottom-20 left-5 z-30 rounded-2xl p-4 w-[280px]">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-semibold text-white">Filters</h3>
+    <GlassPanel className="fixed bottom-20 left-5 z-30 rounded-2xl p-4 w-[320px]">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold text-white">Quick Search</h3>
         <button onClick={onClose} className="p-1 rounded-lg hover:bg-white/10 text-white/50 hover:text-white">
           <CloseIcon size={16} />
         </button>
       </div>
 
-      {/* Subject chips */}
-      <div className="mb-4">
-        <p className="text-xs text-white/50 mb-2">Subjects {activeSubjects.size > 0 && `(${activeSubjects.size})`}</p>
-        <div className="flex flex-wrap gap-1.5">
-          {SUBJECT_CATEGORIES.map(cat => (
-            <button
-              key={cat.id}
-              onClick={() => onSubjectToggle(cat.id)}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                activeSubjects.has(cat.id)
-                  ? 'text-white ring-1 ring-white/30'
-                  : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white/70'
-              }`}
-              style={{
-                backgroundColor: activeSubjects.has(cat.id) ? `${cat.color}40` : undefined,
-              }}
-            >
-              <span className="inline-block w-2 h-2 rounded-full mr-1.5" style={{ backgroundColor: cat.color }} />
-              {cat.label}
-            </button>
-          ))}
-        </div>
-        {activeSubjects.size > 0 && (
+      <p className="text-xs text-white/40 mb-3">Click a category to search. Combines with your current query.</p>
+
+      {/* Subject chips - clicking triggers search */}
+      <div className="flex flex-wrap gap-2">
+        {SUBJECT_CATEGORIES.map(cat => (
           <button
-            onClick={() => SUBJECT_CATEGORIES.forEach(cat => {
-              if (activeSubjects.has(cat.id)) onSubjectToggle(cat.id);
-            })}
-            className="text-xs text-white/40 hover:text-white/60 mt-2"
+            key={cat.id}
+            onClick={() => onSubjectSearch(activeSubject === cat.id ? null : cat.id)}
+            className={`px-3 py-2 rounded-xl text-xs font-medium transition-all flex items-center gap-2 ${
+              activeSubject === cat.id
+                ? 'text-white ring-2 ring-white/40 shadow-lg'
+                : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
+            }`}
+            style={{
+              backgroundColor: activeSubject === cat.id ? `${cat.color}50` : undefined,
+            }}
           >
-            Clear all
+            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cat.color }} />
+            {cat.label}
           </button>
-        )}
+        ))}
       </div>
 
-      {/* Date range slider */}
-      <div>
-        <p className="text-xs text-white/50 mb-2">Date range: {dateRange[0]} - {dateRange[1]}</p>
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-white/40 w-10">{dateRange[0]}</span>
-            <input
-              type="range"
-              min="1890"
-              max="1990"
-              value={dateRange[0]}
-              onChange={e => {
-                const val = parseInt(e.target.value);
-                if (val < dateRange[1]) onDateRangeChange([val, dateRange[1]]);
-              }}
-              className="flex-1 h-1 bg-white/10 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-white/40 w-10">{dateRange[1]}</span>
-            <input
-              type="range"
-              min="1890"
-              max="1990"
-              value={dateRange[1]}
-              onChange={e => {
-                const val = parseInt(e.target.value);
-                if (val > dateRange[0]) onDateRangeChange([dateRange[0], val]);
-              }}
-              className="flex-1 h-1 bg-white/10 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
-            />
-          </div>
+      {activeSubject && (
+        <div className="mt-3 pt-3 border-t border-white/10">
+          <p className="text-xs text-white/50">
+            Searching: <span className="text-white font-medium">
+              {currentQuery || SUBJECT_CATEGORIES.find(c => c.id === activeSubject)?.searchTerm}
+            </span>
+          </p>
+          <button
+            onClick={() => onSubjectSearch(null)}
+            className="text-xs text-blue-400 hover:text-blue-300 mt-1"
+          >
+            Clear filter
+          </button>
         </div>
-      </div>
+      )}
     </GlassPanel>
   );
 }
@@ -723,25 +684,33 @@ export function EmbeddingExplorer() {
   const [showLegend, setShowLegend] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  const [dateRange, setDateRange] = useState<[number, number]>([1890, 1990]);
-  const [activeSubjects, setActiveSubjects] = useState<Set<string>>(new Set());
+  const [activeSubject, setActiveSubject] = useState<string | null>(null);
   const [showConstellations, setShowConstellations] = useState(true);
   const [isTimeTraveling, setIsTimeTraveling] = useState(false);
   const timeTravelRef = useRef<number | null>(null);
 
-  const toggleSubject = useCallback((subject: string) => {
-    setActiveSubjects(prev => {
-      const next = new Set(prev);
-      if (next.has(subject)) {
-        next.delete(subject);
-      } else {
-        next.add(subject);
-      }
-      return next;
-    });
+  // Subject search - clicking a category triggers an API search
+  const handleSubjectSearch = useCallback((subjectId: string | null) => {
+    setActiveSubject(subjectId);
+
+    if (subjectId === null) {
+      // Clear subject filter
+      setQuery('');
+      setResults([]);
+      return;
+    }
+
+    const category = SUBJECT_CATEGORIES.find(c => c.id === subjectId);
+    if (category) {
+      // Set the search term and trigger search
+      setQuery(category.searchTerm);
+    }
   }, []);
 
-  // Time travel animation - sweep through decades
+  // Time travel animation - cycle through decade searches
+  const [timeTravelDecade, setTimeTravelDecade] = useState<number | null>(null);
+  const decades = [1890, 1900, 1910, 1920, 1930, 1940, 1950, 1960, 1970, 1980];
+
   const startTimeTravel = useCallback(() => {
     if (isTimeTraveling) {
       // Stop
@@ -750,27 +719,32 @@ export function EmbeddingExplorer() {
         timeTravelRef.current = null;
       }
       setIsTimeTraveling(false);
-      setDateRange([1890, 1990]);
+      setTimeTravelDecade(null);
+      setQuery('');
+      setResults([]);
       return;
     }
 
-    // Start
+    // Start - cycle through decades
     setIsTimeTraveling(true);
-    setDateRange([1890, 1890]); // Start from beginning
+    let decadeIndex = 0;
+    setTimeTravelDecade(decades[0]);
+    setQuery(`${decades[0]}s montreal`);
 
-    let currentYear = 1890;
     timeTravelRef.current = window.setInterval(() => {
-      currentYear += 2; // Advance 2 years per tick
-      if (currentYear > 1990) {
-        // Loop back or stop
+      decadeIndex++;
+      if (decadeIndex >= decades.length) {
+        // Stop at end
         clearInterval(timeTravelRef.current!);
         timeTravelRef.current = null;
         setIsTimeTraveling(false);
-        setDateRange([1890, 1990]);
+        setTimeTravelDecade(null);
         return;
       }
-      setDateRange([1890, currentYear]);
-    }, 150); // 150ms per tick for smooth animation
+      const decade = decades[decadeIndex];
+      setTimeTravelDecade(decade);
+      setQuery(`${decade}s montreal`);
+    }, 2500); // 2.5 seconds per decade for meaningful viewing
   }, [isTimeTraveling]);
 
   // Cleanup time travel on unmount
@@ -782,24 +756,6 @@ export function EmbeddingExplorer() {
     };
   }, []);
 
-  // Check if a point passes the current filters
-  const passesFilters = useCallback((d: Point): boolean => {
-    // Date filter
-    const year = d.date ? parseInt(d.date) : null;
-    if (year !== null && (year < dateRange[0] || year > dateRange[1])) {
-      return false;
-    }
-
-    // Subject filter (if any subjects are selected)
-    if (activeSubjects.size > 0) {
-      const subjects = detectSubjects(d.vlm_caption);
-      if (!subjects.some(s => activeSubjects.has(s))) {
-        return false;
-      }
-    }
-
-    return true;
-  }, [dateRange, activeSubjects]);
 
   const [selectedPhoto, setSelectedPhoto] = useState<{
     id: string;
@@ -925,26 +881,17 @@ export function EmbeddingExplorer() {
     }, 2000);
   }, []);
 
-  // Filter out failed images from results
+  // Filter out failed images from results - show more for better constellation
   const topResults = useMemo(() => {
     return results
       .filter(r => !failedImages.has(r.id))
-      .slice(0, 5);
+      .slice(0, 10); // Show top 10 for richer connections
   }, [results, failedImages]);
 
+  // Top 5 for the UI panel display
+  const displayResults = useMemo(() => topResults.slice(0, 5), [topResults]);
+
   // Compute stats about visible points
-  const filterStats = useMemo(() => {
-    const hasFilters = activeSubjects.size > 0 || dateRange[0] > 1890 || dateRange[1] < 1990;
-    if (!hasFilters || data.length === 0) return null;
-
-    const visible = data.filter(passesFilters);
-    return {
-      total: data.length,
-      visible: visible.length,
-      percentage: Math.round((visible.length / data.length) * 100),
-    };
-  }, [data, passesFilters, activeSubjects, dateRange]);
-
   const scheduleHoverTooltipPosition = useCallback((x: number, y: number) => {
     hoverPosRef.current.x = x;
     hoverPosRef.current.y = y;
@@ -985,80 +932,69 @@ export function EmbeddingExplorer() {
   // Point Colors (supports multiple modes + filtering)
   // --------------------------------------------------------
   const getColor = useCallback((d: Point): [number, number, number] => {
-    // Check if point passes filters - dim if not
-    const passes = passesFilters(d);
-    const dimFactor = passes ? 1 : 0.15; // Very dim for filtered-out points
-
-    // Search results always override base color
+    // Search results get highlight colors
     if (selectedIndex >= 0 && topResults[selectedIndex]?.id === d.id) {
-      return [255 * dimFactor, 69 * dimFactor, 58 * dimFactor]; // Red for selected
+      return [255, 69, 58]; // Bright red for selected
     }
     const topIdx = topResults.findIndex(r => r.id === d.id);
     if (topIdx >= 0) {
       const t = 1 - topIdx / 5;
-      return [(255 * dimFactor), ((159 + t * 40) * dimFactor), (10 * dimFactor)]; // Orange gradient for top results
+      return [255, 159 + t * 40, 10]; // Bright orange gradient for top results
     }
     const match = results.find(r => r.id === d.id);
     if (match) {
       const t = match.similarity ** 2;
-      return [((10 + t * 245) * dimFactor), ((132 - t * 40) * dimFactor), ((255 - t * 155) * dimFactor)]; // Blue-to-purple for matches
+      return [10 + t * 245, 132 - t * 40, 255 - t * 155]; // Blue-to-purple for matches
     }
-
-    // Helper to apply dim factor
-    const dim = (rgb: [number, number, number]): [number, number, number] =>
-      [rgb[0] * dimFactor, rgb[1] * dimFactor, rgb[2] * dimFactor];
 
     // Base color depends on color mode
     if (colorMode === 'date') {
       if (d.date) {
         const y = parseInt(d.date);
-        if (y < 1930) return dim([255, 149, 0]);   // Orange - early
-        if (y < 1950) return dim([255, 214, 10]);  // Yellow - 30s-40s
-        if (y < 1970) return dim([52, 199, 89]);   // Green - 50s-60s
-        return dim([10, 132, 255]);                 // Blue - 70s+
+        if (y < 1930) return [255, 149, 0];   // Orange - early
+        if (y < 1950) return [255, 214, 10];  // Yellow - 30s-40s
+        if (y < 1970) return [52, 199, 89];   // Green - 50s-60s
+        return [10, 132, 255];                 // Blue - 70s+
       }
-      return dim([142, 142, 147]); // Gray for unknown
+      return [142, 142, 147]; // Gray for unknown
     }
 
     if (colorMode === 'subject') {
       const caption = (d.vlm_caption || '').toLowerCase();
-      // Detect subject from VLM caption
       if (caption.includes('church') || caption.includes('cathedral') || caption.includes('chapel')) {
-        return dim([175, 82, 222]); // Purple - religious
+        return [175, 82, 222]; // Purple - religious
       }
       if (caption.includes('street') || caption.includes('avenue') || caption.includes('road') || caption.includes('boulevard')) {
-        return dim([255, 149, 0]); // Orange - streets
+        return [255, 149, 0]; // Orange - streets
       }
       if (caption.includes('building') || caption.includes('house') || caption.includes('apartment') || caption.includes('office')) {
-        return dim([10, 132, 255]); // Blue - buildings
+        return [10, 132, 255]; // Blue - buildings
       }
       if (caption.includes('people') || caption.includes('crowd') || caption.includes('person') || caption.includes('man') || caption.includes('woman')) {
-        return dim([255, 59, 48]); // Red - people
+        return [255, 59, 48]; // Red - people
       }
       if (caption.includes('car') || caption.includes('vehicle') || caption.includes('truck') || caption.includes('bus') || caption.includes('train')) {
-        return dim([255, 214, 10]); // Yellow - vehicles
+        return [255, 214, 10]; // Yellow - vehicles
       }
       if (caption.includes('park') || caption.includes('tree') || caption.includes('garden') || caption.includes('nature')) {
-        return dim([52, 199, 89]); // Green - nature
+        return [52, 199, 89]; // Green - nature
       }
       if (caption.includes('snow') || caption.includes('winter') || caption.includes('ice')) {
-        return dim([90, 200, 250]); // Light blue - winter
+        return [90, 200, 250]; // Light blue - winter
       }
-      return dim([142, 142, 147]); // Gray for unclassified
+      return [142, 142, 147]; // Gray for unclassified
     }
 
     if (colorMode === 'depth') {
-      // Color by Z position (year-based depth)
-      const t = d.z / 800; // Normalize 0-800 to 0-1
-      // Gradient from warm (old) to cool (new)
+      const t = d.z / 800;
       const r = Math.round(255 * (1 - t));
       const g = Math.round(100 + 100 * Math.sin(t * Math.PI));
       const b = Math.round(255 * t);
-      return dim([r, g, b]);
+      return [r, g, b];
     }
 
-    return dim([142, 142, 147]);
-  }, [results, topResults, selectedIndex, colorMode, passesFilters]);
+    return [142, 142, 147];
+  }, [results, topResults, selectedIndex, colorMode]);
 
   // --------------------------------------------------------
   // Phase 1: Load 2D positions only (fast initial load)
@@ -1581,7 +1517,7 @@ export function EmbeddingExplorer() {
   // Selection & Navigation
   // --------------------------------------------------------
   const selectResult = useCallback((idx: number) => {
-    const r = topResults[idx];
+    const r = displayResults[idx];
     if (!r || !sceneRef.current) return;
     setSelectedIndex(idx);
 
@@ -1594,10 +1530,9 @@ export function EmbeddingExplorer() {
     if (anim.currentMode === '2d') {
       camera.position.set(r.x, r.y - SCALE * 0.3, SCALE * 0.5);
     } else {
-      // Better viewing angle for the larger Z range
       camera.position.set(r.x + 300, r.y - 200, currentZ + 400);
     }
-  }, [topResults]);
+  }, [displayResults]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -1629,17 +1564,17 @@ export function EmbeddingExplorer() {
         return;
       }
 
-      if (topResults.length > 0) {
+      if (displayResults.length > 0) {
         if (e.key === 'ArrowDown') {
           e.preventDefault();
-          selectResult(Math.min(selectedIndex + 1, topResults.length - 1));
+          selectResult(Math.min(selectedIndex + 1, displayResults.length - 1));
         }
         if (e.key === 'ArrowUp') {
           e.preventDefault();
           selectResult(Math.max(selectedIndex - 1, 0));
         }
-        if (e.key === 'Enter' && selectedIndex >= 0 && topResults[selectedIndex]?.image_url) {
-          const r = topResults[selectedIndex];
+        if (e.key === 'Enter' && selectedIndex >= 0 && displayResults[selectedIndex]?.image_url) {
+          const r = displayResults[selectedIndex];
           setSelectedPhoto({
             id: r.id,
             name: r.name,
@@ -1653,7 +1588,7 @@ export function EmbeddingExplorer() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [topResults, selectedIndex, selectResult, showHelp]);
+  }, [displayResults, selectedIndex, selectResult, showHelp]);
 
   // --------------------------------------------------------
   // Render
@@ -1814,19 +1749,18 @@ export function EmbeddingExplorer() {
           <div>
             <p className="text-sm font-semibold text-white mb-0.5">Montreal Archives</p>
             <p className="text-xs text-white/50">
-              {isTimeTraveling ? (
+              {isTimeTraveling && timeTravelDecade ? (
                 <span className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-emerald-400 font-mono font-medium">{dateRange[1]}</span>
+                  <span className="text-emerald-400 font-mono font-medium">{timeTravelDecade}s</span>
                   <span className="text-white/30">|</span>
-                  <span>{filterStats?.visible.toLocaleString() ?? 0} photos</span>
+                  <span>{results.length} photos</span>
                 </span>
-              ) : filterStats ? (
+              ) : results.length > 0 ? (
                 <>
-                  <span className="text-white font-medium">{filterStats.visible.toLocaleString()}</span>
-                  <span className="text-white/30"> / </span>
-                  {filterStats.total.toLocaleString()} photos
-                  <span className="text-white/30"> ({filterStats.percentage}%)</span>
+                  <span className="text-white font-medium">{results.length}</span>
+                  <span className="text-white/30"> results from </span>
+                  {data.length.toLocaleString()} photos
                 </>
               ) : (
                 <>{data.length.toLocaleString()} historical photos</>
@@ -1867,14 +1801,14 @@ export function EmbeddingExplorer() {
             <button
               onClick={() => setShowFilters(!showFilters)}
               className={`p-2 rounded-lg transition-colors relative ${
-                showFilters || activeSubjects.size > 0 || dateRange[0] > 1890 || dateRange[1] < 1990
+                showFilters || activeSubject
                   ? 'bg-blue-500/20 text-blue-400'
                   : 'bg-white/5 hover:bg-white/10 text-white/40 hover:text-white/70'
               }`}
-              title="Filters"
+              title="Quick search categories"
             >
               <FilterIcon size={16} />
-              {(activeSubjects.size > 0 || dateRange[0] > 1890 || dateRange[1] < 1990) && (
+              {activeSubject && (
                 <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-blue-500" />
               )}
             </button>
@@ -1903,11 +1837,11 @@ export function EmbeddingExplorer() {
       </GlassPanel>
 
       {/* Results Panel */}
-      {topResults.length > 0 && (
+      {displayResults.length > 0 && (
         <GlassPanel className={`fixed top-20 z-30 rounded-2xl overflow-hidden ${isMobile ? 'left-5 right-5' : 'right-5 w-[360px]'}`}>
           <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-white">Results</p>
+              <p className="text-sm font-medium text-white">Results ({results.length})</p>
               <p className="text-xs text-white/40 mt-0.5 truncate max-w-[200px]">"{query}"</p>
             </div>
             <button
@@ -1918,7 +1852,7 @@ export function EmbeddingExplorer() {
             </button>
           </div>
           <div className={`overflow-y-auto ${isMobile ? 'max-h-[50vh]' : 'max-h-[calc(100vh-200px)]'}`}>
-            {topResults.map((r, i) => {
+            {displayResults.map((r, i) => {
               const allDetails = [
                 r.name && `Name: ${r.name}`,
                 r.date && `Date: ${r.date}`,
@@ -2022,13 +1956,12 @@ export function EmbeddingExplorer() {
       {showHelp && <HelpPanel onClose={() => setShowHelp(false)} isMobile={isMobile} />}
 
       {/* Filter panel */}
-      <FilterPanel
+      <QuickSearchPanel
         show={showFilters}
         onClose={() => setShowFilters(false)}
-        activeSubjects={activeSubjects}
-        onSubjectToggle={toggleSubject}
-        dateRange={dateRange}
-        onDateRangeChange={setDateRange}
+        activeSubject={activeSubject}
+        onSubjectSearch={handleSubjectSearch}
+        currentQuery={query}
       />
 
       {/* Photo detail modal */}
