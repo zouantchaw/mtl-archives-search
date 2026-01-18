@@ -83,7 +83,7 @@ type PhotoDetail = {
 
 type ClipStatus = 'idle' | 'loading' | 'ready' | 'error' | 'unavailable';
 type EmbeddingsStatus = 'idle' | 'loading' | 'ready' | 'error';
-type ColorMode = 'date' | 'subject' | 'depth';
+type ColorMode = 'date' | 'subject' | 'depth' | 'photographer' | 'cluster';
 
 // Small thumbnails for result cards
 function getThumbnailUrl(src: string): string {
@@ -220,6 +220,293 @@ const CLUSTER_ANNOTATIONS = [
     color: '#8e8e93',
   },
 ] as const;
+
+// Decade trajectory - from temporal style evolution analysis
+// Shows how Montreal's visual documentation style evolved over time
+const DECADE_TRAJECTORY = [
+  { decade: 1920, x: 0.376, y: 0.492, count: 94, label: '1920s - Early street photography' },
+  { decade: 1930, x: 0.353, y: 0.429, count: 49, label: '1930s - Documentary expansion' },
+  { decade: 1940, x: 0.637, y: 0.702, count: 7807, label: '1940s - Aerial survey campaign' },
+  { decade: 1950, x: 0.741, y: 0.221, count: 98, label: '1950s - Official documentation' },
+  { decade: 1960, x: 0.800, y: 0.139, count: 1908, label: '1960s - Urban planning focus' },
+  { decade: 1970, x: 0.812, y: 0.087, count: 975, label: '1970s - Modern aerial techniques' },
+] as const;
+
+// Photographer colors - for fingerprinting visualization
+// Pattern: "Subject / Photographer Name . - date"
+const PHOTOGRAPHER_COLORS: Record<string, [number, number, number]> = {
+  'Henri Rémillard': [255, 59, 48],     // Red
+  'Armour Landry': [255, 149, 0],       // Orange (similar to Rémillard - they cluster together!)
+  'Louis-Philippe Meunier': [52, 199, 89], // Green
+  'Benny': [10, 132, 255],              // Blue
+  'W. B. Edwards': [175, 82, 222],      // Purple
+  'André Auclair': [255, 214, 10],      // Yellow
+};
+
+// Photographer centroids - from ML fingerprinting analysis
+// These are the average (x,y) positions of each photographer's work
+const PHOTOGRAPHER_CENTROIDS: { name: string; x: number; y: number; spread: number; count: number }[] = [
+  { name: 'Henri Rémillard', x: 0.277, y: 0.473, spread: 0.049, count: 74 },
+  { name: 'Armour Landry', x: 0.255, y: 0.479, spread: 0.044, count: 26 },
+  { name: 'Louis-Philippe Meunier', x: 0.310, y: 0.531, spread: 0.055, count: 8 },
+  { name: 'Benny', x: 0.339, y: 0.527, spread: 0.029, count: 7 },
+  { name: 'W. B. Edwards', x: 0.329, y: 0.557, spread: 0.068, count: 7 },
+  { name: 'André Auclair', x: 0.285, y: 0.444, spread: 0.070, count: 6 },
+];
+
+// Sub-clusters discovered via k-means analysis - 8 distinct visual regions
+const SUB_CLUSTERS = [
+  { id: 0, x: 0.6764, y: 0.8544, label: 'Aerial NW', color: [255, 107, 107] as const },     // Red - 1940s flight path group 1
+  { id: 1, x: 0.3579, y: 0.1077, label: 'Street Photos', color: [255, 159, 67] as const }, // Orange - 1970s street photography
+  { id: 2, x: 0.5067, y: 0.7283, label: 'Aerial Central', color: [254, 202, 87] as const }, // Yellow - 1940s central flights
+  { id: 3, x: 0.2901, y: 0.4721, label: 'Oblique Views', color: [72, 219, 251] as const },  // Cyan - mixed oblique aerials
+  { id: 4, x: 0.8663, y: 0.0635, label: 'Index Cards', color: [29, 209, 161] as const },    // Teal - 1960s official documents
+  { id: 5, x: 0.6728, y: 0.5422, label: 'Aerial South', color: [95, 39, 205] as const },    // Purple - 1940s southern flights
+  { id: 6, x: 0.7862, y: 0.2036, label: 'Survey Docs', color: [200, 214, 229] as const },   // Silver - 1960s planning
+  { id: 7, x: 0.8995, y: 0.4931, label: 'Aerial East', color: [116, 185, 255] as const },   // Blue - 1940s eastern flights
+] as const;
+
+function getSubCluster(x: number, y: number): typeof SUB_CLUSTERS[number] | null {
+  let best: typeof SUB_CLUSTERS[number] | null = null;
+  let bestDist = Infinity;
+  for (const c of SUB_CLUSTERS) {
+    const dist = Math.sqrt(Math.pow(x - c.x, 2) + Math.pow(y - c.y, 2));
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = c;
+    }
+  }
+  return best;
+}
+
+// Top anomalies - photos where visual appearance disagrees with stated date
+// Score = how much closer to another decade's centroid than own
+const TOP_ANOMALIES = new Set([
+  'mtl_archives_metadata_289.json',    // 1940s looks like 1970s (index card)
+  'mtl_archives_metadata_4210.json',   // 1940s looks like 1970s
+  'mtl_archives_metadata_12248.json',  // 1970s looks like 1920s (oblique aerial)
+  'mtl_archives_metadata_12835.json',  // 1970s Olympic construction
+  'mtl_archives_metadata_12877.json',  // 1970s looks like 1920s
+  'mtl_archives_metadata_12552.json',  // 1970s Vieux-Montréal
+  'mtl_archives_metadata_12728.json',  // 1970s Pont Ahuntsic
+  'mtl_archives_metadata_12726.json',  // 1970s Pont Papineau-Leblanc
+  'mtl_archives_metadata_12269.json',  // 1970s Parcs
+  'mtl_archives_metadata_12364.json',  // 1970s various views
+  'mtl_archives_metadata_12751.json',  // 1970s Canal Lachine
+  'mtl_archives_metadata_12347.json',  // 1970s Parc Laurier
+  'mtl_archives_metadata_12233.json',  // 1970s Hôtel de ville
+  'mtl_archives_metadata_12507.json',  // 1970s Aqueduc
+  'mtl_archives_metadata_12447.json',  // 1970s Parc Baldwin
+  'mtl_archives_metadata_12304.json',  // 1970s Incinérateur
+  'mtl_archives_metadata_12520.json',  // 1970s Place des Arts
+  'mtl_archives_metadata_12901.json',  // 1970s Villa-Maria
+  'mtl_archives_metadata_12922.json',  // 1970s Divers édifices
+  'mtl_archives_metadata_12739.json',  // 1970s Carrières
+]);
+
+// Decade centroids for anomaly scoring
+const DECADE_CENTROIDS: Record<number, { x: number; y: number }> = {
+  1920: { x: 0.376, y: 0.492 },
+  1930: { x: 0.353, y: 0.429 },
+  1940: { x: 0.637, y: 0.702 },
+  1950: { x: 0.741, y: 0.221 },
+  1960: { x: 0.800, y: 0.139 },
+  1970: { x: 0.812, y: 0.087 },
+};
+
+// Check if a photo is an anomaly and return mismatch info
+function getAnomalyInfo(id: string, x: number, y: number, date: string): { stated: number; visual: number; score: number } | null {
+  const yearMatch = date?.match(/(19\d{2})/);
+  if (!yearMatch) return null;
+
+  const year = parseInt(yearMatch[1]);
+  const statedDecade = Math.floor(year / 10) * 10;
+  const ownCentroid = DECADE_CENTROIDS[statedDecade];
+  if (!ownCentroid) return null;
+
+  const distToOwn = Math.sqrt(Math.pow(x - ownCentroid.x, 2) + Math.pow(y - ownCentroid.y, 2));
+
+  let closestOtherDecade = statedDecade;
+  let closestOtherDist = Infinity;
+
+  Object.entries(DECADE_CENTROIDS).forEach(([decade, centroid]) => {
+    if (parseInt(decade) === statedDecade) return;
+    const d = Math.sqrt(Math.pow(x - centroid.x, 2) + Math.pow(y - centroid.y, 2));
+    if (d < closestOtherDist) {
+      closestOtherDist = d;
+      closestOtherDecade = parseInt(decade);
+    }
+  });
+
+  const score = distToOwn - closestOtherDist;
+  if (score <= 0.05) return null; // Not anomalous enough
+
+  return { stated: statedDecade, visual: closestOtherDecade, score };
+}
+
+// Density grid from k=15 neighbor analysis (10x10 grid)
+const DENSITY_GRID = [
+  [0, 0, 136, 532, 302, 0, 0, 103, 1112, 212],    // y=0.0-0.1
+  [0, 0, 348, 817, 361, 0, 0, 324, 350, 170],     // y=0.1-0.2
+  [0, 0, 0, 0, 0, 0, 0, 399, 110, 0],             // y=0.2-0.3
+  [0, 0, 57, 16, 0, 0, 0, 0, 10, 0],              // y=0.3-0.4
+  [6, 118, 1003, 200, 173, 119, 167, 42, 188, 218], // y=0.4-0.5
+  [0, 1, 177, 27, 320, 56, 595, 574, 116, 211],   // y=0.5-0.6
+  [0, 0, 0, 21, 344, 204, 59, 69, 0, 0],          // y=0.6-0.7
+  [0, 0, 0, 8, 429, 690, 320, 94, 2, 0],          // y=0.7-0.8
+  [0, 0, 0, 0, 84, 534, 820, 691, 51, 0],         // y=0.8-0.9
+  [0, 0, 0, 0, 10, 13, 391, 203, 8, 0],           // y=0.9-1.0
+];
+
+// Get density at a normalized position (0-1 range)
+function getDensity(x: number, y: number): number {
+  const gx = Math.min(9, Math.max(0, Math.floor(x * 10)));
+  const gy = Math.min(9, Math.max(0, Math.floor(y * 10)));
+  return DENSITY_GRID[gy][gx];
+}
+
+// Max density for normalization
+const MAX_DENSITY = Math.max(...DENSITY_GRID.flat()); // 1112
+
+// Edge outliers - photos at extreme boundaries of embedding space
+const EDGE_OUTLIER_POSITIONS = [
+  { x: 0.0, y: 0.46, label: 'Edge cluster' },  // Left edge
+  { x: 0.48, y: 1.0, label: 'Bottom edge' },   // Bottom edge
+  { x: 0.85, y: 0.92, label: 'Corner' },       // Bottom-right
+] as const;
+
+// Check if point is in a sparse region (outlier potential)
+function isInSparseRegion(x: number, y: number): boolean {
+  const density = getDensity(x, y);
+  return density < 50; // Less than 50 photos in this grid cell
+}
+
+// Boundary hotspots - regions where cluster transitions occur
+const BOUNDARY_HOTSPOTS = [
+  { x: 0.550, y: 0.850, count: 270, label: 'Aerial NW ↔ Central' },
+  { x: 0.450, y: 0.550, count: 257, label: 'Oblique ↔ Aerial' },
+  { x: 0.650, y: 0.750, count: 172, label: 'Aerial Central ↔ NW' },
+  { x: 0.750, y: 0.550, count: 104, label: 'Aerial South ↔ East' },
+  { x: 0.850, y: 0.150, count: 42, label: 'Survey ↔ Index' },
+] as const;
+
+// Check if point is near a cluster boundary (transition zone)
+function getBoundaryInfo(x: number, y: number): { label: string; count: number } | null {
+  for (const b of BOUNDARY_HOTSPOTS) {
+    const dist = Math.sqrt(Math.pow(x - b.x, 2) + Math.pow(y - b.y, 2));
+    if (dist < 0.08) { // Within boundary zone
+      return { label: b.label, count: b.count };
+    }
+  }
+  return null;
+}
+
+// Sequence detection - extract flight info from photo names
+// Pattern: VM97-3_7P{flight}-{frame}.jpg or VM97,S{series},D{disk},P{photo}
+function parseSequenceInfo(name: string | undefined): { flight: string; frame: number } | null {
+  if (!name) return null;
+
+  // Pattern: VM97-3_7P{flight}-{frame}.jpg
+  const match = name.match(/VM97-3_7P(\d+[A-Z]?)-(\d+)/i);
+  if (match) {
+    return { flight: `7P${match[1]}`, frame: parseInt(match[2]) };
+  }
+
+  // Pattern: VM97,S{series},D{disk},P{photo}
+  const match2 = name.match(/VM97,S(\d+),D(\d+),P(\d+)/i);
+  if (match2) {
+    return { flight: `S${match2[1]}D${match2[2]}`, frame: parseInt(match2[3]) };
+  }
+
+  return null;
+}
+
+// Flight coherence scores - from sequence detection analysis
+// Lower = more coherent (consecutive frames are close in embedding space)
+const FLIGHT_COHERENCE: Record<string, { avgDist: number; pairs: number; coherence: 'high' | 'medium' | 'low' }> = {
+  '7P1': { avgDist: 0.0113, pairs: 13, coherence: 'high' },
+  '7P3': { avgDist: 0.0199, pairs: 24, coherence: 'high' },
+  '7P4': { avgDist: 0.0283, pairs: 28, coherence: 'high' },
+  '7P6': { avgDist: 0.0288, pairs: 31, coherence: 'high' },
+  '7P7': { avgDist: 0.0363, pairs: 56, coherence: 'high' },
+  '7P8': { avgDist: 0.0323, pairs: 51, coherence: 'high' },
+  '7P35': { avgDist: 0.1029, pairs: 101, coherence: 'low' },
+  '7P38': { avgDist: 0.1010, pairs: 98, coherence: 'low' },
+  '7P40': { avgDist: 0.0952, pairs: 103, coherence: 'low' },
+  '7P43': { avgDist: 0.0935, pairs: 92, coherence: 'low' },
+  '7P44': { avgDist: 0.0935, pairs: 95, coherence: 'low' },
+  'S3D13': { avgDist: 0.0218, pairs: 264, coherence: 'high' },
+  'S3D15': { avgDist: 0.0309, pairs: 331, coherence: 'high' },
+  'S3D08': { avgDist: 0.0358, pairs: 439, coherence: 'medium' },
+};
+
+// Get sequence info for display in photo modal
+function getSequenceInfo(name: string | undefined): { flight: string; frame: number; coherence: string; coherenceLevel: 'high' | 'medium' | 'low' | 'unknown' } | null {
+  const seq = parseSequenceInfo(name);
+  if (!seq) return null;
+
+  const flightData = FLIGHT_COHERENCE[seq.flight];
+  if (flightData) {
+    return {
+      flight: seq.flight,
+      frame: seq.frame,
+      coherence: flightData.coherence === 'high' ? 'Very consistent sequence' :
+                 flightData.coherence === 'medium' ? 'Moderately consistent' : 'Variable terrain',
+      coherenceLevel: flightData.coherence
+    };
+  }
+
+  return {
+    flight: seq.flight,
+    frame: seq.frame,
+    coherence: 'Sequence detected',
+    coherenceLevel: 'unknown'
+  };
+}
+
+// Attribution function - suggests likely photographer for anonymous photos
+function attributePhotographer(x: number, y: number): { name: string; confidence: number; color: string } | null {
+  let bestMatch: typeof PHOTOGRAPHER_CENTROIDS[0] | null = null;
+  let bestDistance = Infinity;
+  let secondBest = Infinity;
+
+  for (const p of PHOTOGRAPHER_CENTROIDS) {
+    const dist = Math.sqrt(Math.pow(x - p.x, 2) + Math.pow(y - p.y, 2));
+    if (dist < bestDistance) {
+      secondBest = bestDistance;
+      bestDistance = dist;
+      bestMatch = p;
+    } else if (dist < secondBest) {
+      secondBest = dist;
+    }
+  }
+
+  if (!bestMatch) return null;
+
+  // Confidence based on relative distance (how much closer to best than second best)
+  const confidence = secondBest > 0 ? (secondBest - bestDistance) / secondBest : 0;
+
+  // Only return if within reasonable distance (2x the photographer's typical spread)
+  if (bestDistance > bestMatch.spread * 2.5) return null;
+
+  const colorArr = PHOTOGRAPHER_COLORS[bestMatch.name] || [142, 142, 147];
+  const color = `rgb(${colorArr[0]}, ${colorArr[1]}, ${colorArr[2]})`;
+
+  return { name: bestMatch.name, confidence, color };
+}
+
+function extractPhotographer(name: string | undefined): string | null {
+  if (!name) return null;
+  // Pattern: "Subject / Photographer Name . - date"
+  const match = name.match(/\/\s*([A-Za-zÀ-ÿ\-]+(?:\s+[A-Za-zÀ-ÿ\-]+)*)\s*\.\s*-/);
+  if (match) {
+    const photographer = match[1].trim();
+    if (photographer.length > 3 && !/^(jpg|jpeg|png|tif|gif)$/i.test(photographer)) {
+      return photographer;
+    }
+  }
+  return null;
+}
 
 // ============================================================
 // UI Components
@@ -923,15 +1210,15 @@ function ColorLegend({
       ],
     },
     subject: {
-      title: 'Subject type',
+      title: 'Location type',
       items: [
         { color: '#af52de', label: 'Churches' },
-        { color: '#ff9500', label: 'Streets' },
-        { color: '#0a84ff', label: 'Buildings' },
-        { color: '#ff3b30', label: 'People' },
-        { color: '#ffd60a', label: 'Vehicles' },
-        { color: '#34c759', label: 'Nature' },
-        { color: '#5ac8fa', label: 'Winter' },
+        { color: '#ff9500', label: 'Streets (Rue)' },
+        { color: '#0a84ff', label: 'Bridges (Pont)' },
+        { color: '#34c759', label: 'Parks (Parc)' },
+        { color: '#ffd60a', label: 'Buildings' },
+        { color: '#ff3b30', label: 'Transit (Gare)' },
+        { color: '#5ac8fa', label: 'Squares (Place)' },
       ],
     },
     depth: {
@@ -940,6 +1227,31 @@ function ColorLegend({
         { color: '#ff6b6b', label: '1890s (front)' },
         { color: '#c77dff', label: '1940s (middle)' },
         { color: '#4dabf7', label: '1990s (back)' },
+      ],
+    },
+    photographer: {
+      title: 'Photographer fingerprints',
+      items: [
+        { color: '#ff3b30', label: 'Henri Rémillard' },
+        { color: '#ff9500', label: 'Armour Landry' },
+        { color: '#34c759', label: 'L-P Meunier' },
+        { color: '#0a84ff', label: 'Benny' },
+        { color: '#af52de', label: 'W. B. Edwards' },
+        { color: '#ffd60a', label: 'André Auclair' },
+        { color: '#3c3c41', label: 'Unattributed' },
+      ],
+    },
+    cluster: {
+      title: 'Visual sub-clusters (k-means)',
+      items: [
+        { color: '#ff6b6b', label: 'Aerial NW' },
+        { color: '#ff9f43', label: 'Street Photos' },
+        { color: '#feca57', label: 'Aerial Central' },
+        { color: '#48dbfb', label: 'Oblique Views' },
+        { color: '#1dd1a1', label: 'Index Cards' },
+        { color: '#5f27cd', label: 'Aerial South' },
+        { color: '#c8d6e5', label: 'Survey Docs' },
+        { color: '#74b9ff', label: 'Aerial East' },
       ],
     },
   };
@@ -959,7 +1271,7 @@ function ColorLegend({
         <div className="absolute bottom-full left-0 mb-2 bg-black/90 backdrop-blur-xl border border-white/10 rounded-xl p-3 min-w-[160px]">
           {/* Mode selector */}
           <div className="flex gap-1 mb-3 pb-2 border-b border-white/10">
-            {(['date', 'subject', 'depth'] as ColorMode[]).map(mode => (
+            {(['date', 'subject', 'depth', 'photographer', 'cluster'] as ColorMode[]).map(mode => (
               <button
                 key={mode}
                 onClick={() => onColorModeChange(mode)}
@@ -1000,6 +1312,8 @@ function PhotoModal({
   onCopyCitation,
   onAddToCollection,
   isInCollection,
+  photoX,
+  photoY,
 }: {
   photo: PhotoDetail | null;
   onClose: () => void;
@@ -1010,10 +1324,25 @@ function PhotoModal({
   onCopyCitation?: (citation: string) => void;
   onAddToCollection?: () => void;
   isInCollection?: boolean;
+  photoX?: number;
+  photoY?: number;
 }) {
   const [activeTab, setActiveTab] = useState<'info' | 'metadata'>('info');
 
   if (!photo) return null;
+
+  // Check if photo has a known photographer
+  const knownPhotographer = extractPhotographer(photo.name);
+
+  // If no known photographer, try to attribute based on position
+  const attribution = !knownPhotographer && photoX !== undefined && photoY !== undefined
+    ? attributePhotographer(photoX, photoY)
+    : null;
+
+  // Check if this photo is an anomaly (visual/date mismatch)
+  const anomaly = photoX !== undefined && photoY !== undefined && photo.date
+    ? getAnomalyInfo(photo.id, photoX, photoY, photo.date)
+    : null;
 
   // Generate citation in academic format
   const generateCitation = () => {
@@ -1109,6 +1438,153 @@ function PhotoModal({
                   <p className="text-[14px] text-white/70 leading-relaxed">{photo.description}</p>
                 </div>
               )}
+
+              {/* Known photographer */}
+              {knownPhotographer && (
+                <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.04]">
+                  <p className="text-[11px] uppercase tracking-wider text-white/30 font-semibold mb-1.5">Photographer</p>
+                  <p className="text-[14px] text-white font-medium">{knownPhotographer}</p>
+                </div>
+              )}
+
+              {/* ML-suggested photographer attribution */}
+              {attribution && (
+                <div className="p-3 rounded-xl bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/20">
+                  <p className="text-[11px] uppercase tracking-wider text-purple-300/70 font-semibold mb-1.5 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
+                    ML Attribution
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: attribution.color }}
+                    />
+                    <span className="text-[14px] text-white font-medium">
+                      Possibly {attribution.name}
+                    </span>
+                    <span className="text-[12px] text-white/40 ml-auto">
+                      {Math.round(attribution.confidence * 100)}% match
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-white/30 mt-1.5">
+                    Based on visual style clustering
+                  </p>
+                </div>
+              )}
+
+              {/* Anomaly indicator - visual/date mismatch */}
+              {anomaly && anomaly.score > 0.15 && (
+                <div className="p-3 rounded-xl bg-gradient-to-r from-pink-500/10 to-orange-500/10 border border-pink-500/20">
+                  <p className="text-[11px] uppercase tracking-wider text-pink-300/70 font-semibold mb-1.5 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-pink-400 animate-pulse" />
+                    Visual Anomaly
+                  </p>
+                  <div className="text-[14px] text-white font-medium">
+                    Looks like {anomaly.visual}s photography
+                  </div>
+                  <p className="text-[12px] text-white/50 mt-1">
+                    Stated date: {anomaly.stated}s • Visual style matches a different era
+                  </p>
+                  <p className="text-[11px] text-white/30 mt-1.5">
+                    {anomaly.score > 0.4
+                      ? 'Extreme mismatch — possibly mislabeled or rare technique crossover'
+                      : anomaly.score > 0.25
+                      ? 'Strong mismatch — likely similar photographic techniques across eras'
+                      : 'Moderate mismatch — visual style overlaps between decades'}
+                  </p>
+                </div>
+              )}
+
+              {/* Density/Uniqueness indicator */}
+              {photoX !== undefined && photoY !== undefined && (() => {
+                const density = getDensity(photoX, photoY);
+                const isUnique = density < 50;
+                const isCommon = density > 500;
+                if (!isUnique && !isCommon) return null;
+                return (
+                  <div className={`p-3 rounded-xl border ${isUnique
+                    ? 'bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border-emerald-500/20'
+                    : 'bg-gradient-to-r from-blue-500/10 to-indigo-500/10 border-blue-500/20'
+                  }`}>
+                    <p className={`text-[11px] uppercase tracking-wider font-semibold mb-1.5 flex items-center gap-1.5 ${
+                      isUnique ? 'text-emerald-300/70' : 'text-blue-300/70'
+                    }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${isUnique ? 'bg-emerald-400' : 'bg-blue-400'}`} />
+                      {isUnique ? 'Rare Visual Style' : 'Common Visual Style'}
+                    </p>
+                    <p className="text-[12px] text-white/50">
+                      {isUnique
+                        ? `Only ~${density} similar photos in this visual region`
+                        : `Part of a major cluster (~${density} similar photos)`}
+                    </p>
+                    <p className="text-[11px] text-white/30 mt-1">
+                      {isUnique
+                        ? 'This photo has a distinctive visual signature'
+                        : 'Typical visual style for its era'}
+                    </p>
+                  </div>
+                );
+              })()}
+
+              {/* Boundary zone indicator */}
+              {photoX !== undefined && photoY !== undefined && (() => {
+                const boundary = getBoundaryInfo(photoX, photoY);
+                if (!boundary) return null;
+                return (
+                  <div className="p-3 rounded-xl bg-gradient-to-r from-amber-500/10 to-yellow-500/10 border border-amber-500/20">
+                    <p className="text-[11px] uppercase tracking-wider text-amber-300/70 font-semibold mb-1.5 flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                      Transition Zone
+                    </p>
+                    <p className="text-[14px] text-white font-medium">
+                      {boundary.label}
+                    </p>
+                    <p className="text-[12px] text-white/50 mt-1">
+                      One of {boundary.count} photos bridging visual styles
+                    </p>
+                    <p className="text-[11px] text-white/30 mt-1">
+                      Photos here share characteristics of multiple clusters
+                    </p>
+                  </div>
+                );
+              })()}
+
+              {/* Sequence/Flight path info */}
+              {(() => {
+                const seqInfo = getSequenceInfo(photo.name);
+                if (!seqInfo) return null;
+                return (
+                  <div className={`p-3 rounded-xl border ${
+                    seqInfo.coherenceLevel === 'high' ? 'bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border-cyan-500/20' :
+                    seqInfo.coherenceLevel === 'low' ? 'bg-gradient-to-r from-orange-500/10 to-red-500/10 border-orange-500/20' :
+                    'bg-gradient-to-r from-slate-500/10 to-gray-500/10 border-slate-500/20'
+                  }`}>
+                    <p className={`text-[11px] uppercase tracking-wider font-semibold mb-1.5 flex items-center gap-1.5 ${
+                      seqInfo.coherenceLevel === 'high' ? 'text-cyan-300/70' :
+                      seqInfo.coherenceLevel === 'low' ? 'text-orange-300/70' : 'text-slate-300/70'
+                    }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${
+                        seqInfo.coherenceLevel === 'high' ? 'bg-cyan-400' :
+                        seqInfo.coherenceLevel === 'low' ? 'bg-orange-400' : 'bg-slate-400'
+                      }`} />
+                      Aerial Survey Sequence
+                    </p>
+                    <div className="text-[14px] text-white font-medium">
+                      Flight {seqInfo.flight} • Frame #{seqInfo.frame}
+                    </div>
+                    <p className="text-[12px] text-white/50 mt-1">
+                      {seqInfo.coherence}
+                    </p>
+                    <p className="text-[11px] text-white/30 mt-1">
+                      {seqInfo.coherenceLevel === 'high'
+                        ? 'Consecutive frames are visually similar (uniform terrain)'
+                        : seqInfo.coherenceLevel === 'low'
+                        ? 'Consecutive frames vary significantly (diverse terrain)'
+                        : 'Part of systematic aerial survey'}
+                    </p>
+                  </div>
+                );
+              })()}
             </div>
           ) : (
             <div className="space-y-3">
@@ -1502,7 +1978,9 @@ export function EmbeddingExplorer() {
   const [showFilters, setShowFilters] = useState(false);
   const [activeSubject, setActiveSubject] = useState<string | null>(null);
   const [showConstellations, setShowConstellations] = useState(true);
-  const [showClusterAnnotations, setShowClusterAnnotations] = useState(true);
+  const [showClusterAnnotations, setShowClusterAnnotations] = useState(false);
+  const [highlightAnomalies, setHighlightAnomalies] = useState(false);
+  const [showDensityMap, setShowDensityMap] = useState(false);
   const [isTimeTraveling, setIsTimeTraveling] = useState(false);
   const [activeDecade, setActiveDecade] = useState<number | null>(null);
   const [autoRotate, setAutoRotate] = useState(false);
@@ -1553,9 +2031,8 @@ export function EmbeddingExplorer() {
   }, []);
 
 
-  // Time travel animation - cycle through decade searches
+  // Time travel animation - cycle through decade centroids with camera animation
   const [timeTravelDecade, setTimeTravelDecade] = useState<number | null>(null);
-  const decades = [1890, 1900, 1910, 1920, 1930, 1940, 1950, 1960, 1970, 1980];
 
   const startTimeTravel = useCallback(() => {
     if (isTimeTraveling) {
@@ -1566,31 +2043,45 @@ export function EmbeddingExplorer() {
       }
       setIsTimeTraveling(false);
       setTimeTravelDecade(null);
-      setQuery('');
-      setResults([]);
       return;
     }
 
-    // Start - cycle through decades
+    // Start - fly through decade trajectory
     setIsTimeTraveling(true);
-    let decadeIndex = 0;
-    setTimeTravelDecade(decades[0]);
-    setQuery(`${decades[0]}s montreal`);
+    let trajectoryIndex = 0;
 
-    timeTravelRef.current = window.setInterval(() => {
-      decadeIndex++;
-      if (decadeIndex >= decades.length) {
-        // Stop at end
+    const flyToDecade = (idx: number) => {
+      if (idx >= DECADE_TRAJECTORY.length) {
+        // End of journey
         clearInterval(timeTravelRef.current!);
         timeTravelRef.current = null;
         setIsTimeTraveling(false);
         setTimeTravelDecade(null);
         return;
       }
-      const decade = decades[decadeIndex];
-      setTimeTravelDecade(decade);
-      setQuery(`${decade}s montreal`);
-    }, 2500); // 2.5 seconds per decade for meaningful viewing
+
+      const point = DECADE_TRAJECTORY[idx];
+      setTimeTravelDecade(point.decade);
+
+      // Animate camera to decade centroid
+      if (sceneRef.current) {
+        const { controls, camera } = sceneRef.current;
+        const targetX = point.x * SCALE;
+        const targetY = point.y * SCALE;
+
+        // Smooth camera animation
+        controls.target.set(targetX, targetY, 0);
+        camera.position.set(targetX, targetY - SCALE * 0.15, SCALE * 0.35);
+      }
+    };
+
+    // Start with first decade
+    flyToDecade(0);
+
+    timeTravelRef.current = window.setInterval(() => {
+      trajectoryIndex++;
+      flyToDecade(trajectoryIndex);
+    }, 3000); // 3 seconds per decade
   }, [isTimeTraveling]);
 
   // Cleanup time travel on unmount
@@ -1604,6 +2095,7 @@ export function EmbeddingExplorer() {
 
 
   const [selectedPhoto, setSelectedPhoto] = useState<PhotoDetail | null>(null);
+  const [selectedPhotoPos, setSelectedPhotoPos] = useState<{ x: number; y: number } | null>(null);
 
   const dismissWelcome = useCallback(() => {
     localStorage.setItem('mtl-explorer-visited', 'true');
@@ -1916,41 +2408,73 @@ export function EmbeddingExplorer() {
     }
 
     if (colorMode === 'subject') {
-      const caption = (d.vlm_caption || '').toLowerCase();
-      if (caption.includes('church') || caption.includes('cathedral') || caption.includes('chapel')) {
+      // Use name field (French location names) since vlm_caption isn't available
+      const name = (d.name || '').toLowerCase();
+      if (name.includes('église') || name.includes('cathédrale') || name.includes('chapelle') || name.includes('church')) {
         return [175, 82, 222]; // Purple - religious
       }
-      if (caption.includes('street') || caption.includes('avenue') || caption.includes('road') || caption.includes('boulevard')) {
+      if (name.includes('rue') || name.includes('avenue') || name.includes('boulevard') || name.includes('chemin')) {
         return [255, 149, 0]; // Orange - streets
       }
-      if (caption.includes('building') || caption.includes('house') || caption.includes('apartment') || caption.includes('office')) {
-        return [10, 132, 255]; // Blue - buildings
+      if (name.includes('pont') || name.includes('bridge') || name.includes('viaduc')) {
+        return [10, 132, 255]; // Blue - bridges/infrastructure
       }
-      if (caption.includes('people') || caption.includes('crowd') || caption.includes('person') || caption.includes('man') || caption.includes('woman')) {
-        return [255, 59, 48]; // Red - people
+      if (name.includes('parc') || name.includes('jardin') || name.includes('mont') || name.includes('île')) {
+        return [52, 199, 89]; // Green - parks/nature
       }
-      if (caption.includes('car') || caption.includes('vehicle') || caption.includes('truck') || caption.includes('bus') || caption.includes('train')) {
-        return [255, 214, 10]; // Yellow - vehicles
+      if (name.includes('hôtel') || name.includes('maison') || name.includes('édifice') || name.includes('building')) {
+        return [255, 214, 10]; // Yellow - buildings
       }
-      if (caption.includes('park') || caption.includes('tree') || caption.includes('garden') || caption.includes('nature')) {
-        return [52, 199, 89]; // Green - nature
+      if (name.includes('gare') || name.includes('station') || name.includes('aéroport') || name.includes('port')) {
+        return [255, 59, 48]; // Red - transportation hubs
       }
-      if (caption.includes('snow') || caption.includes('winter') || caption.includes('ice')) {
-        return [90, 200, 250]; // Light blue - winter
+      if (name.includes('place') || name.includes('square') || name.includes('forum')) {
+        return [90, 200, 250]; // Light blue - public squares
       }
       return [142, 142, 147]; // Gray for unclassified
     }
 
     if (colorMode === 'depth') {
-      const t = d.z / 800;
+      // Z range is 0-150 (from yearToZ function)
+      const t = Math.max(0, Math.min(1, d.z / 150));
       const r = Math.round(255 * (1 - t));
       const g = Math.round(100 + 100 * Math.sin(t * Math.PI));
       const b = Math.round(255 * t);
       return [r, g, b];
     }
 
+    if (colorMode === 'photographer') {
+      const photographer = extractPhotographer(d.name);
+      if (photographer && PHOTOGRAPHER_COLORS[photographer]) {
+        return PHOTOGRAPHER_COLORS[photographer];
+      }
+      // Dim color for photos without attributed photographer
+      return [60, 60, 65];
+    }
+
+    if (colorMode === 'cluster') {
+      // Assign color based on nearest sub-cluster centroid
+      const cluster = getSubCluster(d.x / SCALE, d.y / SCALE);
+      if (cluster) {
+        return [...cluster.color];
+      }
+      return [142, 142, 147];
+    }
+
+    // Anomaly highlighting mode - highlights photos where visual differs from stated date
+    if (highlightAnomalies) {
+      const anomaly = getAnomalyInfo(d.id, d.x / SCALE, d.y / SCALE, d.date);
+      if (anomaly && anomaly.score > 0.1) {
+        // High anomaly score = bright magenta, lower = orange
+        if (anomaly.score > 0.4) return [255, 0, 128]; // Hot pink for extreme anomalies
+        if (anomaly.score > 0.2) return [255, 99, 71];  // Tomato for moderate
+        return [255, 165, 0];                           // Orange for mild
+      }
+      return [40, 40, 45]; // Dim non-anomalies
+    }
+
     return [142, 142, 147];
-  }, [results, topResults, selectedIndex, colorMode]);
+  }, [results, topResults, selectedIndex, colorMode, highlightAnomalies]);
 
   // --------------------------------------------------------
   // Phase 1: Load 2D positions only (fast initial load)
@@ -2258,6 +2782,8 @@ export function EmbeddingExplorer() {
             image_url: point.image_url,
             vlm_caption: point.vlm_caption,
           });
+          // Store normalized position for photographer attribution
+          setSelectedPhotoPos({ x: point.x / SCALE, y: point.y / SCALE });
           analytics.photoClicked(point.id);
         }
       }
@@ -2815,6 +3341,43 @@ export function EmbeddingExplorer() {
       {/* Three.js Canvas */}
       <div ref={containerRef} className="absolute inset-0" />
 
+      {/* Time Trajectory Line - shows path through decades */}
+      {showClusterAnnotations && viewMode === '2d' && !isMobile && (
+        <svg className="absolute inset-0 pointer-events-none z-[5]" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="trajectoryGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#ff9500" />
+              <stop offset="50%" stopColor="#ffd60a" />
+              <stop offset="100%" stopColor="#0a84ff" />
+            </linearGradient>
+          </defs>
+          {/* Trajectory path */}
+          <path
+            d={DECADE_TRAJECTORY.map((p, i) =>
+              `${i === 0 ? 'M' : 'L'} ${p.x * 100} ${p.y * 100}`
+            ).join(' ')}
+            fill="none"
+            stroke="url(#trajectoryGradient)"
+            strokeWidth="0.3"
+            strokeDasharray="1 0.5"
+            opacity="0.6"
+          />
+          {/* Decade markers */}
+          {DECADE_TRAJECTORY.map((p, i) => (
+            <circle
+              key={p.decade}
+              cx={p.x * 100}
+              cy={p.y * 100}
+              r="0.8"
+              fill={i === 0 ? '#ff9500' : i === DECADE_TRAJECTORY.length - 1 ? '#0a84ff' : '#ffd60a'}
+              opacity="0.8"
+            />
+          ))}
+        </svg>
+      )}
+
+      {/* Density info is now shown in photo modals instead of overlay */}
+
       {/* Cluster Annotations - ML research insights */}
       {showClusterAnnotations && viewMode === '2d' && !isMobile && (
         <div className="absolute inset-0 pointer-events-none z-10">
@@ -2850,6 +3413,46 @@ export function EmbeddingExplorer() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Sub-cluster Labels - Shows when in cluster color mode */}
+      {colorMode === 'cluster' && viewMode === '2d' && !isMobile && (
+        <div className="absolute inset-0 pointer-events-none z-10">
+          {SUB_CLUSTERS.map(cluster => (
+            <div
+              key={cluster.id}
+              className="absolute transform -translate-x-1/2 -translate-y-1/2"
+              style={{
+                left: `${cluster.x * 100}%`,
+                top: `${cluster.y * 100}%`,
+              }}
+            >
+              <div
+                className="px-2 py-0.5 rounded-full text-[10px] font-semibold shadow-lg backdrop-blur-sm"
+                style={{
+                  backgroundColor: `rgba(${cluster.color.join(',')}, 0.9)`,
+                  color: cluster.id === 6 ? '#1a1a1a' : '#fff', // Dark text for light silver color
+                }}
+              >
+                {cluster.label}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Time Travel Overlay - Shows current decade during animation */}
+      {isTimeTraveling && timeTravelDecade && (
+        <div className="absolute inset-0 pointer-events-none z-20 flex items-center justify-center">
+          <div className="text-center animate-pulse">
+            <div className="text-[120px] font-black text-white/20 tracking-tighter">
+              {timeTravelDecade}s
+            </div>
+            <div className="text-sm text-white/40 -mt-4">
+              {DECADE_TRAJECTORY.find(d => d.decade === timeTravelDecade)?.label.split(' - ')[1] || ''}
+            </div>
+          </div>
         </div>
       )}
 
@@ -3081,6 +3684,14 @@ export function EmbeddingExplorer() {
           >
             <HelpIcon size={15} />
           </button>
+
+          {/* Color legend */}
+          <ColorLegend
+            show={showLegend}
+            onToggle={() => setShowLegend(!showLegend)}
+            colorMode={colorMode}
+            onColorModeChange={setColorMode}
+          />
         </GlassPanel>
 
         {/* Secondary tools - more button that expands */}
@@ -3095,6 +3706,22 @@ export function EmbeddingExplorer() {
           >
             <ConstellationIcon size={14} />
           </button>
+
+          {/* Time Travel - fly through decades */}
+          {viewMode === '2d' && (
+            <button
+              onClick={startTimeTravel}
+              className={`p-2 rounded-full transition-all ${
+                isTimeTraveling ? 'bg-purple-500/20 text-purple-400 animate-pulse' : 'text-white/40 hover:text-white/70 hover:bg-white/10'
+              }`}
+              title={isTimeTraveling ? 'Stop Time Travel' : 'Time Travel through decades'}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+            </button>
+          )}
 
           {/* Cluster annotations toggle - only in 2D */}
           {viewMode === '2d' && (
@@ -3114,6 +3741,22 @@ export function EmbeddingExplorer() {
               </svg>
             </button>
           )}
+
+          {/* Anomaly highlight toggle */}
+          <button
+            onClick={() => setHighlightAnomalies(!highlightAnomalies)}
+            className={`p-2 rounded-full transition-all ${
+              highlightAnomalies ? 'bg-pink-500/20 text-pink-400' : 'text-white/40 hover:text-white/70 hover:bg-white/10'
+            }`}
+            title="Highlight anomalies (visual/date mismatch)"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+              <line x1="12" y1="9" x2="12" y2="13" />
+              <line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
+          </button>
+
 
           {/* Fullscreen */}
           <button
@@ -3351,7 +3994,10 @@ export function EmbeddingExplorer() {
       {selectedPhoto && (
         <PhotoModal
           photo={selectedPhoto}
-          onClose={() => setSelectedPhoto(null)}
+          onClose={() => {
+            setSelectedPhoto(null);
+            setSelectedPhotoPos(null);
+          }}
           onOpenOriginal={() => {
             window.open(getPreviewUrl(selectedPhoto.image_url), '_blank');
           }}
@@ -3361,6 +4007,8 @@ export function EmbeddingExplorer() {
           onCopyCitation={(msg) => showToast(msg)}
           onAddToCollection={() => addToCollectionHandler(selectedPhoto)}
           isInCollection={collection.some(c => c.id === selectedPhoto.id)}
+          photoX={selectedPhotoPos?.x}
+          photoY={selectedPhotoPos?.y}
         />
       )}
     </div>
