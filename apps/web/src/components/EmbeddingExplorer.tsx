@@ -180,6 +180,47 @@ const SUBJECT_CATEGORIES = [
   { id: 'aerial', label: 'Aerial', searchTerm: 'aerial view panorama skyline', color: '#ff6b6b' },
 ] as const;
 
+// Cluster annotations - discovered through ML analysis of CLIP embeddings
+// These describe what CLIP found when clustering the archive by visual similarity
+const CLUSTER_ANNOTATIONS = [
+  {
+    id: 'aerial-1940s',
+    label: '1940s Aerial Survey',
+    description: 'Vertical B&W aerial photographs from systematic city mapping campaign',
+    count: '~2,800',
+    x: 0.58, // normalized position (0-1)
+    y: 0.28,
+    color: '#ffd60a',
+  },
+  {
+    id: 'survey-docs',
+    label: 'Urban Planning Documents',
+    description: 'Official 1960s-70s survey documents with borders and index numbers',
+    count: '~4,000',
+    x: 0.73,
+    y: 0.78,
+    color: '#34c759',
+  },
+  {
+    id: 'oblique-mixed',
+    label: 'Oblique & Mixed Media',
+    description: 'Angled aerial views, color photos, and varied formats',
+    count: '~4,000',
+    x: 0.32,
+    y: 0.50,
+    color: '#8e8e93',
+  },
+  {
+    id: 'street-level',
+    label: 'Street Photography',
+    description: 'Ground-level urban documentation: streets, buildings, events',
+    count: '~1,500',
+    x: 0.38,
+    y: 0.82,
+    color: '#8e8e93',
+  },
+] as const;
+
 // ============================================================
 // UI Components
 // ============================================================
@@ -1461,6 +1502,7 @@ export function EmbeddingExplorer() {
   const [showFilters, setShowFilters] = useState(false);
   const [activeSubject, setActiveSubject] = useState<string | null>(null);
   const [showConstellations, setShowConstellations] = useState(true);
+  const [showClusterAnnotations, setShowClusterAnnotations] = useState(true);
   const [isTimeTraveling, setIsTimeTraveling] = useState(false);
   const [activeDecade, setActiveDecade] = useState<number | null>(null);
   const [autoRotate, setAutoRotate] = useState(false);
@@ -2773,6 +2815,44 @@ export function EmbeddingExplorer() {
       {/* Three.js Canvas */}
       <div ref={containerRef} className="absolute inset-0" />
 
+      {/* Cluster Annotations - ML research insights */}
+      {showClusterAnnotations && viewMode === '2d' && !isMobile && (
+        <div className="absolute inset-0 pointer-events-none z-10">
+          {CLUSTER_ANNOTATIONS.map(cluster => (
+            <div
+              key={cluster.id}
+              className="absolute transform -translate-x-1/2 -translate-y-1/2 pointer-events-auto"
+              style={{
+                left: `${cluster.x * 100}%`,
+                top: `${cluster.y * 100}%`,
+              }}
+            >
+              <div className="group relative">
+                {/* Dot indicator */}
+                <div
+                  className="w-3 h-3 rounded-full border-2 border-white/40 cursor-pointer transition-all duration-200 group-hover:scale-150 group-hover:border-white/80"
+                  style={{ backgroundColor: cluster.color }}
+                />
+                {/* Label - shows on hover */}
+                <div className="absolute left-5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                  <div className="bg-black/90 backdrop-blur-xl border border-white/10 rounded-xl px-3 py-2 shadow-xl">
+                    <div className="flex items-center gap-2 mb-1">
+                      <div
+                        className="w-2 h-2 rounded-full"
+                        style={{ backgroundColor: cluster.color }}
+                      />
+                      <span className="text-xs font-semibold text-white">{cluster.label}</span>
+                    </div>
+                    <p className="text-[10px] text-white/60 max-w-[200px]">{cluster.description}</p>
+                    <p className="text-[10px] text-white/40 mt-1">{cluster.count} photos</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Hover Tooltip - Desktop only - Larger preview with more info */}
       {!isMobile && hoverPoint && (
         <GlassPanel
@@ -3015,6 +3095,25 @@ export function EmbeddingExplorer() {
           >
             <ConstellationIcon size={14} />
           </button>
+
+          {/* Cluster annotations toggle - only in 2D */}
+          {viewMode === '2d' && (
+            <button
+              onClick={() => setShowClusterAnnotations(!showClusterAnnotations)}
+              className={`p-2 rounded-full transition-all ${
+                showClusterAnnotations ? 'bg-cyan-500/20 text-cyan-400' : 'text-white/40 hover:text-white/70 hover:bg-white/10'
+              }`}
+              title="Cluster insights"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="3" />
+                <circle cx="5" cy="6" r="2" />
+                <circle cx="19" cy="6" r="2" />
+                <circle cx="5" cy="18" r="2" />
+                <circle cx="19" cy="18" r="2" />
+              </svg>
+            </button>
+          )}
 
           {/* Fullscreen */}
           <button
