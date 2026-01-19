@@ -2533,7 +2533,7 @@ export function EmbeddingExplorer() {
   // Phase 2: Load 512D embeddings on demand (for visual search)
   // --------------------------------------------------------
   const loadEmbeddings = useCallback(async () => {
-    if (embeddingsStatus !== 'idle' || isMobile) return;
+    if (embeddingsStatus !== 'idle') return;
 
     setEmbeddingsStatus('loading');
 
@@ -2552,13 +2552,13 @@ export function EmbeddingExplorer() {
       console.error('Failed to load embeddings:', err);
       setEmbeddingsStatus('error');
     }
-  }, [embeddingsStatus, isMobile]);
+  }, [embeddingsStatus]);
 
   // --------------------------------------------------------
   // Load CLIP model on demand (lazy loading)
   // --------------------------------------------------------
   const loadClipModel = useCallback(async () => {
-    if (clipStatus !== 'idle' || isMobile) return;
+    if (clipStatus !== 'idle') return;
 
     setClipStatus('loading');
 
@@ -2571,17 +2571,12 @@ export function EmbeddingExplorer() {
       console.error('Failed to load CLIP:', err);
       setClipStatus('error');
     }
-  }, [clipStatus, isMobile]);
+  }, [clipStatus]);
 
   // --------------------------------------------------------
   // Enable visual search (loads both embeddings and CLIP)
   // --------------------------------------------------------
   const enableVisualSearch = useCallback(async () => {
-    if (isMobile) {
-      showToast('Visual search unavailable on mobile');
-      return;
-    }
-
     setSearchMode('visual');
 
     // Load both in parallel
@@ -2589,7 +2584,7 @@ export function EmbeddingExplorer() {
       loadEmbeddings(),
       loadClipModel(),
     ]);
-  }, [loadEmbeddings, loadClipModel, isMobile, showToast]);
+  }, [loadEmbeddings, loadClipModel]);
 
   // --------------------------------------------------------
   // Camera positions
