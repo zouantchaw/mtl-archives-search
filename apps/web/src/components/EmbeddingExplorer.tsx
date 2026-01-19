@@ -3556,7 +3556,7 @@ export function EmbeddingExplorer() {
               onFocus={() => setShowSuggestions(true)}
               onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
               placeholder={isMobile ? 'Search...' : (searchMode === 'visual' ? 'Search by visual concept...' : 'Search archives...')}
-              className="flex-1 py-3 sm:py-3.5 pr-2 sm:pr-3 bg-transparent text-[14px] sm:text-[15px] text-white placeholder:text-white/25 focus:outline-none font-medium tracking-tight"
+              className="flex-1 py-3 sm:py-3.5 pr-2 sm:pr-3 bg-transparent text-[16px] sm:text-[15px] text-white placeholder:text-white/25 focus:outline-none font-medium tracking-tight"
             />
             {isSearching && (
               <div className="pr-4">
@@ -3585,58 +3585,63 @@ export function EmbeddingExplorer() {
           />
         </div>
 
-        {/* Right side - Search mode toggle (desktop only) */}
-        {!isMobile && (
-          <GlassPanel variant="elevated" className="rounded-2xl p-1.5 flex shrink-0 gap-1">
-            <button
-              onClick={() => setSearchMode('semantic')}
-              className={`relative px-5 py-2.5 text-[13px] font-semibold rounded-xl transition-all duration-300 ease-out ${
-                searchMode === 'semantic'
-                  ? 'text-white'
-                  : 'text-white/40 hover:text-white/70'
-              }`}
-            >
-              {searchMode === 'semantic' && (
-                <span className="absolute inset-0 bg-white/[0.12] rounded-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]" />
+        {/* Right side - Search mode toggle */}
+        <GlassPanel variant="elevated" className="rounded-xl sm:rounded-2xl p-1 sm:p-1.5 flex shrink-0 gap-0.5 sm:gap-1">
+          <button
+            onClick={() => setSearchMode('semantic')}
+            className={`relative px-3 sm:px-5 py-2 sm:py-2.5 text-[12px] sm:text-[13px] font-semibold rounded-lg sm:rounded-xl transition-all duration-300 ease-out ${
+              searchMode === 'semantic'
+                ? 'text-white'
+                : 'text-white/40 hover:text-white/70 active:text-white/60'
+            }`}
+          >
+            {searchMode === 'semantic' && (
+              <span className="absolute inset-0 bg-white/[0.12] rounded-lg sm:rounded-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]" />
+            )}
+            <span className="relative">Text</span>
+          </button>
+          <button
+            onClick={() => {
+              if (visualSearchReady) {
+                setSearchMode('visual');
+              } else if (!visualSearchLoading) {
+                enableVisualSearch();
+              }
+            }}
+            disabled={visualSearchLoading}
+            className={`relative px-3 sm:px-5 py-2 sm:py-2.5 text-[12px] sm:text-[13px] font-semibold rounded-lg sm:rounded-xl transition-all duration-300 ease-out flex items-center gap-1.5 sm:gap-2 ${
+              searchMode === 'visual'
+                ? 'text-white'
+                : 'text-white/40 hover:text-white/70 active:text-white/60'
+            } ${visualSearchLoading ? 'opacity-70 cursor-wait' : ''}`}
+          >
+            {searchMode === 'visual' && (
+              <span className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-lg sm:rounded-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]" />
+            )}
+            <span className="relative flex items-center gap-1.5 sm:gap-2">
+              {visualSearchLoading ? (
+                <>
+                  <div className="w-3 h-3 sm:w-3.5 sm:h-3.5 border-2 border-purple-400/30 border-t-purple-400 rounded-full animate-spin" />
+                  <span className="hidden sm:inline">Loading</span>
+                </>
+              ) : !visualSearchReady ? (
+                <>
+                  <DownloadIcon size={isMobile ? 12 : 13} />
+                  <span className="hidden sm:inline">Visual</span>
+                </>
+              ) : (
+                <span className="hidden sm:inline">Visual</span>
               )}
-              <span className="relative">Text</span>
-            </button>
-            <button
-              onClick={() => {
-                if (visualSearchReady) {
-                  setSearchMode('visual');
-                } else if (!visualSearchLoading) {
-                  enableVisualSearch();
-                }
-              }}
-              disabled={visualSearchLoading}
-              className={`relative px-5 py-2.5 text-[13px] font-semibold rounded-xl transition-all duration-300 ease-out flex items-center gap-2 ${
-                searchMode === 'visual'
-                  ? 'text-white'
-                  : 'text-white/40 hover:text-white/70'
-              } ${visualSearchLoading ? 'opacity-70 cursor-wait' : ''}`}
-            >
-              {searchMode === 'visual' && (
-                <span className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]" />
+              {/* Show icon only on mobile when ready or not ready */}
+              {isMobile && !visualSearchLoading && (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+                </svg>
               )}
-              <span className="relative flex items-center gap-2">
-                {visualSearchLoading ? (
-                  <>
-                    <div className="w-3.5 h-3.5 border-2 border-purple-400/30 border-t-purple-400 rounded-full animate-spin" />
-                    <span>Loading</span>
-                  </>
-                ) : !visualSearchReady ? (
-                  <>
-                    <DownloadIcon size={13} />
-                    <span>Visual</span>
-                  </>
-                ) : (
-                  'Visual'
-                )}
-              </span>
-            </button>
-          </GlassPanel>
-        )}
+            </span>
+          </button>
+        </GlassPanel>
       </div>
 
       {/* Unified Floating Toolbar - Apple Style */}
