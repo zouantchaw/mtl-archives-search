@@ -3637,12 +3637,11 @@ export function EmbeddingExplorer() {
         )}
       </div>
 
-      {/* Minimal Floating Toolbar - Apple Style */}
-      <div className="fixed bottom-5 left-5 z-30 flex items-end gap-3">
-        {/* Main pill - always visible */}
-        <GlassPanel variant="elevated" className="rounded-full px-4 py-2.5 flex items-center gap-3">
+      {/* Unified Floating Toolbar - Apple Style */}
+      <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-30">
+        <GlassPanel variant="elevated" className="rounded-full px-2 py-1.5 flex items-center gap-1">
           {/* Photo count */}
-          <span className="text-[13px] text-white/60 font-medium tabular-nums">
+          <span className="text-[13px] text-white/60 font-medium tabular-nums px-3">
             {results.length > 0 ? (
               <><span className="text-white font-semibold">{results.length}</span> results</>
             ) : (
@@ -3651,26 +3650,26 @@ export function EmbeddingExplorer() {
           </span>
 
           {/* Divider */}
-          <div className="w-px h-4 bg-white/10" />
+          <div className="w-px h-5 bg-white/10" />
 
           {/* Surprise me */}
           <button
             onClick={surpriseMe}
-            className="p-1.5 rounded-lg hover:bg-white/10 text-white/50 hover:text-purple-400 transition-all"
+            className="p-2 rounded-full hover:bg-white/10 text-white/50 hover:text-purple-400 transition-all"
             title="Random photo"
           >
-            <DiceIcon size={16} />
+            <DiceIcon size={15} />
           </button>
 
           {/* Collection (if has items) */}
           {collection.length > 0 && (
             <button
               onClick={() => setShowCollection(!showCollection)}
-              className="p-1.5 rounded-lg hover:bg-white/10 text-amber-400 transition-all relative"
+              className="p-2 rounded-full hover:bg-white/10 text-amber-400 transition-all relative"
               title={`Collection (${collection.length})`}
             >
-              <BookmarkIcon size={16} filled />
-              <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] px-0.5 rounded-full bg-amber-500 text-[9px] font-bold flex items-center justify-center text-black">
+              <BookmarkIcon size={15} filled />
+              <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-0.5 rounded-full bg-amber-500 text-[9px] font-bold flex items-center justify-center text-black">
                 {collection.length}
               </span>
             </button>
@@ -3679,11 +3678,14 @@ export function EmbeddingExplorer() {
           {/* Help */}
           <button
             onClick={() => setShowHelp(true)}
-            className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white/70 transition-all"
+            className="p-2 rounded-full hover:bg-white/10 text-white/40 hover:text-white/70 transition-all"
             title="Help (?)"
           >
             <HelpIcon size={15} />
           </button>
+
+          {/* Divider */}
+          <div className="w-px h-5 bg-white/10" />
 
           {/* Color legend */}
           <ColorLegend
@@ -3692,10 +3694,10 @@ export function EmbeddingExplorer() {
             colorMode={colorMode}
             onColorModeChange={setColorMode}
           />
-        </GlassPanel>
 
-        {/* Secondary tools - more button that expands */}
-        <GlassPanel variant="elevated" className="rounded-full p-1 flex items-center gap-0.5">
+          {/* Divider */}
+          <div className="w-px h-5 bg-white/10" />
+
           {/* Constellation toggle */}
           <button
             onClick={() => setShowConstellations(!showConstellations)}
@@ -3704,7 +3706,7 @@ export function EmbeddingExplorer() {
             }`}
             title="Connections"
           >
-            <ConstellationIcon size={14} />
+            <ConstellationIcon size={15} />
           </button>
 
           {/* Time Travel - fly through decades */}
@@ -3716,28 +3718,9 @@ export function EmbeddingExplorer() {
               }`}
               title={isTimeTraveling ? 'Stop Time Travel' : 'Time Travel through decades'}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10" />
                 <polyline points="12 6 12 12 16 14" />
-              </svg>
-            </button>
-          )}
-
-          {/* Cluster annotations toggle - only in 2D */}
-          {viewMode === '2d' && (
-            <button
-              onClick={() => setShowClusterAnnotations(!showClusterAnnotations)}
-              className={`p-2 rounded-full transition-all ${
-                showClusterAnnotations ? 'bg-cyan-500/20 text-cyan-400' : 'text-white/40 hover:text-white/70 hover:bg-white/10'
-              }`}
-              title="Cluster insights"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="3" />
-                <circle cx="5" cy="6" r="2" />
-                <circle cx="19" cy="6" r="2" />
-                <circle cx="5" cy="18" r="2" />
-                <circle cx="19" cy="18" r="2" />
               </svg>
             </button>
           )}
@@ -3748,15 +3731,14 @@ export function EmbeddingExplorer() {
             className={`p-2 rounded-full transition-all ${
               highlightAnomalies ? 'bg-pink-500/20 text-pink-400' : 'text-white/40 hover:text-white/70 hover:bg-white/10'
             }`}
-            title="Highlight anomalies (visual/date mismatch)"
+            title="Highlight anomalies"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
               <line x1="12" y1="9" x2="12" y2="13" />
               <line x1="12" y1="17" x2="12.01" y2="17" />
             </svg>
           </button>
-
 
           {/* Fullscreen */}
           <button
@@ -3764,7 +3746,7 @@ export function EmbeddingExplorer() {
             className="p-2 rounded-full text-white/40 hover:text-white/70 hover:bg-white/10 transition-all"
             title="Fullscreen"
           >
-            {isFullscreen ? <ExitFullscreenIcon size={14} /> : <FullscreenIcon size={14} />}
+            {isFullscreen ? <ExitFullscreenIcon size={15} /> : <FullscreenIcon size={15} />}
           </button>
         </GlassPanel>
       </div>
