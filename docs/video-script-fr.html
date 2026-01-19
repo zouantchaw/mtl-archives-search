@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MTL Archives - Script Vidéo (FR)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #1a1a1a;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background: #fafafa;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+        .header .subtitle {
+            color: #666;
+            font-size: 16px;
+        }
+        .meta {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+        .meta span {
+            background: #f0f0f0;
+            padding: 5px 12px;
+            border-radius: 20px;
+        }
+        .section {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+        .section-number {
+            background: #2563eb;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        .timing {
+            margin-left: auto;
+            background: #fef3c7;
+            color: #92400e;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .script-box {
+            background: #f8fafc;
+            border-left: 4px solid #2563eb;
+            padding: 15px 20px;
+            margin: 15px 0;
+            font-size: 17px;
+            line-height: 1.8;
+        }
+        .script-box p {
+            margin-bottom: 10px;
+        }
+        .script-box p:last-child {
+            margin-bottom: 0;
+        }
+        .action-box {
+            background: #fefce8;
+            border: 1px solid #fde047;
+            border-radius: 8px;
+            padding: 12px 15px;
+            margin: 12px 0;
+        }
+        .action-box strong {
+            color: #a16207;
+        }
+        .query-box {
+            background: #1a1a1a;
+            color: #4ade80;
+            font-family: 'Monaco', 'Menlo', monospace;
+            padding: 12px 18px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-size: 15px;
+        }
+        .tip {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 8px;
+            padding: 12px 15px;
+            margin: 12px 0;
+            font-size: 14px;
+        }
+        .tip strong {
+            color: #1d4ed8;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .stat-card {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 24px;
+            font-weight: 700;
+            color: #2563eb;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+        }
+        .divider {
+            height: 1px;
+            background: #e5e7eb;
+            margin: 20px 0;
+        }
+        .checklist {
+            list-style: none;
+            margin: 15px 0;
+        }
+        .checklist li {
+            padding: 8px 0;
+            padding-left: 28px;
+            position: relative;
+        }
+        .checklist li::before {
+            content: "☐";
+            position: absolute;
+            left: 0;
+            color: #9ca3af;
+        }
+        h3 {
+            font-size: 15px;
+            color: #374151;
+            margin: 15px 0 10px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            color: #9ca3af;
+            font-size: 13px;
+        }
+        @media print {
+            body {
+                background: white;
+                padding: 20px;
+            }
+            .section {
+                box-shadow: none;
+                border: 1px solid #e5e7eb;
+                break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>MTL Archives</h1>
+        <div class="subtitle">Script Vidéo de Présentation (Version Française)</div>
+        <div class="meta">
+            <span>⏱ Durée: 90-120 sec</span>
+            <span>🎯 Audience: Immobilier B2B</span>
+            <span>📅 Janvier 2026</span>
+        </div>
+    </div>
+
+    <!-- Section 0: Prep -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-number">0</div>
+            <div class="section-title">Préparation avant l'enregistrement</div>
+        </div>
+
+        <h3>Checklist technique</h3>
+        <ul class="checklist">
+            <li>Ouvrir mtlarchives.com dans Chrome/Safari</li>
+            <li>Vider le champ de recherche</li>
+            <li>Mettre le site en mode français (si disponible)</li>
+            <li>Fermer tous les onglets non nécessaires</li>
+            <li>Désactiver les notifications</li>
+            <li>Résolution d'écran: 1920x1080 recommandé</li>
+        </ul>
+
+        <div class="tip">
+            <strong>💡 Conseil:</strong> Faire un test d'enregistrement de 10 secondes pour vérifier le son et la qualité d'image.
+        </div>
+    </div>
+
+    <!-- Section 1: Hook -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-number">1</div>
+            <div class="section-title">L'accroche</div>
+            <div class="timing">0:00 - 0:15</div>
+        </div>
+
+        <div class="action-box">
+            <strong>À l'écran:</strong> Page d'accueil de mtlarchives.com (curseur visible, ne rien faire encore)
+        </div>
+
+        <div class="script-box">
+            <p>« Imaginez pouvoir montrer à vos clients exactement à quoi ressemblait leur futur quartier il y a 50, 60, même 80 ans. »</p>
+            <p>« C'est exactement ce que permet MTL Archives — la plus grande collection numérique de photos historiques de Montréal, accessible par intelligence artificielle. »</p>
+        </div>
+    </div>
+
+    <!-- Section 2: Stats -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-number">2</div>
+            <div class="section-title">Les chiffres clés</div>
+            <div class="timing">0:15 - 0:25</div>
+        </div>
+
+        <div class="action-box">
+            <strong>À l'écran:</strong> Toujours sur la page d'accueil, pointer vers le compteur de photos si visible
+        </div>
+
+        <div class="script-box">
+            <p>« Notre base de données contient plus de treize mille photos historiques de Montréal, couvrant les années 1920 jusqu'aux années 1970. »</p>
+            <p>« Des vues aériennes, des scènes de rue, des quartiers entiers — tous cherchables en quelques secondes. »</p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number">13,499</div>
+                <div class="stat-label">Photos indexées</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">50+</div>
+                <div class="stat-label">Années couvertes</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">3</div>
+                <div class="stat-label">Modes de recherche IA</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 3: Demo 1 -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-number">3</div>
+            <div class="section-title">Démonstration — Recherche par quartier</div>
+            <div class="timing">0:25 - 0:45</div>
+        </div>
+
+        <div class="action-box">
+            <strong>Action:</strong> Cliquer dans la barre de recherche et taper lentement
+        </div>
+
+        <div class="query-box">Griffintown 1940</div>
+
+        <div class="script-box">
+            <p>« Prenons un exemple concret. Je cherche "Griffintown 1940"... »</p>
+            <p><em>(Attendre les résultats — 2 secondes)</em></p>
+            <p>« Immédiatement, l'IA me trouve des photos aériennes du quartier avant sa transformation. »</p>
+        </div>
+
+        <div class="action-box">
+            <strong>Action:</strong> Cliquer sur une photo pour ouvrir le détail
+        </div>
+
+        <div class="script-box">
+            <p>« Chaque photo est accompagnée de sa date exacte et de métadonnées historiques. »</p>
+        </div>
+
+        <div class="tip">
+            <strong>💡 Alternative si Griffintown ne donne pas assez de résultats:</strong><br>
+            Utiliser <code>Plateau Mont-Royal</code> ou <code>Vieux-Port</code>
+        </div>
+    </div>
+
+    <!-- Section 4: Demo 2 -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-number">4</div>
+            <div class="section-title">Démonstration — Recherche par adresse</div>
+            <div class="timing">0:45 - 1:00</div>
+        </div>
+
+        <div class="action-box">
+            <strong>Action:</strong> Effacer la recherche, taper une nouvelle requête
+        </div>
+
+        <div class="query-box">Boulevard Saint-Laurent</div>
+
+        <div class="script-box">
+            <p>« Vous pouvez aussi chercher par nom de rue. "Boulevard Saint-Laurent"... »</p>
+            <p><em>(Attendre les résultats)</em></p>
+            <p>« Parfait pour préparer une présentation de propriété dans un secteur historique. »</p>
+        </div>
+
+        <h3>Autres requêtes recommandées (au choix)</h3>
+        <div class="query-box">Pont Jacques-Cartier</div>
+        <div class="query-box">Rue Sherbrooke Ouest</div>
+        <div class="query-box">Westmount 1950</div>
+        <div class="query-box">Notre-Dame</div>
+    </div>
+
+    <!-- Section 5: Value Prop -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-number">5</div>
+            <div class="section-title">La proposition de valeur</div>
+            <div class="timing">1:00 - 1:20</div>
+        </div>
+
+        <div class="action-box">
+            <strong>À l'écran:</strong> Revenir à la page d'accueil ou montrer quelques résultats de recherche
+        </div>
+
+        <div class="script-box">
+            <p>« Pour les professionnels de l'immobilier, MTL Archives offre un avantage unique : »</p>
+            <p>« Créez du contenu authentique pour vos réseaux sociaux. Enrichissez vos présentations avec l'histoire du quartier. Offrez à vos clients un cadeau mémorable — une photo de leur nouvelle rue, il y a 70 ans. »</p>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="script-box">
+            <p>« Notre communauté Instagram compte déjà plus de 3,000 abonnés passionnés d'histoire montréalaise — dont plusieurs agents immobiliers qui utilisent notre contenu quotidiennement. »</p>
+        </div>
+    </div>
+
+    <!-- Section 6: CTA -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-number">6</div>
+            <div class="section-title">Appel à l'action</div>
+            <div class="timing">1:20 - 1:30</div>
+        </div>
+
+        <div class="action-box">
+            <strong>À l'écran:</strong> Page d'accueil avec URL visible
+        </div>
+
+        <div class="script-box">
+            <p>« Nous offrons des solutions adaptées aux courtiers, aux agences, et aux promoteurs immobiliers. »</p>
+            <p>« Contactez-nous pour une démonstration personnalisée et découvrez comment MTL Archives peut enrichir votre marque. »</p>
+            <p>« Merci, et à bientôt. »</p>
+        </div>
+    </div>
+
+    <!-- Bonus Section -->
+    <div class="section" style="background: #f0fdf4; border: 1px solid #bbf7d0;">
+        <div class="section-header">
+            <div class="section-number" style="background: #16a34a;">+</div>
+            <div class="section-title">Points bonus à mentionner (si le temps le permet)</div>
+        </div>
+
+        <h3>Sur la technologie</h3>
+        <ul style="margin-left: 20px; margin-top: 10px;">
+            <li>« Recherche par intelligence artificielle — comprend le contexte, pas juste les mots-clés »</li>
+            <li>« Trois modes de recherche : texte, sémantique, et même recherche visuelle »</li>
+        </ul>
+
+        <h3>Sur la croissance</h3>
+        <ul style="margin-left: 20px; margin-top: 10px;">
+            <li>« Plus de 78,000 vues par mois sur nos réseaux sociaux »</li>
+            <li>« Une communauté engagée : 91% de notre audience est au Canada »</li>
+            <li>« Contenu quotidien depuis plus de 3 ans »</li>
+        </ul>
+
+        <h3>Sur l'exclusivité</h3>
+        <ul style="margin-left: 20px; margin-top: 10px;">
+            <li>« Base de données propriétaire — vous ne trouverez pas ça ailleurs »</li>
+            <li>« Photos des archives municipales, numérisées et optimisées pour le web »</li>
+        </ul>
+    </div>
+
+    <!-- Summary Card -->
+    <div class="section">
+        <div class="section-header">
+            <div class="section-number">✓</div>
+            <div class="section-title">Résumé — Requêtes à utiliser</div>
+        </div>
+
+        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+            <thead>
+                <tr style="background: #f8fafc;">
+                    <th style="text-align: left; padding: 10px; border-bottom: 2px solid #e5e7eb;">Requête</th>
+                    <th style="text-align: left; padding: 10px; border-bottom: 2px solid #e5e7eb;">Pourquoi</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;"><code>Griffintown 1940</code></td>
+                    <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">Quartier en plein boom immobilier — pertinent pour les développeurs</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;"><code>Boulevard Saint-Laurent</code></td>
+                    <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">Artère emblématique — beaucoup de résultats</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;"><code>Westmount 1950</code></td>
+                    <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">Quartier luxe — parle aux courtiers haut de gamme</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;"><code>Pont Jacques-Cartier</code></td>
+                    <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">Landmark reconnaissable — bon pour l'effet "wow"</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px;"><code>Vue aérienne Montréal</code></td>
+                    <td style="padding: 10px;">Montre l'étendue de la collection (7,800 photos aériennes)</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="footer">
+        <p>MTL Archives — Script de présentation v1.0</p>
+        <p>Pour usage interne uniquement</p>
+    </div>
+</body>
+</html>
