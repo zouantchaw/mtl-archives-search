@@ -3497,54 +3497,56 @@ export function EmbeddingExplorer() {
       )}
 
       {/* Top Controls */}
-      <div className="fixed top-5 left-5 right-5 z-30 flex items-start justify-between gap-4">
-        {/* Left side - View toggle */}
-        <GlassPanel variant="elevated" className="rounded-2xl p-1.5 flex shrink-0 gap-1">
+      <div className="fixed top-4 sm:top-5 left-3 sm:left-5 right-3 sm:right-5 z-30 flex items-start justify-between gap-2 sm:gap-4">
+        {/* Left side - View toggle (compact on mobile) */}
+        <GlassPanel variant="elevated" className="rounded-xl sm:rounded-2xl p-1 sm:p-1.5 flex shrink-0 gap-0.5 sm:gap-1">
           {(['2d', '3d'] as const).map(v => (
             <button
               key={v}
               onClick={() => setViewMode(v)}
-              className={`relative px-5 py-2.5 text-[13px] font-semibold rounded-xl transition-all duration-300 ease-out ${
+              className={`relative px-3 sm:px-5 py-2 sm:py-2.5 text-[12px] sm:text-[13px] font-semibold rounded-lg sm:rounded-xl transition-all duration-300 ease-out ${
                 viewMode === v
                   ? 'text-white'
-                  : 'text-white/40 hover:text-white/70'
+                  : 'text-white/40 hover:text-white/70 active:text-white/60'
               }`}
             >
               {/* Active indicator background */}
               {viewMode === v && (
-                <span className="absolute inset-0 bg-white/[0.12] rounded-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]" />
+                <span className="absolute inset-0 bg-white/[0.12] rounded-lg sm:rounded-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]" />
               )}
               <span className="relative">{v.toUpperCase()}</span>
             </button>
           ))}
-          {/* Auto-rotate for 3D */}
-          <div className={`overflow-hidden transition-all duration-300 ease-out ${viewMode === '3d' ? 'w-10 opacity-100' : 'w-0 opacity-0'}`}>
-            <button
-              onClick={() => setAutoRotate(!autoRotate)}
-              className={`w-10 h-full rounded-xl transition-all duration-300 flex items-center justify-center ${
-                autoRotate
-                  ? 'bg-cyan-500/20 text-cyan-400 shadow-[inset_0_0_12px_rgba(34,211,238,0.2)]'
-                  : 'text-white/40 hover:text-white/70 hover:bg-white/[0.06]'
-              }`}
-              title={autoRotate ? 'Stop rotation' : 'Auto-rotate'}
-            >
-              <span className={`transition-transform duration-500 ${autoRotate ? 'animate-spin' : ''}`} style={{ animationDuration: '2s' }}>
-                <RotateIcon size={14} />
-              </span>
-            </button>
-          </div>
+          {/* Auto-rotate for 3D (hidden on mobile) */}
+          {!isMobile && (
+            <div className={`overflow-hidden transition-all duration-300 ease-out ${viewMode === '3d' ? 'w-10 opacity-100' : 'w-0 opacity-0'}`}>
+              <button
+                onClick={() => setAutoRotate(!autoRotate)}
+                className={`w-10 h-full rounded-xl transition-all duration-300 flex items-center justify-center ${
+                  autoRotate
+                    ? 'bg-cyan-500/20 text-cyan-400 shadow-[inset_0_0_12px_rgba(34,211,238,0.2)]'
+                    : 'text-white/40 hover:text-white/70 hover:bg-white/[0.06]'
+                }`}
+                title={autoRotate ? 'Stop rotation' : 'Auto-rotate'}
+              >
+                <span className={`transition-transform duration-500 ${autoRotate ? 'animate-spin' : ''}`} style={{ animationDuration: '2s' }}>
+                  <RotateIcon size={14} />
+                </span>
+              </button>
+            </div>
+          )}
         </GlassPanel>
 
         {/* Center - Search */}
         <div className={`flex-1 ${isMobile ? 'max-w-full' : 'max-w-md'} relative group/search`}>
           <GlassPanel
             variant="elevated"
-            className="rounded-2xl flex items-center transition-all duration-300 ease-out
+            className="rounded-xl sm:rounded-2xl flex items-center transition-all duration-300 ease-out
                        focus-within:ring-1 focus-within:ring-white/30 focus-within:bg-black/70
                        focus-within:shadow-[0_8px_40px_rgba(255,149,0,0.1)]
                        group-hover/search:bg-black/50"
           >
-            <div className="pl-4 pr-2 text-white/40 transition-colors duration-200 group-focus-within/search:text-orange-400/70">
+            <div className="pl-3 sm:pl-4 pr-1.5 sm:pr-2 text-white/40 transition-colors duration-200 group-focus-within/search:text-orange-400/70">
               <SearchIcon />
             </div>
             <input
@@ -3553,8 +3555,8 @@ export function EmbeddingExplorer() {
               onChange={e => setQuery(e.target.value)}
               onFocus={() => setShowSuggestions(true)}
               onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-              placeholder={searchMode === 'visual' ? 'Search by visual concept...' : 'Search archives...'}
-              className="flex-1 py-3.5 pr-3 bg-transparent text-[15px] text-white placeholder:text-white/25 focus:outline-none font-medium tracking-tight"
+              placeholder={isMobile ? 'Search...' : (searchMode === 'visual' ? 'Search by visual concept...' : 'Search archives...')}
+              className="flex-1 py-3 sm:py-3.5 pr-2 sm:pr-3 bg-transparent text-[14px] sm:text-[15px] text-white placeholder:text-white/25 focus:outline-none font-medium tracking-tight"
             />
             {isSearching && (
               <div className="pr-4">
@@ -3638,56 +3640,56 @@ export function EmbeddingExplorer() {
       </div>
 
       {/* Unified Floating Toolbar - Apple Style */}
-      <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-30">
-        <GlassPanel variant="elevated" className="rounded-full px-2 py-1.5 flex items-center gap-1">
-          {/* Photo count */}
-          <span className="text-[13px] text-white/60 font-medium tabular-nums px-3">
+      <div className="fixed bottom-6 sm:bottom-5 left-1/2 -translate-x-1/2 z-30 max-w-[calc(100vw-24px)] sm:max-w-[calc(100vw-40px)]">
+        <GlassPanel variant="elevated" className="rounded-full px-3 py-2 flex items-center gap-1.5">
+          {/* Photo count - compact on mobile */}
+          <span className="text-[13px] text-white/60 font-medium tabular-nums whitespace-nowrap">
             {results.length > 0 ? (
-              <><span className="text-white font-semibold">{results.length}</span> results</>
+              <><span className="text-white font-semibold">{results.length}</span><span className="hidden sm:inline"> results</span></>
             ) : (
-              <>{data.length.toLocaleString()} photos</>
+              <><span className="text-white font-semibold">{isMobile ? '14.7k' : data.length.toLocaleString()}</span><span className="hidden sm:inline"> photos</span></>
             )}
           </span>
 
           {/* Divider */}
           <div className="w-px h-5 bg-white/10" />
 
-          {/* Surprise me */}
+          {/* Surprise me - 44px touch target on mobile */}
           <button
             onClick={surpriseMe}
-            className="p-2 rounded-full hover:bg-white/10 text-white/50 hover:text-purple-400 transition-all"
+            className="p-2.5 sm:p-2 rounded-full hover:bg-white/10 active:bg-white/20 text-white/50 hover:text-purple-400 transition-all"
             title="Random photo"
           >
-            <DiceIcon size={15} />
+            <DiceIcon size={isMobile ? 18 : 15} />
           </button>
 
           {/* Collection (if has items) */}
           {collection.length > 0 && (
             <button
               onClick={() => setShowCollection(!showCollection)}
-              className="p-2 rounded-full hover:bg-white/10 text-amber-400 transition-all relative"
+              className="p-2.5 sm:p-2 rounded-full hover:bg-white/10 active:bg-white/20 text-amber-400 transition-all relative"
               title={`Collection (${collection.length})`}
             >
-              <BookmarkIcon size={15} filled />
-              <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-0.5 rounded-full bg-amber-500 text-[9px] font-bold flex items-center justify-center text-black">
+              <BookmarkIcon size={isMobile ? 18 : 15} filled />
+              <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-0.5 rounded-full bg-amber-500 text-[10px] font-bold flex items-center justify-center text-black">
                 {collection.length}
               </span>
             </button>
           )}
 
-          {/* Help */}
+          {/* Help - always visible */}
           <button
             onClick={() => setShowHelp(true)}
-            className="p-2 rounded-full hover:bg-white/10 text-white/40 hover:text-white/70 transition-all"
-            title="Help (?)"
+            className="p-2.5 sm:p-2 rounded-full hover:bg-white/10 active:bg-white/20 text-white/40 hover:text-white/70 transition-all"
+            title="Help"
           >
-            <HelpIcon size={15} />
+            <HelpIcon size={isMobile ? 17 : 15} />
           </button>
 
           {/* Divider */}
           <div className="w-px h-5 bg-white/10" />
 
-          {/* Color legend */}
+          {/* Color legend - always visible */}
           <ColorLegend
             show={showLegend}
             onToggle={() => setShowLegend(!showLegend)}
@@ -3695,71 +3697,78 @@ export function EmbeddingExplorer() {
             onColorModeChange={setColorMode}
           />
 
-          {/* Divider */}
-          <div className="w-px h-5 bg-white/10" />
+          {/* Desktop-only advanced features */}
+          {!isMobile && (
+            <>
+              {/* Divider */}
+              <div className="w-px h-5 bg-white/10" />
 
-          {/* Constellation toggle */}
-          <button
-            onClick={() => setShowConstellations(!showConstellations)}
-            className={`p-2 rounded-full transition-all ${
-              showConstellations ? 'bg-orange-500/20 text-orange-400' : 'text-white/40 hover:text-white/70 hover:bg-white/10'
-            }`}
-            title="Connections"
-          >
-            <ConstellationIcon size={15} />
-          </button>
+              {/* Constellation toggle */}
+              <button
+                onClick={() => setShowConstellations(!showConstellations)}
+                className={`p-2 rounded-full transition-all ${
+                  showConstellations ? 'bg-orange-500/20 text-orange-400' : 'text-white/40 hover:text-white/70 hover:bg-white/10'
+                }`}
+                title="Connections"
+              >
+                <ConstellationIcon size={15} />
+              </button>
 
-          {/* Time Travel - fly through decades */}
-          {viewMode === '2d' && (
-            <button
-              onClick={startTimeTravel}
-              className={`p-2 rounded-full transition-all ${
-                isTimeTraveling ? 'bg-purple-500/20 text-purple-400 animate-pulse' : 'text-white/40 hover:text-white/70 hover:bg-white/10'
-              }`}
-              title={isTimeTraveling ? 'Stop Time Travel' : 'Time Travel through decades'}
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="12 6 12 12 16 14" />
-              </svg>
-            </button>
+              {/* Time Travel - fly through decades */}
+              {viewMode === '2d' && (
+                <button
+                  onClick={startTimeTravel}
+                  className={`p-2 rounded-full transition-all ${
+                    isTimeTraveling ? 'bg-purple-500/20 text-purple-400 animate-pulse' : 'text-white/40 hover:text-white/70 hover:bg-white/10'
+                  }`}
+                  title={isTimeTraveling ? 'Stop Time Travel' : 'Time Travel through decades'}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                </button>
+              )}
+
+              {/* Anomaly highlight toggle */}
+              <button
+                onClick={() => setHighlightAnomalies(!highlightAnomalies)}
+                className={`p-2 rounded-full transition-all ${
+                  highlightAnomalies ? 'bg-pink-500/20 text-pink-400' : 'text-white/40 hover:text-white/70 hover:bg-white/10'
+                }`}
+                title="Highlight anomalies"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+              </button>
+
+              {/* Fullscreen */}
+              <button
+                onClick={toggleFullscreen}
+                className="p-2 rounded-full text-white/40 hover:text-white/70 hover:bg-white/10 transition-all"
+                title="Fullscreen"
+              >
+                {isFullscreen ? <ExitFullscreenIcon size={15} /> : <FullscreenIcon size={15} />}
+              </button>
+            </>
           )}
-
-          {/* Anomaly highlight toggle */}
-          <button
-            onClick={() => setHighlightAnomalies(!highlightAnomalies)}
-            className={`p-2 rounded-full transition-all ${
-              highlightAnomalies ? 'bg-pink-500/20 text-pink-400' : 'text-white/40 hover:text-white/70 hover:bg-white/10'
-            }`}
-            title="Highlight anomalies"
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-              <line x1="12" y1="9" x2="12" y2="13" />
-              <line x1="12" y1="17" x2="12.01" y2="17" />
-            </svg>
-          </button>
-
-          {/* Fullscreen */}
-          <button
-            onClick={toggleFullscreen}
-            className="p-2 rounded-full text-white/40 hover:text-white/70 hover:bg-white/10 transition-all"
-            title="Fullscreen"
-          >
-            {isFullscreen ? <ExitFullscreenIcon size={15} /> : <FullscreenIcon size={15} />}
-          </button>
         </GlassPanel>
       </div>
 
-      {/* Floating link - bottom right */}
-      <a
-        href="https://mtlarchives.com"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="fixed bottom-5 right-5 z-20 text-[11px] text-white/25 hover:text-white/50 transition-colors"
-      >
-        mtlarchives.com
-      </a>
+      {/* Floating link - bottom right (hidden on mobile) */}
+      {!isMobile && (
+        <a
+          href="https://mtlarchives.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="fixed bottom-5 right-5 z-20 text-[11px] text-white/25 hover:text-white/50 transition-colors"
+        >
+          mtlarchives.com
+        </a>
+      )}
 
       {/* Results Panel */}
       {displayResults.length > 0 && (
