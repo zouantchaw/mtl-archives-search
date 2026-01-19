@@ -476,6 +476,7 @@ function ArchiveStoreInner() {
   const t = translations[lang];
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const commitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitialMount = useRef(true);
 
   // Focus state for search input
@@ -577,6 +578,7 @@ function ArchiveStoreInner() {
   // Search (semantic only on mobile - no CLIP)
   useEffect(() => {
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    if (commitTimeoutRef.current) clearTimeout(commitTimeoutRef.current);
 
     if (!searchQuery.trim()) {
       setSearchResults([]);
@@ -599,6 +601,17 @@ function ArchiveStoreInner() {
           const data: SearchResponse = await res.json();
           setSearchResults(data.items);
           events.searchPerformed(searchQuery, searchMode, data.items.length);
+
+          // Track no results - helps identify content gaps
+          if (data.items.length === 0) {
+            events.searchNoResults(searchQuery, searchMode);
+          }
+
+          // Track "committed" search after 1.5s of no further changes
+          // This is the metric to use for business analytics (vs intermediate searches)
+          commitTimeoutRef.current = setTimeout(() => {
+            events.searchCommitted(searchQuery, searchMode, data.items.length);
+          }, 1200); // 1.2s after results load = ~1.5s after typing stops
         }
       } catch (err) {
         console.error('Search failed:', err);
@@ -607,7 +620,10 @@ function ArchiveStoreInner() {
       }
     }, 300);
 
-    return () => { if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current); };
+    return () => {
+      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+      if (commitTimeoutRef.current) clearTimeout(commitTimeoutRef.current);
+    };
   }, [searchQuery, searchMode, updateUrl, lang, initialQuery, isMobile]);
 
   const clearSearch = useCallback(() => {
@@ -636,14 +652,20 @@ function ArchiveStoreInner() {
   }, []);
 
   // Navigate to photo
-  const handlePhotoClick = useCallback((photo: PhotoRecord) => {
+  const handlePhotoClick = useCallback((photo: PhotoRecord, position?: number) => {
     events.photoViewed(photo.metadataFilename, photo.name);
+
+    // Track search result clicks with position - helps optimize ranking
+    if (hasSearched && searchQuery && position !== undefined) {
+      events.searchResultClicked(searchQuery, position, photo.metadataFilename);
+    }
+
     const params = new URLSearchParams();
     if (searchQuery) params.set('q', searchQuery);
     if (searchMode !== 'semantic') params.set('mode', searchMode);
     if (lang !== 'fr') params.set('lang', lang);
     router.push(`/photo/${encodeURIComponent(photo.metadataFilename)}${params.toString() ? `?${params}` : ''}`);
-  }, [router, searchQuery, searchMode, lang]);
+  }, [router, searchQuery, searchMode, lang, hasSearched]);
 
   const handleLangChange = useCallback(() => {
     const newLang = lang === 'fr' ? 'en' : 'fr';
@@ -869,7 +891,7 @@ function ArchiveStoreInner() {
                 src={getThumbnailUrl(photo.imageUrl, 400)}
                 alt={photo.name || ''}
                 priority={index < 6}
-                onClick={() => handlePhotoClick(photo)}
+                onClick={() => handlePhotoClick(photo, index + 1)}
                 onError={() => handleImageError(photo.metadataFilename)}
               />
             )

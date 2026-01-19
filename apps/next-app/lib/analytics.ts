@@ -38,6 +38,18 @@ export const events = {
   searchPerformed: (query: string, mode: string, resultCount: number) =>
     track('search: performed', { query, mode, resultCount }),
 
+  // Track "final" search after user stops typing for 1.5s - use this for business metrics
+  searchCommitted: (query: string, mode: string, resultCount: number) =>
+    track('search: committed', { query, mode, resultCount }),
+
+  // Track when search returns no results - important for content gaps
+  searchNoResults: (query: string, mode: string) =>
+    track('search: no results', { query, mode }),
+
+  // Track which search result position was clicked - helps optimize ranking
+  searchResultClicked: (query: string, position: number, photoId: string) =>
+    track('search: result clicked', { query, position, photoId }),
+
   searchCleared: () =>
     track('search: cleared'),
 
