@@ -237,13 +237,13 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
               {photo.imageUrl && (
                 <div className={`relative transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}>
                   <Image
-                    src={getThumbnailUrl(photo.imageUrl, 1600)}
+                    src={getThumbnailUrl(photo.imageUrl, 1000)}
                     alt={title}
-                    width={1600}
-                    height={1200}
+                    width={1000}
+                    height={750}
+                    sizes="(max-width: 768px) 100vw, (max-width: 1280px) 80vw, 1000px"
                     className="w-full h-auto"
                     priority
-                    unoptimized
                     onLoad={() => setImageLoaded(true)}
                     style={{
                       maxHeight: '70vh',

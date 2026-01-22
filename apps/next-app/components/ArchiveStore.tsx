@@ -590,6 +590,7 @@ function ArchiveStoreInner() {
     searchTimeoutRef.current = setTimeout(async () => {
       setIsSearching(true);
       setHasSearched(true);
+      setFailedImages(new Set()); // Clear failed images on new search
       if (!isInitialMount.current || !initialQuery) updateUrl(searchQuery, searchMode, lang);
       isInitialMount.current = false;
 

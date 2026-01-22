@@ -39,7 +39,6 @@ export function PhotoTile({ src, alt, priority = false, onClick, onError }: Phot
         loading={priority ? undefined : 'lazy'}
         onLoad={() => setLoaded(true)}
         onError={onError}
-        unoptimized
       />
 
       {/* Subtle hover overlay */}

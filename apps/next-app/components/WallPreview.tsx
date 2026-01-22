@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import { ROOM_BACKGROUNDS, PRINT_SIZES, PRODUCT_TYPES, type PrintSize, type ProductType, type RoomBackground } from '@/lib/room-backgrounds';
 
@@ -16,7 +16,7 @@ type WallPreviewProps = {
 };
 
 // Slide types: first is original photo, rest are room backgrounds
-type SlideType = 
+type SlideType =
   | { type: 'original' }
   | { type: 'room'; room: RoomBackground };
 
@@ -31,32 +31,38 @@ export const WallPreview = ({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [imageError, setImageError] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const scrollThrottleRef = useRef<number | null>(null);
 
   // Build slides array: original photo first, then room backgrounds
-  const slides: SlideType[] = [
-    { type: 'original' },
+  const slides: SlideType[] = useMemo(() => [
+    { type: 'original' as const },
     ...ROOM_BACKGROUNDS.map(room => ({ type: 'room' as const, room })),
-  ];
+  ], []);
 
-  // Handle scroll snap detection
+  // Handle scroll snap detection (throttled to prevent excessive state updates)
   const handleScroll = useCallback(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
+    if (scrollThrottleRef.current) return;
 
-    const scrollLeft = container.scrollLeft;
-    const itemWidth = container.clientWidth;
-    const newIndex = Math.round(scrollLeft / itemWidth);
+    scrollThrottleRef.current = requestAnimationFrame(() => {
+      scrollThrottleRef.current = null;
+      const container = scrollContainerRef.current;
+      if (!container) return;
 
-    if (newIndex !== currentIndex && newIndex >= 0 && newIndex < slides.length) {
-      setCurrentIndex(newIndex);
-      const slide = slides[newIndex];
-      if (slide.type === 'original') {
-        onSlideChange?.(newIndex, false);
-      } else {
-        onSlideChange?.(newIndex, true, slide.room.id);
+      const scrollLeft = container.scrollLeft;
+      const itemWidth = container.clientWidth;
+      const newIndex = Math.round(scrollLeft / itemWidth);
+
+      if (newIndex !== currentIndex && newIndex >= 0 && newIndex < slides.length) {
+        setCurrentIndex(newIndex);
+        const slide = slides[newIndex];
+        if (slide.type === 'original') {
+          onSlideChange?.(newIndex, false);
+        } else {
+          onSlideChange?.(newIndex, true, slide.room.id);
+        }
       }
-    }
-  }, [currentIndex, slides.length, onSlideChange]);
+    });
+  }, [currentIndex, slides, onSlideChange]);
 
   // Scroll to specific index
   const scrollToIndex = useCallback((index: number) => {
@@ -100,8 +106,13 @@ export const WallPreview = ({
         tabIndex={0}
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
-        {slides.map((slide, index) => (
-          slide.type === 'original' ? (
+        {slides.map((slide, index) => {
+          // Only render slides within 1 position of current (lazy loading)
+          const isNearby = Math.abs(index - currentIndex) <= 1;
+          if (!isNearby) {
+            return <div key={slide.type === 'original' ? 'original' : slide.room.id} className="flex-shrink-0 w-full snap-center aspect-[4/3]" />;
+          }
+          return slide.type === 'original' ? (
             <OriginalPhotoSlide
               key="original"
               photoUrl={photoUrl}
@@ -124,8 +135,8 @@ export const WallPreview = ({
               onImageError={() => setImageError(true)}
               isActive={index === currentIndex}
             />
-          )
-        ))}
+          );
+        })}
       </div>
 
       {/* Dot Indicators */}
@@ -194,7 +205,6 @@ const OriginalPhotoSlide = ({
                 sizes="(max-width: 768px) 70vw, 50vw"
                 className="object-cover"
                 priority
-                unoptimized
                 onError={onImageError}
               />
             ) : (
@@ -269,7 +279,6 @@ const RoomSlide = ({
                 fill
                 sizes="(max-width: 768px) 50vw, 30vw"
                 className="object-cover"
-                unoptimized
                 onError={onImageError}
               />
             ) : (
