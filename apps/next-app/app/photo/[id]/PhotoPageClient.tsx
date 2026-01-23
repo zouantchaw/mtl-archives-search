@@ -244,6 +244,7 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
                     sizes="(max-width: 768px) 100vw, (max-width: 1280px) 80vw, 1000px"
                     className="w-full h-auto"
                     priority
+                    unoptimized
                     onLoad={() => setImageLoaded(true)}
                     style={{
                       maxHeight: '70vh',
