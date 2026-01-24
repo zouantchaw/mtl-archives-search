@@ -374,10 +374,11 @@ function AboutContent({ t, onClose }: { t: (typeof translations)[Lang]; onClose:
 
       {/* Source - Apple style row */}
       <section>
-        <a 
-          href="https://archivesdemontreal.ica-atom.org/" 
-          target="_blank" 
+        <a
+          href="https://archivesdemontreal.ica-atom.org/"
+          target="_blank"
           rel="noopener noreferrer"
+          onClick={() => events.archiveLinkClicked('https://archivesdemontreal.ica-atom.org/')}
           className="flex items-center justify-between py-2 group"
         >
           <div>
@@ -479,6 +480,11 @@ function ArchiveStoreInner() {
   const commitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitialMount = useRef(true);
 
+  // Search quality tracking refs (used by clearSearch and effects below)
+  const previousQueryRef = useRef<string>('');
+  const searchResultClickedRef = useRef(false);
+  const abandonmentRef = useRef<{ query: string; mode: string; count: number } | null>(null);
+
   // Focus state for search input
   const [isInputFocused, setIsInputFocused] = useState(false);
   
@@ -506,6 +512,26 @@ function ArchiveStoreInner() {
 
   // Total photo count for display
   const [totalPhotos, setTotalPhotos] = useState<number | null>(null);
+
+  // === Session & Interaction Tracking Helpers ===
+  // (defined early so handlers below can reference them)
+
+  // Track first interaction (fires once per session)
+  const firstInteractionTracked = useRef(false);
+  const trackFirstInteraction = useCallback((action: string) => {
+    if (firstInteractionTracked.current) return;
+    firstInteractionTracked.current = true;
+    events.pageFirstInteraction(action);
+  }, []);
+
+  // Increment event count on any tracked action (for session classification)
+  const sessionStartTime = useRef(Date.now());
+  const sessionEventCount = useRef(0);
+  const sessionActions = useRef(new Set<string>());
+  const trackSessionAction = useCallback((action: string) => {
+    sessionEventCount.current++;
+    sessionActions.current.add(action);
+  }, []);
 
   // Session storage keys for persisting shuffle state
   const STORAGE_KEY_PHOTOS = 'mtl-archives-photos';
@@ -566,9 +592,11 @@ function ArchiveStoreInner() {
 
   // Handle user-initiated shuffle (with analytics) - always fetches fresh
   const handleShuffle = useCallback(() => {
+    trackFirstInteraction('shuffle');
+    trackSessionAction('shuffle');
     events.shuffleClicked();
     loadPhotos(true); // Force refresh
-  }, [loadPhotos]);
+  }, [loadPhotos, trackFirstInteraction, trackSessionAction]);
 
   useEffect(() => {
     loadPhotos(false); // Try to restore from cache first
@@ -601,6 +629,7 @@ function ArchiveStoreInner() {
         if (res.ok) {
           const data: SearchResponse = await res.json();
           setSearchResults(data.items);
+          trackSessionAction('search');
           events.searchPerformed(searchQuery, searchMode, data.items.length);
 
           // Track no results - helps identify content gaps
@@ -625,9 +654,14 @@ function ArchiveStoreInner() {
       if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
       if (commitTimeoutRef.current) clearTimeout(commitTimeoutRef.current);
     };
-  }, [searchQuery, searchMode, updateUrl, lang, initialQuery, isMobile]);
+  }, [searchQuery, searchMode, updateUrl, lang, initialQuery, isMobile, trackSessionAction]);
 
   const clearSearch = useCallback(() => {
+    // Track abandonment if user had results but never clicked one
+    if (abandonmentRef.current && !searchResultClickedRef.current) {
+      events.searchAbandoned(abandonmentRef.current.query, abandonmentRef.current.mode, abandonmentRef.current.count);
+    }
+    abandonmentRef.current = null;
     events.searchCleared();
     setSearchQuery('');
     setSearchResults([]);
@@ -654,10 +688,13 @@ function ArchiveStoreInner() {
 
   // Navigate to photo
   const handlePhotoClick = useCallback((photo: PhotoRecord, position?: number) => {
+    trackFirstInteraction('photo_click');
+    trackSessionAction('photo');
     events.photoViewed(photo.metadataFilename, photo.name);
 
     // Track search result clicks with position - helps optimize ranking
     if (hasSearched && searchQuery && position !== undefined) {
+      searchResultClickedRef.current = true;
       events.searchResultClicked(searchQuery, position, photo.metadataFilename);
     }
 
@@ -666,7 +703,7 @@ function ArchiveStoreInner() {
     if (searchMode !== 'semantic') params.set('mode', searchMode);
     if (lang !== 'fr') params.set('lang', lang);
     router.push(`/photo/${encodeURIComponent(photo.metadataFilename)}${params.toString() ? `?${params}` : ''}`);
-  }, [router, searchQuery, searchMode, lang, hasSearched]);
+  }, [router, searchQuery, searchMode, lang, hasSearched, trackFirstInteraction, trackSessionAction]);
 
   const handleLangChange = useCallback(() => {
     const newLang = lang === 'fr' ? 'en' : 'fr';
@@ -677,9 +714,84 @@ function ArchiveStoreInner() {
   }, [lang, searchQuery, searchMode, updateUrl]);
 
   const handleModeChange = useCallback((newMode: SearchMode) => {
+    events.searchModeChanged(newMode);
     setSearchMode(newMode);
     if (searchQuery) updateUrl(searchQuery, newMode, lang);
   }, [searchQuery, lang, updateUrl]);
+
+  // === Landing & Bounce Intelligence ===
+
+  // Track page load time (fires once)
+  const pageLoadTracked = useRef(false);
+  useEffect(() => {
+    if (pageLoadTracked.current) return;
+    pageLoadTracked.current = true;
+    const measure = () => {
+      const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
+      const loadTime = nav ? Math.round(nav.loadEventEnd - nav.startTime) : 0;
+      if (loadTime > 0) {
+        events.pageLoaded(loadTime);
+      }
+    };
+    if (document.readyState === 'complete') {
+      setTimeout(measure, 0);
+    } else {
+      window.addEventListener('load', measure, { once: true });
+    }
+  }, []);
+
+  // Track scroll depth milestones (25/50/75/100%)
+  const scrollMilestones = useRef(new Set<number>());
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+      if (scrollHeight <= 0) return;
+      const percent = Math.round((window.scrollY / scrollHeight) * 100);
+      for (const milestone of [25, 50, 75, 100]) {
+        if (percent >= milestone && !scrollMilestones.current.has(milestone)) {
+          scrollMilestones.current.add(milestone);
+          events.pageScrollDepth(milestone);
+          if (milestone === 25) trackFirstInteraction('scroll');
+        }
+      }
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [trackFirstInteraction]);
+
+  // === Search Quality: refined & abandoned ===
+
+  // Track search refinement (user modifies existing query)
+  useEffect(() => {
+    const prev = previousQueryRef.current;
+    if (searchQuery && prev && searchQuery !== prev && prev.length > 0) {
+      events.searchRefined(prev, searchQuery, searchMode);
+    }
+    previousQueryRef.current = searchQuery;
+  }, [searchQuery, searchMode]);
+
+  // Track search abandonment (clear/navigate without clicking result)
+  useEffect(() => {
+    if (hasSearched && searchResults.length > 0 && searchQuery) {
+      searchResultClickedRef.current = false;
+      abandonmentRef.current = { query: searchQuery, mode: searchMode, count: searchResults.length };
+    }
+  }, [hasSearched, searchResults, searchQuery, searchMode]);
+
+  // === Session Classification (beforeunload) ===
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      const duration = Date.now() - sessionStartTime.current;
+      const actions = sessionActions.current;
+      let type = 'bounced';
+      if (actions.has('order') || actions.has('cart')) type = 'shopper';
+      else if (actions.has('search')) type = 'searcher';
+      else if (actions.has('shuffle') || actions.has('photo') || actions.has('scroll')) type = 'browser';
+      events.sessionEnded(type, sessionEventCount.current, duration);
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, []);
 
 
   return (
@@ -696,6 +808,7 @@ function ArchiveStoreInner() {
               </button>
               <button
                 onClick={() => {
+                  trackSessionAction('cart');
                   events.cartOpened();
                   openCart();
                 }}
@@ -725,7 +838,7 @@ function ArchiveStoreInner() {
                 type="text"
                 value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  onFocus={() => setIsInputFocused(true)}
+                  onFocus={() => { setIsInputFocused(true); trackFirstInteraction('search_focus'); }}
                   onBlur={() => setIsInputFocused(false)}
                   className="w-full h-full px-2 text-base bg-transparent outline-none"
                   aria-label={t.searchPlaceholder}
@@ -774,7 +887,7 @@ function ArchiveStoreInner() {
                     type="text"
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
-                    onFocus={() => setIsInputFocused(true)}
+                    onFocus={() => { setIsInputFocused(true); trackFirstInteraction('search_focus'); }}
                     onBlur={() => setIsInputFocused(false)}
                     className="w-full h-full px-2.5 text-sm bg-transparent outline-none"
                     aria-label={t.searchPlaceholder}
@@ -816,6 +929,7 @@ function ArchiveStoreInner() {
             </button>
             <button
               onClick={() => {
+                trackSessionAction('cart');
                 events.cartOpened();
                 openCart();
               }}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Share, ShoppingBag, X } from 'lucide-react';
 import Image from 'next/image';
@@ -77,6 +77,19 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
   const t = translations[lang];
 
   const totalPrice = selectedSize.price + selectedProduct.price;
+
+  // Photo dwell timer — fires once after 5s on the page
+  const dwellFired = useRef(false);
+  useEffect(() => {
+    if (!photo || dwellFired.current) return;
+    const timer = setTimeout(() => {
+      if (!dwellFired.current) {
+        dwellFired.current = true;
+        events.photoDwelled(photo.metadataFilename, 5000);
+      }
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [photo]);
 
   const exitOrderMode = (addedToCart = false) => {
     if (photo) {
@@ -312,6 +325,11 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
               selectedSize={selectedSize}
               selectedProduct={selectedProduct}
               lang={lang}
+              onSlideChange={(_index, isRoom, roomId) => {
+                if (isRoom && roomId) {
+                  events.roomBackgroundChanged(roomId);
+                }
+              }}
             />
           )}
 
@@ -331,7 +349,10 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
                 {PRODUCT_TYPES.map((product) => (
                   <button
                     key={product.id}
-                    onClick={() => setSelectedProduct(product)}
+                    onClick={() => {
+                      setSelectedProduct(product);
+                      events.printFrameSelected(product.name[lang], product.price);
+                    }}
                     className={`px-4 py-2 text-[11px] font-medium rounded-full transition-all ${
                       selectedProduct.id === product.id
                         ? 'bg-neutral-900 text-white'
@@ -353,7 +374,10 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
                 {PRINT_SIZES.map((size) => (
                   <button
                     key={size.id}
-                    onClick={() => setSelectedSize(size)}
+                    onClick={() => {
+                      setSelectedSize(size);
+                      events.printSizeSelected(size.name, size.price);
+                    }}
                     className={`flex-1 py-2.5 text-[11px] font-medium rounded-full transition-all ${
                       selectedSize.id === size.id
                         ? 'bg-neutral-900 text-white'
