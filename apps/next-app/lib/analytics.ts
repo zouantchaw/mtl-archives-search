@@ -90,6 +90,9 @@ export const events = {
   shuffleClicked: () =>
     track('gallery: shuffle clicked', { ...getReferrerContext() }),
 
+  neighborhoodShortcutClicked: (neighborhood: string) =>
+    track('gallery: neighborhood shortcut clicked', { neighborhood, ...getReferrerContext() }),
+
   // Photo page modes
   orderModeEntered: (photoId: string) =>
     track('photo: order mode entered', { photoId, ...getReferrerContext() }),

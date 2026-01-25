@@ -171,6 +171,14 @@ const searchExamples = {
   ],
 } as const;
 
+// Neighborhood shortcuts - popular searches from analytics
+const NEIGHBORHOOD_SHORTCUTS = [
+  { name: 'Miron', query: 'Miron' },
+  { name: 'Plateau', query: 'Plateau' },
+  { name: 'Ahuntsic', query: 'Ahuntsic' },
+  { name: 'Portuguais', query: 'rue des Portuguais' },
+] as const;
+
 // ============================================================
 // Flag Icons
 // ============================================================
@@ -491,11 +499,8 @@ function ArchiveStoreInner() {
     }
   }, []);
 
-  // Auto-dismiss hook after 10 seconds
-  useEffect(() => {
-    const timer = setTimeout(() => setShowHook(false), 10000);
-    return () => clearTimeout(timer);
-  }, []);
+  // Hook dismisses on first user interaction (see trackFirstInteraction)
+  // No auto-dismiss timer - avoids jarring layout shift
 
   // URL helper
   const updateUrl = useCallback((q: string, mode: SearchMode, currentLang: Lang) => {
@@ -810,8 +815,8 @@ function ArchiveStoreInner() {
           <div className="flex items-center justify-between h-11 px-3">
             <a href="/" className="text-[11px] font-medium tracking-[0.1em] uppercase">MTL Archives</a>
             <div className="flex items-center gap-0.5">
-              <button onClick={handleLangChange} className="p-1.5">
-                {lang === 'fr' ? <FlagEN /> : <FlagQC />}
+              <button onClick={handleLangChange} className="p-1.5" aria-label={lang === 'fr' ? 'Changer en anglais' : 'Switch to French'}>
+                {lang === 'fr' ? <FlagQC /> : <FlagEN />}
               </button>
               <button
                 onClick={() => {
@@ -927,12 +932,13 @@ function ArchiveStoreInner() {
             </div>
           </div>
           <div className="flex items-center gap-0.5 shrink-0">
-            <button 
-              onClick={handleLangChange} 
+            <button
+              onClick={handleLangChange}
               className="flex items-center gap-1.5 px-2 py-1 hover:bg-neutral-100 rounded transition-colors"
+              aria-label={lang === 'fr' ? 'Changer en anglais' : 'Switch to French'}
             >
-              {lang === 'fr' ? <FlagEN /> : <FlagQC />}
-              <span className="text-[10px] text-neutral-500 uppercase">{lang === 'fr' ? 'EN' : 'FR'}</span>
+              {lang === 'fr' ? <FlagQC /> : <FlagEN />}
+              <span className="text-[10px] text-neutral-500 uppercase">{lang === 'fr' ? 'FR' : 'EN'}</span>
             </button>
             <button
               onClick={() => {
@@ -970,6 +976,39 @@ function ArchiveStoreInner() {
         </div>
       </div>
 
+      {/* Shortcuts row: Shuffle + Neighborhoods - always visible */}
+      <div className="flex items-center gap-2 px-2 sm:px-3 py-2 overflow-x-auto scrollbar-hide">
+          {/* Shuffle button - prominent dark style */}
+          <button
+            onClick={handleShuffle}
+            disabled={initialLoading}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-neutral-900 text-white rounded-full hover:bg-neutral-800 transition-colors disabled:opacity-50 shrink-0"
+          >
+            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="16 3 21 3 21 8" />
+              <line x1="4" y1="20" x2="21" y2="3" />
+              <polyline points="21 16 21 21 16 21" />
+              <line x1="15" y1="15" x2="21" y2="21" />
+              <line x1="4" y1="4" x2="9" y2="9" />
+            </svg>
+            {t.shuffle}
+          </button>
+          {/* Neighborhood shortcuts */}
+          {NEIGHBORHOOD_SHORTCUTS.map((shortcut) => (
+            <button
+              key={shortcut.name}
+              onClick={() => {
+                setSearchQuery(shortcut.query);
+                trackFirstInteraction('neighborhood_shortcut');
+                events.neighborhoodShortcutClicked(shortcut.name);
+              }}
+              className="px-3 py-1.5 text-xs font-medium bg-neutral-100 text-neutral-600 rounded-full hover:bg-neutral-200 transition-colors shrink-0"
+            >
+              {shortcut.name}
+            </button>
+          ))}
+      </div>
+
       {/* Results header */}
       <div className="flex items-center justify-between py-2 px-2 sm:px-3">
         {hasSearched ? (
@@ -978,30 +1017,14 @@ function ArchiveStoreInner() {
             <button onClick={clearSearch} className="text-xs text-neutral-400 uppercase">{t.clear}</button>
           </>
         ) : (
-          <>
-            <span className="text-xs text-neutral-400 uppercase">
-              {t.featured}
-              {totalPhotos && (
-                <span className="ml-1.5 text-neutral-300" translate="no">
-                  · {totalPhotos.toLocaleString()} {t.photos}
-                </span>
-              )}
-            </span>
-            <button
-              onClick={handleShuffle}
-              disabled={initialLoading}
-              className="flex items-center gap-1 text-xs text-neutral-400 hover:text-neutral-600 uppercase transition-colors disabled:opacity-50"
-            >
-              <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="16 3 21 3 21 8" />
-                <line x1="4" y1="20" x2="21" y2="3" />
-                <polyline points="21 16 21 21 16 21" />
-                <line x1="15" y1="15" x2="21" y2="21" />
-                <line x1="4" y1="4" x2="9" y2="9" />
-              </svg>
-              {t.shuffle}
-            </button>
-          </>
+          <span className="text-xs text-neutral-400 uppercase">
+            {t.featured}
+            {totalPhotos && (
+              <span className="ml-1.5 text-neutral-300" translate="no">
+                · {totalPhotos.toLocaleString()} {t.photos}
+              </span>
+            )}
+          </span>
         )}
       </div>
 
