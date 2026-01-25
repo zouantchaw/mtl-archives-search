@@ -146,6 +146,10 @@ export const events = {
 
   // === Landing & Bounce Intelligence ===
 
+  // Fires when visitor comes from Instagram (utm_source or referrer)
+  instagramVisitorLanded: (utmCampaign?: string) =>
+    track('instagram: visitor landed', { utmCampaign }),
+
   // Fires once per session when the page becomes interactive
   pageLoaded: (loadTimeMs: number) =>
     track('page: loaded', { loadTimeMs, ...getReferrerContext() }),

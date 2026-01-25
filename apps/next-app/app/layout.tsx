@@ -154,6 +154,12 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${figtree.variable}`}>
       <head>
+        {/* Preconnect to API for faster initial fetch */}
+        <link rel="preconnect" href="https://mtl-archives-worker.wiel.workers.dev" />
+        <link rel="dns-prefetch" href="https://mtl-archives-worker.wiel.workers.dev" />
+        {/* Preconnect to R2 for faster image loads */}
+        <link rel="preconnect" href="https://pub-6a29793ea7664738880d1cc5afb21b87.r2.dev" />
+        <link rel="dns-prefetch" href="https://pub-6a29793ea7664738880d1cc5afb21b87.r2.dev" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{

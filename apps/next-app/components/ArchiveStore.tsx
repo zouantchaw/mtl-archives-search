@@ -115,6 +115,9 @@ const translations = {
     cart: 'Panier',
     instagram: 'Instagram',
     facebook: 'Facebook',
+    // Hook
+    hookDefault: 'Explorez 14 822 photos d\'archives de Montréal',
+    hookInstagram: 'Vu sur Instagram? Il y en a 14 822 autres...',
   },
   en: {
     featured: 'Discover',
@@ -144,44 +147,27 @@ const translations = {
     cart: 'Cart',
     instagram: 'Instagram',
     facebook: 'Facebook',
+    // Hook
+    hookDefault: 'Explore 14,822 archival photos of Montreal',
+    hookInstagram: 'Saw this on Instagram? There are 14,822 more...',
   },
 } as const;
 
-// Typewriter search examples - localized, mix of places and visual concepts
+// Typewriter search examples - short, evocative (5 examples for faster cycling)
 const searchExamples = {
   fr: [
-    'église en hiver',
-    'rue animée',
+    'ma rue',
+    'Expo 67',
     'tramway',
     'neige',
-    'Expo 67',
-    'pont Jacques-Cartier',
-    'Mont-Royal',
-    'vieilles voitures',
-    'marché',
-    'construction',
-    'parc en été',
-    'bâtiment historique',
-    'gare Windsor',
-    'fleuve Saint-Laurent',
-    'rue Sainte-Catherine',
+    'Vieux-Montréal',
   ],
   en: [
-    'church in winter',
-    'busy street',
+    'my street',
+    'Expo 67',
     'tramway',
     'snow',
-    'Expo 67',
-    'Jacques-Cartier Bridge',
-    'Mount Royal',
-    'old cars',
-    'market',
-    'construction',
-    'park in summer',
-    'historic building',
-    'Windsor Station',
-    'St. Lawrence River',
-    'Sainte-Catherine Street',
+    'Old Montreal',
   ],
 } as const;
 
@@ -491,6 +477,26 @@ function ArchiveStoreInner() {
   // About drawer state
   const [isAboutOpen, setIsAboutOpen] = useState(false);
 
+  // Hook state (above-fold messaging for IG bounce reduction)
+  const [showHook, setShowHook] = useState(true);
+  const [isFromInstagram, setIsFromInstagram] = useState(false);
+
+  // Detect Instagram visitors on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const utmSource = params.get('utm_source');
+    if (utmSource === 'instagram' || document.referrer.includes('instagram')) {
+      setIsFromInstagram(true);
+      events.instagramVisitorLanded(params.get('utm_campaign') || undefined);
+    }
+  }, []);
+
+  // Auto-dismiss hook after 10 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => setShowHook(false), 10000);
+    return () => clearTimeout(timer);
+  }, []);
+
   // URL helper
   const updateUrl = useCallback((q: string, mode: SearchMode, currentLang: Lang) => {
     const params = new URLSearchParams();
@@ -503,7 +509,7 @@ function ArchiveStoreInner() {
   // Typewriter placeholder - pauses when input is focused
   const placeholders = useMemo(() => searchExamples[lang], [lang]);
   const isTypewriterActive = !searchQuery && !isInputFocused;
-  const typewriterText = useTypewriter(placeholders, isTypewriterActive, 70, 35, 1800);
+  const typewriterText = useTypewriter(placeholders, isTypewriterActive, 50, 35, 1200);
 
   // Show typewriter only when not focused and no query
   const showTypewriter = !searchQuery && !isInputFocused;
@@ -521,6 +527,7 @@ function ArchiveStoreInner() {
   const trackFirstInteraction = useCallback((action: string) => {
     if (firstInteractionTracked.current) return;
     firstInteractionTracked.current = true;
+    setShowHook(false); // Dismiss hook on first interaction
     events.pageFirstInteraction(action);
   }, []);
 
@@ -950,6 +957,19 @@ function ArchiveStoreInner() {
       {/* About Drawer */}
       <AboutDrawer isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} t={t} />
 
+      {/* Above-fold hook - dismisses on first interaction or after 10s */}
+      <div
+        className={`overflow-hidden transition-all duration-500 ease-out ${
+          showHook ? 'max-h-20 opacity-100' : 'max-h-0 opacity-0'
+        }`}
+      >
+        <div className="px-4 py-3 text-center">
+          <p className="text-sm sm:text-base font-medium text-neutral-700">
+            {isFromInstagram ? t.hookInstagram : t.hookDefault}
+          </p>
+        </div>
+      </div>
+
       {/* Results header */}
       <div className="flex items-center justify-between py-2 px-2 sm:px-3">
         {hasSearched ? (
@@ -1005,7 +1025,7 @@ function ArchiveStoreInner() {
                 key={photo.metadataFilename}
                 src={getThumbnailUrl(photo.imageUrl, 400)}
                 alt={photo.name || ''}
-                priority={index < 6}
+                priority={index < 9}
                 onClick={() => handlePhotoClick(photo, index + 1)}
                 onError={() => handleImageError(photo.metadataFilename)}
               />
