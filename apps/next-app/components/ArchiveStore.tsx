@@ -116,7 +116,7 @@ const translations = {
     instagram: 'Instagram',
     facebook: 'Facebook',
     // Hook
-    hookDefault: 'Explorez 14 822 photos d\'archives de Montréal',
+    hookDefault: 'Explorez 13 499 photos d\'archives de Montréal',
     hookInstagram: 'Vu sur Instagram? Il y en a 14 822 autres...',
   },
   en: {
@@ -148,7 +148,7 @@ const translations = {
     instagram: 'Instagram',
     facebook: 'Facebook',
     // Hook
-    hookDefault: 'Explore 14,822 archival photos of Montreal',
+    hookDefault: 'Explore 13, 499 archival photos of Montreal',
     hookInstagram: 'Saw this on Instagram? There are 14,822 more...',
   },
 } as const;
