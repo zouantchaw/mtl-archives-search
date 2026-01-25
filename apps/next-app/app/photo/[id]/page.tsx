@@ -38,7 +38,7 @@ export default async function PhotoPage({
   );
 }
 
-// Inline skeleton for Suspense fallback - Apple-style shimmer
+// Inline skeleton for Suspense fallback - matches loading.tsx
 function PhotoSkeleton() {
   return (
     <div className="min-h-screen bg-[#fafafa]">
@@ -46,24 +46,34 @@ function PhotoSkeleton() {
         <div className="flex items-center justify-between h-12 px-4">
           <div className="flex items-center gap-1.5">
             <div className="h-5 w-5 skeleton rounded" />
-            <div className="hidden sm:block h-4 w-12 skeleton rounded" />
+            <div className="hidden sm:block h-4 w-14 skeleton rounded" />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <div className="h-5 w-5 skeleton rounded" />
             <div className="h-5 w-5 skeleton rounded" />
           </div>
         </div>
       </header>
       <main className="pt-12">
-        <div className="relative bg-neutral-50">
+        <div className="relative bg-neutral-100">
           <div className="max-w-5xl mx-auto">
-            <div className="w-full skeleton" style={{ aspectRatio: '4/3', maxHeight: '70vh' }} />
+            <div className="w-full skeleton" style={{ aspectRatio: '4/3', maxHeight: 'min(60vh, 500px)' }} />
           </div>
         </div>
-        <div className="max-w-2xl mx-auto px-4 py-8">
-          <div className="h-6 sm:h-7 w-4/5 skeleton rounded mb-2" />
-          <div className="h-4 w-24 skeleton rounded mb-8" />
+        <div className="max-w-2xl mx-auto px-4 py-6 sm:py-8">
+          <div className="mb-3">
+            <div className="h-5 sm:h-6 w-3/4 skeleton rounded mb-2" />
+            <div className="h-4 w-20 skeleton rounded" />
+          </div>
+          <div className="space-y-2 mb-6">
+            <div className="h-4 w-full skeleton rounded" />
+            <div className="h-4 w-5/6 skeleton rounded" />
+            <div className="h-4 w-2/3 skeleton rounded" />
+          </div>
           <div className="h-12 w-full skeleton rounded-full" />
+          <div className="mt-10 pt-5 border-t border-neutral-100 flex justify-center">
+            <div className="h-3 w-40 skeleton rounded" />
+          </div>
         </div>
       </main>
     </div>
