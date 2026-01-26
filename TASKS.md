@@ -11,9 +11,9 @@ Current state (Jan 24, 2026): Funnel is live and working — Reels drive 55% of 
 5 of 11 Instagram visitors in the last 24h bounced immediately. This is the biggest leak.
 
 - [ ] **Diagnose mobile load time** — IG visitors are on iOS/Android in-app browser. Profile first paint speed.
-- [ ] **Above-the-fold hook** — First thing IG visitors see must be compelling (not a loading spinner)
-- [ ] **Prominent search bar** — Analytics show engaged users immediately search. Make it unmissable on mobile.
-- [ ] **Quick-discovery entry point** — Show shuffle or trending photos before requiring any interaction
+- [x] **Above-the-fold hook** — First thing IG visitors see must be compelling (not a loading spinner)
+- [x] **Prominent search bar** — Analytics show engaged users immediately search. Make it unmissable on mobile.
+- [x] **Quick-discovery entry point** — Show shuffle or trending photos before requiring any interaction
 
 ---
 
@@ -21,8 +21,8 @@ Current state (Jan 24, 2026): Funnel is live and working — Reels drive 55% of 
 
 Users search: "Miron", "Portuguais", "Ahuntsic", "rue notre-dame", "Rue st Catherine". All Montreal neighborhoods/landmarks. Make this frictionless.
 
-- [ ] **One-tap neighborhood filters** — Pill/chip UI with top neighborhoods (Miron, Ahuntsic, Plateau, Villeray, Portugais, Vieux-Montréal)
-- [ ] **Pre-populated search suggestions** — Show popular searches on empty search state
+- [x] **One-tap neighborhood filters** — Pill/chip UI with top neighborhoods (Miron, Ahuntsic, Plateau, Villeray, Portugais, Vieux-Montréal)
+- [x] **Pre-populated search suggestions** — Show popular searches on empty search state
 - [ ] **Neighborhood landing pages** — `/quartier/ahuntsic` with pre-filtered results (SEO + shareable)
 
 ---
