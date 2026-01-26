@@ -642,18 +642,17 @@ function ArchiveStoreInner() {
           const data: SearchResponse = await res.json();
           setSearchResults(data.items);
           trackSessionAction('search');
-          events.searchPerformed(searchQuery, searchMode, data.items.length);
 
           // Track no results - helps identify content gaps
           if (data.items.length === 0) {
             events.searchNoResults(searchQuery, searchMode);
           }
 
-          // Track "committed" search after 1.5s of no further changes
-          // This is the metric to use for business analytics (vs intermediate searches)
+          // Track "committed" search after 1.5s of no further typing
+          // Only fires once user has stopped typing - reduces event volume
           commitTimeoutRef.current = setTimeout(() => {
             events.searchCommitted(searchQuery, searchMode, data.items.length);
-          }, 1200); // 1.2s after results load = ~1.5s after typing stops
+          }, 1200);
         }
       } catch (err) {
         console.error('Search failed:', err);

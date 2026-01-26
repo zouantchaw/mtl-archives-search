@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Figtree } from "next/font/google";
-import Script from "next/script";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { CartProvider } from "@/lib/cart-context";
 import { CartDrawer } from "@/components/CartDrawer";
@@ -174,15 +174,11 @@ export default function RootLayout({
         />
       </head>
       <body className="font-sans antialiased bg-neutral-50 text-neutral-900 min-h-screen">
-        <Script
-          src="https://cdn.seline.com/seline.js"
-          data-token="ba441af9ffc2d81"
-          strategy="afterInteractive"
-        />
         <CartProvider>
-        {children}
+          {children}
           <CartDrawer />
         </CartProvider>
+        <Analytics />
       </body>
     </html>
   );

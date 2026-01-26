@@ -1,23 +1,7 @@
-// Seline Analytics Utility
-// https://seline.so/docs/custom-events
+// Vercel Analytics Custom Events
+// https://vercel.com/docs/analytics/custom-events
 
-declare global {
-  interface Window {
-    seline?: {
-      track: (event: string, properties?: Record<string, unknown>) => void;
-    };
-  }
-}
-
-/**
- * Track a custom event with Seline
- * Event naming convention: "object: action"
- */
-export function track(event: string, properties?: Record<string, unknown>) {
-  if (typeof window !== 'undefined' && window.seline) {
-    window.seline.track(event, properties);
-  }
-}
+import { track } from '@vercel/analytics';
 
 /**
  * Get referrer context from URL params (utm_source, utm_medium) or document.referrer.
@@ -50,140 +34,137 @@ export function getReferrerContext(): Record<string, string> {
 export const events = {
   // Photo interactions
   photoViewed: (photoId: string, photoName: string | null) =>
-    track('photo: viewed', { photoId, photoName, ...getReferrerContext() }),
+    track('photo_viewed', { photoId, photoName, ...getReferrerContext() }),
 
   photoDownloaded: (photoId: string, photoName: string | null) =>
-    track('photo: downloaded', { photoId, photoName }),
+    track('photo_downloaded', { photoId, photoName }),
 
   photoShared: (photoId: string, photoName: string | null) =>
-    track('photo: shared', { photoId, photoName }),
+    track('photo_shared', { photoId, photoName }),
 
   captionCopied: (photoId: string) =>
-    track('photo: caption copied', { photoId }),
+    track('photo_caption_copied', { photoId }),
 
-  // Search
-  searchPerformed: (query: string, mode: string, resultCount: number) =>
-    track('search: performed', { query, mode, resultCount, ...getReferrerContext() }),
-
-  // Track "final" search after user stops typing for 1.5s - use this for business metrics
+  // Search - only track committed searches (after user stops typing)
+  // This reduces event volume significantly vs tracking every keystroke
   searchCommitted: (query: string, mode: string, resultCount: number) =>
-    track('search: committed', { query, mode, resultCount }),
+    track('search_committed', { query, mode, resultCount }),
 
   // Track when search returns no results - important for content gaps
   searchNoResults: (query: string, mode: string) =>
-    track('search: no results', { query, mode }),
+    track('search_no_results', { query, mode }),
 
   // Track which search result position was clicked - helps optimize ranking
   searchResultClicked: (query: string, position: number, photoId: string) =>
-    track('search: result clicked', { query, position, photoId }),
+    track('search_result_clicked', { query, position, photoId }),
 
   searchCleared: () =>
-    track('search: cleared'),
+    track('search_cleared'),
 
   searchModeChanged: (mode: string) =>
-    track('search: mode changed', { mode }),
+    track('search_mode_changed', { mode }),
 
   // Navigation / Discovery
   loadMoreClicked: (currentCount: number) =>
-    track('gallery: load more', { currentCount }),
+    track('gallery_load_more', { currentCount }),
 
   shuffleClicked: () =>
-    track('gallery: shuffle clicked', { ...getReferrerContext() }),
+    track('gallery_shuffle', { ...getReferrerContext() }),
 
   neighborhoodShortcutClicked: (neighborhood: string) =>
-    track('gallery: neighborhood shortcut clicked', { neighborhood, ...getReferrerContext() }),
+    track('neighborhood_shortcut', { neighborhood, ...getReferrerContext() }),
 
   // Photo page modes
   orderModeEntered: (photoId: string) =>
-    track('photo: order mode entered', { photoId, ...getReferrerContext() }),
+    track('order_mode_entered', { photoId, ...getReferrerContext() }),
 
   orderModeExited: (photoId: string, addedToCart: boolean) =>
-    track('photo: order mode exited', { photoId, addedToCart }),
+    track('order_mode_exited', { photoId, addedToCart }),
 
   languageChanged: (from: string, to: string) =>
-    track('settings: language changed', { from, to }),
+    track('language_changed', { from, to }),
 
   aboutOpened: () =>
-    track('about: opened'),
+    track('about_opened'),
 
   // E-commerce (print orders)
   roomBackgroundChanged: (roomId: string) =>
-    track('print: room preview changed', { roomId }),
+    track('print_room_changed', { roomId }),
 
   printSizeSelected: (size: string, price: number) =>
-    track('print: size selected', { size, price }),
+    track('print_size_selected', { size, price }),
 
   printFrameSelected: (frame: string, price: number) =>
-    track('print: frame selected', { frame, price }),
+    track('print_frame_selected', { frame, price }),
 
   addToCartClicked: (photoId: string, size: string, frame: string, totalPrice: number) =>
-    track('cart: item added', { photoId, size, frame, totalPrice, ...getReferrerContext() }),
+    track('cart_item_added', { photoId, size, frame, totalPrice, ...getReferrerContext() }),
 
   cartOpened: () =>
-    track('cart: opened'),
+    track('cart_opened'),
 
   cartItemRemoved: (photoId: string) =>
-    track('cart: item removed', { photoId }),
+    track('cart_item_removed', { photoId }),
 
   cartCleared: (itemCount: number) =>
-    track('cart: cleared', { itemCount }),
+    track('cart_cleared', { itemCount }),
 
   checkoutClicked: (total: number, itemCount: number) =>
-    track('cart: checkout clicked', { total, itemCount }),
+    track('checkout_clicked', { total, itemCount }),
 
   checkoutCompleted: (orderId: string, total: number, itemCount: number) =>
-    track('order: completed', { orderId, total, itemCount }),
+    track('order_completed', { orderId, total, itemCount }),
 
   checkoutFailed: (error: string) =>
-    track('order: failed', { error }),
+    track('order_failed', { error }),
 
   // External links
   archiveLinkClicked: (url: string) =>
-    track('link: archives clicked', { url }),
+    track('link_archives', { url }),
 
   instagramClicked: () =>
-    track('link: instagram clicked'),
+    track('link_instagram'),
 
   facebookClicked: () =>
-    track('link: facebook clicked'),
+    track('link_facebook'),
 
   // === Landing & Bounce Intelligence ===
 
   // Fires when visitor comes from Instagram (utm_source or referrer)
   instagramVisitorLanded: (utmCampaign?: string) =>
-    track('instagram: visitor landed', { utmCampaign }),
+    track('instagram_visitor_landed', { utmCampaign }),
 
   // Fires once per session when the page becomes interactive
   pageLoaded: (loadTimeMs: number) =>
-    track('page: loaded', { loadTimeMs, ...getReferrerContext() }),
+    track('page_loaded', { loadTimeMs, ...getReferrerContext() }),
 
   // Fires once: what was the very first thing the visitor did?
   pageFirstInteraction: (action: string) =>
-    track('page: first interaction', { action, ...getReferrerContext() }),
+    track('page_first_interaction', { action, ...getReferrerContext() }),
 
   // Fires at 25/50/75/100% scroll depth (gallery)
   pageScrollDepth: (percent: number) =>
-    track('page: scroll depth', { percent }),
+    track('page_scroll_depth', { percent }),
 
   // === Photo Engagement Depth ===
 
   // Fires when user stays on photo page for >5s (meaningful engagement)
   photoDwelled: (photoId: string, dwellTimeMs: number) =>
-    track('photo: dwelled', { photoId, dwellTimeMs }),
+    track('photo_dwelled', { photoId, dwellTimeMs }),
 
   // === Search Quality ===
 
   // User modified existing query (refined vs new search)
   searchRefined: (previousQuery: string, newQuery: string, mode: string) =>
-    track('search: refined', { previousQuery, newQuery, mode }),
+    track('search_refined', { previousQuery, newQuery, mode }),
 
   // User had search results but left without clicking any
   searchAbandoned: (query: string, mode: string, resultCount: number) =>
-    track('search: abandoned', { query, mode, resultCount }),
+    track('search_abandoned', { query, mode, resultCount }),
 
   // === Session Classification ===
 
   // Fires on beforeunload — classifies what type of session this was
   sessionEnded: (type: string, eventCount: number, durationMs: number) =>
-    track('session: ended', { type, eventCount, durationMs, ...getReferrerContext() }),
+    track('session_ended', { type, eventCount, durationMs, ...getReferrerContext() }),
 };
