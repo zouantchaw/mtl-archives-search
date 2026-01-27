@@ -270,10 +270,8 @@ async function handlePhotos(url: URL, env: Env): Promise<Response> {
     const sizeFilter = maxSize > 0 ? `AND image_size_bytes <= ${maxSize}` : '';
     const whereClause = `${baseWhere} ${sizeFilter}`;
 
-    // Display total uses base filter (no size limit) so UI shows full archive size
-    const total = await getCachedTotal(env, baseWhere);
-    // Filtered count for offset calculation (respects mobile size filter)
-    const filteredTotal = sizeFilter ? await getCachedTotal(env, whereClause) : total;
+    // Cached count for offset calculation (avoids per-request COUNT(*) scan)
+    const filteredTotal = await getCachedTotal(env, whereClause);
 
     // Random offset sampling — pick a random starting point within filtered set
     const maxOffset = Math.max(0, filteredTotal - limit);
@@ -286,7 +284,7 @@ async function handlePhotos(url: URL, env: Env): Promise<Response> {
     const { results = [] } = await env.DB.prepare(sql).bind(limit, offset).all();
     const items = await Promise.all(results.map((row) => buildPhotoRecord(row, env)));
 
-    return jsonResponse({ items, total, shuffle: true });
+    return jsonResponse({ items, shuffle: true });
   }
 
   // Regular paginated mode

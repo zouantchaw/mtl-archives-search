@@ -95,7 +95,7 @@ const translations = {
     noResults: 'Aucune photo trouvée pour',
     clearSearch: 'Effacer la recherche',
     shuffle: 'Mélanger',
-    photos: 'photos',
+    photos: '13 000+ photos',
     searchPlaceholder: 'Rechercher...',
     // About drawer
     about: 'À propos',
@@ -127,7 +127,7 @@ const translations = {
     noResults: 'No photos found for',
     clearSearch: 'Clear search',
     shuffle: 'Shuffle',
-    photos: 'photos',
+    photos: '13,000+ photos',
     searchPlaceholder: 'Search...',
     // About drawer
     about: 'About',
@@ -523,7 +523,6 @@ function ArchiveStoreInner() {
   const showFocusedPlaceholder = isInputFocused && !searchQuery;
 
   // Total photo count for display
-  const [totalPhotos, setTotalPhotos] = useState<number | null>(null);
 
   // === Session & Interaction Tracking Helpers ===
   // (defined early so handlers below can reference them)
@@ -548,7 +547,6 @@ function ArchiveStoreInner() {
 
   // Session storage keys for persisting shuffle state
   const STORAGE_KEY_PHOTOS = 'mtl-archives-photos';
-  const STORAGE_KEY_TOTAL = 'mtl-archives-total';
 
   // Load photos - restores from session or fetches new shuffled set
   const loadPhotos = useCallback(async (forceRefresh = false) => {
@@ -556,12 +554,10 @@ function ArchiveStoreInner() {
     if (!forceRefresh && typeof window !== 'undefined') {
       try {
         const cachedPhotos = sessionStorage.getItem(STORAGE_KEY_PHOTOS);
-        const cachedTotal = sessionStorage.getItem(STORAGE_KEY_TOTAL);
         if (cachedPhotos) {
           const parsed = JSON.parse(cachedPhotos);
           if (Array.isArray(parsed) && parsed.length > 0) {
             setPhotos(parsed);
-            setTotalPhotos(cachedTotal ? parseInt(cachedTotal, 10) : null);
             setInitialLoading(false);
             return;
           }
@@ -582,16 +578,13 @@ function ArchiveStoreInner() {
       const res = await fetch(`${API_BASE}/api/photos?limit=${pageSize}&shuffle=true${sizeLimit}${cacheBust}`);
       const data = await res.json();
       const items = data.items || [];
-      const total = data.total || null;
 
       setPhotos(items);
-      setTotalPhotos(total);
 
       // Cache in session storage for back navigation
       if (typeof window !== 'undefined') {
         try {
           sessionStorage.setItem(STORAGE_KEY_PHOTOS, JSON.stringify(items));
-          if (total) sessionStorage.setItem(STORAGE_KEY_TOTAL, String(total));
         } catch (err) {
           // Session storage full or unavailable, continue without caching
           console.warn('Failed to cache photos:', err);
@@ -1027,11 +1020,9 @@ function ArchiveStoreInner() {
         ) : (
           <span className="text-xs text-neutral-400 uppercase">
             {t.featured}
-            {totalPhotos && (
-              <span className="ml-1.5 text-neutral-300" translate="no">
-                · {totalPhotos.toLocaleString()} {t.photos}
-              </span>
-            )}
+            <span className="ml-1.5 text-neutral-300" translate="no">
+              · {t.photos}
+            </span>
           </span>
         )}
       </div>
