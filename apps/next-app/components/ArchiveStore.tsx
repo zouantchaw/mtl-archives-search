@@ -578,7 +578,8 @@ function ArchiveStoreInner() {
       const pageSize = isMobile ? MOBILE_PAGE_SIZE : DESKTOP_PAGE_SIZE;
       // On mobile, limit image size to 1MB to prevent browser crashes
       const sizeLimit = isMobile ? '&maxSize=1000000' : '';
-      const res = await fetch(`${API_BASE}/api/photos?limit=${pageSize}&shuffle=true${sizeLimit}`);
+      const cacheBust = forceRefresh ? `&_=${Date.now()}` : '';
+      const res = await fetch(`${API_BASE}/api/photos?limit=${pageSize}&shuffle=true${sizeLimit}${cacheBust}`);
       const data = await res.json();
       const items = data.items || [];
       const total = data.total || null;

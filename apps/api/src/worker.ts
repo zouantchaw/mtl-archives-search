@@ -111,7 +111,10 @@ export default {
         }
         const id = url.searchParams.get('id');
         const shuffle = url.searchParams.get('shuffle') === 'true';
-        const ttl = id ? CACHE_TTL.PHOTO_BY_ID : shuffle ? CACHE_TTL.SHUFFLE : CACHE_TTL.PAGINATED;
+        // Skip cache for shuffle — each click should return fresh random results.
+        // Offset sampling + cached COUNT already keeps D1 cost low.
+        if (shuffle) return handlePhotos(url, env);
+        const ttl = id ? CACHE_TTL.PHOTO_BY_ID : CACHE_TTL.PAGINATED;
         return withCache(buildCacheKey(url), ctx, ttl, () => handlePhotos(url, env));
       }
 
