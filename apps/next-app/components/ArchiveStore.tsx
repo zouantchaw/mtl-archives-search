@@ -10,12 +10,6 @@ import { PhotoTile } from './PhotoTile';
 
 const API_BASE = '';
 
-// Generate thumbnail URL via Cloudflare Image Resizing
-// This prevents loading 50MB+ aerial photos - resizing happens at the edge
-const getThumbnailUrl = (imageUrl: string, width = 400) => {
-  if (!imageUrl) return '';
-  return `/api/thumb?src=${encodeURIComponent(imageUrl)}&w=${width}&q=75&format=auto`;
-};
 
 // Image loading limits - balanced for performance and exploration
 // Mobile: Conservative due to memory constraints
@@ -1045,7 +1039,7 @@ function ArchiveStoreInner() {
             photo.imageUrl && (
               <PhotoTile
                 key={photo.metadataFilename}
-                src={getThumbnailUrl(photo.imageUrl, 400)}
+                src={photo.imageUrl}
                 alt={photo.name || ''}
                 priority={index < 9}
                 onClick={() => handlePhotoClick(photo, index + 1)}

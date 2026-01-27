@@ -14,17 +14,6 @@ const cleanText = (text: string | null | undefined): string => {
   return text.replace(/\\n/g, ' ').replace(/\s+/g, ' ').trim();
 };
 
-// Generate thumbnail URL via Cloudflare Image Resizing
-const getThumbnailUrl = (imageUrl: string, width = 1200) => {
-  if (!imageUrl) return '';
-  return `/api/thumb?src=${encodeURIComponent(imageUrl)}&w=${width}&q=85&format=auto`;
-};
-
-// Device-aware thumbnail width (smaller on mobile to reduce decode memory)
-const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-const HERO_WIDTH = isMobile ? 640 : 1000;
-const WALL_PREVIEW_WIDTH = isMobile ? 600 : 800;
-
 type Lang = 'fr' | 'en';
 
 const translations = {
@@ -252,14 +241,13 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
               {photo.imageUrl && (
                 <div className={`relative transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}>
                   <Image
-                    src={getThumbnailUrl(photo.imageUrl, HERO_WIDTH)}
+                    src={photo.imageUrl}
                     alt={title}
-                    width={HERO_WIDTH}
-                    height={Math.round(HERO_WIDTH * 0.75)}
+                    width={1000}
+                    height={750}
                     sizes="(max-width: 768px) 100vw, (max-width: 1280px) 80vw, 1000px"
                     className="w-full h-auto"
                     priority
-                    unoptimized
                     onLoad={() => setImageLoaded(true)}
                     style={{
                       maxHeight: '70vh',
@@ -320,7 +308,7 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
           {/* Wall Preview Carousel */}
           {photo.imageUrl && (
             <WallPreview
-              photoUrl={getThumbnailUrl(photo.imageUrl, WALL_PREVIEW_WIDTH)}
+              photoUrl={photo.imageUrl}
               photoAlt={title}
               selectedSize={selectedSize}
               selectedProduct={selectedProduct}

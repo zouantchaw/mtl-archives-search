@@ -30,10 +30,6 @@ const nextConfig: NextConfig = {
         destination: 'https://mtl-archives-worker.wiel.workers.dev/api/search',
       },
       {
-        source: '/api/thumb',
-        destination: 'https://mtl-archives-worker.wiel.workers.dev/api/thumb',
-      },
-      {
         source: '/api/map',
         destination: 'https://mtl-archives-worker.wiel.workers.dev/api/map',
       },

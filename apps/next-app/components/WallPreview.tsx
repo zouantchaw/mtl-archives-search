@@ -205,7 +205,6 @@ const OriginalPhotoSlide = ({
                 sizes="(max-width: 768px) 70vw, 50vw"
                 className="object-cover"
                 priority
-                unoptimized
                 onError={onImageError}
               />
             ) : (
@@ -280,7 +279,6 @@ const RoomSlide = ({
                 fill
                 sizes="(max-width: 768px) 50vw, 30vw"
                 className="object-cover"
-                unoptimized
                 onError={onImageError}
               />
             ) : (

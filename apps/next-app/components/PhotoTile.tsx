@@ -41,7 +41,6 @@ export function PhotoTile({ src, alt, priority = false, onClick, onError }: Phot
         fetchPriority={priority ? 'high' : 'low'}
         onLoad={() => setLoaded(true)}
         onError={onError}
-        unoptimized
       />
 
       {/* Subtle hover overlay */}
