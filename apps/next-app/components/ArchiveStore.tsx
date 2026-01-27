@@ -567,7 +567,8 @@ function ArchiveStoreInner() {
     try {
       const pageSize = isMobile ? MOBILE_PAGE_SIZE : DESKTOP_PAGE_SIZE;
       // On mobile, limit image size to 1MB to prevent browser crashes
-      const sizeLimit = isMobile ? '&maxSize=1000000' : '';
+      // Cap source image size: mobile 1MB (memory), desktop 20MB (Vercel 50MB optimization limit)
+      const sizeLimit = isMobile ? '&maxSize=1000000' : '&maxSize=20000000';
       const cacheBust = forceRefresh ? `&_=${Date.now()}` : '';
       const res = await fetch(`${API_BASE}/api/photos?limit=${pageSize}&shuffle=true${sizeLimit}${cacheBust}`);
       const data = await res.json();

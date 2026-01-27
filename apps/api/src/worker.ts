@@ -259,9 +259,11 @@ async function handlePhotos(url: URL, env: Env): Promise<Response> {
   const maxSize = Number.isFinite(maxSizeParam) && maxSizeParam > 0 ? maxSizeParam : 0;
 
   // Base query: filter out records without valid images
+  // Cap at 20MB — larger aerials exceed Vercel Image Optimization source limit
   const baseWhere = `resolved_image_filename IS NOT NULL
     AND resolved_image_filename != ''
-    AND (name IS NOT NULL OR portal_title IS NOT NULL)`;
+    AND (name IS NOT NULL OR portal_title IS NOT NULL)
+    AND (image_size_bytes IS NULL OR image_size_bytes <= 20000000)`;
 
   // Shuffle mode: return random photos for discovery
   // Uses random OFFSET instead of ORDER BY RANDOM() to avoid full table scan.

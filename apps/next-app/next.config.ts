@@ -2,6 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
+    // Limit generated srcset widths — grid tiles are small, hero maxes at 1000px
+    deviceSizes: [640, 750, 828, 1080],
+    imageSizes: [128, 256, 384],
     remotePatterns: [
       {
         protocol: 'https',
