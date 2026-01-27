@@ -66,9 +66,6 @@ __pycache__/
 *.pyo
 .pytest_cache/
 
-# Pipelines (local automation, not for repo)
-pipelines/daily-reel/
-
 # npm cache
 .npm-cache/
 .venv/
@@ -79,3 +76,4 @@ docs/csapp-lessons-vlm.md
 
 # Backup files
 *.bak
+FORWIEL.md

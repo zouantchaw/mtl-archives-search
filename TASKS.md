@@ -17,6 +17,25 @@ Current state (Jan 24, 2026): Funnel is live and working — Reels drive 55% of 
 
 ---
 
+## P0: Infra & Cost Stabilization (D1 + Images)
+
+We are reading ~4.3M D1 rows/day. Likely sources: shuffle `ORDER BY RANDOM()`, `COUNT(*)`, `/api/map`, `/api/sitemap`, and text `LIKE` searches.
+
+- [ ] **Add Worker Cache API for read endpoints** — `/api/photos`, `/api/map`, `/api/sitemap`
+- [ ] **Replace `ORDER BY RANDOM()`** — precompute daily shuffled ID list, or random-offset sampling
+- [ ] **Remove per-request `COUNT(*)`** — maintain a cached `manifest_total` value
+- [ ] **FTS5 or deprecate text mode** — avoid table scan on `LIKE '%q%'`
+- [ ] **Abort in-flight searches** — client should cancel pending search requests on new input
+- [ ] **Ensure stable image URLs** — prefer R2 public domain over signed URLs for caching
+
+### Client Memory (Mobile Stability)
+- [ ] **Unmount hidden photo mode** — avoid keeping both view/ordering image trees alive
+- [ ] **Responsive hero sizing** — use smaller thumbnail widths on mobile (no fixed 1000px)
+- [ ] **Grid virtualization or content-visibility** — reduce decoded image memory on long sessions
+- [ ] **Defer non-critical images** — lower fetch priority for tiles beyond first rows
+
+---
+
 ## P1: Neighborhood Shortcuts (Analytics-Driven)
 
 Users search: "Miron", "Portuguais", "Ahuntsic", "rue notre-dame", "Rue st Catherine". All Montreal neighborhoods/landmarks. Make this frictionless.
