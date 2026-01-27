@@ -109,7 +109,8 @@ Base (JSONL)          │             │              │
 ```
 Text Search (?mode=text)
 ─────────────────────────
-User Query ──▶ SQL LIKE ──▶ D1 ──▶ Results + R2 URLs
+User Query ──▶ Cote fast-path (exact PK lookup) ──▶ D1 ──▶ Results
+           └─▶ Fallback: semantic search (see below)
 
 Semantic Search (?mode=semantic)
 ─────────────────────────────────
@@ -185,7 +186,7 @@ mtl-archives-search/
 
 | Mode | Backend | Embedding | Matches On | Best For |
 |------|---------|-----------|------------|----------|
-| `text` | D1 (SQL LIKE) | None | Exact keywords | Known terms, names, dates |
+| `text` | D1 (cote PK lookup) → semantic fallback | None / BGE | Cote references, then meaning | Known cotes, or falls through to semantic |
 | `semantic` | Vectorize (BGE) | 1024-dim | Description + VLM caption text | Conceptual queries, synonyms |
 | `visual` | Vectorize (CLIP) | 512-dim | Image content | "Show me X", visual similarity |
 
@@ -202,7 +203,10 @@ mtl-archives-search/
   - HuggingFace Inference API: CLIP ViT-B/32 (visual search)
   - Tesseract OCR (offline text extraction)
   - Legacy: LLaVA 1.5 7B captioning run (see metrics)
-- **Object Storage**: Cloudflare R2
+- **Object Storage**: Cloudflare R2 (public domain)
+- **Image Delivery**: Vercel Image Optimization (Pro plan) — resizes, converts to WebP/AVIF, edge-caches. Source images from R2 public URLs.
+- **Caching**: Cloudflare Cache API (read-through on Worker endpoints, 5m–24h TTLs). In-memory cached COUNT keyed by WHERE clause.
+- **Analytics**: Vercel Analytics (custom events)
 - **ETL**: Python 3.10+, Node.js 23+
 
 ## Vision Enrichment Pipeline

@@ -1,7 +1,7 @@
 # Runtime Scale + Memory Design
 
-**Status:** Proposed (pending implementation)  
-**Scope:** Cloudflare Worker + Next.js client for MTL Archives  
+**Status:** Implemented (Jan 27, 2026)
+**Scope:** Cloudflare Worker + Next.js client for MTL Archives
 **Goal:** Reduce D1 row reads and eliminate browser memory crashes on mobile.
 
 ---
@@ -93,18 +93,25 @@ Lower fetch priority and defer images beyond first rows.
 
 ## Implementation Plan (Summary)
 
-1) Cache API for `/api/photos`, `/api/map`, `/api/sitemap`.
-2) Replace `ORDER BY RANDOM()` + `COUNT(*)`.
-3) FTS5 or reduced text mode.
-4) Stable public R2 URLs + thumb caching.
-5) Client unmount strategy + responsive sizing.
-6) Optional virtualization if memory still spikes.
+1) Cache API for `/api/photos`, `/api/map`, `/api/sitemap`. ✅
+2) Replace `ORDER BY RANDOM()` + `COUNT(*)`. ✅ Random offset sampling + cached count (Map keyed by WHERE clause).
+3) FTS5 or reduced text mode. ✅ Deprecated text LIKE → semantic fallback with cote fast-path.
+4) Stable public R2 URLs + thumb caching. ✅ Replaced `/api/thumb` proxy with Vercel Image Optimization (Pro plan). Worker thumb endpoint was passing through full 45MB originals unresized (cf.image requires Image Resizing enabled on zone; workers.dev doesn't have it).
+5) Client unmount strategy + responsive sizing. ✅ Conditional rendering, content-visibility, fetchPriority.
+6) Optional virtualization if memory still spikes. → Deferred; content-visibility approach chosen instead.
+
+### Additional Changes (discovered during implementation)
+7) Shuffle bypasses Cache API — each click needs fresh random results. Offset sampling is cheap enough without caching.
+8) Static photo count — "13,000+ photos" string replaces per-request `COUNT(*)` for display. Eliminates one D1 query per shuffle.
+9) 20MB image size cap in base WHERE clause — aerial dataset photos (45MB+) exceed Vercel's 50MB source optimization limit. `image_size_bytes IS NULL OR image_size_bytes <= 20000000`.
+10) Migrated from Seline analytics to Vercel Analytics (exceeded Seline free tier).
+11) Desktop shuffle also sends `maxSize=20000000` to match worker-side cap.
 
 ---
 
 ## Success Metrics
 
-- D1 rows read/day < 250k (at current traffic).
-- Mobile sessions no longer crash after repeated searches.
-- Time‑to‑first‑photo on mobile < 2s (p95).
+- D1 rows read/day < 250k (at current traffic). → Monitoring post-deploy.
+- Mobile sessions no longer crash after repeated searches. → Conditional rendering + content-visibility + 20MB cap deployed.
+- Time‑to‑first‑photo on mobile < 2s (p95). → Vercel Image Optimization serves resized WebP/AVIF at edge.
 

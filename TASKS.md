@@ -17,22 +17,24 @@ Current state (Jan 24, 2026): Funnel is live and working — Reels drive 55% of 
 
 ---
 
-## P0: Infra & Cost Stabilization (D1 + Images)
+## P0: Infra & Cost Stabilization (D1 + Images) ✅
 
-We are reading ~4.3M D1 rows/day. Likely sources: shuffle `ORDER BY RANDOM()`, `COUNT(*)`, `/api/map`, `/api/sitemap`, and text `LIKE` searches.
+Was reading ~4.3M D1 rows/day. Target: <250k/day. All items implemented Jan 27, 2026.
 
-- [ ] **Add Worker Cache API for read endpoints** — `/api/photos`, `/api/map`, `/api/sitemap`
-- [ ] **Replace `ORDER BY RANDOM()`** — precompute daily shuffled ID list, or random-offset sampling
-- [ ] **Remove per-request `COUNT(*)`** — maintain a cached `manifest_total` value
-- [ ] **FTS5 or deprecate text mode** — avoid table scan on `LIKE '%q%'`
-- [ ] **Abort in-flight searches** — client should cancel pending search requests on new input
-- [ ] **Ensure stable image URLs** — prefer R2 public domain over signed URLs for caching
+- [x] **Add Worker Cache API for read endpoints** — read-through cache on `/api/photos`, `/api/search` (GET), `/api/map`, `/api/sitemap` with TTLs (5m–24h). Shuffle bypasses cache (offset sampling is cheap enough).
+- [x] **Replace `ORDER BY RANDOM()`** — random offset sampling with `ORDER BY metadata_filename LIMIT ? OFFSET ?`. No more full table scan.
+- [x] **Remove per-request `COUNT(*)`** — cached total count (keyed by WHERE clause, 24h TTL). Display count is now a static "13,000+ photos" string — no DB query.
+- [x] **Deprecate text mode → semantic fallback** — cote/reference fast-path for exact lookups, all other text queries redirect to semantic search. 4-column LIKE scan eliminated.
+- [x] **Abort in-flight searches** — AbortController cancels pending fetch on new keystroke.
+- [x] **Ensure stable image URLs** — R2 public domain set as wrangler.toml var.
+- [x] **Migrate to Vercel Image Optimization** — removed `/api/thumb` worker proxy (was passing through full 45MB originals unresized). Next.js `<Image>` on Vercel Pro now handles resizing, WebP/AVIF conversion, and edge caching. Removed `unoptimized` from all Image components.
+- [x] **Exclude oversized aerials** — base WHERE clause caps at 20MB (`image_size_bytes <= 20000000`) to stay within Vercel's 50MB source limit.
 
 ### Client Memory (Mobile Stability)
-- [ ] **Unmount hidden photo mode** — avoid keeping both view/ordering image trees alive
-- [ ] **Responsive hero sizing** — use smaller thumbnail widths on mobile (no fixed 1000px)
-- [ ] **Grid virtualization or content-visibility** — reduce decoded image memory on long sessions
-- [ ] **Defer non-critical images** — lower fetch priority for tiles beyond first rows
+- [x] **Unmount hidden photo mode** — conditional rendering replaces CSS hiding (releases decoded image memory).
+- [x] **Responsive hero sizing** — Vercel Image Optimization auto-serves correct sizes via `sizes` attribute.
+- [x] **Grid content-visibility** — `contentVisibility: auto` + `containIntrinsicSize` on PhotoTile.
+- [x] **Defer non-critical images** — `fetchPriority="low"` for non-priority tiles, `"high"` for first row.
 
 ---
 
@@ -116,7 +118,10 @@ Reels are working (65% non-follower reach, 3 "Miron" searchers from one Reel).
 - [x] Mobile responsive design
 - [x] SEO: Dynamic sitemap, JSON-LD, hreflang
 - [x] Copy caption + download buttons
-- [x] WebP optimization via Cloudflare
+- [x] WebP optimization via Cloudflare → Vercel Image Optimization (Pro)
+- [x] Seline analytics → Vercel Analytics migration
+- [x] D1 cost stabilization: Cache API, offset sampling, semantic fallback, AbortController
+- [x] Client memory: conditional rendering, content-visibility, fetchPriority, 20MB image cap
 - [x] Instagram Reels content workflow (Claude-generated)
 - [x] CTA integration in posts/stories
 - [x] LinkedIn 3D explorer post (drove real traffic)
