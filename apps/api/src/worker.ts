@@ -33,8 +33,71 @@ const SELECT_FIELDS = `metadata_filename, image_filename, resolved_image_filenam
 // Lightweight fields for map pins (faster queries)
 const MAP_FIELDS = `metadata_filename, name, date_value, latitude, longitude, external_url, resolved_image_filename`;
 
+// --- Cache API helpers ---
+// TTLs in seconds
+const CACHE_TTL = {
+  SHUFFLE: 3600,       // 1 hour — shuffle results are random, any cached set works for discovery
+  PAGINATED: 300,      // 5 min — content rarely changes, cursor variants need short TTL
+  PHOTO_BY_ID: 86400,  // 24 hours — single photo data is stable
+  SEARCH: 600,         // 10 min — deterministic for same query
+  MAP: 43200,          // 12 hours — geo data rarely changes
+  SITEMAP: 86400,      // 24 hours — only changes on data reload
+} as const;
+
+function buildCacheKey(url: URL): Request {
+  // Sort query params for stable cache keys regardless of param order
+  const sorted = new URLSearchParams([...url.searchParams.entries()].sort());
+  const cacheUrl = new URL(url.pathname, url.origin);
+  cacheUrl.search = sorted.toString();
+  return new Request(cacheUrl.toString(), { method: 'GET' });
+}
+
+async function withCache(
+  cacheKey: Request,
+  ctx: ExecutionContext,
+  ttl: number,
+  handler: () => Promise<Response>,
+): Promise<Response> {
+  // Cache API not available in local dev (wrangler dev)
+  if (typeof caches === 'undefined') return handler();
+
+  const cache = caches.default;
+  const cached = await cache.match(cacheKey);
+  if (cached) return cached;
+
+  const response = await handler();
+
+  // Only cache successful responses
+  if (response.status === 200) {
+    const toCache = new Response(response.body, response);
+    toCache.headers.set('Cache-Control', `public, max-age=${ttl}`);
+    toCache.headers.set('X-Cache-TTL', String(ttl));
+    ctx.waitUntil(cache.put(cacheKey, toCache.clone()));
+    return toCache;
+  }
+
+  return response;
+}
+
+// Cache manifest total count to avoid per-request COUNT(*) scans
+const _totalCache: { value: number; expiry: number } = { value: 0, expiry: 0 };
+
+async function getCachedTotal(env: Env, whereClause: string): Promise<number> {
+  const now = Date.now();
+  if (_totalCache.value > 0 && now < _totalCache.expiry) {
+    return _totalCache.value;
+  }
+  const result = await env.DB.prepare(
+    `SELECT COUNT(*) as total FROM manifest WHERE ${whereClause}`
+  ).first<{ total: number }>();
+  const total = result?.total ?? 0;
+  _totalCache.value = total;
+  _totalCache.expiry = now + 24 * 60 * 60 * 1000; // 24 hours
+  return total;
+}
+
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: JSON_HEADERS });
     }
@@ -46,12 +109,19 @@ export default {
         if (request.method !== 'GET') {
           return methodNotAllowed();
         }
-        return handlePhotos(url, env);
+        const id = url.searchParams.get('id');
+        const shuffle = url.searchParams.get('shuffle') === 'true';
+        const ttl = id ? CACHE_TTL.PHOTO_BY_ID : shuffle ? CACHE_TTL.SHUFFLE : CACHE_TTL.PAGINATED;
+        return withCache(buildCacheKey(url), ctx, ttl, () => handlePhotos(url, env));
       }
 
       if (url.pathname === '/api/search') {
         if (request.method !== 'GET' && request.method !== 'POST') {
           return methodNotAllowed();
+        }
+        // Only cache GET search requests (POST may contain embedding body)
+        if (request.method === 'GET') {
+          return withCache(buildCacheKey(url), ctx, CACHE_TTL.SEARCH, () => handleSearch(url, env, request));
         }
         return handleSearch(url, env, request);
       }
@@ -60,6 +130,7 @@ export default {
         if (request.method !== 'GET') {
           return methodNotAllowed();
         }
+        // Thumb already uses cf.cacheEverything — no additional Cache API needed
         return handleThumbnail(url, env);
       }
 
@@ -67,14 +138,14 @@ export default {
         if (request.method !== 'GET') {
           return methodNotAllowed();
         }
-        return handleMapPins(env);
+        return withCache(buildCacheKey(url), ctx, CACHE_TTL.MAP, () => handleMapPins(env));
       }
 
       if (url.pathname === '/api/sitemap') {
         if (request.method !== 'GET') {
           return methodNotAllowed();
         }
-        return handleSitemap(env);
+        return withCache(buildCacheKey(url), ctx, CACHE_TTL.SITEMAP, () => handleSitemap(env));
       }
 
       if (url.pathname === '/' || url.pathname === '/health') {
@@ -190,21 +261,25 @@ async function handlePhotos(url: URL, env: Env): Promise<Response> {
     AND (name IS NOT NULL OR portal_title IS NOT NULL)`;
 
   // Shuffle mode: return random photos for discovery
+  // Uses random OFFSET instead of ORDER BY RANDOM() to avoid full table scan.
+  // COUNT(*) is cached separately (24h TTL) to avoid per-request scans.
   if (shuffle) {
-    // If maxSize specified, filter out large images (for mobile)
     const sizeFilter = maxSize > 0 ? `AND image_size_bytes <= ${maxSize}` : '';
-    const sql = `SELECT ${SELECT_FIELDS} FROM manifest
-      WHERE ${baseWhere} ${sizeFilter}
-      ORDER BY RANDOM()
-      LIMIT ?`;
-    const { results = [] } = await env.DB.prepare(sql).bind(limit).all();
-    const items = await Promise.all(results.map((row) => buildPhotoRecord(row, env)));
+    const whereClause = `${baseWhere} ${sizeFilter}`;
 
-    // Get total count for the first shuffle request
-    const countResult = await env.DB.prepare(
-      `SELECT COUNT(*) as total FROM manifest WHERE ${baseWhere}`
-    ).first<{ total: number }>();
-    const total = countResult?.total ?? 0;
+    // Get total count from cache (avoids per-request COUNT(*) scan)
+    const total = await getCachedTotal(env, whereClause);
+
+    // Random offset sampling — pick a random starting point
+    const maxOffset = Math.max(0, total - limit);
+    const offset = maxOffset > 0 ? Math.floor(Math.random() * maxOffset) : 0;
+
+    const sql = `SELECT ${SELECT_FIELDS} FROM manifest
+      WHERE ${whereClause}
+      ORDER BY metadata_filename
+      LIMIT ? OFFSET ?`;
+    const { results = [] } = await env.DB.prepare(sql).bind(limit, offset).all();
+    const items = await Promise.all(results.map((row) => buildPhotoRecord(row, env)));
 
     return jsonResponse({ items, total, shuffle: true });
   }
@@ -266,22 +341,22 @@ async function handleSearch(url: URL, env: Env, request: Request): Promise<Respo
     return handleVisualSearch(q, limit, env, embedding);
   }
 
-  // Text mode: exact SQL LIKE matching
-  const likeParam = `%${escapeForLike(q)}%`;
-  const statement = env.DB.prepare(
-    `SELECT ${SELECT_FIELDS}
-     FROM manifest
-     WHERE name LIKE ? ESCAPE '\\'
-        OR description LIKE ? ESCAPE '\\'
-        OR portal_title LIKE ? ESCAPE '\\'
-        OR portal_description LIKE ? ESCAPE '\\'
-     ORDER BY portal_match DESC, name ASC
-     LIMIT ?`
-  );
-
-  const { results = [] } = await statement.bind(likeParam, likeParam, likeParam, likeParam, limit).all();
-  const items = await Promise.all(results.map((row) => buildPhotoRecord(row, env)));
-  return jsonResponse({ items, mode: 'text' });
+  // Text mode: redirect to semantic search to avoid full table scans (LIKE on 4 columns).
+  // Fast-path: if query looks like a cote/reference (e.g. "VM94-A0123-045"), do exact PK lookup.
+  const cotePattern = /^[A-Z]{1,4}[\d-]+/i;
+  if (cotePattern.test(q)) {
+    const { results = [] } = await env.DB.prepare(
+      `SELECT ${SELECT_FIELDS} FROM manifest
+       WHERE cote = ? OR portal_cote = ? OR metadata_filename = ? OR metadata_filename = ?
+       LIMIT ?`
+    ).bind(q, q, q, `${q}.json`, limit).all();
+    if (results.length > 0) {
+      const items = await Promise.all(results.map((row) => buildPhotoRecord(row, env)));
+      return jsonResponse({ items, mode: 'text' });
+    }
+  }
+  // Fall through to semantic search for all other text queries
+  return handleSemanticSearch(q, limit, env);
 }
 
 async function handleThumbnail(url: URL, env: Env): Promise<Response> {

@@ -472,6 +472,7 @@ function ArchiveStoreInner() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const commitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const searchAbortRef = useRef<AbortController | null>(null);
   const isInitialMount = useRef(true);
 
   // Search quality tracking refs (used by clearSearch and effects below)
@@ -628,6 +629,11 @@ function ArchiveStoreInner() {
     }
 
     searchTimeoutRef.current = setTimeout(async () => {
+      // Abort any in-flight search request to avoid wasted D1 reads
+      searchAbortRef.current?.abort();
+      const controller = new AbortController();
+      searchAbortRef.current = controller;
+
       setIsSearching(true);
       setHasSearched(true);
       setFailedImages(new Set()); // Clear failed images on new search
@@ -637,7 +643,7 @@ function ArchiveStoreInner() {
       try {
         const searchLimit = isMobile ? String(MOBILE_MAX_IMAGES) : String(DESKTOP_MAX_IMAGES);
         const params = new URLSearchParams({ q: searchQuery, mode: searchMode, limit: searchLimit });
-        const res = await fetch(`${API_BASE}/api/search?${params}`);
+        const res = await fetch(`${API_BASE}/api/search?${params}`, { signal: controller.signal });
         if (res.ok) {
           const data: SearchResponse = await res.json();
           setSearchResults(data.items);
@@ -655,6 +661,7 @@ function ArchiveStoreInner() {
           }, 1200);
         }
       } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return; // Expected on rapid typing
         console.error('Search failed:', err);
       } finally {
         setIsSearching(false);
@@ -662,6 +669,7 @@ function ArchiveStoreInner() {
     }, 300);
 
     return () => {
+      searchAbortRef.current?.abort();
       if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
       if (commitTimeoutRef.current) clearTimeout(commitTimeoutRef.current);
     };

@@ -20,6 +20,11 @@ const getThumbnailUrl = (imageUrl: string, width = 1200) => {
   return `/api/thumb?src=${encodeURIComponent(imageUrl)}&w=${width}&q=85&format=auto`;
 };
 
+// Device-aware thumbnail width (smaller on mobile to reduce decode memory)
+const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+const HERO_WIDTH = isMobile ? 640 : 1000;
+const WALL_PREVIEW_WIDTH = isMobile ? 600 : 800;
+
 type Lang = 'fr' | 'en';
 
 const translations = {
@@ -236,24 +241,21 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
         </div>
       </header>
 
-      {/* Main Content - Animated transition between modes */}
+      {/* Main Content - Conditionally render active mode to release inactive image memory */}
       <main className="pt-12">
         {/* VIEWING MODE */}
-        <div className={`transition-all duration-500 ease-out ${
-          mode === 'viewing'
-            ? 'opacity-100 translate-y-0'
-            : 'opacity-0 -translate-y-4 pointer-events-none absolute inset-0 pt-12'
-        }`}>
+        {mode === 'viewing' && (
+        <div className="animate-fade-in">
           {/* Hero Image */}
           <div className="relative bg-neutral-100">
             <div className="max-w-5xl mx-auto">
               {photo.imageUrl && (
                 <div className={`relative transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}>
                   <Image
-                    src={getThumbnailUrl(photo.imageUrl, 1000)}
+                    src={getThumbnailUrl(photo.imageUrl, HERO_WIDTH)}
                     alt={title}
-                    width={1000}
-                    height={750}
+                    width={HERO_WIDTH}
+                    height={Math.round(HERO_WIDTH * 0.75)}
                     sizes="(max-width: 768px) 100vw, (max-width: 1280px) 80vw, 1000px"
                     className="w-full h-auto"
                     priority
@@ -310,17 +312,15 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
             </div>
           </div>
         </div>
+        )}
 
         {/* ORDERING MODE */}
-        <div className={`transition-all duration-500 ease-out ${
-          mode === 'ordering'
-            ? 'opacity-100 translate-y-0'
-            : 'opacity-0 translate-y-4 pointer-events-none absolute inset-0 pt-12'
-        }`}>
+        {mode === 'ordering' && (
+        <div className="animate-fade-in">
           {/* Wall Preview Carousel */}
           {photo.imageUrl && (
             <WallPreview
-              photoUrl={getThumbnailUrl(photo.imageUrl, 800)}
+              photoUrl={getThumbnailUrl(photo.imageUrl, WALL_PREVIEW_WIDTH)}
               photoAlt={title}
               selectedSize={selectedSize}
               selectedProduct={selectedProduct}
@@ -404,6 +404,7 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
             </button>
           </div>
         </div>
+        )}
       </main>
     </div>
   );

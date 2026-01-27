@@ -18,3 +18,6 @@ index_name = "mtl-archives-clip"
 
 [ai]
 binding = "AI"
+
+[vars]
+CLOUDFLARE_R2_PUBLIC_DOMAIN = "pub-6a29793ea7664738880d1cc5afb21b87.r2.dev"

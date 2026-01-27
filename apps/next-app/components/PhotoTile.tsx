@@ -18,6 +18,7 @@ export function PhotoTile({ src, alt, priority = false, onClick, onError }: Phot
     <button
       onClick={onClick}
       className="relative aspect-square bg-neutral-100 overflow-hidden group"
+      style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 200px' }}
     >
       {/* Skeleton placeholder - shows until image loads */}
       <div
@@ -37,6 +38,7 @@ export function PhotoTile({ src, alt, priority = false, onClick, onError }: Phot
         }`}
         priority={priority}
         loading={priority ? undefined : 'lazy'}
+        fetchPriority={priority ? 'high' : 'low'}
         onLoad={() => setLoaded(true)}
         onError={onError}
         unoptimized
