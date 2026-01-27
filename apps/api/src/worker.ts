@@ -79,20 +79,20 @@ async function withCache(
   return response;
 }
 
-// Cache manifest total count to avoid per-request COUNT(*) scans
-const _totalCache: { value: number; expiry: number } = { value: 0, expiry: 0 };
+// Cache manifest total counts keyed by WHERE clause to avoid per-request COUNT(*) scans
+const _totalCache = new Map<string, { value: number; expiry: number }>();
 
 async function getCachedTotal(env: Env, whereClause: string): Promise<number> {
   const now = Date.now();
-  if (_totalCache.value > 0 && now < _totalCache.expiry) {
-    return _totalCache.value;
+  const entry = _totalCache.get(whereClause);
+  if (entry && entry.value > 0 && now < entry.expiry) {
+    return entry.value;
   }
   const result = await env.DB.prepare(
     `SELECT COUNT(*) as total FROM manifest WHERE ${whereClause}`
   ).first<{ total: number }>();
   const total = result?.total ?? 0;
-  _totalCache.value = total;
-  _totalCache.expiry = now + 24 * 60 * 60 * 1000; // 24 hours
+  _totalCache.set(whereClause, { value: total, expiry: now + 24 * 60 * 60 * 1000 });
   return total;
 }
 
@@ -270,11 +270,13 @@ async function handlePhotos(url: URL, env: Env): Promise<Response> {
     const sizeFilter = maxSize > 0 ? `AND image_size_bytes <= ${maxSize}` : '';
     const whereClause = `${baseWhere} ${sizeFilter}`;
 
-    // Get total count from cache (avoids per-request COUNT(*) scan)
-    const total = await getCachedTotal(env, whereClause);
+    // Display total uses base filter (no size limit) so UI shows full archive size
+    const total = await getCachedTotal(env, baseWhere);
+    // Filtered count for offset calculation (respects mobile size filter)
+    const filteredTotal = sizeFilter ? await getCachedTotal(env, whereClause) : total;
 
-    // Random offset sampling — pick a random starting point
-    const maxOffset = Math.max(0, total - limit);
+    // Random offset sampling — pick a random starting point within filtered set
+    const maxOffset = Math.max(0, filteredTotal - limit);
     const offset = maxOffset > 0 ? Math.floor(Math.random() * maxOffset) : 0;
 
     const sql = `SELECT ${SELECT_FIELDS} FROM manifest
