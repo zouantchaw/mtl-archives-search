@@ -17,6 +17,16 @@ Current state (Jan 24, 2026): Funnel is live and working — Reels drive 55% of 
 
 ---
 
+## P0: Core API + SEO Bugs (Worker + Next)
+
+These block reliable indexing and create silent 404s/OG misses.
+
+- [ ] **Fix sitemap/photo ID mismatch** — Ensure `/api/photos` accepts bare IDs or update sitemap to include `.json` IDs. Align OG/Twitter fetches with the same ID format.
+- [ ] **Stop caching expired signed R2 URLs** — If public R2 domain is missing, shorten cache TTL to signed URL expiry or skip caching for signed responses (API + sitemap).
+- [ ] **Centralize API base config** — Remove hard-coded prod worker/R2 from rewrites/preconnects; use env-driven base (with safe local fallback) for client + server + Next config.
+
+---
+
 ## P0: Infra & Cost Stabilization (D1 + Images) ✅
 
 Was reading ~4.3M D1 rows/day. Target: <250k/day. All items implemented Jan 27, 2026.
@@ -38,6 +48,14 @@ Was reading ~4.3M D1 rows/day. Target: <250k/day. All items implemented Jan 27, 
 
 ---
 
+## P1: Search & Session Correctness
+
+- [ ] **Make semantic mode shareable** — Persist `mode=semantic` in URL (or change default mode to semantic) so reload/share preserves results.
+- [ ] **Avoid double fetch on desktop** — Defer initial `loadPhotos` until `isMobile` detection completes to prevent duplicate API calls.
+- [ ] **Guard missing AI binding** — If `AI` is unbound, return a 501 config error instead of a 500 for semantic search.
+
+---
+
 ## P1: Neighborhood Shortcuts (Analytics-Driven)
 
 Users search: "Miron", "Portuguais", "Ahuntsic", "rue notre-dame", "Rue st Catherine". All Montreal neighborhoods/landmarks. Make this frictionless.
@@ -45,6 +63,14 @@ Users search: "Miron", "Portuguais", "Ahuntsic", "rue notre-dame", "Rue st Cathe
 - [x] **One-tap neighborhood filters** — Pill/chip UI with top neighborhoods (Miron, Ahuntsic, Plateau, Villeray, Portugais, Vieux-Montréal)
 - [x] **Pre-populated search suggestions** — Show popular searches on empty search state
 - [ ] **Neighborhood landing pages** — `/quartier/ahuntsic` with pre-filtered results (SEO + shareable)
+
+---
+
+## P1: Pipeline Reliability (Vectorize + R2)
+
+- [ ] **Retry + resume ingestion** — Add retry/backoff and resumable checkpoints for Vectorize ingest (text + CLIP) so failures don’t silently shrink index coverage.
+- [ ] **Failure reporting** — Write per-run failure logs + summary counts to disk for auditability.
+- [ ] **Stream manifests** — Avoid loading full JSONL into memory for large runs; switch to streaming batches.
 
 ---
 
@@ -56,6 +82,13 @@ Gallery shuffle got 179 clicks from one user (9+ min session). It's the stickies
 - [ ] **"Shuffle by neighborhood"** — Combine shuffle with neighborhood filter
 - [ ] **Infinite shuffle mode** — Auto-advance after X seconds (like a screensaver/slideshow)
 - [ ] **Share from shuffle** — Let users share a discovered photo directly to IG Stories
+
+---
+
+## P2: Test Coverage (Worker + Pipelines)
+
+- [ ] **Worker endpoint tests** — `/api/photos` id normalization, sitemap generation, search modes.
+- [ ] **Pipeline smoke tests** — CLI runs with small fixtures + failure reporting.
 
 ---
 
