@@ -1,9 +1,9 @@
 import { Suspense } from 'react';
 import { PhotoPageClient } from './PhotoPageClient';
 import type { PhotoRecord } from '@/lib/types';
+import { API_BASE } from '@/lib/runtime-config';
 
 // API endpoint for fetching photo data - runs on server
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mtl-archives-worker.wiel.workers.dev';
 
 async function getPhoto(id: string): Promise<PhotoRecord | null> {
   try {

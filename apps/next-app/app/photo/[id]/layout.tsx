@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
+import { API_BASE } from '@/lib/runtime-config';
 
 // API endpoint for fetching photo data
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mtl-archives-worker.wiel.workers.dev';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.mtlarchives.com';
 
 // Clean text: remove escaped newlines, normalize whitespace

@@ -1,4 +1,5 @@
 import { ImageResponse } from 'next/og';
+import { API_BASE } from '@/lib/runtime-config';
 
 export const runtime = 'edge';
 
@@ -12,7 +13,6 @@ export const size = {
 export const contentType = 'image/png';
 
 // API endpoint for fetching photo data
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://mtl-archives-worker.wiel.workers.dev';
 
 type PhotoData = {
   name?: string;

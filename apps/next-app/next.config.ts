@@ -1,5 +1,13 @@
 import type { NextConfig } from "next";
 
+const rawApiBase = process.env.NEXT_PUBLIC_API_URL || process.env.API_BASE_URL || '';
+const defaultApiBase = rawApiBase || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:8787');
+const apiBase = defaultApiBase.replace(/\/$/, '');
+
+if (!apiBase && process.env.NODE_ENV === 'production') {
+  throw new Error('NEXT_PUBLIC_API_URL is required in production.');
+}
+
 const nextConfig: NextConfig = {
   images: {
     // Limit generated srcset widths — grid tiles are small, hero maxes at 1000px
@@ -26,19 +34,19 @@ const nextConfig: NextConfig = {
       // Local routes like /api/clip are handled by Next.js
       {
         source: '/api/photos',
-        destination: 'https://mtl-archives-worker.wiel.workers.dev/api/photos',
+        destination: `${apiBase}/api/photos`,
       },
       {
         source: '/api/search',
-        destination: 'https://mtl-archives-worker.wiel.workers.dev/api/search',
+        destination: `${apiBase}/api/search`,
       },
       {
         source: '/api/map',
-        destination: 'https://mtl-archives-worker.wiel.workers.dev/api/map',
+        destination: `${apiBase}/api/map`,
       },
       {
         source: '/api/sitemap',
-        destination: 'https://mtl-archives-worker.wiel.workers.dev/api/sitemap',
+        destination: `${apiBase}/api/sitemap`,
       },
     ];
   },

@@ -4,6 +4,7 @@ import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { CartProvider } from "@/lib/cart-context";
 import { CartDrawer } from "@/components/CartDrawer";
+import { API_ORIGIN, R2_ORIGIN } from "@/lib/runtime-config";
 
 const figtree = Figtree({
   subsets: ['latin'],
@@ -155,11 +156,19 @@ export default function RootLayout({
     <html lang="en" className={`${figtree.variable}`}>
       <head>
         {/* Preconnect to API for faster initial fetch */}
-        <link rel="preconnect" href="https://mtl-archives-worker.wiel.workers.dev" />
-        <link rel="dns-prefetch" href="https://mtl-archives-worker.wiel.workers.dev" />
+        {API_ORIGIN ? (
+          <>
+            <link rel="preconnect" href={API_ORIGIN} />
+            <link rel="dns-prefetch" href={API_ORIGIN} />
+          </>
+        ) : null}
         {/* Preconnect to R2 for faster image loads */}
-        <link rel="preconnect" href="https://pub-6a29793ea7664738880d1cc5afb21b87.r2.dev" />
-        <link rel="dns-prefetch" href="https://pub-6a29793ea7664738880d1cc5afb21b87.r2.dev" />
+        {R2_ORIGIN ? (
+          <>
+            <link rel="preconnect" href={R2_ORIGIN} />
+            <link rel="dns-prefetch" href={R2_ORIGIN} />
+          </>
+        ) : null}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
