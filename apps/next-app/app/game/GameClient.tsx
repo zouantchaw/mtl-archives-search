@@ -458,14 +458,19 @@ export function GameClient() {
           </div>
 
           <div className="flex flex-col gap-2">
-            <p className="text-[11px] uppercase tracking-[0.34em] text-neutral-400">{t.subtitle}</p>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h1 className="text-xl sm:text-3xl font-semibold">{t.title}</h1>
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-[11px] uppercase tracking-[0.34em] text-neutral-400">{t.subtitle}</p>
+              <div className="sm:hidden px-3 py-1 rounded-full border border-neutral-200 bg-white/80 text-[10px] uppercase tracking-[0.3em] text-neutral-500">
+                {mode === 'daily' ? t.daily : t.practice}
+              </div>
+            </div>
+            <div className="flex items-start justify-between gap-3">
+              <h1 className="text-xl sm:text-3xl font-semibold leading-tight">{t.title}</h1>
               <div className="flex items-center gap-2">
-                <div className="px-3 py-1 rounded-full border border-neutral-200 bg-white/80 text-[10px] uppercase tracking-[0.3em] text-neutral-500">
+                <div className="hidden sm:flex px-3 py-1 rounded-full border border-neutral-200 bg-white/80 text-[10px] uppercase tracking-[0.3em] text-neutral-500">
                   {mode === 'daily' ? t.daily : t.practice}
                 </div>
-                <div className="px-3 py-1 rounded-full bg-neutral-900 text-white text-sm font-semibold">
+                <div className="px-3 py-1 rounded-full bg-neutral-900 text-white text-sm font-semibold whitespace-nowrap">
                   {scoreLabel}
                 </div>
               </div>
