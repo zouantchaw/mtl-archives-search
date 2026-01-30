@@ -7,7 +7,8 @@ import type { PhotoRecord, SearchResponse, SearchMode } from '@/lib/types';
 import { events } from '@/lib/analytics';
 import { useCart } from '@/lib/cart-context';
 import { PhotoTile } from './PhotoTile';
-import { DEFAULT_LANG, getLangFromSearchParams, type Lang } from '@/lib/i18n';
+import { appendLangParam, DEFAULT_LANG, getLangFromSearchParams, type Lang } from '@/lib/i18n';
+import { assignAbVariant, getAbVariant, parseAbParam, setAbVariant } from '@/lib/experiments';
 
 const API_BASE = '';
 
@@ -19,6 +20,7 @@ const MOBILE_PAGE_SIZE = 12;      // 4 rows of 3
 const MOBILE_MAX_IMAGES = 36;     // 12 rows max
 const DESKTOP_PAGE_SIZE = 24;     // Good batch size
 const DESKTOP_MAX_IMAGES = 72;    // Generous but bounded
+const AB_GAME_RATIO = 0.6;
 
 // ============================================================
 // Typewriter Hook - with pause capability
@@ -108,6 +110,7 @@ const translations = {
     cart: 'Panier',
     instagram: 'Instagram',
     facebook: 'Facebook',
+    game: 'Jeu',
     // Hook
     hookDefault: 'Explorez 13 499 photos d\'archives de Montréal',
     hookInstagram: 'Vu sur Instagram? Il y en a 14 822 autres...',
@@ -140,6 +143,7 @@ const translations = {
     cart: 'Cart',
     instagram: 'Instagram',
     facebook: 'Facebook',
+    game: 'Game',
     // Hook
     hookDefault: 'Explore 13, 499 archival photos of Montreal',
     hookInstagram: 'Saw this on Instagram? There are 14,822 more...',
@@ -452,6 +456,7 @@ function ArchiveStoreInner() {
   const initialLang = getLangFromSearchParams(searchParams);
 
   const [lang, setLang] = useState<Lang>(initialLang);
+  const abRedirectedRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [searchMode, setSearchMode] = useState<SearchMode>(initialMode);
   const [searchResults, setSearchResults] = useState<PhotoRecord[]>([]);
@@ -462,6 +467,8 @@ function ArchiveStoreInner() {
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
 
   const t = translations[lang];
+  const homeLink = appendLangParam('/', lang);
+  const gameLink = appendLangParam('/game', lang);
   const isMobileSafe = isMobile ?? true;
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -493,6 +500,46 @@ function ArchiveStoreInner() {
       events.instagramVisitorLanded(params.get('utm_campaign') || undefined);
     }
   }, []);
+
+  // A/B: route a portion of visitors to the game
+  useEffect(() => {
+    if (abRedirectedRef.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const override = parseAbParam(params);
+    const stored = getAbVariant();
+
+    let variant = override || stored;
+    let source = override ? 'override' : stored ? 'cookie' : 'auto';
+    let assigned = false;
+
+    if (!variant) {
+      variant = assignAbVariant(AB_GAME_RATIO);
+      setAbVariant(variant);
+      assigned = true;
+    } else if (override && override !== stored) {
+      setAbVariant(override);
+      assigned = true;
+    }
+
+    if (assigned) {
+      events.abAssigned(variant, source);
+    }
+
+    const hasSearch = params.has('q');
+    if (variant === 'game' && !hasSearch) {
+      params.delete('ab');
+      if (lang !== DEFAULT_LANG) {
+        params.set('lang', lang);
+      } else {
+        params.delete('lang');
+      }
+      const query = params.toString();
+      const target = query ? `/game?${query}` : '/game';
+      abRedirectedRef.current = true;
+      events.abRedirected(variant);
+      router.replace(target);
+    }
+  }, [lang, router]);
 
   // Hook dismisses on first user interaction (see trackFirstInteraction)
   // No auto-dismiss timer - avoids jarring layout shift
@@ -811,8 +858,15 @@ function ArchiveStoreInner() {
         {/* Mobile */}
         <div className="flex flex-col sm:hidden">
           <div className="flex items-center justify-between h-11 px-3">
-            <a href="/" className="text-[11px] font-medium tracking-[0.1em] uppercase">MTL Archives</a>
+            <a href={homeLink} className="text-[11px] font-medium tracking-[0.1em] uppercase">MTL Archives</a>
             <div className="flex items-center gap-0.5">
+              <a
+                href={gameLink}
+                onClick={() => events.gameNavClicked()}
+                className="px-2.5 py-1 rounded-full border border-neutral-200 text-[10px] uppercase tracking-[0.2em] text-neutral-500 hover:text-neutral-800"
+              >
+                {t.game}
+              </a>
               <button onClick={handleLangChange} className="p-1.5" aria-label={lang === 'fr' ? 'Changer en anglais' : 'Switch to French'}>
                 {lang === 'fr' ? <FlagQC /> : <FlagEN />}
               </button>
@@ -883,7 +937,14 @@ function ArchiveStoreInner() {
 
         {/* Desktop */}
         <div className="hidden sm:flex items-center h-14 px-4 lg:px-6 gap-4">
-          <a href="/" className="text-xs font-medium tracking-[0.12em] uppercase shrink-0">MTL Archives</a>
+          <a href={homeLink} className="text-xs font-medium tracking-[0.12em] uppercase shrink-0">MTL Archives</a>
+          <a
+            href={gameLink}
+            onClick={() => events.gameNavClicked()}
+            className="px-2.5 py-1 rounded-full border border-neutral-200 text-[10px] uppercase tracking-[0.2em] text-neutral-500 hover:text-neutral-800"
+          >
+            {t.game}
+          </a>
           <div className="flex-1 flex justify-center">
             <div className="w-full max-w-lg">
               <div className={`flex items-center bg-white border h-9 rounded-lg transition-all duration-200 ${

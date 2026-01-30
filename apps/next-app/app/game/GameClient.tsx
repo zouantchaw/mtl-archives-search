@@ -10,6 +10,8 @@ import { SignedIn, SignedOut, UserButton, useAuth } from '@clerk/nextjs';
 import type { PhotoRecord } from '@/lib/types';
 import { Share2 } from 'lucide-react';
 import { appendLangParam, DEFAULT_LANG, getLangFromSearchParams, type Lang } from '@/lib/i18n';
+import { events } from '@/lib/analytics';
+import { getAbVariant } from '@/lib/experiments';
 
 type GameDailyResponse = {
   date: string;
@@ -43,11 +45,25 @@ const MAP_STYLE = process.env.NEXT_PUBLIC_MAP_STYLE_URL || 'https://basemaps.car
 
 const MONTREAL_CENTER: [number, number] = [-73.5674, 45.5019];
 
-function LangToggle({ lang }: { lang: Lang }) {
+function FlagQC() {
   return (
-    <span className="inline-flex items-center justify-center min-w-[36px] px-2.5 py-1 rounded-full border border-neutral-200 bg-white/80 text-[10px] font-semibold tracking-[0.2em] text-neutral-500">
-      {lang === 'fr' ? 'FR' : 'EN'}
-    </span>
+    <svg width="20" height="14" viewBox="0 0 20 14" className="rounded-[2px] shadow-sm">
+      <rect width="20" height="14" fill="#003DA5" />
+      <path d="M10 0v14M0 7h20" stroke="white" strokeWidth="2" />
+      <circle cx="5" cy="3.5" r="1.2" fill="white" />
+      <circle cx="15" cy="3.5" r="1.2" fill="white" />
+      <circle cx="5" cy="10.5" r="1.2" fill="white" />
+      <circle cx="15" cy="10.5" r="1.2" fill="white" />
+    </svg>
+  );
+}
+
+function FlagEN() {
+  return (
+    <svg width="20" height="14" viewBox="0 0 20 14" className="rounded-[2px] shadow-sm">
+      <rect width="20" height="14" fill="white" />
+      <path d="M10 0v14M0 7h20" stroke="#C8102E" strokeWidth="2.5" />
+    </svg>
   );
 }
 
@@ -119,6 +135,7 @@ const translations = {
     shareCopied: 'Lien copié',
     shareFailed: 'Impossible de copier',
     saveStreak: 'Connecte-toi pour sauvegarder ta série.',
+    saveStreakButton: 'Sauvegarder ma série',
     streakSaved: 'Série sauvegardée sur ton compte.',
     leaderboard: 'Classement du jour',
     leaderboardEmpty: 'Aucun score pour l\'instant.',
@@ -147,6 +164,7 @@ const translations = {
     shareCopied: 'Link copied',
     shareFailed: 'Could not copy',
     saveStreak: 'Sign in to save your streak.',
+    saveStreakButton: 'Save my streak',
     streakSaved: 'Streak saved to your account.',
     leaderboard: 'Today\'s leaderboard',
     leaderboardEmpty: 'No scores yet.',
@@ -174,6 +192,10 @@ export function GameClient() {
   const [submitting, setSubmitting] = useState(false);
   const [shareMessage, setShareMessage] = useState('');
   const { getToken, isLoaded, isSignedIn } = useAuth();
+  const abVariantRef = useRef<string | null>(null);
+  const landedRef = useRef(false);
+  const pinPlacedRef = useRef(false);
+  const prevModeRef = useRef<'daily' | 'practice'>('daily');
 
   const currentPhoto = mode === 'daily' ? data?.daily.photo : data?.practice.photo;
   const currentPlayed = mode === 'daily' ? data?.daily.played : data?.practice.result !== null;
@@ -276,12 +298,35 @@ export function GameClient() {
     setResult(null);
   }, [data, mode]);
 
+  useEffect(() => {
+    if (!isLoaded || landedRef.current) return;
+    abVariantRef.current = getAbVariant();
+    events.gameLanded(abVariantRef.current ?? undefined, mode);
+    prevModeRef.current = mode;
+    landedRef.current = true;
+  }, [isLoaded, mode]);
+
+  useEffect(() => {
+    if (prevModeRef.current !== mode) {
+      events.gameModeChanged(prevModeRef.current, mode);
+      prevModeRef.current = mode;
+      pinPlacedRef.current = false;
+    }
+  }, [mode]);
+
+  useEffect(() => {
+    if (!guess || pinPlacedRef.current) return;
+    events.gamePinPlaced(mode);
+    pinPlacedRef.current = true;
+  }, [guess, mode]);
+
   const submitGuess = async () => {
     if (!guess || !currentPhoto) return;
     if (!isSignedIn && !anonId) return;
     setSubmitting(true);
     setShareMessage('');
     try {
+      events.gameGuessSubmitted(mode, currentPhoto.metadataFilename, Boolean(isSignedIn));
       const token = await getToken();
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (token) headers.Authorization = `Bearer ${token}`;
@@ -299,6 +344,7 @@ export function GameClient() {
       const json = await res.json();
       if (res.ok) {
         setResult(json);
+        events.gameGuessResult(mode, json.score, json.distanceMeters);
         await loadDaily(isSignedIn ? null : anonId);
         if (mode === 'daily' && data?.date) {
           loadLeaderboard(data.date);
@@ -313,6 +359,7 @@ export function GameClient() {
     if (!result || !data?.date) return;
     const text = `MTL Archives — ${data.date} : ${result.score} pts (${formatDistance(result.distanceMeters)})`;
     const url = `${window.location.origin}${appendLangParam('/game', lang)}`;
+    events.gameShareClicked(mode, result.score);
     if (navigator.share) {
       try {
         await navigator.share({ title: 'MTL Archives', text, url });
@@ -343,6 +390,7 @@ export function GameClient() {
   }, [data?.practice.available, t]);
 
   const actionLabel = currentPlayed ? t.alreadyPlayed : submitting ? t.calculating : t.validate;
+  const homeLink = appendLangParam('/', lang);
   const photoLink = currentPhoto
     ? appendLangParam(`/photo/${encodeURIComponent(currentPhoto.metadataFilename)}`, lang)
     : '#';
@@ -371,7 +419,13 @@ export function GameClient() {
       <header className="sticky top-0 z-30 border-b border-neutral-200/70 bg-[#f6f5f2]/95 backdrop-blur">
         <div className="max-w-6xl mx-auto px-4 pt-4 pb-3 flex flex-col gap-3">
           <div className="flex items-center justify-between gap-4">
-            <a href="/" className="text-[11px] font-medium tracking-[0.18em] uppercase">MTL Archives</a>
+            <a
+              href={homeLink}
+              onClick={() => events.homeNavClicked()}
+              className="text-[11px] font-medium tracking-[0.18em] uppercase"
+            >
+              MTL Archives
+            </a>
             <div className="flex items-center gap-2">
               {showShare && (
                 <button
@@ -387,7 +441,7 @@ export function GameClient() {
                 className="p-1.5"
                 aria-label={lang === 'fr' ? 'Changer en anglais' : 'Switch to French'}
               >
-                <LangToggle lang={lang} />
+                {lang === 'fr' ? <FlagQC /> : <FlagEN />}
               </button>
               <SignedIn>
                 <UserButton />
@@ -455,7 +509,7 @@ export function GameClient() {
                     alt={currentPhoto.name || 'Photo historique'}
                     fill
                     sizes="(max-width: 1024px) 100vw, 56vw"
-                    className="object-contain"
+                    className="object-cover"
                     priority
                   />
                 ) : null}
@@ -525,8 +579,15 @@ export function GameClient() {
                     </div>
                   )}
                   <SignedOut>
-                    <div className="text-xs text-neutral-500">
-                      {t.saveStreak}
+                    <div className="flex flex-col gap-2">
+                      <a
+                        href={signInUrl}
+                        onClick={() => events.gameSignInCtaClicked()}
+                        className="inline-flex items-center justify-center px-3 py-2 rounded-full bg-neutral-900 text-white text-xs font-medium"
+                      >
+                        {t.saveStreakButton}
+                      </a>
+                      <p className="text-xs text-neutral-500">{t.saveStreak}</p>
                     </div>
                   </SignedOut>
                   <SignedIn>
@@ -541,9 +602,22 @@ export function GameClient() {
             </div>
 
             {showStreakHint && (
-              <div className="lg:hidden rounded-2xl border border-neutral-200 bg-white/90 px-4 py-3 text-xs text-neutral-500">
-                <SignedOut>{t.saveStreak}</SignedOut>
-                <SignedIn>{t.streakSaved}</SignedIn>
+              <div className="lg:hidden rounded-2xl border border-neutral-200 bg-white/90 px-4 py-3">
+                <SignedOut>
+                  <div className="flex flex-col gap-2">
+                    <a
+                      href={signInUrl}
+                      onClick={() => events.gameSignInCtaClicked()}
+                      className="inline-flex items-center justify-center px-3 py-2 rounded-full bg-neutral-900 text-white text-xs font-medium"
+                    >
+                      {t.saveStreakButton}
+                    </a>
+                    <p className="text-xs text-neutral-500">{t.saveStreak}</p>
+                  </div>
+                </SignedOut>
+                <SignedIn>
+                  <div className="text-xs text-emerald-600">{t.streakSaved}</div>
+                </SignedIn>
               </div>
             )}
 
@@ -563,7 +637,10 @@ export function GameClient() {
               )}
             </div>
 
-            <details className="lg:hidden rounded-2xl border border-neutral-200 bg-white/90 px-4 py-3">
+            <details
+              className="lg:hidden rounded-2xl border border-neutral-200 bg-white/90 px-4 py-3"
+              onToggle={(event) => events.gameLeaderboardToggled((event.currentTarget as HTMLDetailsElement).open)}
+            >
               <summary className="text-xs uppercase tracking-[0.2em] text-neutral-400 cursor-pointer">
                 {t.leaderboard}
               </summary>

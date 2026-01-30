@@ -167,4 +167,42 @@ export const events = {
   // Fires on beforeunload — classifies what type of session this was
   sessionEnded: (type: string, eventCount: number, durationMs: number) =>
     track('session_ended', { type, eventCount, durationMs, ...getReferrerContext() }),
+
+  // === Game ===
+
+  gameLanded: (variant?: string, mode?: string) =>
+    track('game_landed', { variant, mode, ...getReferrerContext() }),
+
+  gameModeChanged: (from: string, to: string) =>
+    track('game_mode_changed', { from, to }),
+
+  gamePinPlaced: (mode: string) =>
+    track('game_pin_placed', { mode }),
+
+  gameGuessSubmitted: (mode: string, photoId: string, signedIn: boolean) =>
+    track('game_guess_submitted', { mode, photoId, signedIn }),
+
+  gameGuessResult: (mode: string, score: number, distanceMeters: number) =>
+    track('game_guess_result', { mode, score, distanceMeters }),
+
+  gameShareClicked: (mode: string, score: number) =>
+    track('game_share_clicked', { mode, score }),
+
+  gameLeaderboardToggled: (open: boolean) =>
+    track('game_leaderboard_toggled', { open }),
+
+  gameSignInCtaClicked: () =>
+    track('game_sign_in_cta_clicked'),
+
+  gameNavClicked: () =>
+    track('game_nav_clicked', { ...getReferrerContext() }),
+
+  homeNavClicked: () =>
+    track('home_nav_clicked'),
+
+  abAssigned: (variant: string, source: string) =>
+    track('ab_assigned', { experiment: 'home_to_game', variant, source }),
+
+  abRedirected: (variant: string) =>
+    track('ab_redirected', { experiment: 'home_to_game', variant }),
 };
