@@ -441,7 +441,7 @@ function ArchiveStoreInner() {
   const { itemCount, openCart } = useCart();
 
   // Detect mobile ONCE on mount
-  const [isMobile, setIsMobile] = useState(true); // Default to mobile-safe
+  const [isMobile, setIsMobile] = useState<boolean | null>(null); // Detect after mount
   useEffect(() => {
     const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
     setIsMobile(mobile);
@@ -463,6 +463,7 @@ function ArchiveStoreInner() {
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
 
   const t = translations[lang];
+  const isMobileSafe = isMobile ?? true;
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const commitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -501,7 +502,7 @@ function ArchiveStoreInner() {
   const updateUrl = useCallback((q: string, mode: SearchMode, currentLang: Lang) => {
     const params = new URLSearchParams();
     if (q) params.set('q', q);
-    if (mode !== 'semantic') params.set('mode', mode);
+    if (mode !== 'smart') params.set('mode', mode);
     if (currentLang !== 'fr') params.set('lang', currentLang);
     router.replace(params.toString() ? `/?${params}` : '/', { scroll: false });
   }, [router]);
@@ -565,7 +566,8 @@ function ArchiveStoreInner() {
     // Fetch fresh shuffled photos
     setInitialLoading(true);
     try {
-      const pageSize = isMobile ? MOBILE_PAGE_SIZE : DESKTOP_PAGE_SIZE;
+    if (isMobile === null) return;
+    const pageSize = isMobile ? MOBILE_PAGE_SIZE : DESKTOP_PAGE_SIZE;
       // On mobile, limit image size to 1MB to prevent browser crashes
       // Cap source image size: mobile 1MB (memory), desktop 20MB (Vercel 50MB optimization limit)
       const sizeLimit = isMobile ? '&maxSize=1000000' : '&maxSize=20000000';
@@ -601,8 +603,9 @@ function ArchiveStoreInner() {
   }, [loadPhotos, trackFirstInteraction, trackSessionAction]);
 
   useEffect(() => {
+    if (isMobile === null) return;
     loadPhotos(false); // Try to restore from cache first
-  }, [loadPhotos]);
+  }, [loadPhotos, isMobile]);
 
 
   // Search (semantic only on mobile - no CLIP)
@@ -630,7 +633,7 @@ function ArchiveStoreInner() {
       isInitialMount.current = false;
 
       try {
-        const searchLimit = isMobile ? String(MOBILE_MAX_IMAGES) : String(DESKTOP_MAX_IMAGES);
+        const searchLimit = isMobileSafe ? String(MOBILE_MAX_IMAGES) : String(DESKTOP_MAX_IMAGES);
         const params = new URLSearchParams({ q: searchQuery, mode: searchMode, limit: searchLimit });
         const res = await fetch(`${API_BASE}/api/search?${params}`, { signal: controller.signal });
         if (res.ok) {
@@ -708,7 +711,7 @@ function ArchiveStoreInner() {
 
     const params = new URLSearchParams();
     if (searchQuery) params.set('q', searchQuery);
-    if (searchMode !== 'semantic') params.set('mode', searchMode);
+    if (searchMode !== 'smart') params.set('mode', searchMode);
     if (lang !== 'fr') params.set('lang', lang);
     router.push(`/photo/${encodeURIComponent(photo.metadataFilename)}${params.toString() ? `?${params}` : ''}`);
   }, [router, searchQuery, searchMode, lang, hasSearched, trackFirstInteraction, trackSessionAction]);
