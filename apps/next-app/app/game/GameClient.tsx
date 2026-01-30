@@ -36,7 +36,7 @@ type LeaderboardEntry = {
   distanceMeters: number;
 };
 
-const MAP_STYLE = process.env.NEXT_PUBLIC_MAP_STYLE_URL || 'https://demotiles.maplibre.org/style.json';
+const MAP_STYLE = process.env.NEXT_PUBLIC_MAP_STYLE_URL || 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
 
 const MONTREAL_CENTER: [number, number] = [-73.5674, 45.5019];
 
