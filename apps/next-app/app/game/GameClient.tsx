@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -9,7 +9,7 @@ import { API_BASE } from '@/lib/runtime-config';
 import { SignedIn, SignedOut, UserButton, useAuth } from '@clerk/nextjs';
 import type { PhotoRecord } from '@/lib/types';
 import { Share2 } from 'lucide-react';
-import { appendLangParam, getLangFromSearchParams, type Lang } from '@/lib/i18n';
+import { appendLangParam, DEFAULT_LANG, getLangFromSearchParams, type Lang } from '@/lib/i18n';
 
 type GameDailyResponse = {
   date: string;
@@ -42,6 +42,28 @@ type LeaderboardEntry = {
 const MAP_STYLE = process.env.NEXT_PUBLIC_MAP_STYLE_URL || 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
 
 const MONTREAL_CENTER: [number, number] = [-73.5674, 45.5019];
+
+function FlagQC() {
+  return (
+    <svg width="18" height="12" viewBox="0 0 20 14" className="rounded-[2px] shadow-sm">
+      <rect width="20" height="14" fill="#003DA5" />
+      <path d="M10 0v14M0 7h20" stroke="white" strokeWidth="2" />
+      <circle cx="5" cy="3.5" r="1.2" fill="white" />
+      <circle cx="15" cy="3.5" r="1.2" fill="white" />
+      <circle cx="5" cy="10.5" r="1.2" fill="white" />
+      <circle cx="15" cy="10.5" r="1.2" fill="white" />
+    </svg>
+  );
+}
+
+function FlagEN() {
+  return (
+    <svg width="18" height="12" viewBox="0 0 20 14" className="rounded-[2px] shadow-sm">
+      <rect width="20" height="14" fill="white" />
+      <path d="M10 0v14M0 7h20" stroke="#C8102E" strokeWidth="2.5" />
+    </svg>
+  );
+}
 
 function formatDistance(meters: number): string {
   if (meters < 1000) return `${Math.round(meters)} m`;
@@ -151,6 +173,7 @@ export function GameClient() {
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markerRef = useRef<maplibregl.Marker | null>(null);
 
+  const router = useRouter();
   const searchParams = useSearchParams();
   const lang = getLangFromSearchParams(searchParams);
   const t = translations[lang];
@@ -340,28 +363,97 @@ export function GameClient() {
   const signInRedirect = appendLangParam('/game', lang);
   const signInUrl = `/sign-in?redirect_url=${encodeURIComponent(signInRedirect)}`;
   const showMapHint = !guess && !currentPlayed;
+  const scoreLabel = result ? `${result.score} ${t.score}` : `-- ${t.score}`;
+  const distanceLabel = result ? t.distance.replace('{distance}', formatDistance(result.distanceMeters)) : '';
+  const showShare = Boolean(result && mode === 'daily');
+  const showResultMeta = Boolean(result);
+  const showStreakHint = Boolean(result);
+  const handleLangChange = useCallback(() => {
+    const nextLang = lang === 'fr' ? 'en' : 'fr';
+    const params = new URLSearchParams(searchParams?.toString());
+    if (nextLang === DEFAULT_LANG) {
+      params.delete('lang');
+    } else {
+      params.set('lang', nextLang);
+    }
+    const query = params.toString();
+    router.push(query ? `/game?${query}` : '/game');
+  }, [lang, router, searchParams]);
 
   return (
     <div className="min-h-screen bg-[#f6f5f2] text-neutral-900">
-      <header className="sticky top-0 z-30 border-b border-neutral-200/70 bg-[#f6f5f2]/90 backdrop-blur">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-start justify-between gap-4">
+      <header className="sticky top-0 z-30 border-b border-neutral-200/70 bg-[#f6f5f2]/95 backdrop-blur">
+        <div className="max-w-6xl mx-auto px-4 pt-4 pb-3 flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-4">
+            <a href="/" className="text-[11px] font-medium tracking-[0.18em] uppercase">MTL Archives</a>
+            <div className="flex items-center gap-2">
+              {showShare && (
+                <button
+                  onClick={shareScore}
+                  className="p-2 rounded-full border border-neutral-200 bg-white/80 text-neutral-600 hover:text-neutral-900 transition"
+                  aria-label={t.share}
+                >
+                  <Share2 className="h-4 w-4" />
+                </button>
+              )}
+              <button
+                onClick={handleLangChange}
+                className="p-1.5"
+                aria-label={lang === 'fr' ? 'Changer en anglais' : 'Switch to French'}
+              >
+                {lang === 'fr' ? <FlagQC /> : <FlagEN />}
+              </button>
+              <SignedIn>
+                <UserButton />
+              </SignedIn>
+              <SignedOut>
+                <a
+                  href={signInUrl}
+                  className="px-3 py-2 rounded-full border border-neutral-300 text-xs bg-white/80 hover:bg-white transition"
+                >
+                  {t.signIn}
+                </a>
+              </SignedOut>
+            </div>
+          </div>
+
           <div className="flex flex-col gap-2">
             <p className="text-[11px] uppercase tracking-[0.34em] text-neutral-400">{t.subtitle}</p>
-            <h1 className="text-2xl sm:text-3xl font-semibold">{t.title}</h1>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h1 className="text-xl sm:text-3xl font-semibold">{t.title}</h1>
+              <div className="flex items-center gap-2">
+                <div className="px-3 py-1 rounded-full border border-neutral-200 bg-white/80 text-[10px] uppercase tracking-[0.3em] text-neutral-500">
+                  {mode === 'daily' ? t.daily : t.practice}
+                </div>
+                <div className="px-3 py-1 rounded-full bg-neutral-900 text-white text-sm font-semibold">
+                  {scoreLabel}
+                </div>
+              </div>
+            </div>
             <p className="text-xs text-neutral-500">{t.ctaSubtitle}</p>
+            {showResultMeta && (
+              <p className="text-xs text-neutral-500">{distanceLabel}</p>
+            )}
           </div>
-          <div className="flex items-center gap-3">
-            <SignedIn>
-              <UserButton />
-            </SignedIn>
-            <SignedOut>
-              <a
-                href={signInUrl}
-                className="px-4 py-2 rounded-full border border-neutral-300 text-sm bg-white/70 hover:bg-white transition"
+
+          <div className="flex flex-wrap items-center gap-2">
+            {modeTabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  setMode(tab.id);
+                  setGuess(null);
+                }}
+                disabled={tab.disabled}
+                className={`px-4 py-2 rounded-full text-xs border transition ${
+                  mode === tab.id
+                    ? 'bg-neutral-900 text-white border-neutral-900'
+                    : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400'
+                } ${tab.disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
               >
-                {t.signIn}
-              </a>
-            </SignedOut>
+                {tab.label}
+              </button>
+            ))}
           </div>
         </div>
       </header>
@@ -369,28 +461,8 @@ export function GameClient() {
       <main className="max-w-6xl mx-auto px-4 pb-24 pt-6 lg:pt-10">
         <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
           <section className="space-y-4">
-            <div className="flex flex-wrap items-center gap-2">
-              {modeTabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => {
-                    setMode(tab.id);
-                    setGuess(null);
-                  }}
-                  disabled={tab.disabled}
-                  className={`px-4 py-2 rounded-full text-sm border transition ${
-                    mode === tab.id
-                      ? 'bg-neutral-900 text-white border-neutral-900'
-                      : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400'
-                  } ${tab.disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
             <div className="rounded-3xl border border-neutral-200 bg-white/90 shadow-[0_20px_50px_-40px_rgba(15,23,42,0.35)] overflow-hidden">
-              <div className="relative w-full aspect-[4/3] bg-neutral-100">
+              <div className="relative w-full aspect-[16/10] sm:aspect-[4/3] bg-neutral-100">
                 {currentPhoto?.imageUrl ? (
                   <Image
                     src={currentPhoto.imageUrl}
@@ -426,7 +498,7 @@ export function GameClient() {
           <section className="space-y-4">
             <div className="rounded-3xl border border-neutral-200 bg-white/90 shadow-[0_20px_50px_-40px_rgba(15,23,42,0.35)] overflow-hidden">
               <div className="relative game-map">
-                <div ref={mapContainerRef} className="h-[320px] sm:h-[420px] lg:h-[520px] w-full" />
+                <div ref={mapContainerRef} className="h-[260px] sm:h-[360px] lg:h-[520px] w-full" />
                 {showMapHint && (
                   <div className="absolute left-4 bottom-4 right-4 rounded-2xl bg-white/90 backdrop-blur px-4 py-3 text-xs text-neutral-600 shadow-lg">
                     <div className="font-medium text-neutral-800">{t.mapHint}</div>
@@ -446,7 +518,7 @@ export function GameClient() {
               </div>
             </div>
 
-            <div className="rounded-3xl border border-neutral-200 bg-white/90 p-4 space-y-3 shadow-[0_20px_50px_-40px_rgba(15,23,42,0.35)]">
+            <div className="rounded-3xl border border-neutral-200 bg-white/90 p-4 space-y-3 shadow-[0_20px_50px_-40px_rgba(15,23,42,0.35)] hidden lg:block">
               <h3 className="text-sm uppercase tracking-[0.2em] text-neutral-400">{t.result}</h3>
               {result ? (
                 <>
@@ -482,7 +554,14 @@ export function GameClient() {
               )}
             </div>
 
-            <div className="rounded-3xl border border-neutral-200 bg-white/90 p-4 shadow-[0_20px_50px_-40px_rgba(15,23,42,0.35)]">
+            {showStreakHint && (
+              <div className="lg:hidden rounded-2xl border border-neutral-200 bg-white/90 px-4 py-3 text-xs text-neutral-500">
+                <SignedOut>{t.saveStreak}</SignedOut>
+                <SignedIn>{t.streakSaved}</SignedIn>
+              </div>
+            )}
+
+            <div className="rounded-3xl border border-neutral-200 bg-white/90 p-4 shadow-[0_20px_50px_-40px_rgba(15,23,42,0.35)] hidden lg:block">
               <h3 className="text-sm uppercase tracking-[0.2em] text-neutral-400 mb-3">{t.leaderboard}</h3>
               {leaderboard.length === 0 ? (
                 <p className="text-sm text-neutral-500">{t.leaderboardEmpty}</p>
@@ -497,6 +576,26 @@ export function GameClient() {
                 </div>
               )}
             </div>
+
+            <details className="lg:hidden rounded-2xl border border-neutral-200 bg-white/90 px-4 py-3">
+              <summary className="text-xs uppercase tracking-[0.2em] text-neutral-400 cursor-pointer">
+                {t.leaderboard}
+              </summary>
+              <div className="mt-3">
+                {leaderboard.length === 0 ? (
+                  <p className="text-sm text-neutral-500">{t.leaderboardEmpty}</p>
+                ) : (
+                  <div className="space-y-2">
+                    {leaderboard.map((entry) => (
+                      <div key={`${entry.rank}-${entry.anonTag}`} className="flex items-center justify-between text-sm">
+                        <span className="text-neutral-500">#{entry.rank} · {entry.anonTag}</span>
+                        <span className="font-medium">{entry.score} pts</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </details>
           </section>
         </div>
       </main>
