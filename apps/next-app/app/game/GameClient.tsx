@@ -43,25 +43,11 @@ const MAP_STYLE = process.env.NEXT_PUBLIC_MAP_STYLE_URL || 'https://basemaps.car
 
 const MONTREAL_CENTER: [number, number] = [-73.5674, 45.5019];
 
-function FlagQC() {
+function LangToggle({ lang }: { lang: Lang }) {
   return (
-    <svg width="18" height="12" viewBox="0 0 20 14" className="rounded-[2px] shadow-sm">
-      <rect width="20" height="14" fill="#003DA5" />
-      <path d="M10 0v14M0 7h20" stroke="white" strokeWidth="2" />
-      <circle cx="5" cy="3.5" r="1.2" fill="white" />
-      <circle cx="15" cy="3.5" r="1.2" fill="white" />
-      <circle cx="5" cy="10.5" r="1.2" fill="white" />
-      <circle cx="15" cy="10.5" r="1.2" fill="white" />
-    </svg>
-  );
-}
-
-function FlagEN() {
-  return (
-    <svg width="18" height="12" viewBox="0 0 20 14" className="rounded-[2px] shadow-sm">
-      <rect width="20" height="14" fill="white" />
-      <path d="M10 0v14M0 7h20" stroke="#C8102E" strokeWidth="2.5" />
-    </svg>
+    <span className="inline-flex items-center justify-center min-w-[36px] px-2.5 py-1 rounded-full border border-neutral-200 bg-white/80 text-[10px] font-semibold tracking-[0.2em] text-neutral-500">
+      {lang === 'fr' ? 'FR' : 'EN'}
+    </span>
   );
 }
 
@@ -401,7 +387,7 @@ export function GameClient() {
                 className="p-1.5"
                 aria-label={lang === 'fr' ? 'Changer en anglais' : 'Switch to French'}
               >
-                {lang === 'fr' ? <FlagQC /> : <FlagEN />}
+                <LangToggle lang={lang} />
               </button>
               <SignedIn>
                 <UserButton />
@@ -462,7 +448,7 @@ export function GameClient() {
         <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
           <section className="space-y-4">
             <div className="rounded-3xl border border-neutral-200 bg-white/90 shadow-[0_20px_50px_-40px_rgba(15,23,42,0.35)] overflow-hidden">
-              <div className="relative w-full aspect-[16/10] sm:aspect-[4/3] bg-neutral-100">
+              <div className="relative w-full min-h-[220px] aspect-[16/10] sm:aspect-[4/3] bg-neutral-100">
                 {currentPhoto?.imageUrl ? (
                   <Image
                     src={currentPhoto.imageUrl}
