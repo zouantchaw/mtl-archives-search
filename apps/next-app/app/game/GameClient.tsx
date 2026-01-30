@@ -448,7 +448,7 @@ export function GameClient() {
         <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
           <section className="space-y-4">
             <div className="rounded-3xl border border-neutral-200 bg-white/90 shadow-[0_20px_50px_-40px_rgba(15,23,42,0.35)] overflow-hidden">
-              <div className="relative w-full min-h-[220px] aspect-[16/10] sm:aspect-[4/3] bg-neutral-100">
+              <div className="relative w-full h-56 sm:h-auto sm:aspect-[4/3] bg-neutral-100">
                 {currentPhoto?.imageUrl ? (
                   <Image
                     src={currentPhoto.imageUrl}
@@ -484,7 +484,7 @@ export function GameClient() {
           <section className="space-y-4">
             <div className="rounded-3xl border border-neutral-200 bg-white/90 shadow-[0_20px_50px_-40px_rgba(15,23,42,0.35)] overflow-hidden">
               <div className="relative game-map">
-                <div ref={mapContainerRef} className="h-[260px] sm:h-[360px] lg:h-[520px] w-full" />
+                <div ref={mapContainerRef} className="h-64 sm:h-80 lg:h-96 w-full" />
                 {showMapHint && (
                   <div className="absolute left-4 bottom-4 right-4 rounded-2xl bg-white/90 backdrop-blur px-4 py-3 text-xs text-neutral-600 shadow-lg">
                     <div className="font-medium text-neutral-800">{t.mapHint}</div>
