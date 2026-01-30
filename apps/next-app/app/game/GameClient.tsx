@@ -1,10 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { API_BASE } from '@/lib/runtime-config';
+import { SignedIn, SignedOut, UserButton, useAuth } from '@clerk/nextjs';
 import type { PhotoRecord } from '@/lib/types';
 import { Share2 } from 'lucide-react';
 
@@ -58,10 +60,65 @@ function getAnonId(): string {
   return id;
 }
 
+type Lang = 'fr' | 'en';
+
+const translations = {
+  fr: {
+    title: 'Devine où la photo a été prise',
+    subtitle: 'Montréal Machine à Remonter le Temps',
+    daily: 'Défi du jour',
+    practice: 'Essai',
+    fullPhoto: 'Voir la photo complète',
+    loading: 'Chargement...',
+    validate: 'Valider mon point',
+    alreadyPlayed: 'Déjà joué',
+    calculating: 'Calcul...',
+    tapHint: 'Clique sur la carte pour placer ton point.',
+    result: 'Résultat',
+    score: 'pts',
+    distance: 'À {distance} du lieu réel.',
+    share: 'Partager',
+    shareCopied: 'Lien copié',
+    shareFailed: 'Impossible de copier',
+    saveStreak: 'Connecte-toi pour sauvegarder ta série.',
+    streakSaved: 'Série sauvegardée sur ton compte.',
+    leaderboard: 'Classement du jour',
+    leaderboardEmpty: 'Aucun score pour l\'instant.',
+    signIn: 'Se connecter',
+  },
+  en: {
+    title: 'Guess where the photo was taken',
+    subtitle: 'Montreal Time Machine',
+    daily: 'Daily Challenge',
+    practice: 'Practice',
+    fullPhoto: 'View full photo',
+    loading: 'Loading...',
+    validate: 'Submit guess',
+    alreadyPlayed: 'Already played',
+    calculating: 'Scoring...',
+    tapHint: 'Tap the map to place your pin.',
+    result: 'Result',
+    score: 'pts',
+    distance: '{distance} from the real location.',
+    share: 'Share',
+    shareCopied: 'Link copied',
+    shareFailed: 'Could not copy',
+    saveStreak: 'Sign in to save your streak.',
+    streakSaved: 'Streak saved to your account.',
+    leaderboard: 'Today\'s leaderboard',
+    leaderboardEmpty: 'No scores yet.',
+    signIn: 'Sign in',
+  },
+} as const;
+
 export function GameClient() {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markerRef = useRef<maplibregl.Marker | null>(null);
+
+  const searchParams = useSearchParams();
+  const lang = (searchParams.get('lang') as Lang) || 'fr';
+  const t = translations[lang];
 
   const [anonId, setAnonId] = useState('');
   const [data, setData] = useState<GameDailyResponse | null>(null);
@@ -72,6 +129,7 @@ export function GameClient() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [shareMessage, setShareMessage] = useState('');
+  const { getToken } = useAuth();
 
   const currentPhoto = mode === 'daily' ? data?.daily.photo : data?.practice.photo;
   const currentPlayed = mode === 'daily' ? data?.daily.played : data?.practice.result !== null;
@@ -79,7 +137,10 @@ export function GameClient() {
   const loadDaily = useCallback(async (id: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/game/daily?anonId=${encodeURIComponent(id)}`);
+      const token = await getToken();
+      const res = await fetch(`${API_BASE}/api/game/daily?anonId=${encodeURIComponent(id)}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
       const json = await res.json();
       if (res.ok) {
         setData(json);
@@ -87,7 +148,7 @@ export function GameClient() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [getToken]);
 
   const loadLeaderboard = useCallback(async (date?: string) => {
     if (!date) return;
@@ -164,9 +225,12 @@ export function GameClient() {
     setSubmitting(true);
     setShareMessage('');
     try {
+      const token = await getToken();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers.Authorization = `Bearer ${token}`;
       const res = await fetch(`${API_BASE}/api/game/guess`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           mode,
           photoId: currentPhoto.metadataFilename,
@@ -202,26 +266,41 @@ export function GameClient() {
     }
     try {
       await navigator.clipboard.writeText(`${text} ${url}`);
-      setShareMessage('Lien copié');
+      setShareMessage(t.shareCopied);
       setTimeout(() => setShareMessage(''), 2000);
     } catch {
-      setShareMessage('Impossible de copier');
+      setShareMessage(t.shareFailed);
     }
   };
 
   const modeTabs = useMemo(() => {
     return [
-      { id: 'daily' as const, label: 'Défi du jour', disabled: false },
-      { id: 'practice' as const, label: 'Essai', disabled: !data?.practice.available },
+      { id: 'daily' as const, label: t.daily, disabled: false },
+      { id: 'practice' as const, label: t.practice, disabled: !data?.practice.available },
     ];
-  }, [data?.practice.available]);
+  }, [data?.practice.available, t]);
 
   return (
     <div className="min-h-screen bg-[#fafafa] text-neutral-900">
       <header className="border-b border-neutral-200 bg-white/90 backdrop-blur-sm">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col gap-2">
-          <p className="text-xs uppercase tracking-[0.3em] text-neutral-400">Montréal Machine à Remonter le Temps</p>
-          <h1 className="text-2xl sm:text-3xl font-semibold">Devine où la photo a été prise</h1>
+        <div className="max-w-6xl mx-auto px-4 py-4 flex items-start justify-between gap-4">
+          <div className="flex flex-col gap-2">
+            <p className="text-xs uppercase tracking-[0.3em] text-neutral-400">{t.subtitle}</p>
+            <h1 className="text-2xl sm:text-3xl font-semibold">{t.title}</h1>
+          </div>
+          <div className="flex items-center gap-3">
+            <SignedIn>
+              <UserButton />
+            </SignedIn>
+            <SignedOut>
+              <a
+                href={`/sign-in?redirect_url=/game${lang !== 'fr' ? `&lang=${lang}` : ''}`}
+                className="px-3 py-2 rounded-full border border-neutral-200 text-sm"
+              >
+                {t.signIn}
+              </a>
+            </SignedOut>
+          </div>
         </div>
       </header>
 
@@ -261,19 +340,19 @@ export function GameClient() {
               ) : null}
               {loading && (
                 <div className="absolute inset-0 flex items-center justify-center text-sm text-neutral-400">
-                  Chargement...
+                  {t.loading}
                 </div>
               )}
             </div>
             <div className="p-4 space-y-2">
-              <p className="text-sm text-neutral-500">{data?.date ? `Défi du ${data.date}` : 'Défi du jour'}</p>
+              <p className="text-sm text-neutral-500">{data?.date ? `${t.daily} · ${data.date}` : t.daily}</p>
               <h2 className="text-lg font-semibold">{currentPhoto?.name || 'Photo historique'}</h2>
               <p className="text-sm text-neutral-500">{currentPhoto?.dateValue || ''}</p>
               <a
                 href={currentPhoto ? `/photo/${encodeURIComponent(currentPhoto.metadataFilename)}` : '#'}
                 className="text-sm text-neutral-900 underline underline-offset-4"
               >
-                Voir la photo complète
+                {t.fullPhoto}
               </a>
             </div>
           </div>
@@ -288,18 +367,20 @@ export function GameClient() {
                 disabled={!guess || submitting || currentPlayed}
                 className="px-4 py-3 rounded-full bg-neutral-900 text-white text-sm disabled:opacity-40"
               >
-                {currentPlayed ? 'Déjà joué' : submitting ? 'Calcul...' : 'Valider mon point'}
+                {currentPlayed ? t.alreadyPlayed : submitting ? t.calculating : t.validate}
               </button>
-              {!guess && <p className="text-xs text-neutral-500">Clique sur la carte pour placer ton point.</p>}
+              {!guess && <p className="text-xs text-neutral-500">{t.tapHint}</p>}
             </div>
           </div>
 
           <div className="rounded-2xl border border-neutral-200 bg-white p-4 space-y-3">
-            <h3 className="text-sm uppercase tracking-[0.2em] text-neutral-400">Résultat</h3>
+            <h3 className="text-sm uppercase tracking-[0.2em] text-neutral-400">{t.result}</h3>
             {result ? (
               <>
-                <p className="text-3xl font-semibold">{result.score} pts</p>
-                <p className="text-sm text-neutral-600">À {formatDistance(result.distanceMeters)} du lieu réel.</p>
+                <p className="text-3xl font-semibold">{result.score} {t.score}</p>
+                <p className="text-sm text-neutral-600">
+                  {t.distance.replace('{distance}', formatDistance(result.distanceMeters))}
+                </p>
                 {mode === 'daily' && (
                   <div className="flex items-center gap-3">
                     <button
@@ -307,21 +388,31 @@ export function GameClient() {
                       className="flex items-center gap-2 px-3 py-2 rounded-full border border-neutral-200 text-sm"
                     >
                       <Share2 className="h-4 w-4" />
-                      Partager
+                      {t.share}
                     </button>
                     {shareMessage && <span className="text-xs text-neutral-500">{shareMessage}</span>}
                   </div>
                 )}
+                <SignedOut>
+                  <div className="text-xs text-neutral-500">
+                    {t.saveStreak}
+                  </div>
+                </SignedOut>
+                <SignedIn>
+                  <div className="text-xs text-emerald-600">
+                    {t.streakSaved}
+                  </div>
+                </SignedIn>
               </>
             ) : (
-              <p className="text-sm text-neutral-500">Place ton point pour obtenir un score.</p>
+              <p className="text-sm text-neutral-500">{t.tapHint}</p>
             )}
           </div>
 
           <div className="rounded-2xl border border-neutral-200 bg-white p-4">
-            <h3 className="text-sm uppercase tracking-[0.2em] text-neutral-400 mb-3">Classement du jour</h3>
+            <h3 className="text-sm uppercase tracking-[0.2em] text-neutral-400 mb-3">{t.leaderboard}</h3>
             {leaderboard.length === 0 ? (
-              <p className="text-sm text-neutral-500">Aucun score pour l'instant.</p>
+              <p className="text-sm text-neutral-500">{t.leaderboardEmpty}</p>
             ) : (
               <div className="space-y-2">
                 {leaderboard.map((entry) => (

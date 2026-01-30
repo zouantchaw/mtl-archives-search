@@ -1,4 +1,5 @@
 import type { VectorizeIndex, Ai } from '@cloudflare/workers-types';
+import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { type PhotoRecord, validateMetadataQuality } from '@mtl-archives/core';
 
 type Env = {
@@ -15,12 +16,13 @@ type Env = {
   CLOUDFLARE_R2_BUCKET?: string;
   CLOUDFLARE_R2_PUBLIC_DOMAIN?: string;
   IMAGE_TRANSFORM_ZONE?: string;
+  CLERK_JWKS_URL?: string;
 };
 
 const CORS_HEADERS: HeadersInit = {
   'access-control-allow-origin': '*',
   'access-control-allow-methods': 'GET, POST, OPTIONS',
-  'access-control-allow-headers': 'Content-Type',
+  'access-control-allow-headers': 'Content-Type, Authorization',
 };
 
 const JSON_HEADERS: HeadersInit = {
@@ -62,6 +64,34 @@ function clampCacheTtl(env: Env, ttl: number): number {
   if (!usesSignedR2Urls(env)) return ttl;
   const maxTtl = Math.max(0, SIGNED_URL_TTL_SECONDS - SIGNED_URL_TTL_BUFFER_SECONDS);
   return Math.min(ttl, maxTtl);
+}
+
+let clerkJwks: ReturnType<typeof createRemoteJWKSet> | null = null;
+let clerkJwksUrl: string | null = null;
+
+function getClerkJwks(env: Env): ReturnType<typeof createRemoteJWKSet> | null {
+  if (!env.CLERK_JWKS_URL) return null;
+  if (clerkJwks && clerkJwksUrl === env.CLERK_JWKS_URL) return clerkJwks;
+  clerkJwksUrl = env.CLERK_JWKS_URL;
+  clerkJwks = createRemoteJWKSet(new URL(env.CLERK_JWKS_URL));
+  return clerkJwks;
+}
+
+async function getClerkUserId(request: Request, env: Env): Promise<string | null> {
+  const authHeader = request.headers.get('authorization') || request.headers.get('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+  const jwks = getClerkJwks(env);
+  if (!jwks) return null;
+
+  const token = authHeader.slice('Bearer '.length).trim();
+  if (!token) return null;
+
+  try {
+    const { payload } = await jwtVerify(token, jwks);
+    return typeof payload.sub === 'string' ? payload.sub : null;
+  } catch {
+    return null;
+  }
 }
 
 function buildCacheKey(url: URL): Request {
@@ -175,7 +205,7 @@ export default {
         if (request.method !== 'GET') {
           return methodNotAllowed();
         }
-        return handleGameDaily(url, env);
+        return handleGameDaily(request, env);
       }
 
       if (url.pathname === '/api/game/guess') {
@@ -1188,9 +1218,11 @@ async function getDailyChallenge(env: Env, dateKey: string): Promise<{ photoId: 
   return { photoId, latitude, longitude };
 }
 
-async function handleGameDaily(url: URL, env: Env): Promise<Response> {
+async function handleGameDaily(request: Request, env: Env): Promise<Response> {
+  const url = new URL(request.url);
   const dateKey = getTodayKey();
   const anonId = url.searchParams.get('anonId');
+  const userId = await getClerkUserId(request, env);
 
   const dailyChallenge = await getDailyChallenge(env, dateKey);
   const { results: dailyRows = [] } = await env.DB.prepare(
@@ -1208,10 +1240,14 @@ async function handleGameDaily(url: URL, env: Env): Promise<Response> {
   let practiceAvailable = true;
   let practiceResult: { score: number; distanceMeters: number } | null = null;
 
-  if (anonId) {
-    const existingDaily = await env.DB.prepare(
-      'SELECT score, distance_meters FROM daily_guess WHERE date_key = ? AND anon_id = ? LIMIT 1'
-    ).bind(dateKey, anonId).first<{ score: number; distance_meters: number }>();
+  if (anonId || userId) {
+    const existingDaily = userId
+      ? await env.DB.prepare(
+        'SELECT score, distance_meters FROM daily_guess WHERE date_key = ? AND user_id = ? LIMIT 1'
+      ).bind(dateKey, userId).first<{ score: number; distance_meters: number }>()
+      : await env.DB.prepare(
+        'SELECT score, distance_meters FROM daily_guess WHERE date_key = ? AND anon_id = ? LIMIT 1'
+      ).bind(dateKey, anonId).first<{ score: number; distance_meters: number }>();
     if (existingDaily) {
       dailyPlayed = true;
       dailyResult = {
@@ -1220,9 +1256,13 @@ async function handleGameDaily(url: URL, env: Env): Promise<Response> {
       };
     }
 
-    const existingPractice = await env.DB.prepare(
-      'SELECT score, distance_meters FROM practice_guess WHERE date_key = ? AND anon_id = ? LIMIT 1'
-    ).bind(dateKey, anonId).first<{ score: number; distance_meters: number }>();
+    const existingPractice = userId
+      ? await env.DB.prepare(
+        'SELECT score, distance_meters FROM practice_guess WHERE date_key = ? AND user_id = ? LIMIT 1'
+      ).bind(dateKey, userId).first<{ score: number; distance_meters: number }>()
+      : await env.DB.prepare(
+        'SELECT score, distance_meters FROM practice_guess WHERE date_key = ? AND anon_id = ? LIMIT 1'
+      ).bind(dateKey, anonId).first<{ score: number; distance_meters: number }>();
     if (existingPractice) {
       practiceAvailable = false;
       practiceResult = {
@@ -1272,6 +1312,7 @@ async function handleGameGuess(request: Request, env: Env): Promise<Response> {
   }
 
   const { mode, photoId, lat, lng, anonId } = payload;
+  const userId = await getClerkUserId(request, env);
   if (!mode || !photoId || !anonId || !Number.isFinite(lat) || !Number.isFinite(lng)) {
     return jsonResponse({ error: 'Missing required fields' }, 400);
   }
@@ -1279,9 +1320,13 @@ async function handleGameGuess(request: Request, env: Env): Promise<Response> {
   const dateKey = getTodayKey();
 
   if (mode === 'daily') {
-    const existing = await env.DB.prepare(
-      'SELECT score, distance_meters FROM daily_guess WHERE date_key = ? AND anon_id = ? LIMIT 1'
-    ).bind(dateKey, anonId).first<{ score: number; distance_meters: number }>();
+    const existing = userId
+      ? await env.DB.prepare(
+        'SELECT score, distance_meters FROM daily_guess WHERE date_key = ? AND user_id = ? LIMIT 1'
+      ).bind(dateKey, userId).first<{ score: number; distance_meters: number }>()
+      : await env.DB.prepare(
+        'SELECT score, distance_meters FROM daily_guess WHERE date_key = ? AND anon_id = ? LIMIT 1'
+      ).bind(dateKey, anonId).first<{ score: number; distance_meters: number }>();
     if (existing) {
       return jsonResponse({
         mode,
@@ -1300,8 +1345,8 @@ async function handleGameGuess(request: Request, env: Env): Promise<Response> {
     const score = scoreDistance(distance);
 
     await env.DB.prepare(
-      'INSERT INTO daily_guess (date_key, photo_id, anon_id, guessed_lat, guessed_lng, distance_meters, score) VALUES (?, ?, ?, ?, ?, ?, ?)'
-    ).bind(dateKey, photoId, anonId, lat, lng, distance, score).run();
+      'INSERT INTO daily_guess (date_key, photo_id, anon_id, user_id, guessed_lat, guessed_lng, distance_meters, score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+    ).bind(dateKey, photoId, anonId, userId ?? null, lat, lng, distance, score).run();
 
     return jsonResponse({
       mode,
@@ -1311,9 +1356,13 @@ async function handleGameGuess(request: Request, env: Env): Promise<Response> {
     });
   }
 
-  const existingPractice = await env.DB.prepare(
-    'SELECT score, distance_meters FROM practice_guess WHERE date_key = ? AND anon_id = ? LIMIT 1'
-  ).bind(dateKey, anonId).first<{ score: number; distance_meters: number }>();
+  const existingPractice = userId
+    ? await env.DB.prepare(
+      'SELECT score, distance_meters FROM practice_guess WHERE date_key = ? AND user_id = ? LIMIT 1'
+    ).bind(dateKey, userId).first<{ score: number; distance_meters: number }>()
+    : await env.DB.prepare(
+      'SELECT score, distance_meters FROM practice_guess WHERE date_key = ? AND anon_id = ? LIMIT 1'
+    ).bind(dateKey, anonId).first<{ score: number; distance_meters: number }>();
   if (existingPractice) {
     return jsonResponse({
       mode,
@@ -1337,8 +1386,8 @@ async function handleGameGuess(request: Request, env: Env): Promise<Response> {
   const score = scoreDistance(distance);
 
   await env.DB.prepare(
-    'INSERT INTO practice_guess (date_key, photo_id, anon_id, guessed_lat, guessed_lng, distance_meters, score) VALUES (?, ?, ?, ?, ?, ?, ?)'
-  ).bind(dateKey, photoId, anonId, lat, lng, distance, score).run();
+    'INSERT INTO practice_guess (date_key, photo_id, anon_id, user_id, guessed_lat, guessed_lng, distance_meters, score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+  ).bind(dateKey, photoId, anonId, userId ?? null, lat, lng, distance, score).run();
 
   return jsonResponse({
     mode,

@@ -96,6 +96,8 @@ Goal: Launch a daily challenge to turn engagement into habit + sharing, then exp
 - [x] **Worker API** — `GET /api/game/daily`, `POST /api/game/guess`, `GET /api/game/leaderboard`.
 - [x] **Shareable score card** — Result screen with share button + deep link.
 - [x] **Practice round** — One extra play/day (no leaderboard, no streak).
+- [x] **Localize game UI (FR/EN)** — honor `lang` query param for all labels.
+- [x] **Clerk auth (optional)** — sign-in/up routes + save streak when signed in.
 
 ---
 

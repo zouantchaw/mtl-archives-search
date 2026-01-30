@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Figtree } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import { CartProvider } from "@/lib/cart-context";
 import { CartDrawer } from "@/components/CartDrawer";
@@ -153,42 +154,44 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${figtree.variable}`}>
-      <head>
-        {/* Preconnect to API for faster initial fetch */}
-        {API_ORIGIN ? (
-          <>
-            <link rel="preconnect" href={API_ORIGIN} />
-            <link rel="dns-prefetch" href={API_ORIGIN} />
-          </>
-        ) : null}
-        {/* Preconnect to R2 for faster image loads */}
-        {R2_ORIGIN ? (
-          <>
-            <link rel="preconnect" href={R2_ORIGIN} />
-            <link rel="dns-prefetch" href={R2_ORIGIN} />
-          </>
-        ) : null}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify(organizationJsonLd),
-          }}
-        />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify(collectionJsonLd),
-          }}
-        />
-      </head>
-      <body className="font-sans antialiased bg-neutral-50 text-neutral-900 min-h-screen">
-        <CartProvider>
-          {children}
-          <CartDrawer />
-        </CartProvider>
-        <Analytics />
-      </body>
-    </html>
+    <ClerkProvider>
+      <html lang="en" className={`${figtree.variable}`}>
+        <head>
+          {/* Preconnect to API for faster initial fetch */}
+          {API_ORIGIN ? (
+            <>
+              <link rel="preconnect" href={API_ORIGIN} />
+              <link rel="dns-prefetch" href={API_ORIGIN} />
+            </>
+          ) : null}
+          {/* Preconnect to R2 for faster image loads */}
+          {R2_ORIGIN ? (
+            <>
+              <link rel="preconnect" href={R2_ORIGIN} />
+              <link rel="dns-prefetch" href={R2_ORIGIN} />
+            </>
+          ) : null}
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify(organizationJsonLd),
+            }}
+          />
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify(collectionJsonLd),
+            }}
+          />
+        </head>
+        <body className="font-sans antialiased bg-neutral-50 text-neutral-900 min-h-screen">
+          <CartProvider>
+            {children}
+            <CartDrawer />
+          </CartProvider>
+          <Analytics />
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }
