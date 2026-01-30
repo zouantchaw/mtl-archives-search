@@ -171,6 +171,27 @@ export default {
         return withCache(buildCacheKey(url), ctx, clampCacheTtl(env, CACHE_TTL.SITEMAP), () => handleSitemap(env));
       }
 
+      if (url.pathname === '/api/game/daily') {
+        if (request.method !== 'GET') {
+          return methodNotAllowed();
+        }
+        return handleGameDaily(url, env);
+      }
+
+      if (url.pathname === '/api/game/guess') {
+        if (request.method !== 'POST') {
+          return methodNotAllowed();
+        }
+        return handleGameGuess(request, env);
+      }
+
+      if (url.pathname === '/api/game/leaderboard') {
+        if (request.method !== 'GET') {
+          return methodNotAllowed();
+        }
+        return handleGameLeaderboard(url, env);
+      }
+
       if (url.pathname === '/' || url.pathname === '/health') {
         return jsonResponse({ status: 'ok' });
       }
@@ -1096,5 +1117,263 @@ async function handleSitemap(env: Env): Promise<Response> {
   return jsonResponse({
     items,
     count: items.length,
+  });
+}
+
+function getTodayKey(): string {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Toronto' });
+}
+
+function toRadians(value: number): number {
+  return (value * Math.PI) / 180;
+}
+
+function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const radius = 6371000;
+  const dLat = toRadians(lat2 - lat1);
+  const dLng = toRadians(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return radius * c;
+}
+
+function scoreDistance(meters: number): number {
+  const score = Math.round(1000 * Math.exp(-meters / 2000));
+  return Math.max(0, Math.min(1000, score));
+}
+
+async function getRandomGeotaggedPhoto(env: Env, excludeIds: string[] = []): Promise<Record<string, unknown> | null> {
+  let sql = `SELECT ${SELECT_FIELDS} FROM manifest WHERE latitude IS NOT NULL AND longitude IS NOT NULL`;
+  const params: unknown[] = [];
+  if (excludeIds.length) {
+    const placeholders = excludeIds.map(() => '?').join(',');
+    sql += ` AND metadata_filename NOT IN (${placeholders})`;
+    params.push(...excludeIds);
+  }
+  sql += ' ORDER BY RANDOM() LIMIT 1';
+
+  const { results = [] } = await env.DB.prepare(sql).bind(...params).all();
+  return results[0] ?? null;
+}
+
+async function getDailyChallenge(env: Env, dateKey: string): Promise<{ photoId: string; latitude: number; longitude: number }> {
+  const existing = await env.DB.prepare(
+    'SELECT photo_id, latitude, longitude FROM daily_challenge WHERE date_key = ?'
+  ).bind(dateKey).first<{ photo_id: string; latitude: number; longitude: number }>();
+
+  if (existing) {
+    return {
+      photoId: existing.photo_id,
+      latitude: Number(existing.latitude),
+      longitude: Number(existing.longitude),
+    };
+  }
+
+  const row = await getRandomGeotaggedPhoto(env);
+  if (!row) {
+    throw new Error('No geotagged photos available');
+  }
+
+  const photoId = String(row.metadata_filename);
+  const latitude = Number(row.latitude);
+  const longitude = Number(row.longitude);
+
+  await env.DB.prepare(
+    'INSERT INTO daily_challenge (date_key, photo_id, latitude, longitude) VALUES (?, ?, ?, ?)'
+  ).bind(dateKey, photoId, latitude, longitude).run();
+
+  return { photoId, latitude, longitude };
+}
+
+async function handleGameDaily(url: URL, env: Env): Promise<Response> {
+  const dateKey = getTodayKey();
+  const anonId = url.searchParams.get('anonId');
+
+  const dailyChallenge = await getDailyChallenge(env, dateKey);
+  const { results: dailyRows = [] } = await env.DB.prepare(
+    `SELECT ${SELECT_FIELDS} FROM manifest WHERE metadata_filename = ?`
+  ).bind(dailyChallenge.photoId).all();
+  const dailyRow = dailyRows[0];
+  if (!dailyRow) {
+    return jsonResponse({ error: 'Daily challenge photo not found' }, 500);
+  }
+
+  const dailyPhoto = await buildPhotoRecord(dailyRow, env);
+
+  let dailyPlayed = false;
+  let dailyResult: { score: number; distanceMeters: number } | null = null;
+  let practiceAvailable = true;
+  let practiceResult: { score: number; distanceMeters: number } | null = null;
+
+  if (anonId) {
+    const existingDaily = await env.DB.prepare(
+      'SELECT score, distance_meters FROM daily_guess WHERE date_key = ? AND anon_id = ? LIMIT 1'
+    ).bind(dateKey, anonId).first<{ score: number; distance_meters: number }>();
+    if (existingDaily) {
+      dailyPlayed = true;
+      dailyResult = {
+        score: Number(existingDaily.score),
+        distanceMeters: Number(existingDaily.distance_meters),
+      };
+    }
+
+    const existingPractice = await env.DB.prepare(
+      'SELECT score, distance_meters FROM practice_guess WHERE date_key = ? AND anon_id = ? LIMIT 1'
+    ).bind(dateKey, anonId).first<{ score: number; distance_meters: number }>();
+    if (existingPractice) {
+      practiceAvailable = false;
+      practiceResult = {
+        score: Number(existingPractice.score),
+        distanceMeters: Number(existingPractice.distance_meters),
+      };
+    }
+  }
+
+  let practicePhoto: PhotoRecord | null = null;
+  if (practiceAvailable) {
+    const practiceRow = await getRandomGeotaggedPhoto(env, [dailyChallenge.photoId]);
+    if (practiceRow) {
+      practicePhoto = await buildPhotoRecord(practiceRow, env);
+    }
+  }
+
+  return jsonResponse({
+    date: dateKey,
+    daily: {
+      photo: dailyPhoto,
+      played: dailyPlayed,
+      result: dailyResult,
+    },
+    practice: {
+      available: practiceAvailable && Boolean(practicePhoto),
+      photo: practicePhoto,
+      result: practiceResult,
+    },
+  });
+}
+
+type GameGuessPayload = {
+  mode: 'daily' | 'practice';
+  photoId: string;
+  lat: number;
+  lng: number;
+  anonId: string;
+};
+
+async function handleGameGuess(request: Request, env: Env): Promise<Response> {
+  let payload: GameGuessPayload;
+  try {
+    payload = await request.json();
+  } catch {
+    return jsonResponse({ error: 'Invalid JSON body' }, 400);
+  }
+
+  const { mode, photoId, lat, lng, anonId } = payload;
+  if (!mode || !photoId || !anonId || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return jsonResponse({ error: 'Missing required fields' }, 400);
+  }
+
+  const dateKey = getTodayKey();
+
+  if (mode === 'daily') {
+    const existing = await env.DB.prepare(
+      'SELECT score, distance_meters FROM daily_guess WHERE date_key = ? AND anon_id = ? LIMIT 1'
+    ).bind(dateKey, anonId).first<{ score: number; distance_meters: number }>();
+    if (existing) {
+      return jsonResponse({
+        mode,
+        played: true,
+        score: Number(existing.score),
+        distanceMeters: Number(existing.distance_meters),
+      });
+    }
+
+    const challenge = await getDailyChallenge(env, dateKey);
+    if (challenge.photoId !== photoId) {
+      return jsonResponse({ error: 'Invalid daily challenge photo' }, 400);
+    }
+
+    const distance = distanceMeters(lat, lng, challenge.latitude, challenge.longitude);
+    const score = scoreDistance(distance);
+
+    await env.DB.prepare(
+      'INSERT INTO daily_guess (date_key, photo_id, anon_id, guessed_lat, guessed_lng, distance_meters, score) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    ).bind(dateKey, photoId, anonId, lat, lng, distance, score).run();
+
+    return jsonResponse({
+      mode,
+      played: false,
+      score,
+      distanceMeters: distance,
+    });
+  }
+
+  const existingPractice = await env.DB.prepare(
+    'SELECT score, distance_meters FROM practice_guess WHERE date_key = ? AND anon_id = ? LIMIT 1'
+  ).bind(dateKey, anonId).first<{ score: number; distance_meters: number }>();
+  if (existingPractice) {
+    return jsonResponse({
+      mode,
+      played: true,
+      score: Number(existingPractice.score),
+      distanceMeters: Number(existingPractice.distance_meters),
+    });
+  }
+
+  const { results = [] } = await env.DB.prepare(
+    `SELECT latitude, longitude FROM manifest WHERE metadata_filename = ? AND latitude IS NOT NULL AND longitude IS NOT NULL`
+  ).bind(photoId).all();
+  const row = results[0];
+  if (!row) {
+    return jsonResponse({ error: 'Photo not eligible for practice' }, 400);
+  }
+
+  const targetLat = Number(row.latitude);
+  const targetLng = Number(row.longitude);
+  const distance = distanceMeters(lat, lng, targetLat, targetLng);
+  const score = scoreDistance(distance);
+
+  await env.DB.prepare(
+    'INSERT INTO practice_guess (date_key, photo_id, anon_id, guessed_lat, guessed_lng, distance_meters, score) VALUES (?, ?, ?, ?, ?, ?, ?)'
+  ).bind(dateKey, photoId, anonId, lat, lng, distance, score).run();
+
+  return jsonResponse({
+    mode,
+    played: false,
+    score,
+    distanceMeters: distance,
+  });
+}
+
+async function handleGameLeaderboard(url: URL, env: Env): Promise<Response> {
+  const dateKey = url.searchParams.get('date') || getTodayKey();
+  const limit = clampInt(url.searchParams.get('limit'), 10, 1, 50);
+
+  const { results = [] } = await env.DB.prepare(
+    `SELECT anon_id, score, distance_meters
+     FROM daily_guess
+     WHERE date_key = ?
+     ORDER BY score DESC, distance_meters ASC, created_at ASC
+     LIMIT ?`
+  ).bind(dateKey, limit).all();
+
+  const leaderboard = results.map((row, index) => {
+    const anonId = String(row.anon_id || '');
+    const anonTag = anonId ? anonId.slice(-4).toUpperCase() : '????';
+    return {
+      rank: index + 1,
+      anonTag,
+      score: Number(row.score),
+      distanceMeters: Number(row.distance_meters),
+    };
+  });
+
+  return jsonResponse({
+    date: dateKey,
+    leaderboard,
+    count: leaderboard.length,
   });
 }

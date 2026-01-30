@@ -90,12 +90,12 @@ Gallery shuffle got 179 clicks from one user (9+ min session). It's the stickies
 
 Goal: Launch a daily challenge to turn engagement into habit + sharing, then expand.
 
-- [ ] **Game route `/game`** — Daily challenge + single practice round (unscored).
-- [ ] **Map UI (MapLibre)** — Pin drop on Montreal map, score by distance.
-- [ ] **D1 schema** — `daily_challenge`, `daily_guess` (anon), optional `practice_guess`.
-- [ ] **Worker API** — `GET /api/game/daily`, `POST /api/game/guess`, `GET /api/game/leaderboard`.
-- [ ] **Shareable score card** — Result screen with share button + deep link.
-- [ ] **Practice round** — One extra play/day (no leaderboard, no streak).
+- [x] **Game route `/game`** — Daily challenge + single practice round (unscored).
+- [x] **Map UI (MapLibre)** — Pin drop on Montreal map, score by distance.
+- [x] **D1 schema** — `daily_challenge`, `daily_guess` (anon), optional `practice_guess`.
+- [x] **Worker API** — `GET /api/game/daily`, `POST /api/game/guess`, `GET /api/game/leaderboard`.
+- [x] **Shareable score card** — Result screen with share button + deep link.
+- [x] **Practice round** — One extra play/day (no leaderboard, no streak).
 
 ---
 
