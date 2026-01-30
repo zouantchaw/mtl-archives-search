@@ -8,13 +8,12 @@ import type { PhotoRecord } from '@/lib/types';
 import { events } from '@/lib/analytics';
 import { useCart } from '@/lib/cart-context';
 import { WallPreview, PRINT_SIZES, PRODUCT_TYPES, type PrintSize, type ProductType } from '@/components/WallPreview';
+import { DEFAULT_LANG, getLangFromSearchParams, type Lang } from '@/lib/i18n';
 
 const cleanText = (text: string | null | undefined): string => {
   if (!text) return '';
   return text.replace(/\\n/g, ' ').replace(/\s+/g, ' ').trim();
 };
-
-type Lang = 'fr' | 'en';
 
 const translations = {
   fr: {
@@ -67,7 +66,7 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
   const [showCopied, setShowCopied] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
 
-  const lang = (searchParams.get('lang') as Lang) || 'fr';
+  const lang = getLangFromSearchParams(searchParams);
   const t = translations[lang];
 
   const totalPrice = selectedSize.price + selectedProduct.price;
@@ -102,7 +101,7 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
     const backParams = new URLSearchParams();
     if (q) backParams.set('q', q);
     if (searchMode) backParams.set('mode', searchMode);
-    if (lang !== 'fr') backParams.set('lang', lang);
+    if (lang !== DEFAULT_LANG) backParams.set('lang', lang);
     router.push(backParams.toString() ? `/?${backParams}` : '/');
   };
 

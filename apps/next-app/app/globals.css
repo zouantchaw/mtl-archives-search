@@ -188,3 +188,21 @@
 .animate-fade-in {
   animation: fadeIn 0.3s ease-out forwards;
 }
+
+/* Game map polish */
+.game-map .maplibregl-ctrl-top-right {
+  top: 12px;
+  right: 12px;
+}
+
+.game-map .maplibregl-ctrl-group {
+  border-radius: 999px;
+  overflow: hidden;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.15);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.game-map .maplibregl-ctrl button {
+  width: 34px;
+  height: 34px;
+}

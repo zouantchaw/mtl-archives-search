@@ -98,6 +98,9 @@ Goal: Launch a daily challenge to turn engagement into habit + sharing, then exp
 - [x] **Practice round** — One extra play/day (no leaderboard, no streak).
 - [x] **Localize game UI (FR/EN)** — honor `lang` query param for all labels.
 - [x] **Clerk auth (optional)** — sign-in/up routes + save streak when signed in.
+- [x] **Clerk identity first** — signed-in guesses stored by `user_id`, anon only as fallback.
+- [x] **Mobile-first game UX pass** — sticky CTA, cards, and refined map styling for touch.
+- [x] **Shared i18n helper** — centralize `lang` parsing + links across app + game.
 
 ---
 

@@ -1300,7 +1300,7 @@ type GameGuessPayload = {
   photoId: string;
   lat: number;
   lng: number;
-  anonId: string;
+  anonId?: string | null;
 };
 
 async function handleGameGuess(request: Request, env: Env): Promise<Response> {
@@ -1313,8 +1313,11 @@ async function handleGameGuess(request: Request, env: Env): Promise<Response> {
 
   const { mode, photoId, lat, lng, anonId } = payload;
   const userId = await getClerkUserId(request, env);
-  if (!mode || !photoId || !anonId || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+  if (!mode || !photoId || !Number.isFinite(lat) || !Number.isFinite(lng)) {
     return jsonResponse({ error: 'Missing required fields' }, 400);
+  }
+  if (!userId && !anonId) {
+    return jsonResponse({ error: 'Missing anonId for anonymous guess' }, 400);
   }
 
   const dateKey = getTodayKey();
@@ -1346,7 +1349,7 @@ async function handleGameGuess(request: Request, env: Env): Promise<Response> {
 
     await env.DB.prepare(
       'INSERT INTO daily_guess (date_key, photo_id, anon_id, user_id, guessed_lat, guessed_lng, distance_meters, score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-    ).bind(dateKey, photoId, anonId, userId ?? null, lat, lng, distance, score).run();
+    ).bind(dateKey, photoId, anonId ?? null, userId ?? null, lat, lng, distance, score).run();
 
     return jsonResponse({
       mode,
@@ -1387,7 +1390,7 @@ async function handleGameGuess(request: Request, env: Env): Promise<Response> {
 
   await env.DB.prepare(
     'INSERT INTO practice_guess (date_key, photo_id, anon_id, user_id, guessed_lat, guessed_lng, distance_meters, score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-  ).bind(dateKey, photoId, anonId, userId ?? null, lat, lng, distance, score).run();
+  ).bind(dateKey, photoId, anonId ?? null, userId ?? null, lat, lng, distance, score).run();
 
   return jsonResponse({
     mode,
@@ -1402,7 +1405,7 @@ async function handleGameLeaderboard(url: URL, env: Env): Promise<Response> {
   const limit = clampInt(url.searchParams.get('limit'), 10, 1, 50);
 
   const { results = [] } = await env.DB.prepare(
-    `SELECT anon_id, score, distance_meters
+    `SELECT anon_id, user_id, score, distance_meters
      FROM daily_guess
      WHERE date_key = ?
      ORDER BY score DESC, distance_meters ASC, created_at ASC
@@ -1410,8 +1413,8 @@ async function handleGameLeaderboard(url: URL, env: Env): Promise<Response> {
   ).bind(dateKey, limit).all();
 
   const leaderboard = results.map((row, index) => {
-    const anonId = String(row.anon_id || '');
-    const anonTag = anonId ? anonId.slice(-4).toUpperCase() : '????';
+    const tagSource = String(row.anon_id || row.user_id || '');
+    const anonTag = tagSource ? tagSource.slice(-4).toUpperCase() : '????';
     return {
       rank: index + 1,
       anonTag,

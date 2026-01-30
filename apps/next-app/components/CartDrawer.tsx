@@ -6,8 +6,7 @@ import { X, Minus, Plus, ShoppingBag, ArrowLeft, Check, Loader2 } from 'lucide-r
 import Image from 'next/image';
 import { useCart } from '@/lib/cart-context';
 import { events } from '@/lib/analytics';
-
-type Lang = 'fr' | 'en';
+import { getLangFromSearchParams } from '@/lib/i18n';
 
 const translations = {
   fr: {
@@ -101,7 +100,7 @@ export function CartDrawer() {
 
 function CartDrawerInner() {
   const searchParams = useSearchParams();
-  const lang = (searchParams.get('lang') as Lang) || 'fr';
+  const lang = getLangFromSearchParams(searchParams);
   const t = translations[lang];
 
   const { items, itemCount, total, isOpen, closeCart, removeItem, updateQuantity, clearItems, clearCart } = useCart();

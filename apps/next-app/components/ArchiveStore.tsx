@@ -7,6 +7,7 @@ import type { PhotoRecord, SearchResponse, SearchMode } from '@/lib/types';
 import { events } from '@/lib/analytics';
 import { useCart } from '@/lib/cart-context';
 import { PhotoTile } from './PhotoTile';
+import { DEFAULT_LANG, getLangFromSearchParams, type Lang } from '@/lib/i18n';
 
 const API_BASE = '';
 
@@ -78,8 +79,6 @@ function useTypewriter(
 // ============================================================
 // Translations
 // ============================================================
-type Lang = 'fr' | 'en';
-
 const translations = {
   fr: {
     featured: 'À découvrir',
@@ -450,7 +449,7 @@ function ArchiveStoreInner() {
   // State from URL
   const initialQuery = searchParams.get('q') || '';
   const initialMode = (searchParams.get('mode') as SearchMode) || 'smart';
-  const initialLang = (searchParams.get('lang') as Lang) || 'fr';
+  const initialLang = getLangFromSearchParams(searchParams);
 
   const [lang, setLang] = useState<Lang>(initialLang);
   const [searchQuery, setSearchQuery] = useState(initialQuery);
@@ -503,7 +502,7 @@ function ArchiveStoreInner() {
     const params = new URLSearchParams();
     if (q) params.set('q', q);
     if (mode !== 'smart') params.set('mode', mode);
-    if (currentLang !== 'fr') params.set('lang', currentLang);
+    if (currentLang !== DEFAULT_LANG) params.set('lang', currentLang);
     router.replace(params.toString() ? `/?${params}` : '/', { scroll: false });
   }, [router]);
 
@@ -712,7 +711,7 @@ function ArchiveStoreInner() {
     const params = new URLSearchParams();
     if (searchQuery) params.set('q', searchQuery);
     if (searchMode !== 'smart') params.set('mode', searchMode);
-    if (lang !== 'fr') params.set('lang', lang);
+    if (lang !== DEFAULT_LANG) params.set('lang', lang);
     router.push(`/photo/${encodeURIComponent(photo.metadataFilename)}${params.toString() ? `?${params}` : ''}`);
   }, [router, searchQuery, searchMode, lang, hasSearched, trackFirstInteraction, trackSessionAction]);
 

@@ -3,8 +3,7 @@
 import { useState, useRef, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import { ROOM_BACKGROUNDS, PRINT_SIZES, PRODUCT_TYPES, type PrintSize, type ProductType, type RoomBackground } from '@/lib/room-backgrounds';
-
-type Lang = 'fr' | 'en';
+import type { Lang } from '@/lib/i18n';
 
 type WallPreviewProps = {
   photoUrl: string;
