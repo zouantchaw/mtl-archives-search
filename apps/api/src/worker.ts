@@ -44,6 +44,25 @@ const CACHE_TTL = {
   SITEMAP: 86400,      // 24 hours — only changes on data reload
 } as const;
 
+const SIGNED_URL_TTL_SECONDS = 3600;
+const SIGNED_URL_TTL_BUFFER_SECONDS = 60;
+
+function usesSignedR2Urls(env: Env): boolean {
+  return Boolean(
+    !env.CLOUDFLARE_R2_PUBLIC_DOMAIN &&
+      env.CLOUDFLARE_R2_ACCESS_KEY &&
+      env.CLOUDFLARE_R2_SECRET_ACCESS_KEY &&
+      env.CLOUDFLARE_R2_ACCOUNT_ID &&
+      env.CLOUDFLARE_R2_BUCKET
+  );
+}
+
+function clampCacheTtl(env: Env, ttl: number): number {
+  if (!usesSignedR2Urls(env)) return ttl;
+  const maxTtl = Math.max(0, SIGNED_URL_TTL_SECONDS - SIGNED_URL_TTL_BUFFER_SECONDS);
+  return Math.min(ttl, maxTtl);
+}
+
 function buildCacheKey(url: URL): Request {
   // Sort query params for stable cache keys regardless of param order
   const sorted = new URLSearchParams([...url.searchParams.entries()].sort());
@@ -114,7 +133,7 @@ export default {
         // Skip cache for shuffle — each click should return fresh random results.
         // Offset sampling + cached COUNT already keeps D1 cost low.
         if (shuffle) return handlePhotos(url, env);
-        const ttl = id ? CACHE_TTL.PHOTO_BY_ID : CACHE_TTL.PAGINATED;
+        const ttl = clampCacheTtl(env, id ? CACHE_TTL.PHOTO_BY_ID : CACHE_TTL.PAGINATED);
         return withCache(buildCacheKey(url), ctx, ttl, () => handlePhotos(url, env));
       }
 
@@ -124,7 +143,7 @@ export default {
         }
         // Only cache GET search requests (POST may contain embedding body)
         if (request.method === 'GET') {
-          return withCache(buildCacheKey(url), ctx, CACHE_TTL.SEARCH, () => handleSearch(url, env, request));
+          return withCache(buildCacheKey(url), ctx, clampCacheTtl(env, CACHE_TTL.SEARCH), () => handleSearch(url, env, request));
         }
         return handleSearch(url, env, request);
       }
@@ -141,14 +160,14 @@ export default {
         if (request.method !== 'GET') {
           return methodNotAllowed();
         }
-        return withCache(buildCacheKey(url), ctx, CACHE_TTL.MAP, () => handleMapPins(env));
+        return withCache(buildCacheKey(url), ctx, clampCacheTtl(env, CACHE_TTL.MAP), () => handleMapPins(env));
       }
 
       if (url.pathname === '/api/sitemap') {
         if (request.method !== 'GET') {
           return methodNotAllowed();
         }
-        return withCache(buildCacheKey(url), ctx, CACHE_TTL.SITEMAP, () => handleSitemap(env));
+        return withCache(buildCacheKey(url), ctx, clampCacheTtl(env, CACHE_TTL.SITEMAP), () => handleSitemap(env));
       }
 
       if (url.pathname === '/' || url.pathname === '/health') {
@@ -238,9 +257,11 @@ async function handlePhotos(url: URL, env: Env): Promise<Response> {
   // Support fetching a single photo by ID
   const id = url.searchParams.get('id');
   if (id) {
+    const candidates = id.endsWith('.json') ? [id] : [id, `${id}.json`];
+    const placeholders = candidates.map(() => '?').join(',');
     const { results = [] } = await env.DB.prepare(
-      `SELECT ${SELECT_FIELDS} FROM manifest WHERE metadata_filename = ?`
-    ).bind(id).all();
+      `SELECT ${SELECT_FIELDS} FROM manifest WHERE metadata_filename IN (${placeholders})`
+    ).bind(...candidates).all();
 
     if (results.length === 0) {
       return jsonResponse({ items: [], error: 'Photo not found' }, 404);
@@ -590,9 +611,9 @@ async function getSemanticResults(query: string, limit: number, env: Env): Promi
 }
 
 async function handleSemanticSearch(query: string, limit: number, env: Env): Promise<Response> {
-  if (!env.VECTORIZE) {
+  if (!env.VECTORIZE || !env.AI) {
     return jsonResponse(
-      { error: 'Semantic search is not configured. Bind a Cloudflare Vectorize index to enable this feature.' },
+      { error: 'Semantic search is not configured. Bind Vectorize + Workers AI to enable this feature.' },
       501
     );
   }
