@@ -46,6 +46,7 @@ const CACHE_TTL = {
 
 const SIGNED_URL_TTL_SECONDS = 3600;
 const SIGNED_URL_TTL_BUFFER_SECONDS = 60;
+const COTE_PATTERN = /^[A-Z]{1,4}[\d-]+/i;
 
 function usesSignedR2Urls(env: Env): boolean {
   return Boolean(
@@ -369,8 +370,7 @@ async function handleSearch(url: URL, env: Env, request: Request): Promise<Respo
 
   // Text mode: redirect to semantic search to avoid full table scans (LIKE on 4 columns).
   // Fast-path: if query looks like a cote/reference (e.g. "VM94-A0123-045"), do exact PK lookup.
-  const cotePattern = /^[A-Z]{1,4}[\d-]+/i;
-  if (cotePattern.test(q)) {
+  if (COTE_PATTERN.test(q)) {
     const { results = [] } = await env.DB.prepare(
       `SELECT ${SELECT_FIELDS} FROM manifest
        WHERE cote = ? OR portal_cote = ? OR metadata_filename = ? OR metadata_filename = ?
@@ -483,6 +483,18 @@ function escapeForLike(value: string): string {
 
 // Smart search: combines visual (CLIP) + semantic (BGE) for best results
 async function handleSmartSearch(query: string, limit: number, env: Env): Promise<Response> {
+  if (COTE_PATTERN.test(query)) {
+    const { results = [] } = await env.DB.prepare(
+      `SELECT ${SELECT_FIELDS} FROM manifest
+       WHERE cote = ? OR portal_cote = ? OR metadata_filename = ? OR metadata_filename = ?
+       LIMIT ?`
+    ).bind(query, query, query, `${query}.json`, limit).all();
+    if (results.length > 0) {
+      const items = await Promise.all(results.map((row) => buildPhotoRecord(row, env)));
+      return jsonResponse({ items, mode: 'smart', count: items.length });
+    }
+  }
+
   // Run visual and semantic searches in parallel
   const [visualResult, semanticResult] = await Promise.allSettled([
     getVisualResults(query, limit, env),
@@ -490,33 +502,64 @@ async function handleSmartSearch(query: string, limit: number, env: Env): Promis
   ]);
 
   type ScoredPhoto = PhotoRecord & { score?: number; source?: string };
-  const seen = new Set<string>();
-  const merged: ScoredPhoto[] = [];
+  const visualItems = visualResult.status === 'fulfilled' ? visualResult.value : null;
+  const semanticItems = semanticResult.status === 'fulfilled' ? semanticResult.value : null;
 
-  // Visual results first (tend to be more visually relevant)
-  if (visualResult.status === 'fulfilled' && visualResult.value) {
-    for (const item of visualResult.value) {
-      if (!seen.has(item.metadataFilename)) {
-        seen.add(item.metadataFilename);
-        merged.push({ ...item, source: 'visual' });
-      }
-    }
-  }
-
-  // Then semantic results (fill in gaps)
-  if (semanticResult.status === 'fulfilled' && semanticResult.value) {
-    for (const item of semanticResult.value) {
-      if (!seen.has(item.metadataFilename)) {
-        seen.add(item.metadataFilename);
-        merged.push({ ...item, source: 'semantic' });
-      }
-    }
-  }
-
-  // Fallback: if both failed, return empty
-  if (merged.length === 0) {
+  if (!visualItems && !semanticItems) {
     return jsonResponse({ items: [], mode: 'smart', count: 0 });
   }
+
+  if (visualItems && !semanticItems) {
+    const items = visualItems.slice(0, limit).map((item) => ({ ...item, source: 'visual' }));
+    return jsonResponse({ items, mode: 'smart', count: items.length });
+  }
+
+  if (semanticItems && !visualItems) {
+    const items = semanticItems.slice(0, limit).map((item) => ({ ...item, source: 'semantic' }));
+    return jsonResponse({ items, mode: 'smart', count: items.length });
+  }
+
+  const k = 60;
+  const scored = new Map<string, { item: ScoredPhoto; score: number; sources: Set<string>; ranks: { visual?: number; semantic?: number } }>();
+
+  const applyRrf = (items: (PhotoRecord & { score?: number })[], source: 'visual' | 'semantic') => {
+    items.forEach((item, index) => {
+      const id = item.metadataFilename;
+      const rank = index + 1;
+      const increment = 1 / (k + rank);
+      const existing = scored.get(id);
+      if (existing) {
+        existing.score += increment;
+        existing.sources.add(source);
+        existing.ranks[source] = rank;
+        return;
+      }
+      scored.set(id, {
+        item: { ...item },
+        score: increment,
+        sources: new Set([source]),
+        ranks: { [source]: rank },
+      });
+    });
+  };
+
+  applyRrf(visualItems!, 'visual');
+  applyRrf(semanticItems!, 'semantic');
+
+  const merged = Array.from(scored.values())
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      const aSemantic = a.ranks.semantic ?? Number.POSITIVE_INFINITY;
+      const bSemantic = b.ranks.semantic ?? Number.POSITIVE_INFINITY;
+      if (aSemantic !== bSemantic) return aSemantic - bSemantic;
+      const aVisual = a.ranks.visual ?? Number.POSITIVE_INFINITY;
+      const bVisual = b.ranks.visual ?? Number.POSITIVE_INFINITY;
+      return aVisual - bVisual;
+    })
+    .map((entry) => ({
+      ...entry.item,
+      source: entry.sources.size > 1 ? 'both' : entry.sources.has('visual') ? 'visual' : 'semantic',
+    }));
 
   return jsonResponse({
     items: merged.slice(0, limit),

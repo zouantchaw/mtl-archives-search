@@ -50,9 +50,10 @@ Was reading ~4.3M D1 rows/day. Target: <250k/day. All items implemented Jan 27, 
 
 ## P1: Search & Session Correctness
 
-- [ ] **Make semantic mode shareable** — Persist `mode=semantic` in URL (or change default mode to semantic) so reload/share preserves results.
-- [ ] **Avoid double fetch on desktop** — Defer initial `loadPhotos` until `isMobile` detection completes to prevent duplicate API calls.
-- [ ] **Guard missing AI binding** — If `AI` is unbound, return a 501 config error instead of a 500 for semantic search.
+- [x] **Make semantic mode shareable** — Persist `mode=semantic` in URL (or change default mode to semantic) so reload/share preserves results.
+- [x] **Avoid double fetch on desktop** — Defer initial `loadPhotos` until `isMobile` detection completes to prevent duplicate API calls.
+- [x] **Guard missing AI binding** — If `AI` is unbound, return a 501 config error instead of a 500 for semantic search.
+- [x] **Improve smart mode blending** — Add cote fast-path + rank-based fusion (RRF) instead of visual-first ordering.
 
 ---
 
