@@ -86,6 +86,19 @@ Gallery shuffle got 179 clicks from one user (9+ min session). It's the stickies
 
 ---
 
+## P2: Game MVP (Daily + 1 Practice, MapLibre)
+
+Goal: Launch a daily challenge to turn engagement into habit + sharing, then expand.
+
+- [ ] **Game route `/game`** — Daily challenge + single practice round (unscored).
+- [ ] **Map UI (MapLibre)** — Pin drop on Montreal map, score by distance.
+- [ ] **D1 schema** — `daily_challenge`, `daily_guess` (anon), optional `practice_guess`.
+- [ ] **Worker API** — `GET /api/game/daily`, `POST /api/game/guess`, `GET /api/game/leaderboard`.
+- [ ] **Shareable score card** — Result screen with share button + deep link.
+- [ ] **Practice round** — One extra play/day (no leaderboard, no streak).
+
+---
+
 ## P2: Test Coverage (Worker + Pipelines)
 
 - [ ] **Worker endpoint tests** — `/api/photos` id normalization, sitemap generation, search modes.
