@@ -1,10 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
-import maplibregl from 'maplibre-gl';
-import 'maplibre-gl/dist/maplibre-gl.css';
 import { API_BASE } from '@/lib/runtime-config';
 import { SignedIn, SignedOut, UserButton, useAuth } from '@clerk/nextjs';
 import type { PhotoRecord } from '@/lib/types';
@@ -12,6 +10,8 @@ import { Share2, X, MapPin, Trophy, ChevronLeft, Maximize2 } from 'lucide-react'
 import { appendLangParam, DEFAULT_LANG, getLangFromSearchParams } from '@/lib/i18n';
 import { events } from '@/lib/analytics';
 import { getAbVariant } from '@/lib/experiments';
+import { Map, MapMarker, MapPolyline, MapTileLayer, MapZoomControl } from '@/components/ui/map';
+import { useMapEvents } from 'react-leaflet';
 
 type GameDailyResponse = {
   date: string;
@@ -41,29 +41,6 @@ type LeaderboardEntry = {
   distanceMeters: number;
 };
 
-const DEFAULT_MAP_STYLE = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
-const MAPBOX_TOKEN =
-  process.env.NEXT_PUBLIC_MAPBOX_TOKEN ||
-  process.env.NEXT_PUBLIC_MAP_BOX_TOKEN ||
-  '';
-const RAW_MAP_STYLE = (process.env.NEXT_PUBLIC_MAP_STYLE_URL || '').trim();
-
-const normalizeMapStyle = (styleUrl: string, token: string): string => {
-  if (!styleUrl) return '';
-  if (styleUrl.startsWith('mapbox://styles/')) {
-    if (!token) return '';
-    const path = styleUrl.replace('mapbox://styles/', '');
-    return `https://api.mapbox.com/styles/v1/${path}?access_token=${token}`;
-  }
-  if (styleUrl.startsWith('https://api.mapbox.com/styles') && token && !styleUrl.includes('access_token=')) {
-    const joiner = styleUrl.includes('?') ? '&' : '?';
-    return `${styleUrl}${joiner}access_token=${token}`;
-  }
-  if (!styleUrl.startsWith('http')) return '';
-  return styleUrl;
-};
-
-const MAP_STYLE = (normalizeMapStyle(RAW_MAP_STYLE, MAPBOX_TOKEN) || DEFAULT_MAP_STYLE).trim() || DEFAULT_MAP_STYLE;
 const MONTREAL_CENTER: [number, number] = [-73.5674, 45.5019];
 
 const ANON_STORAGE_KEY = 'mtl-archives-game-anon';
@@ -213,13 +190,24 @@ const translations = {
   },
 } as const;
 
-export function GameClient() {
-  const mapContainerRef = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<maplibregl.Map | null>(null);
-  const markerRef = useRef<maplibregl.Marker | null>(null);
-  const actualMarkerRef = useRef<maplibregl.Marker | null>(null);
-  const lineLayerRef = useRef<string | null>(null);
+function MapClickHandler({
+  disabled,
+  onSelect,
+}: {
+  disabled: boolean;
+  onSelect: (lat: number, lng: number) => void;
+}) {
+  useMapEvents({
+    click: (event) => {
+      if (disabled) return;
+      onSelect(event.latlng.lat, event.latlng.lng);
+    },
+  });
 
+  return null;
+}
+
+export function GameClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const lang = getLangFromSearchParams(searchParams);
@@ -244,12 +232,31 @@ export function GameClient() {
   const landedRef = useRef(false);
   const pinPlacedRef = useRef(false);
   const prevModeRef = useRef<'daily' | 'practice'>('daily');
-  const showResultsRef = useRef(false);
   const pendingSubmitRef = useRef(false);
 
   const currentPhoto = mode === 'daily' ? data?.daily.photo : data?.practice.photo;
   const currentPlayed = mode === 'daily' ? data?.daily.played : data?.practice.result !== null;
   const practiceAvailable = data?.practice.available ?? false;
+  const mapKey = useMemo(
+    () => `${mode}-${currentPhoto?.metadataFilename ?? 'loading'}`,
+    [mode, currentPhoto?.metadataFilename]
+  );
+  const canPlacePin = !loading && !showResults && !currentPlayed;
+
+  const resultBounds = useMemo(() => {
+    if (!result || !guess || !currentPhoto?.latitude || !currentPhoto?.longitude) return null;
+    return [
+      [guess.lat, guess.lng],
+      [currentPhoto.latitude, currentPhoto.longitude],
+    ] as [[number, number], [number, number]];
+  }, [result, guess, currentPhoto?.latitude, currentPhoto?.longitude]);
+
+  const handleMapPick = useCallback((lat: number, lng: number) => {
+    setGuess({ lat, lng });
+    if ('vibrate' in navigator) {
+      navigator.vibrate(10);
+    }
+  }, []);
 
   const loadDaily = useCallback(async (id?: string | null) => {
     setLoading(true);
@@ -299,208 +306,6 @@ export function GameClient() {
       loadLeaderboard(data.date);
     }
   }, [data?.date, loadLeaderboard]);
-
-  // Keep ref in sync with state
-  useEffect(() => {
-    showResultsRef.current = showResults;
-  }, [showResults]);
-
-  // Callback ref for map container - initializes map when element mounts
-  const mapCallbackRef = useCallback((node: HTMLDivElement | null) => {
-    // Store the node in our ref
-    mapContainerRef.current = node;
-    
-    // If node is null (unmounting) or map already exists, skip
-    if (!node || mapRef.current) return;
-    
-    // Use requestAnimationFrame to ensure layout is complete
-    requestAnimationFrame(() => {
-      if (!node || mapRef.current) return;
-      
-      try {
-        const map = new maplibregl.Map({
-          container: node,
-          style: MAP_STYLE,
-          center: MONTREAL_CENTER,
-          zoom: 11,
-          attributionControl: false,
-        });
-        
-        map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
-        
-        map.on('click', (e) => {
-          if (showResultsRef.current) return;
-          setGuess({ lat: e.lngLat.lat, lng: e.lngLat.lng });
-          if ('vibrate' in navigator) {
-            navigator.vibrate(10);
-          }
-        });
-
-        const mapInstance = map as maplibregl.Map & { __fallbackStyleApplied?: boolean };
-        const applyFallbackStyle = () => {
-          if (mapInstance.__fallbackStyleApplied || MAP_STYLE === DEFAULT_MAP_STYLE) return;
-          mapInstance.__fallbackStyleApplied = true;
-          try {
-            mapInstance.setStyle(DEFAULT_MAP_STYLE);
-          } catch (err) {
-            console.error('Failed to apply fallback map style', err);
-          }
-        };
-
-        // Fallback to default style if custom style fails to load (e.g. missing key)
-        map.on('error', (event) => {
-          const message = event?.error?.message || '';
-          if (mapInstance.__fallbackStyleApplied) return;
-          if (!map.isStyleLoaded()) {
-            applyFallbackStyle();
-            return;
-          }
-          if (message.includes('401') || message.includes('403') || message.includes('Unauthorized') || message.includes('Forbidden')) {
-            applyFallbackStyle();
-          }
-        });
-
-        const fallbackTimeout = window.setTimeout(() => {
-          if (mapRef.current !== map) return;
-          if (!map.isStyleLoaded()) {
-            applyFallbackStyle();
-          }
-        }, 3500);
-        
-        map.on('load', () => {
-          window.clearTimeout(fallbackTimeout);
-          map.resize();
-        });
-        
-        mapRef.current = map;
-      } catch (err) {
-        console.error('Failed to initialize map:', err);
-      }
-    });
-  }, []);
-
-  // Cleanup map on unmount
-  useEffect(() => {
-    const handleResize = () => {
-      if (mapRef.current) {
-        mapRef.current.resize();
-      }
-    };
-    window.addEventListener('resize', handleResize);
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-      }
-    };
-  }, []);
-
-  // Update guess marker
-  useEffect(() => {
-    if (!mapRef.current || !guess) return;
-    if (!markerRef.current) {
-      const el = document.createElement('div');
-      el.className = 'game-marker-guess';
-      el.innerHTML = `
-        <div class="w-8 h-8 bg-neutral-900 rounded-full flex items-center justify-center shadow-lg border-2 border-white">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
-            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-            <circle cx="12" cy="10" r="3"></circle>
-          </svg>
-        </div>
-      `;
-      markerRef.current = new maplibregl.Marker({ element: el, anchor: 'bottom' })
-        .setLngLat([guess.lng, guess.lat])
-        .addTo(mapRef.current);
-    } else {
-      markerRef.current.setLngLat([guess.lng, guess.lat]);
-    }
-  }, [guess]);
-
-  // Show result on map (actual location + line)
-  useEffect(() => {
-    if (!mapRef.current || !result || !currentPhoto?.latitude || !currentPhoto?.longitude || !guess) return;
-    
-    const map = mapRef.current;
-    const actualLat = currentPhoto.latitude;
-    const actualLng = currentPhoto.longitude;
-
-    // Add actual location marker
-    if (!actualMarkerRef.current) {
-      const el = document.createElement('div');
-      el.className = 'game-marker-actual';
-      el.innerHTML = `
-        <div class="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center shadow-lg border-2 border-white animate-bounce-in">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-            <polyline points="22 4 12 14.01 9 11.01"></polyline>
-          </svg>
-        </div>
-      `;
-      actualMarkerRef.current = new maplibregl.Marker({ element: el, anchor: 'center' })
-        .setLngLat([actualLng, actualLat])
-        .addTo(map);
-    }
-
-    // Add line between guess and actual
-    const lineId = 'result-line';
-    if (map.getSource(lineId)) {
-      map.removeLayer(lineId);
-      map.removeSource(lineId);
-    }
-
-    map.addSource(lineId, {
-      type: 'geojson',
-      data: {
-        type: 'Feature',
-        properties: {},
-        geometry: {
-          type: 'LineString',
-          coordinates: [
-            [guess.lng, guess.lat],
-            [actualLng, actualLat],
-          ],
-        },
-      },
-    });
-
-    map.addLayer({
-      id: lineId,
-      type: 'line',
-      source: lineId,
-      layout: {
-        'line-join': 'round',
-        'line-cap': 'round',
-      },
-      paint: {
-        'line-color': '#ef4444',
-        'line-width': 2,
-        'line-dasharray': [2, 2],
-      },
-    });
-
-    lineLayerRef.current = lineId;
-
-    // Fit bounds to show both markers
-    const bounds = new maplibregl.LngLatBounds()
-      .extend([guess.lng, guess.lat])
-      .extend([actualLng, actualLat]);
-    
-    map.fitBounds(bounds, { padding: 80, maxZoom: 14 });
-
-    return () => {
-      if (actualMarkerRef.current) {
-        actualMarkerRef.current.remove();
-        actualMarkerRef.current = null;
-      }
-      if (map.getSource(lineId)) {
-        map.removeLayer(lineId);
-        map.removeSource(lineId);
-      }
-    };
-  }, [result, currentPhoto?.latitude, currentPhoto?.longitude, guess]);
 
   // Restore result from data
   useEffect(() => {
@@ -734,22 +539,7 @@ export function GameClient() {
     setShowResults(false);
     setResult(null);
     setGuess(null);
-    
-    // Remove markers
-    if (markerRef.current) {
-      markerRef.current.remove();
-      markerRef.current = null;
-    }
-    if (actualMarkerRef.current) {
-      actualMarkerRef.current.remove();
-      actualMarkerRef.current = null;
-    }
-    
-    // Reset map view
-    if (mapRef.current) {
-      mapRef.current.flyTo({ center: MONTREAL_CENTER, zoom: 11 });
-    }
-    
+
     setMode(newMode);
   };
 
@@ -835,10 +625,60 @@ export function GameClient() {
 
       {/* Map Container - Takes all remaining space */}
       <div className="flex-1 min-h-0 relative overflow-hidden">
-        <div 
-          ref={mapCallbackRef} 
-          className="absolute inset-0 game-map"
-        />
+        <div className="absolute inset-0">
+          <Map
+            key={mapKey}
+            center={MONTREAL_CENTER}
+            zoom={11}
+            maxZoom={18}
+            bounds={resultBounds ?? undefined}
+            boundsOptions={{ padding: [80, 80], maxZoom: 14 }}
+            className="game-map min-h-0 rounded-none"
+          >
+            <MapTileLayer />
+            <MapZoomControl className="bottom-4 right-3" />
+            <MapClickHandler disabled={!canPlacePin} onSelect={handleMapPick} />
+            {guess && (
+              <MapMarker
+                position={[guess.lat, guess.lng]}
+                iconAnchor={[16, 32]}
+                icon={
+                  <div className="game-marker-guess w-8 h-8 bg-neutral-900 rounded-full flex items-center justify-center shadow-lg border-2 border-white">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                      <circle cx="12" cy="10" r="3" />
+                    </svg>
+                  </div>
+                }
+              />
+            )}
+            {result && guess && currentPhoto?.latitude && currentPhoto?.longitude && (
+              <>
+                <MapMarker
+                  position={[currentPhoto.latitude, currentPhoto.longitude]}
+                  iconAnchor={[16, 16]}
+                  icon={
+                    <div className="game-marker-actual w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center shadow-lg border-2 border-white animate-bounce-in">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                        <polyline points="22 4 12 14.01 9 11.01" />
+                      </svg>
+                    </div>
+                  }
+                />
+                <MapPolyline
+                  positions={[
+                    [guess.lat, guess.lng],
+                    [currentPhoto.latitude, currentPhoto.longitude],
+                  ]}
+                  color="#ef4444"
+                  weight={2}
+                  dashArray="4 4"
+                />
+              </>
+            )}
+          </Map>
+        </div>
 
         {/* Loading overlay */}
         {loading && (
