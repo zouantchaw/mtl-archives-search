@@ -653,7 +653,7 @@ export function GameClient() {
             maxZoom={18}
             bounds={resultBounds ?? undefined}
             boundsOptions={{ padding: [80, 80], maxZoom: 14 }}
-            className="game-map min-h-0 rounded-none"
+            className="game-map min-h-0 rounded-none z-0"
           >
             <MapTileLayer />
             <MapZoomControl className="bottom-4 right-3" />
