@@ -41,7 +41,8 @@ type LeaderboardEntry = {
   distanceMeters: number;
 };
 
-const MAP_STYLE = process.env.NEXT_PUBLIC_MAP_STYLE_URL || 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
+const DEFAULT_MAP_STYLE = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
+const MAP_STYLE = (process.env.NEXT_PUBLIC_MAP_STYLE_URL || DEFAULT_MAP_STYLE).trim() || DEFAULT_MAP_STYLE;
 const MONTREAL_CENTER: [number, number] = [-73.5674, 45.5019];
 
 const ANON_STORAGE_KEY = 'mtl-archives-game-anon';
@@ -311,6 +312,21 @@ export function GameClient() {
           setGuess({ lat: e.lngLat.lat, lng: e.lngLat.lng });
           if ('vibrate' in navigator) {
             navigator.vibrate(10);
+          }
+        });
+
+        const mapInstance = map as maplibregl.Map & { __fallbackStyleApplied?: boolean };
+        // Fallback to default style if custom style fails to load (e.g. missing key)
+        map.on('error', (event) => {
+          const message = event?.error?.message || '';
+          if (mapInstance.__fallbackStyleApplied) return;
+          if (MAP_STYLE !== DEFAULT_MAP_STYLE && (message.includes('401') || message.includes('403') || message.includes('Unauthorized') || message.includes('Forbidden'))) {
+            mapInstance.__fallbackStyleApplied = true;
+            try {
+              mapInstance.setStyle(DEFAULT_MAP_STYLE);
+            } catch (err) {
+              console.error('Failed to apply fallback map style', err);
+            }
           }
         });
         
