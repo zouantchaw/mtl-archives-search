@@ -30,11 +30,28 @@ export function getReferrerContext(): Record<string, string> {
   }
 }
 
+/**
+ * Extract a 4-digit year from a dateValue string like "1937-06-15" or "circa 1920".
+ */
+function extractYear(dateValue: string | null | undefined): string | null {
+  if (!dateValue) return null;
+  const match = dateValue.match(/\d{4}/);
+  return match ? match[0] : null;
+}
+
 // Pre-defined events for consistency
 export const events = {
-  // Photo interactions
-  photoViewed: (photoId: string, photoName: string | null) =>
-    track('photo_viewed', { photoId, photoName, ...getReferrerContext() }),
+  // === Photo interactions ===
+
+  photoViewed: (photoId: string, photoName: string | null, data?: { searchQuery?: string; position?: number; dateValue?: string | null }) =>
+    track('photo_viewed', {
+      photoId,
+      photoName,
+      ...(data?.searchQuery ? { searchQuery: data.searchQuery } : {}),
+      ...(data?.position !== undefined ? { position: data.position } : {}),
+      ...(extractYear(data?.dateValue) ? { year: extractYear(data?.dateValue) } : {}),
+      ...getReferrerContext(),
+    }),
 
   photoDownloaded: (photoId: string, photoName: string | null) =>
     track('photo_downloaded', { photoId, photoName }),
@@ -45,18 +62,38 @@ export const events = {
   captionCopied: (photoId: string) =>
     track('photo_caption_copied', { photoId }),
 
-  // Search - only track committed searches (after user stops typing)
-  // This reduces event volume significantly vs tracking every keystroke
-  searchCommitted: (query: string, mode: string, resultCount: number) =>
-    track('search_committed', { query, mode, resultCount }),
+  photoDwelled: (photoId: string, dwellTimeMs: number, data?: { dateValue?: string | null }) =>
+    track('photo_dwelled', {
+      photoId,
+      dwellTimeMs,
+      ...(extractYear(data?.dateValue) ? { year: extractYear(data?.dateValue) } : {}),
+    }),
 
-  // Track when search returns no results - important for content gaps
-  searchNoResults: (query: string, mode: string) =>
-    track('search_no_results', { query, mode }),
+  photoZoomed: (photoId: string, data?: { dateValue?: string | null }) =>
+    track('photo_zoomed', {
+      photoId,
+      ...(extractYear(data?.dateValue) ? { year: extractYear(data?.dateValue) } : {}),
+    }),
 
-  // Track which search result position was clicked - helps optimize ranking
-  searchResultClicked: (query: string, position: number, photoId: string) =>
-    track('search_result_clicked', { query, position, photoId }),
+  photoNavigated: (photoId: string, direction: 'prev' | 'next') =>
+    track('photo_navigated', { photoId, direction }),
+
+  // === Search ===
+  // Only track committed searches (after user stops typing)
+
+  searchCommitted: (query: string, mode: string, resultCount: number, lang?: string) =>
+    track('search_committed', { query, mode, resultCount, ...(lang ? { lang } : {}) }),
+
+  searchNoResults: (query: string, mode: string, lang?: string) =>
+    track('search_no_results', { query, mode, ...(lang ? { lang } : {}) }),
+
+  searchResultClicked: (query: string, position: number, photoId: string, resultCount?: number) =>
+    track('search_result_clicked', {
+      query,
+      position,
+      photoId,
+      ...(resultCount !== undefined ? { resultCount } : {}),
+    }),
 
   searchCleared: () =>
     track('search_cleared'),
@@ -64,7 +101,14 @@ export const events = {
   searchModeChanged: (mode: string) =>
     track('search_mode_changed', { mode }),
 
-  // Navigation / Discovery
+  searchRefined: (previousQuery: string, newQuery: string, mode: string) =>
+    track('search_refined', { previousQuery, newQuery, mode }),
+
+  searchAbandoned: (query: string, mode: string, resultCount: number) =>
+    track('search_abandoned', { query, mode, resultCount }),
+
+  // === Navigation / Discovery ===
+
   loadMoreClicked: (currentCount: number) =>
     track('gallery_load_more', { currentCount }),
 
@@ -74,7 +118,8 @@ export const events = {
   neighborhoodShortcutClicked: (neighborhood: string) =>
     track('neighborhood_shortcut', { neighborhood, ...getReferrerContext() }),
 
-  // Photo page modes
+  // === Photo page modes ===
+
   orderModeEntered: (photoId: string) =>
     track('order_mode_entered', { photoId, ...getReferrerContext() }),
 
@@ -87,7 +132,8 @@ export const events = {
   aboutOpened: () =>
     track('about_opened'),
 
-  // E-commerce (print orders)
+  // === E-commerce (print orders) ===
+
   roomBackgroundChanged: (roomId: string) =>
     track('print_room_changed', { roomId }),
 
@@ -97,8 +143,15 @@ export const events = {
   printFrameSelected: (frame: string, price: number) =>
     track('print_frame_selected', { frame, price }),
 
-  addToCartClicked: (photoId: string, size: string, frame: string, totalPrice: number) =>
-    track('cart_item_added', { photoId, size, frame, totalPrice, ...getReferrerContext() }),
+  addToCartClicked: (photoId: string, size: string, frame: string, totalPrice: number, data?: { dateValue?: string | null }) =>
+    track('cart_item_added', {
+      photoId,
+      size,
+      frame,
+      totalPrice,
+      ...(extractYear(data?.dateValue) ? { year: extractYear(data?.dateValue) } : {}),
+      ...getReferrerContext(),
+    }),
 
   cartOpened: () =>
     track('cart_opened'),
@@ -112,13 +165,19 @@ export const events = {
   checkoutClicked: (total: number, itemCount: number) =>
     track('checkout_clicked', { total, itemCount }),
 
-  checkoutCompleted: (orderId: string, total: number, itemCount: number) =>
-    track('order_completed', { orderId, total, itemCount }),
+  checkoutCompleted: (orderId: string, total: number, itemCount: number, itemSummary?: string) =>
+    track('order_completed', {
+      orderId,
+      total,
+      itemCount,
+      ...(itemSummary ? { itemSummary } : {}),
+    }),
 
   checkoutFailed: (error: string) =>
     track('order_failed', { error }),
 
-  // External links
+  // === External links ===
+
   archiveLinkClicked: (url: string) =>
     track('link_archives', { url }),
 
@@ -130,48 +189,32 @@ export const events = {
 
   // === Landing & Bounce Intelligence ===
 
-  // Fires when visitor comes from Instagram (utm_source or referrer)
   instagramVisitorLanded: (utmCampaign?: string) =>
     track('instagram_visitor_landed', { utmCampaign }),
 
-  // Fires once per session when the page becomes interactive
   pageLoaded: (loadTimeMs: number) =>
     track('page_loaded', { loadTimeMs, ...getReferrerContext() }),
 
-  // Fires once: what was the very first thing the visitor did?
   pageFirstInteraction: (action: string) =>
     track('page_first_interaction', { action, ...getReferrerContext() }),
 
-  // Fires at 25/50/75/100% scroll depth (gallery)
   pageScrollDepth: (percent: number) =>
     track('page_scroll_depth', { percent }),
 
-  // === Photo Engagement Depth ===
-
-  // Fires when user stays on photo page for >5s (meaningful engagement)
-  photoDwelled: (photoId: string, dwellTimeMs: number) =>
-    track('photo_dwelled', { photoId, dwellTimeMs }),
-
-  // === Search Quality ===
-
-  // User modified existing query (refined vs new search)
-  searchRefined: (previousQuery: string, newQuery: string, mode: string) =>
-    track('search_refined', { previousQuery, newQuery, mode }),
-
-  // User had search results but left without clicking any
-  searchAbandoned: (query: string, mode: string, resultCount: number) =>
-    track('search_abandoned', { query, mode, resultCount }),
-
   // === Session Classification ===
 
-  // Fires on beforeunload — classifies what type of session this was
   sessionEnded: (type: string, eventCount: number, durationMs: number) =>
     track('session_ended', { type, eventCount, durationMs, ...getReferrerContext() }),
 
   // === Game ===
 
-  gameLanded: (variant?: string, mode?: string) =>
-    track('game_landed', { variant, mode, ...getReferrerContext() }),
+  gameLanded: (variant?: string, mode?: string, data?: { returnVisitor?: boolean }) =>
+    track('game_landed', {
+      variant,
+      mode,
+      ...(data?.returnVisitor !== undefined ? { returnVisitor: data.returnVisitor } : {}),
+      ...getReferrerContext(),
+    }),
 
   gameModeChanged: (from: string, to: string) =>
     track('game_mode_changed', { from, to }),
@@ -182,8 +225,13 @@ export const events = {
   gameGuessSubmitted: (mode: string, photoId: string, signedIn: boolean) =>
     track('game_guess_submitted', { mode, photoId, signedIn }),
 
-  gameGuessResult: (mode: string, score: number, distanceMeters: number) =>
-    track('game_guess_result', { mode, score, distanceMeters }),
+  gameGuessResult: (mode: string, score: number, distanceMeters: number, data?: { photoYear?: string | null }) =>
+    track('game_guess_result', {
+      mode,
+      score,
+      distanceMeters,
+      ...(data?.photoYear ? { photoYear: data.photoYear } : {}),
+    }),
 
   gameShareClicked: (mode: string, score: number) =>
     track('game_share_clicked', { mode, score }),
@@ -193,6 +241,11 @@ export const events = {
 
   gameSignInCtaClicked: () =>
     track('game_sign_in_cta_clicked'),
+
+  gameReturnToArchive: (photoId?: string) =>
+    track('game_return_to_archive', { ...(photoId ? { photoId } : {}) }),
+
+  // === Navigation & AB Testing ===
 
   gameNavClicked: () =>
     track('game_nav_clicked', { ...getReferrerContext() }),

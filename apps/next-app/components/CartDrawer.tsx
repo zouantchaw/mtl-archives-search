@@ -197,7 +197,8 @@ function CartDrawerInner() {
       const data = await response.json();
 
       if (data.success) {
-        events.checkoutCompleted(data.orderId, total, itemCount);
+        const itemSummary = items.map(i => `${i.size}/${i.frame}`).join(', ');
+        events.checkoutCompleted(data.orderId, total, itemCount, itemSummary);
         setOrderId(data.orderId);
         setCheckoutState('success');
         clearItems(); // Clear items but keep drawer open to show success

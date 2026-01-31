@@ -697,13 +697,13 @@ function ArchiveStoreInner() {
 
           // Track no results - helps identify content gaps
           if (data.items.length === 0) {
-            events.searchNoResults(searchQuery, searchMode);
+            events.searchNoResults(searchQuery, searchMode, lang);
           }
 
           // Track "committed" search after 1.5s of no further typing
           // Only fires once user has stopped typing - reduces event volume
           commitTimeoutRef.current = setTimeout(() => {
-            events.searchCommitted(searchQuery, searchMode, data.items.length);
+            events.searchCommitted(searchQuery, searchMode, data.items.length, lang);
           }, 1200);
         }
       } catch (err) {
@@ -755,12 +755,16 @@ function ArchiveStoreInner() {
   const handlePhotoClick = useCallback((photo: PhotoRecord, position?: number) => {
     trackFirstInteraction('photo_click');
     trackSessionAction('photo');
-    events.photoViewed(photo.metadataFilename, photo.name);
+    events.photoViewed(photo.metadataFilename, photo.name, {
+      searchQuery: hasSearched ? searchQuery : undefined,
+      position,
+      dateValue: photo.dateValue,
+    });
 
     // Track search result clicks with position - helps optimize ranking
     if (hasSearched && searchQuery && position !== undefined) {
       searchResultClickedRef.current = true;
-      events.searchResultClicked(searchQuery, position, photo.metadataFilename);
+      events.searchResultClicked(searchQuery, position, photo.metadataFilename, searchResults.length);
     }
 
     const params = new URLSearchParams();

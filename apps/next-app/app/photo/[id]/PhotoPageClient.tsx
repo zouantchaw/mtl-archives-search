@@ -78,7 +78,7 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
     const timer = setTimeout(() => {
       if (!dwellFired.current) {
         dwellFired.current = true;
-        events.photoDwelled(photo.metadataFilename, 5000);
+        events.photoDwelled(photo.metadataFilename, 5000, { dateValue: photo.dateValue });
       }
     }, 5000);
     return () => clearTimeout(timer);
@@ -139,7 +139,7 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
       price: totalPrice,
     });
 
-    events.addToCartClicked(photo.metadataFilename, selectedSize.name, selectedProduct.name[lang], totalPrice);
+    events.addToCartClicked(photo.metadataFilename, selectedSize.name, selectedProduct.name[lang], totalPrice, { dateValue: photo.dateValue });
 
     setJustAdded(true);
     setTimeout(() => {

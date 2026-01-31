@@ -400,7 +400,8 @@ export function GameClient() {
   useEffect(() => {
     if (!isLoaded || landedRef.current) return;
     abVariantRef.current = getAbVariant();
-    events.gameLanded(abVariantRef.current ?? undefined, mode);
+    const hasPlayedBefore = Boolean(localStorage.getItem(ANON_STORAGE_KEY));
+    events.gameLanded(abVariantRef.current ?? undefined, mode, { returnVisitor: hasPlayedBefore });
     prevModeRef.current = mode;
     landedRef.current = true;
   }, [isLoaded, mode]);
@@ -482,7 +483,7 @@ export function GameClient() {
       if (res.ok) {
         setResult(json);
         setShowResults(true);
-        events.gameGuessResult(gameMode, json.score, json.distanceMeters);
+        events.gameGuessResult(gameMode, json.score, json.distanceMeters, { photoYear: currentPhoto.dateValue });
         clearPendingGuess();
         await loadDaily(anonId);
         if (gameMode === 'daily' && data?.date) {
@@ -604,7 +605,7 @@ export function GameClient() {
       <header className="shrink-0 h-11 flex items-center justify-between px-3 bg-white/95 backdrop-blur border-b border-neutral-200/60 z-30">
         <a
           href={homeLink}
-          onClick={() => events.homeNavClicked()}
+          onClick={() => { events.homeNavClicked(); events.gameReturnToArchive(currentPhoto?.metadataFilename); }}
           className="flex items-center gap-2 text-neutral-600 hover:text-neutral-900 transition-colors"
           aria-label={t.back}
         >
