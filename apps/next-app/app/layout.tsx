@@ -1,10 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { Figtree } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
-import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import { CartProvider } from "@/lib/cart-context";
 import { CartDrawer } from "@/components/CartDrawer";
+import { ClerkLocalized } from "@/components/ClerkLocalized";
 import { API_ORIGIN, R2_ORIGIN } from "@/lib/runtime-config";
 
 const figtree = Figtree({
@@ -154,7 +154,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
+    <ClerkLocalized>
       <html lang="en" className={`${figtree.variable}`}>
         <head>
           {/* Preconnect to API for faster initial fetch */}
@@ -192,6 +192,6 @@ export default function RootLayout({
           <Analytics />
         </body>
       </html>
-    </ClerkProvider>
+    </ClerkLocalized>
   );
 }
