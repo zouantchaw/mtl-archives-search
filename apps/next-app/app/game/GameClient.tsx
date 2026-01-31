@@ -579,7 +579,7 @@ export function GameClient() {
     router.push(query ? `/game?${query}` : '/game');
   }, [lang, router, searchParams]);
 
-  const homeLink = appendLangParam('/', lang);
+  const homeLink = appendLangParam('/?from=game', lang);
   const signInRedirect = appendLangParam('/game', lang);
   const signInUrl = `/sign-in?redirect_url=${encodeURIComponent(signInRedirect)}`;
 

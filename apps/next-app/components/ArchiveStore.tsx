@@ -505,6 +505,14 @@ function ArchiveStoreInner() {
   useEffect(() => {
     if (abRedirectedRef.current) return;
     const params = new URLSearchParams(window.location.search);
+    const fromGame = params.get('from') === 'game' || document.referrer.includes('/game');
+    if (fromGame) {
+      params.delete('from');
+      const cleaned = params.toString();
+      abRedirectedRef.current = true;
+      router.replace(cleaned ? `/?${cleaned}` : '/', { scroll: false });
+      return;
+    }
     const override = parseAbParam(params);
     const stored = getAbVariant();
 
