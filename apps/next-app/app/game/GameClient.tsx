@@ -228,24 +228,13 @@ export function GameClient() {
   }, []);
 
   useEffect(() => {
-    if (!isLoaded) return;
-    if (isSignedIn) {
-      setAnonId(null);
-      return;
-    }
     setAnonId(getAnonId());
-  }, [isLoaded, isSignedIn]);
+  }, []);
 
   useEffect(() => {
-    if (!isLoaded) return;
-    if (isSignedIn) {
-      loadDaily(null);
-      return;
-    }
-    if (anonId) {
-      loadDaily(anonId);
-    }
-  }, [anonId, isLoaded, isSignedIn, loadDaily]);
+    if (!anonId) return;
+    loadDaily(anonId);
+  }, [anonId, loadDaily]);
 
   useEffect(() => {
     if (data?.date) {
@@ -338,7 +327,7 @@ export function GameClient() {
           photoId: currentPhoto.metadataFilename,
           lat: guess.lat,
           lng: guess.lng,
-          ...(isSignedIn ? {} : { anonId }),
+          ...(anonId ? { anonId } : {}),
         }),
       });
       const json = await res.json();
