@@ -46,9 +46,6 @@ const MAPBOX_TOKEN =
   process.env.NEXT_PUBLIC_MAPBOX_TOKEN ||
   process.env.NEXT_PUBLIC_MAP_BOX_TOKEN ||
   '';
-const MAPBOX_STYLE = MAPBOX_TOKEN
-  ? `https://api.mapbox.com/styles/v1/mapbox/light-v11?access_token=${MAPBOX_TOKEN}`
-  : '';
 const RAW_MAP_STYLE = (process.env.NEXT_PUBLIC_MAP_STYLE_URL || '').trim();
 
 const normalizeMapStyle = (styleUrl: string, token: string): string => {
@@ -66,7 +63,7 @@ const normalizeMapStyle = (styleUrl: string, token: string): string => {
   return styleUrl;
 };
 
-const MAP_STYLE = (normalizeMapStyle(RAW_MAP_STYLE, MAPBOX_TOKEN) || MAPBOX_STYLE || DEFAULT_MAP_STYLE).trim() || DEFAULT_MAP_STYLE;
+const MAP_STYLE = (normalizeMapStyle(RAW_MAP_STYLE, MAPBOX_TOKEN) || DEFAULT_MAP_STYLE).trim() || DEFAULT_MAP_STYLE;
 const MONTREAL_CENTER: [number, number] = [-73.5674, 45.5019];
 
 const ANON_STORAGE_KEY = 'mtl-archives-game-anon';
