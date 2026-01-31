@@ -415,6 +415,7 @@ export function GameClient() {
   const signInUrl = `/sign-in?redirect_url=${encodeURIComponent(signInRedirect)}`;
   const showMapHint = !guess && !currentPlayed;
   const isResultLocked = Boolean(awaitingReveal && !isSignedIn);
+  const primaryCtaLabel = isResultLocked ? t.revealPromptEmphasis : actionLabel;
   const scoreLabel = result ? `${result.score} ${t.score}` : `-- ${t.score}`;
   const distanceLabel = result ? t.distance.replace('{distance}', formatDistance(result.distanceMeters)) : '';
   const showShare = Boolean(result && mode === 'daily');
@@ -568,6 +569,12 @@ export function GameClient() {
                     <div className="text-neutral-500">{t.pinHint}</div>
                   </div>
                 )}
+                {isResultLocked && (
+                  <div className="absolute left-4 top-4 right-4 rounded-2xl bg-white/90 backdrop-blur px-4 py-3 text-xs text-neutral-700 shadow-lg lg:hidden">
+                    <div className="font-medium text-neutral-900">{t.revealPromptEmphasis}</div>
+                    <div className="text-neutral-500">{t.saveStreak}</div>
+                  </div>
+                )}
               </div>
               <div className="p-4 hidden lg:flex flex-col gap-3">
                 <button
@@ -714,13 +721,23 @@ export function GameClient() {
 
       <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-neutral-200 bg-white/95 backdrop-blur lg:hidden">
         <div className="max-w-6xl mx-auto px-4 py-3">
-          <button
-            onClick={submitGuess}
-            disabled={!guess || submitting || currentPlayed}
-            className="w-full px-4 py-3 rounded-full bg-neutral-900 text-white text-sm disabled:opacity-40"
-          >
-            {actionLabel}
-          </button>
+          {isResultLocked ? (
+            <a
+              href={signInUrl}
+              onClick={() => events.gameSignInCtaClicked()}
+              className="w-full inline-flex items-center justify-center px-4 py-3 rounded-full bg-neutral-900 text-white text-sm font-medium"
+            >
+              {primaryCtaLabel}
+            </a>
+          ) : (
+            <button
+              onClick={submitGuess}
+              disabled={!guess || submitting || currentPlayed}
+              className="w-full px-4 py-3 rounded-full bg-neutral-900 text-white text-sm disabled:opacity-40"
+            >
+              {primaryCtaLabel}
+            </button>
+          )}
         </div>
       </div>
 
