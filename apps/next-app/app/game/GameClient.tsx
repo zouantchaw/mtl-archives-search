@@ -42,7 +42,31 @@ type LeaderboardEntry = {
 };
 
 const DEFAULT_MAP_STYLE = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
-const MAP_STYLE = (process.env.NEXT_PUBLIC_MAP_STYLE_URL || DEFAULT_MAP_STYLE).trim() || DEFAULT_MAP_STYLE;
+const MAPBOX_TOKEN =
+  process.env.NEXT_PUBLIC_MAPBOX_TOKEN ||
+  process.env.NEXT_PUBLIC_MAP_BOX_TOKEN ||
+  '';
+const MAPBOX_STYLE = MAPBOX_TOKEN
+  ? `https://api.mapbox.com/styles/v1/mapbox/light-v11?access_token=${MAPBOX_TOKEN}`
+  : '';
+const RAW_MAP_STYLE = (process.env.NEXT_PUBLIC_MAP_STYLE_URL || '').trim();
+
+const normalizeMapStyle = (styleUrl: string, token: string): string => {
+  if (!styleUrl) return '';
+  if (styleUrl.startsWith('mapbox://styles/')) {
+    if (!token) return '';
+    const path = styleUrl.replace('mapbox://styles/', '');
+    return `https://api.mapbox.com/styles/v1/${path}?access_token=${token}`;
+  }
+  if (styleUrl.startsWith('https://api.mapbox.com/styles') && token && !styleUrl.includes('access_token=')) {
+    const joiner = styleUrl.includes('?') ? '&' : '?';
+    return `${styleUrl}${joiner}access_token=${token}`;
+  }
+  if (!styleUrl.startsWith('http')) return '';
+  return styleUrl;
+};
+
+const MAP_STYLE = (normalizeMapStyle(RAW_MAP_STYLE, MAPBOX_TOKEN) || MAPBOX_STYLE || DEFAULT_MAP_STYLE).trim() || DEFAULT_MAP_STYLE;
 const MONTREAL_CENTER: [number, number] = [-73.5674, 45.5019];
 
 const ANON_STORAGE_KEY = 'mtl-archives-game-anon';
@@ -316,21 +340,38 @@ export function GameClient() {
         });
 
         const mapInstance = map as maplibregl.Map & { __fallbackStyleApplied?: boolean };
+        const applyFallbackStyle = () => {
+          if (mapInstance.__fallbackStyleApplied || MAP_STYLE === DEFAULT_MAP_STYLE) return;
+          mapInstance.__fallbackStyleApplied = true;
+          try {
+            mapInstance.setStyle(DEFAULT_MAP_STYLE);
+          } catch (err) {
+            console.error('Failed to apply fallback map style', err);
+          }
+        };
+
         // Fallback to default style if custom style fails to load (e.g. missing key)
         map.on('error', (event) => {
           const message = event?.error?.message || '';
           if (mapInstance.__fallbackStyleApplied) return;
-          if (MAP_STYLE !== DEFAULT_MAP_STYLE && (message.includes('401') || message.includes('403') || message.includes('Unauthorized') || message.includes('Forbidden'))) {
-            mapInstance.__fallbackStyleApplied = true;
-            try {
-              mapInstance.setStyle(DEFAULT_MAP_STYLE);
-            } catch (err) {
-              console.error('Failed to apply fallback map style', err);
-            }
+          if (!map.isStyleLoaded()) {
+            applyFallbackStyle();
+            return;
+          }
+          if (message.includes('401') || message.includes('403') || message.includes('Unauthorized') || message.includes('Forbidden')) {
+            applyFallbackStyle();
           }
         });
+
+        const fallbackTimeout = window.setTimeout(() => {
+          if (mapRef.current !== map) return;
+          if (!map.isStyleLoaded()) {
+            applyFallbackStyle();
+          }
+        }, 3500);
         
         map.on('load', () => {
+          window.clearTimeout(fallbackTimeout);
           map.resize();
         });
         
