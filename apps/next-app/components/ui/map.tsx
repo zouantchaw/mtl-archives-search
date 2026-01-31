@@ -192,6 +192,7 @@ function Map({
     zoom = 15,
     maxZoom = 18,
     className,
+    attributionControl = true,
     ...props
 }: Omit<MapContainerProps, "zoomControl"> & {
     center: LatLngExpression
@@ -201,7 +202,7 @@ function Map({
         <LeafletMapContainer
             zoom={zoom}
             maxZoom={maxZoom}
-            attributionControl={false}
+            attributionControl={attributionControl}
             zoomControl={false}
             className={cn(
                 "size-full min-h-96 flex-1 rounded-md",

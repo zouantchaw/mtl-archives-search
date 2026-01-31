@@ -113,7 +113,8 @@ const translations = {
     practice: 'Essai',
     practiceAvailable: 'Essai',
     practiceUsed: 'Essai utilisé',
-    tapToPlace: 'Touche la carte pour placer ton repère',
+    tapToPlaceHint: 'Touche la carte pour placer ton repère. Zoome pour être précis.',
+    tapToPlaceButton: 'Placer mon point',
     submitGuess: 'Valider mon point',
     loading: 'Chargement...',
     alreadyPlayed: 'Déjà joué',
@@ -154,7 +155,8 @@ const translations = {
     practice: 'Practice',
     practiceAvailable: 'Practice',
     practiceUsed: 'Practice used',
-    tapToPlace: 'Tap the map to place your pin',
+    tapToPlaceHint: 'Tap the map to place your pin. Zoom in to be precise.',
+    tapToPlaceButton: 'Place my pin',
     submitGuess: 'Submit my guess',
     loading: 'Loading...',
     alreadyPlayed: 'Already played',
@@ -591,7 +593,7 @@ export function GameClient() {
       ? t.calculating 
       : guess 
         ? t.submitGuess 
-        : t.tapToPlace;
+        : t.tapToPlaceButton;
 
   return (
     <div 
@@ -655,7 +657,10 @@ export function GameClient() {
             boundsOptions={{ padding: [80, 80], maxZoom: 14 }}
             className="game-map min-h-0 rounded-none z-0"
           >
-            <MapTileLayer />
+            <MapTileLayer 
+              url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions" target="_blank">CARTO</a>'
+            />
             <MapZoomControl className="bottom-4 right-3" />
             <MapResizeHandler />
             <MapClickHandler disabled={!canPlacePin} onSelect={handleMapPick} />
@@ -713,13 +718,16 @@ export function GameClient() {
 
         {/* Pin placement hint - shows when no pin placed */}
         {!guess && !currentPlayed && !loading && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-            <div className="flex flex-col items-center gap-2 animate-pulse">
-              <div className="w-12 h-12 rounded-full bg-neutral-900/10 flex items-center justify-center">
-                <MapPin className="w-6 h-6 text-neutral-900" />
+          <div className="absolute inset-0 flex items-end justify-center pb-28 pointer-events-none z-10">
+            <div className="flex flex-col items-center gap-3">
+              <div className="relative">
+                <span className="absolute inset-0 rounded-full bg-neutral-900/10 animate-ping" />
+                <div className="w-14 h-14 rounded-full bg-white shadow-lg border border-neutral-200 flex items-center justify-center">
+                  <MapPin className="w-6 h-6 text-neutral-900" />
+                </div>
               </div>
-              <span className="text-xs text-neutral-600 bg-white/90 backdrop-blur px-3 py-1.5 rounded-full shadow-sm">
-                {t.tapToPlace}
+              <span className="max-w-[92%] sm:max-w-md text-xs sm:text-sm font-medium text-neutral-700 bg-white/95 backdrop-blur px-4 py-2 sm:px-5 sm:py-2.5 rounded-2xl sm:rounded-full shadow-md border border-neutral-200/60 text-center leading-relaxed">
+                {t.tapToPlaceHint}
               </span>
             </div>
           </div>
@@ -774,7 +782,7 @@ export function GameClient() {
               onClick={handleSubmitGuess}
               disabled={ctaDisabled}
               className={`
-                w-full h-12 rounded-full font-medium text-sm transition-all
+                w-full h-12 rounded-full font-medium text-xs sm:text-sm transition-all
                 active:scale-[0.98] disabled:active:scale-100
                 ${guess && !currentPlayed
                   ? 'bg-neutral-900 text-white shadow-lg shadow-neutral-900/20'
