@@ -11,7 +11,7 @@ import { appendLangParam, DEFAULT_LANG, getLangFromSearchParams } from '@/lib/i1
 import { events } from '@/lib/analytics';
 import { getAbVariant } from '@/lib/experiments';
 import { Map, MapMarker, MapPolyline, MapTileLayer, MapZoomControl } from '@/components/ui/map';
-import { useMapEvents } from 'react-leaflet';
+import { useMap, useMapEvents } from 'react-leaflet';
 
 type GameDailyResponse = {
   date: string;
@@ -41,7 +41,7 @@ type LeaderboardEntry = {
   distanceMeters: number;
 };
 
-const MONTREAL_CENTER: [number, number] = [-73.5674, 45.5019];
+const MONTREAL_CENTER: [number, number] = [45.5019, -73.5674];
 
 const ANON_STORAGE_KEY = 'mtl-archives-game-anon';
 let inMemoryAnonId: string | null = null;
@@ -203,6 +203,26 @@ function MapClickHandler({
       onSelect(event.latlng.lat, event.latlng.lng);
     },
   });
+
+  return null;
+}
+
+function MapResizeHandler() {
+  const map = useMap();
+
+  useEffect(() => {
+    const handleResize = () => {
+      map.invalidateSize();
+    };
+
+    const timer = window.setTimeout(handleResize, 0);
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [map]);
 
   return null;
 }
@@ -637,6 +657,7 @@ export function GameClient() {
           >
             <MapTileLayer />
             <MapZoomControl className="bottom-4 right-3" />
+            <MapResizeHandler />
             <MapClickHandler disabled={!canPlacePin} onSelect={handleMapPick} />
             {guess && (
               <MapMarker
