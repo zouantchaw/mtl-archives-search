@@ -135,6 +135,8 @@ const translations = {
     shareCopied: 'Lien copié',
     shareFailed: 'Impossible de copier',
     saveStreak: 'Connecte-toi pour sauvegarder ta série.',
+    revealPrompt: 'Connecte-toi pour voir ton résultat.',
+    revealPromptEmphasis: 'Connecte-toi pour voir ton résultat 📍',
     saveStreakButton: 'Sauvegarder ma série',
     streakSaved: 'Série sauvegardée sur ton compte.',
     leaderboard: 'Classement du jour',
@@ -164,6 +166,8 @@ const translations = {
     shareCopied: 'Link copied',
     shareFailed: 'Could not copy',
     saveStreak: 'Sign in to save your streak.',
+    revealPrompt: 'Sign in to see your result.',
+    revealPromptEmphasis: 'Sign in to see your result 📍',
     saveStreakButton: 'Save my streak',
     streakSaved: 'Streak saved to your account.',
     leaderboard: 'Today\'s leaderboard',
@@ -191,6 +195,7 @@ export function GameClient() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [shareMessage, setShareMessage] = useState('');
+  const [awaitingReveal, setAwaitingReveal] = useState(false);
   const { getToken, isLoaded, isSignedIn } = useAuth();
   const abVariantRef = useRef<string | null>(null);
   const landedRef = useRef(false);
@@ -229,17 +234,13 @@ export function GameClient() {
 
   useEffect(() => {
     if (!isLoaded) return;
-    if (isSignedIn) {
-      setAnonId(null);
-      return;
-    }
     setAnonId(getAnonId());
-  }, [isLoaded, isSignedIn]);
+  }, [isLoaded]);
 
   useEffect(() => {
     if (!isLoaded) return;
     if (isSignedIn) {
-      loadDaily(null);
+      loadDaily(anonId);
       return;
     }
     if (anonId) {
@@ -287,6 +288,10 @@ export function GameClient() {
 
   useEffect(() => {
     if (!data) return;
+    if (!isSignedIn && awaitingReveal) {
+      setResult(null);
+      return;
+    }
     if (mode === 'daily' && data.daily.result) {
       setResult({ mode: 'daily', played: true, ...data.daily.result });
       return;
@@ -296,7 +301,7 @@ export function GameClient() {
       return;
     }
     setResult(null);
-  }, [data, mode]);
+  }, [data, mode, awaitingReveal, isSignedIn]);
 
   useEffect(() => {
     if (!isLoaded || landedRef.current) return;
@@ -319,6 +324,14 @@ export function GameClient() {
     events.gamePinPlaced(mode);
     pinPlacedRef.current = true;
   }, [guess, mode]);
+
+  useEffect(() => {
+    if (!isSignedIn || !awaitingReveal) return;
+    const hasResult = mode === 'daily' ? Boolean(data?.daily.result) : Boolean(data?.practice.result);
+    if (hasResult) {
+      setAwaitingReveal(false);
+    }
+  }, [awaitingReveal, data?.daily.result, data?.practice.result, isSignedIn, mode]);
 
   const submitGuess = async () => {
     if (!guess || !currentPhoto) return;
@@ -343,9 +356,13 @@ export function GameClient() {
       });
       const json = await res.json();
       if (res.ok) {
-        setResult(json);
-        events.gameGuessResult(mode, json.score, json.distanceMeters);
-        await loadDaily(isSignedIn ? null : anonId);
+        if (isSignedIn) {
+          setResult(json);
+          events.gameGuessResult(mode, json.score, json.distanceMeters);
+        } else {
+          setAwaitingReveal(true);
+        }
+        await loadDaily(anonId);
         if (mode === 'daily' && data?.date) {
           loadLeaderboard(data.date);
         }
@@ -397,6 +414,7 @@ export function GameClient() {
   const signInRedirect = appendLangParam('/game', lang);
   const signInUrl = `/sign-in?redirect_url=${encodeURIComponent(signInRedirect)}`;
   const showMapHint = !guess && !currentPlayed;
+  const isResultLocked = Boolean(awaitingReveal && !isSignedIn);
   const scoreLabel = result ? `${result.score} ${t.score}` : `-- ${t.score}`;
   const distanceLabel = result ? t.distance.replace('{distance}', formatDistance(result.distanceMeters)) : '';
   const showShare = Boolean(result && mode === 'daily');
@@ -565,7 +583,18 @@ export function GameClient() {
 
             <div className="rounded-3xl border border-neutral-200 bg-white/90 p-4 space-y-3 shadow-[0_20px_50px_-40px_rgba(15,23,42,0.35)] hidden lg:block">
               <h3 className="text-sm uppercase tracking-[0.2em] text-neutral-400">{t.result}</h3>
-              {result ? (
+              {isResultLocked ? (
+                <div className="flex flex-col gap-2">
+                  <a
+                    href={signInUrl}
+                    onClick={() => events.gameSignInCtaClicked()}
+                    className="inline-flex items-center justify-center px-4 py-2 rounded-full bg-neutral-900 text-white text-xs font-medium"
+                  >
+                    {t.revealPromptEmphasis}
+                  </a>
+                  <p className="text-xs text-neutral-500">{t.saveStreak}</p>
+                </div>
+              ) : result ? (
                 <>
                   <p className="text-3xl font-semibold">{result.score} {t.score}</p>
                   <p className="text-sm text-neutral-600">
@@ -608,21 +637,36 @@ export function GameClient() {
 
             {showStreakHint && (
               <div className="lg:hidden rounded-2xl border border-neutral-200 bg-white/90 px-4 py-3">
-                <SignedOut>
+                {isResultLocked ? (
                   <div className="flex flex-col gap-2">
                     <a
                       href={signInUrl}
                       onClick={() => events.gameSignInCtaClicked()}
                       className="inline-flex items-center justify-center px-3 py-2 rounded-full bg-neutral-900 text-white text-xs font-medium"
                     >
-                      {t.saveStreakButton}
+                      {t.revealPromptEmphasis}
                     </a>
                     <p className="text-xs text-neutral-500">{t.saveStreak}</p>
                   </div>
-                </SignedOut>
-                <SignedIn>
-                  <div className="text-xs text-emerald-600">{t.streakSaved}</div>
-                </SignedIn>
+                ) : (
+                  <>
+                    <SignedOut>
+                      <div className="flex flex-col gap-2">
+                        <a
+                          href={signInUrl}
+                          onClick={() => events.gameSignInCtaClicked()}
+                          className="inline-flex items-center justify-center px-3 py-2 rounded-full bg-neutral-900 text-white text-xs font-medium"
+                        >
+                          {t.saveStreakButton}
+                        </a>
+                        <p className="text-xs text-neutral-500">{t.saveStreak}</p>
+                      </div>
+                    </SignedOut>
+                    <SignedIn>
+                      <div className="text-xs text-emerald-600">{t.streakSaved}</div>
+                    </SignedIn>
+                  </>
+                )}
               </div>
             )}
 

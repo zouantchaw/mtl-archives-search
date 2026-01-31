@@ -1240,14 +1240,60 @@ async function handleGameDaily(request: Request, env: Env): Promise<Response> {
   let practiceAvailable = true;
   let practiceResult: { score: number; distanceMeters: number } | null = null;
 
-  if (anonId || userId) {
-    const existingDaily = userId
-      ? await env.DB.prepare(
-        'SELECT score, distance_meters FROM daily_guess WHERE date_key = ? AND user_id = ? LIMIT 1'
-      ).bind(dateKey, userId).first<{ score: number; distance_meters: number }>()
-      : await env.DB.prepare(
+  if (userId) {
+    const existingDaily = await env.DB.prepare(
+      'SELECT score, distance_meters FROM daily_guess WHERE date_key = ? AND user_id = ? LIMIT 1'
+    ).bind(dateKey, userId).first<{ score: number; distance_meters: number }>();
+    if (existingDaily) {
+      dailyPlayed = true;
+      dailyResult = {
+        score: Number(existingDaily.score),
+        distanceMeters: Number(existingDaily.distance_meters),
+      };
+    } else if (anonId) {
+      const anonDaily = await env.DB.prepare(
         'SELECT score, distance_meters FROM daily_guess WHERE date_key = ? AND anon_id = ? LIMIT 1'
       ).bind(dateKey, anonId).first<{ score: number; distance_meters: number }>();
+      if (anonDaily) {
+        await env.DB.prepare(
+          'UPDATE daily_guess SET user_id = ? WHERE date_key = ? AND anon_id = ? AND user_id IS NULL'
+        ).bind(userId, dateKey, anonId).run();
+        dailyPlayed = true;
+        dailyResult = {
+          score: Number(anonDaily.score),
+          distanceMeters: Number(anonDaily.distance_meters),
+        };
+      }
+    }
+
+    const existingPractice = await env.DB.prepare(
+      'SELECT score, distance_meters FROM practice_guess WHERE date_key = ? AND user_id = ? LIMIT 1'
+    ).bind(dateKey, userId).first<{ score: number; distance_meters: number }>();
+    if (existingPractice) {
+      practiceAvailable = false;
+      practiceResult = {
+        score: Number(existingPractice.score),
+        distanceMeters: Number(existingPractice.distance_meters),
+      };
+    } else if (anonId) {
+      const anonPractice = await env.DB.prepare(
+        'SELECT score, distance_meters FROM practice_guess WHERE date_key = ? AND anon_id = ? LIMIT 1'
+      ).bind(dateKey, anonId).first<{ score: number; distance_meters: number }>();
+      if (anonPractice) {
+        await env.DB.prepare(
+          'UPDATE practice_guess SET user_id = ? WHERE date_key = ? AND anon_id = ? AND user_id IS NULL'
+        ).bind(userId, dateKey, anonId).run();
+        practiceAvailable = false;
+        practiceResult = {
+          score: Number(anonPractice.score),
+          distanceMeters: Number(anonPractice.distance_meters),
+        };
+      }
+    }
+  } else if (anonId) {
+    const existingDaily = await env.DB.prepare(
+      'SELECT score, distance_meters FROM daily_guess WHERE date_key = ? AND anon_id = ? LIMIT 1'
+    ).bind(dateKey, anonId).first<{ score: number; distance_meters: number }>();
     if (existingDaily) {
       dailyPlayed = true;
       dailyResult = {
@@ -1256,13 +1302,9 @@ async function handleGameDaily(request: Request, env: Env): Promise<Response> {
       };
     }
 
-    const existingPractice = userId
-      ? await env.DB.prepare(
-        'SELECT score, distance_meters FROM practice_guess WHERE date_key = ? AND user_id = ? LIMIT 1'
-      ).bind(dateKey, userId).first<{ score: number; distance_meters: number }>()
-      : await env.DB.prepare(
-        'SELECT score, distance_meters FROM practice_guess WHERE date_key = ? AND anon_id = ? LIMIT 1'
-      ).bind(dateKey, anonId).first<{ score: number; distance_meters: number }>();
+    const existingPractice = await env.DB.prepare(
+      'SELECT score, distance_meters FROM practice_guess WHERE date_key = ? AND anon_id = ? LIMIT 1'
+    ).bind(dateKey, anonId).first<{ score: number; distance_meters: number }>();
     if (existingPractice) {
       practiceAvailable = false;
       practiceResult = {
@@ -1413,7 +1455,7 @@ async function handleGameLeaderboard(url: URL, env: Env): Promise<Response> {
   ).bind(dateKey, limit).all();
 
   const leaderboard = results.map((row, index) => {
-    const tagSource = String(row.anon_id || row.user_id || '');
+    const tagSource = String(row.user_id || row.anon_id || '');
     const anonTag = tagSource ? tagSource.slice(-4).toUpperCase() : '????';
     return {
       rank: index + 1,
