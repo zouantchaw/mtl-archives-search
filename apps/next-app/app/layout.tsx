@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Figtree } from "next/font/google";
-import { Analytics } from "@vercel/analytics/next";
+import { AnalyticsProvider } from "@/components/AnalyticsProvider";
 import "./globals.css";
 import { CartProvider } from "@/lib/cart-context";
 import { CartDrawer } from "@/components/CartDrawer";
@@ -191,7 +191,7 @@ export default function RootLayout({
             <CartDrawer />
           </CartProvider>
           <FlagValues />
-          <Analytics />
+          <AnalyticsProvider />
         </body>
       </html>
     </ClerkLocalized>

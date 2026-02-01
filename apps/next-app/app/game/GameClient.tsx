@@ -13,17 +13,24 @@ import { getAbVariant } from '@/lib/experiments';
 import { Map, MapMarker, MapPolyline, MapTileLayer, MapZoomControl } from '@/components/ui/map';
 import { useMap, useMapEvents } from 'react-leaflet';
 
+type GameResult = {
+  score: number;
+  distanceMeters: number;
+  guessedLat?: number;
+  guessedLng?: number;
+};
+
 type GameDailyResponse = {
   date: string;
   daily: {
     photo: PhotoRecord;
     played: boolean;
-    result: { score: number; distanceMeters: number } | null;
+    result: GameResult | null;
   };
   practice: {
     available: boolean;
     photo: PhotoRecord | null;
-    result: { score: number; distanceMeters: number } | null;
+    result: GameResult | null;
   };
 };
 
@@ -102,7 +109,6 @@ const getScoreColor = (score: number): string => {
   return 'text-red-500';
 };
 
-const PENDING_GUESS_KEY = 'mtl-archives-pending-guess';
 const INTRO_SEEN_KEY = 'mtl-archives-game-intro-seen';
 
 const translations = {
@@ -138,12 +144,14 @@ const translations = {
     yourRank: 'Ton rang',
     signIn: 'Connexion',
     back: 'Retour',
-    // Login prompt
-    loginPromptTitle: 'Connecte-toi pour voir ton score!',
-    loginPromptSubtitle: 'Ton point est placé. Connecte-toi pour valider et découvrir à quelle distance tu es du lieu réel.',
+    // Sign-in CTA (in results overlay)
+    loginPromptTitle: 'Sauvegarde ta série',
+    loginPromptSubtitle: 'Connecte-toi pour garder tes scores au classement',
     loginWithGoogle: 'Continuer avec Google',
     loginWithEmail: 'Continuer avec courriel',
-    cancel: 'Annuler',
+    // Zoom prompt
+    zoomHint: 'Zoome pour vérifier',
+    viewMyScore: 'Voir mon score',
     // Intro
     introQuestion: 'Où cette photo a-t-elle été prise?',
     introSkip: 'Passer',
@@ -180,12 +188,14 @@ const translations = {
     yourRank: 'Your rank',
     signIn: 'Sign in',
     back: 'Back',
-    // Login prompt
-    loginPromptTitle: 'Sign in to see your score!',
-    loginPromptSubtitle: 'Your pin is placed. Sign in to submit and find out how close you are to the real location.',
+    // Sign-in CTA (in results overlay)
+    loginPromptTitle: 'Save your streak',
+    loginPromptSubtitle: 'Sign in to keep your scores on the leaderboard',
     loginWithGoogle: 'Continue with Google',
     loginWithEmail: 'Continue with email',
-    cancel: 'Cancel',
+    // Zoom prompt
+    zoomHint: 'Zoom in to check',
+    viewMyScore: 'View my score',
     // Intro
     introQuestion: 'Where was this photo taken?',
     introSkip: 'Skip',
@@ -206,6 +216,13 @@ function MapClickHandler({
     },
   });
 
+  return null;
+}
+
+function MapZoomTracker({ onZoom }: { onZoom: () => void }) {
+  useMapEvents({
+    zoomend: () => onZoom(),
+  });
   return null;
 }
 
@@ -246,7 +263,6 @@ export function GameClient() {
   const [shareMessage, setShareMessage] = useState('');
   const [photoExpanded, setPhotoExpanded] = useState(false);
   const [showResults, setShowResults] = useState(false);
-  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [showIntro, setShowIntro] = useState(false);
   const [introAnimating, setIntroAnimating] = useState(false);
   const { getToken, isLoaded, isSignedIn } = useAuth();
@@ -254,7 +270,8 @@ export function GameClient() {
   const landedRef = useRef(false);
   const pinPlacedRef = useRef(false);
   const prevModeRef = useRef<'daily' | 'practice'>('daily');
-  const pendingSubmitRef = useRef(false);
+  const zoomedAfterPinRef = useRef(false);
+  const [showZoomHint, setShowZoomHint] = useState(false);
 
   const currentPhoto = mode === 'daily' ? data?.daily.photo : data?.practice.photo;
   const currentPlayed = mode === 'daily' ? data?.daily.played : data?.practice.result !== null;
@@ -275,10 +292,29 @@ export function GameClient() {
 
   const handleMapPick = useCallback((lat: number, lng: number) => {
     setGuess({ lat, lng });
+    zoomedAfterPinRef.current = false;
+    setShowZoomHint(true);
     if ('vibrate' in navigator) {
       navigator.vibrate(10);
     }
   }, []);
+
+  const handleMapZoom = useCallback(() => {
+    if (guess && !zoomedAfterPinRef.current) {
+      zoomedAfterPinRef.current = true;
+      setShowZoomHint(false);
+      if (currentPhoto) {
+        events.photoZoomed(currentPhoto.metadataFilename, { dateValue: currentPhoto.dateValue });
+      }
+    }
+  }, [guess, currentPhoto]);
+
+  // Auto-dismiss zoom hint after 3s
+  useEffect(() => {
+    if (!showZoomHint) return;
+    const timer = setTimeout(() => setShowZoomHint(false), 3000);
+    return () => clearTimeout(timer);
+  }, [showZoomHint]);
 
   const loadDaily = useCallback(async (id?: string | null) => {
     setLoading(true);
@@ -329,18 +365,16 @@ export function GameClient() {
     }
   }, [data?.date, loadLeaderboard]);
 
-  // Restore result from data
+  // Restore result from data — show pin + score for already-played games
   useEffect(() => {
     if (!data) return;
-    if (mode === 'daily' && data.daily.result) {
-      setResult({ mode: 'daily', played: true, ...data.daily.result });
+    const r = mode === 'daily' ? data.daily.result : data.practice.result;
+    if (r) {
+      setResult({ mode, played: true, score: r.score, distanceMeters: r.distanceMeters });
+      if (r.guessedLat != null && r.guessedLng != null) {
+        setGuess({ lat: r.guessedLat, lng: r.guessedLng });
+      }
       setShowResults(true);
-      return;
-    }
-    if (mode === 'practice' && data.practice.result) {
-      setResult({ mode: 'practice', played: true, ...data.practice.result });
-      setShowResults(true);
-      return;
     }
   }, [data, mode]);
 
@@ -420,41 +454,7 @@ export function GameClient() {
     pinPlacedRef.current = true;
   }, [guess, mode]);
 
-  // Store pending guess for after login
-  const storePendingGuess = useCallback((guessData: { lat: number; lng: number }, gameMode: 'daily' | 'practice') => {
-    try {
-      localStorage.setItem(PENDING_GUESS_KEY, JSON.stringify({ guess: guessData, mode: gameMode, timestamp: Date.now() }));
-    } catch {
-      // Ignore storage errors
-    }
-  }, []);
-
-  const clearPendingGuess = useCallback(() => {
-    try {
-      localStorage.removeItem(PENDING_GUESS_KEY);
-    } catch {
-      // Ignore storage errors
-    }
-    pendingSubmitRef.current = false;
-  }, []);
-
-  const getPendingGuess = useCallback((): { guess: { lat: number; lng: number }; mode: 'daily' | 'practice' } | null => {
-    try {
-      const stored = localStorage.getItem(PENDING_GUESS_KEY);
-      if (!stored) return null;
-      const parsed = JSON.parse(stored);
-      // Expire after 10 minutes
-      if (Date.now() - parsed.timestamp > 10 * 60 * 1000) {
-        localStorage.removeItem(PENDING_GUESS_KEY);
-        return null;
-      }
-      return parsed;
-    } catch {
-      return null;
-    }
-  }, []);
-
-  // Actually submit the guess to the API
+  // Submit the guess to the API
   const submitGuessToAPI = useCallback(async (guessData: { lat: number; lng: number }, gameMode: 'daily' | 'practice') => {
     if (!currentPhoto) return;
     setSubmitting(true);
@@ -484,7 +484,6 @@ export function GameClient() {
         setResult(json);
         setShowResults(true);
         events.gameGuessResult(gameMode, json.score, json.distanceMeters, { photoYear: currentPhoto.dateValue });
-        clearPendingGuess();
         await loadDaily(anonId);
         if (gameMode === 'daily' && data?.date) {
           loadLeaderboard(data.date);
@@ -493,42 +492,13 @@ export function GameClient() {
     } finally {
       setSubmitting(false);
     }
-  }, [currentPhoto, isSignedIn, getToken, clearPendingGuess, loadDaily, anonId, data?.date, loadLeaderboard]);
+  }, [currentPhoto, isSignedIn, getToken, loadDaily, anonId, data?.date, loadLeaderboard]);
 
-  // Handle submit button click
+  // Handle submit button click — always submit (anon or signed-in)
   const handleSubmitGuess = async () => {
     if (!guess || !currentPhoto) return;
-    
-    // If not signed in, show login prompt and store guess
-    if (!isSignedIn) {
-      storePendingGuess(guess, mode);
-      setShowLoginPrompt(true);
-      events.gameSignInCtaClicked();
-      return;
-    }
-    
-    // User is signed in, submit directly
     await submitGuessToAPI(guess, mode);
   };
-
-  // Auto-submit after login if there's a pending guess
-  useEffect(() => {
-    if (!isSignedIn || !isLoaded) return;
-    if (pendingSubmitRef.current) return;
-    
-    const pending = getPendingGuess();
-    if (pending && currentPhoto) {
-      pendingSubmitRef.current = true;
-      // Restore the guess on the map
-      setGuess(pending.guess);
-      setMode(pending.mode);
-      // Submit after a brief delay to let the UI update
-      const timer = setTimeout(() => {
-        submitGuessToAPI(pending.guess, pending.mode);
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [isSignedIn, isLoaded, currentPhoto, getPendingGuess, submitGuessToAPI]);
 
   const handleShareScore = async () => {
     if (!result || !data?.date) return;
@@ -665,6 +635,7 @@ export function GameClient() {
             <MapZoomControl className="bottom-4 right-3" />
             <MapResizeHandler />
             <MapClickHandler disabled={!canPlacePin} onSelect={handleMapPick} />
+            <MapZoomTracker onZoom={handleMapZoom} />
             {guess && (
               <MapMarker
                 position={[guess.lat, guess.lng]}
@@ -778,7 +749,16 @@ export function GameClient() {
       <div className="shrink-0 bg-white border-t border-neutral-200/60 safe-area-pb z-30">
         <div className="px-4 pt-3 pb-3 space-y-3">
           {/* Primary CTA */}
-          {!showResults ? (
+          {!showResults && currentPlayed && result ? (
+            <button
+              onClick={() => setShowResults(true)}
+              className="w-full h-12 rounded-full bg-neutral-900 text-white font-medium text-xs sm:text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+              aria-label={t.viewMyScore}
+            >
+              <Trophy className="w-4 h-4" />
+              {t.viewMyScore} · {result.score} {t.score}
+            </button>
+          ) : !showResults ? (
             <button
               onClick={handleSubmitGuess}
               disabled={ctaDisabled}
@@ -804,6 +784,14 @@ export function GameClient() {
               <Share2 className="w-4 h-4" />
               {shareMessage || t.shareResult}
             </button>
+          )}
+
+          {/* Zoom hint - nudge after pin placement */}
+          {showZoomHint && guess && !showResults && !currentPlayed && (
+            <div className="text-center text-xs text-neutral-400 animate-pulse -mt-1">
+              <Maximize2 className="w-3 h-3 inline mr-1" />
+              {t.zoomHint}
+            </div>
           )}
 
           {/* Mode tabs - secondary */}
@@ -1007,9 +995,35 @@ export function GameClient() {
                   {shareMessage || t.shareResult}
                 </button>
 
-                <div className="text-xs text-center text-emerald-600 font-medium py-2">
-                  ✓ {t.streakSaved}
-                </div>
+                {isSignedIn ? (
+                  <div className="text-xs text-center text-emerald-600 font-medium py-2">
+                    ✓ {t.streakSaved}
+                  </div>
+                ) : (
+                  <div className="space-y-2 pt-1">
+                    <p className="text-xs text-center text-neutral-500">{t.loginPromptSubtitle}</p>
+                    <a
+                      href={`${signInUrl}&strategy=oauth_google`}
+                      onClick={() => events.gameSignInCtaClicked()}
+                      className="w-full h-10 rounded-full bg-neutral-100 text-neutral-900 font-medium text-xs flex items-center justify-center gap-2 hover:bg-neutral-200 transition-colors"
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 24 24">
+                        <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                        <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                      </svg>
+                      {t.loginPromptTitle}
+                    </a>
+                    <a
+                      href={signInUrl}
+                      onClick={() => events.gameSignInCtaClicked()}
+                      className="w-full h-10 rounded-full border border-neutral-200 text-neutral-600 font-medium text-xs flex items-center justify-center hover:bg-neutral-50 transition-colors"
+                    >
+                      {t.loginWithEmail}
+                    </a>
+                  </div>
+                )}
               </div>
 
               {/* Next action hint */}
@@ -1052,85 +1066,6 @@ export function GameClient() {
         </div>
       )}
 
-      {/* Login Prompt Modal */}
-      {showLoginPrompt && (
-        <div 
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="login-prompt-title"
-        >
-          {/* Backdrop */}
-          <div 
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
-            onClick={() => {
-              setShowLoginPrompt(false);
-              clearPendingGuess();
-            }}
-          />
-
-          {/* Modal card */}
-          <div className="relative w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl safe-area-pb animate-slide-up">
-            {/* Drag handle (mobile) */}
-            <div className="flex justify-center pt-3 pb-2 sm:hidden">
-              <div className="w-10 h-1 bg-neutral-200 rounded-full" />
-            </div>
-
-            <div className="px-6 pb-6 pt-2 sm:pt-6 space-y-5">
-              {/* Icon */}
-              <div className="flex justify-center">
-                <div className="w-16 h-16 bg-neutral-100 rounded-full flex items-center justify-center">
-                  <MapPin className="w-8 h-8 text-neutral-900" />
-                </div>
-              </div>
-
-              {/* Title */}
-              <div className="text-center">
-                <h2 id="login-prompt-title" className="text-xl font-semibold text-neutral-900">
-                  {t.loginPromptTitle}
-                </h2>
-                <p className="text-sm text-neutral-500 mt-2">
-                  {t.loginPromptSubtitle}
-                </p>
-              </div>
-
-              {/* Login buttons */}
-              <div className="space-y-3">
-                <a
-                  href={`${signInUrl}&strategy=oauth_google`}
-                  className="w-full h-12 rounded-full bg-neutral-900 text-white font-medium text-sm flex items-center justify-center gap-3 hover:bg-neutral-800 transition-colors"
-                >
-                  <svg className="w-5 h-5" viewBox="0 0 24 24">
-                    <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                    <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                    <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                    <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                  </svg>
-                  {t.loginWithGoogle}
-                </a>
-
-                <a
-                  href={signInUrl}
-                  className="w-full h-12 rounded-full border border-neutral-200 bg-white text-neutral-900 font-medium text-sm flex items-center justify-center gap-2 hover:bg-neutral-50 transition-colors"
-                >
-                  {t.loginWithEmail}
-                </a>
-              </div>
-
-              {/* Cancel */}
-              <button
-                onClick={() => {
-                  setShowLoginPrompt(false);
-                  clearPendingGuess();
-                }}
-                className="w-full text-sm text-neutral-500 hover:text-neutral-700 transition-colors py-2"
-              >
-                {t.cancel}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

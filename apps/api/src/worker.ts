@@ -1236,24 +1236,26 @@ async function handleGameDaily(request: Request, env: Env): Promise<Response> {
   const dailyPhoto = await buildPhotoRecord(dailyRow, env);
 
   let dailyPlayed = false;
-  let dailyResult: { score: number; distanceMeters: number } | null = null;
+  let dailyResult: { score: number; distanceMeters: number; guessedLat?: number; guessedLng?: number } | null = null;
   let practiceAvailable = true;
-  let practiceResult: { score: number; distanceMeters: number } | null = null;
+  let practiceResult: { score: number; distanceMeters: number; guessedLat?: number; guessedLng?: number } | null = null;
 
   if (userId) {
     const existingDaily = await env.DB.prepare(
-      'SELECT score, distance_meters FROM daily_guess WHERE date_key = ? AND user_id = ? LIMIT 1'
-    ).bind(dateKey, userId).first<{ score: number; distance_meters: number }>();
+      'SELECT score, distance_meters, guessed_lat, guessed_lng FROM daily_guess WHERE date_key = ? AND user_id = ? LIMIT 1'
+    ).bind(dateKey, userId).first<{ score: number; distance_meters: number; guessed_lat: number; guessed_lng: number }>();
     if (existingDaily) {
       dailyPlayed = true;
       dailyResult = {
         score: Number(existingDaily.score),
         distanceMeters: Number(existingDaily.distance_meters),
+        guessedLat: Number(existingDaily.guessed_lat),
+        guessedLng: Number(existingDaily.guessed_lng),
       };
     } else if (anonId) {
       const anonDaily = await env.DB.prepare(
-        'SELECT score, distance_meters FROM daily_guess WHERE date_key = ? AND anon_id = ? LIMIT 1'
-      ).bind(dateKey, anonId).first<{ score: number; distance_meters: number }>();
+        'SELECT score, distance_meters, guessed_lat, guessed_lng FROM daily_guess WHERE date_key = ? AND anon_id = ? LIMIT 1'
+      ).bind(dateKey, anonId).first<{ score: number; distance_meters: number; guessed_lat: number; guessed_lng: number }>();
       if (anonDaily) {
         await env.DB.prepare(
           'UPDATE daily_guess SET user_id = ? WHERE date_key = ? AND anon_id = ? AND user_id IS NULL'
@@ -1262,23 +1264,27 @@ async function handleGameDaily(request: Request, env: Env): Promise<Response> {
         dailyResult = {
           score: Number(anonDaily.score),
           distanceMeters: Number(anonDaily.distance_meters),
+          guessedLat: Number(anonDaily.guessed_lat),
+          guessedLng: Number(anonDaily.guessed_lng),
         };
       }
     }
 
     const existingPractice = await env.DB.prepare(
-      'SELECT score, distance_meters FROM practice_guess WHERE date_key = ? AND user_id = ? LIMIT 1'
-    ).bind(dateKey, userId).first<{ score: number; distance_meters: number }>();
+      'SELECT score, distance_meters, guessed_lat, guessed_lng FROM practice_guess WHERE date_key = ? AND user_id = ? LIMIT 1'
+    ).bind(dateKey, userId).first<{ score: number; distance_meters: number; guessed_lat: number; guessed_lng: number }>();
     if (existingPractice) {
       practiceAvailable = false;
       practiceResult = {
         score: Number(existingPractice.score),
         distanceMeters: Number(existingPractice.distance_meters),
+        guessedLat: Number(existingPractice.guessed_lat),
+        guessedLng: Number(existingPractice.guessed_lng),
       };
     } else if (anonId) {
       const anonPractice = await env.DB.prepare(
-        'SELECT score, distance_meters FROM practice_guess WHERE date_key = ? AND anon_id = ? LIMIT 1'
-      ).bind(dateKey, anonId).first<{ score: number; distance_meters: number }>();
+        'SELECT score, distance_meters, guessed_lat, guessed_lng FROM practice_guess WHERE date_key = ? AND anon_id = ? LIMIT 1'
+      ).bind(dateKey, anonId).first<{ score: number; distance_meters: number; guessed_lat: number; guessed_lng: number }>();
       if (anonPractice) {
         await env.DB.prepare(
           'UPDATE practice_guess SET user_id = ? WHERE date_key = ? AND anon_id = ? AND user_id IS NULL'
@@ -1287,29 +1293,35 @@ async function handleGameDaily(request: Request, env: Env): Promise<Response> {
         practiceResult = {
           score: Number(anonPractice.score),
           distanceMeters: Number(anonPractice.distance_meters),
+          guessedLat: Number(anonPractice.guessed_lat),
+          guessedLng: Number(anonPractice.guessed_lng),
         };
       }
     }
   } else if (anonId) {
     const existingDaily = await env.DB.prepare(
-      'SELECT score, distance_meters FROM daily_guess WHERE date_key = ? AND anon_id = ? LIMIT 1'
-    ).bind(dateKey, anonId).first<{ score: number; distance_meters: number }>();
+      'SELECT score, distance_meters, guessed_lat, guessed_lng FROM daily_guess WHERE date_key = ? AND anon_id = ? LIMIT 1'
+    ).bind(dateKey, anonId).first<{ score: number; distance_meters: number; guessed_lat: number; guessed_lng: number }>();
     if (existingDaily) {
       dailyPlayed = true;
       dailyResult = {
         score: Number(existingDaily.score),
         distanceMeters: Number(existingDaily.distance_meters),
+        guessedLat: Number(existingDaily.guessed_lat),
+        guessedLng: Number(existingDaily.guessed_lng),
       };
     }
 
     const existingPractice = await env.DB.prepare(
-      'SELECT score, distance_meters FROM practice_guess WHERE date_key = ? AND anon_id = ? LIMIT 1'
-    ).bind(dateKey, anonId).first<{ score: number; distance_meters: number }>();
+      'SELECT score, distance_meters, guessed_lat, guessed_lng FROM practice_guess WHERE date_key = ? AND anon_id = ? LIMIT 1'
+    ).bind(dateKey, anonId).first<{ score: number; distance_meters: number; guessed_lat: number; guessed_lng: number }>();
     if (existingPractice) {
       practiceAvailable = false;
       practiceResult = {
         score: Number(existingPractice.score),
         distanceMeters: Number(existingPractice.distance_meters),
+        guessedLat: Number(existingPractice.guessed_lat),
+        guessedLng: Number(existingPractice.guessed_lng),
       };
     }
   }
@@ -1406,8 +1418,8 @@ async function handleGameGuess(request: Request, env: Env): Promise<Response> {
       'SELECT score, distance_meters FROM practice_guess WHERE date_key = ? AND user_id = ? LIMIT 1'
     ).bind(dateKey, userId).first<{ score: number; distance_meters: number }>()
     : await env.DB.prepare(
-      'SELECT score, distance_meters FROM practice_guess WHERE date_key = ? AND anon_id = ? LIMIT 1'
-    ).bind(dateKey, anonId).first<{ score: number; distance_meters: number }>();
+      'SELECT score, distance_meters, guessed_lat, guessed_lng FROM practice_guess WHERE date_key = ? AND anon_id = ? LIMIT 1'
+    ).bind(dateKey, anonId).first<{ score: number; distance_meters: number; guessed_lat: number; guessed_lng: number }>();
   if (existingPractice) {
     return jsonResponse({
       mode,
