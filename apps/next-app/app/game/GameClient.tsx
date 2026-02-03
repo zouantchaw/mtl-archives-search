@@ -135,6 +135,7 @@ const translations = {
     shareResult: 'Partager mon score',
     shareCopied: 'Copié!',
     shareFailed: 'Erreur',
+    shareHint: 'Défie un ami — partage ton score',
     saveStreak: 'Connecte-toi pour sauvegarder ta série',
     signInToSave: 'Sauvegarder ma série',
     streakSaved: 'Série sauvegardée!',
@@ -179,6 +180,7 @@ const translations = {
     shareResult: 'Share my score',
     shareCopied: 'Copied!',
     shareFailed: 'Error',
+    shareHint: 'Challenge a friend — share your score',
     saveStreak: 'Sign in to save your streak',
     signInToSave: 'Save my streak',
     streakSaved: 'Streak saved!',
@@ -261,6 +263,7 @@ export function GameClient() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [shareMessage, setShareMessage] = useState('');
+  const sharePromptKeyRef = useRef<string | null>(null);
   const [photoExpanded, setPhotoExpanded] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [showIntro, setShowIntro] = useState(false);
@@ -454,6 +457,14 @@ export function GameClient() {
     pinPlacedRef.current = true;
   }, [guess, mode]);
 
+  useEffect(() => {
+    if (!showResults || !result) return;
+    const key = `${data?.date ?? 'unknown'}:${mode}:${result.score}:${Math.round(result.distanceMeters)}`;
+    if (sharePromptKeyRef.current === key) return;
+    sharePromptKeyRef.current = key;
+    events.gameSharePromptShown(mode, result.score);
+  }, [showResults, result, mode, data?.date]);
+
   // Submit the guess to the API
   const submitGuessToAPI = useCallback(async (guessData: { lat: number; lng: number }, gameMode: 'daily' | 'practice') => {
     if (!currentPhoto) return;
@@ -510,6 +521,7 @@ export function GameClient() {
     if (navigator.share) {
       try {
         await navigator.share({ title: 'MTL Archives', text, url });
+        events.gameShareCompleted('native', mode, result.score);
         return;
       } catch {
         // Fallback to clipboard
@@ -517,6 +529,7 @@ export function GameClient() {
     }
     try {
       await navigator.clipboard.writeText(`${text}\n${url}`);
+      events.gameShareCompleted('copy', mode, result.score);
       setShareMessage(t.shareCopied);
       setTimeout(() => setShareMessage(''), 2000);
     } catch {
@@ -994,6 +1007,9 @@ export function GameClient() {
                   <Share2 className="w-4 h-4" />
                   {shareMessage || t.shareResult}
                 </button>
+                <p className="text-[11px] text-center text-neutral-500">
+                  {t.shareHint}
+                </p>
 
                 {isSignedIn ? (
                   <div className="text-xs text-center text-emerald-600 font-medium py-2">

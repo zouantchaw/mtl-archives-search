@@ -13,7 +13,8 @@ const DATA_URL_2D = `${R2_BASE}/embeddings_2d.json`;
 const DATA_URL_512D = `${R2_BASE}/embeddings_512d.bin`;
 const DATA_URL_IDS = `${R2_BASE}/embeddings_ids.json`;
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
+const RAW_API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
+const API_BASE_URL = RAW_API_BASE_URL || (import.meta.env.PROD ? 'https://mtl-archives-worker.wiel.workers.dev' : '');
 const API_ORIGIN = API_BASE_URL ? API_BASE_URL.replace(/\/$/, '') : '';
 
 const SCALE = 1000;
@@ -1142,7 +1143,7 @@ function CollectionPanel({
               >
                 <div className="flex items-center gap-3">
                   <img
-                    src={`${import.meta.env.VITE_API_BASE_URL || ''}/api/thumb?src=${encodeURIComponent(item.image_url)}&w=120&h=80&fit=cover&q=70`}
+                    src={`${API_ORIGIN}/api/thumb?src=${encodeURIComponent(item.image_url)}&w=120&h=80&fit=cover&q=70`}
                     alt=""
                     className="w-14 h-10 rounded-lg object-cover ring-1 ring-white/[0.08]"
                   />
@@ -1367,7 +1368,7 @@ function PhotoModal({
         {/* Image */}
         <div className="relative aspect-[16/10] bg-black/50">
           <img
-            src={`${import.meta.env.VITE_API_BASE_URL || ''}/api/thumb?src=${encodeURIComponent(photo.image_url)}&w=1000&q=90&format=auto`}
+            src={`${API_ORIGIN}/api/thumb?src=${encodeURIComponent(photo.image_url)}&w=1000&q=90&format=auto`}
             alt={photo.name || 'Historical photo'}
             className="w-full h-full object-contain"
             onError={() => {

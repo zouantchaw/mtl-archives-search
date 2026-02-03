@@ -477,7 +477,7 @@ function ArchiveStoreInner() {
   const isInitialMount = useRef(true);
 
   // Search quality tracking refs (used by clearSearch and effects below)
-  const previousQueryRef = useRef<string>('');
+  const lastCommittedRef = useRef<{ query: string; mode: SearchMode } | null>(null);
   const searchResultClickedRef = useRef(false);
   const abandonmentRef = useRef<{ query: string; mode: string; count: number } | null>(null);
 
@@ -670,6 +670,7 @@ function ArchiveStoreInner() {
     if (!searchQuery.trim()) {
       setSearchResults([]);
       setHasSearched(false);
+      lastCommittedRef.current = null;
       if (!isInitialMount.current) updateUrl('', searchMode, lang);
       return;
     }
@@ -702,8 +703,14 @@ function ArchiveStoreInner() {
 
           // Track "committed" search after 1.5s of no further typing
           // Only fires once user has stopped typing - reduces event volume
+          const committedQuery = searchQuery.trim();
           commitTimeoutRef.current = setTimeout(() => {
-            events.searchCommitted(searchQuery, searchMode, data.items.length, lang);
+            const prevCommitted = lastCommittedRef.current;
+            if (prevCommitted && prevCommitted.query !== committedQuery) {
+              events.searchRefined(prevCommitted.query, committedQuery, searchMode);
+            }
+            events.searchCommitted(committedQuery, searchMode, data.items.length, lang);
+            lastCommittedRef.current = { query: committedQuery, mode: searchMode };
           }, 1200);
         }
       } catch (err) {
@@ -731,6 +738,7 @@ function ArchiveStoreInner() {
     setSearchQuery('');
     setSearchResults([]);
     setHasSearched(false);
+    lastCommittedRef.current = null;
     updateUrl('', searchMode, lang);
     searchInputRef.current?.focus();
   }, [updateUrl, searchMode, lang]);
@@ -829,15 +837,6 @@ function ArchiveStoreInner() {
   }, [trackFirstInteraction]);
 
   // === Search Quality: refined & abandoned ===
-
-  // Track search refinement (user modifies existing query)
-  useEffect(() => {
-    const prev = previousQueryRef.current;
-    if (searchQuery && prev && searchQuery !== prev && prev.length > 0) {
-      events.searchRefined(prev, searchQuery, searchMode);
-    }
-    previousQueryRef.current = searchQuery;
-  }, [searchQuery, searchMode]);
 
   // Track search abandonment (clear/navigate without clicking result)
   useEffect(() => {

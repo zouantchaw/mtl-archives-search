@@ -123,6 +123,9 @@ export const events = {
   orderModeEntered: (photoId: string) =>
     track('order_mode_entered', { photoId, ...getReferrerContext() }),
 
+  printCtaClicked: (photoId: string) =>
+    track('print_cta_clicked', { photoId, ...getReferrerContext() }),
+
   orderModeExited: (photoId: string, addedToCart: boolean) =>
     track('order_mode_exited', { photoId, addedToCart }),
 
@@ -233,8 +236,14 @@ export const events = {
       ...(data?.photoYear ? { photoYear: data.photoYear } : {}),
     }),
 
+  gameSharePromptShown: (mode: string, score: number) =>
+    track('game_share_prompt_shown', { mode, score }),
+
   gameShareClicked: (mode: string, score: number) =>
     track('game_share_clicked', { mode, score }),
+
+  gameShareCompleted: (method: 'native' | 'copy', mode: string, score: number) =>
+    track('game_share_completed', { method, mode, score }),
 
   gameLeaderboardToggled: (open: boolean) =>
     track('game_leaderboard_toggled', { open }),

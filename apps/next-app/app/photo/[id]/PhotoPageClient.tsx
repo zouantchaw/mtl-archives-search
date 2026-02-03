@@ -285,6 +285,7 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
               onClick={() => {
                 setMode('ordering');
                 events.orderModeEntered(photo.metadataFilename);
+                events.printCtaClicked(photo.metadataFilename);
               }}
               className="w-full py-3.5 text-sm font-medium text-neutral-900 bg-neutral-100 hover:bg-neutral-200 rounded-full transition-all active:scale-[0.99]"
             >

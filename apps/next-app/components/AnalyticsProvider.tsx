@@ -6,7 +6,12 @@ export function AnalyticsProvider() {
   return (
     <Analytics
       beforeSend={(event) => {
-        if (event.url.includes('/api/thumb')) return null;
+        try {
+          const url = new URL(event.url);
+          if (url.pathname.startsWith('/api/')) return null;
+        } catch {
+          if (event.url.startsWith('/api/')) return null;
+        }
         return event;
       }}
     />
