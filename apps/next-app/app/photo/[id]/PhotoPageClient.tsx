@@ -55,9 +55,11 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { addItem, itemCount, openCart } = useCart();
+  const orderParam = searchParams?.get('order');
+  const autoOrder = orderParam === '1' || orderParam === 'true' || orderParam === 'print';
 
   // Mode: 'viewing' or 'ordering'
-  const [mode, setMode] = useState<'viewing' | 'ordering'>('viewing');
+  const [mode, setMode] = useState<'viewing' | 'ordering'>(() => (autoOrder ? 'ordering' : 'viewing'));
 
   // Print options
   const [selectedSize, setSelectedSize] = useState<PrintSize>(PRINT_SIZES[1]);
@@ -83,6 +85,14 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
     }, 5000);
     return () => clearTimeout(timer);
   }, [photo]);
+
+  const autoOrderTrackedRef = useRef(false);
+  useEffect(() => {
+    if (!photo || !autoOrder || autoOrderTrackedRef.current) return;
+    if (mode !== 'ordering') return;
+    autoOrderTrackedRef.current = true;
+    events.orderModeEntered(photo.metadataFilename);
+  }, [autoOrder, mode, photo]);
 
   const exitOrderMode = (addedToCart = false) => {
     if (photo) {

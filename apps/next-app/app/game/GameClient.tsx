@@ -566,7 +566,7 @@ export function GameClient() {
   const signInUrl = `/sign-in?redirect_url=${encodeURIComponent(signInRedirect)}`;
   const printBaseLink = currentPhoto ? appendLangParam(`/photo/${currentPhoto.metadataFilename}`, lang) : '';
   const printLink = printBaseLink
-    ? `${printBaseLink}${printBaseLink.includes('?') ? '&' : '?'}utm_source=game&utm_medium=game_result`
+    ? `${printBaseLink}${printBaseLink.includes('?') ? '&' : '?'}order=1&utm_source=game&utm_medium=game_result`
     : '';
 
   // Determine CTA state
