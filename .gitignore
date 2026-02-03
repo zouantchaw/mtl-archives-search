@@ -77,6 +77,9 @@ __pycache__/
 *.har
 docs/csapp-lessons-vlm.md
 
+# Local analytics reports
+docs/analytics/january-2026.md
+
 # Backup files
 *.bak
 FORWIEL.md
