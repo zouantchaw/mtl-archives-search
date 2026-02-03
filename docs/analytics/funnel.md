@@ -20,6 +20,7 @@ This document defines the current engagement → conversion funnel and which ana
 Events:
 - `page_loaded`
 - `page_first_interaction` (search, scroll, shuffle, photo click)
+- `instagram_visitor_landed`, `facebook_visitor_landed`
 
 **4) Core Engagement**
 Events:
@@ -31,6 +32,7 @@ Events:
 **5) Purchase Intent**
 Events:
 - `print_cta_clicked`
+- `game_print_cta_clicked`
 - `order_mode_entered`
 - `print_size_selected`, `print_frame_selected`
 - `cart_item_added`, `cart_opened`, `checkout_clicked`
@@ -77,4 +79,3 @@ Events:
 
 - Vercel referrers are the most reliable source for source attribution right now.
 - Meta’s “link clicks” export undercounts actual clicks vs. Vercel referrers.
-

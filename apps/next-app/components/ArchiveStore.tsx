@@ -114,6 +114,7 @@ const translations = {
     // Hook
     hookDefault: 'Explorez 13 499 photos d\'archives de Montréal',
     hookInstagram: 'Vu sur Instagram? Il y en a 14 822 autres...',
+    hookFacebook: 'Vu sur Facebook? Il y en a 14 822 autres...',
   },
   en: {
     featured: 'Discover',
@@ -147,6 +148,7 @@ const translations = {
     // Hook
     hookDefault: 'Explore 13, 499 archival photos of Montreal',
     hookInstagram: 'Saw this on Instagram? There are 14,822 more...',
+    hookFacebook: 'Saw this on Facebook? There are 14,822 more...',
   },
 } as const;
 
@@ -490,14 +492,21 @@ function ArchiveStoreInner() {
   // Hook state (above-fold messaging for IG bounce reduction)
   const [showHook, setShowHook] = useState(true);
   const [isFromInstagram, setIsFromInstagram] = useState(false);
+  const [isFromFacebook, setIsFromFacebook] = useState(false);
 
   // Detect Instagram visitors on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const utmSource = params.get('utm_source');
-    if (utmSource === 'instagram' || document.referrer.includes('instagram')) {
+    const referrer = document.referrer || '';
+    if (utmSource === 'instagram' || referrer.includes('instagram')) {
       setIsFromInstagram(true);
       events.instagramVisitorLanded(params.get('utm_campaign') || undefined);
+      return;
+    }
+    if (utmSource === 'facebook' || referrer.includes('facebook') || referrer.includes('fb.com')) {
+      setIsFromFacebook(true);
+      events.facebookVisitorLanded(params.get('utm_campaign') || undefined);
     }
   }, []);
 
@@ -1041,7 +1050,7 @@ function ArchiveStoreInner() {
       >
         <div className="px-4 py-3 text-center">
           <p className="text-sm sm:text-base font-medium text-neutral-700">
-            {isFromInstagram ? t.hookInstagram : t.hookDefault}
+            {isFromInstagram ? t.hookInstagram : isFromFacebook ? t.hookFacebook : t.hookDefault}
           </p>
         </div>
       </div>

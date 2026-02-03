@@ -12,8 +12,17 @@ export function getReferrerContext(): Record<string, string> {
   const params = new URLSearchParams(window.location.search);
   const utm_source = params.get('utm_source');
   const utm_medium = params.get('utm_medium');
+  const utm_campaign = params.get('utm_campaign');
+  const utm_content = params.get('utm_content');
+  const utm_term = params.get('utm_term');
   if (utm_source) {
-    return { source: utm_source, ...(utm_medium ? { medium: utm_medium } : {}) };
+    return {
+      source: utm_source,
+      ...(utm_medium ? { medium: utm_medium } : {}),
+      ...(utm_campaign ? { campaign: utm_campaign } : {}),
+      ...(utm_content ? { content: utm_content } : {}),
+      ...(utm_term ? { term: utm_term } : {}),
+    };
   }
   // Fallback: parse document.referrer
   try {
@@ -195,6 +204,9 @@ export const events = {
   instagramVisitorLanded: (utmCampaign?: string) =>
     track('instagram_visitor_landed', { utmCampaign }),
 
+  facebookVisitorLanded: (utmCampaign?: string) =>
+    track('facebook_visitor_landed', { utmCampaign }),
+
   pageLoaded: (loadTimeMs: number) =>
     track('page_loaded', { loadTimeMs, ...getReferrerContext() }),
 
@@ -244,6 +256,9 @@ export const events = {
 
   gameShareCompleted: (method: 'native' | 'copy', mode: string, score: number) =>
     track('game_share_completed', { method, mode, score }),
+
+  gamePrintCtaClicked: (mode: string, photoId: string) =>
+    track('game_print_cta_clicked', { mode, photoId, ...getReferrerContext() }),
 
   gameLeaderboardToggled: (open: boolean) =>
     track('game_leaderboard_toggled', { open }),

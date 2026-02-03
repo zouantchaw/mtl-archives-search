@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { API_BASE } from '@/lib/runtime-config';
 import { SignedIn, SignedOut, UserButton, useAuth } from '@clerk/nextjs';
 import type { PhotoRecord } from '@/lib/types';
-import { Share2, X, MapPin, Trophy, ChevronLeft, Maximize2 } from 'lucide-react';
+import { Share2, X, MapPin, Trophy, ChevronLeft, Maximize2, ShoppingBag } from 'lucide-react';
 import { appendLangParam, DEFAULT_LANG, getLangFromSearchParams } from '@/lib/i18n';
 import { events } from '@/lib/analytics';
 import { getAbVariant } from '@/lib/experiments';
@@ -136,6 +136,7 @@ const translations = {
     shareCopied: 'Copié!',
     shareFailed: 'Erreur',
     shareHint: 'Défie un ami — partage ton score',
+    orderPrint: 'Commander un tirage de cette photo',
     saveStreak: 'Connecte-toi pour sauvegarder ta série',
     signInToSave: 'Sauvegarder ma série',
     streakSaved: 'Série sauvegardée!',
@@ -181,6 +182,7 @@ const translations = {
     shareCopied: 'Copied!',
     shareFailed: 'Error',
     shareHint: 'Challenge a friend — share your score',
+    orderPrint: 'Order a print of this photo',
     saveStreak: 'Sign in to save your streak',
     signInToSave: 'Save my streak',
     streakSaved: 'Streak saved!',
@@ -568,6 +570,10 @@ export function GameClient() {
   const homeLink = appendLangParam('/?from=game', lang);
   const signInRedirect = appendLangParam('/game', lang);
   const signInUrl = `/sign-in?redirect_url=${encodeURIComponent(signInRedirect)}`;
+  const printBaseLink = currentPhoto ? appendLangParam(`/photo/${currentPhoto.metadataFilename}`, lang) : '';
+  const printLink = printBaseLink
+    ? `${printBaseLink}${printBaseLink.includes('?') ? '&' : '?'}utm_source=game&utm_medium=game_result`
+    : '';
 
   // Determine CTA state
   const ctaDisabled = !guess || submitting || currentPlayed;
@@ -1000,28 +1006,13 @@ export function GameClient() {
 
               {/* Actions */}
               <div className="space-y-2">
-                <button
-                  onClick={handleShareScore}
-                  className="w-full h-12 rounded-full bg-neutral-900 text-white font-medium text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
-                >
-                  <Share2 className="w-4 h-4" />
-                  {shareMessage || t.shareResult}
-                </button>
-                <p className="text-[11px] text-center text-neutral-500">
-                  {t.shareHint}
-                </p>
-
-                {isSignedIn ? (
-                  <div className="text-xs text-center text-emerald-600 font-medium py-2">
-                    ✓ {t.streakSaved}
-                  </div>
-                ) : (
-                  <div className="space-y-2 pt-1">
+                {!isSignedIn ? (
+                  <>
                     <p className="text-xs text-center text-neutral-500">{t.loginPromptSubtitle}</p>
                     <a
                       href={`${signInUrl}&strategy=oauth_google`}
                       onClick={() => events.gameSignInCtaClicked()}
-                      className="w-full h-10 rounded-full bg-neutral-100 text-neutral-900 font-medium text-xs flex items-center justify-center gap-2 hover:bg-neutral-200 transition-colors"
+                      className="w-full h-11 rounded-full bg-neutral-900 text-white font-medium text-xs flex items-center justify-center gap-2 hover:bg-neutral-800 transition-colors"
                     >
                       <svg className="w-4 h-4" viewBox="0 0 24 24">
                         <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -1034,11 +1025,54 @@ export function GameClient() {
                     <a
                       href={signInUrl}
                       onClick={() => events.gameSignInCtaClicked()}
-                      className="w-full h-10 rounded-full border border-neutral-200 text-neutral-600 font-medium text-xs flex items-center justify-center hover:bg-neutral-50 transition-colors"
+                      className="w-full h-10 rounded-full border border-neutral-200 text-neutral-700 font-medium text-xs flex items-center justify-center hover:bg-neutral-50 transition-colors"
                     >
                       {t.loginWithEmail}
                     </a>
-                  </div>
+
+                    <button
+                      onClick={handleShareScore}
+                      className="w-full h-11 rounded-full bg-neutral-100 text-neutral-900 font-medium text-xs flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+                    >
+                      <Share2 className="w-4 h-4" />
+                      {shareMessage || t.shareResult}
+                    </button>
+                    <p className="text-[11px] text-center text-neutral-500">
+                      {t.shareHint}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={handleShareScore}
+                      className="w-full h-12 rounded-full bg-neutral-900 text-white font-medium text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+                    >
+                      <Share2 className="w-4 h-4" />
+                      {shareMessage || t.shareResult}
+                    </button>
+                    <p className="text-[11px] text-center text-neutral-500">
+                      {t.shareHint}
+                    </p>
+                    <div className="text-xs text-center text-emerald-600 font-medium py-2">
+                      ✓ {t.streakSaved}
+                    </div>
+                  </>
+                )}
+
+                {printLink && (
+                  <a
+                    href={printLink}
+                    onClick={() => {
+                      if (currentPhoto) {
+                        events.gamePrintCtaClicked(mode, currentPhoto.metadataFilename);
+                        events.printCtaClicked(currentPhoto.metadataFilename);
+                      }
+                    }}
+                    className="w-full h-11 rounded-full border border-neutral-200 text-neutral-700 font-medium text-xs flex items-center justify-center gap-2 hover:bg-neutral-50 transition-colors"
+                  >
+                    <ShoppingBag className="w-4 h-4" />
+                    {t.orderPrint}
+                  </a>
                 )}
               </div>
 
