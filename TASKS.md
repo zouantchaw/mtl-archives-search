@@ -1,19 +1,31 @@
 # Tasks
 
-Goal: Convert Instagram audience (3,100+) into website engagement and print sales.
+Goal: Convert social audience (IG + FB + LinkedIn) into website engagement and print sales. Validate profit potential.
 
-Current state (Jan 24, 2026): Funnel is live and working — Reels drive 55% of IG visitors to engage deeply (18.57 pages/visit, 4m22s avg). Gallery shuffle is the stickiest feature. Zero print sales yet.
+Current state (Feb 3, 2026): ~384 visitors over the last 30 days. Facebook is the largest referrer (155 vs 57 from Instagram). Search CTR is strong (~82%), but game sharing is near zero (~0.9%). Zero print sales so far.
 
 ---
 
-## P0: Fix the IG Bounce (45% drop-off)
+## P0: Monetization & Print Funnel (ASAP)
 
-5 of 11 Instagram visitors in the last 24h bounced immediately. This is the biggest leak.
+This is the clearest path to validating profit. Reduce steps, increase intent clarity, and measure drop‑offs.
+
+- [x] **Deep‑link game print CTA directly into order mode** — skip the extra click (`order=1`).
+- [ ] **Show price before order mode** — surface “from $X” in photo + game CTAs.
+- [ ] **Clarify fulfillment upfront** — short copy on order screen (manual prints, turnaround).
+- [ ] **Open cart after add‑to‑cart (print intent)** — reduce navigation friction when the user is in purchase mode.
+- [ ] **Set a weekly baseline** — track `order_mode_entered → cart_item_added → checkout_clicked → order_completed`.
+
+## P0: Fix the Social Bounce (IG + FB)
+
+IG and FB are the biggest acquisition channels. Their in‑app browsers are impatient, so first paint and clarity matter most.
 
 - [ ] **Diagnose mobile load time** — IG visitors are on iOS/Android in-app browser. Profile first paint speed.
 - [x] **Above-the-fold hook** — First thing IG visitors see must be compelling (not a loading spinner)
 - [x] **Prominent search bar** — Analytics show engaged users immediately search. Make it unmissable on mobile.
 - [x] **Quick-discovery entry point** — Show shuffle or trending photos before requiring any interaction
+- [x] **Track IG + FB landings** — `instagram_visitor_landed`, `facebook_visitor_landed`
+- [ ] **Standardize social UTMs** — Bio + post links with `utm_source`, `utm_medium=social`, `utm_campaign`
 
 ---
 
@@ -132,16 +144,15 @@ Goal: Launch a daily challenge to turn engagement into habit + sharing, then exp
 
 ## P3: Print Conversion UX
 
-One real LinkedIn visitor entered order mode (Jan 20). Need to understand and fix the drop-off.
+We have order mode entries but zero print sales. Need to understand and fix the drop-off.
 
 - [ ] **Review print order flow on mobile** — Is pricing clear? Shipping visible? Frame preview working?
-- [ ] **Add print CTA on photo pages** — "Own this print" button more visible
-- [ ] **Reduce friction** — Show price upfront before entering order mode
+- [x] **Add print CTA on photo pages** — "Own this print" button more visible
 - [ ] **Social proof** — "X people viewed this photo" or "Popular in [neighborhood]"
 
 ---
 
-## P4: Content & Growth (Instagram)
+## P4: Content & Growth (Social)
 
 Reels are working (65% non-follower reach, 3 "Miron" searchers from one Reel).
 
@@ -151,6 +162,7 @@ Reels are working (65% non-follower reach, 3 "Miron" searchers from one Reel).
 - [ ] **Create "SECRETS" highlight** — Best mystery Reels saved
 - [ ] **DM 5 real estate agents** — Warm leads who already follow
 - [ ] **LinkedIn explorer post follow-up** — First post drove real traffic + order mode entry
+- [ ] **Add FB‑specific CTA copy** — Include “See more + order prints” with UTMs in FB posts
 
 ---
 
@@ -191,19 +203,22 @@ Reels are working (65% non-follower reach, 3 "Miron" searchers from one Reel).
 - [x] Copy caption + download buttons
 - [x] WebP optimization via Cloudflare → Vercel Image Optimization (Pro)
 - [x] Seline analytics → Vercel Analytics migration
+- [x] Exclude `/api/*` from Vercel Analytics
+- [x] Reduce `search_refined` noise (only on committed searches)
 - [x] D1 cost stabilization: Cache API, offset sampling, semantic fallback, AbortController
 - [x] Client memory: conditional rendering, content-visibility, fetchPriority, 20MB image cap
 - [x] Instagram Reels content workflow (Claude-generated)
 - [x] CTA integration in posts/stories
 - [x] LinkedIn 3D explorer post (drove real traffic)
+- [x] Game results CTAs simplified (single sign‑in primary)
+- [x] Game share links include UTMs
+- [x] Game print CTA deep‑links into order mode
 
 ---
 
-## Analytics Baseline (Jan 24, 2026)
+## Analytics Baseline (Jan 2026, Vercel window)
 
-All-time: 126 visits, 107 unique visitors, 724 page views, 37% bounce rate
-Last 24h: 21 visits, 390 page views, 18.57 views/visit, 4m22s duration
-
-Top sources: Direct 60%, Instagram 19%, LinkedIn 12%
-Top behavior: Gallery shuffle (185), photo viewed (175), search (88)
+~384 visitors, ~2,252 pageviews. Mobile 59% (iOS 36.5%).
+Top referrers: Facebook 155, Instagram 57, Google 8. ~40% direct/unknown.
+Search CTR: 111/135 (82%). Game completion: 49/107 (46%). Game share: 1/107 (0.9%).
 Geography: Montreal 57%, rest of QC 24%, US 14%, International 5%

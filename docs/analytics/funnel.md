@@ -52,7 +52,7 @@ Events:
 ## Current Bottlenecks (Jan 2026)
 
 - **Game sharing is near zero** (≈1% of landed). We need to lift this with stronger CTA and sharing ergonomics.
-- **Search refinement event is noisy** (too many refinements per visitor). This distorts search‑quality metrics.
+- **Print conversion is still zero** — order mode entries are not turning into cart adds or checkouts yet.
 - **Social link click reporting (Meta) doesn’t match Vercel referrers**, so on‑site attribution should rely on Vercel until reconciled.
 
 ---
@@ -69,9 +69,9 @@ Events:
 
 ## Next Measurement Additions
 
-- Track `print_cta_clicked` and `game_share_prompt_shown` (already added).
-- Reduce `search_refined` noise to reflect real refinements (only on committed searches).
-- Exclude `/api/*` from Vercel analytics to remove noise.
+- ✅ Track `print_cta_clicked` and `game_share_prompt_shown`.
+- ✅ Reduce `search_refined` noise to reflect real refinements (only on committed searches).
+- ✅ Exclude `/api/*` from Vercel analytics to remove noise.
 
 ---
 
@@ -79,3 +79,4 @@ Events:
 
 - Vercel referrers are the most reliable source for source attribution right now.
 - Meta’s “link clicks” export undercounts actual clicks vs. Vercel referrers.
+- Game share links now include UTMs (`utm_source=game`, `utm_medium=share`, `utm_campaign=game_share`).
