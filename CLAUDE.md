@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Monorepo for the Montréal city archives photo search (~15k historical images). REST API on Cloudflare Workers with D1/R2/Vectorize, plus React and Next.js frontends.
+Monorepo for the Montréal city archives photo search (~15k historical images), daily game, and manual print ordering. REST API on Cloudflare Workers with D1/R2/Vectorize, a Next.js main UI (Leaflet maps + game), and a Vite/Three.js research explorer.
 
 ## Commands
 
@@ -40,8 +40,8 @@ npm run dev --workspace=apps/next-app
 apps/
 ├── api/                # Cloudflare Worker (REST API)
 │   └── src/worker.ts   # Single entry point: /api/photos, /api/search
-├── next-app/           # Next.js frontend (App Router, map visualization)
-└── web/                # React SPA (Vite, 3D point cloud)
+├── next-app/           # Next.js frontend (search, Leaflet map, game, prints)
+└── web/                # Research explorer (Vite + Three.js, CLIP point cloud)
 
 packages/
 ├── core/               # Shared types and utilities

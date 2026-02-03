@@ -109,6 +109,7 @@ def load_processed_ids(output_path: str, retry_errors: bool) -> Set[str]:
             if retry_errors and record.get('ocr_error'):
                 continue
             processed.add(metadata_filename)
+            print("metadata_filename", metadata_filename)
 
     return processed
 

@@ -5,7 +5,7 @@
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                              Client Applications                             │
-│                         (Web UI, Mobile App, CLI)                            │
+│                 (Next.js Web UI + Game, Research Explorer)                   │
 └─────────────────────────────────────────────────────────────────────────────┘
                                        │
                                        ▼
@@ -123,6 +123,20 @@ Visual Search (?mode=visual)
 User Query ──▶ HuggingFace (CLIP text) ──▶ Vectorize CLIP ──▶ D1 Hydration ──▶ Results
                                                 │
                                     Matches against image embeddings
+```
+
+### 3. Game Flow (Runtime)
+
+```
+Next.js /game ──▶ Worker /api/game/daily|guess|leaderboard ──▶ D1
+                                          │
+                             daily_challenge / daily_guess / practice_guess
+```
+
+### 4. Print Ordering Flow (Runtime)
+
+```
+Next.js /api/checkout ──▶ Resend (emails) ──▶ Manual fulfillment
 ```
 
 ## D1 Schema

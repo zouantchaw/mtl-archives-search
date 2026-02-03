@@ -30,6 +30,9 @@ apps/web/public/embeddings_*.bin
 # Claude Code local settings
 .claude/settings.local.json
 
+# Local Codex skills cache
+.skills/
+
 # Raw source data (downloaded from external sources)
 data/mtl_archives/package_*.json
 data/mtl_archives/phototheque_*.json
@@ -77,3 +80,4 @@ docs/csapp-lessons-vlm.md
 # Backup files
 *.bak
 FORWIEL.md
+apps/api/.dev.vars

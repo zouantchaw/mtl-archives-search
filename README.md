@@ -13,6 +13,10 @@ Built on Cloudflare's edge infrastructure: Workers, D1, Vectorize, R2, and Worke
 - **Text Search** — SQL-based keyword search across photo metadata
 - **Semantic Search** — Find conceptually similar photos using BGE text embeddings
 - **Visual Search** — CLIP-based image similarity search (512-dim embeddings)
+- **Daily Game** — Guess-the-location daily challenge + practice round
+- **Map Exploration** — Leaflet-based map view for geolocated photos
+- **Print Ordering** — Manual print requests via email checkout
+- **Bilingual UI** — French + English across the site and game
 - **Signed URLs** — Secure, time-limited access to R2-hosted images
 - **Edge Performance** — Sub-50ms response times globally via Cloudflare's network
 
@@ -71,7 +75,13 @@ npm run deploy
 
 ```
 mtl-archives-search/
-├── api/                    # Cloudflare Worker (REST API)
+├── apps/
+│   ├── api/                # Cloudflare Worker (REST API)
+│   ├── next-app/           # Next.js UI (search, map, game, prints)
+│   └── web/                # 3D CLIP embedding explorer (research)
+├── packages/
+│   ├── core/               # Shared types and utilities
+│   └── scripts/            # ETL, vectorize, VLM pipelines (tsx)
 ├── pipelines/
 │   ├── etl/               # Python: metadata cleaning & export
 │   ├── vectorize/         # Embedding generation (BGE, CLIP)
@@ -141,14 +151,17 @@ npm run vectorize:text  # Generate BGE embeddings
 - [x] CLIP visual search (512-dim image embeddings)
 - [x] VLM captioning (LLaVA 1.5 7B)
 - [x] OCR text extraction (Tesseract)
-- [ ] Next.js UI with map visualization
+- [x] Next.js UI with map visualization
+- [x] FR/EN localization
+- [x] Daily game MVP (daily + practice)
+- [x] Manual print ordering (email checkout)
 - [ ] Geocoding + geospatial filtering
-- [ ] FR/EN localization
+- [ ] Neighborhood landing pages
 
 ## Dataset
 
 The photo collection includes:
-- **14,822 photographs** from the Montréal city archives
+- **14,000+ photographs** from the Montréal city archives
 - Dates ranging from **1870s to 1990s**
 - Aerial views, street scenes, parks, buildings, events
 - French metadata with some English translations

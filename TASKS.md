@@ -17,6 +17,25 @@ Current state (Jan 24, 2026): Funnel is live and working — Reels drive 55% of 
 
 ---
 
+## P0: ETL Quality + Search Eval (High Priority)
+
+Format artifacts are dominating embeddings. Fix the input data and prove the impact.
+
+- [ ] **Detect + strip borders/stamps/templates** — Auto-crop scan borders, remove archive stamps/headers where possible.
+- [ ] **Split document vs photo sets** — Classify scans into “photo” vs “document/print” and index separately.
+- [ ] **De-dup near-identicals** — Perceptual hash (pHash/SSIM) to collapse repeats and protect search quality.
+- [ ] **Normalize contrast/levels** — Light auto-levels + noise reduction to stabilize CLIP features.
+- [ ] **OCR cleanup** — Remove obvious scan garbage (e.g., long headers, catalog numbers) from text fields.
+- [ ] **ETL quality report** — Per-run counts: kept/removed/flagged, plus sample exports for manual QA.
+
+**Eval / proof of impact**
+- [ ] **Build a 50–100 query eval set** — mix of place names, neighborhoods, objects, and “vibes.”
+- [ ] **Define success metrics** — MRR@10, nDCG@10, recall@50, plus quick human “good/bad” labels.
+- [ ] **Pre/post comparison** — Run eval on current index vs cleaned index (same queries).
+- [ ] **Manual spot-check set** — 25 image queries + 25 text queries scored by 2 people.
+
+---
+
 ## P0: Core API + SEO Bugs (Worker + Next)
 
 These block reliable indexing and create silent 404s/OG misses.
@@ -86,12 +105,12 @@ Gallery shuffle got 179 clicks from one user (9+ min session). It's the stickies
 
 ---
 
-## P2: Game MVP (Daily + 1 Practice, MapLibre)
+## P2: Game MVP (Daily + 1 Practice, Leaflet)
 
 Goal: Launch a daily challenge to turn engagement into habit + sharing, then expand.
 
 - [x] **Game route `/game`** — Daily challenge + single practice round (unscored).
-- [x] **Map UI (MapLibre)** — Pin drop on Montreal map, score by distance.
+- [x] **Map UI (Leaflet)** — Pin drop on Montreal map, score by distance.
 - [x] **D1 schema** — `daily_challenge`, `daily_guess` (anon), optional `practice_guess`.
 - [x] **Worker API** — `GET /api/game/daily`, `POST /api/game/guess`, `GET /api/game/leaderboard`.
 - [x] **Shareable score card** — Result screen with share button + deep link.
@@ -165,7 +184,7 @@ Reels are working (65% non-follower reach, 3 "Miron" searchers from one Reel).
 - [x] Shuffle button for random discovery
 - [x] Photo page with viewing/ordering toggle modes
 - [x] FR/EN bilingual UI
-- [x] Print ordering via Stripe + Prodigi
+- [x] Print ordering via Resend email (manual fulfillment)
 - [x] Seline analytics events for all interactions
 - [x] Mobile responsive design
 - [x] SEO: Dynamic sitemap, JSON-LD, hreflang
