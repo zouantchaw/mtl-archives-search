@@ -1113,8 +1113,8 @@ function ArchiveStoreInner() {
         </div>
       )}
 
-      {/* Loading skeleton */}
-      {initialLoading && <SkeletonGrid />}
+      {/* Loading skeleton — initial load or active search */}
+      {(initialLoading || (isSearching && displayPhotos.length === 0)) && <SkeletonGrid />}
 
       {/* Photo Grid - with smooth fade-in loading */}
       {!initialLoading && displayPhotos.length > 0 && (
