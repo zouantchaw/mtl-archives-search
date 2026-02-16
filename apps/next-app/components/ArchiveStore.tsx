@@ -772,12 +772,16 @@ function ArchiveStoreInner() {
 
   // Handle user-initiated shuffle (with analytics) - always fetches fresh
   const handleShuffle = useCallback(() => {
-    if (hasSearched) clearSearch();
+    if (hasSearched) {
+      setSearchQuery('');
+      setSearchResults([]);
+      setHasSearched(false);
+    }
     trackFirstInteraction('shuffle');
     trackSessionAction('shuffle');
     events.shuffleClicked();
     loadPhotos(true); // Force refresh
-  }, [hasSearched, clearSearch, loadPhotos, trackFirstInteraction, trackSessionAction]);
+  }, [hasSearched, loadPhotos, trackFirstInteraction, trackSessionAction]);
 
   useEffect(() => {
     if (isMobile === null) return;
