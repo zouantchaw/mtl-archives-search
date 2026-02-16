@@ -524,14 +524,15 @@ function ArchiveStoreInner() {
     };
     animId = requestAnimationFrame(tick);
 
-    // Drag/swipe interaction
+    // Drag/swipe interaction (with click-through for taps)
     let dragging = false;
-    let pointerId = -1;
+    let didDrag = false; // true if pointer moved > threshold
+    const DRAG_THRESHOLD = 5; // px — below this counts as a tap/click
 
     const onPointerDown = (e: PointerEvent) => {
       interacting = true;
       dragging = true;
-      pointerId = e.pointerId;
+      didDrag = false;
       clearTimeout(resumeTimer);
       dragStartX = e.clientX;
       dragStartOffset = offset;
@@ -540,10 +541,13 @@ function ArchiveStoreInner() {
     const onPointerMove = (e: PointerEvent) => {
       if (!dragging) return;
       const dx = dragStartX - e.clientX;
-      offset = dragStartOffset + dx;
-      const hw = halfWidth();
-      if (hw > 0) offset = ((offset % hw) + hw) % hw; // wrap
-      applyTransform();
+      if (Math.abs(dx) > DRAG_THRESHOLD) didDrag = true;
+      if (didDrag) {
+        offset = dragStartOffset + dx;
+        const hw = halfWidth();
+        if (hw > 0) offset = ((offset % hw) + hw) % hw;
+        applyTransform();
+      }
     };
     const onPointerUp = (e: PointerEvent) => {
       if (dragging) {
@@ -551,16 +555,24 @@ function ArchiveStoreInner() {
         if (el.hasPointerCapture(e.pointerId)) {
           el.releasePointerCapture(e.pointerId);
         }
-        pointerId = -1;
       }
       clearTimeout(resumeTimer);
       resumeTimer = setTimeout(() => { interacting = false; }, 3000);
+    };
+    // Block click only if user actually dragged
+    const onClick = (e: MouseEvent) => {
+      if (didDrag) {
+        e.stopPropagation();
+        e.preventDefault();
+        didDrag = false;
+      }
     };
 
     el.addEventListener('pointerdown', onPointerDown);
     el.addEventListener('pointermove', onPointerMove);
     el.addEventListener('pointerup', onPointerUp);
     el.addEventListener('pointercancel', onPointerUp);
+    el.addEventListener('click', onClick, true); // capture phase to block before buttons
 
     marqueeCleanup.current = () => {
       cancelAnimationFrame(animId);
@@ -569,6 +581,7 @@ function ArchiveStoreInner() {
       el.removeEventListener('pointermove', onPointerMove);
       el.removeEventListener('pointerup', onPointerUp);
       el.removeEventListener('pointercancel', onPointerUp);
+      el.removeEventListener('click', onClick, true);
     };
   }, []);
 
