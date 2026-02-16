@@ -170,12 +170,47 @@ const searchExamples = {
   ],
 } as const;
 
-// Neighborhood shortcuts - popular searches from analytics
-const NEIGHBORHOOD_SHORTCUTS = [
-  { name: 'Miron', query: 'Miron' },
-  { name: 'Plateau', query: 'Plateau' },
-  { name: 'Ahuntsic', query: 'Ahuntsic' },
-  { name: 'Portuguais', query: 'rue des Portuguais' },
+// Discovery shortcuts — neighborhoods, landmarks, visual/thematic terms
+// VLM-tagged + metadata-rich queries that work well with semantic search
+const DISCOVERY_SHORTCUTS = [
+  // Neighborhoods
+  { name: { fr: 'Miron', en: 'Miron' }, query: 'Miron' },
+  { name: { fr: 'Plateau', en: 'Plateau' }, query: 'Plateau' },
+  { name: { fr: 'Ahuntsic', en: 'Ahuntsic' }, query: 'Ahuntsic' },
+  { name: { fr: 'Portuguais', en: 'Portuguais' }, query: 'rue des Portuguais' },
+  { name: { fr: 'Vieux-Montréal', en: 'Old Montreal' }, query: 'Vieux-Montréal' },
+  { name: { fr: 'Villeray', en: 'Villeray' }, query: 'Villeray' },
+  { name: { fr: 'Hochelaga', en: 'Hochelaga' }, query: 'Hochelaga' },
+  { name: { fr: 'Rosemont', en: 'Rosemont' }, query: 'Rosemont' },
+  // Landmarks & streets
+  { name: { fr: 'Mont Royal', en: 'Mont Royal' }, query: 'Mont Royal' },
+  { name: { fr: 'Notre-Dame', en: 'Notre-Dame' }, query: 'Notre-Dame' },
+  { name: { fr: 'Jacques-Cartier', en: 'Jacques-Cartier' }, query: 'Jacques-Cartier' },
+  { name: { fr: 'Ste-Catherine', en: 'Ste-Catherine' }, query: 'Sainte-Catherine' },
+  { name: { fr: 'St-Laurent', en: 'St-Laurent' }, query: 'Saint-Laurent' },
+  { name: { fr: 'Marché Jean-Talon', en: 'Jean-Talon Market' }, query: 'Jean-Talon' },
+  // Montreal culture & life
+  { name: { fr: 'Hockey', en: 'Hockey' }, query: 'hockey' },
+  { name: { fr: 'Tramway', en: 'Streetcar' }, query: 'tramway' },
+  { name: { fr: 'Escaliers', en: 'Staircases' }, query: 'escalier' },
+  { name: { fr: 'Balcons', en: 'Balconies' }, query: 'balcon' },
+  { name: { fr: 'Défilé', en: 'Parade' }, query: 'parade' },
+  { name: { fr: 'Incendie', en: 'Fire' }, query: 'incendie' },
+  { name: { fr: 'Démolition', en: 'Demolition' }, query: 'demolition' },
+  { name: { fr: 'Construction', en: 'Construction' }, query: 'construction' },
+  // Visual / thematic (VLM tags)
+  { name: { fr: 'Neige', en: 'Snow' }, query: 'snow' },
+  { name: { fr: 'Hiver', en: 'Winter' }, query: 'winter' },
+  { name: { fr: 'Arbres', en: 'Trees' }, query: 'trees' },
+  { name: { fr: 'Église', en: 'Church' }, query: 'church' },
+  { name: { fr: 'Voitures', en: 'Cars' }, query: 'cars' },
+  { name: { fr: 'Enfants', en: 'Children' }, query: 'children' },
+  { name: { fr: 'Pont', en: 'Bridge' }, query: 'bridge' },
+  { name: { fr: 'Nuit', en: 'Night' }, query: 'night' },
+  { name: { fr: 'Chevaux', en: 'Horses' }, query: 'horse' },
+  { name: { fr: 'Aérien', en: 'Aerial' }, query: 'aerial view' },
+  { name: { fr: 'Fleuve', en: 'River' }, query: 'fleuve Saint-Laurent' },
+  { name: { fr: 'Port', en: 'Harbour' }, query: 'port de Montréal' },
 ] as const;
 
 // ============================================================
@@ -450,6 +485,91 @@ function ArchiveStoreInner() {
   useEffect(() => {
     const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
     setIsMobile(mobile);
+  }, []);
+
+  // Auto-scrolling marquee for discovery pills
+  const marqueeTrackRef = useRef<HTMLDivElement>(null);
+  const marqueeCleanup = useRef<(() => void) | null>(null);
+  const marqueeContainerRef = useCallback((el: HTMLDivElement | null) => {
+    if (marqueeCleanup.current) {
+      marqueeCleanup.current();
+      marqueeCleanup.current = null;
+    }
+    if (!el) return;
+
+    const track = marqueeTrackRef.current;
+    if (!track) return;
+
+    let animId: number;
+    let offset = 0;
+    let interacting = false;
+    let resumeTimer: ReturnType<typeof setTimeout>;
+    let dragStartX = 0;
+    let dragStartOffset = 0;
+    const speed = 0.3; // px per frame
+
+    const halfWidth = () => track.scrollWidth / 2;
+
+    const applyTransform = () => {
+      track.style.transform = `translateX(${-offset}px)`;
+    };
+
+    const tick = () => {
+      if (!interacting) {
+        offset += speed;
+        if (offset >= halfWidth()) offset -= halfWidth();
+        applyTransform();
+      }
+      animId = requestAnimationFrame(tick);
+    };
+    animId = requestAnimationFrame(tick);
+
+    // Drag/swipe interaction
+    let dragging = false;
+    let pointerId = -1;
+
+    const onPointerDown = (e: PointerEvent) => {
+      interacting = true;
+      dragging = true;
+      pointerId = e.pointerId;
+      clearTimeout(resumeTimer);
+      dragStartX = e.clientX;
+      dragStartOffset = offset;
+      el.setPointerCapture(e.pointerId);
+    };
+    const onPointerMove = (e: PointerEvent) => {
+      if (!dragging) return;
+      const dx = dragStartX - e.clientX;
+      offset = dragStartOffset + dx;
+      const hw = halfWidth();
+      if (hw > 0) offset = ((offset % hw) + hw) % hw; // wrap
+      applyTransform();
+    };
+    const onPointerUp = (e: PointerEvent) => {
+      if (dragging) {
+        dragging = false;
+        if (el.hasPointerCapture(e.pointerId)) {
+          el.releasePointerCapture(e.pointerId);
+        }
+        pointerId = -1;
+      }
+      clearTimeout(resumeTimer);
+      resumeTimer = setTimeout(() => { interacting = false; }, 3000);
+    };
+
+    el.addEventListener('pointerdown', onPointerDown);
+    el.addEventListener('pointermove', onPointerMove);
+    el.addEventListener('pointerup', onPointerUp);
+    el.addEventListener('pointercancel', onPointerUp);
+
+    marqueeCleanup.current = () => {
+      cancelAnimationFrame(animId);
+      clearTimeout(resumeTimer);
+      el.removeEventListener('pointerdown', onPointerDown);
+      el.removeEventListener('pointermove', onPointerMove);
+      el.removeEventListener('pointerup', onPointerUp);
+      el.removeEventListener('pointercancel', onPointerUp);
+    };
   }, []);
 
   // State from URL
@@ -1055,9 +1175,9 @@ function ArchiveStoreInner() {
         </div>
       </div>
 
-      {/* Shortcuts row: Shuffle + Neighborhoods - always visible */}
-      <div className="flex items-center gap-2 px-2 sm:px-3 py-2 overflow-x-auto scrollbar-hide">
-          {/* Shuffle button - prominent dark style */}
+      {/* Shortcuts row: pinned Shuffle + scrollable discovery pills */}
+      <div className="flex items-center gap-2 px-2 sm:px-3 py-2">
+          {/* Shuffle button - always visible, never scrolls */}
           <button
             onClick={handleShuffle}
             disabled={initialLoading}
@@ -1072,20 +1192,27 @@ function ArchiveStoreInner() {
             </svg>
             {t.shuffle}
           </button>
-          {/* Neighborhood shortcuts */}
-          {NEIGHBORHOOD_SHORTCUTS.map((shortcut) => (
-            <button
-              key={shortcut.name}
-              onClick={() => {
-                setSearchQuery(shortcut.query);
-                trackFirstInteraction('neighborhood_shortcut');
-                events.neighborhoodShortcutClicked(shortcut.name);
-              }}
-              className="px-3 py-1.5 text-xs font-medium bg-neutral-100 text-neutral-600 rounded-full hover:bg-neutral-200 transition-colors shrink-0"
-            >
-              {shortcut.name}
-            </button>
-          ))}
+          {/* Auto-scrolling discovery pills — draggable + swipeable */}
+          <div
+            ref={marqueeContainerRef}
+            className="flex-1 min-w-0 overflow-hidden touch-pan-x cursor-grab active:cursor-grabbing [mask-image:linear-gradient(to_right,transparent,black_8px,black_calc(100%-24px),transparent)]"
+          >
+            <div ref={marqueeTrackRef} className="flex items-center gap-2 w-max will-change-transform">
+              {[...DISCOVERY_SHORTCUTS, ...DISCOVERY_SHORTCUTS].map((shortcut, i) => (
+                <button
+                  key={`${shortcut.query}-${i}`}
+                  onClick={() => {
+                    setSearchQuery(shortcut.name[lang]);
+                    trackFirstInteraction('neighborhood_shortcut');
+                    events.discoveryFilterClicked(shortcut.name.en, shortcut.query);
+                  }}
+                  className="px-3 py-1.5 text-xs font-medium bg-neutral-100 text-neutral-600 rounded-full hover:bg-neutral-200 transition-colors shrink-0"
+                >
+                  {shortcut.name[lang]}
+                </button>
+              ))}
+            </div>
+          </div>
       </div>
 
       {/* Results header */}

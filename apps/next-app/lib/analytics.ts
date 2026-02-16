@@ -127,6 +127,9 @@ export const events = {
   neighborhoodShortcutClicked: (neighborhood: string) =>
     track('neighborhood_shortcut', { neighborhood, ...getReferrerContext() }),
 
+  discoveryFilterClicked: (filter: string, query: string) =>
+    track('discovery_filter_clicked', { filter, query, ...getReferrerContext() }),
+
   // === Photo page modes ===
 
   orderModeEntered: (photoId: string) =>
