@@ -524,55 +524,36 @@ function ArchiveStoreInner() {
     };
     animId = requestAnimationFrame(tick);
 
-    // Drag/swipe interaction (with click-through for taps)
+    // Drag/swipe — no pointer capture so button clicks work naturally
     let dragging = false;
-    let didDrag = false; // true if pointer moved > threshold
-    const DRAG_THRESHOLD = 5; // px — below this counts as a tap/click
 
     const onPointerDown = (e: PointerEvent) => {
       interacting = true;
       dragging = true;
-      didDrag = false;
       clearTimeout(resumeTimer);
       dragStartX = e.clientX;
       dragStartOffset = offset;
-      el.setPointerCapture(e.pointerId);
     };
     const onPointerMove = (e: PointerEvent) => {
       if (!dragging) return;
       const dx = dragStartX - e.clientX;
-      if (Math.abs(dx) > DRAG_THRESHOLD) didDrag = true;
-      if (didDrag) {
+      if (Math.abs(dx) > 3) {
         offset = dragStartOffset + dx;
         const hw = halfWidth();
         if (hw > 0) offset = ((offset % hw) + hw) % hw;
         applyTransform();
       }
     };
-    const onPointerUp = (e: PointerEvent) => {
-      if (dragging) {
-        dragging = false;
-        if (el.hasPointerCapture(e.pointerId)) {
-          el.releasePointerCapture(e.pointerId);
-        }
-      }
+    const onPointerUp = () => {
+      dragging = false;
       clearTimeout(resumeTimer);
       resumeTimer = setTimeout(() => { interacting = false; }, 3000);
-    };
-    // Block click only if user actually dragged
-    const onClick = (e: MouseEvent) => {
-      if (didDrag) {
-        e.stopPropagation();
-        e.preventDefault();
-        didDrag = false;
-      }
     };
 
     el.addEventListener('pointerdown', onPointerDown);
     el.addEventListener('pointermove', onPointerMove);
     el.addEventListener('pointerup', onPointerUp);
     el.addEventListener('pointercancel', onPointerUp);
-    el.addEventListener('click', onClick, true); // capture phase to block before buttons
 
     marqueeCleanup.current = () => {
       cancelAnimationFrame(animId);
@@ -581,7 +562,6 @@ function ArchiveStoreInner() {
       el.removeEventListener('pointermove', onPointerMove);
       el.removeEventListener('pointerup', onPointerUp);
       el.removeEventListener('pointercancel', onPointerUp);
-      el.removeEventListener('click', onClick, true);
     };
   }, []);
 
@@ -792,11 +772,12 @@ function ArchiveStoreInner() {
 
   // Handle user-initiated shuffle (with analytics) - always fetches fresh
   const handleShuffle = useCallback(() => {
+    if (hasSearched) clearSearch();
     trackFirstInteraction('shuffle');
     trackSessionAction('shuffle');
     events.shuffleClicked();
     loadPhotos(true); // Force refresh
-  }, [loadPhotos, trackFirstInteraction, trackSessionAction]);
+  }, [hasSearched, clearSearch, loadPhotos, trackFirstInteraction, trackSessionAction]);
 
   useEffect(() => {
     if (isMobile === null) return;
