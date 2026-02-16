@@ -14,7 +14,7 @@ This is the clearest path to validating profit. Reduce steps, increase intent cl
 - [x] **Deep‑link game print CTA directly into order mode** — skip the extra click (`order=1`).
 - [x] **Show price before order mode** — surface "from $X" in photo + game CTAs.
 - [x] **Clarify fulfillment upfront** — short copy on order screen (manual prints, turnaround).
-- [ ] **Open cart after add‑to‑cart (print intent)** — reduce navigation friction when the user is in purchase mode.
+- [x] **Open cart after add‑to‑cart (print intent)** — reduce navigation friction when the user is in purchase mode.
 - [ ] **Set a weekly baseline** — track `order_mode_entered → cart_item_added → checkout_clicked → order_completed`.
 
 ## P0: B2B Readiness (ASAP)
