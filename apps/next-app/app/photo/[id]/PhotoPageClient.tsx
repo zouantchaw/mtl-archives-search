@@ -28,6 +28,7 @@ const translations = {
     added: 'Ajouté',
     notFound: 'Photo non trouvée',
     untitled: 'Sans titre',
+    fulfillment: 'Imprimé à Montréal · Livraison en 5–7 jours ouvrables',
     credits: 'Archives de la Ville de Montréal',
   },
   en: {
@@ -42,6 +43,7 @@ const translations = {
     added: 'Added',
     notFound: 'Photo not found',
     untitled: 'Untitled',
+    fulfillment: 'Printed in Montreal · Ships in 5–7 business days',
     credits: 'Montreal City Archives',
   },
 } as const;
@@ -402,6 +404,11 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
             >
               {justAdded ? `✓ ${t.added}` : `${t.addToCart} · $${totalPrice}`}
             </button>
+
+            {/* Fulfillment info */}
+            <p className="text-[11px] text-neutral-400 text-center lg:text-left mt-3">
+              {t.fulfillment}
+            </p>
           </div>
         </div>
         )}
