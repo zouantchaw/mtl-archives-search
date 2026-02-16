@@ -314,8 +314,9 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
 
         {/* ORDERING MODE */}
         {mode === 'ordering' && (
-        <div className="animate-fade-in">
+        <div className="animate-fade-in lg:flex lg:items-start lg:max-w-6xl lg:mx-auto lg:gap-8 lg:px-6 lg:pt-6">
           {/* Wall Preview Carousel */}
+          <div className="lg:flex-1 lg:min-w-0 lg:rounded-xl lg:overflow-hidden">
           {photo.imageUrl && (
             <WallPreview
               photoUrl={photo.imageUrl}
@@ -330,11 +331,12 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
               }}
             />
           )}
+          </div>
 
           {/* Purchase Options */}
-          <div className="max-w-lg mx-auto px-4 py-6">
+          <div className="max-w-lg mx-auto px-4 py-6 lg:w-[380px] lg:flex-shrink-0 lg:sticky lg:top-20 lg:px-0 lg:py-0 lg:mx-0">
             {/* Title (compact) */}
-            <h2 className="text-base font-medium text-neutral-900 mb-6 text-center">
+            <h2 className="text-base font-medium text-neutral-900 mb-6 text-center lg:text-left">
               {title}
             </h2>
 
