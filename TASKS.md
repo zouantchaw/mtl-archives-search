@@ -62,6 +62,7 @@ Format artifacts are dominating embeddings. Fix the input data and prove the imp
 
 These block reliable indexing and create silent 404s/OG misses.
 
+- [x] **Fix sitemap 404 (Clerk middleware blocking)** — Rename `proxy.ts` → `middleware.ts`, add `/sitemap.xml` + `/robots.txt` to public routes so Googlebot can access them.
 - [ ] **Fix sitemap/photo ID mismatch** — Ensure `/api/photos` accepts bare IDs or update sitemap to include `.json` IDs. Align OG/Twitter fetches with the same ID format.
 - [ ] **Stop caching expired signed R2 URLs** — If public R2 domain is missing, shorten cache TTL to signed URL expiry or skip caching for signed responses (API + sitemap).
 - [ ] **Centralize API base config** — Remove hard-coded prod worker/R2 from rewrites/preconnects; use env-driven base (with safe local fallback) for client + server + Next config.
