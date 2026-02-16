@@ -1,8 +1,9 @@
 # Tasks
 
-Goal: Convert social audience (IG + FB + LinkedIn) into website engagement and print sales. Validate profit potential.
+Goal: Convert social audience (IG + FB + LinkedIn) into revenue. Validate both DTC print and B2B monetization paths.
+Note: Non-code growth tasks and high-level goals live in the Logseq graph (MTL Archives Operating Plan). This file is for engineering tasks only.
 
-Current state (Feb 3, 2026): ~384 visitors over the last 30 days. Facebook is the largest referrer (155 vs 57 from Instagram). Search CTR is strong (~82%), but game sharing is near zero (~0.9%). Zero print sales so far.
+Current state (Feb 16, 2026): last 30d funnel shows `page_loaded` 343 -> `order_mode_entered` 19 -> `cart_item_added` 3 -> `checkout_clicked` 2 -> `orders_completed` 0. Last 7d shows `page_loaded` 96 -> `order_mode_entered` 3 -> `cart_item_added` 1 -> `checkout_clicked` 1 -> `orders_completed` 0. Facebook remains the largest referrer.
 
 ---
 
@@ -11,10 +12,20 @@ Current state (Feb 3, 2026): ~384 visitors over the last 30 days. Facebook is th
 This is the clearest path to validating profit. Reduce steps, increase intent clarity, and measure drop‑offs.
 
 - [x] **Deep‑link game print CTA directly into order mode** — skip the extra click (`order=1`).
-- [ ] **Show price before order mode** — surface “from $X” in photo + game CTAs.
-- [ ] **Clarify fulfillment upfront** — short copy on order screen (manual prints, turnaround).
+- [x] **Show price before order mode** — surface "from $X" in photo + game CTAs.
+- [x] **Clarify fulfillment upfront** — short copy on order screen (manual prints, turnaround).
 - [ ] **Open cart after add‑to‑cart (print intent)** — reduce navigation friction when the user is in purchase mode.
 - [ ] **Set a weekly baseline** — track `order_mode_entered → cart_item_added → checkout_clicked → order_completed`.
+
+## P0: B2B Readiness (ASAP)
+
+If DTC conversion remains low, B2B needs a clean path from social proof -> call booked.
+
+- [ ] **Add partner landing page** — `/partners` with concise value proposition, proof metrics, and booking CTA.
+- [ ] **Track B2B events** — `partner_page_viewed`, `partner_cta_clicked`, `partner_form_submitted`, `partner_call_booked`.
+- [ ] **Add source-aware partner attribution** — persist UTMs + referrer through partner CTA/form flow.
+- [ ] **Create reusable proof payload endpoint** — serve latest headline metrics for quick embedding in partner surfaces.
+- [ ] **Define event contract for outbound links** — standardized tags for LinkedIn/FB partner posts.
 
 ## P0: Fix the Social Bounce (IG + FB)
 
@@ -25,7 +36,6 @@ IG and FB are the biggest acquisition channels. Their in‑app browsers are impa
 - [x] **Prominent search bar** — Analytics show engaged users immediately search. Make it unmissable on mobile.
 - [x] **Quick-discovery entry point** — Show shuffle or trending photos before requiring any interaction
 - [x] **Track IG + FB landings** — `instagram_visitor_landed`, `facebook_visitor_landed`
-- [ ] **Standardize social UTMs** — Bio + post links with `utm_source`, `utm_medium=social`, `utm_campaign`
 
 ---
 
@@ -104,6 +114,16 @@ Users search: "Miron", "Portuguais", "Ahuntsic", "rue notre-dame", "Rue st Cathe
 - [ ] **Failure reporting** — Write per-run failure logs + summary counts to disk for auditability.
 - [ ] **Stream manifests** — Avoid loading full JSONL into memory for large runs; switch to streaming batches.
 
+## P1: AtoM Integration Discovery (Phased)
+
+New archive source is `archivesdemontreal.ica-atom.org`; ingest safely before full expansion.
+
+- [ ] **AtoM discovery crawler (polite)** — collect browse slugs + metadata with crawl delay compliance.
+- [ ] **DC/EAD fetcher** — ingest per-record exports (`;dc`, `;ead`) into local staging.
+- [ ] **Normalized AtoM manifest** — build `atom_manifest.jsonl` with provenance fields.
+- [ ] **Cross-linker** — match AtoM records against existing corpus (cote/title/date similarity).
+- [ ] **Subset gate** — define quality and product criteria before any large-scale ingestion.
+
 ---
 
 ## P2: Double Down on Shuffle
@@ -151,18 +171,6 @@ We have order mode entries but zero print sales. Need to understand and fix the 
 - [ ] **Social proof** — "X people viewed this photo" or "Popular in [neighborhood]"
 
 ---
-
-## P4: Content & Growth (Social)
-
-Reels are working (65% non-follower reach, 3 "Miron" searchers from one Reel).
-
-- [ ] **Create "Miron" IG highlight** — The Miron Reel drove 3 unique searchers in 24h
-- [ ] **Create "CHERCHER" highlight** — Search demos showing AI finding locations
-- [ ] **Create "PRINTS" highlight** — Mockups, ordering walkthrough
-- [ ] **Create "SECRETS" highlight** — Best mystery Reels saved
-- [ ] **DM 5 real estate agents** — Warm leads who already follow
-- [ ] **LinkedIn explorer post follow-up** — First post drove real traffic + order mode entry
-- [ ] **Add FB‑specific CTA copy** — Include “See more + order prints” with UTMs in FB posts
 
 ---
 
