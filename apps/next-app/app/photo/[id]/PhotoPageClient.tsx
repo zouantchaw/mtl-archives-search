@@ -157,7 +157,8 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
     setTimeout(() => {
       setJustAdded(false);
       setMode('viewing');
-    }, 1200);
+      openCart();
+    }, 800);
   };
 
   // Error state - photo not found
