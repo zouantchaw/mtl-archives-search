@@ -76,6 +76,7 @@ npm run deploy
 For `apps/next-app`, API and asset origins are env-driven:
 - `NEXT_PUBLIC_API_URL` (required in production)
 - `NEXT_PUBLIC_R2_PUBLIC_DOMAIN` (preferred; falls back to `CLOUDFLARE_R2_PUBLIC_DOMAIN` if present)
+- Clerk client auth is loaded on auth/game routes, not globally, to reduce public-route script cost.
 
 In local development, API base falls back to `http://localhost:8787`.
 

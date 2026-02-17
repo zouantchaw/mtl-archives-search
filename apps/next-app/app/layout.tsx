@@ -4,7 +4,6 @@ import { AnalyticsProvider } from "@/components/AnalyticsProvider";
 import "./globals.css";
 import { CartProvider } from "@/lib/cart-context";
 import { CartDrawer } from "@/components/CartDrawer";
-import { ClerkLocalized } from "@/components/ClerkLocalized";
 import { FlagValues } from "@/components/FlagValues";
 import { API_ORIGIN, R2_ORIGIN } from "@/lib/runtime-config";
 
@@ -146,45 +145,43 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkLocalized>
-      <html lang="en" className={`${figtree.variable}`}>
-        <head>
-          {/* Preconnect to API for faster initial fetch */}
-          {API_ORIGIN ? (
-            <>
-              <link rel="preconnect" href={API_ORIGIN} />
-              <link rel="dns-prefetch" href={API_ORIGIN} />
-            </>
-          ) : null}
-          {/* Preconnect to R2 for faster image loads */}
-          {R2_ORIGIN ? (
-            <>
-              <link rel="preconnect" href={R2_ORIGIN} />
-              <link rel="dns-prefetch" href={R2_ORIGIN} />
-            </>
-          ) : null}
-          <script
-            type="application/ld+json"
-            dangerouslySetInnerHTML={{
-              __html: JSON.stringify(organizationJsonLd),
-            }}
-          />
-          <script
-            type="application/ld+json"
-            dangerouslySetInnerHTML={{
-              __html: JSON.stringify(collectionJsonLd),
-            }}
-          />
-        </head>
-        <body className="font-sans antialiased bg-neutral-50 text-neutral-900 min-h-screen">
-          <CartProvider>
-            {children}
-            <CartDrawer />
-          </CartProvider>
-          <FlagValues />
-          <AnalyticsProvider />
-        </body>
-      </html>
-    </ClerkLocalized>
+    <html lang="en" className={`${figtree.variable}`}>
+      <head>
+        {/* Preconnect to API for faster initial fetch */}
+        {API_ORIGIN ? (
+          <>
+            <link rel="preconnect" href={API_ORIGIN} />
+            <link rel="dns-prefetch" href={API_ORIGIN} />
+          </>
+        ) : null}
+        {/* Preconnect to R2 for faster image loads */}
+        {R2_ORIGIN ? (
+          <>
+            <link rel="preconnect" href={R2_ORIGIN} />
+            <link rel="dns-prefetch" href={R2_ORIGIN} />
+          </>
+        ) : null}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(organizationJsonLd),
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(collectionJsonLd),
+          }}
+        />
+      </head>
+      <body className="font-sans antialiased bg-neutral-50 text-neutral-900 min-h-screen">
+        <CartProvider>
+          {children}
+          <CartDrawer />
+        </CartProvider>
+        <FlagValues />
+        <AnalyticsProvider />
+      </body>
+    </html>
   );
 }

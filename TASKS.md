@@ -18,7 +18,7 @@ Deliver the best on-site user experience (especially mobile/in-app browsers) bef
 - [ ] **Review print order flow on mobile** — Is pricing clear? Shipping visible? Frame preview working?
 - [ ] **Mobile QA** — Test pinch/zoom, touch interactions on iOS/Android in-app browsers.
 - [ ] **Social proof** — "X people viewed this photo" or "Popular in [neighborhood]".
-- [ ] **Reduce auth/script cost on public routes** — Defer or route-scope Clerk loading on home/photo to improve first paint for signed-out mobile visitors.
+- [x] **Reduce auth/script cost on public routes** — Clerk provider is route-scoped to `/game`, `/sign-in`, `/sign-up`; public home/photo routes no longer wrap root in Clerk.
 
 ### Reliability + correctness
 - [ ] **Retry + resume ingestion** — Add retry/backoff and resumable checkpoints for Vectorize ingest (text + CLIP) so failures do not silently shrink index coverage.
