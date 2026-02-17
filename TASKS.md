@@ -5,65 +5,64 @@ Note: Non-code growth tasks and high-level goals live in the Logseq graph (MTL A
 
 Current state (Feb 16, 2026): last 30d funnel shows `page_loaded` 343 -> `order_mode_entered` 19 -> `cart_item_added` 3 -> `checkout_clicked` 2 -> `orders_completed` 0. Last 7d shows `page_loaded` 96 -> `order_mode_entered` 3 -> `cart_item_added` 1 -> `checkout_clicked` 1 -> `orders_completed` 0. Facebook remains the largest referrer.
 
-Execution status: `47` open tasks. Completed work is consolidated in the archive section below. Active execution focus is reduced to a single `P0`.
+Execution status: `47` open tasks. Completed work is consolidated in the archive section below. Active execution focus is now tech + UX first.
 
 ---
 
-## P0: Active Blocker (Do First)
+## P0: Technical UX Reliability (Do First)
 
-Blocking proper Google indexing:
+Deliver the best on-site user experience (especially mobile/in-app browsers) before expansion work.
 
-- [x] **Fix sitemap/photo ID mismatch** — `/api/photos` now normalizes bare IDs and `.json` IDs, sitemap/photo URLs use canonical bare IDs, and OG/Twitter photo fetches use the same normalized format.
-
----
-
-## P1: Core API + Revenue Near-Term
-
-### Core API + SEO follow-ups
-- [x] **Stop caching expired signed R2 URLs** — Cache TTL is clamped below signed URL expiry when public R2 domain is missing (API + sitemap), with API tests covering TTL behavior.
-- [x] **Centralize API base config** — Next runtime + rewrites now share one env-driven resolver (`NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_R2_PUBLIC_DOMAIN`) with safe local fallback.
-
-### B2B readiness
-- [ ] **Add partner landing page** — `/partners` with concise value proposition, proof metrics, and booking CTA.
-- [ ] **Track B2B events** — `partner_page_viewed`, `partner_cta_clicked`, `partner_form_submitted`, `partner_call_booked`.
-- [ ] **Add source-aware partner attribution** — persist UTMs + referrer through partner CTA/form flow.
-- [ ] **Create reusable proof payload endpoint** — serve latest headline metrics for quick embedding in partner surfaces.
-- [ ] **Define event contract for outbound links** — standardized tags for LinkedIn/FB partner posts.
-
-### Social + print conversion diagnostics
+### Mobile performance + conversion
 - [ ] **Diagnose mobile load time** — IG visitors are on iOS/Android in-app browser. Profile first paint speed.
 - [ ] **Review print order flow on mobile** — Is pricing clear? Shipping visible? Frame preview working?
-- [ ] **Social proof** — "X people viewed this photo" or "Popular in [neighborhood]"
-
-### Search quality + eval
-- [ ] **Detect + strip borders/stamps/templates** — Auto-crop scan borders, remove archive stamps/headers where possible.
-- [ ] **Split document vs photo sets** — Classify scans into "photo" vs "document/print" and index separately.
-- [ ] **De-dup near-identicals** — Perceptual hash (pHash/SSIM) to collapse repeats and protect search quality.
-- [ ] **Normalize contrast/levels** — Light auto-levels + noise reduction to stabilize CLIP features.
-- [ ] **OCR cleanup** — Remove obvious scan garbage (e.g., long headers, catalog numbers) from text fields.
-- [ ] **ETL quality report** — Per-run counts: kept/removed/flagged, plus sample exports for manual QA.
-- [ ] **Build a 50-100 query eval set** — mix of place names, neighborhoods, objects, and "vibes."
-- [ ] **Define success metrics** — MRR@10, nDCG@10, recall@50, plus quick human "good/bad" labels.
-- [ ] **Pre/post comparison** — Run eval on current index vs cleaned index (same queries).
-- [ ] **Manual spot-check set** — 25 image queries + 25 text queries scored by 2 people.
+- [ ] **Mobile QA** — Test pinch/zoom, touch interactions on iOS/Android in-app browsers.
+- [ ] **Social proof** — "X people viewed this photo" or "Popular in [neighborhood]".
 
 ### Reliability + correctness
-- [ ] **Neighborhood landing pages** — `/quartier/ahuntsic` with pre-filtered results (SEO + shareable).
 - [ ] **Retry + resume ingestion** — Add retry/backoff and resumable checkpoints for Vectorize ingest (text + CLIP) so failures do not silently shrink index coverage.
 - [ ] **Failure reporting** — Write per-run failure logs + summary counts to disk for auditability.
 - [ ] **Stream manifests** — Avoid loading full JSONL into memory for large runs; switch to streaming batches.
 - [ ] **Worker endpoint tests** — `/api/photos` id normalization, sitemap generation, search modes.
 - [ ] **Pipeline smoke tests** — CLI runs with small fixtures + failure reporting.
 
+### Recently completed platform blockers
+- [x] **Fix sitemap/photo ID mismatch** — `/api/photos` now normalizes bare IDs and `.json` IDs, sitemap/photo URLs use canonical bare IDs, and OG/Twitter photo fetches use the same normalized format.
+- [x] **Stop caching expired signed R2 URLs** — Cache TTL is clamped below signed URL expiry when public R2 domain is missing (API + sitemap), with API tests covering TTL behavior.
+- [x] **Centralize API base config** — Next runtime + rewrites now share one env-driven resolver (`NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_R2_PUBLIC_DOMAIN`) with safe local fallback.
+
 ---
 
-## P2: Product Expansion Backlog
+## P1: Search Quality + Product UX
 
-### Shuffle
+### Search/index quality pipeline
+- [ ] **Detect + strip borders/stamps/templates** — Auto-crop scan borders, remove archive stamps/headers where possible.
+- [ ] **Split document vs photo sets** — Classify scans into "photo" vs "document/print" and index separately.
+- [ ] **De-dup near-identicals** — Perceptual hash (pHash/SSIM) to collapse repeats and protect search quality.
+- [ ] **Normalize contrast/levels** — Light auto-levels + noise reduction to stabilize CLIP features.
+- [ ] **OCR cleanup** — Remove obvious scan garbage (e.g., long headers, catalog numbers) from text fields.
+- [ ] **ETL quality report** — Per-run counts: kept/removed/flagged, plus sample exports for manual QA.
+
+### Evaluation + measurement
+- [ ] **Build a 50-100 query eval set** — mix of place names, neighborhoods, objects, and "vibes."
+- [ ] **Define success metrics** — MRR@10, nDCG@10, recall@50, plus quick human "good/bad" labels.
+- [ ] **Pre/post comparison** — Run eval on current index vs cleaned index (same queries).
+- [ ] **Manual spot-check set** — 25 image queries + 25 text queries scored by 2 people.
+
+### Core UX improvements
+- [ ] **Share button** — Shareable deep links to search results.
+- [ ] **Neighborhood landing pages** — `/quartier/ahuntsic` with pre-filtered results (SEO + shareable).
+- [ ] **Expand geocoding** — More map pins (155 -> 400+ records).
+- [ ] **Neighborhood/area filter** — SQL-based, not just search.
+- [ ] **Date range filter**.
 - [ ] **Make shuffle more prominent on mobile** — Bigger button, above the fold.
 - [ ] **Shuffle by neighborhood** — Combine shuffle with neighborhood filter.
 - [ ] **Infinite shuffle mode** — Auto-advance after X seconds (like a screensaver/slideshow).
 - [ ] **Share from shuffle** — Let users share a discovered photo directly to IG Stories.
+
+---
+
+## P2: Platform Expansion (After Core UX)
 
 ### AtoM integration discovery (phased)
 New archive source is `archivesdemontreal.ica-atom.org`; ingest safely before full expansion.
@@ -74,16 +73,19 @@ New archive source is `archivesdemontreal.ica-atom.org`; ingest safely before fu
 - [ ] **Cross-linker** — match AtoM records against existing corpus (cote/title/date similarity).
 - [ ] **Subset gate** — define quality and product criteria before any large-scale ingestion.
 
-### Polish + SEO backlog
-- [ ] **Mobile QA** — Test pinch/zoom, touch interactions on iOS/Android in-app browsers.
-- [ ] **Share button** — Shareable deep links to search results.
-- [ ] **Expand geocoding** — More map pins (155 -> 400+ records).
-- [ ] **Neighborhood/area filter** — SQL-based, not just search.
-- [ ] **Date range filter**
+---
+
+## P3: B2B Monetization (After UX Stabilization)
+
+- [ ] **Add partner landing page** — `/partners` with concise value proposition, proof metrics, and booking CTA.
+- [ ] **Track B2B events** — `partner_page_viewed`, `partner_cta_clicked`, `partner_form_submitted`, `partner_call_booked`.
+- [ ] **Add source-aware partner attribution** — persist UTMs + referrer through partner CTA/form flow.
+- [ ] **Create reusable proof payload endpoint** — serve latest headline metrics for quick embedding in partner surfaces.
+- [ ] **Define event contract for outbound links** — standardized tags for LinkedIn/FB partner posts.
 
 ---
 
-## P3: Tech Debt (Deprioritized)
+## P4: Tech Debt (Deprioritized)
 
 - [ ] Re-run VLM with larger model (LLaVA-7B) — deferred until revenue.
 - [ ] Add high-confidence OCR to D1 — deferred.
