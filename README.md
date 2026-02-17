@@ -71,6 +71,14 @@ npm run dev
 npm run deploy
 ```
 
+## Runtime Env
+
+For `apps/next-app`, API and asset origins are env-driven:
+- `NEXT_PUBLIC_API_URL` (required in production)
+- `NEXT_PUBLIC_R2_PUBLIC_DOMAIN` (preferred; falls back to `CLOUDFLARE_R2_PUBLIC_DOMAIN` if present)
+
+In local development, API base falls back to `http://localhost:8787`.
+
 ## Project Structure
 
 ```

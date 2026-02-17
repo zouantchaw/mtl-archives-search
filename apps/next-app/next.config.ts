@@ -1,12 +1,7 @@
 import type { NextConfig } from "next";
+import { resolveRuntimeConfig } from "./lib/runtime-env";
 
-const rawApiBase = process.env.NEXT_PUBLIC_API_URL || process.env.API_BASE_URL || '';
-const defaultApiBase = rawApiBase || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:8787');
-const apiBase = defaultApiBase.replace(/\/$/, '');
-
-if (!apiBase && process.env.NODE_ENV === 'production') {
-  throw new Error('NEXT_PUBLIC_API_URL is required in production.');
-}
+const { apiBase } = resolveRuntimeConfig(process.env, process.env.NODE_ENV);
 
 const nextConfig: NextConfig = {
   images: {

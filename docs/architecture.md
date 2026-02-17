@@ -50,6 +50,12 @@
 
 ## Data Flow
 
+### Next.js Runtime Config
+
+- `apps/next-app/lib/runtime-env.ts` is the single source of truth for API/R2 origins.
+- `apps/next-app/lib/runtime-config.ts` and `apps/next-app/next.config.ts` both consume this resolver to prevent client/server/rewrite drift.
+- Production requires `NEXT_PUBLIC_API_URL`; local fallback is `http://localhost:8787`.
+
 ### 1. ETL Pipeline (Offline)
 
 ```

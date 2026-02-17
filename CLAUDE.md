@@ -87,6 +87,10 @@ Secrets via `wrangler secret put`:
 
 Local `.env` for scripts: `CLOUDFLARE_AI_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`
 
+Next app runtime env:
+- `NEXT_PUBLIC_API_URL` (required in production)
+- `NEXT_PUBLIC_R2_PUBLIC_DOMAIN` (preferred public asset host)
+
 ## Code Patterns
 
 - Worker: module syntax with typed `Env` interface
