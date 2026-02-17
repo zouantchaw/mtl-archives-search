@@ -39,3 +39,7 @@ When behavior changes, update these together:
 - Favor **mobile performance** and **fast first paint** (IG traffic is impatient).
 - Keep counts in marketing copy **approximate** (e.g., “14k+ photos”) unless you’ve verified exact numbers.
 - Avoid heavy refactors across the pipeline unless you also update the eval/quality notes in `TASKS.md`.
+
+## Skills Directory
+- Use **only** `./.agents/skills` for repository-local skills.
+- `./.skills` is deprecated and should not be used.
