@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { API_BASE } from '@/lib/runtime-config';
+import { normalizePhotoId } from '@/lib/photo-id';
 
 // API endpoint for fetching photo data
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.mtlarchives.com';
@@ -41,7 +42,8 @@ async function getPhoto(id: string): Promise<PhotoData | null> {
 }
 
 // Generate JSON-LD structured data for photo pages
-function generateJsonLd(photo: PhotoData, id: string) {
+function generateJsonLd(photo: PhotoData, photoId: string) {
+  const canonicalPath = `/photo/${encodeURIComponent(photoId)}`;
   const title = cleanText(photo.name) || cleanText(photo.portalTitle) || 'Photo historique';
   const description = photo.description && photo.description !== 'S/O'
     ? cleanText(photo.description)
@@ -55,13 +57,13 @@ function generateJsonLd(photo: PhotoData, id: string) {
     description: description,
     contentUrl: photo.imageUrl,
     thumbnailUrl: photo.imageUrl,
-    url: `${SITE_URL}/photo/${id}`,
+    url: `${SITE_URL}${canonicalPath}`,
     creditText: photo.credits || 'Archives de la Ville de Montréal',
     copyrightHolder: {
       '@type': 'Organization',
       name: 'Archives de la Ville de Montréal',
     },
-    acquireLicensePage: `${SITE_URL}/photo/${id}`,
+    acquireLicensePage: `${SITE_URL}${canonicalPath}`,
     isPartOf: {
       '@type': 'CollectionPage',
       name: 'MTL Archives',
@@ -109,7 +111,9 @@ export async function generateMetadata({
   params: Promise<{ id: string }> 
 }): Promise<Metadata> {
   const { id } = await params;
-  const photo = await getPhoto(decodeURIComponent(id));
+  const normalizedId = normalizePhotoId(decodeURIComponent(id));
+  const canonicalUrl = `${SITE_URL}/photo/${encodeURIComponent(normalizedId)}`;
+  const photo = await getPhoto(normalizedId);
   
   const title = cleanText(photo?.name) || cleanText(photo?.portalTitle) || 'Photo historique';
   const date = photo?.dateValue ? ` (${cleanText(photo.dateValue)})` : '';
@@ -126,11 +130,15 @@ export async function generateMetadata({
       type: 'article',
       locale: 'fr_CA',
       siteName: 'MTL Archives',
+      url: canonicalUrl,
     },
     twitter: {
       card: 'summary_large_image',
       title: `${title}${date}`,
       description: description.slice(0, 160),
+    },
+    alternates: {
+      canonical: canonicalUrl,
     },
   };
 }
@@ -143,7 +151,8 @@ export default async function PhotoLayout({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const photo = await getPhoto(decodeURIComponent(id));
+  const normalizedId = normalizePhotoId(decodeURIComponent(id));
+  const photo = await getPhoto(normalizedId);
 
   return (
     <>
@@ -151,7 +160,7 @@ export default async function PhotoLayout({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify(generateJsonLd(photo, id)),
+            __html: JSON.stringify(generateJsonLd(photo, normalizedId)),
           }}
         />
       )}

@@ -9,6 +9,7 @@ import { useCart } from '@/lib/cart-context';
 import { PhotoTile } from './PhotoTile';
 import { appendLangParam, DEFAULT_LANG, getLangFromSearchParams, type Lang } from '@/lib/i18n';
 import { assignAbVariant, getAbVariant, parseAbParam, setAbVariant } from '@/lib/experiments';
+import { normalizePhotoId } from '@/lib/photo-id';
 
 const API_BASE = '';
 
@@ -906,7 +907,7 @@ function ArchiveStoreInner() {
     if (searchQuery) params.set('q', searchQuery);
     if (searchMode !== 'smart') params.set('mode', searchMode);
     if (lang !== DEFAULT_LANG) params.set('lang', lang);
-    router.push(`/photo/${encodeURIComponent(photo.metadataFilename)}${params.toString() ? `?${params}` : ''}`);
+    router.push(`/photo/${encodeURIComponent(normalizePhotoId(photo.metadataFilename))}${params.toString() ? `?${params}` : ''}`);
   }, [router, searchQuery, searchMode, lang, hasSearched, trackFirstInteraction, trackSessionAction]);
 
   const handleLangChange = useCallback(() => {

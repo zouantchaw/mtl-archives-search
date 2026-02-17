@@ -1,5 +1,6 @@
 import { ImageResponse } from 'next/og';
 import { API_BASE } from '@/lib/runtime-config';
+import { normalizePhotoId } from '@/lib/photo-id';
 
 export const runtime = 'edge';
 
@@ -36,7 +37,7 @@ async function getPhoto(id: string): Promise<PhotoData | null> {
 
 export default async function TwitterImage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const photo = await getPhoto(decodeURIComponent(id));
+  const photo = await getPhoto(normalizePhotoId(decodeURIComponent(id)));
   
   const title = photo?.name || 'Photo historique';
   const date = photo?.dateValue || '';

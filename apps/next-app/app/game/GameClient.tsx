@@ -12,6 +12,7 @@ import { events } from '@/lib/analytics';
 import { getAbVariant } from '@/lib/experiments';
 import { Map, MapMarker, MapPolyline, MapTileLayer, MapZoomControl } from '@/components/ui/map';
 import { useMap, useMapEvents } from 'react-leaflet';
+import { normalizePhotoId } from '@/lib/photo-id';
 
 type GameResult = {
   score: number;
@@ -564,7 +565,7 @@ export function GameClient() {
   const homeLink = appendLangParam('/?from=game', lang);
   const signInRedirect = appendLangParam('/game', lang);
   const signInUrl = `/sign-in?redirect_url=${encodeURIComponent(signInRedirect)}`;
-  const printBaseLink = currentPhoto ? appendLangParam(`/photo/${currentPhoto.metadataFilename}`, lang) : '';
+  const printBaseLink = currentPhoto ? appendLangParam(`/photo/${normalizePhotoId(currentPhoto.metadataFilename)}`, lang) : '';
   const printLink = printBaseLink
     ? `${printBaseLink}${printBaseLink.includes('?') ? '&' : '?'}order=1&utm_source=game&utm_medium=game_result`
     : '';

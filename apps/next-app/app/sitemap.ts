@@ -39,7 +39,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Dynamic photo pages with image metadata for Google Image Search
   const photoPages: MetadataRoute.Sitemap = photos.map((photo) => ({
-    url: `${SITE_URL}/photo/${photo.id}`,
+    url: `${SITE_URL}/photo/${encodeURIComponent(photo.id)}`,
     lastModified: new Date(),
     changeFrequency: 'monthly' as const,
     priority: 0.8,

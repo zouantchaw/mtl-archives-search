@@ -1,4 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+import { NextResponse } from 'next/server';
 
 const isPublicRoute = createRouteMatcher([
   '/',
@@ -12,6 +13,14 @@ const isPublicRoute = createRouteMatcher([
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
+  const photoMatch = req.nextUrl.pathname.match(/^\/photo\/([^/]+)\.json$/i);
+  if (photoMatch) {
+    const normalizedId = photoMatch[1];
+    const redirectUrl = req.nextUrl.clone();
+    redirectUrl.pathname = `/photo/${encodeURIComponent(normalizedId)}`;
+    return NextResponse.redirect(redirectUrl, 308);
+  }
+
   if (!isPublicRoute(req)) {
     await auth.protect();
   }

@@ -305,11 +305,16 @@ function parseAllowedValue<T extends string>(value: string | null, allowed: read
   return (allowed as readonly string[]).includes(normalized) ? (normalized as T) : fallback;
 }
 
+function normalizeMetadataId(id: string): string {
+  return id.replace(/\.json$/i, '');
+}
+
 async function handlePhotos(url: URL, env: Env): Promise<Response> {
   // Support fetching a single photo by ID
   const id = url.searchParams.get('id');
   if (id) {
-    const candidates = id.endsWith('.json') ? [id] : [id, `${id}.json`];
+    const normalizedId = normalizeMetadataId(id);
+    const candidates = Array.from(new Set([normalizedId, `${normalizedId}.json`]));
     const placeholders = candidates.map(() => '?').join(',');
     const { results = [] } = await env.DB.prepare(
       `SELECT ${SELECT_FIELDS} FROM manifest WHERE metadata_filename IN (${placeholders})`
@@ -1137,7 +1142,7 @@ async function handleSitemap(env: Env): Promise<Response> {
 
   const items = await Promise.all(
     results.map(async (row) => ({
-      id: String(row.metadata_filename).replace('.json', ''),
+      id: normalizeMetadataId(String(row.metadata_filename)),
       imageUrl: await resolveImageUrl(String(row.resolved_image_filename ?? ''), env),
       name: row.name != null ? String(row.name) : null,
       dateValue: row.date_value != null ? String(row.date_value) : null,

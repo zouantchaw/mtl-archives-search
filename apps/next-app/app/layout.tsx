@@ -107,15 +107,6 @@ export const metadata: Metadata = {
   //   google: 'your-google-verification-code',
   // },
 
-  // Alternate languages for hreflang
-  alternates: {
-    canonical: siteUrl,
-    languages: {
-      'fr-CA': `${siteUrl}?lang=fr`,
-      'en-CA': `${siteUrl}?lang=en`,
-      'x-default': siteUrl,
-    },
-  },
 };
 
 // Organization JSON-LD for homepage

@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import { PhotoPageClient } from './PhotoPageClient';
 import type { PhotoRecord } from '@/lib/types';
 import { API_BASE } from '@/lib/runtime-config';
+import { normalizePhotoId } from '@/lib/photo-id';
 
 // API endpoint for fetching photo data - runs on server
 
@@ -27,13 +28,14 @@ export default async function PhotoPage({
 }) {
   const { id } = await params;
   const decodedId = decodeURIComponent(id);
+  const normalizedId = normalizePhotoId(decodedId);
 
   // Fetch photo data server-side (cached, no client waterfall)
-  const photo = await getPhoto(decodedId);
+  const photo = await getPhoto(normalizedId);
 
   return (
     <Suspense fallback={<PhotoSkeleton />}>
-      <PhotoPageClient photo={photo} photoId={decodedId} />
+      <PhotoPageClient photo={photo} photoId={normalizedId} />
     </Suspense>
   );
 }
