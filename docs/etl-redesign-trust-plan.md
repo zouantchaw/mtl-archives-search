@@ -1,6 +1,7 @@
 # ETL Redesign: Trust-First Metadata Pipeline
 
 Goal: rebuild the ETL pipeline so metadata is accurate, traceable, bilingual-ready, and safe to display to Quebec customers.
+Note: Implementation tasks are tracked in `TASKS.md`. This document captures scope, design, and acceptance criteria.
 
 ## Why a Redesign (Current Gaps)
 - Descriptions are mostly synthetic (97.6%), so text is not trustworthy.
@@ -56,7 +57,7 @@ Minimum fields (additive, not destructive):
 - `trust_score` (overall, derived)
 
 ## Phase 0: Inventory + Schema
-Tasks:
+Scope:
 - Inventory all raw sources in `data/mtl_archives/` (CSV/JSON/JSONL).
 - Document authoritative sources (portal vs derived vs AI).
 - Define canonical schema + field mapping doc.
@@ -65,7 +66,7 @@ Deliverables:
 - `data/mtl_archives/reports/source_inventory.md`.
 
 ## Phase 1: Normalize & Canonicalize
-Tasks:
+Scope:
 - Rewrite `packages/scripts/src/etl/clean-metadata.ts` into a strict normalizer:
   - Keep raw text fields intact.
   - Output normalized fields alongside raw.
@@ -78,7 +79,7 @@ Acceptance:
 - No synthetic text in normalized fields.
 
 ## Phase 2: Record Linkage (Portal + External)
-Tasks:
+Scope:
 - Build deterministic matching rules:
   - Exact filename match
   - Cote match
@@ -91,7 +92,7 @@ Acceptance:
 - Link accuracy measured on a manual sample (>=95% precision).
 
 ## Phase 3: Evidence-Based Enrichment
-Tasks:
+Scope:
 - VLM in structured JSON mode:
   - `objects`, `setting`, `actions`, `landmarks`, `time_period_guess`
   - Require "unknown" for uncertain fields.
@@ -107,7 +108,7 @@ Acceptance:
 - Manual review of 50 records: <10% factual errors.
 
 ## Phase 4: Trust Scoring + Gating
-Tasks:
+Scope:
 - Compute `trust_score` per field based on provenance:
   - portal/original = high
   - OCR = medium
@@ -122,7 +123,7 @@ Acceptance:
 - Clear, deterministic display rules for UI.
 
 ## Phase 5: Localization
-Tasks:
+Scope:
 - Add bilingual fields:
   - `description_fr`, `description_en`
   - `vlm_caption_fr`, `vlm_caption_en`
@@ -133,7 +134,7 @@ Deliverables:
 - `reports/translation_coverage.md`
 
 ## Phase 6: Evaluation + QA Loop
-Tasks:
+Scope:
 - Create a gold set of 300 records with human-verified metadata.
 - Run automatic checks:
   - semantic similarity (BGE-M3)
@@ -156,14 +157,5 @@ Deliverables:
 - Gate UI off `display_policy` rather than raw fields.
 - Avoid using VLM captions for final marketing copy; use human metadata when present.
 
-## Immediate Next Steps (Suggested Order)
-1) [x] Refresh CKAN datastore snapshots (`npm run open-data:fetch`) and rebuild `manifest_enriched.jsonl` (`npm run open-data:match`).
-2) [x] Dedupe by `external_url` for a canonical record set (`npm run manifest:dedupe`).
-3) [x] Generate missing image report + ingest missing CKAN images into R2 (`npm run open-data:missing`, `npm run open-data:ingest-missing`).
-4) [x] Build `source_inventory.md` + `etl-schema.md`.
-5) [x] Implement canonical normalization output.
-6) [x] Run record linkage + evidence tracking with BGE similarity (`link-records --bge`).
-7) [x] Generate `reports/record_linkage_report.md` for threshold calibration.
-8) [ ] Add OCR + structured VLM tags (running on Lambda; VLM retry + OCR in progress).
-9) [x] Compute trust score + display policy.
-10) [x] Finish CLIP image embeddings (GPU), verify Vectorize coverage, then shut down instance.
+## Implementation Tracking
+Engineering work is tracked in `TASKS.md`.

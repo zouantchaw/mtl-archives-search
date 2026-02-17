@@ -66,6 +66,11 @@ pipelines/
 | `semantic` | mtl-archives | Workers AI BGE |
 | `visual` | mtl-archives-clip | HuggingFace CLIP |
 
+### SEO URL Invariant
+- Canonical photo route is `/photo/{id}` (bare ID, no `.json`).
+- `/api/photos?id=` accepts both bare IDs and `.json` IDs.
+- Legacy `/photo/{id}.json` URLs should redirect to canonical bare-ID routes.
+
 ### Data Flow
 1. Source: `manifest_enriched.jsonl` (from Logseq pipeline)
 2. ETL: canonicalize → dates → link-records → VLM tags + OCR → merge → trust score

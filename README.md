@@ -101,6 +101,9 @@ Paginated photo listing with signed R2 URLs.
 |-----------|------|---------|-------------|
 | `limit` | number | 50 | Results per page (1-100) |
 | `cursor` | string | — | Pagination cursor from previous response |
+| `id` | string | — | Fetch a single photo by ID (`foo` or `foo.json`) |
+
+Canonical photo page URLs use bare IDs (`/photo/{id}`); legacy `.json` photo paths redirect to the canonical bare-ID route.
 
 ### `GET /api/search`
 
@@ -146,17 +149,7 @@ npm run vectorize:text  # Generate BGE embeddings
 
 ## Roadmap
 
-- [x] Text search (SQL LIKE)
-- [x] Semantic search (BGE text embeddings)
-- [x] CLIP visual search (512-dim image embeddings)
-- [x] VLM captioning (LLaVA 1.5 7B)
-- [x] OCR text extraction (Tesseract)
-- [x] Next.js UI with map visualization
-- [x] FR/EN localization
-- [x] Daily game MVP (daily + practice)
-- [x] Manual print ordering (email checkout)
-- [ ] Geocoding + geospatial filtering
-- [ ] Neighborhood landing pages
+Engineering tasks and roadmap are tracked in `TASKS.md`.
 
 ## Dataset
 

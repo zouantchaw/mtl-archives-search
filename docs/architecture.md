@@ -125,6 +125,13 @@ User Query ──▶ HuggingFace (CLIP text) ──▶ Vectorize CLIP ──▶ 
                                     Matches against image embeddings
 ```
 
+### SEO URL Canonicalization
+
+- Canonical photo pages use bare IDs: `/photo/{id}` (no `.json` suffix).
+- Worker endpoint `/api/photos?id=` accepts both bare IDs and `.json` IDs, normalizing to the same record.
+- Sitemap and social metadata (OG/Twitter + JSON-LD) emit canonical bare-ID photo URLs.
+- Legacy `/photo/{id}.json` links are redirected (308) to canonical bare-ID URLs.
+
 ### 3. Game Flow (Runtime)
 
 ```

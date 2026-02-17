@@ -261,13 +261,6 @@ TARGET:
 
 ## Next Steps
 
-Status update (Jan 2026): most items below are complete; the active plan now lives in `docs/etl-redesign-trust-plan.md`.
+Status update (Jan 2026): most items are complete; implementation tracking now lives in `TASKS.md` and `docs/etl-redesign-trust-plan.md`.
 
-1. [ ] Review this audit with team
-2. [x] Choose VLM provider (Cloudflare Workers AI)
-3. [x] Create caption-images.ts script
-4. [x] Run on sample (163 images) to validate quality
-5. [x] Run on full dataset (14k images)
-6. [x] Update embedding pipeline to use VLM descriptions
-7. [x] Re-index Vectorize
-8. [ ] Test search quality
+Completed work includes: choosing the VLM provider, running captioning on the full dataset, updating the embedding pipeline, and re-indexing Vectorize. Remaining validation should focus on reviewing this audit with the team and testing search quality.
