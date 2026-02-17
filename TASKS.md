@@ -14,10 +14,11 @@ Execution status: `47` open tasks. Completed work is consolidated in the archive
 Deliver the best on-site user experience (especially mobile/in-app browsers) before expansion work.
 
 ### Mobile performance + conversion
-- [ ] **Diagnose mobile load time** — IG visitors are on iOS/Android in-app browser. Profile first paint speed.
+- [x] **Diagnose mobile load time** — Baseline captured via `agent-browser` iPhone emulation (`docs/performance/mobile-load-diagnosis-2026-02-17.md`), showing photo/game route client-side render cost as the main issue.
 - [ ] **Review print order flow on mobile** — Is pricing clear? Shipping visible? Frame preview working?
 - [ ] **Mobile QA** — Test pinch/zoom, touch interactions on iOS/Android in-app browsers.
 - [ ] **Social proof** — "X people viewed this photo" or "Popular in [neighborhood]".
+- [ ] **Reduce auth/script cost on public routes** — Defer or route-scope Clerk loading on home/photo to improve first paint for signed-out mobile visitors.
 
 ### Reliability + correctness
 - [ ] **Retry + resume ingestion** — Add retry/backoff and resumable checkpoints for Vectorize ingest (text + CLIP) so failures do not silently shrink index coverage.
