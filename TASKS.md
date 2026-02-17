@@ -20,7 +20,7 @@ Blocking proper Google indexing:
 ## P1: Core API + Revenue Near-Term
 
 ### Core API + SEO follow-ups
-- [ ] **Stop caching expired signed R2 URLs** — If public R2 domain is missing, shorten cache TTL to signed URL expiry or skip caching for signed responses (API + sitemap).
+- [x] **Stop caching expired signed R2 URLs** — Cache TTL is clamped below signed URL expiry when public R2 domain is missing (API + sitemap), with API tests covering TTL behavior.
 - [ ] **Centralize API base config** — Remove hard-coded prod worker/R2 from rewrites/preconnects; use env-driven base (with safe local fallback) for client + server + Next config.
 
 ### B2B readiness

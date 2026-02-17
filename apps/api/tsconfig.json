@@ -4,7 +4,8 @@
     "outDir": "dist",
     "types": ["@cloudflare/workers-types"]
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/**/*.test.ts"],
   "references": [
     { "path": "../../packages/core" }
   ]
