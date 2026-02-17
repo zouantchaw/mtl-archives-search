@@ -91,6 +91,15 @@ Next app runtime env:
 - `NEXT_PUBLIC_API_URL` (required in production)
 - `NEXT_PUBLIC_R2_PUBLIC_DOMAIN` (preferred public asset host)
 
+## Skills
+
+- Always reference repo-local skills from `./.agents/skills`.
+- Do not use `./.skills` (deprecated).
+- Installed skill examples in this repo:
+  - `./.agents/skills/agent-browser`
+  - `./.agents/skills/game-design-theory`
+  - `./.agents/skills/game-developer`
+
 ## Code Patterns
 
 - Worker: module syntax with typed `Env` interface

@@ -43,3 +43,7 @@ When behavior changes, update these together:
 ## Skills Directory
 - Use **only** `./.agents/skills` for repository-local skills.
 - `./.skills` is deprecated and should not be used.
+- Current repo-local skills:
+  - `./.agents/skills/game-design-theory`
+  - `./.agents/skills/game-developer`
+  - `./.agents/skills/agent-browser`
