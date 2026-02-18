@@ -150,6 +150,7 @@ npm run d1:seed         # Seed remote D1
 # Vectorize
 npm run vectorize:text  # Generate BGE embeddings
 npm run vectorize:clip  # Generate CLIP embeddings
+npm run vectorize:status  # Show checkpoint/failure-log status for both ingest jobs
 ```
 
 Vectorize reliability notes:

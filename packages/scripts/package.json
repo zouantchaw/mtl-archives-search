@@ -19,6 +19,7 @@
     "open-data:ingest-missing": "tsx src/etl/ingest-missing-images.ts",
     "vectorize:clip": "tsx src/vectorize/ingest-clip.ts",
     "vectorize:text": "tsx src/vectorize/ingest-text.ts",
+    "vectorize:status": "tsx src/vectorize/status.ts",
     "vectorize:export": "tsx src/vectorize/export-embeddings.ts",
     "db:generate": "tsx src/db/generate-sql.ts",
     "link-records:report": "tsx src/analysis/record-linkage-report.ts",
