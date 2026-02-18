@@ -8,10 +8,10 @@ type Checkpoint = {
   nextIndex: number;
   total: number;
   manifestPath: string;
+  selectionKey?: string;
   updatedAt: string;
 };
 
-// Configuration
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MONOREPO_ROOT = path.resolve(__dirname, '../../../../');
 
@@ -24,7 +24,6 @@ const EMBEDDING_MODEL = process.env.CLOUDFLARE_EMBEDDING_MODEL || '@cf/baai/bge-
 const BATCH_SIZE = Number(process.env.VECTORIZE_BATCH_SIZE || '16');
 const MAX_RETRIES = Number(process.env.VECTORIZE_MAX_RETRIES || '4');
 
-// Defaults - prefer VLM-captioned manifest
 const DEFAULT_VLM_PATH = path.resolve(MONOREPO_ROOT, 'data/mtl_archives/manifest_vlm_complete.jsonl');
 const DEFAULT_CLEAN_PATH = path.resolve(MONOREPO_ROOT, 'data/mtl_archives/manifest_clean.jsonl');
 const DEFAULT_ENRICHED_PATH = path.resolve(MONOREPO_ROOT, 'data/mtl_archives/export/manifest_enriched.ndjson');
@@ -77,6 +76,49 @@ function loadCheckpoint(checkpointPath: string): Checkpoint | null {
 function saveCheckpoint(checkpointPath: string, checkpoint: Checkpoint) {
   ensureParentDir(checkpointPath);
   fs.writeFileSync(checkpointPath, JSON.stringify(checkpoint, null, 2));
+}
+
+function buildSelectionKey(limit?: number) {
+  return `limit=${limit ?? 'all'}`;
+}
+
+async function* readManifestLines(manifestPath: string): AsyncGenerator<string> {
+  const fileStream = fs.createReadStream(manifestPath);
+  const rl = (await import('readline')).createInterface({ input: fileStream, crlfDelay: Infinity });
+  for await (const line of rl) {
+    if (line.trim()) yield line;
+  }
+}
+
+async function summarizeManifest(manifestPath: string, limit?: number) {
+  let total = 0;
+  let withVlmCaption = 0;
+
+  for await (const line of readManifestLines(manifestPath)) {
+    if (limit && total >= limit) break;
+    const record = JSON.parse(line);
+    if (record.vlm_caption) withVlmCaption += 1;
+    total += 1;
+  }
+
+  return { total, withVlmCaption };
+}
+
+async function* iterateSelectedRecords(manifestPath: string, limit: number | undefined, startIndex: number) {
+  let selectedIndex = 0;
+
+  for await (const line of readManifestLines(manifestPath)) {
+    if (limit && selectedIndex >= limit) break;
+
+    if (selectedIndex < startIndex) {
+      selectedIndex += 1;
+      continue;
+    }
+
+    const record = JSON.parse(line);
+    yield { index: selectedIndex, record };
+    selectedIndex += 1;
+  }
 }
 
 async function postRequest(url: string, payload: unknown, label: string) {
@@ -160,6 +202,42 @@ function buildText(record: any): string {
   return parts.length ? parts.join('\n') : record.metadata_filename;
 }
 
+async function processBatch(batch: any[], batchStartIndex: number, total: number, manifestPath: string, checkpointPath: string, selectionKey: string) {
+  const texts = batch.map(buildText);
+  const embeddings = await generateEmbeddings(texts);
+
+  if (embeddings.length !== batch.length) {
+    throw new Error(`Embedding count mismatch: expected ${batch.length}, got ${embeddings.length}`);
+  }
+
+  const vectors = batch.map((record, idx) => {
+    const metadata: any = {};
+    if (record.name) metadata.name = record.name;
+    if (record.date_value) metadata.date = record.date_value;
+    const imageKey = record.resolved_image_filename || record.image_filename;
+    if (imageKey) metadata.image = imageKey;
+
+    return {
+      id: record.metadata_filename,
+      values: embeddings[idx],
+      metadata: Object.keys(metadata).length ? metadata : undefined,
+    };
+  });
+
+  await upsertVectors(vectors);
+
+  const completed = Math.min(batchStartIndex + batch.length, total);
+  saveCheckpoint(checkpointPath, {
+    nextIndex: completed,
+    total,
+    manifestPath,
+    selectionKey,
+    updatedAt: new Date().toISOString(),
+  });
+
+  console.log(`Upserted ${completed}/${total}`);
+}
+
 async function main() {
   const { values } = parseArgs({
     args: process.argv.slice(2),
@@ -188,6 +266,7 @@ async function main() {
   const failureLogPath = values['failure-log']
     ? path.resolve(process.cwd(), values['failure-log'])
     : DEFAULT_FAILURE_LOG;
+  const selectionKey = buildSelectionKey(limit);
 
   if (!fs.existsSync(manifestPath)) {
     console.error(`Cannot find manifest at ${manifestPath}`);
@@ -195,15 +274,12 @@ async function main() {
   }
 
   console.log(`Reading manifest from: ${manifestPath}`);
-  const raw = fs.readFileSync(manifestPath, 'utf-8');
-  let records = raw.split('\n').filter(Boolean).map((line) => JSON.parse(line));
+  console.log('Manifest ingestion mode: streaming (no full-file in-memory load)');
 
-  if (limit) {
-    records = records.slice(0, limit);
-  }
+  const summary = await summarizeManifest(manifestPath, limit);
+  const total = summary.total;
+  const withVlmCaption = summary.withVlmCaption;
 
-  const total = records.length;
-  const withVlmCaption = records.filter((r) => r.vlm_caption).length;
   console.log(`Ingesting ${total} records into index "${VECTORIZE_INDEX}"...`);
   console.log(`  - ${withVlmCaption} with VLM captions (will use vlm_caption)`);
   console.log(`  - ${total - withVlmCaption} without (will use original metadata)`);
@@ -213,7 +289,7 @@ async function main() {
 
   if (!values.reset) {
     const checkpoint = loadCheckpoint(checkpointPath);
-    if (checkpoint && checkpoint.manifestPath === manifestPath) {
+    if (checkpoint && checkpoint.manifestPath === manifestPath && checkpoint.selectionKey === selectionKey) {
       startIndex = Math.min(checkpoint.nextIndex, total);
       console.log(`Resuming from checkpoint: ${startIndex}/${total}`);
     }
@@ -224,52 +300,51 @@ async function main() {
     console.log(`Manual resume override from batch ${(fromBatch as number)} -> index ${startIndex}`);
   }
 
-  for (let i = startIndex; i < total; i += BATCH_SIZE) {
-    const batch = records.slice(i, i + BATCH_SIZE);
-    const texts = batch.map(buildText);
+  let batch: any[] = [];
+  let batchStartIndex = startIndex;
+
+  for await (const item of iterateSelectedRecords(manifestPath, limit, startIndex)) {
+    if (batch.length === 0) {
+      batchStartIndex = item.index;
+    }
+
+    batch.push(item.record);
+
+    if (batch.length < BATCH_SIZE) continue;
 
     try {
-      const embeddings = await generateEmbeddings(texts);
-
-      if (embeddings.length !== batch.length) {
-        throw new Error(`Embedding count mismatch: expected ${batch.length}, got ${embeddings.length}`);
-      }
-
-      const vectors = batch.map((record, idx) => {
-        const metadata: any = {};
-        if (record.name) metadata.name = record.name;
-        if (record.date_value) metadata.date = record.date_value;
-        const imageKey = record.resolved_image_filename || record.image_filename;
-        if (imageKey) metadata.image = imageKey;
-
-        return {
-          id: record.metadata_filename,
-          values: embeddings[idx],
-          metadata: Object.keys(metadata).length ? metadata : undefined,
-        };
-      });
-
-      await upsertVectors(vectors);
-      const completed = Math.min(i + batch.length, total);
-      saveCheckpoint(checkpointPath, {
-        nextIndex: completed,
-        total,
-        manifestPath,
-        updatedAt: new Date().toISOString(),
-      });
-      console.log(`Upserted ${completed}/${total}`);
-
+      await processBatch(batch, batchStartIndex, total, manifestPath, checkpointPath, selectionKey);
       await sleep(200);
+      batch = [];
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      console.error(`Batch ${Math.floor(i / BATCH_SIZE)} failed at index ${i}: ${err.message}`);
       appendFailureLog(failureLogPath, {
         timestamp: new Date().toISOString(),
-        batchIndex: Math.floor(i / BATCH_SIZE),
-        startIndex: i,
+        batchIndex: Math.floor(batchStartIndex / BATCH_SIZE),
+        startIndex: batchStartIndex,
         batchSize: batch.length,
         checkpointPath,
         manifestPath,
+        selectionKey,
+        error: err.message,
+      });
+      throw err;
+    }
+  }
+
+  if (batch.length > 0) {
+    try {
+      await processBatch(batch, batchStartIndex, total, manifestPath, checkpointPath, selectionKey);
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      appendFailureLog(failureLogPath, {
+        timestamp: new Date().toISOString(),
+        batchIndex: Math.floor(batchStartIndex / BATCH_SIZE),
+        startIndex: batchStartIndex,
+        batchSize: batch.length,
+        checkpointPath,
+        manifestPath,
+        selectionKey,
         error: err.message,
       });
       throw err;
@@ -280,6 +355,7 @@ async function main() {
     nextIndex: total,
     total,
     manifestPath,
+    selectionKey,
     updatedAt: new Date().toISOString(),
   });
   console.log(`Ingestion complete. Coverage: ${total}/${total}`);

@@ -30,7 +30,7 @@ Deliver the best on-site user experience (especially mobile/in-app browsers) bef
 ### Reliability + correctness
 - [x] **Retry + resume ingestion** — Vectorize text + CLIP ingest now support retry/backoff, resumable checkpoints, and manual resume overrides.
 - [x] **Failure reporting** — Vectorize ingest writes structured failure logs to `data/mtl_archives/.logs/*` and exits non-zero on integrity failures by default.
-- [ ] **Stream manifests** — Avoid loading full JSONL into memory for large runs; switch to streaming batches.
+- [x] **Stream manifests** — Vectorize text + CLIP ingest now process manifest JSONL in streaming batches (no full-file memory load).
 - [ ] **Worker endpoint tests** — `/api/photos` id normalization, sitemap generation, search modes.
 - [ ] **Pipeline smoke tests** — CLI runs with small fixtures + failure reporting.
 - [x] **Production game smoke check** — Added `npm run smoke:game` + `npm run smoke:game:prod` guardrail for `/game` regressions.

@@ -9,6 +9,7 @@ type Checkpoint = {
   nextIndex: number;
   total: number;
   inputPath: string;
+  selectionKey?: string;
   updatedAt: string;
 };
 
@@ -74,6 +75,10 @@ function isRetryableStatus(status: number) {
   return status === 408 || status === 409 || status === 425 || status === 429 || status >= 500;
 }
 
+function buildSelectionKey(offset: number, limit: number) {
+  return `offset=${offset};limit=${limit}`;
+}
+
 async function withRetries<T>(label: string, fn: () => Promise<T>, maxRetries = MAX_RETRIES): Promise<T> {
   let lastError: Error | null = null;
   for (let attempt = 1; attempt <= maxRetries; attempt += 1) {
@@ -90,7 +95,57 @@ async function withRetries<T>(label: string, fn: () => Promise<T>, maxRetries = 
   throw lastError ?? new Error(`${label} failed unexpectedly`);
 }
 
-async function upsertVectors(vectors: any[]) {
+async function* readManifestLines(inputPath: string): AsyncGenerator<string> {
+  const fileStream = fs.createReadStream(inputPath);
+  const rl = (await import('readline')).createInterface({ input: fileStream, crlfDelay: Infinity });
+  for await (const line of rl) {
+    if (line.trim()) yield line;
+  }
+}
+
+async function countSelectedRecords(inputPath: string, offset: number, limit: number) {
+  let rawIndex = 0;
+  let selected = 0;
+
+  for await (const _line of readManifestLines(inputPath)) {
+    if (rawIndex < offset) {
+      rawIndex += 1;
+      continue;
+    }
+    if (limit > 0 && selected >= limit) break;
+    selected += 1;
+    rawIndex += 1;
+  }
+
+  return selected;
+}
+
+async function* iterateSelectedRecords(inputPath: string, offset: number, limit: number, startIndex: number) {
+  let rawIndex = 0;
+  let selectedIndex = 0;
+
+  for await (const line of readManifestLines(inputPath)) {
+    if (rawIndex < offset) {
+      rawIndex += 1;
+      continue;
+    }
+
+    if (limit > 0 && selectedIndex >= limit) break;
+
+    if (selectedIndex < startIndex) {
+      selectedIndex += 1;
+      rawIndex += 1;
+      continue;
+    }
+
+    const record = JSON.parse(line);
+    yield { index: selectedIndex, record };
+    selectedIndex += 1;
+    rawIndex += 1;
+  }
+}
+
+async function upsertVectors(vectors: ClipVectorRecord[]) {
   const ndjson = vectors.map((v) => JSON.stringify(v)).join('\n');
 
   await withRetries('Vectorize upsert', async () => {
@@ -175,6 +230,7 @@ async function main() {
   const failureLogPath = values['failure-log']
     ? path.resolve(process.cwd(), values['failure-log'])
     : DEFAULT_FAILURE_LOG;
+  const selectionKey = buildSelectionKey(offset, limit);
 
   if (!fs.existsSync(inputPath)) {
     console.error(`Manifest not found: ${inputPath}`);
@@ -185,25 +241,15 @@ async function main() {
   const model = await CLIPVisionModelWithProjection.from_pretrained('Xenova/clip-vit-base-patch32');
   const processor = await AutoProcessor.from_pretrained('Xenova/clip-vit-base-patch32');
 
-  console.log('Model loaded. Reading manifest...');
-  const records: any[] = [];
-  const fileStream = fs.createReadStream(inputPath);
-  const rl = (await import('readline')).createInterface({ input: fileStream, crlfDelay: Infinity });
+  console.log('Model loaded. Manifest ingestion mode: streaming (no full-file in-memory load)');
 
-  for await (const line of rl) {
-    if (line.trim()) records.push(JSON.parse(line));
-  }
-
-  let subset = records.slice(offset);
-  if (limit > 0) subset = subset.slice(0, limit);
-
-  const total = subset.length;
+  const total = await countSelectedRecords(inputPath, offset, limit);
   let startIndex = 0;
   const fromBatch = values['from-batch'] ? parseInt(values['from-batch'], 10) : undefined;
 
   if (!values.reset) {
     const checkpoint = loadCheckpoint(checkpointPath);
-    if (checkpoint && checkpoint.inputPath === inputPath) {
+    if (checkpoint && checkpoint.inputPath === inputPath && checkpoint.selectionKey === selectionKey) {
       startIndex = Math.min(checkpoint.nextIndex, total);
       console.log(`Resuming from checkpoint: ${startIndex}/${total}`);
     }
@@ -218,45 +264,122 @@ async function main() {
 
   let processed = 0;
   let skipped = 0;
+  let batch: { index: number; record: any }[] = [];
 
-  for (let i = startIndex; i < total; i += BATCH_SIZE) {
-    const batch = subset.slice(i, i + BATCH_SIZE);
+  for await (const item of iterateSelectedRecords(inputPath, offset, limit, startIndex)) {
+    batch.push(item);
+    if (batch.length < BATCH_SIZE) continue;
 
-  const results = await Promise.all(batch.map(async (record) => {
-      try {
-        return await vectorizeRecord(record, model, processor);
-      } catch (error) {
-        const err = error instanceof Error ? error : new Error(String(error));
-        appendFailureLog(failureLogPath, {
-          timestamp: new Date().toISOString(),
-          batchIndex: Math.floor(i / BATCH_SIZE),
-          startIndex: i,
-          recordId: record.metadata_filename,
-          inputPath,
-          error: err.message,
-        });
-        return null;
+    const batchStartIndex = batch[0].index;
+
+    try {
+      const results = await Promise.all(batch.map(async ({ record }) => {
+        try {
+          return await vectorizeRecord(record, model, processor);
+        } catch (error) {
+          const err = error instanceof Error ? error : new Error(String(error));
+          appendFailureLog(failureLogPath, {
+            timestamp: new Date().toISOString(),
+            batchIndex: Math.floor(batchStartIndex / BATCH_SIZE),
+            startIndex: batchStartIndex,
+            recordId: record.metadata_filename,
+            inputPath,
+            selectionKey,
+            error: err.message,
+          });
+          return null;
+        }
+      }));
+
+      const validVectors = results.filter((v): v is ClipVectorRecord => v !== null);
+      const skippedInBatch = batch.length - validVectors.length;
+
+      if (validVectors.length > 0) {
+        await upsertVectors(validVectors);
+        processed += validVectors.length;
       }
-    }));
+      skipped += skippedInBatch;
 
-    const validVectors = results.filter((v): v is ClipVectorRecord => v !== null);
-    const skippedInBatch = batch.length - validVectors.length;
+      const completed = Math.min(batchStartIndex + batch.length, total);
+      saveCheckpoint(checkpointPath, {
+        nextIndex: completed,
+        total,
+        inputPath,
+        selectionKey,
+        updatedAt: new Date().toISOString(),
+      });
 
-    if (validVectors.length > 0) {
-      await upsertVectors(validVectors);
-      processed += validVectors.length;
+      process.stdout.write(`\rProcessed: ${processed}, Skipped: ${skipped}, Progress: ${completed}/${total}`);
+      batch = [];
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      appendFailureLog(failureLogPath, {
+        timestamp: new Date().toISOString(),
+        batchIndex: Math.floor(batchStartIndex / BATCH_SIZE),
+        startIndex: batchStartIndex,
+        batchSize: batch.length,
+        inputPath,
+        selectionKey,
+        error: err.message,
+      });
+      throw err;
     }
-    skipped += skippedInBatch;
+  }
 
-    const completed = Math.min(i + batch.length, total);
-    saveCheckpoint(checkpointPath, {
-      nextIndex: completed,
-      total,
-      inputPath,
-      updatedAt: new Date().toISOString(),
-    });
+  if (batch.length > 0) {
+    const batchStartIndex = batch[0].index;
 
-    process.stdout.write(`\rProcessed: ${processed}, Skipped: ${skipped}, Progress: ${completed}/${total}`);
+    try {
+      const results = await Promise.all(batch.map(async ({ record }) => {
+        try {
+          return await vectorizeRecord(record, model, processor);
+        } catch (error) {
+          const err = error instanceof Error ? error : new Error(String(error));
+          appendFailureLog(failureLogPath, {
+            timestamp: new Date().toISOString(),
+            batchIndex: Math.floor(batchStartIndex / BATCH_SIZE),
+            startIndex: batchStartIndex,
+            recordId: record.metadata_filename,
+            inputPath,
+            selectionKey,
+            error: err.message,
+          });
+          return null;
+        }
+      }));
+
+      const validVectors = results.filter((v): v is ClipVectorRecord => v !== null);
+      const skippedInBatch = batch.length - validVectors.length;
+
+      if (validVectors.length > 0) {
+        await upsertVectors(validVectors);
+        processed += validVectors.length;
+      }
+      skipped += skippedInBatch;
+
+      const completed = Math.min(batchStartIndex + batch.length, total);
+      saveCheckpoint(checkpointPath, {
+        nextIndex: completed,
+        total,
+        inputPath,
+        selectionKey,
+        updatedAt: new Date().toISOString(),
+      });
+
+      process.stdout.write(`\rProcessed: ${processed}, Skipped: ${skipped}, Progress: ${completed}/${total}`);
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      appendFailureLog(failureLogPath, {
+        timestamp: new Date().toISOString(),
+        batchIndex: Math.floor(batchStartIndex / BATCH_SIZE),
+        startIndex: batchStartIndex,
+        batchSize: batch.length,
+        inputPath,
+        selectionKey,
+        error: err.message,
+      });
+      throw err;
+    }
   }
 
   console.log('\nIngestion complete.');

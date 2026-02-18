@@ -157,6 +157,7 @@ Vectorize reliability notes:
 - `vectorize:text` and `vectorize:clip` now support resumable checkpoints by default.
 - Failed batches/records are written to `data/mtl_archives/.logs/`.
 - Both scripts use retry/backoff for transient API/network failures.
+- Both ingest scripts stream JSONL input in batches (no full manifest load into memory).
 - Use `--reset` to ignore checkpoint state and re-run from the start.
 
 ## Technology Stack
