@@ -67,3 +67,75 @@ This is a hypothesis, not yet a confirmed root cause.
    - lower concurrent image decode pressure
    - guard against rapid filter-triggered render churn
 
+## Run Log Template
+
+Use one entry per repro run.
+
+### Trace ID
+
+- Trace ID: `TRACE-YYYYMMDD-##`
+- Date/time (local): 
+- Tester: 
+
+### Environment
+
+- Device model:
+- iOS / OS version:
+- Browser:
+- Browser version:
+- Network:
+
+### Starting State
+
+- URL:
+- Language:
+- Existing query params:
+- Session state (fresh tab / reused tab):
+
+### Filter Sequence
+
+| Step | Timestamp | Filter tapped | URL after tap | Grid status | Notes |
+|---|---|---|---|---|---|
+| 1 |  |  |  |  |  |
+| 2 |  |  |  |  |  |
+| 3 |  |  |  |  |  |
+| 4 |  |  |  |  |  |
+| 5 |  |  |  |  |  |
+| 6 |  |  |  |  |  |
+| 7 |  |  |  |  |  |
+| 8 |  |  |  |  |  |
+| 9 |  |  |  |  |  |
+| 10 |  |  |  |  |  |
+
+### Failure Details
+
+- White screen observed: yes/no
+- Time-to-failure:
+- Last successful step:
+- Recovery behavior (reload/close tab/etc.):
+- Screenshot path/link:
+- Screen recording path/link:
+- Console/runtime error text (if captured):
+- Network notes:
+
+### Summary
+
+- Repro outcome:
+- Confidence:
+- Follow-up action:
+
+## Run Log (Started)
+
+### TRACE-20260218-01
+
+- Date/time (local): Feb 18, 2026
+- Tester: user report
+- Device model: iPhone (reported as iPhone 17 Pro)
+- Browser: Arc (mobile)
+- Route: home/search page
+- Trigger: tapping ~4-5 discovery filters
+- Observed result: white screen
+- Recovery behavior: not yet documented
+- Artifacts: pending
+
+Status: `reported / pending structured trace capture`
