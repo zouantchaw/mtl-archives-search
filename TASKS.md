@@ -14,7 +14,7 @@ Execution status: `47` open tasks. Completed work is consolidated in the archive
 Deliver the best on-site user experience (especially mobile/in-app browsers) before expansion work.
 
 ### Incident: Mobile filter white-screen crash (highest priority)
-- [ ] **Reproduce + isolate crash path on iOS/in-app browsers** — Capture exact sequence (filters tapped, request count, result count, time-to-crash) on iPhone Safari + Arc + IG/FB in-app browser when possible.
+- [ ] **Reproduce + isolate crash path on iOS/in-app browsers** — Follow `docs/performance/mobile-filter-crash-incident-2026-02-18.md` and capture exact sequence (filters tapped, request count, result count, time-to-crash) on iPhone Safari + Arc + IG/FB in-app browser when possible.
 - [ ] **Add crash telemetry for filter/search sessions** — Log JS runtime errors, unhandled rejections, filter-tap sequence length, and current result payload size before failure.
 - [ ] **Contain image/memory pressure on filter searches** — Apply mobile-safe caps to search results/images (not only shuffle), reduce concurrent image decode pressure, and prevent runaway re-renders during rapid filter taps.
 - [ ] **Add rapid-filter stress smoke test** — Simulate repeated filter taps and assert no blank screen + no fatal runtime error.
