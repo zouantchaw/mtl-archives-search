@@ -158,4 +158,28 @@ Use one entry per repro run.
 - Recovery behavior: not yet documented
 - Artifacts: pending
 
-Status: `reported / pending structured trace capture`
+### TRACE-20260218-02
+
+- Date/time (local): Feb 18, 2026
+- Tester: user real-device validation
+- Device model: iPhone
+- Browser: Safari (mobile)
+- Route: home/search page
+- Trigger: repeated discovery filter taps for 10-15 minutes
+- Observed result: stable, no white screen
+- Recovery behavior: not needed
+- Artifacts: manual run report in chat
+
+### TRACE-20260218-03
+
+- Date/time (local): Feb 18, 2026
+- Tester: user real-device validation
+- Device model: iPhone
+- Browser: Facebook in-app + Instagram in-app
+- Route: home/search + photo + game flows
+- Trigger: full mobile touch checklist
+- Observed result: stable, no white screen
+- Recovery behavior: not needed
+- Artifacts: checklist summary in `docs/performance/mobile-touch-qa-checklist-2026-02-18.md`
+
+Status: `real-device iPhone + iOS in-app validated; Arc-specific residual issue remains low-priority`
