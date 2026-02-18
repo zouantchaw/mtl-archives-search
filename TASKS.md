@@ -46,7 +46,7 @@ Deliver the best on-site user experience (especially mobile/in-app browsers) bef
 ## P1: Search Quality + Product UX
 
 ### Search/index quality pipeline
-- [ ] **Detect + strip borders/stamps/templates** — Auto-crop scan borders, remove archive stamps/headers where possible.
+- [x] **Detect + strip borders/stamps/templates** — Added `npm run image-artifacts:audit` to detect border/template artifacts, emit crop/mask actions per image, and optionally export cleaned preview derivatives for review.
 - [x] **Split document vs photo sets** — Baseline classifier/report plus index-time filtering control shipped (`search-quality:audit`, `--exclude-document-likely`, `vectorize:*:photos` commands).
 - [x] **De-dup near-identicals** — Added image-level perceptual hash dedupe audit (`npm run image-dedupe:audit`) producing duplicate clusters and canonical keep/drop decisions.
 - [ ] **Normalize contrast/levels** — Light auto-levels + noise reduction to stabilize CLIP features.

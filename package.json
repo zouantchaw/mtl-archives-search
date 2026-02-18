@@ -36,6 +36,7 @@
     "vectorize:status": "npm run vectorize:status --workspace=@mtl-archives/scripts",
     "smoke:pipeline": "npm run smoke:pipeline --workspace=@mtl-archives/scripts",
     "search-quality:audit": "npm run search-quality:audit --workspace=@mtl-archives/scripts",
+    "image-artifacts:audit": "npm run image-artifacts:audit --workspace=@mtl-archives/scripts",
     "image-dedupe:audit": "npm run image-dedupe:audit --workspace=@mtl-archives/scripts",
     "vectorize:export": "npm run vectorize:export --workspace=@mtl-archives/scripts",
     "db:generate": "npm run db:generate --workspace=@mtl-archives/scripts",

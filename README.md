@@ -155,6 +155,7 @@ npm run vectorize:clip:photos  # Ingest CLIP vectors while excluding document-li
 npm run vectorize:status  # Show checkpoint/failure-log status for both ingest jobs
 npm run smoke:pipeline  # Fixture-based ETL/vectorize smoke test + failure-log assertion
 npm run search-quality:audit  # Non-destructive doc-vs-photo + duplicate audit report
+npm run image-artifacts:audit  # Border/template detection audit + optional cleaned previews
 npm run image-dedupe:audit  # Perceptual image hash dedupe audit (clusters + keep/drop decisions)
 ```
 

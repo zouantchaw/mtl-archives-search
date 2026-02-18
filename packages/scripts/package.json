@@ -26,6 +26,7 @@
     "db:generate": "tsx src/db/generate-sql.ts",
     "link-records:report": "tsx src/analysis/record-linkage-report.ts",
     "search-quality:audit": "tsx src/analysis/search-quality-audit.ts",
+    "image-artifacts:audit": "tsx src/analysis/image-artifact-audit.ts",
     "image-dedupe:audit": "tsx src/analysis/image-dedupe-audit.ts",
     "smoke:pipeline": "tsx src/analysis/smoke-pipeline.ts",
     "vlm:caption": "tsx src/vlm/caption-images.ts",
