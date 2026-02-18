@@ -14,6 +14,8 @@ const translations = {
     emptyCart: 'Votre panier est vide',
     remove: 'Retirer',
     subtotal: 'Sous-total',
+    finalTotalNote: 'Total final confirmé par courriel (taxes + livraison).',
+    noPaymentNow: 'Aucun paiement immédiat. Nous confirmons le paiement après validation de la commande.',
     checkout: 'Passer la commande',
     clearCart: 'Vider le panier',
     closeCart: 'Fermer le panier',
@@ -52,6 +54,8 @@ const translations = {
     emptyCart: 'Your cart is empty',
     remove: 'Remove',
     subtotal: 'Subtotal',
+    finalTotalNote: 'Final total confirmed by email (taxes + shipping).',
+    noPaymentNow: 'No payment now. We confirm payment after reviewing your order.',
     checkout: 'Checkout',
     clearCart: 'Clear cart',
     closeCart: 'Close cart',
@@ -403,6 +407,9 @@ function CartDrawerInner() {
                 <p className="text-xs text-neutral-400 mt-1">
                   {itemCount} {itemCount === 1 ? 'item' : 'items'}
                 </p>
+                <p className="text-xs text-neutral-500 mt-2">
+                  {t.finalTotalNote}
+                </p>
               </div>
 
               {/* Submit Button */}
@@ -504,6 +511,12 @@ function CartDrawerInner() {
               <span className="text-sm text-neutral-500">{t.subtotal}</span>
               <span className="text-sm font-medium">${total}</span>
             </div>
+            <p className="text-xs text-neutral-500">
+              {t.finalTotalNote}
+            </p>
+            <p className="text-xs text-neutral-500">
+              {t.noPaymentNow}
+            </p>
 
             {/* Checkout Button */}
             <button

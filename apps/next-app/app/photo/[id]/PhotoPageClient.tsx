@@ -29,6 +29,11 @@ const translations = {
     notFound: 'Photo non trouvée',
     untitled: 'Sans titre',
     fulfillment: 'Imprimé à Montréal · Livraison en 5–7 jours ouvrables',
+    noPaymentNow: 'Pas de paiement maintenant · taxes + livraison confirmées par courriel',
+    pricing: 'Prix',
+    sizeLine: 'Format',
+    productLine: 'Produit',
+    subtotalLine: 'Sous-total',
     credits: 'Archives de la Ville de Montréal',
   },
   en: {
@@ -44,6 +49,11 @@ const translations = {
     notFound: 'Photo not found',
     untitled: 'Untitled',
     fulfillment: 'Printed in Montreal · Ships in 5–7 business days',
+    noPaymentNow: 'No payment now · taxes + shipping confirmed by email',
+    pricing: 'Pricing',
+    sizeLine: 'Size',
+    productLine: 'Product',
+    subtotalLine: 'Subtotal',
     credits: 'Montreal City Archives',
   },
 } as const;
@@ -406,9 +416,34 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
               {justAdded ? `✓ ${t.added}` : `${t.addToCart} · $${totalPrice}`}
             </button>
 
+            {/* Pricing breakdown */}
+            <div className="mt-4 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+              <p className="text-[11px] uppercase tracking-wider text-neutral-500 mb-2">
+                {t.pricing}
+              </p>
+              <div className="space-y-1.5 text-xs text-neutral-600">
+                <div className="flex items-center justify-between">
+                  <span>{t.sizeLine} ({selectedSize.name})</span>
+                  <span>${selectedSize.price}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>{t.productLine} ({selectedProduct.shortName[lang]})</span>
+                  <span>${selectedProduct.price}</span>
+                </div>
+                <div className="h-px bg-neutral-200 my-1" />
+                <div className="flex items-center justify-between text-sm font-medium text-neutral-900">
+                  <span>{t.subtotalLine}</span>
+                  <span>${totalPrice}</span>
+                </div>
+              </div>
+            </div>
+
             {/* Fulfillment info */}
-            <p className="text-[11px] text-neutral-400 text-center lg:text-left mt-3">
+            <p className="text-[11px] text-neutral-500 text-center lg:text-left mt-3">
               {t.fulfillment}
+            </p>
+            <p className="text-[11px] text-neutral-500 text-center lg:text-left mt-1">
+              {t.noPaymentNow}
             </p>
           </div>
         </div>
