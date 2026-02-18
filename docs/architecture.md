@@ -256,4 +256,5 @@ See `docs/metrics/vlm-captioning/` for detailed run metrics.
   - resumable checkpoints in `data/mtl_archives/.checkpoints/`,
   - structured failure logs in `data/mtl_archives/.logs/`.
 - Both ingest paths read JSONL manifests as streams and process fixed-size batches, avoiding full-manifest memory loads.
+- Both ingest paths can optionally exclude records classified as `document_likely` (`--exclude-document-likely`) using shared rules from `packages/scripts/src/analysis/search-quality-rules.ts`.
 - Default behavior is fail-loud on integrity issues so partial ingest does not silently reduce index coverage.

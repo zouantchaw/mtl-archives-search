@@ -27,9 +27,12 @@ npm run db:generate            # Generate SQL seed file
 # Vectorize ingestion
 npm run vectorize:text         # BGE embeddings → mtl-archives index
 npm run vectorize:clip         # CLIP embeddings → mtl-archives-clip index
+npm run vectorize:text:photos  # text ingest excluding document-likely records
+npm run vectorize:clip:photos  # CLIP ingest excluding document-likely records
 # Resume/retry controls:
 #   --reset                     # ignore checkpoint and restart from index 0
 #   --from-batch <n>            # resume from a specific batch index
+#   --exclude-document-likely   # skip records classified as likely document scans
 # Failure logs/checkpoints:
 #   data/mtl_archives/.checkpoints/
 #   data/mtl_archives/.logs/

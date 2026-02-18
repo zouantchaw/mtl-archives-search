@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+import { classifySearchQualityRecord } from './search-quality-rules.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MONOREPO_ROOT = path.resolve(__dirname, '../../../../');
@@ -11,16 +12,6 @@ const DEFAULT_REPORT = path.resolve(MONOREPO_ROOT, 'data/mtl_archives/reports/se
 const DEFAULT_DOC_SAMPLES = path.resolve(MONOREPO_ROOT, 'data/mtl_archives/reports/search_quality_document_samples.ndjson');
 const DEFAULT_DUP_SAMPLES = path.resolve(MONOREPO_ROOT, 'data/mtl_archives/reports/search_quality_duplicate_samples.ndjson');
 
-const DOC_KEYWORDS = [
-  'document', 'dossier', 'registre', 'rapport', 'lettre', 'formulaire', 'tableau', 'newspaper', 'journal', 'article',
-  'plan', 'blueprint', 'carte', 'map', 'dessin', 'drawing', 'gravure', 'poster', 'affiche', 'acte', 'certificat',
-  'invoice', 'facture', 'catalogue', 'index', 'texte', 'typed', 'manuscrit',
-];
-
-const PHOTO_KEYWORDS = [
-  'photo', 'photographie', 'vue', 'street', 'rue', 'parc', 'avenue', 'boulevard', 'église', 'church', 'pont', 'bridge',
-  'bâtiment', 'building', 'façade', 'aerial', 'tramway', 'car', 'voiture', 'neige', 'hiver',
-];
 
 type Report = {
   generatedAt: string;
@@ -61,31 +52,6 @@ function normalizeTokenText(value: string): string {
     .replace(/[^a-z0-9àâäéèêëîïôöùûüç\s-]/gi, ' ')
     .replace(/\s+/g, ' ')
     .trim();
-}
-
-function tokenScore(haystack: string, keywords: string[]) {
-  let score = 0;
-  for (const word of keywords) {
-    if (haystack.includes(word)) score += 1;
-  }
-  return score;
-}
-
-function classifyRecord(record: any): 'photo_likely' | 'document_likely' | 'unknown' {
-  const text = [
-    cleanText(record.name),
-    cleanText(record.description),
-    cleanText(record.portal_record?.Titre),
-    cleanText(record.portal_record?.Description),
-    cleanText(record.vlm_caption),
-  ].join(' ');
-
-  const docScore = tokenScore(text, DOC_KEYWORDS);
-  const photoScore = tokenScore(text, PHOTO_KEYWORDS);
-
-  if (docScore >= 2 && docScore > photoScore) return 'document_likely';
-  if (photoScore >= 1 && photoScore >= docScore) return 'photo_likely';
-  return 'unknown';
 }
 
 function extractYear(record: any): string {
@@ -175,7 +141,7 @@ async function main() {
     if (limit > 0 && totalRecords >= limit) break;
 
     totalRecords += 1;
-    const classification = classifyRecord(record);
+    const classification = classifySearchQualityRecord(record).label;
 
     if (classification === 'photo_likely') photoLikely += 1;
     else if (classification === 'document_likely') {

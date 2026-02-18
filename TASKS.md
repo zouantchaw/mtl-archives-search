@@ -47,7 +47,7 @@ Deliver the best on-site user experience (especially mobile/in-app browsers) bef
 
 ### Search/index quality pipeline
 - [ ] **Detect + strip borders/stamps/templates** — Auto-crop scan borders, remove archive stamps/headers where possible.
-- [ ] **Split document vs photo sets** — Baseline non-destructive classifier/report shipped via `npm run search-quality:audit`; next step is applying index-time filtering/separate index.
+- [x] **Split document vs photo sets** — Baseline classifier/report plus index-time filtering control shipped (`search-quality:audit`, `--exclude-document-likely`, `vectorize:*:photos` commands).
 - [ ] **De-dup near-identicals** — Baseline duplicate grouping/report shipped via `npm run search-quality:audit`; next step is true image-level pHash/SSIM collapse.
 - [ ] **Normalize contrast/levels** — Light auto-levels + noise reduction to stabilize CLIP features.
 - [ ] **OCR cleanup** — Remove obvious scan garbage (e.g., long headers, catalog numbers) from text fields.

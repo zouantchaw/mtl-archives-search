@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import dotenv from 'dotenv';
 import { CLIPVisionModelWithProjection, AutoProcessor, RawImage } from '@xenova/transformers';
+import { classifySearchQualityRecord } from '../analysis/search-quality-rules.js';
 
 type Checkpoint = {
   nextIndex: number;
@@ -75,8 +76,8 @@ function isRetryableStatus(status: number) {
   return status === 408 || status === 409 || status === 425 || status === 429 || status >= 500;
 }
 
-function buildSelectionKey(offset: number, limit: number) {
-  return `offset=${offset};limit=${limit}`;
+function buildSelectionKey(offset: number, limit: number, excludeDocumentLikely = false) {
+  return `offset=${offset};limit=${limit};excludeDocumentLikely=${excludeDocumentLikely ? '1' : '0'}`;
 }
 
 async function withRetries<T>(label: string, fn: () => Promise<T>, maxRetries = MAX_RETRIES): Promise<T> {
@@ -103,7 +104,7 @@ async function* readManifestLines(inputPath: string): AsyncGenerator<string> {
   }
 }
 
-async function countSelectedRecords(inputPath: string, offset: number, limit: number) {
+async function countSelectedRecords(inputPath: string, offset: number, limit: number, excludeDocumentLikely = false) {
   let rawIndex = 0;
   let selected = 0;
 
@@ -113,6 +114,11 @@ async function countSelectedRecords(inputPath: string, offset: number, limit: nu
       continue;
     }
     if (limit > 0 && selected >= limit) break;
+    const record = JSON.parse(_line);
+    if (excludeDocumentLikely && classifySearchQualityRecord(record).label === 'document_likely') {
+      rawIndex += 1;
+      continue;
+    }
     selected += 1;
     rawIndex += 1;
   }
@@ -120,7 +126,13 @@ async function countSelectedRecords(inputPath: string, offset: number, limit: nu
   return selected;
 }
 
-async function* iterateSelectedRecords(inputPath: string, offset: number, limit: number, startIndex: number) {
+async function* iterateSelectedRecords(
+  inputPath: string,
+  offset: number,
+  limit: number,
+  startIndex: number,
+  excludeDocumentLikely = false
+) {
   let rawIndex = 0;
   let selectedIndex = 0;
 
@@ -132,13 +144,18 @@ async function* iterateSelectedRecords(inputPath: string, offset: number, limit:
 
     if (limit > 0 && selectedIndex >= limit) break;
 
+    const record = JSON.parse(line);
+    if (excludeDocumentLikely && classifySearchQualityRecord(record).label === 'document_likely') {
+      rawIndex += 1;
+      continue;
+    }
+
     if (selectedIndex < startIndex) {
       selectedIndex += 1;
       rawIndex += 1;
       continue;
     }
 
-    const record = JSON.parse(line);
     yield { index: selectedIndex, record };
     selectedIndex += 1;
     rawIndex += 1;
@@ -217,6 +234,7 @@ async function main() {
       'failure-log': { type: 'string' },
       'from-batch': { type: 'string' },
       'allow-skips': { type: 'boolean', default: false },
+      'exclude-document-likely': { type: 'boolean', default: false },
       reset: { type: 'boolean', default: false },
     },
   });
@@ -230,7 +248,8 @@ async function main() {
   const failureLogPath = values['failure-log']
     ? path.resolve(process.cwd(), values['failure-log'])
     : DEFAULT_FAILURE_LOG;
-  const selectionKey = buildSelectionKey(offset, limit);
+  const excludeDocumentLikely = values['exclude-document-likely'];
+  const selectionKey = buildSelectionKey(offset, limit, excludeDocumentLikely);
 
   if (!fs.existsSync(inputPath)) {
     console.error(`Manifest not found: ${inputPath}`);
@@ -243,7 +262,7 @@ async function main() {
 
   console.log('Model loaded. Manifest ingestion mode: streaming (no full-file in-memory load)');
 
-  const total = await countSelectedRecords(inputPath, offset, limit);
+  const total = await countSelectedRecords(inputPath, offset, limit, excludeDocumentLikely);
   let startIndex = 0;
   const fromBatch = values['from-batch'] ? parseInt(values['from-batch'], 10) : undefined;
 
@@ -261,12 +280,15 @@ async function main() {
   }
 
   console.log(`Processing ${total} records (starting at ${startIndex})...`);
+  if (excludeDocumentLikely) {
+    console.log('Document-likely records are excluded from this ingest run.');
+  }
 
   let processed = 0;
   let skipped = 0;
   let batch: { index: number; record: any }[] = [];
 
-  for await (const item of iterateSelectedRecords(inputPath, offset, limit, startIndex)) {
+  for await (const item of iterateSelectedRecords(inputPath, offset, limit, startIndex, excludeDocumentLikely)) {
     batch.push(item);
     if (batch.length < BATCH_SIZE) continue;
 

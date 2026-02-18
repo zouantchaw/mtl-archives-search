@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import dotenv from 'dotenv';
+import { classifySearchQualityRecord } from '../analysis/search-quality-rules.js';
 
 type Checkpoint = {
   nextIndex: number;
@@ -78,8 +79,8 @@ function saveCheckpoint(checkpointPath: string, checkpoint: Checkpoint) {
   fs.writeFileSync(checkpointPath, JSON.stringify(checkpoint, null, 2));
 }
 
-function buildSelectionKey(limit?: number) {
-  return `limit=${limit ?? 'all'}`;
+function buildSelectionKey(limit?: number, excludeDocumentLikely = false) {
+  return `limit=${limit ?? 'all'};excludeDocumentLikely=${excludeDocumentLikely ? '1' : '0'}`;
 }
 
 async function* readManifestLines(manifestPath: string): AsyncGenerator<string> {
@@ -90,32 +91,46 @@ async function* readManifestLines(manifestPath: string): AsyncGenerator<string> 
   }
 }
 
-async function summarizeManifest(manifestPath: string, limit?: number) {
+async function summarizeManifest(manifestPath: string, limit?: number, excludeDocumentLikely = false) {
   let total = 0;
   let withVlmCaption = 0;
+  let skippedDocumentLikely = 0;
 
   for await (const line of readManifestLines(manifestPath)) {
     if (limit && total >= limit) break;
     const record = JSON.parse(line);
+    if (excludeDocumentLikely && classifySearchQualityRecord(record).label === 'document_likely') {
+      skippedDocumentLikely += 1;
+      continue;
+    }
     if (record.vlm_caption) withVlmCaption += 1;
     total += 1;
   }
 
-  return { total, withVlmCaption };
+  return { total, withVlmCaption, skippedDocumentLikely };
 }
 
-async function* iterateSelectedRecords(manifestPath: string, limit: number | undefined, startIndex: number) {
+async function* iterateSelectedRecords(
+  manifestPath: string,
+  limit: number | undefined,
+  startIndex: number,
+  excludeDocumentLikely = false
+) {
   let selectedIndex = 0;
 
   for await (const line of readManifestLines(manifestPath)) {
     if (limit && selectedIndex >= limit) break;
+
+    const record = JSON.parse(line);
+    if (excludeDocumentLikely && classifySearchQualityRecord(record).label === 'document_likely') {
+      continue;
+    }
 
     if (selectedIndex < startIndex) {
       selectedIndex += 1;
       continue;
     }
 
-    const record = JSON.parse(line);
     yield { index: selectedIndex, record };
     selectedIndex += 1;
   }
@@ -251,6 +266,7 @@ async function main() {
       checkpoint: { type: 'string' },
       'failure-log': { type: 'string' },
       'from-batch': { type: 'string' },
+      'exclude-document-likely': { type: 'boolean', default: false },
       reset: { type: 'boolean', default: false },
     },
   });
@@ -270,7 +286,8 @@ async function main() {
   const failureLogPath = values['failure-log']
     ? path.resolve(process.cwd(), values['failure-log'])
     : DEFAULT_FAILURE_LOG;
-  const selectionKey = buildSelectionKey(limit);
+  const excludeDocumentLikely = values['exclude-document-likely'];
+  const selectionKey = buildSelectionKey(limit, excludeDocumentLikely);
 
   if (!fs.existsSync(manifestPath)) {
     console.error(`Cannot find manifest at ${manifestPath}`);
@@ -280,13 +297,16 @@ async function main() {
   console.log(`Reading manifest from: ${manifestPath}`);
   console.log('Manifest ingestion mode: streaming (no full-file in-memory load)');
 
-  const summary = await summarizeManifest(manifestPath, limit);
+  const summary = await summarizeManifest(manifestPath, limit, excludeDocumentLikely);
   const total = summary.total;
   const withVlmCaption = summary.withVlmCaption;
 
   console.log(`Ingesting ${total} records into index "${VECTORIZE_INDEX}"...`);
   console.log(`  - ${withVlmCaption} with VLM captions (will use vlm_caption)`);
   console.log(`  - ${total - withVlmCaption} without (will use original metadata)`);
+  if (excludeDocumentLikely) {
+    console.log(`  - skipped ${summary.skippedDocumentLikely} records classified as document_likely`);
+  }
 
   let startIndex = 0;
   const fromBatch = values['from-batch'] ? parseInt(values['from-batch'], 10) : undefined;
@@ -307,7 +327,7 @@ async function main() {
   let batch: any[] = [];
   let batchStartIndex = startIndex;
 
-  for await (const item of iterateSelectedRecords(manifestPath, limit, startIndex)) {
+  for await (const item of iterateSelectedRecords(manifestPath, limit, startIndex, excludeDocumentLikely)) {
     if (batch.length === 0) {
       batchStartIndex = item.index;
     }
