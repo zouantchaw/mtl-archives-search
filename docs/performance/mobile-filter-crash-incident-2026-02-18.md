@@ -61,11 +61,24 @@ This is a hypothesis, not yet a confirmed root cause.
 ## Immediate Next Steps
 
 1. Gather at least 3 reproducible real-device traces using this protocol.
-2. Add lightweight telemetry around filter tap sequence length and runtime errors.
-3. Implement containment changes behind this incident task:
-   - mobile-safe search image/result caps
-   - lower concurrent image decode pressure
-   - guard against rapid filter-triggered render churn
+2. Run `npm run smoke:filters:prod` to catch obvious regressions after deploy.
+3. Validate on real iOS/Android devices and attach traces.
+
+## Mitigations Implemented (Feb 18, 2026)
+
+- Discovery filter taps now use canonical filter query strings (instead of localized labels), reducing unstable search churn.
+- Rapid filter interaction is guarded while a search is already in flight.
+- Mobile search cap lowered (`MOBILE_MAX_IMAGES` 36 -> 24).
+- Mobile search requests now send `maxSize=1000000` and Worker search handlers enforce the same max-size filter for smart/semantic/visual search paths.
+- Mobile first-paint image priority reduced (from first 9 to first 3 tiles on mobile).
+- Added client telemetry events for:
+  - runtime JS errors
+  - unhandled promise rejections
+  - rapid filter burst detection
+  - mobile render anomaly (search results returned but no grid tiles rendered)
+- Added rapid filter smoke test script:
+  - `npm run smoke:filters`
+  - `npm run smoke:filters:prod`
 
 ## Run Log Template
 

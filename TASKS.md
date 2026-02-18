@@ -15,9 +15,9 @@ Deliver the best on-site user experience (especially mobile/in-app browsers) bef
 
 ### Incident: Mobile filter white-screen crash (highest priority)
 - [ ] **Reproduce + isolate crash path on iOS/in-app browsers** — Follow `docs/performance/mobile-filter-crash-incident-2026-02-18.md` and capture exact sequence (filters tapped, request count, result count, time-to-crash) on iPhone Safari + Arc + IG/FB in-app browser when possible.
-- [ ] **Add crash telemetry for filter/search sessions** — Log JS runtime errors, unhandled rejections, filter-tap sequence length, and current result payload size before failure.
-- [ ] **Contain image/memory pressure on filter searches** — Apply mobile-safe caps to search results/images (not only shuffle), reduce concurrent image decode pressure, and prevent runaway re-renders during rapid filter taps.
-- [ ] **Add rapid-filter stress smoke test** — Simulate repeated filter taps and assert no blank screen + no fatal runtime error.
+- [x] **Add crash telemetry for filter/search sessions** — Log JS runtime errors, unhandled rejections, filter-tap sequence length, and current result payload size before failure.
+- [x] **Contain image/memory pressure on filter searches** — Apply mobile-safe caps to search results/images (not only shuffle), reduce concurrent image decode pressure, and prevent runaway re-renders during rapid filter taps.
+- [x] **Add rapid-filter stress smoke test** — Added `npm run smoke:filters` / `npm run smoke:filters:prod` to stress discovery-filter taps and assert no fatal app error markers + tile render presence.
 - [ ] **Validate on real devices before release** — Run a defined mobile checklist on iPhone (Safari + Arc) and at least one Android browser, then record pass/fail in `docs/performance/`.
 
 ### Mobile performance + conversion

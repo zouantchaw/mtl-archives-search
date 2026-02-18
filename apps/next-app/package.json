@@ -9,7 +9,9 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "smoke:game": "node ./scripts/smoke-game.mjs",
-    "smoke:game:prod": "node ./scripts/smoke-game.mjs https://www.mtlarchives.com/game"
+    "smoke:game:prod": "node ./scripts/smoke-game.mjs https://www.mtlarchives.com/game",
+    "smoke:filters": "node ./scripts/smoke-filters.mjs",
+    "smoke:filters:prod": "node ./scripts/smoke-filters.mjs https://www.mtlarchives.com/"
   },
   "dependencies": {
     "@clerk/localizations": "^3.35.3",

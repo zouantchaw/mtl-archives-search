@@ -398,14 +398,16 @@ async function handleSearch(url: URL, env: Env, request: Request): Promise<Respo
   const mode = (url.searchParams.get('mode') ?? 'smart').toLowerCase();
   const limitParam = Number(url.searchParams.get('limit') ?? '25');
   const limit = clamp(Number.isFinite(limitParam) ? limitParam : 25, 1, 100);
+  const maxSizeParam = Number(url.searchParams.get('maxSize') ?? '0');
+  const maxSize = Number.isFinite(maxSizeParam) && maxSizeParam > 0 ? maxSizeParam : 0;
 
   // Smart mode: combine visual + semantic for best results
   if (mode === 'smart') {
-    return handleSmartSearch(q, limit, env);
+    return handleSmartSearch(q, limit, env, maxSize);
   }
 
   if (mode === 'semantic') {
-    return handleSemanticSearch(q, limit, env);
+    return handleSemanticSearch(q, limit, env, maxSize);
   }
 
   if (mode === 'visual' || mode === 'clip') {
@@ -421,24 +423,27 @@ async function handleSearch(url: URL, env: Env, request: Request): Promise<Respo
         // Ignore JSON parse errors, will try to generate embedding
       }
     }
-    return handleVisualSearch(q, limit, env, embedding);
+    return handleVisualSearch(q, limit, env, embedding, maxSize);
   }
 
   // Text mode: redirect to semantic search to avoid full table scans (LIKE on 4 columns).
   // Fast-path: if query looks like a cote/reference (e.g. "VM94-A0123-045"), do exact PK lookup.
   if (COTE_PATTERN.test(q)) {
+    const maxSizeSqlFilter = maxSize > 0 ? ' AND image_size_bytes <= ?' : '';
+    const maxSizeSqlParams = maxSize > 0 ? [maxSize] : [];
     const { results = [] } = await env.DB.prepare(
       `SELECT ${SELECT_FIELDS} FROM manifest
-       WHERE cote = ? OR portal_cote = ? OR metadata_filename = ? OR metadata_filename = ?
+       WHERE (cote = ? OR portal_cote = ? OR metadata_filename = ? OR metadata_filename = ?)
+       ${maxSizeSqlFilter}
        LIMIT ?`
-    ).bind(q, q, q, `${q}.json`, limit).all();
+    ).bind(q, q, q, `${q}.json`, ...maxSizeSqlParams, limit).all();
     if (results.length > 0) {
       const items = await Promise.all(results.map((row) => buildPhotoRecord(row, env)));
       return jsonResponse({ items, mode: 'text' });
     }
   }
   // Fall through to semantic search for all other text queries
-  return handleSemanticSearch(q, limit, env);
+  return handleSemanticSearch(q, limit, env, maxSize);
 }
 
 async function handleThumbnail(url: URL, env: Env): Promise<Response> {
@@ -538,13 +543,16 @@ function escapeForLike(value: string): string {
 }
 
 // Smart search: combines visual (CLIP) + semantic (BGE) for best results
-async function handleSmartSearch(query: string, limit: number, env: Env): Promise<Response> {
+async function handleSmartSearch(query: string, limit: number, env: Env, maxSize = 0): Promise<Response> {
+  const maxSizeSqlFilter = maxSize > 0 ? ' AND image_size_bytes <= ?' : '';
+  const maxSizeSqlParams = maxSize > 0 ? [maxSize] : [];
   if (COTE_PATTERN.test(query)) {
     const { results = [] } = await env.DB.prepare(
       `SELECT ${SELECT_FIELDS} FROM manifest
-       WHERE cote = ? OR portal_cote = ? OR metadata_filename = ? OR metadata_filename = ?
+       WHERE (cote = ? OR portal_cote = ? OR metadata_filename = ? OR metadata_filename = ?)
+       ${maxSizeSqlFilter}
        LIMIT ?`
-    ).bind(query, query, query, `${query}.json`, limit).all();
+    ).bind(query, query, query, `${query}.json`, ...maxSizeSqlParams, limit).all();
     if (results.length > 0) {
       const items = await Promise.all(results.map((row) => buildPhotoRecord(row, env)));
       return jsonResponse({ items, mode: 'smart', count: items.length });
@@ -553,8 +561,8 @@ async function handleSmartSearch(query: string, limit: number, env: Env): Promis
 
   // Run visual and semantic searches in parallel
   const [visualResult, semanticResult] = await Promise.allSettled([
-    getVisualResults(query, limit, env),
-    getSemanticResults(query, limit, env),
+    getVisualResults(query, limit, env, maxSize),
+    getSemanticResults(query, limit, env, maxSize),
   ]);
 
   type ScoredPhoto = PhotoRecord & { score?: number; source?: string };
@@ -626,7 +634,7 @@ async function handleSmartSearch(query: string, limit: number, env: Env): Promis
 
 // Helper: get visual search results without Response wrapper
 // Note: Vectorize topK is capped at 50
-async function getVisualResults(query: string, limit: number, env: Env): Promise<(PhotoRecord & { score?: number })[] | null> {
+async function getVisualResults(query: string, limit: number, env: Env, maxSize = 0): Promise<(PhotoRecord & { score?: number })[] | null> {
   if (!env.VECTORIZE_CLIP || !env.CLIP_EMBEDDING_URL) return null;
 
   try {
@@ -643,9 +651,11 @@ async function getVisualResults(query: string, limit: number, env: Env): Promise
 
     const metadataFilenames = vectorResults.matches.map((m) => m.id);
     const placeholders = metadataFilenames.map(() => '?').join(',');
+    const maxSizeSqlFilter = maxSize > 0 ? ' AND image_size_bytes <= ?' : '';
+    const maxSizeSqlParams = maxSize > 0 ? [maxSize] : [];
     const { results = [] } = await env.DB.prepare(
-      `SELECT ${SELECT_FIELDS} FROM manifest WHERE metadata_filename IN (${placeholders})`
-    ).bind(...metadataFilenames).all();
+      `SELECT ${SELECT_FIELDS} FROM manifest WHERE metadata_filename IN (${placeholders})${maxSizeSqlFilter}`
+    ).bind(...metadataFilenames, ...maxSizeSqlParams).all();
 
     const recordMap = new Map<string, Record<string, unknown>>();
     for (const row of results) recordMap.set(String(row.metadata_filename), row);
@@ -668,7 +678,7 @@ async function getVisualResults(query: string, limit: number, env: Env): Promise
 
 // Helper: get semantic search results without Response wrapper
 // Note: Vectorize topK is capped at 50
-async function getSemanticResults(query: string, limit: number, env: Env): Promise<(PhotoRecord & { score?: number })[] | null> {
+async function getSemanticResults(query: string, limit: number, env: Env, maxSize = 0): Promise<(PhotoRecord & { score?: number })[] | null> {
   if (!env.VECTORIZE || !env.AI) return null;
 
   try {
@@ -686,9 +696,11 @@ async function getSemanticResults(query: string, limit: number, env: Env): Promi
 
     const metadataFilenames = vectorResults.matches.map((m) => m.id);
     const placeholders = metadataFilenames.map(() => '?').join(',');
+    const maxSizeSqlFilter = maxSize > 0 ? ' AND image_size_bytes <= ?' : '';
+    const maxSizeSqlParams = maxSize > 0 ? [maxSize] : [];
     const { results = [] } = await env.DB.prepare(
-      `SELECT ${SELECT_FIELDS} FROM manifest WHERE metadata_filename IN (${placeholders})`
-    ).bind(...metadataFilenames).all();
+      `SELECT ${SELECT_FIELDS} FROM manifest WHERE metadata_filename IN (${placeholders})${maxSizeSqlFilter}`
+    ).bind(...metadataFilenames, ...maxSizeSqlParams).all();
 
     const recordMap = new Map<string, Record<string, unknown>>();
     for (const row of results) recordMap.set(String(row.metadata_filename), row);
@@ -709,7 +721,7 @@ async function getSemanticResults(query: string, limit: number, env: Env): Promi
   }
 }
 
-async function handleSemanticSearch(query: string, limit: number, env: Env): Promise<Response> {
+async function handleSemanticSearch(query: string, limit: number, env: Env, maxSize = 0): Promise<Response> {
   if (!env.VECTORIZE || !env.AI) {
     return jsonResponse(
       { error: 'Semantic search is not configured. Bind Vectorize + Workers AI to enable this feature.' },
@@ -746,10 +758,12 @@ async function handleSemanticSearch(query: string, limit: number, env: Env): Pro
 
     // Fetch full records from D1 using the IDs
     const placeholders = metadataFilenames.map(() => '?').join(',');
+    const maxSizeSqlFilter = maxSize > 0 ? ' AND image_size_bytes <= ?' : '';
+    const maxSizeSqlParams = maxSize > 0 ? [maxSize] : [];
     const { results = [] } = await env.DB.prepare(
-      `SELECT ${SELECT_FIELDS} FROM manifest WHERE metadata_filename IN (${placeholders})`
+      `SELECT ${SELECT_FIELDS} FROM manifest WHERE metadata_filename IN (${placeholders})${maxSizeSqlFilter}`
     )
-      .bind(...metadataFilenames)
+      .bind(...metadataFilenames, ...maxSizeSqlParams)
       .all();
 
     // Build a map for quick lookup
@@ -793,7 +807,7 @@ async function handleSemanticSearch(query: string, limit: number, env: Env): Pro
   }
 }
 
-async function handleVisualSearch(query: string, limit: number, env: Env, precomputedEmbedding?: number[]): Promise<Response> {
+async function handleVisualSearch(query: string, limit: number, env: Env, precomputedEmbedding?: number[], maxSize = 0): Promise<Response> {
   if (!env.VECTORIZE_CLIP) {
     return jsonResponse(
       { error: 'Visual search is not configured. Bind VECTORIZE_CLIP index to enable this feature.' },
@@ -840,10 +854,12 @@ async function handleVisualSearch(query: string, limit: number, env: Env, precom
 
     // Fetch full records from D1
     const placeholders = metadataFilenames.map(() => '?').join(',');
+    const maxSizeSqlFilter = maxSize > 0 ? ' AND image_size_bytes <= ?' : '';
+    const maxSizeSqlParams = maxSize > 0 ? [maxSize] : [];
     const { results = [] } = await env.DB.prepare(
-      `SELECT ${SELECT_FIELDS} FROM manifest WHERE metadata_filename IN (${placeholders})`
+      `SELECT ${SELECT_FIELDS} FROM manifest WHERE metadata_filename IN (${placeholders})${maxSizeSqlFilter}`
     )
-      .bind(...metadataFilenames)
+      .bind(...metadataFilenames, ...maxSizeSqlParams)
       .all();
 
     // Build a map for quick lookup

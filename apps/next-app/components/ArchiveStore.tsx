@@ -18,10 +18,11 @@ const API_BASE = '';
 // Mobile: Conservative due to memory constraints
 // Desktop: More generous but still bounded
 const MOBILE_PAGE_SIZE = 12;      // 4 rows of 3
-const MOBILE_MAX_IMAGES = 36;     // 12 rows max
+const MOBILE_MAX_IMAGES = 24;     // 8 rows max
 const DESKTOP_PAGE_SIZE = 24;     // Good batch size
 const DESKTOP_MAX_IMAGES = 72;    // Generous but bounded
 const AB_GAME_RATIO = 0.6;
+const FILTER_BURST_WINDOW_MS = 5000;
 
 // ============================================================
 // Typewriter Hook - with pause capability
@@ -591,6 +592,16 @@ function ArchiveStoreInner() {
   const commitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const searchAbortRef = useRef<AbortController | null>(null);
   const isInitialMount = useRef(true);
+  const filterTapTimestampsRef = useRef<number[]>([]);
+  const telemetryContextRef = useRef({
+    query: initialQuery,
+    mode: initialMode,
+    hasSearched: !!initialQuery,
+    resultCount: 0,
+    isSearching: false,
+    mobile: true,
+    lang: initialLang,
+  });
 
   // Search quality tracking refs (used by clearSearch and effects below)
   const lastCommittedRef = useRef<{ query: string; mode: SearchMode } | null>(null);
@@ -717,6 +728,39 @@ function ArchiveStoreInner() {
     sessionActions.current.add(action);
   }, []);
 
+  const trackClientIssue = useCallback((
+    type: 'runtime' | 'rejection',
+    payload: { message?: string; reason?: string; source?: string; line?: number; col?: number }
+  ) => {
+    const ctx = telemetryContextRef.current;
+    if (type === 'runtime') {
+      events.clientRuntimeError({
+        message: payload.message || 'Unknown runtime error',
+        source: payload.source,
+        line: payload.line,
+        col: payload.col,
+        query: ctx.query || undefined,
+        mode: ctx.mode,
+        hasSearched: ctx.hasSearched,
+        resultCount: ctx.resultCount,
+        isSearching: ctx.isSearching,
+        mobile: ctx.mobile,
+        lang: ctx.lang,
+      });
+      return;
+    }
+    events.clientUnhandledRejection({
+      reason: payload.reason || 'Unknown promise rejection',
+      query: ctx.query || undefined,
+      mode: ctx.mode,
+      hasSearched: ctx.hasSearched,
+      resultCount: ctx.resultCount,
+      isSearching: ctx.isSearching,
+      mobile: ctx.mobile,
+      lang: ctx.lang,
+    });
+  }, []);
+
   // Session storage keys for persisting shuffle state
   const STORAGE_KEY_PHOTOS = 'mtl-archives-photos';
 
@@ -818,6 +862,9 @@ function ArchiveStoreInner() {
       try {
         const searchLimit = isMobileSafe ? String(MOBILE_MAX_IMAGES) : String(DESKTOP_MAX_IMAGES);
         const params = new URLSearchParams({ q: searchQuery, mode: searchMode, limit: searchLimit });
+        if (isMobileSafe) {
+          params.set('maxSize', '1000000');
+        }
         const res = await fetch(`${API_BASE}/api/search?${params}`, { signal: controller.signal });
         if (res.ok) {
           const data: SearchResponse = await res.json();
@@ -882,6 +929,18 @@ function ArchiveStoreInner() {
       return true;
     });
   }, [hasSearched, searchResults, photos, failedImages]);
+
+  useEffect(() => {
+    telemetryContextRef.current = {
+      query: searchQuery,
+      mode: searchMode,
+      hasSearched,
+      resultCount: displayPhotos.length,
+      isSearching,
+      mobile: isMobileSafe,
+      lang,
+    };
+  }, [searchQuery, searchMode, hasSearched, displayPhotos.length, isSearching, isMobileSafe, lang]);
 
   const handleImageError = useCallback((photoId: string) => {
     setFailedImages(prev => new Set(prev).add(photoId));
@@ -988,6 +1047,58 @@ function ArchiveStoreInner() {
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, []);
+
+  useEffect(() => {
+    const handleError = (event: ErrorEvent) => {
+      trackClientIssue('runtime', {
+        message: event.message || event.error?.message || 'Runtime error',
+        source: event.filename || undefined,
+        line: event.lineno || undefined,
+        col: event.colno || undefined,
+      });
+    };
+
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      let reason = 'Unknown promise rejection';
+      if (event.reason instanceof Error) {
+        reason = event.reason.message;
+      } else if (typeof event.reason === 'string') {
+        reason = event.reason;
+      } else {
+        try {
+          reason = JSON.stringify(event.reason);
+        } catch {
+          reason = String(event.reason);
+        }
+      }
+      trackClientIssue('rejection', { reason });
+    };
+
+    window.addEventListener('error', handleError);
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    return () => {
+      window.removeEventListener('error', handleError);
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+    };
+  }, [trackClientIssue]);
+
+  useEffect(() => {
+    if (!isMobileSafe || !hasSearched || isSearching || displayPhotos.length === 0) return;
+    const anomalyTimer = setTimeout(() => {
+      const tileCount = document.querySelectorAll('button.aspect-square img').length;
+      if (tileCount === 0) {
+        events.mobileRenderAnomaly({
+          query: searchQuery || undefined,
+          mode: searchMode,
+          resultCount: displayPhotos.length,
+          tileCount,
+          mobile: isMobileSafe,
+          lang,
+        });
+      }
+    }, 1800);
+    return () => clearTimeout(anomalyTimer);
+  }, [isMobileSafe, hasSearched, isSearching, displayPhotos.length, searchQuery, searchMode, lang]);
 
 
   return (
@@ -1200,12 +1311,29 @@ function ArchiveStoreInner() {
               {[...DISCOVERY_SHORTCUTS, ...DISCOVERY_SHORTCUTS].map((shortcut, i) => (
                 <button
                   key={`${shortcut.query}-${i}`}
+                  disabled={isSearching}
                   onClick={() => {
-                    setSearchQuery(shortcut.name[lang]);
+                    if (isSearching) return;
+                    const now = Date.now();
+                    const recentTaps = filterTapTimestampsRef.current
+                      .filter((ts) => now - ts <= FILTER_BURST_WINDOW_MS);
+                    recentTaps.push(now);
+                    filterTapTimestampsRef.current = recentTaps;
+
+                    if (isMobileSafe && recentTaps.length >= 5) {
+                      events.mobileFilterBurst({
+                        taps: recentTaps.length,
+                        windowMs: FILTER_BURST_WINDOW_MS,
+                        activeQuery: shortcut.query,
+                        lang,
+                      });
+                    }
+
+                    setSearchQuery(shortcut.query);
                     trackFirstInteraction('neighborhood_shortcut');
                     events.discoveryFilterClicked(shortcut.name.en, shortcut.query);
                   }}
-                  className="px-3 py-1.5 text-xs font-medium bg-neutral-100 text-neutral-600 rounded-full hover:bg-neutral-200 transition-colors shrink-0"
+                  className="px-3 py-1.5 text-xs font-medium bg-neutral-100 text-neutral-600 rounded-full hover:bg-neutral-200 transition-colors disabled:opacity-60 shrink-0"
                 >
                   {shortcut.name[lang]}
                 </button>
@@ -1251,7 +1379,7 @@ function ArchiveStoreInner() {
                 key={photo.metadataFilename}
                 src={photo.imageUrl}
                 alt={photo.name || ''}
-                priority={index < 9}
+                priority={index < (isMobileSafe ? 3 : 9)}
                 onClick={() => handlePhotoClick(photo, index + 1)}
                 onError={() => handleImageError(photo.metadataFilename)}
               />

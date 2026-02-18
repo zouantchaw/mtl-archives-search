@@ -130,6 +130,52 @@ export const events = {
   discoveryFilterClicked: (filter: string, query: string) =>
     track('discovery_filter_clicked', { filter, query, ...getReferrerContext() }),
 
+  mobileFilterBurst: (data: { taps: number; windowMs: number; activeQuery?: string; lang?: string }) =>
+    track('mobile_filter_burst', {
+      taps: data.taps,
+      windowMs: data.windowMs,
+      ...(data.activeQuery ? { activeQuery: data.activeQuery } : {}),
+      ...(data.lang ? { lang: data.lang } : {}),
+      ...getReferrerContext(),
+    }),
+
+  clientRuntimeError: (data: {
+    message: string;
+    source?: string;
+    line?: number;
+    col?: number;
+    query?: string;
+    mode?: string;
+    hasSearched?: boolean;
+    resultCount?: number;
+    isSearching?: boolean;
+    mobile?: boolean;
+    lang?: string;
+  }) =>
+    track('client_runtime_error', data),
+
+  clientUnhandledRejection: (data: {
+    reason: string;
+    query?: string;
+    mode?: string;
+    hasSearched?: boolean;
+    resultCount?: number;
+    isSearching?: boolean;
+    mobile?: boolean;
+    lang?: string;
+  }) =>
+    track('client_unhandled_rejection', data),
+
+  mobileRenderAnomaly: (data: {
+    query?: string;
+    mode?: string;
+    resultCount?: number;
+    tileCount?: number;
+    mobile?: boolean;
+    lang?: string;
+  }) =>
+    track('mobile_render_anomaly', data),
+
   // === Photo page modes ===
 
   orderModeEntered: (photoId: string) =>
