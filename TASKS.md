@@ -47,11 +47,11 @@ Deliver the best on-site user experience (especially mobile/in-app browsers) bef
 
 ### Search/index quality pipeline
 - [ ] **Detect + strip borders/stamps/templates** — Auto-crop scan borders, remove archive stamps/headers where possible.
-- [ ] **Split document vs photo sets** — Classify scans into "photo" vs "document/print" and index separately.
-- [ ] **De-dup near-identicals** — Perceptual hash (pHash/SSIM) to collapse repeats and protect search quality.
+- [ ] **Split document vs photo sets** — Baseline non-destructive classifier/report shipped via `npm run search-quality:audit`; next step is applying index-time filtering/separate index.
+- [ ] **De-dup near-identicals** — Baseline duplicate grouping/report shipped via `npm run search-quality:audit`; next step is true image-level pHash/SSIM collapse.
 - [ ] **Normalize contrast/levels** — Light auto-levels + noise reduction to stabilize CLIP features.
 - [ ] **OCR cleanup** — Remove obvious scan garbage (e.g., long headers, catalog numbers) from text fields.
-- [ ] **ETL quality report** — Per-run counts: kept/removed/flagged, plus sample exports for manual QA.
+- [ ] **ETL quality report** — Baseline search-quality audit report + sample exports now available (`search_quality_audit.json`, document/duplicate samples); extend to full keep/remove/flag pipeline gates.
 
 ### Evaluation + measurement
 - [ ] **Build a 50-100 query eval set** — mix of place names, neighborhoods, objects, and "vibes."
