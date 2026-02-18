@@ -80,6 +80,12 @@ For `apps/next-app`, API and asset origins are env-driven:
 
 In local development, API base falls back to `http://localhost:8787`.
 
+Client safety: if `NEXT_PUBLIC_API_URL` is missing from a client bundle, the app logs an explicit runtime error and falls back to same-origin relative API paths instead of throwing a white-screen error.
+
+Smoke checks:
+- `npm run smoke:game -- http://localhost:3001/game`
+- `npm run smoke:game:prod`
+
 ## Project Structure
 
 ```

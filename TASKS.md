@@ -26,11 +26,13 @@ Deliver the best on-site user experience (especially mobile/in-app browsers) bef
 - [ ] **Stream manifests** — Avoid loading full JSONL into memory for large runs; switch to streaming batches.
 - [ ] **Worker endpoint tests** — `/api/photos` id normalization, sitemap generation, search modes.
 - [ ] **Pipeline smoke tests** — CLI runs with small fixtures + failure reporting.
+- [x] **Production game smoke check** — Added `npm run smoke:game` + `npm run smoke:game:prod` guardrail for `/game` regressions.
 
 ### Recently completed platform blockers
 - [x] **Fix sitemap/photo ID mismatch** — `/api/photos` now normalizes bare IDs and `.json` IDs, sitemap/photo URLs use canonical bare IDs, and OG/Twitter photo fetches use the same normalized format.
 - [x] **Stop caching expired signed R2 URLs** — Cache TTL is clamped below signed URL expiry when public R2 domain is missing (API + sitemap), with API tests covering TTL behavior.
 - [x] **Centralize API base config** — Next runtime + rewrites now share one env-driven resolver (`NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_R2_PUBLIC_DOMAIN`) with safe local fallback.
+- [x] **Prevent client hard crash on missing API env** — Runtime config now fails soft on client (same-origin fallback + explicit telemetry) instead of throwing.
 
 ---
 

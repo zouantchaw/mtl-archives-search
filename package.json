@@ -33,7 +33,9 @@
     "vectorize:text": "npm run vectorize:text --workspace=@mtl-archives/scripts",
     "vectorize:export": "npm run vectorize:export --workspace=@mtl-archives/scripts",
     "db:generate": "npm run db:generate --workspace=@mtl-archives/scripts",
-    "vlm:merge": "node node_modules/tsx/dist/cli.mjs packages/scripts/src/vlm/merge-captions.ts"
+    "vlm:merge": "node node_modules/tsx/dist/cli.mjs packages/scripts/src/vlm/merge-captions.ts",
+    "smoke:game": "npm run smoke:game --workspace=apps/next-app --",
+    "smoke:game:prod": "npm run smoke:game:prod --workspace=apps/next-app"
   },
   "devDependencies": {
     "typescript": "^5.6.3",

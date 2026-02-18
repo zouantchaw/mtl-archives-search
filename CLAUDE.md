@@ -91,6 +91,8 @@ Next app runtime env:
 - `NEXT_PUBLIC_API_URL` (required in production)
 - `NEXT_PUBLIC_R2_PUBLIC_DOMAIN` (preferred public asset host)
 - Clerk client provider is scoped to auth/game routes to keep public route payload lighter.
+- If `NEXT_PUBLIC_API_URL` is ever missing in a client bundle, Next app falls back to same-origin relative API paths and logs an explicit runtime error (no hard client crash).
+- Smoke command for game route: `npm run smoke:game:prod`
 
 ## Skills
 
