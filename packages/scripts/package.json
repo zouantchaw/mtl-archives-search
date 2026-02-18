@@ -23,6 +23,7 @@
     "vectorize:export": "tsx src/vectorize/export-embeddings.ts",
     "db:generate": "tsx src/db/generate-sql.ts",
     "link-records:report": "tsx src/analysis/record-linkage-report.ts",
+    "smoke:pipeline": "tsx src/analysis/smoke-pipeline.ts",
     "vlm:caption": "tsx src/vlm/caption-images.ts",
     "vlm:tags": "tsx src/vlm/tag-images.ts",
     "vlm:caption:dry": "tsx src/vlm/caption-images.ts --dry-run --limit 5",

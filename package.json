@@ -32,6 +32,7 @@
     "vectorize:clip": "npm run vectorize:clip --workspace=@mtl-archives/scripts",
     "vectorize:text": "npm run vectorize:text --workspace=@mtl-archives/scripts",
     "vectorize:status": "npm run vectorize:status --workspace=@mtl-archives/scripts",
+    "smoke:pipeline": "npm run smoke:pipeline --workspace=@mtl-archives/scripts",
     "vectorize:export": "npm run vectorize:export --workspace=@mtl-archives/scripts",
     "db:generate": "npm run db:generate --workspace=@mtl-archives/scripts",
     "vlm:merge": "node node_modules/tsx/dist/cli.mjs packages/scripts/src/vlm/merge-captions.ts",

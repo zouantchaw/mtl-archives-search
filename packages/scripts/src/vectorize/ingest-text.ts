@@ -122,6 +122,10 @@ async function* iterateSelectedRecords(manifestPath: string, limit: number | und
 }
 
 async function postRequest(url: string, payload: unknown, label: string) {
+  if (process.env.VECTORIZE_FORCE_FAILURE === '1') {
+    throw new Error(`Forced failure for smoke test (${label})`);
+  }
+
   let lastError: Error | null = null;
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt += 1) {

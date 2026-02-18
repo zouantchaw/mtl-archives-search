@@ -32,7 +32,7 @@ Deliver the best on-site user experience (especially mobile/in-app browsers) bef
 - [x] **Failure reporting** — Vectorize ingest writes structured failure logs to `data/mtl_archives/.logs/*` and exits non-zero on integrity failures by default.
 - [x] **Stream manifests** — Vectorize text + CLIP ingest now process manifest JSONL in streaming batches (no full-file memory load).
 - [x] **Worker endpoint tests** — Added coverage for `/api/photos` id normalization + 404, `/api/sitemap` canonical IDs + TTL, and `/api/search` mode behavior (missing q, text cote fast-path, semantic configured/unconfigured, visual POST embedding).
-- [ ] **Pipeline smoke tests** — CLI runs with small fixtures + failure reporting.
+- [x] **Pipeline smoke tests** — Added `npm run smoke:pipeline` fixture harness to validate canonicalize/normalize CLI flow and verify vectorize failure-report logging on controlled failure.
 - [x] **Production game smoke check** — Added `npm run smoke:game` + `npm run smoke:game:prod` guardrail for `/game` regressions.
 
 ### Recently completed platform blockers
