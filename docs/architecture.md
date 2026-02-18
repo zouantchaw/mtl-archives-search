@@ -248,3 +248,11 @@ The trust-first pipeline now augments records with structured vision signals and
 5. **Legacy**: LLaVA 1.5 7B captions in `manifest_vlm_complete.jsonl` still back the current text embeddings until reseeded.
 
 See `docs/metrics/vlm-captioning/` for detailed run metrics.
+
+## Vectorize Ingestion Reliability
+
+- Text (`packages/scripts/src/vectorize/ingest-text.ts`) and CLIP (`packages/scripts/src/vectorize/ingest-clip.ts`) ingest scripts now include:
+  - retry/backoff for transient API/network failures,
+  - resumable checkpoints in `data/mtl_archives/.checkpoints/`,
+  - structured failure logs in `data/mtl_archives/.logs/`.
+- Default behavior is fail-loud on integrity issues so partial ingest does not silently reduce index coverage.

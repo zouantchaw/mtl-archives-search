@@ -28,8 +28,8 @@ Deliver the best on-site user experience (especially mobile/in-app browsers) bef
 - [x] **Reduce auth/script cost on public routes** — Clerk provider is route-scoped to `/game`, `/sign-in`, `/sign-up`; public home/photo routes no longer wrap root in Clerk.
 
 ### Reliability + correctness
-- [ ] **Retry + resume ingestion** — Add retry/backoff and resumable checkpoints for Vectorize ingest (text + CLIP) so failures do not silently shrink index coverage.
-- [ ] **Failure reporting** — Write per-run failure logs + summary counts to disk for auditability.
+- [x] **Retry + resume ingestion** — Vectorize text + CLIP ingest now support retry/backoff, resumable checkpoints, and manual resume overrides.
+- [x] **Failure reporting** — Vectorize ingest writes structured failure logs to `data/mtl_archives/.logs/*` and exits non-zero on integrity failures by default.
 - [ ] **Stream manifests** — Avoid loading full JSONL into memory for large runs; switch to streaming batches.
 - [ ] **Worker endpoint tests** — `/api/photos` id normalization, sitemap generation, search modes.
 - [ ] **Pipeline smoke tests** — CLI runs with small fixtures + failure reporting.

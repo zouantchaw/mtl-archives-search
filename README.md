@@ -149,7 +149,14 @@ npm run d1:seed         # Seed remote D1
 
 # Vectorize
 npm run vectorize:text  # Generate BGE embeddings
+npm run vectorize:clip  # Generate CLIP embeddings
 ```
+
+Vectorize reliability notes:
+- `vectorize:text` and `vectorize:clip` now support resumable checkpoints by default.
+- Failed batches/records are written to `data/mtl_archives/.logs/`.
+- Both scripts use retry/backoff for transient API/network failures.
+- Use `--reset` to ignore checkpoint state and re-run from the start.
 
 ## Technology Stack
 
