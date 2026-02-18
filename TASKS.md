@@ -23,7 +23,7 @@ Deliver the best on-site user experience (especially mobile/in-app browsers) bef
 ### Mobile performance + conversion
 - [x] **Diagnose mobile load time** — Baseline captured via `agent-browser` iPhone emulation (`docs/performance/mobile-load-diagnosis-2026-02-17.md`), showing photo/game route client-side render cost as the main issue.
 - [x] **Review print order flow on mobile** — Added clearer mobile pricing breakdown, shipping/tax expectation copy, and explicit “no payment now” messaging in photo order mode + cart checkout UI.
-- [ ] **Mobile QA** — Test pinch/zoom, touch interactions on iOS/Android in-app browsers.
+- [ ] **Mobile QA** — Execute `docs/performance/mobile-touch-qa-checklist-2026-02-18.md` (pinch/zoom, touch interactions, in-app browser sanity on iOS/Android).
 - [ ] **Social proof** — "X people viewed this photo" or "Popular in [neighborhood]".
 - [x] **Reduce auth/script cost on public routes** — Clerk provider is route-scoped to `/game`, `/sign-in`, `/sign-up`; public home/photo routes no longer wrap root in Clerk.
 
