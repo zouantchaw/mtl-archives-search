@@ -79,6 +79,13 @@ This is a hypothesis, not yet a confirmed root cause.
 - Added rapid filter smoke test script:
   - `npm run smoke:filters`
   - `npm run smoke:filters:prod`
+  - `npm run smoke:filters:mobile`
+  - `npm run smoke:filters:mobile:prod`
+
+## Automation Note
+
+- Mobile emulation smoke uses Playwright device presets (`iPhone 14`, `Pixel 7`) to stress discovery-filter taps on mobile viewport/touch profiles.
+- This is a fast regression gate, but it does not replace final real-device validation for iOS memory-pressure behavior.
 
 ## Run Log Template
 

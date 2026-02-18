@@ -11,7 +11,9 @@
     "smoke:game": "node ./scripts/smoke-game.mjs",
     "smoke:game:prod": "node ./scripts/smoke-game.mjs https://www.mtlarchives.com/game",
     "smoke:filters": "node ./scripts/smoke-filters.mjs",
-    "smoke:filters:prod": "node ./scripts/smoke-filters.mjs https://www.mtlarchives.com/"
+    "smoke:filters:prod": "node ./scripts/smoke-filters.mjs https://www.mtlarchives.com/",
+    "smoke:filters:mobile": "node ./scripts/smoke-filters-mobile.mjs",
+    "smoke:filters:mobile:prod": "node ./scripts/smoke-filters-mobile.mjs https://www.mtlarchives.com/"
   },
   "dependencies": {
     "@clerk/localizations": "^3.35.3",
@@ -50,6 +52,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.0",
+    "playwright": "^1.56.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

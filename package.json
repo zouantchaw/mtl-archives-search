@@ -37,7 +37,9 @@
     "smoke:game": "npm run smoke:game --workspace=apps/next-app --",
     "smoke:game:prod": "npm run smoke:game:prod --workspace=apps/next-app",
     "smoke:filters": "npm run smoke:filters --workspace=apps/next-app --",
-    "smoke:filters:prod": "npm run smoke:filters:prod --workspace=apps/next-app"
+    "smoke:filters:prod": "npm run smoke:filters:prod --workspace=apps/next-app",
+    "smoke:filters:mobile": "npm run smoke:filters:mobile --workspace=apps/next-app --",
+    "smoke:filters:mobile:prod": "npm run smoke:filters:mobile:prod --workspace=apps/next-app"
   },
   "devDependencies": {
     "typescript": "^5.6.3",
