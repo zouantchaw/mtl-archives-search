@@ -143,6 +143,19 @@ Pass criteria:
 - Result: PASS (initial sanity)
 - Notes: multiple filter taps with no crash reported.
 
+### TOUCH-20260218-03
+
+- Date/time: Feb 18, 2026
+- Device: iPhone (user report)
+- Browser/App: Safari + Facebook in-app browser + Instagram in-app browser
+- Result: PASS
+- Sections covered:
+  - A Home/Search: PASS
+  - B Photo Zoom: PASS
+  - C Game Map: PASS
+  - D In-App: PASS
+- Notes: completed full iPhone checklist with no white-screen or crash observed.
+
 ## Decision Rule
 
 - If Safari + Android Chrome + FB/IG in-app pass, proceed with roadmap.
