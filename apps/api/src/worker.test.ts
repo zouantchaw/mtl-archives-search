@@ -222,6 +222,44 @@ test('/api/sitemap returns canonical bare IDs and public cache TTL', async () =>
   assert.match(data.items[0].imageUrl, /^https:\/\/example\.r2\.dev\//);
 });
 
+test('/api/photos normalizes escaped metadata control characters', async () => {
+  setupCacheMock();
+  const env = createPublicEnv([
+    createManifestRow({
+      metadata_filename: 'photo_dirty_text.json',
+      name: 'Incinérateur Dickson\\n / Rhéal Benny\\n. - 31 octobre 1975',
+      description: 'Line 1\\nLine 2\nLine 3\tDone',
+      credits: 'Archives\\n de Montréal',
+    }),
+  ]);
+
+  const response = await worker.fetch(new Request('https://example.com/api/photos?id=photo_dirty_text'), env, ctx);
+
+  assert.equal(response.status, 200);
+  const data = (await response.json()) as {
+    items: Array<{ name: string; description: string; credits: string }>;
+  };
+  assert.equal(data.items[0].name, 'Incinérateur Dickson / Rhéal Benny . - 31 octobre 1975');
+  assert.equal(data.items[0].description, 'Line 1 Line 2 Line 3 Done');
+  assert.equal(data.items[0].credits, 'Archives de Montréal');
+});
+
+test('/api/sitemap normalizes escaped metadata control characters', async () => {
+  setupCacheMock();
+  const env = createPublicEnv([
+    createManifestRow({
+      metadata_filename: 'photo_sitemap_dirty.json',
+      name: 'Rue\\n Saint-Laurent',
+    }),
+  ]);
+
+  const response = await worker.fetch(new Request('https://example.com/api/sitemap'), env, ctx);
+
+  assert.equal(response.status, 200);
+  const data = (await response.json()) as { items: Array<{ name: string | null }> };
+  assert.equal(data.items[0].name, 'Rue Saint-Laurent');
+});
+
 test('/api/search returns 400 when q is missing', async () => {
   setupCacheMock();
   const env = createPublicEnv([]);

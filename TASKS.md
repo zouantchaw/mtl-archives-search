@@ -34,6 +34,11 @@ Deliver the best on-site user experience (especially mobile/in-app browsers) bef
 - [x] **Worker endpoint tests** — Added coverage for `/api/photos` id normalization + 404, `/api/sitemap` canonical IDs + TTL, and `/api/search` mode behavior (missing q, text cote fast-path, semantic configured/unconfigured, visual POST embedding).
 - [x] **Pipeline smoke tests** — Added `npm run smoke:pipeline` fixture harness to validate canonicalize/normalize CLI flow and verify vectorize failure-report logging on controlled failure.
 - [x] **Production game smoke check** — Added `npm run smoke:game` + `npm run smoke:game:prod` guardrail for `/game` regressions.
+- [x] **Restore `robots.txt` endpoint** — Added Next metadata robots route with host + sitemap output so `/robots.txt` no longer resolves to HTML 404.
+- [x] **Add canonical metadata on `/game`** — Added `/game` canonical + language alternates to reduce duplicate route/indexing variants.
+- [x] **Normalize escaped metadata control chars** — Worker now normalizes literal `\\n` and control-char artifacts in API text fields (photos/map/sitemap), with tests.
+- [ ] **Fix rotated photo orientation consistency** — Normalize EXIF orientation handling (source + optimized render paths) so photo pages never display sideways assets.
+- [ ] **Run GSC triage pass on remaining non-indexed buckets** — Prioritize `duplicate without user-selected canonical` and `discovered - currently not indexed`, then validate fixes in Search Console.
 
 ### Recently completed platform blockers
 - [x] **Fix sitemap/photo ID mismatch** — `/api/photos` now normalizes bare IDs and `.json` IDs, sitemap/photo URLs use canonical bare IDs, and OG/Twitter photo fetches use the same normalized format.

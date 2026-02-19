@@ -251,18 +251,18 @@ async function buildPhotoRecord(row: Record<string, unknown>, env: Env): Promise
     imageFilename: String(row.image_filename),
     resolvedImageFilename: String(row.resolved_image_filename ?? row.image_filename ?? ''),
     imageSizeBytes: row.image_size_bytes != null ? Number(row.image_size_bytes) : null,
-    name: row.name != null ? String(row.name) : null,
-    description: row.description != null ? String(row.description) : null,
-    vlmCaption: row.vlm_caption != null ? String(row.vlm_caption) : null,
-    dateValue: row.date_value != null ? String(row.date_value) : null,
-    credits: row.credits != null ? String(row.credits) : null,
-    cote: row.cote != null ? String(row.cote) : null,
-    externalUrl: row.external_url != null ? String(row.external_url) : null,
+    name: normalizeNullableText(row.name),
+    description: normalizeNullableText(row.description),
+    vlmCaption: normalizeNullableText(row.vlm_caption),
+    dateValue: normalizeNullableText(row.date_value),
+    credits: normalizeNullableText(row.credits),
+    cote: normalizeNullableText(row.cote),
+    externalUrl: normalizeNullableUrl(row.external_url),
     portalMatch: Boolean(row.portal_match),
-    portalTitle: row.portal_title != null ? String(row.portal_title) : null,
-    portalDescription: row.portal_description != null ? String(row.portal_description) : null,
-    portalDate: row.portal_date != null ? String(row.portal_date) : null,
-    portalCote: row.portal_cote != null ? String(row.portal_cote) : null,
+    portalTitle: normalizeNullableText(row.portal_title),
+    portalDescription: normalizeNullableText(row.portal_description),
+    portalDate: normalizeNullableText(row.portal_date),
+    portalCote: normalizeNullableText(row.portal_cote),
     aerialDatasets: parseJsonArray(row.aerial_datasets),
     imageUrl: await resolveImageUrl(String(row.resolved_image_filename ?? row.image_filename ?? ''), env),
     latitude: row.latitude != null ? Number(row.latitude) : null,
@@ -307,6 +307,27 @@ function parseAllowedValue<T extends string>(value: string | null, allowed: read
 
 function normalizeMetadataId(id: string): string {
   return id.replace(/\.json$/i, '');
+}
+
+function normalizeMetadataText(value: string): string {
+  return value
+    .replace(/\\[nrt]/g, ' ')
+    .replace(/[\r\n\t]+/g, ' ')
+    .replace(/[\u0000-\u001f\u007f]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normalizeNullableText(value: unknown): string | null {
+  if (value == null) return null;
+  const normalized = normalizeMetadataText(String(value));
+  return normalized.length > 0 ? normalized : null;
+}
+
+function normalizeNullableUrl(value: unknown): string | null {
+  if (value == null) return null;
+  const normalized = String(value).trim();
+  return normalized.length > 0 ? normalized : null;
 }
 
 function resolveGameImageUrl(photo: PhotoRecord): string {
@@ -1154,11 +1175,11 @@ async function handleMapPins(env: Env): Promise<Response> {
   const pins = await Promise.all(
     results.map(async (row) => ({
       id: String(row.metadata_filename),
-      name: row.name != null ? String(row.name) : null,
-      dateValue: row.date_value != null ? String(row.date_value) : null,
+      name: normalizeNullableText(row.name),
+      dateValue: normalizeNullableText(row.date_value),
       latitude: Number(row.latitude),
       longitude: Number(row.longitude),
-      externalUrl: row.external_url != null ? String(row.external_url) : null,
+      externalUrl: normalizeNullableUrl(row.external_url),
       imageUrl: await resolveImageUrl(String(row.resolved_image_filename ?? ''), env),
     }))
   );
@@ -1179,8 +1200,8 @@ async function handleSitemap(env: Env): Promise<Response> {
     results.map(async (row) => ({
       id: normalizeMetadataId(String(row.metadata_filename)),
       imageUrl: await resolveImageUrl(String(row.resolved_image_filename ?? ''), env),
-      name: row.name != null ? String(row.name) : null,
-      dateValue: row.date_value != null ? String(row.date_value) : null,
+      name: normalizeNullableText(row.name),
+      dateValue: normalizeNullableText(row.date_value),
     }))
   );
 

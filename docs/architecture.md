@@ -138,6 +138,9 @@ User Query ──▶ HuggingFace (CLIP text) ──▶ Vectorize CLIP ──▶ 
 - Worker endpoint `/api/photos?id=` accepts both bare IDs and `.json` IDs, normalizing to the same record.
 - Sitemap and social metadata (OG/Twitter + JSON-LD) emit canonical bare-ID photo URLs.
 - Legacy `/photo/{id}.json` links are redirected (308) to canonical bare-ID URLs.
+- Next metadata routes publish first-party crawl endpoints: `/sitemap.xml` and `/robots.txt`.
+- `/game` page metadata includes canonical and language alternate URLs to avoid route/query duplicate buckets.
+- Worker metadata fields (`name`, `description`, related text fields) are normalized to strip escaped control chars (for example literal `\\n`) before API responses.
 
 ### 3. Game Flow (Runtime)
 

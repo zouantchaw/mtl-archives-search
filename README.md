@@ -77,6 +77,9 @@ For `apps/next-app`, API and asset origins are env-driven:
 - `NEXT_PUBLIC_API_URL` (required in production)
 - `NEXT_PUBLIC_R2_PUBLIC_DOMAIN` (preferred; falls back to `CLOUDFLARE_R2_PUBLIC_DOMAIN` if present)
 - Clerk client auth is loaded on auth/game routes, not globally, to reduce public-route script cost.
+- Next metadata routes publish SEO endpoints (`/sitemap.xml`, `/robots.txt`) from the app layer.
+- `/game` exports canonical + language alternates to reduce duplicate indexing variants.
+- Worker text responses normalize escaped control chars (for example literal `\\n`) before returning photo/map/sitemap metadata.
 
 In local development, API base falls back to `http://localhost:8787`.
 

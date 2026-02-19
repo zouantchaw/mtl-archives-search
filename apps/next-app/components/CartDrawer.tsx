@@ -453,6 +453,7 @@ function CartDrawerInner() {
                             fill
                             sizes="80px"
                             className="object-cover"
+                            unoptimized
                           />
                         )}
                       </div>

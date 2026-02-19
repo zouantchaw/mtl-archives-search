@@ -79,6 +79,9 @@ pipelines/
 - Canonical photo route is `/photo/{id}` (bare ID, no `.json`).
 - `/api/photos?id=` accepts both bare IDs and `.json` IDs.
 - Legacy `/photo/{id}.json` URLs should redirect to canonical bare-ID routes.
+- Next metadata routes should keep `/sitemap.xml` and `/robots.txt` live.
+- `/game` should include canonical + language alternates to reduce duplicate indexing variants.
+- Worker text metadata returned to clients should be normalized to strip escaped control chars (for example literal `\\n` artifacts).
 
 ### Data Flow
 1. Source: `manifest_enriched.jsonl` (from Logseq pipeline)
