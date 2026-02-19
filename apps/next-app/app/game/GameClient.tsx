@@ -734,6 +734,7 @@ export function GameClient() {
                 sizes="96px"
                 className="object-cover"
                 priority
+                unoptimized
               />
               {/* Date badge */}
               <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 to-transparent p-1.5">
@@ -868,6 +869,7 @@ export function GameClient() {
                 sizes="100vw"
                 className="object-contain"
                 priority
+                unoptimized
               />
             </div>
           </div>
@@ -905,6 +907,7 @@ export function GameClient() {
                 sizes={introAnimating ? '96px' : '85vw'}
                 className="object-cover"
                 priority
+                unoptimized
               />
               {/* Date badge - always visible */}
               <div className={`absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 to-transparent transition-all duration-700 ${introAnimating ? 'p-1.5' : 'p-3'}`}>
