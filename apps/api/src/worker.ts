@@ -309,6 +309,25 @@ function normalizeMetadataId(id: string): string {
   return id.replace(/\.json$/i, '');
 }
 
+function resolveGameImageUrl(photo: PhotoRecord): string {
+  const external = photo.externalUrl ? String(photo.externalUrl).trim() : '';
+  if (!external) return photo.imageUrl;
+
+  try {
+    const parsed = new URL(external);
+    const isDepotHost = parsed.hostname.toLowerCase() === 'depot.ville.montreal.qc.ca';
+    const isJpegAsset = /\/phototheque-archives\/jpeg\/[^/?]+\.(jpe?g)$/i.test(parsed.pathname);
+    if (isDepotHost && isJpegAsset) {
+      parsed.protocol = 'https:';
+      return parsed.toString();
+    }
+  } catch {
+    // Ignore malformed external URLs and keep primary image URL.
+  }
+
+  return photo.imageUrl;
+}
+
 async function handlePhotos(url: URL, env: Env): Promise<Response> {
   // Support fetching a single photo by ID
   const id = url.searchParams.get('id');
@@ -1255,6 +1274,7 @@ async function handleGameDaily(request: Request, env: Env): Promise<Response> {
   }
 
   const dailyPhoto = await buildPhotoRecord(dailyRow, env);
+  dailyPhoto.imageUrl = resolveGameImageUrl(dailyPhoto);
 
   let dailyPlayed = false;
   let dailyResult: { score: number; distanceMeters: number; guessedLat?: number; guessedLng?: number } | null = null;
@@ -1352,6 +1372,7 @@ async function handleGameDaily(request: Request, env: Env): Promise<Response> {
     const practiceRow = await getRandomGeotaggedPhoto(env, [dailyChallenge.photoId]);
     if (practiceRow) {
       practicePhoto = await buildPhotoRecord(practiceRow, env);
+      practicePhoto.imageUrl = resolveGameImageUrl(practicePhoto);
     }
   }
 
