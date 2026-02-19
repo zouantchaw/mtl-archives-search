@@ -33,7 +33,7 @@ type PhotoData = {
 async function getPhoto(id: string): Promise<PhotoData | null> {
   try {
     const res = await fetch(`${API_BASE}/api/photos?id=${encodeURIComponent(id)}`, {
-      next: { revalidate: 3600 },
+      next: { revalidate: 300 },
     });
     if (!res.ok) return null;
     const data = await res.json();

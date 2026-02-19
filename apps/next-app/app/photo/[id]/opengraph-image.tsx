@@ -12,6 +12,7 @@ export const size = {
 };
 
 export const contentType = 'image/png';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.mtlarchives.com';
 
 // API endpoint for fetching photo data
 
@@ -25,7 +26,7 @@ type PhotoData = {
 async function getPhoto(id: string): Promise<PhotoData | null> {
   try {
     const res = await fetch(`${API_BASE}/api/photos?id=${encodeURIComponent(id)}`, {
-      next: { revalidate: 3600 },
+      next: { revalidate: 300 },
     });
     if (!res.ok) return null;
     const data = await res.json();
@@ -41,7 +42,9 @@ export default async function OGImage({ params }: { params: Promise<{ id: string
   
   const title = photo?.name || 'Photo historique';
   const date = photo?.dateValue || '';
-  const imageUrl = photo?.imageUrl;
+  const imageUrl = photo?.imageUrl
+    ? `${SITE_URL}/api/oriented-image?src=${encodeURIComponent(photo.imageUrl)}`
+    : null;
 
   return new ImageResponse(
     (

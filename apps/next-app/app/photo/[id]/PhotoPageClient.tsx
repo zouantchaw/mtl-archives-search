@@ -158,7 +158,7 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
     addItem({
       photoId: photo.metadataFilename,
       photoName: cleanText(photo.name) || t.untitled,
-      photoUrl: photo.imageUrl || '',
+      photoUrl: photo.imageUrl ? `/api/oriented-image?src=${encodeURIComponent(photo.imageUrl)}` : '',
       size: selectedSize.name,
       sizeId: selectedSize.id,
       frame: selectedProduct.name[lang],
@@ -193,6 +193,7 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
   const description = photo.description && photo.description !== 'S/O'
     ? cleanText(photo.description)
     : cleanText(photo.portalDescription);
+  const displayImageUrl = photo.imageUrl ? `/api/oriented-image?src=${encodeURIComponent(photo.imageUrl)}` : '';
 
   return (
     <div className="min-h-screen bg-[#fafafa]">
@@ -265,10 +266,10 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
           {/* Hero Image */}
           <div className="relative bg-neutral-100">
             <div className="max-w-5xl mx-auto">
-              {photo.imageUrl && (
+              {displayImageUrl && (
                 <div className={`relative transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}>
                   <Image
-                    src={photo.imageUrl}
+                    src={displayImageUrl}
                     alt={title}
                     width={1000}
                     height={750}
@@ -337,9 +338,9 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
         <div className="animate-fade-in lg:flex lg:items-start lg:max-w-6xl lg:mx-auto lg:gap-8 lg:px-6 lg:pt-6">
           {/* Wall Preview Carousel */}
           <div className="lg:flex-1 lg:min-w-0 lg:rounded-xl lg:overflow-hidden">
-          {photo.imageUrl && (
+          {displayImageUrl && (
             <WallPreview
-              photoUrl={photo.imageUrl}
+              photoUrl={displayImageUrl}
               photoAlt={title}
               selectedSize={selectedSize}
               selectedProduct={selectedProduct}

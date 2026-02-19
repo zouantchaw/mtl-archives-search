@@ -9,8 +9,8 @@ import { normalizePhotoId } from '@/lib/photo-id';
 async function getPhoto(id: string): Promise<PhotoRecord | null> {
   try {
     const res = await fetch(`${API_BASE}/api/photos?id=${encodeURIComponent(id)}`, {
-      // Cache for 1 hour, revalidate in background
-      next: { revalidate: 3600 },
+      // Cache briefly to avoid stale metadata after worker-side cleanups.
+      next: { revalidate: 300 },
     });
     if (!res.ok) return null;
     const data = await res.json();
