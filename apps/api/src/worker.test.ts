@@ -227,7 +227,7 @@ test('/api/photos normalizes escaped metadata control characters', async () => {
   const env = createPublicEnv([
     createManifestRow({
       metadata_filename: 'photo_dirty_text.json',
-      name: 'Incinérateur Dickson\\n / Rhéal Benny\\n. - 31 octobre 1975',
+      name: 'Incinérateur Dickson\\n / Rhéal Benny\\n. - 31 octobre 1975\\\\',
       description: 'Line 1\\nLine 2\nLine 3\tDone',
       credits: 'Archives\\n de Montréal',
     }),

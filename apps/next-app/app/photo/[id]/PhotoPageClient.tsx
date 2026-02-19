@@ -12,7 +12,12 @@ import { DEFAULT_LANG, getLangFromSearchParams, type Lang } from '@/lib/i18n';
 
 const cleanText = (text: string | null | undefined): string => {
   if (!text) return '';
-  return text.replace(/\\n/g, ' ').replace(/\s+/g, ' ').trim();
+  return text
+    .replace(/\\[nrt]/g, ' ')
+    .replace(/\\+/g, ' ')
+    .replace(/[\r\n\t]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 };
 
 const translations = {
@@ -268,7 +273,7 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
                     width={1000}
                     height={750}
                     sizes="(max-width: 768px) 100vw, (max-width: 1280px) 80vw, 1000px"
-                    className="w-full h-auto"
+                    className="w-full h-auto photo-orient-from-exif"
                     priority
                     // Preserve source orientation for legacy archive images carrying EXIF rotation.
                     unoptimized

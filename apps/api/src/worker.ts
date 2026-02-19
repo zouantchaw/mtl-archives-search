@@ -49,6 +49,7 @@ const CACHE_TTL = {
 const SIGNED_URL_TTL_SECONDS = 3600;
 const SIGNED_URL_TTL_BUFFER_SECONDS = 60;
 const COTE_PATTERN = /^[A-Z]{1,4}[\d-]+/i;
+const CACHE_KEY_VERSION = '2026-02-19';
 
 function usesSignedR2Urls(env: Env): boolean {
   return Boolean(
@@ -97,6 +98,8 @@ async function getClerkUserId(request: Request, env: Env): Promise<string | null
 function buildCacheKey(url: URL): Request {
   // Sort query params for stable cache keys regardless of param order
   const sorted = new URLSearchParams([...url.searchParams.entries()].sort());
+  // Bump this version when response serialization changes to avoid stale Cache API payloads.
+  sorted.set('__cv', CACHE_KEY_VERSION);
   const cacheUrl = new URL(url.pathname, url.origin);
   cacheUrl.search = sorted.toString();
   return new Request(cacheUrl.toString(), { method: 'GET' });
@@ -312,6 +315,7 @@ function normalizeMetadataId(id: string): string {
 function normalizeMetadataText(value: string): string {
   return value
     .replace(/\\[nrt]/g, ' ')
+    .replace(/\\+/g, ' ')
     .replace(/[\r\n\t]+/g, ' ')
     .replace(/[\u0000-\u001f\u007f]+/g, ' ')
     .replace(/\s+/g, ' ')

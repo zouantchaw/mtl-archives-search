@@ -202,7 +202,7 @@ const OriginalPhotoSlide = ({
                 alt={photoAlt}
                 fill
                 sizes="(max-width: 768px) 70vw, 50vw"
-                className="object-cover"
+                className="object-cover photo-orient-from-exif"
                 priority
                 unoptimized
                 onError={onImageError}
@@ -278,7 +278,7 @@ const RoomSlide = ({
                 alt={photoAlt}
                 fill
                 sizes="(max-width: 768px) 50vw, 30vw"
-                className="object-cover"
+                className="object-cover photo-orient-from-exif"
                 unoptimized
                 onError={onImageError}
               />

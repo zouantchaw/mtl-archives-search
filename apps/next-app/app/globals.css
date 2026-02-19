@@ -238,6 +238,11 @@
   animation: fadeIn 0.3s ease-out forwards;
 }
 
+/* Force EXIF orientation application where browser support exists. */
+.photo-orient-from-exif {
+  image-orientation: from-image;
+}
+
 /* Game map - ensure full size and prettier styling */
 .game-map {
   width: 100%;

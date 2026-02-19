@@ -4,6 +4,7 @@ import { GameClient } from './GameClient';
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.mtlarchives.com';
 
 export const metadata: Metadata = {
+  title: 'Jeu quotidien | MTL Archives',
   alternates: {
     canonical: `${siteUrl}/game`,
     languages: {
@@ -11,6 +12,12 @@ export const metadata: Metadata = {
       'en-CA': `${siteUrl}/game?lang=en`,
       'x-default': `${siteUrl}/game`,
     },
+  },
+  openGraph: {
+    url: `${siteUrl}/game`,
+  },
+  twitter: {
+    card: 'summary_large_image',
   },
 };
 

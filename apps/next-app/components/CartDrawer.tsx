@@ -452,7 +452,7 @@ function CartDrawerInner() {
                             alt={item.photoName}
                             fill
                             sizes="80px"
-                            className="object-cover"
+                            className="object-cover photo-orient-from-exif"
                             unoptimized
                           />
                         )}

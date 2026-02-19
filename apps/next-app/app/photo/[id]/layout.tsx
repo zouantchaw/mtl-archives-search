@@ -9,7 +9,9 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.mtlarchives.co
 function cleanText(text: string | null | undefined): string {
   if (!text) return '';
   return text
-    .replace(/\\n/g, ' ')
+    .replace(/\\[nrt]/g, ' ')
+    .replace(/\\+/g, ' ')
+    .replace(/[\r\n\t]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
