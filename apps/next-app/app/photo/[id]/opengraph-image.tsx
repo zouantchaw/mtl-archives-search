@@ -14,7 +14,7 @@ export const size = {
 
 export const contentType = 'image/png';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.mtlarchives.com';
-const PHOTO_API_CACHE_VERSION = '2026-02-20-rotation';
+const PHOTO_API_CACHE_VERSION = '2026-02-20-rotation-v2';
 
 // API endpoint for fetching photo data
 

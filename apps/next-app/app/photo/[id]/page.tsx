@@ -5,7 +5,7 @@ import { API_BASE } from '@/lib/runtime-config';
 import { normalizePhotoId } from '@/lib/photo-id';
 
 // API endpoint for fetching photo data - runs on server
-const PHOTO_API_CACHE_VERSION = '2026-02-20-rotation';
+const PHOTO_API_CACHE_VERSION = '2026-02-20-rotation-v2';
 
 async function getPhoto(id: string): Promise<PhotoRecord | null> {
   try {
