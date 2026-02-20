@@ -275,7 +275,7 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
                     width={1000}
                     height={750}
                     sizes="(max-width: 768px) 100vw, (max-width: 1280px) 80vw, 1000px"
-                    className="w-full h-auto photo-orient-from-exif"
+                    className="w-full h-auto"
                     priority
                     // Preserve source orientation for legacy archive images carrying EXIF rotation.
                     unoptimized
