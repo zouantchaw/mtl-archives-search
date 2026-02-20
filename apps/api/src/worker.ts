@@ -50,7 +50,7 @@ const CACHE_TTL = {
 const SIGNED_URL_TTL_SECONDS = 3600;
 const SIGNED_URL_TTL_BUFFER_SECONDS = 60;
 const COTE_PATTERN = /^[A-Z]{1,4}[\d-]+/i;
-const CACHE_KEY_VERSION = '2026-02-19';
+const CACHE_KEY_VERSION = '2026-02-20-orientation-v2';
 
 function usesSignedR2Urls(env: Env): boolean {
   return Boolean(
