@@ -159,7 +159,7 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
     addItem({
       photoId: photo.metadataFilename,
       photoName: cleanText(photo.name) || t.untitled,
-      photoUrl: buildOrientedImagePath(photo.imageUrl),
+      photoUrl: buildOrientedImagePath(photo.imageUrl, photo.rotationDegrees),
       size: selectedSize.name,
       sizeId: selectedSize.id,
       frame: selectedProduct.name[lang],
@@ -194,7 +194,7 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
   const description = photo.description && photo.description !== 'S/O'
     ? cleanText(photo.description)
     : cleanText(photo.portalDescription);
-  const displayImageUrl = buildOrientedImagePath(photo.imageUrl);
+  const displayImageUrl = buildOrientedImagePath(photo.imageUrl, photo.rotationDegrees);
 
   return (
     <div className="min-h-screen bg-[#fafafa]">

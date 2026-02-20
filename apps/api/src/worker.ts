@@ -1,6 +1,7 @@
 import type { VectorizeIndex, Ai } from '@cloudflare/workers-types';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { type PhotoRecord, validateMetadataQuality } from '@mtl-archives/core';
+import { getPhotoOrientationOverride } from './photo-orientation-overrides';
 
 type Env = {
   DB: D1Database;
@@ -30,7 +31,7 @@ const JSON_HEADERS: HeadersInit = {
   ...CORS_HEADERS,
 };
 
-const SELECT_FIELDS = `metadata_filename, image_filename, resolved_image_filename, image_size_bytes, name, description, vlm_caption, date_value, credits, cote, external_url, portal_match, portal_title, portal_description, portal_date, portal_cote, aerial_datasets, latitude, longitude, geocode_confidence`;
+const SELECT_FIELDS = `metadata_filename, image_filename, resolved_image_filename, image_size_bytes, rotation_degrees, name, description, vlm_caption, date_value, credits, cote, external_url, portal_match, portal_title, portal_description, portal_date, portal_cote, aerial_datasets, latitude, longitude, geocode_confidence`;
 
 // Lightweight fields for map pins (faster queries)
 const MAP_FIELDS = `metadata_filename, name, date_value, latitude, longitude, external_url, resolved_image_filename`;
@@ -249,11 +250,16 @@ function jsonResponse(body: unknown, status = 200, extraHeaders: HeadersInit = {
 }
 
 async function buildPhotoRecord(row: Record<string, unknown>, env: Env): Promise<PhotoRecord> {
+  const metadataFilename = String(row.metadata_filename);
+  const dbRotation = normalizeRotationDegrees(row.rotation_degrees);
+  const overrideRotation = getPhotoOrientationOverride(metadataFilename);
+
   const record: PhotoRecord = {
-    metadataFilename: String(row.metadata_filename),
+    metadataFilename,
     imageFilename: String(row.image_filename),
     resolvedImageFilename: String(row.resolved_image_filename ?? row.image_filename ?? ''),
     imageSizeBytes: row.image_size_bytes != null ? Number(row.image_size_bytes) : null,
+    rotationDegrees: dbRotation ?? overrideRotation,
     name: normalizeNullableText(row.name),
     description: normalizeNullableText(row.description),
     vlmCaption: normalizeNullableText(row.vlm_caption),
@@ -332,6 +338,14 @@ function normalizeNullableUrl(value: unknown): string | null {
   if (value == null) return null;
   const normalized = String(value).trim();
   return normalized.length > 0 ? normalized : null;
+}
+
+function normalizeRotationDegrees(value: unknown): number | null {
+  if (value == null) return null;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return null;
+  const normalized = ((Math.round(parsed / 90) * 90) % 360 + 360) % 360;
+  return normalized === 0 ? 0 : normalized;
 }
 
 function resolveGameImageUrl(photo: PhotoRecord): string {

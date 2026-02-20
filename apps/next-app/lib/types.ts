@@ -22,6 +22,7 @@ export type PhotoRecord = {
   imageFilename: string;
   resolvedImageFilename: string;
   imageSizeBytes: number | null;
+  rotationDegrees: number | null;
   name: string | null;
   description: string | null;
   vlmCaption: string | null;

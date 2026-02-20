@@ -4,6 +4,7 @@ import sharp from 'sharp';
 export const runtime = 'nodejs';
 
 const MAX_SOURCE_BYTES = 25 * 1024 * 1024;
+const ALLOWED_ROTATIONS = new Set([0, 90, 180, 270]);
 
 function isAllowedImageHost(hostname: string): boolean {
   const lower = hostname.toLowerCase();
@@ -16,8 +17,16 @@ function isAllowedImageHost(hostname: string): boolean {
 
 export async function GET(request: NextRequest): Promise<Response> {
   const src = request.nextUrl.searchParams.get('src');
+  const rawRotation = request.nextUrl.searchParams.get('rot');
   if (!src) {
     return Response.json({ error: 'Missing src query parameter' }, { status: 400 });
+  }
+
+  const rotation = rawRotation == null
+    ? 0
+    : Number.parseInt(rawRotation, 10);
+  if (!Number.isFinite(rotation) || !ALLOWED_ROTATIONS.has(rotation)) {
+    return Response.json({ error: 'Invalid rot query parameter' }, { status: 400 });
   }
 
   let sourceUrl: URL;
@@ -55,10 +64,20 @@ export async function GET(request: NextRequest): Promise<Response> {
     return Response.json({ error: 'Source image too large' }, { status: 413 });
   }
 
-  const normalizedBuffer = await sharp(sourceBuffer, { failOn: 'none' })
-    .rotate()
-    .toBuffer();
-  const body = Uint8Array.from(normalizedBuffer).buffer;
+  let body: Blob;
+  if (rotation === 0) {
+    // No transform needed: preserve original bytes + metadata.
+    body = new Blob([Uint8Array.from(sourceBuffer)], {
+      type: upstream.headers.get('content-type') || 'image/jpeg',
+    });
+  } else {
+    const normalizedBuffer = await sharp(sourceBuffer, { failOn: 'none' })
+      .rotate(rotation)
+      .toBuffer();
+    body = new Blob([Uint8Array.from(normalizedBuffer)], {
+      type: upstream.headers.get('content-type') || 'image/jpeg',
+    });
+  }
 
   return new Response(body, {
     status: 200,

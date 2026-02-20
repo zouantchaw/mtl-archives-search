@@ -22,6 +22,7 @@ type PhotoData = {
   dateValue?: string;
   imageUrl?: string;
   description?: string;
+  rotationDegrees?: number | null;
 };
 
 async function getPhoto(id: string): Promise<PhotoData | null> {
@@ -44,7 +45,7 @@ export default async function TwitterImage({ params }: { params: Promise<{ id: s
   const title = photo?.name || 'Photo historique';
   const date = photo?.dateValue || '';
   const imageUrl = photo?.imageUrl
-    ? `${SITE_URL}${buildOrientedImagePath(photo.imageUrl)}`
+    ? `${SITE_URL}${buildOrientedImagePath(photo.imageUrl, photo.rotationDegrees ?? null)}`
     : null;
 
   return new ImageResponse(

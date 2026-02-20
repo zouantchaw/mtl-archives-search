@@ -37,7 +37,9 @@ Deliver the best on-site user experience (especially mobile/in-app browsers) bef
 - [x] **Restore `robots.txt` endpoint** — Added Next metadata robots route with host + sitemap output so `/robots.txt` no longer resolves to HTML 404.
 - [x] **Add canonical metadata on `/game`** — Added `/game` canonical + language alternates to reduce duplicate route/indexing variants.
 - [x] **Normalize escaped metadata control chars** — Worker now normalizes literal `\\n` and control-char artifacts in API text fields (photos/map/sitemap), with tests.
-- [ ] **Fix rotated photo orientation consistency** — Normalize EXIF orientation handling (source + optimized render paths) so photo pages never display sideways assets.
+- [ ] **Fix rotated photo orientation consistency** — Rotation pipeline is now wired (`rotation_degrees` field + API/UI support + audit tooling), but full-dataset audit + backfill is still pending.
+  - `npm run image-orientation:audit --workspace=@mtl-archives/scripts -- --input /absolute/path/to/manifest_clean.jsonl.gz --r2-domain pub-...r2.dev --write-preview-dir /absolute/path/to/reports/image_orientation_preview --write-sql /absolute/path/to/reports/image_orientation_updates.sql`
+  - Temporary fallback for known bad records uses `apps/api/src/photo-orientation-overrides.ts` until DB backfill is complete.
 - [ ] **Run GSC triage pass on remaining non-indexed buckets** — Prioritize `duplicate without user-selected canonical` and `discovered - currently not indexed`, then validate fixes in Search Console.
 
 ### Recently completed platform blockers
