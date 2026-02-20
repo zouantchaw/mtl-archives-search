@@ -4,6 +4,7 @@ import { normalizePhotoId } from '@/lib/photo-id';
 
 // API endpoint for fetching photo data
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.mtlarchives.com';
+const PHOTO_API_CACHE_VERSION = '2026-02-20-rotation';
 
 // Clean text: remove escaped newlines, normalize whitespace
 function cleanText(text: string | null | undefined): string {
@@ -32,7 +33,7 @@ type PhotoData = {
 
 async function getPhoto(id: string): Promise<PhotoData | null> {
   try {
-    const res = await fetch(`${API_BASE}/api/photos?id=${encodeURIComponent(id)}`, {
+    const res = await fetch(`${API_BASE}/api/photos?id=${encodeURIComponent(id)}&cv=${PHOTO_API_CACHE_VERSION}`, {
       next: { revalidate: 300 },
     });
     if (!res.ok) return null;

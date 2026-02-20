@@ -5,10 +5,11 @@ import { API_BASE } from '@/lib/runtime-config';
 import { normalizePhotoId } from '@/lib/photo-id';
 
 // API endpoint for fetching photo data - runs on server
+const PHOTO_API_CACHE_VERSION = '2026-02-20-rotation';
 
 async function getPhoto(id: string): Promise<PhotoRecord | null> {
   try {
-    const res = await fetch(`${API_BASE}/api/photos?id=${encodeURIComponent(id)}`, {
+    const res = await fetch(`${API_BASE}/api/photos?id=${encodeURIComponent(id)}&cv=${PHOTO_API_CACHE_VERSION}`, {
       // Cache briefly to avoid stale metadata after worker-side cleanups.
       next: { revalidate: 300 },
     });
