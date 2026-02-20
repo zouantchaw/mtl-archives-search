@@ -1,6 +1,7 @@
 import { ImageResponse } from 'next/og';
 import { API_BASE } from '@/lib/runtime-config';
 import { normalizePhotoId } from '@/lib/photo-id';
+import { buildOrientedImagePath } from '@/lib/oriented-image';
 
 export const runtime = 'edge';
 
@@ -43,7 +44,7 @@ export default async function OGImage({ params }: { params: Promise<{ id: string
   const title = photo?.name || 'Photo historique';
   const date = photo?.dateValue || '';
   const imageUrl = photo?.imageUrl
-    ? `${SITE_URL}/api/oriented-image?src=${encodeURIComponent(photo.imageUrl)}`
+    ? `${SITE_URL}${buildOrientedImagePath(photo.imageUrl)}`
     : null;
 
   return new ImageResponse(

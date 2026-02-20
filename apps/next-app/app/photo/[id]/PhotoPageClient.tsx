@@ -9,6 +9,7 @@ import { events } from '@/lib/analytics';
 import { useCart } from '@/lib/cart-context';
 import { WallPreview, PRINT_SIZES, PRODUCT_TYPES, type PrintSize, type ProductType } from '@/components/WallPreview';
 import { DEFAULT_LANG, getLangFromSearchParams, type Lang } from '@/lib/i18n';
+import { buildOrientedImagePath } from '@/lib/oriented-image';
 
 const cleanText = (text: string | null | undefined): string => {
   if (!text) return '';
@@ -158,7 +159,7 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
     addItem({
       photoId: photo.metadataFilename,
       photoName: cleanText(photo.name) || t.untitled,
-      photoUrl: photo.imageUrl ? `/api/oriented-image?src=${encodeURIComponent(photo.imageUrl)}` : '',
+      photoUrl: buildOrientedImagePath(photo.imageUrl),
       size: selectedSize.name,
       sizeId: selectedSize.id,
       frame: selectedProduct.name[lang],
@@ -193,7 +194,7 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
   const description = photo.description && photo.description !== 'S/O'
     ? cleanText(photo.description)
     : cleanText(photo.portalDescription);
-  const displayImageUrl = photo.imageUrl ? `/api/oriented-image?src=${encodeURIComponent(photo.imageUrl)}` : '';
+  const displayImageUrl = buildOrientedImagePath(photo.imageUrl);
 
   return (
     <div className="min-h-screen bg-[#fafafa]">
