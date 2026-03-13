@@ -393,6 +393,9 @@ async function handlePhotos(url: URL, env: Env): Promise<Response> {
   // maxSize in bytes - default 1.5MB for mobile-friendly images
   const maxSizeParam = Number(url.searchParams.get('maxSize') ?? '0');
   const maxSize = Number.isFinite(maxSizeParam) && maxSizeParam > 0 ? maxSizeParam : 0;
+  // minTrust: filter for records with trust_score >= threshold (0–1)
+  const minTrustParam = Number(url.searchParams.get('minTrust') ?? '0');
+  const minTrust = Number.isFinite(minTrustParam) && minTrustParam > 0 ? minTrustParam : 0;
 
   // Base query: filter out records without valid images
   // Cap at 20MB — larger aerials exceed Vercel Image Optimization source limit
@@ -406,7 +409,8 @@ async function handlePhotos(url: URL, env: Env): Promise<Response> {
   // COUNT(*) is cached separately (24h TTL) to avoid per-request scans.
   if (shuffle) {
     const sizeFilter = maxSize > 0 ? `AND image_size_bytes <= ${maxSize}` : '';
-    const whereClause = `${baseWhere} ${sizeFilter}`;
+    const trustFilter = minTrust > 0 ? `AND trust_score >= ${minTrust}` : '';
+    const whereClause = `${baseWhere} ${sizeFilter} ${trustFilter}`;
 
     // Cached count for offset calculation (avoids per-request COUNT(*) scan)
     const filteredTotal = await getCachedTotal(env, whereClause);
