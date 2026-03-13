@@ -44,8 +44,8 @@ export default async function PhotoPage({
 // Inline skeleton for Suspense fallback - matches loading.tsx
 function PhotoSkeleton() {
   return (
-    <div className="min-h-screen bg-[#fafafa]">
-      <header className="fixed top-0 left-0 right-0 z-50 bg-[#fafafa]/90 backdrop-blur-sm border-b border-neutral-100">
+    <div className="min-h-screen bg-background">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-sm border-b border-border">
         <div className="flex items-center justify-between h-12 px-4">
           <div className="flex items-center gap-1.5">
             <div className="h-5 w-5 skeleton rounded" />
@@ -58,7 +58,7 @@ function PhotoSkeleton() {
         </div>
       </header>
       <main className="pt-12">
-        <div className="relative bg-neutral-100">
+        <div className="relative bg-muted">
           <div className="max-w-5xl mx-auto">
             <div className="w-full skeleton" style={{ aspectRatio: '4/3', maxHeight: 'min(60vh, 500px)' }} />
           </div>
@@ -74,7 +74,7 @@ function PhotoSkeleton() {
             <div className="h-4 w-2/3 skeleton rounded" />
           </div>
           <div className="h-12 w-full skeleton rounded-full" />
-          <div className="mt-10 pt-5 border-t border-neutral-100 flex justify-center">
+          <div className="mt-10 pt-5 border-t border-border flex justify-center">
             <div className="h-3 w-40 skeleton rounded" />
           </div>
         </div>

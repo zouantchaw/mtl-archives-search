@@ -53,7 +53,7 @@ export default async function TwitterImage({ params }: { params: Promise<{ id: s
     (
       <div
         style={{
-          background: '#171717',
+          background: '#111318',
           width: '100%',
           height: '100%',
           display: 'flex',
@@ -108,7 +108,7 @@ export default async function TwitterImage({ params }: { params: Promise<{ id: s
             style={{
               fontSize: 48,
               fontWeight: 600,
-              color: '#fafafa',
+              color: '#F5F2EA',
               lineHeight: 1.1,
               display: 'flex',
             }}
@@ -142,14 +142,14 @@ export default async function TwitterImage({ params }: { params: Promise<{ id: s
               style={{
                 width: 40,
                 height: 40,
-                background: '#fafafa',
+                background: '#F5F2EA',
                 borderRadius: 8,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: 24,
                 fontWeight: 700,
-                color: '#171717',
+                color: '#111318',
               }}
             >
               M

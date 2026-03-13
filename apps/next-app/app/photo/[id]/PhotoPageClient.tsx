@@ -1,15 +1,26 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Share, ShoppingBag, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
-import type { PhotoRecord } from '@/lib/types';
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { ArrowLeft, MapPin, Share, ShoppingBag, X } from 'lucide-react';
+import { MtlArchivesLogo } from '@/components/LandingHero';
+import {
+  PRINT_SIZES,
+  PRODUCT_TYPES,
+  WallPreview,
+  type PrintSize,
+  type ProductType,
+} from '@/components/WallPreview';
+import { Map, MapMarker, MapTileLayer, MapZoomControl } from '@/components/ui/map';
 import { events } from '@/lib/analytics';
 import { useCart } from '@/lib/cart-context';
-import { WallPreview, PRINT_SIZES, PRODUCT_TYPES, type PrintSize, type ProductType } from '@/components/WallPreview';
-import { DEFAULT_LANG, getLangFromSearchParams, type Lang } from '@/lib/i18n';
+import { appendLangParam, DEFAULT_LANG, getLangFromSearchParams, type Lang } from '@/lib/i18n';
 import { buildOrientedImagePath } from '@/lib/oriented-image';
+import type { PhotoRecord } from '@/lib/types';
+
+const MONTREAL_CENTER: [number, number] = [45.5019, -73.5674];
 
 const cleanText = (text: string | null | undefined): string => {
   if (!text) return '';
@@ -26,41 +37,67 @@ const translations = {
     back: 'Retour',
     share: 'Partager',
     copied: 'Copié',
-    orderPrint: 'Commander une impression · à partir de 45 $',
+    orderPrint: 'Imprimer',
+    orderCardBody: "Impression d'art · dès 45 $",
+    orderModeTitle: 'Commander une impression',
     backToPhoto: 'Retour à la photo',
     size: 'Format',
-    product: 'Produit',
+    product: 'Type',
     addToCart: 'Ajouter au panier',
     added: 'Ajouté',
     notFound: 'Photo non trouvée',
+    notFoundBody: "Cette référence n'est pas disponible ou a été retirée.",
     untitled: 'Sans titre',
-    fulfillment: 'Imprimé à Montréal · Livraison en 5–7 jours ouvrables',
-    noPaymentNow: 'Pas de paiement maintenant · taxes + livraison confirmées par courriel',
-    pricing: 'Prix',
+    fulfillment: 'Imprimé à Montréal · Livraison 5-7 jours',
+    noPaymentNow: 'Paiement confirmé par courriel après validation de la commande.',
+    pricing: 'Résumé',
     sizeLine: 'Format',
-    productLine: 'Produit',
+    productLine: 'Type',
     subtotalLine: 'Sous-total',
+    archiveId: 'Archive ID',
+    confidence: 'Confiance',
+    location: 'Lieu',
+    description: 'Description',
+    mapLabel: 'Localisation',
+    mapMissing: 'Localisation non disponible pour cette photo.',
     credits: 'Archives de la Ville de Montréal',
+    explore: 'Explorer',
+    game: 'Jeu quotidien',
+    prints: 'Impressions',
+    close: 'Fermer',
   },
   en: {
     back: 'Back',
     share: 'Share',
     copied: 'Copied',
-    orderPrint: 'Order a Print · from $45',
+    orderPrint: 'Print',
+    orderCardBody: 'Fine art print · from $45',
+    orderModeTitle: 'Order a print',
     backToPhoto: 'Back to photo',
     size: 'Size',
-    product: 'Product',
-    addToCart: 'Add to Cart',
+    product: 'Type',
+    addToCart: 'Add to cart',
     added: 'Added',
     notFound: 'Photo not found',
+    notFoundBody: 'This archive reference is unavailable or has been removed.',
     untitled: 'Untitled',
-    fulfillment: 'Printed in Montreal · Ships in 5–7 business days',
-    noPaymentNow: 'No payment now · taxes + shipping confirmed by email',
-    pricing: 'Pricing',
+    fulfillment: 'Printed in Montreal · Ships in 5-7 days',
+    noPaymentNow: 'Payment is confirmed by email after we review the order.',
+    pricing: 'Summary',
     sizeLine: 'Size',
-    productLine: 'Product',
+    productLine: 'Type',
     subtotalLine: 'Subtotal',
+    archiveId: 'Archive ID',
+    confidence: 'Confidence',
+    location: 'Location',
+    description: 'Description',
+    mapLabel: 'Location',
+    mapMissing: 'Location data is not available for this photo.',
     credits: 'Montreal City Archives',
+    explore: 'Explore',
+    game: 'Daily game',
+    prints: 'Prints',
+    close: 'Close',
   },
 } as const;
 
@@ -69,45 +106,64 @@ type PhotoPageClientProps = {
   photoId: string;
 };
 
+function formatConfidence(value: number | null): string {
+  if (value == null) return '—';
+  if (value > 1) return `${Math.round(value)}%`;
+  return value.toFixed(2);
+}
+
+function getDisplayLocation(photo: PhotoRecord): string {
+  if (photo.latitude != null && photo.longitude != null) return 'Montréal';
+  return '—';
+}
+
+function getProductLabel(product: ProductType, lang: Lang): string {
+  return product.shortName[lang];
+}
+
+function getBackHref(searchParams: URLSearchParams | null, lang: Lang): string {
+  const q = searchParams?.get('q');
+  const searchMode = searchParams?.get('mode');
+  const params = new URLSearchParams();
+  if (q) params.set('q', q);
+  if (searchMode) params.set('mode', searchMode);
+  if (lang !== DEFAULT_LANG) params.set('lang', lang);
+  return params.toString() ? `/search?${params.toString()}` : appendLangParam('/', lang);
+}
+
 export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { addItem, itemCount, openCart } = useCart();
+  const lang = getLangFromSearchParams(searchParams);
+  const t = translations[lang];
   const orderParam = searchParams?.get('order');
   const autoOrder = orderParam === '1' || orderParam === 'true' || orderParam === 'print';
 
-  // Mode: 'viewing' or 'ordering'
   const [mode, setMode] = useState<'viewing' | 'ordering'>(() => (autoOrder ? 'ordering' : 'viewing'));
-
-  // Print options
   const [selectedSize, setSelectedSize] = useState<PrintSize>(PRINT_SIZES[1]);
   const [selectedProduct, setSelectedProduct] = useState<ProductType>(PRODUCT_TYPES[0]);
   const [justAdded, setJustAdded] = useState(false);
   const [showCopied, setShowCopied] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
 
-  const lang = getLangFromSearchParams(searchParams);
-  const t = translations[lang];
-
-  const totalPrice = selectedSize.price + selectedProduct.price;
-
-  // Photo dwell timer — fires once after 5s on the page
   const dwellFired = useRef(false);
+  const autoOrderTrackedRef = useRef(false);
+  const totalPrice = selectedSize.price + selectedProduct.price;
+  const backHref = getBackHref(searchParams, lang);
+
   useEffect(() => {
     if (!photo || dwellFired.current) return;
     const timer = setTimeout(() => {
-      if (!dwellFired.current) {
-        dwellFired.current = true;
-        events.photoDwelled(photo.metadataFilename, 5000, { dateValue: photo.dateValue });
-      }
+      if (dwellFired.current) return;
+      dwellFired.current = true;
+      events.photoDwelled(photo.metadataFilename, 5000, { dateValue: photo.dateValue });
     }, 5000);
     return () => clearTimeout(timer);
   }, [photo]);
 
-  const autoOrderTrackedRef = useRef(false);
   useEffect(() => {
-    if (!photo || !autoOrder || autoOrderTrackedRef.current) return;
-    if (mode !== 'ordering') return;
+    if (!photo || !autoOrder || autoOrderTrackedRef.current || mode !== 'ordering') return;
     autoOrderTrackedRef.current = true;
     events.orderModeEntered(photo.metadataFilename);
   }, [autoOrder, mode, photo]);
@@ -124,33 +180,28 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
       exitOrderMode(false);
       return;
     }
-    const q = searchParams.get('q');
-    const searchMode = searchParams.get('mode');
-    const backParams = new URLSearchParams();
-    if (q) backParams.set('q', q);
-    if (searchMode) backParams.set('mode', searchMode);
-    if (lang !== DEFAULT_LANG) backParams.set('lang', lang);
-    router.push(backParams.toString() ? `/?${backParams}` : '/');
+    router.push(backHref);
   };
 
   const handleShare = async () => {
     if (!photo) return;
     const url = window.location.href;
     const title = cleanText(photo.name) || 'MTL Archives';
-
     events.photoShared(photo.metadataFilename, photo.name);
 
     if (navigator.share) {
       try {
         await navigator.share({ title, url });
+        return;
       } catch {
-        // User cancelled
+        // User cancelled the share sheet.
       }
-    } else {
-      await navigator.clipboard.writeText(url);
-      setShowCopied(true);
-      setTimeout(() => setShowCopied(false), 2000);
     }
+
+    if (!navigator.clipboard) return;
+    await navigator.clipboard.writeText(url);
+    setShowCopied(true);
+    setTimeout(() => setShowCopied(false), 1800);
   };
 
   const handleAddToCart = () => {
@@ -162,302 +213,426 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
       photoUrl: buildOrientedImagePath(photo.imageUrl, photo.rotationDegrees),
       size: selectedSize.name,
       sizeId: selectedSize.id,
-      frame: selectedProduct.name[lang],
+      frame: getProductLabel(selectedProduct, lang),
       frameId: selectedProduct.id,
       price: totalPrice,
     });
 
-    events.addToCartClicked(photo.metadataFilename, selectedSize.name, selectedProduct.name[lang], totalPrice, { dateValue: photo.dateValue });
+    events.addToCartClicked(
+      photo.metadataFilename,
+      selectedSize.name,
+      getProductLabel(selectedProduct, lang),
+      totalPrice,
+      { dateValue: photo.dateValue }
+    );
 
     setJustAdded(true);
     setTimeout(() => {
       setJustAdded(false);
-      setMode('viewing');
+      exitOrderMode(true);
       openCart();
     }, 800);
   };
 
-  // Error state - photo not found
   if (!photo) {
     return (
-      <div className="min-h-screen bg-[#fafafa] flex flex-col items-center justify-center gap-4">
-        <p className="text-neutral-400 text-sm">{t.notFound}</p>
-        <button onClick={handleBack} className="text-xs uppercase tracking-wide text-neutral-900 hover:text-neutral-600 transition-colors">
-          ← {t.back}
-        </button>
-      </div>
+      <main className="min-h-screen bg-background px-5 py-12 lg:px-12">
+        <div className="mx-auto flex min-h-[calc(100vh-6rem)] max-w-2xl items-center justify-center">
+          <div className="surface-card w-full px-8 py-10 text-center">
+            <p className="mono-metric text-[11px] text-primary">mtl archives</p>
+            <h1 className="text-display mt-6 text-4xl font-semibold tracking-[-0.03em] text-foreground">
+              {t.notFound}
+            </h1>
+            <p className="mt-4 text-sm leading-6 text-muted-foreground">{t.notFoundBody}</p>
+            <p className="mono-metric mt-6 text-[11px] text-muted-foreground">{photoId}</p>
+            <Link
+              href={backHref}
+              className="mt-8 inline-flex h-11 items-center justify-center rounded-full bg-primary px-6 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/92"
+            >
+              {t.back}
+            </Link>
+          </div>
+        </div>
+      </main>
     );
   }
 
   const title = cleanText(photo.name) || t.untitled;
   const date = cleanText(photo.dateValue) || cleanText(photo.portalDate);
-  const description = photo.description && photo.description !== 'S/O'
-    ? cleanText(photo.description)
-    : cleanText(photo.portalDescription);
+  const description =
+    photo.description && photo.description !== 'S/O'
+      ? cleanText(photo.description)
+      : cleanText(photo.portalDescription);
   const displayImageUrl = buildOrientedImagePath(photo.imageUrl, photo.rotationDegrees);
+  const archiveId = cleanText(photo.cote) || cleanText(photo.portalCote) || photoId;
+  const confidence = formatConfidence(photo.geocodeConfidence);
+  const location = getDisplayLocation(photo);
+  const hasMap = photo.latitude != null && photo.longitude != null;
+
+  const imagePane = (
+    <div className="relative overflow-hidden bg-muted lg:h-[calc(100vh-4.5rem)] lg:rounded-none">
+      {!imageLoaded ? (
+        <div className="absolute inset-0 animate-pulse bg-muted" />
+      ) : null}
+      <div className="relative mx-auto aspect-[4/3] max-w-[1200px] lg:h-full lg:max-w-none lg:aspect-auto">
+        <Image
+          src={displayImageUrl}
+          alt={title}
+          fill
+          priority
+          unoptimized
+          onLoad={() => setImageLoaded(true)}
+          sizes="(max-width: 1024px) 100vw, 50vw"
+          className="object-contain"
+        />
+      </div>
+    </div>
+  );
+
+  const metadataStrip = (
+    <div className="grid gap-4 border-y border-border py-4 sm:grid-cols-3">
+      <div>
+        <p className="mono-metric text-[10px] text-muted-foreground">{t.archiveId}</p>
+        <p className="mt-2 text-sm font-medium text-foreground">{archiveId}</p>
+      </div>
+      <div>
+        <p className="mono-metric text-[10px] text-muted-foreground">{t.location}</p>
+        <p className="mt-2 text-sm font-medium text-foreground">{location}</p>
+      </div>
+      <div>
+        <p className="mono-metric text-[10px] text-muted-foreground">{t.confidence}</p>
+        <p
+          className={`mt-2 text-sm font-medium ${
+            photo.geocodeConfidence != null && photo.geocodeConfidence >= 0.75
+              ? 'text-brand-green'
+              : 'text-foreground'
+          }`}
+        >
+          {confidence}
+        </p>
+      </div>
+    </div>
+  );
+
+  const printCard = (
+    <button
+      type="button"
+      onClick={() => {
+        setMode('ordering');
+        events.orderModeEntered(photo.metadataFilename);
+        events.printCtaClicked(photo.metadataFilename);
+      }}
+      className="surface-subtle flex w-full items-center gap-4 p-4 text-left transition-colors hover:bg-card"
+    >
+      <div className="relative h-16 w-20 overflow-hidden rounded-2xl bg-muted">
+        <Image src={displayImageUrl} alt={title} fill unoptimized sizes="80px" className="object-cover" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-lg font-semibold text-foreground">{t.orderPrint}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{t.orderCardBody}</p>
+      </div>
+      <span className="inline-flex h-11 items-center justify-center rounded-full bg-primary px-5 text-sm font-medium text-primary-foreground">
+        {t.orderPrint}
+      </span>
+    </button>
+  );
 
   return (
-    <div className="min-h-screen bg-[#fafafa]">
-      {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-[#fafafa]/90 backdrop-blur-sm border-b border-neutral-100">
-        <div className="flex items-center justify-between h-12 px-4">
-          {/* Back */}
-          <button
-            onClick={handleBack}
-            className="flex items-center gap-1.5 text-neutral-500 hover:text-neutral-900 transition-colors"
-            aria-label={mode === 'ordering' ? t.backToPhoto : t.back}
-          >
-            <ArrowLeft className="h-5 w-5" />
-            <span className="hidden sm:inline text-sm">
-              {mode === 'ordering' ? t.backToPhoto : t.back}
-            </span>
-          </button>
-
-          {/* Right actions */}
-          <div className="flex items-center gap-1">
-            {/* Share - only in viewing mode */}
-            {mode === 'viewing' && (
-              <button
-                onClick={handleShare}
-                className="relative p-2 text-neutral-500 hover:text-neutral-900 transition-colors"
-                aria-label={t.share}
-              >
-                <Share className="h-5 w-5" />
-                {showCopied && (
-                  <span className="absolute -bottom-7 left-1/2 -translate-x-1/2 text-[10px] text-neutral-500 whitespace-nowrap bg-white px-2 py-0.5 rounded shadow-sm border border-neutral-100">
-                    {t.copied}
-                  </span>
-                )}
-              </button>
-            )}
-
-            {/* Close ordering mode */}
-            {mode === 'ordering' && (
-              <button
-                onClick={() => exitOrderMode(false)}
-                className="p-2 text-neutral-500 hover:text-neutral-900 transition-colors"
-                aria-label="Close"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            )}
-
-            {/* Cart */}
+    <div className="min-h-screen bg-background">
+      <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-sm">
+        <div className="sm:hidden">
+          <div className="flex h-12 items-center justify-between px-4">
             <button
-              onClick={openCart}
-              className="relative p-2 text-neutral-500 hover:text-neutral-900 transition-colors"
-              aria-label="Cart"
+              type="button"
+              onClick={handleBack}
+              className="flex items-center gap-1.5 text-muted-foreground transition-colors hover:text-foreground"
+              aria-label={mode === 'ordering' ? t.backToPhoto : t.back}
             >
-              <ShoppingBag className="h-5 w-5" />
-              {itemCount > 0 && (
-                <span className="absolute top-0.5 right-0.5 h-4 w-4 bg-neutral-900 text-white text-[10px] font-medium flex items-center justify-center rounded-full">
-                  {itemCount}
-                </span>
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+
+            <div className="flex items-center gap-1">
+              {mode === 'viewing' ? (
+                <button
+                  type="button"
+                  onClick={handleShare}
+                  className="relative rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  aria-label={t.share}
+                >
+                  <Share className="h-5 w-5" />
+                  {showCopied ? (
+                    <span className="absolute -bottom-7 left-1/2 -translate-x-1/2 rounded-full border border-border bg-card px-2 py-0.5 text-[10px] text-muted-foreground">
+                      {t.copied}
+                    </span>
+                  ) : null}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => exitOrderMode(false)}
+                  className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  aria-label={t.close}
+                >
+                  <X className="h-5 w-5" />
+                </button>
               )}
+              <button
+                type="button"
+                onClick={openCart}
+                className="relative rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                aria-label="Cart"
+              >
+                <ShoppingBag className="h-5 w-5" />
+                {itemCount > 0 ? (
+                  <span className="absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
+                    {itemCount > 9 ? '9+' : itemCount}
+                  </span>
+                ) : null}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="hidden h-14 items-center justify-between px-12 sm:flex">
+          <Link href={appendLangParam('/', lang)} className="flex items-center gap-2.5">
+            <MtlArchivesLogo size={28} />
+            <span className="text-[16px] font-semibold text-foreground">mtl archives</span>
+          </Link>
+          <div className="flex items-center gap-8 text-[14px]">
+            <Link href={appendLangParam('/', lang)} className="text-foreground/60 transition-colors hover:text-foreground">
+              {t.explore}
+            </Link>
+            <Link
+              href={appendLangParam('/game', lang)}
+              className="font-medium text-primary transition-colors hover:text-primary/80"
+            >
+              {t.game}
+            </Link>
+            <Link href={appendLangParam('/print', lang)} className="text-foreground transition-colors hover:text-primary">
+              {t.prints}
+            </Link>
+            <button
+              type="button"
+              onClick={() => {
+                const nextLang = lang === 'fr' ? 'en' : 'fr';
+                const params = new URLSearchParams(searchParams?.toString());
+                if (nextLang === DEFAULT_LANG) params.delete('lang');
+                else params.set('lang', nextLang);
+                router.push(params.toString() ? `/photo/${encodeURIComponent(photoId)}?${params.toString()}` : `/photo/${encodeURIComponent(photoId)}`);
+              }}
+              className="text-border transition-colors hover:text-foreground/60"
+              aria-label={lang === 'fr' ? 'Changer en anglais' : 'Switch to French'}
+            >
+              {lang === 'fr' ? 'FR / EN' : 'EN / FR'}
             </button>
           </div>
         </div>
       </header>
 
-      {/* Main Content - Conditionally render active mode to release inactive image memory */}
-      <main className="pt-12">
-        {/* VIEWING MODE */}
-        {mode === 'viewing' && (
-        <div className="animate-fade-in">
-          {/* Hero Image */}
-          <div className="relative bg-neutral-100">
-            <div className="max-w-5xl mx-auto">
-              {displayImageUrl && (
-                <div className={`relative transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}>
-                  <Image
-                    src={displayImageUrl}
-                    alt={title}
-                    width={1000}
-                    height={750}
-                    sizes="(max-width: 768px) 100vw, (max-width: 1280px) 80vw, 1000px"
-                    className="w-full h-auto"
-                    priority
-                    // Preserve source orientation for legacy archive images carrying EXIF rotation.
-                    unoptimized
-                    onLoad={() => setImageLoaded(true)}
-                    style={{
-                      maxHeight: '70vh',
-                      objectFit: 'contain',
-                    }}
-                  />
-                </div>
-              )}
-              {!imageLoaded && (
-                <div className="w-full bg-neutral-200 animate-pulse" style={{ aspectRatio: '4/3', maxHeight: '70vh' }} />
-              )}
-            </div>
-          </div>
+      {mode === 'viewing' ? (
+        <main className="animate-fade-in lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(420px,40rem)]">
+          <section className="lg:sticky lg:top-14 lg:h-[calc(100vh-3.5rem)]">{imagePane}</section>
 
-          {/* Info Section */}
-          <div className="max-w-2xl mx-auto px-4 py-8">
-            {/* Title & Date */}
-            <div className="mb-4">
-              <h1 className="text-lg sm:text-xl font-medium text-neutral-900 leading-tight">
+          <section className="px-5 py-6 sm:px-8 lg:px-12 lg:py-9">
+            <div className="max-w-3xl">
+              <h1 className="text-display text-[2.25rem] font-semibold leading-[1.02] tracking-[-0.04em] text-foreground sm:text-[3.25rem]">
                 {title}
               </h1>
-              {date && (
-                <p className="text-sm text-neutral-500 mt-1">{date}</p>
-              )}
+              {date ? <p className="mt-3 text-lg text-muted-foreground">{date}</p> : null}
+              {description ? (
+                <div className="mt-8">
+                  <p className="mono-metric text-[10px] text-muted-foreground">{t.description}</p>
+                  <p className="mt-3 max-w-2xl text-base leading-8 text-muted-foreground">{description}</p>
+                </div>
+              ) : null}
+
+              <div className="mt-8">{metadataStrip}</div>
+
+              <div className="mt-6">{printCard}</div>
+
+              <div className="mt-6">
+                <p className="mono-metric mb-3 text-[10px] text-muted-foreground">{t.mapLabel}</p>
+                {hasMap ? (
+                  <div className="surface-subtle overflow-hidden p-3">
+                    <div className="relative h-40 overflow-hidden rounded-[1.25rem] bg-muted sm:h-56">
+                      <Map
+                        center={[photo.latitude ?? MONTREAL_CENTER[0], photo.longitude ?? MONTREAL_CENTER[1]]}
+                        zoom={13}
+                        className="h-full min-h-0 rounded-[1.25rem]"
+                      >
+                        <MapTileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
+                        <MapZoomControl className="bottom-3 right-3" />
+                        <MapMarker
+                          position={[photo.latitude ?? MONTREAL_CENTER[0], photo.longitude ?? MONTREAL_CENTER[1]]}
+                          iconAnchor={[12, 12]}
+                          icon={
+                            <div className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-primary shadow-lg">
+                              <MapPin className="h-3.5 w-3.5 text-white" />
+                            </div>
+                          }
+                        />
+                      </Map>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="surface-subtle px-5 py-8 text-sm text-muted-foreground">{t.mapMissing}</div>
+                )}
+              </div>
+
+              <div className="mt-10 border-t border-border pt-6">
+                <p className="mono-metric text-[10px] text-muted-foreground">{t.credits}</p>
+              </div>
             </div>
+          </section>
+        </main>
+      ) : (
+        <main className="animate-fade-in bg-background px-5 py-4 sm:px-8 lg:px-12 lg:py-6">
+          <div className="mx-auto lg:grid lg:max-w-[1440px] lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-12">
+            <section>
+              <div className="mb-4 flex items-center justify-between sm:hidden">
+                <button
+                  type="button"
+                  onClick={handleBack}
+                  className="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  {t.backToPhoto}
+                </button>
+                <p className="text-sm font-medium text-foreground">{t.orderModeTitle}</p>
+                <button
+                  type="button"
+                  onClick={() => exitOrderMode(false)}
+                  className="rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
 
-            {/* Description */}
-            {description && (
-              <p className="text-sm text-neutral-600 leading-relaxed mb-8">
-                {description}
-              </p>
-            )}
-
-            {/* Order Print Button */}
-            <button
-              onClick={() => {
-                setMode('ordering');
-                events.orderModeEntered(photo.metadataFilename);
-                events.printCtaClicked(photo.metadataFilename);
-              }}
-              className="w-full py-3.5 text-sm font-medium text-neutral-900 bg-neutral-100 hover:bg-neutral-200 rounded-full transition-all active:scale-[0.99]"
-            >
-              {t.orderPrint}
-            </button>
-
-            {/* Credits */}
-            <div className="mt-12 pt-6 border-t border-neutral-100 text-center">
-              <p className="text-[11px] text-neutral-400 uppercase tracking-wider">
-                {t.credits}
-              </p>
-            </div>
-          </div>
-        </div>
-        )}
-
-        {/* ORDERING MODE */}
-        {mode === 'ordering' && (
-        <div className="animate-fade-in lg:flex lg:items-start lg:max-w-6xl lg:mx-auto lg:gap-8 lg:px-6 lg:pt-6">
-          {/* Wall Preview Carousel */}
-          <div className="lg:flex-1 lg:min-w-0 lg:rounded-xl lg:overflow-hidden">
-          {displayImageUrl && (
-            <WallPreview
-              photoUrl={displayImageUrl}
-              photoAlt={title}
-              selectedSize={selectedSize}
-              selectedProduct={selectedProduct}
-              lang={lang}
-              onSlideChange={(_index, isRoom, roomId) => {
-                if (isRoom && roomId) {
-                  events.roomBackgroundChanged(roomId);
-                }
-              }}
-            />
-          )}
-          </div>
-
-          {/* Purchase Options */}
-          <div className="max-w-lg mx-auto px-4 py-6 lg:w-[380px] lg:flex-shrink-0 lg:sticky lg:top-20 lg:px-0 lg:py-0 lg:mx-0">
-            {/* Title (compact) */}
-            <h2 className="text-base font-medium text-neutral-900 mb-6 text-center lg:text-left">
-              {title}
-            </h2>
-
-            {/* Product Type */}
-            <div className="mb-5">
-              <p className="text-[11px] uppercase tracking-wider text-neutral-500 mb-2.5">
-                {t.product}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {PRODUCT_TYPES.map((product) => (
-                  <button
-                    key={product.id}
-                    onClick={() => {
-                      setSelectedProduct(product);
-                      events.printFrameSelected(product.name[lang], product.price);
+              <div className="surface-subtle overflow-hidden p-3 lg:rounded-[2rem] lg:p-6">
+                {displayImageUrl ? (
+                  <WallPreview
+                    photoUrl={displayImageUrl}
+                    photoAlt={title}
+                    selectedSize={selectedSize}
+                    selectedProduct={selectedProduct}
+                    lang={lang}
+                    onSlideChange={(_index, isRoom, roomId) => {
+                      if (isRoom && roomId) events.roomBackgroundChanged(roomId);
                     }}
-                    className={`px-4 py-2 text-[11px] font-medium rounded-full transition-all ${
-                      selectedProduct.id === product.id
-                        ? 'bg-neutral-900 text-white'
-                        : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
-                    }`}
-                  >
-                    {product.shortName[lang]}
-                  </button>
-                ))}
+                  />
+                ) : null}
               </div>
-            </div>
+            </section>
 
-            {/* Size */}
-            <div className="mb-6">
-              <p className="text-[11px] uppercase tracking-wider text-neutral-500 mb-2.5">
-                {t.size}
-              </p>
-              <div className="flex gap-2">
-                {PRINT_SIZES.map((size) => (
-                  <button
-                    key={size.id}
-                    onClick={() => {
-                      setSelectedSize(size);
-                      events.printSizeSelected(size.name, size.price);
-                    }}
-                    className={`flex-1 py-2.5 text-[11px] font-medium rounded-full transition-all ${
-                      selectedSize.id === size.id
-                        ? 'bg-neutral-900 text-white'
-                        : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
-                    }`}
-                  >
-                    {size.name}
-                  </button>
-                ))}
+            <aside className="mt-6 lg:mt-0 lg:sticky lg:top-20 lg:h-fit">
+              <div className="hidden lg:block">
+                <p className="text-display text-[2.5rem] font-semibold leading-[1.02] tracking-[-0.04em] text-foreground">
+                  {title}
+                </p>
+                {date ? <p className="mono-metric mt-4 text-[11px] text-muted-foreground">{date}</p> : null}
               </div>
-            </div>
 
-            {/* Add to Cart */}
-            <button
-              onClick={handleAddToCart}
-              disabled={justAdded}
-              className={`w-full py-3.5 text-sm font-medium rounded-full transition-all ${
-                justAdded
-                  ? 'bg-green-600 text-white'
-                  : 'bg-neutral-900 text-white hover:bg-neutral-800 active:scale-[0.99]'
-              }`}
-            >
-              {justAdded ? `✓ ${t.added}` : `${t.addToCart} · $${totalPrice}`}
-            </button>
+              <div className="mt-6 space-y-6">
+                <div>
+                  <p className="mono-metric mb-3 text-[10px] text-muted-foreground">{t.product}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {PRODUCT_TYPES.map((product) => {
+                      const active = selectedProduct.id === product.id;
+                      return (
+                        <button
+                          key={product.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedProduct(product);
+                            events.printFrameSelected(getProductLabel(product, lang), product.price);
+                          }}
+                          className={
+                            active
+                              ? 'inline-flex h-11 items-center justify-center rounded-full bg-brand-charcoal px-5 text-sm font-medium text-white'
+                              : 'inline-flex h-11 items-center justify-center rounded-full border border-input bg-background px-5 text-sm font-medium text-foreground transition-colors hover:bg-muted'
+                          }
+                        >
+                          {getProductLabel(product, lang)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
 
-            {/* Pricing breakdown */}
-            <div className="mt-4 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
-              <p className="text-[11px] uppercase tracking-wider text-neutral-500 mb-2">
-                {t.pricing}
-              </p>
-              <div className="space-y-1.5 text-xs text-neutral-600">
-                <div className="flex items-center justify-between">
-                  <span>{t.sizeLine} ({selectedSize.name})</span>
-                  <span>${selectedSize.price}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>{t.productLine} ({selectedProduct.shortName[lang]})</span>
-                  <span>${selectedProduct.price}</span>
-                </div>
-                <div className="h-px bg-neutral-200 my-1" />
-                <div className="flex items-center justify-between text-sm font-medium text-neutral-900">
-                  <span>{t.subtotalLine}</span>
-                  <span>${totalPrice}</span>
+                <div>
+                  <p className="mono-metric mb-3 text-[10px] text-muted-foreground">{t.size}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {PRINT_SIZES.map((size) => {
+                      const active = selectedSize.id === size.id;
+                      return (
+                        <button
+                          key={size.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedSize(size);
+                            events.printSizeSelected(size.name, size.price);
+                          }}
+                          className={
+                            active
+                              ? 'inline-flex h-11 items-center justify-center rounded-full bg-brand-charcoal px-5 text-sm font-medium text-white'
+                              : 'inline-flex h-11 items-center justify-center rounded-full border border-input bg-background px-5 text-sm font-medium text-foreground transition-colors hover:bg-muted'
+                          }
+                        >
+                          {size.name}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Fulfillment info */}
-            <p className="text-[11px] text-neutral-500 text-center lg:text-left mt-3">
-              {t.fulfillment}
-            </p>
-            <p className="text-[11px] text-neutral-500 text-center lg:text-left mt-1">
-              {t.noPaymentNow}
-            </p>
+              <div className="mt-10 border-t border-border pt-6">
+                <div className="flex items-end justify-between gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      {getProductLabel(selectedProduct, lang)} · {selectedSize.name}
+                    </p>
+                  </div>
+                  <p className="text-display text-5xl font-semibold tracking-[-0.04em] text-foreground">
+                    {totalPrice} $
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleAddToCart}
+                  disabled={justAdded}
+                  className={
+                    justAdded
+                      ? 'mt-6 inline-flex h-14 w-full items-center justify-center rounded-full bg-brand-green text-base font-semibold text-brand-dark'
+                      : 'mt-6 inline-flex h-14 w-full items-center justify-center rounded-full bg-primary text-base font-semibold text-primary-foreground transition-colors hover:bg-primary/92'
+                  }
+                >
+                  {justAdded ? t.added : t.addToCart}
+                </button>
+
+                <div className="mt-6 space-y-2 text-sm text-muted-foreground">
+                  <div className="flex items-center justify-between">
+                    <span>{t.sizeLine}</span>
+                    <span>{selectedSize.name}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>{t.productLine}</span>
+                    <span>{getProductLabel(selectedProduct, lang)}</span>
+                  </div>
+                  <div className="flex items-center justify-between font-medium text-foreground">
+                    <span>{t.subtotalLine}</span>
+                    <span>{totalPrice} $</span>
+                  </div>
+                </div>
+
+                <p className="mt-6 text-xs text-muted-foreground">{t.fulfillment}</p>
+                <p className="mt-2 text-xs text-muted-foreground">{t.noPaymentNow}</p>
+              </div>
+            </aside>
           </div>
-        </div>
-        )}
-      </main>
+        </main>
+      )}
     </div>
   );
 }
