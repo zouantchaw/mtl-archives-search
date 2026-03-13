@@ -37,6 +37,17 @@ type StatusPageData = {
   title: string;
 };
 
+// ── Brand tokens (from Paper designs) ──────────────────────────────
+const BLUE = '#0F5EA8';
+const TEXT_PRIMARY = '#111318';
+const TEXT_BODY = '#666666';
+const TEXT_MUTED = '#888888';
+const TEXT_FOOTER = '#BBBBBB';
+const GREEN = '#34C759';
+const BG = '#f5f2ea';
+const BORDER = '#d7d0c5';
+const OUTLINE_BORDER = '#C8CDD4';
+
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
@@ -46,78 +57,97 @@ function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;');
 }
 
+// Email-safe logo using table layout (no flex/grid)
 function renderLogo() {
   return `
-    <div style="display:flex;align-items:center;justify-content:center;gap:12px;">
-      <div style="display:grid;grid-template-columns:repeat(2,8px);gap:4px;">
-        <span style="display:block;width:8px;height:8px;border-radius:999px;background:#1f66b4;"></span>
-        <span style="display:block;width:8px;height:8px;border-radius:999px;background:#f0a11a;"></span>
-        <span style="display:block;width:8px;height:8px;border-radius:999px;background:#41c85d;"></span>
-        <span style="display:block;width:8px;height:8px;border-radius:999px;background:#f5cf4d;"></span>
-      </div>
-      <span style="font-family:Manrope,Helvetica,Arial,sans-serif;font-size:30px;font-weight:700;letter-spacing:-0.03em;color:#111318;">mtl archives</span>
-    </div>
-  `;
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 auto;">
+      <tr>
+        <td valign="middle" style="padding-right:10px;">
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+            <tr>
+              <td style="padding:0 2px 2px 0;"><div style="width:6px;height:6px;border-radius:6px;background:${BLUE};"></div></td>
+              <td style="padding:0 0 2px 2px;"><div style="width:6px;height:6px;border-radius:6px;background:#F0A11A;"></div></td>
+            </tr>
+            <tr>
+              <td style="padding:2px 2px 0 0;"><div style="width:6px;height:6px;border-radius:6px;background:${GREEN};"></div></td>
+              <td style="padding:2px 0 0 2px;"><div style="width:6px;height:6px;border-radius:6px;background:#F5CF4D;"></div></td>
+            </tr>
+          </table>
+        </td>
+        <td valign="middle">
+          <span style="font-family:Figtree,Helvetica,Arial,sans-serif;font-size:15px;font-weight:700;line-height:18px;color:${TEXT_PRIMARY};">mtl archives</span>
+        </td>
+      </tr>
+    </table>`;
 }
 
-function renderEmailShell(content: string, preview: string) {
+function renderEmailShell(content: string, preview: string, lang: NewsletterLang = 'fr') {
   return `<!doctype html>
-  <html lang="en">
-    <head>
-      <meta charset="utf-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <meta name="x-apple-disable-message-reformatting" />
-      <title>${escapeHtml(preview)}</title>
-    </head>
-    <body style="margin:0;padding:0;background:#f5f2ea;color:#111318;font-family:Figtree,Helvetica,Arial,sans-serif;">
-      <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(preview)}</div>
-      ${content}
-    </body>
-  </html>`;
+<html lang="${lang}">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="x-apple-disable-message-reformatting" />
+    <title>${escapeHtml(preview)}</title>
+  </head>
+  <body style="margin:0;padding:0;background:${BG};color:${TEXT_PRIMARY};font-family:Figtree,Helvetica,Arial,sans-serif;">
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(preview)}</div>
+    ${content}
+  </body>
+</html>`;
 }
 
-function renderFooter(lang: NewsletterLang, archiveUrl: string, unsubscribeUrl?: string) {
-  const copy = lang === 'fr' ? 'Chaque matin, une couche de plus.' : 'Every morning, another layer.';
-  const unsubscribe = lang === 'fr' ? 'Se désabonner' : 'Unsubscribe';
+// Footer variants:
+//   'full' = tagline + domain + unsubscribe (daily newsletter)
+//   'subscribe' = domain + unsubscribe (welcome email)
+//   'minimal' = domain only (unsubscribe confirmation)
+function renderFooter(lang: NewsletterLang, archiveUrl: string, opts?: { unsubscribeUrl?: string; showTagline?: boolean }) {
+  const tagline = lang === 'fr' ? 'Chaque matin, une couche de plus.' : 'Every morning, another layer.';
+  const unsubscribeLabel = lang === 'fr' ? 'Se désabonner' : 'Unsubscribe';
+  const showTagline = opts?.showTagline ?? false;
+  const unsubscribeUrl = opts?.unsubscribeUrl;
 
   return `
-    <div style="padding-top:36px;border-top:1px solid #d7d0c5;text-align:center;">
-      <p style="margin:0 0 12px;color:#9b9387;font-size:14px;font-style:italic;">${escapeHtml(copy)}</p>
-      <p style="margin:0 0 16px;">
-        <a href="${archiveUrl}" style="color:#9b9387;text-decoration:none;font-size:14px;">mtlarchives.com</a>
-      </p>
-      ${unsubscribeUrl
-        ? `<p style="margin:0;"><a href="${unsubscribeUrl}" style="color:#1f66b4;font-size:16px;">${escapeHtml(unsubscribe)}</a></p>`
-        : ''}
-    </div>
-  `;
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="border-top:1px solid ${BORDER};padding-top:32px;">
+      <tr><td align="center">
+        ${showTagline ? `<p style="margin:0 0 8px;color:${TEXT_FOOTER};font-size:11px;line-height:14px;font-style:italic;">${escapeHtml(tagline)}</p>` : ''}
+        <p style="margin:0 0 ${unsubscribeUrl ? '10px' : '0'};">
+          <a href="${archiveUrl}" style="color:${TEXT_FOOTER};text-decoration:none;font-size:11px;line-height:14px;">mtlarchives.com</a>
+        </p>
+        ${unsubscribeUrl
+          ? `<p style="margin:0;"><a href="${unsubscribeUrl}" style="color:${BLUE};font-size:12px;line-height:16px;text-decoration:underline;text-underline-offset:3px;">${escapeHtml(unsubscribeLabel)}</a></p>`
+          : ''}
+      </td></tr>
+    </table>`;
 }
 
 function renderButton(label: string, href: string, variant: 'filled' | 'outline' = 'filled') {
-  const background = variant === 'filled' ? '#1f66b4' : '#f5f2ea';
-  const color = variant === 'filled' ? '#ffffff' : '#111318';
-  const border = variant === 'filled' ? 'none' : '1px solid #cfc7bb';
+  const background = variant === 'filled' ? BLUE : BG;
+  const color = variant === 'filled' ? '#ffffff' : TEXT_PRIMARY;
+  const border = variant === 'outline' ? `1px solid ${OUTLINE_BORDER}` : 'none';
+  const padding = variant === 'outline' ? '14px 32px' : '16px 40px';
 
   return `
     <a
       href="${href}"
       style="
         display:inline-block;
-        min-width:220px;
-        padding:16px 32px;
-        border-radius:999px;
+        padding:${padding};
+        border-radius:28px;
         background:${background};
         color:${color};
         border:${border};
         font-family:Figtree,Helvetica,Arial,sans-serif;
-        font-size:18px;
+        font-size:17px;
         font-weight:600;
+        line-height:22px;
         text-decoration:none;
         text-align:center;
       "
-    >${escapeHtml(label)}</a>
-  `;
+    >${escapeHtml(label)}</a>`;
 }
+
+// ── Subjects ───────────────────────────────────────────────────────
 
 export function getDailyNewsletterSubject(lang: NewsletterLang, dateLabel: string): string {
   return lang === 'fr'
@@ -137,6 +167,8 @@ export function getUnsubscribeConfirmationSubject(lang: NewsletterLang): string 
     : 'You are unsubscribed from daily emails';
 }
 
+// ── Daily Newsletter ───────────────────────────────────────────────
+
 export function renderDailyNewsletterEmail({
   lang,
   archiveUrl,
@@ -153,73 +185,87 @@ export function renderDailyNewsletterEmail({
   const question = lang === 'fr' ? 'Où cette photo a-t-elle été prise?' : 'Where was this photo taken?';
   const play = lang === 'fr' ? 'Jouer' : 'Play';
   const surpriseLabel = lang === 'fr' ? 'PHOTO DU JOUR' : 'SURPRISE PHOTO';
-  const surpriseLink = lang === 'fr' ? 'Voir la photo →' : 'View the photo →';
+  const surpriseLink = lang === 'fr' ? 'Voir la photo \u2192' : 'View the photo \u2192';
   const preview = lang === 'fr'
     ? 'Le jeu du jour et une photo surprise vous attendent.'
-    : 'Today’s game and a surprise archive photo are waiting.';
+    : 'Today\u2019s game and a surprise archive photo are waiting.';
 
   const html = renderEmailShell(`
-    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background:#f5f2ea;">
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background:${BG};">
       <tr>
         <td align="center" style="padding:40px 16px;">
           <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width:600px;">
+            <!-- Logo -->
             <tr>
-              <td align="center" style="padding-bottom:28px;">
+              <td align="center" style="padding-bottom:20px;">
                 ${renderLogo()}
               </td>
             </tr>
+            <!-- Date -->
             <tr>
-              <td align="center" style="padding-bottom:32px;">
-                <p style="margin:0;font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:0.18em;color:#8b8378;text-transform:uppercase;">${escapeHtml(dateLabel)}</p>
+              <td align="center" style="padding-bottom:24px;">
+                <p style="margin:0;font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:14px;letter-spacing:0.08em;color:#999999;text-transform:uppercase;font-weight:500;">${escapeHtml(dateLabel)}</p>
               </td>
             </tr>
+            <!-- Hero image -->
             <tr>
-              <td style="padding-bottom:28px;">
-                <img src="${dailyImageUrl}" alt="${escapeHtml(question)}" width="600" style="display:block;width:100%;height:auto;border-radius:24px;background:#cfd5de;" />
+              <td style="padding:0 32px 24px;">
+                <img src="${dailyImageUrl}" alt="${escapeHtml(question)}" width="536" style="display:block;width:100%;height:auto;border-radius:16px;background:#cfd5de;" />
               </td>
             </tr>
+            <!-- Headline — left-aligned -->
             <tr>
-              <td style="padding-bottom:18px;">
-                <h1 style="margin:0;font-family:Spectral,Georgia,serif;font-size:56px;line-height:1.06;letter-spacing:-0.04em;color:#111318;">${escapeHtml(question)}</h1>
+              <td style="padding:0 32px 14px;">
+                <h1 style="margin:0;font-family:Spectral,Georgia,serif;font-size:36px;line-height:42px;font-weight:700;color:${TEXT_PRIMARY};">${escapeHtml(question)}</h1>
               </td>
             </tr>
+            <!-- Body — left-aligned -->
             <tr>
-              <td style="padding-bottom:28px;">
-                <p style="margin:0;font-size:18px;line-height:1.7;color:#5d584f;">${escapeHtml(dailyBody)}</p>
+              <td style="padding:0 32px 24px;">
+                <p style="margin:0;font-size:16px;line-height:24px;color:${TEXT_BODY};">${escapeHtml(dailyBody)}</p>
               </td>
             </tr>
+            <!-- Play button — left-aligned -->
             <tr>
-              <td style="padding-bottom:42px;">
+              <td style="padding:0 32px 36px;">
                 ${renderButton(play, playUrl)}
               </td>
             </tr>
+            <!-- Divider -->
             <tr>
-              <td style="padding:28px 0 40px;border-top:1px solid #d7d0c5;">
+              <td style="padding:0 32px;">
+                <div style="border-top:1px solid ${BORDER};"></div>
+              </td>
+            </tr>
+            <!-- Surprise photo section -->
+            <tr>
+              <td style="padding:28px 32px 36px;">
                 <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                   <tr>
                     <td width="140" valign="top" style="padding-right:20px;">
                       <img src="${surpriseImageUrl}" alt="${escapeHtml(surpriseTitle)}" width="140" height="140" style="display:block;width:140px;height:140px;object-fit:cover;border-radius:16px;background:#cfd5de;" />
                     </td>
                     <td valign="top">
-                      <p style="margin:8px 0 12px;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:0.16em;color:#1f66b4;text-transform:uppercase;">${escapeHtml(surpriseLabel)}</p>
-                      <h2 style="margin:0 0 12px;font-family:Spectral,Georgia,serif;font-size:24px;line-height:1.25;letter-spacing:-0.03em;color:#111318;">${escapeHtml(surpriseTitle)}</h2>
-                      <p style="margin:0 0 14px;font-size:16px;line-height:1.6;color:#6d675d;">${escapeHtml(surpriseBody)}</p>
-                      <p style="margin:0;"><a href="${surpriseUrl}" style="color:#1f66b4;font-size:16px;font-weight:600;text-decoration:none;">${escapeHtml(surpriseLink)}</a></p>
+                      <p style="margin:0 0 8px;font-family:'IBM Plex Mono',monospace;font-size:10px;line-height:12px;letter-spacing:0.08em;color:${BLUE};text-transform:uppercase;font-weight:500;">${escapeHtml(surpriseLabel)}</p>
+                      <h2 style="margin:0 0 8px;font-family:Spectral,Georgia,serif;font-size:20px;line-height:26px;font-weight:700;color:${TEXT_PRIMARY};">${escapeHtml(surpriseTitle)}</h2>
+                      <p style="margin:0 0 10px;font-size:14px;line-height:20px;color:${TEXT_MUTED};">${escapeHtml(surpriseBody)}</p>
+                      <p style="margin:0;"><a href="${surpriseUrl}" style="color:${BLUE};font-size:13px;line-height:16px;font-weight:600;text-decoration:none;">${escapeHtml(surpriseLink)}</a></p>
                     </td>
                   </tr>
                 </table>
               </td>
             </tr>
+            <!-- Footer with tagline -->
             <tr>
-              <td>
-                ${renderFooter(lang, archiveUrl, unsubscribeUrl)}
+              <td style="padding:0 32px;">
+                ${renderFooter(lang, archiveUrl, { unsubscribeUrl, showTagline: true })}
               </td>
             </tr>
           </table>
         </td>
       </tr>
     </table>
-  `, preview);
+  `, preview, lang);
 
   const text = [
     'MTL Archives',
@@ -240,6 +286,8 @@ export function renderDailyNewsletterEmail({
   return { html, text };
 }
 
+// ── Welcome Email ──────────────────────────────────────────────────
+
 export function renderWelcomeEmail({
   lang,
   archiveUrl,
@@ -256,7 +304,7 @@ export function renderWelcomeEmail({
   const bullets = lang === 'fr'
     ? [
         ['Le jeu quotidien', 'Devinez où une photo historique a été prise'],
-        ['Une photo surprise', 'Une image d’archives choisie pour vous'],
+        ['Une photo surprise', 'Une image d\u2019archives choisie pour vous'],
         ['Chaque matin, 7h', 'Nouveau contenu chaque jour, en 2 minutes'],
       ]
     : [
@@ -265,63 +313,87 @@ export function renderWelcomeEmail({
         ['Every morning, 7 AM', 'Fresh content every day, in two minutes'],
       ];
   const cta = lang === 'fr' ? "Jouer au jeu d'aujourd'hui" : "Play today's game";
+  const dotColors = [BLUE, '#F0A11A', GREEN];
 
   const html = renderEmailShell(`
-    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background:#f5f2ea;">
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background:${BG};">
       <tr>
         <td align="center" style="padding:40px 16px;">
           <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width:600px;">
+            <!-- Logo -->
             <tr>
               <td align="center" style="padding-bottom:42px;">
                 ${renderLogo()}
               </td>
             </tr>
+            <!-- Checkmark circle -->
             <tr>
-              <td align="center" style="padding-bottom:26px;">
-                <div style="display:inline-flex;width:78px;height:78px;border-radius:999px;align-items:center;justify-content:center;background:#41c85d;color:#ffffff;font-size:42px;font-weight:700;">✓</div>
+              <td align="center" style="padding-bottom:24px;">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                  <tr>
+                    <td align="center" valign="middle" width="56" height="56" style="width:56px;height:56px;border-radius:28px;background:${GREEN};text-align:center;vertical-align:middle;">
+                      <!--[if mso]>
+                      <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" style="width:56px;height:56px;" arcsize="50%" fillcolor="${GREEN}" stroke="f">
+                        <v:textbox inset="0,0,0,0" style="mso-fit-shape-to-text:true;">
+                          <center>
+                      <![endif]-->
+                      <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMjAgNkw5IDE3TDQgMTIiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMi41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48L3N2Zz4=" alt="&#10003;" width="24" height="24" style="display:block;margin:0 auto;" />
+                      <!--[if mso]>
+                          </center>
+                        </v:textbox>
+                      </v:roundrect>
+                      <![endif]-->
+                    </td>
+                  </tr>
+                </table>
               </td>
             </tr>
+            <!-- Headline -->
             <tr>
-              <td align="center" style="padding-bottom:18px;">
-                <h1 style="margin:0;font-family:Spectral,Georgia,serif;font-size:56px;line-height:1.06;letter-spacing:-0.04em;color:#111318;">${escapeHtml(title)}</h1>
+              <td align="center" style="padding-bottom:16px;">
+                <h1 style="margin:0;font-family:Spectral,Georgia,serif;font-size:36px;line-height:42px;font-weight:700;color:${TEXT_PRIMARY};">${escapeHtml(title)}</h1>
               </td>
             </tr>
+            <!-- Subtitle -->
             <tr>
-              <td align="center" style="padding:0 36px 34px;">
-                <p style="margin:0;font-size:18px;line-height:1.7;color:#5d584f;">${escapeHtml(body)}</p>
+              <td align="center" style="padding:0 48px 32px;">
+                <p style="margin:0;font-size:16px;line-height:24px;color:${TEXT_BODY};max-width:420px;">${escapeHtml(body)}</p>
               </td>
             </tr>
+            <!-- Bullet list — table-based for email compatibility -->
             <tr>
-              <td style="padding:0 16px 40px;">
-                ${bullets.map(([headline, copy], index) => {
-                  const dots = ['#1f66b4', '#f0a11a', '#41c85d'];
-                  return `
-                    <div style="display:flex;align-items:flex-start;gap:14px;padding-bottom:${index === bullets.length - 1 ? '0' : '22px'};">
-                      <span style="display:block;width:10px;height:10px;border-radius:999px;background:${dots[index]};margin-top:12px;"></span>
-                      <div>
-                        <p style="margin:0 0 6px;font-size:18px;font-weight:700;color:#111318;">${escapeHtml(headline)}</p>
-                        <p style="margin:0;font-size:16px;line-height:1.6;color:#6d675d;">${escapeHtml(copy)}</p>
-                      </div>
-                    </div>
-                  `;
-                }).join('')}
+              <td style="padding:0 48px 36px;">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                  ${bullets.map(([headline, copy], index) => `
+                  <tr>
+                    <td width="28" valign="top" style="padding-top:6px;padding-bottom:${index < bullets.length - 1 ? '20px' : '0'};">
+                      <div style="width:8px;height:8px;border-radius:8px;background:${dotColors[index]};"></div>
+                    </td>
+                    <td valign="top" style="padding-bottom:${index < bullets.length - 1 ? '20px' : '0'};">
+                      <p style="margin:0 0 4px;font-size:15px;line-height:18px;font-weight:600;color:${TEXT_PRIMARY};">${escapeHtml(headline)}</p>
+                      <p style="margin:0;font-size:14px;line-height:20px;color:${TEXT_MUTED};">${escapeHtml(copy)}</p>
+                    </td>
+                  </tr>`).join('')}
+                </table>
               </td>
             </tr>
+            <!-- CTA -->
             <tr>
-              <td align="center" style="padding-bottom:42px;">
+              <td align="center" style="padding-bottom:56px;">
                 ${renderButton(cta, playUrl)}
               </td>
             </tr>
+            <!-- Footer — no tagline for welcome email -->
             <tr>
-              <td>
-                ${renderFooter(lang, archiveUrl, unsubscribeUrl)}
+              <td style="padding:0 32px;">
+                ${renderFooter(lang, archiveUrl, { unsubscribeUrl })}
               </td>
             </tr>
           </table>
         </td>
       </tr>
     </table>
-  `, preview);
+  `, preview, lang);
 
   const text = [
     'MTL Archives',
@@ -339,6 +411,8 @@ export function renderWelcomeEmail({
   return { html, text };
 }
 
+// ── Unsubscribe Confirmation ───────────────────────────────────────
+
 export function renderUnsubscribeConfirmationEmail({
   lang,
   archiveUrl,
@@ -352,40 +426,46 @@ export function renderUnsubscribeConfirmationEmail({
     ? 'Vous ne recevrez plus nos courriels quotidiens. Les archives de Montréal restent accessibles quand vous le souhaitez.'
     : 'You will no longer receive our daily emails. The Montreal archives remain here whenever you want to explore them.';
   const resubscribe = lang === 'fr' ? 'Se réabonner' : 'Subscribe again';
-  const visitArchive = lang === 'fr' ? 'Visiter les archives →' : 'Visit the archives →';
+  const visitArchive = lang === 'fr' ? 'Visiter les archives \u2192' : 'Visit the archives \u2192';
 
   const html = renderEmailShell(`
-    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background:#f5f2ea;">
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background:${BG};">
       <tr>
         <td align="center" style="padding:40px 16px;">
           <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width:600px;">
+            <!-- Logo -->
             <tr>
               <td align="center" style="padding-bottom:60px;">
                 ${renderLogo()}
               </td>
             </tr>
+            <!-- Headline -->
+            <tr>
+              <td align="center" style="padding-bottom:16px;">
+                <h1 style="margin:0;font-family:Spectral,Georgia,serif;font-size:36px;line-height:42px;font-weight:700;color:${TEXT_PRIMARY};">${escapeHtml(title)}</h1>
+              </td>
+            </tr>
+            <!-- Body -->
+            <tr>
+              <td align="center" style="padding:0 56px 32px;">
+                <p style="margin:0;font-size:16px;line-height:24px;color:${TEXT_BODY};max-width:400px;">${escapeHtml(body)}</p>
+              </td>
+            </tr>
+            <!-- Resubscribe button -->
             <tr>
               <td align="center" style="padding-bottom:18px;">
-                <h1 style="margin:0;font-family:Spectral,Georgia,serif;font-size:56px;line-height:1.06;letter-spacing:-0.04em;color:#111318;">${escapeHtml(title)}</h1>
-              </td>
-            </tr>
-            <tr>
-              <td align="center" style="padding:0 56px 34px;">
-                <p style="margin:0;font-size:18px;line-height:1.7;color:#5d584f;">${escapeHtml(body)}</p>
-              </td>
-            </tr>
-            <tr>
-              <td align="center" style="padding-bottom:22px;">
                 ${renderButton(resubscribe, resubscribeUrl, 'outline')}
               </td>
             </tr>
+            <!-- Visit archives link -->
             <tr>
               <td align="center" style="padding-bottom:48px;">
-                <a href="${archiveUrl}" style="color:#1f66b4;font-size:18px;text-decoration:none;">${escapeHtml(visitArchive)}</a>
+                <a href="${archiveUrl}" style="color:${BLUE};font-size:13px;line-height:16px;text-decoration:none;">${escapeHtml(visitArchive)}</a>
               </td>
             </tr>
+            <!-- Footer — minimal, no tagline, no unsubscribe -->
             <tr>
-              <td>
+              <td style="padding:0 32px;">
                 ${renderFooter(lang, archiveUrl)}
               </td>
             </tr>
@@ -393,7 +473,7 @@ export function renderUnsubscribeConfirmationEmail({
         </td>
       </tr>
     </table>
-  `, preview);
+  `, preview, lang);
 
   const text = [
     'MTL Archives',
@@ -402,11 +482,13 @@ export function renderUnsubscribeConfirmationEmail({
     body,
     '',
     `${resubscribe}: ${resubscribeUrl}`,
-    `${visitArchive.replace(' →', '')}: ${archiveUrl}`,
+    `${visitArchive.replace(' \u2192', '')}: ${archiveUrl}`,
   ].join('\n');
 
   return { html, text };
 }
+
+// ── Status Page (browser, not email) ───────────────────────────────
 
 export function renderNewsletterStatusPage({
   lang,
@@ -417,30 +499,30 @@ export function renderNewsletterStatusPage({
   body,
   title,
 }: StatusPageData): string {
-  const archiveLabel = lang === 'fr' ? 'Visiter les archives →' : 'Visit the archives →';
+  const archiveLabel = lang === 'fr' ? 'Visiter les archives \u2192' : 'Visit the archives \u2192';
 
   return `<!doctype html>
-  <html lang="${lang}">
-    <head>
-      <meta charset="utf-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>${escapeHtml(title)} | MTL Archives</title>
-    </head>
-    <body style="margin:0;padding:0;background:#f5f2ea;color:#111318;font-family:Figtree,Helvetica,Arial,sans-serif;">
-      <main style="max-width:600px;margin:0 auto;padding:40px 16px 56px;">
-        <div style="padding-bottom:60px;text-align:center;">
-          ${renderLogo()}
+<html lang="${lang}">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${escapeHtml(title)} | MTL Archives</title>
+  </head>
+  <body style="margin:0;padding:0;background:${BG};color:${TEXT_PRIMARY};font-family:Figtree,Helvetica,Arial,sans-serif;">
+    <main style="max-width:600px;margin:0 auto;padding:40px 16px 56px;">
+      <div style="padding-bottom:60px;text-align:center;">
+        ${renderLogo()}
+      </div>
+      <section style="text-align:center;">
+        <h1 style="margin:0 0 16px;font-family:Spectral,Georgia,serif;font-size:36px;line-height:42px;font-weight:700;color:${TEXT_PRIMARY};">${escapeHtml(title)}</h1>
+        <p style="margin:0 auto 32px;max-width:400px;font-size:16px;line-height:24px;color:${TEXT_BODY};">${escapeHtml(body)}</p>
+        <div style="padding-bottom:18px;">
+          ${renderButton(ctaLabel, ctaUrl, ctaStyle)}
         </div>
-        <section style="text-align:center;">
-          <h1 style="margin:0 0 18px;font-family:Spectral,Georgia,serif;font-size:56px;line-height:1.06;letter-spacing:-0.04em;color:#111318;">${escapeHtml(title)}</h1>
-          <p style="margin:0 auto 34px;max-width:460px;font-size:18px;line-height:1.7;color:#5d584f;">${escapeHtml(body)}</p>
-          <div style="padding-bottom:22px;">
-            ${renderButton(ctaLabel, ctaUrl, ctaStyle)}
-          </div>
-          <p style="margin:0 0 60px;"><a href="${archiveUrl}" style="color:#1f66b4;font-size:18px;text-decoration:none;">${escapeHtml(archiveLabel)}</a></p>
-        </section>
-        ${renderFooter(lang, archiveUrl)}
-      </main>
-    </body>
-  </html>`;
+        <p style="margin:0 0 60px;"><a href="${archiveUrl}" style="color:${BLUE};font-size:13px;line-height:16px;text-decoration:none;">${escapeHtml(archiveLabel)}</a></p>
+      </section>
+      ${renderFooter(lang, archiveUrl)}
+    </main>
+  </body>
+</html>`;
 }
