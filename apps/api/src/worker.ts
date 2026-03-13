@@ -2,6 +2,32 @@ import type { VectorizeIndex, Ai } from '@cloudflare/workers-types';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { type PhotoRecord, validateMetadataQuality } from '@mtl-archives/core';
 import { getPhotoOrientationOverride } from './photo-orientation-overrides';
+import {
+  createNewsletterToken,
+  formatNewsletterDateLabel,
+  getTorontoDateKey,
+  isValidEmail,
+  normalizeEmail,
+  normalizeNewsletterLang,
+  type NewsletterLang,
+  verifyNewsletterToken,
+} from './newsletter-utils';
+import {
+  acquireNewsletterRun,
+  completeNewsletterRun,
+  failNewsletterRun,
+  type NewsletterRunSource,
+  type NewsletterRunSummary,
+} from './newsletter-run-lock';
+import {
+  getDailyNewsletterSubject,
+  getUnsubscribeConfirmationSubject,
+  getWelcomeEmailSubject,
+  renderDailyNewsletterEmail,
+  renderNewsletterStatusPage,
+  renderUnsubscribeConfirmationEmail,
+  renderWelcomeEmail,
+} from './newsletter-email';
 
 type Env = {
   DB: D1Database;
@@ -18,6 +44,12 @@ type Env = {
   CLOUDFLARE_R2_PUBLIC_DOMAIN?: string;
   IMAGE_TRANSFORM_ZONE?: string;
   CLERK_JWKS_URL?: string;
+  RESEND_SECRET_KEY?: string;
+  NEWSLETTER_TOKEN_SECRET?: string;
+  SITE_URL?: string;
+  API_ORIGIN?: string;
+  NEWSLETTER_REPLY_TO?: string;
+  NEWSLETTER_ADMIN_SECRET?: string;
 };
 
 const CORS_HEADERS: HeadersInit = {
@@ -51,6 +83,16 @@ const SIGNED_URL_TTL_SECONDS = 3600;
 const SIGNED_URL_TTL_BUFFER_SECONDS = 60;
 const COTE_PATTERN = /^[A-Z]{1,4}[\d-]+/i;
 const CACHE_KEY_VERSION = '2026-02-20-orientation-v3';
+const NEWSLETTER_FROM_EMAIL = 'MTL Archives <support@support.mtlarchives.com>';
+const DEFAULT_SITE_URL = 'https://www.mtlarchives.com';
+const DEFAULT_NEWSLETTER_REPLY_TO = 'zouantchaw74@gmail.com';
+const NEWSLETTER_CONSENT_VERSION = '2026-03-13-v1';
+const NEWSLETTER_DAILY_RUN_JOB = 'daily_newsletter';
+const NEWSLETTER_EMAIL_TYPES = {
+  DAILY: 'daily',
+  WELCOME: 'welcome',
+  UNSUBSCRIBE_CONFIRMATION: 'unsubscribe_confirmation',
+} as const;
 
 function usesSignedR2Urls(env: Env): boolean {
   return Boolean(
@@ -205,6 +247,34 @@ export default {
         return withCache(buildCacheKey(url), ctx, clampCacheTtl(env, CACHE_TTL.SITEMAP), () => handleSitemap(env));
       }
 
+      if (url.pathname === '/api/newsletter/subscribe') {
+        if (request.method !== 'POST') {
+          return methodNotAllowed();
+        }
+        return handleNewsletterSubscribe(request, env, ctx);
+      }
+
+      if (url.pathname === '/api/newsletter/unsubscribe') {
+        if (request.method !== 'GET') {
+          return methodNotAllowed();
+        }
+        return handleNewsletterUnsubscribe(request, url, env, ctx);
+      }
+
+      if (url.pathname === '/api/newsletter/resubscribe') {
+        if (request.method !== 'GET') {
+          return methodNotAllowed();
+        }
+        return handleNewsletterResubscribe(request, url, env, ctx);
+      }
+
+      if (url.pathname === '/api/newsletter/admin/run') {
+        if (request.method !== 'POST') {
+          return methodNotAllowed();
+        }
+        return handleNewsletterAdminRun(request, env, ctx);
+      }
+
       if (url.pathname === '/api/game/daily') {
         if (request.method !== 'GET') {
           return methodNotAllowed();
@@ -246,6 +316,16 @@ function jsonResponse(body: unknown, status = 200, extraHeaders: HeadersInit = {
   return new Response(JSON.stringify(body, null, 2), {
     status,
     headers: { ...JSON_HEADERS, ...extraHeaders },
+  });
+}
+
+function htmlResponse(html: string, status = 200, extraHeaders: HeadersInit = {}): Response {
+  return new Response(html, {
+    status,
+    headers: {
+      'content-type': 'text/html; charset=utf-8',
+      ...extraHeaders,
+    },
   });
 }
 
@@ -365,6 +445,895 @@ function resolveGameImageUrl(photo: PhotoRecord): string {
   }
 
   return photo.imageUrl;
+}
+
+type NewsletterSubscriptionStatus = 'active' | 'unsubscribed';
+type NewsletterDeliveryType = typeof NEWSLETTER_EMAIL_TYPES[keyof typeof NEWSLETTER_EMAIL_TYPES];
+
+type NewsletterSubscriptionRow = {
+  id: number;
+  email: string;
+  email_normalized: string;
+  clerk_user_id: string | null;
+  locale: NewsletterLang;
+  status: NewsletterSubscriptionStatus;
+  source: string;
+  consent_type: string;
+  consent_version: string;
+  consent_copy: string;
+  subscribed_at: string;
+  resubscribed_at: string | null;
+  unsubscribed_at: string | null;
+  welcome_sent_at: string | null;
+  unsubscribe_confirmation_sent_at: string | null;
+  last_daily_sent_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type NewsletterIssueRow = {
+  date_key: string;
+  daily_photo_id: string;
+  surprise_photo_id: string;
+};
+
+type NewsletterIssueContent = {
+  dateKey: string;
+  runDate: Date;
+  dailyPhoto: PhotoRecord;
+  surprisePhoto: PhotoRecord;
+};
+
+function getNewsletterSiteUrl(env: Env): string {
+  const base = (env.SITE_URL || DEFAULT_SITE_URL).trim();
+  return base.replace(/\/+$/g, '');
+}
+
+function getNewsletterApiOrigin(env: Env): string {
+  const base = (env.API_ORIGIN || 'https://mtl-archives-worker.wiel.workers.dev').trim();
+  return base.replace(/\/+$/g, '');
+}
+
+function getNewsletterReplyTo(env: Env): string {
+  return (env.NEWSLETTER_REPLY_TO || DEFAULT_NEWSLETTER_REPLY_TO).trim();
+}
+
+function normalizeNewsletterSource(value: unknown): string {
+  const normalized = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  switch (normalized) {
+    case 'landing':
+    case 'game':
+    case 'resubscribe':
+    case 'admin':
+      return normalized;
+    default:
+      return 'landing';
+  }
+}
+
+function getNewsletterConsentCopy(lang: NewsletterLang): string {
+  return lang === 'fr'
+    ? 'Je consens à recevoir chaque jour par courriel le jeu du jour et une photo surprise de MTL Archives. Désabonnement en tout temps.'
+    : 'I agree to receive the daily game and a surprise photo from MTL Archives by email every day. Unsubscribe anytime.';
+}
+
+function getClientIp(request: Request): string | null {
+  const direct = request.headers.get('CF-Connecting-IP');
+  if (direct) return direct.trim() || null;
+
+  const forwarded = request.headers.get('X-Forwarded-For');
+  if (!forwarded) return null;
+  const first = forwarded.split(',')[0]?.trim();
+  return first || null;
+}
+
+function serializeNewsletterDetails(value: unknown): string | null {
+  if (value == null) return null;
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return null;
+  }
+}
+
+function isNewsletterAdminAuthorized(request: Request, env: Env): boolean {
+  if (!env.NEWSLETTER_ADMIN_SECRET) return false;
+  const header = request.headers.get('x-newsletter-admin-secret');
+  return Boolean(header && header === env.NEWSLETTER_ADMIN_SECRET);
+}
+
+function truncateText(value: string, maxLength: number): string {
+  if (value.length <= maxLength) return value;
+  return `${value.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
+}
+
+function buildNewsletterSiteUrl(
+  env: Env,
+  pathname: string,
+  lang: NewsletterLang,
+  params: Record<string, string> = {},
+): string {
+  const url = new URL(pathname, getNewsletterSiteUrl(env));
+  if (lang === 'en') {
+    url.searchParams.set('lang', 'en');
+  }
+  for (const [key, value] of Object.entries(params)) {
+    url.searchParams.set(key, value);
+  }
+  return url.toString();
+}
+
+function buildNewsletterApiUrl(
+  env: Env,
+  pathname: string,
+  params: Record<string, string> = {},
+): string {
+  const url = new URL(pathname, getNewsletterApiOrigin(env));
+  for (const [key, value] of Object.entries(params)) {
+    url.searchParams.set(key, value);
+  }
+  return url.toString();
+}
+
+async function createNewsletterActionUrl(
+  env: Env,
+  action: 'unsubscribe' | 'resubscribe',
+  email: string,
+  lang: NewsletterLang,
+): Promise<string> {
+  if (!env.NEWSLETTER_TOKEN_SECRET) {
+    throw new Error('NEWSLETTER_TOKEN_SECRET is not configured');
+  }
+
+  const token = await createNewsletterToken({
+    action,
+    email: normalizeEmail(email),
+    lang,
+    issuedAt: new Date().toISOString(),
+  }, env.NEWSLETTER_TOKEN_SECRET);
+
+  return buildNewsletterApiUrl(env, `/api/newsletter/${action}`, { token });
+}
+
+async function getNewsletterSubscriptionByEmail(
+  env: Env,
+  emailNormalized: string,
+): Promise<NewsletterSubscriptionRow | null> {
+  return env.DB.prepare(
+    `SELECT id, email, email_normalized, clerk_user_id, locale, status, source, consent_type, consent_version,
+            consent_copy, subscribed_at, resubscribed_at, unsubscribed_at, welcome_sent_at,
+            unsubscribe_confirmation_sent_at, last_daily_sent_at, created_at, updated_at
+     FROM newsletter_subscription
+     WHERE email_normalized = ?
+     LIMIT 1`
+  ).bind(emailNormalized).first<NewsletterSubscriptionRow>();
+}
+
+async function insertNewsletterEvent(
+  env: Env,
+  subscriptionId: number | null,
+  emailNormalized: string,
+  eventType: string,
+  source: string | null,
+  ipAddress: string | null,
+  userAgent: string | null,
+  details: unknown,
+): Promise<void> {
+  await env.DB.prepare(
+    `INSERT INTO newsletter_subscription_event (
+      subscription_id, email_normalized, event_type, source, ip_address, user_agent, details_json
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)`
+  ).bind(
+    subscriptionId,
+    emailNormalized,
+    eventType,
+    source,
+    ipAddress,
+    userAgent,
+    serializeNewsletterDetails(details),
+  ).run();
+}
+
+async function isNewsletterRateLimited(env: Env, ipAddress: string): Promise<boolean> {
+  const row = await env.DB.prepare(
+    `SELECT COUNT(*) as total
+     FROM newsletter_subscription_event
+     WHERE ip_address = ?
+       AND event_type IN ('subscribe', 'resubscribe')
+       AND created_at >= strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '-1 hour')`
+  ).bind(ipAddress).first<{ total: number }>();
+  return Number(row?.total ?? 0) >= 8;
+}
+
+async function fetchManifestRowById(env: Env, photoId: string): Promise<Record<string, unknown> | null> {
+  const { results = [] } = await env.DB.prepare(
+    `SELECT ${SELECT_FIELDS} FROM manifest WHERE metadata_filename = ? LIMIT 1`
+  ).bind(photoId).all();
+  return results[0] ?? null;
+}
+
+function getNewsletterPhotoTitle(photo: PhotoRecord, lang: NewsletterLang): string {
+  const name = photo.name?.trim();
+  const date = photo.dateValue?.trim();
+  if (name && date) return `${name}, ${date}`;
+  if (name) return name;
+  if (date) return lang === 'fr' ? `Photo surprise, ${date}` : `Surprise photo, ${date}`;
+  return lang === 'fr' ? 'Photo surprise' : 'Surprise photo';
+}
+
+function getNewsletterPhotoBody(photo: PhotoRecord, lang: NewsletterLang): string {
+  const body = photo.description || photo.vlmCaption;
+  if (body) return truncateText(body, 120);
+  return lang === 'fr'
+    ? 'Une image des archives de Montréal choisie pour vous.'
+    : 'A Montreal archive image selected for you.';
+}
+
+async function getOrCreateNewsletterIssue(
+  env: Env,
+  dateKey: string,
+  runDate: Date,
+): Promise<NewsletterIssueContent> {
+  const dailyChallenge = await getDailyChallenge(env, dateKey);
+  let issue = await env.DB.prepare(
+    'SELECT date_key, daily_photo_id, surprise_photo_id FROM newsletter_issue WHERE date_key = ? LIMIT 1'
+  ).bind(dateKey).first<NewsletterIssueRow>();
+
+  if (!issue) {
+    const surpriseRow = await getRandomGeotaggedPhoto(env, [dailyChallenge.photoId]);
+    if (!surpriseRow) {
+      throw new Error('No surprise photo available for newsletter issue');
+    }
+
+    await env.DB.prepare(
+      'INSERT OR IGNORE INTO newsletter_issue (date_key, daily_photo_id, surprise_photo_id) VALUES (?, ?, ?)'
+    ).bind(dateKey, dailyChallenge.photoId, String(surpriseRow.metadata_filename)).run();
+
+    issue = await env.DB.prepare(
+      'SELECT date_key, daily_photo_id, surprise_photo_id FROM newsletter_issue WHERE date_key = ? LIMIT 1'
+    ).bind(dateKey).first<NewsletterIssueRow>();
+  }
+
+  if (!issue) {
+    throw new Error(`Failed to resolve newsletter issue for ${dateKey}`);
+  }
+
+  const dailyRow = await fetchManifestRowById(env, issue.daily_photo_id);
+  const surpriseRow = await fetchManifestRowById(env, issue.surprise_photo_id);
+  if (!dailyRow || !surpriseRow) {
+    throw new Error(`Missing manifest row for newsletter issue ${dateKey}`);
+  }
+
+  const dailyPhoto = await buildPhotoRecord(dailyRow, env);
+  dailyPhoto.imageUrl = resolveGameImageUrl(dailyPhoto);
+  const surprisePhoto = await buildPhotoRecord(surpriseRow, env);
+
+  return {
+    dateKey,
+    runDate,
+    dailyPhoto,
+    surprisePhoto,
+  };
+}
+
+async function hasSuccessfulNewsletterDelivery(
+  env: Env,
+  subscriptionId: number,
+  issueDateKey: string,
+  emailType: NewsletterDeliveryType,
+): Promise<boolean> {
+  const row = await env.DB.prepare(
+    `SELECT id
+     FROM newsletter_delivery
+     WHERE subscription_id = ? AND issue_date_key = ? AND email_type = ? AND status = 'sent'
+     LIMIT 1`
+  ).bind(subscriptionId, issueDateKey, emailType).first<{ id: number }>();
+  return Boolean(row?.id);
+}
+
+async function recordNewsletterDelivery(
+  env: Env,
+  subscriptionId: number,
+  issueDateKey: string | null,
+  emailType: NewsletterDeliveryType,
+  status: 'sent' | 'failed',
+  resendEmailId: string | null,
+  errorMessage: string | null,
+): Promise<void> {
+  await env.DB.prepare(
+    `INSERT INTO newsletter_delivery (
+      subscription_id, issue_date_key, email_type, resend_email_id, status, error_message
+    ) VALUES (?, ?, ?, ?, ?, ?)`
+  ).bind(subscriptionId, issueDateKey, emailType, resendEmailId, status, errorMessage).run();
+}
+
+async function sendResendEmail(
+  env: Env,
+  payload: {
+    to: string;
+    subject: string;
+    html: string;
+    text: string;
+  },
+): Promise<string> {
+  if (!env.RESEND_SECRET_KEY) {
+    throw new Error('RESEND_SECRET_KEY is not configured');
+  }
+
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${env.RESEND_SECRET_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: NEWSLETTER_FROM_EMAIL,
+      reply_to: getNewsletterReplyTo(env),
+      to: [payload.to],
+      subject: payload.subject,
+      html: payload.html,
+      text: payload.text,
+    }),
+  });
+
+  const json = await response.json() as { id?: string; error?: { message?: string } };
+  if (!response.ok || !json.id) {
+    throw new Error(json.error?.message || `Resend send failed with ${response.status}`);
+  }
+  return json.id;
+}
+
+async function sendWelcomeNewsletterEmail(
+  env: Env,
+  subscription: NewsletterSubscriptionRow,
+  source: string,
+): Promise<void> {
+  const lang = normalizeNewsletterLang(subscription.locale);
+  const unsubscribeUrl = await createNewsletterActionUrl(env, 'unsubscribe', subscription.email_normalized, lang);
+  const playUrl = buildNewsletterSiteUrl(env, '/game', lang, {
+    utm_source: 'newsletter',
+    utm_medium: 'email',
+    utm_campaign: 'newsletter_welcome',
+  });
+  const archiveUrl = buildNewsletterSiteUrl(env, '/', lang, {
+    utm_source: 'newsletter',
+    utm_medium: 'email',
+    utm_campaign: 'newsletter_welcome',
+  });
+  const { html, text } = renderWelcomeEmail({
+    lang,
+    archiveUrl,
+    playUrl,
+    unsubscribeUrl,
+  });
+
+  try {
+    const resendId = await sendResendEmail(env, {
+      to: subscription.email,
+      subject: getWelcomeEmailSubject(lang),
+      html,
+      text,
+    });
+
+    await recordNewsletterDelivery(env, subscription.id, null, NEWSLETTER_EMAIL_TYPES.WELCOME, 'sent', resendId, null);
+    await env.DB.prepare(
+      'UPDATE newsletter_subscription SET welcome_sent_at = strftime(\'%Y-%m-%dT%H:%M:%fZ\', \'now\'), updated_at = strftime(\'%Y-%m-%dT%H:%M:%fZ\', \'now\') WHERE id = ?'
+    ).bind(subscription.id).run();
+    await insertNewsletterEvent(env, subscription.id, subscription.email_normalized, 'welcome_send', source, null, null, { resendId });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Welcome email failed';
+    await recordNewsletterDelivery(env, subscription.id, null, NEWSLETTER_EMAIL_TYPES.WELCOME, 'failed', null, message);
+    await insertNewsletterEvent(env, subscription.id, subscription.email_normalized, 'welcome_send_failed', source, null, null, { error: message });
+    throw error;
+  }
+}
+
+async function sendUnsubscribeConfirmationEmail(
+  env: Env,
+  subscription: NewsletterSubscriptionRow,
+  lang: NewsletterLang,
+  source: string,
+): Promise<void> {
+  const archiveUrl = buildNewsletterSiteUrl(env, '/', lang, {
+    utm_source: 'newsletter',
+    utm_medium: 'email',
+    utm_campaign: 'newsletter_unsubscribed',
+  });
+  const resubscribeUrl = await createNewsletterActionUrl(env, 'resubscribe', subscription.email_normalized, lang);
+  const { html, text } = renderUnsubscribeConfirmationEmail({
+    lang,
+    archiveUrl,
+    resubscribeUrl,
+  });
+
+  try {
+    const resendId = await sendResendEmail(env, {
+      to: subscription.email,
+      subject: getUnsubscribeConfirmationSubject(lang),
+      html,
+      text,
+    });
+    await recordNewsletterDelivery(env, subscription.id, null, NEWSLETTER_EMAIL_TYPES.UNSUBSCRIBE_CONFIRMATION, 'sent', resendId, null);
+    await env.DB.prepare(
+      'UPDATE newsletter_subscription SET unsubscribe_confirmation_sent_at = strftime(\'%Y-%m-%dT%H:%M:%fZ\', \'now\'), updated_at = strftime(\'%Y-%m-%dT%H:%M:%fZ\', \'now\') WHERE id = ?'
+    ).bind(subscription.id).run();
+    await insertNewsletterEvent(env, subscription.id, subscription.email_normalized, 'unsubscribe_confirmation_send', source, null, null, { resendId });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unsubscribe confirmation email failed';
+    await recordNewsletterDelivery(env, subscription.id, null, NEWSLETTER_EMAIL_TYPES.UNSUBSCRIBE_CONFIRMATION, 'failed', null, message);
+    await insertNewsletterEvent(env, subscription.id, subscription.email_normalized, 'unsubscribe_confirmation_send_failed', source, null, null, { error: message });
+    throw error;
+  }
+}
+
+async function sendDailyNewsletterIssue(
+  env: Env,
+  issue: NewsletterIssueContent,
+  subscription: NewsletterSubscriptionRow,
+  source: NewsletterRunSource,
+): Promise<void> {
+  const lang = normalizeNewsletterLang(subscription.locale);
+  const unsubscribeUrl = await createNewsletterActionUrl(env, 'unsubscribe', subscription.email_normalized, lang);
+  const archiveUrl = buildNewsletterSiteUrl(env, '/', lang, {
+    utm_source: 'newsletter',
+    utm_medium: 'email',
+    utm_campaign: 'daily_newsletter',
+  });
+  const playUrl = buildNewsletterSiteUrl(env, '/game', lang, {
+    utm_source: 'newsletter',
+    utm_medium: 'email',
+    utm_campaign: 'daily_newsletter',
+  });
+  const surpriseUrl = buildNewsletterSiteUrl(
+    env,
+    `/photo/${encodeURIComponent(normalizeMetadataId(issue.surprisePhoto.metadataFilename))}`,
+    lang,
+    {
+      utm_source: 'newsletter',
+      utm_medium: 'email',
+      utm_campaign: 'daily_newsletter',
+    },
+  );
+  const subjectDate = new Intl.DateTimeFormat(lang === 'fr' ? 'fr-CA' : 'en-CA', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'America/Toronto',
+  }).format(issue.runDate);
+  const { html, text } = renderDailyNewsletterEmail({
+    lang,
+    archiveUrl,
+    dateLabel: formatNewsletterDateLabel(lang, issue.runDate),
+    dailyBody: lang === 'fr'
+      ? 'Placez votre repère sur la carte. Plus vous êtes près, plus vous marquez de points.'
+      : 'Place your pin on the map. The closer you are, the more points you score.',
+    dailyImageUrl: issue.dailyPhoto.imageUrl,
+    playUrl,
+    surpriseBody: getNewsletterPhotoBody(issue.surprisePhoto, lang),
+    surpriseImageUrl: issue.surprisePhoto.imageUrl,
+    surpriseTitle: getNewsletterPhotoTitle(issue.surprisePhoto, lang),
+    surpriseUrl,
+    unsubscribeUrl,
+  });
+
+  try {
+    const resendId = await sendResendEmail(env, {
+      to: subscription.email,
+      subject: getDailyNewsletterSubject(lang, subjectDate),
+      html,
+      text,
+    });
+    await recordNewsletterDelivery(env, subscription.id, issue.dateKey, NEWSLETTER_EMAIL_TYPES.DAILY, 'sent', resendId, null);
+    await env.DB.prepare(
+      'UPDATE newsletter_subscription SET last_daily_sent_at = strftime(\'%Y-%m-%dT%H:%M:%fZ\', \'now\'), updated_at = strftime(\'%Y-%m-%dT%H:%M:%fZ\', \'now\') WHERE id = ?'
+    ).bind(subscription.id).run();
+    await insertNewsletterEvent(env, subscription.id, subscription.email_normalized, 'daily_send', source, null, null, {
+      dateKey: issue.dateKey,
+      resendId,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Daily newsletter send failed';
+    await recordNewsletterDelivery(env, subscription.id, issue.dateKey, NEWSLETTER_EMAIL_TYPES.DAILY, 'failed', null, message);
+    await insertNewsletterEvent(env, subscription.id, subscription.email_normalized, 'daily_send_failed', source, null, null, {
+      dateKey: issue.dateKey,
+      error: message,
+    });
+    throw error;
+  }
+}
+
+async function runDailyNewsletter(
+  env: Env,
+  _ctx: ExecutionContext,
+  {
+    dateKey,
+    runDate,
+    source,
+  }: {
+    dateKey: string;
+    runDate: Date;
+    source: NewsletterRunSource;
+  },
+): Promise<NewsletterRunSummary> {
+  if (!env.RESEND_SECRET_KEY) {
+    throw new Error('RESEND_SECRET_KEY is not configured');
+  }
+  if (!env.NEWSLETTER_TOKEN_SECRET) {
+    throw new Error('NEWSLETTER_TOKEN_SECRET is not configured');
+  }
+
+  const lock = await acquireNewsletterRun(env.DB, {
+    jobName: NEWSLETTER_DAILY_RUN_JOB,
+    dateKey,
+    source,
+  });
+  if (!lock.acquired) {
+    return {
+      ...lock.summary,
+      source,
+    };
+  }
+
+  try {
+    const issue = await getOrCreateNewsletterIssue(env, dateKey, runDate);
+    const { results = [] } = await env.DB.prepare(
+      `SELECT id, email, email_normalized, clerk_user_id, locale, status, source, consent_type, consent_version,
+              consent_copy, subscribed_at, resubscribed_at, unsubscribed_at, welcome_sent_at,
+              unsubscribe_confirmation_sent_at, last_daily_sent_at, created_at, updated_at
+       FROM newsletter_subscription
+       WHERE status = 'active'
+       ORDER BY id ASC`
+    ).all<NewsletterSubscriptionRow>();
+    const subscriptions = results as NewsletterSubscriptionRow[];
+    const summary: NewsletterRunSummary = {
+      dateKey,
+      source,
+      runState: 'completed',
+      totalActive: subscriptions.length,
+      sent: 0,
+      skipped: 0,
+      failed: 0,
+    };
+
+    const concurrency = 4;
+    for (let index = 0; index < subscriptions.length; index += concurrency) {
+      const chunk = subscriptions.slice(index, index + concurrency);
+      const settled = await Promise.allSettled(chunk.map(async (subscription) => {
+        const alreadySent = await hasSuccessfulNewsletterDelivery(env, subscription.id, issue.dateKey, NEWSLETTER_EMAIL_TYPES.DAILY);
+        if (alreadySent) {
+          summary.skipped += 1;
+          return;
+        }
+
+        await sendDailyNewsletterIssue(env, issue, subscription, source);
+        summary.sent += 1;
+      }));
+
+      for (const result of settled) {
+        if (result.status === 'rejected') {
+          summary.failed += 1;
+          console.error('Newsletter send failed', result.reason);
+        }
+      }
+    }
+
+    await completeNewsletterRun(env.DB, {
+      jobName: NEWSLETTER_DAILY_RUN_JOB,
+      summary,
+    });
+
+    return summary;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Daily newsletter run failed';
+    await failNewsletterRun(env.DB, {
+      jobName: NEWSLETTER_DAILY_RUN_JOB,
+      dateKey,
+      source,
+      message,
+    });
+    throw error;
+  }
+}
+
+function renderNewsletterErrorPage(lang: NewsletterLang, archiveUrl: string): Response {
+  const title = lang === 'fr' ? 'Lien invalide.' : 'Invalid link.';
+  const body = lang === 'fr'
+    ? 'Ce lien n’est plus valide. Retournez aux archives pour gérer votre inscription.'
+    : 'This link is no longer valid. Return to the archive to manage your subscription.';
+  const cta = lang === 'fr' ? 'Retour aux archives' : 'Back to the archive';
+  return htmlResponse(renderNewsletterStatusPage({
+    lang,
+    archiveUrl,
+    ctaStyle: 'outline',
+    ctaLabel: cta,
+    ctaUrl: archiveUrl,
+    body,
+    title,
+  }), 400);
+}
+
+async function handleNewsletterSubscribe(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+): Promise<Response> {
+  let payload: Record<string, unknown>;
+  try {
+    payload = await request.json() as Record<string, unknown>;
+  } catch {
+    return jsonResponse({ success: false, error: 'Invalid JSON body' }, 400);
+  }
+
+  const honeypot = typeof payload.company === 'string'
+    ? payload.company
+    : typeof payload.website === 'string'
+      ? payload.website
+      : '';
+  if (honeypot.trim()) {
+    return jsonResponse({ success: true, status: 'accepted' }, 202);
+  }
+
+  const rawEmail = typeof payload.email === 'string' ? payload.email.trim() : '';
+  if (!isValidEmail(rawEmail)) {
+    return jsonResponse({ success: false, error: 'Invalid email address' }, 400);
+  }
+
+  const lang = normalizeNewsletterLang(payload.lang);
+  const source = normalizeNewsletterSource(payload.source);
+  const email = rawEmail;
+  const emailNormalized = normalizeEmail(rawEmail);
+  const ipAddress = getClientIp(request);
+  const userAgent = request.headers.get('user-agent');
+  const clerkUserId = await getClerkUserId(request, env);
+
+  if (ipAddress && await isNewsletterRateLimited(env, ipAddress)) {
+    await insertNewsletterEvent(env, null, emailNormalized, 'rate_limited', source, ipAddress, userAgent, {
+      lang,
+      reason: 'too_many_recent_subscribe_events',
+    });
+    return jsonResponse({ success: false, error: 'Too many requests. Please try again later.' }, 429);
+  }
+
+  const consentCopy = getNewsletterConsentCopy(lang);
+  const existing = await getNewsletterSubscriptionByEmail(env, emailNormalized);
+  let status: 'subscribed' | 'already_subscribed' | 'resubscribed' = 'subscribed';
+
+  if (existing) {
+    status = existing.status === 'active' ? 'already_subscribed' : 'resubscribed';
+    await env.DB.prepare(
+      `UPDATE newsletter_subscription
+       SET email = ?,
+           clerk_user_id = COALESCE(?, clerk_user_id),
+           locale = ?,
+           status = 'active',
+           source = ?,
+           consent_type = 'express',
+           consent_version = ?,
+           consent_copy = ?,
+           subscribed_at = CASE WHEN status = 'unsubscribed' THEN strftime('%Y-%m-%dT%H:%M:%fZ', 'now') ELSE subscribed_at END,
+           resubscribed_at = CASE WHEN status = 'unsubscribed' THEN strftime('%Y-%m-%dT%H:%M:%fZ', 'now') ELSE resubscribed_at END,
+           unsubscribed_at = CASE WHEN status = 'unsubscribed' THEN NULL ELSE unsubscribed_at END,
+           updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+       WHERE id = ?`
+    ).bind(
+      email,
+      clerkUserId,
+      lang,
+      source,
+      NEWSLETTER_CONSENT_VERSION,
+      consentCopy,
+      existing.id,
+    ).run();
+  } else {
+    await env.DB.prepare(
+      `INSERT INTO newsletter_subscription (
+        email, email_normalized, clerk_user_id, locale, status, source, consent_type, consent_version, consent_copy
+      ) VALUES (?, ?, ?, ?, 'active', ?, 'express', ?, ?)`
+    ).bind(
+      email,
+      emailNormalized,
+      clerkUserId,
+      lang,
+      source,
+      NEWSLETTER_CONSENT_VERSION,
+      consentCopy,
+    ).run();
+  }
+
+  const subscription = await getNewsletterSubscriptionByEmail(env, emailNormalized);
+  if (!subscription) {
+    return jsonResponse({ success: false, error: 'Failed to save subscription' }, 500);
+  }
+
+  await insertNewsletterEvent(
+    env,
+    subscription.id,
+    emailNormalized,
+    status === 'resubscribed' ? 'resubscribe' : status === 'already_subscribed' ? 'already_subscribed' : 'subscribe',
+    source,
+    ipAddress,
+    userAgent,
+    {
+      lang,
+      clerkUserId,
+      referer: request.headers.get('referer'),
+    },
+  );
+
+  if (status !== 'already_subscribed' || !subscription.welcome_sent_at) {
+    ctx.waitUntil(sendWelcomeNewsletterEmail(env, subscription, source).catch((error) => {
+      console.error('Failed to send welcome email', error);
+    }));
+  }
+
+  return jsonResponse({
+    success: true,
+    status,
+    message: status === 'already_subscribed'
+      ? (lang === 'fr' ? 'Vous êtes déjà inscrit.' : 'You are already subscribed.')
+      : (lang === 'fr' ? 'Inscription confirmée.' : 'Subscription confirmed.'),
+  });
+}
+
+async function handleNewsletterUnsubscribe(
+  request: Request,
+  url: URL,
+  env: Env,
+  ctx: ExecutionContext,
+): Promise<Response> {
+  const lang = normalizeNewsletterLang(url.searchParams.get('lang'));
+  const archiveUrl = buildNewsletterSiteUrl(env, '/', lang);
+  const token = url.searchParams.get('token');
+  if (!token || !env.NEWSLETTER_TOKEN_SECRET) {
+    return renderNewsletterErrorPage(lang, archiveUrl);
+  }
+
+  const payload = await verifyNewsletterToken(token, env.NEWSLETTER_TOKEN_SECRET);
+  if (!payload || payload.action !== 'unsubscribe') {
+    return renderNewsletterErrorPage(lang, archiveUrl);
+  }
+
+  const subscription = await getNewsletterSubscriptionByEmail(env, payload.email);
+  if (subscription && subscription.status !== 'unsubscribed') {
+    await env.DB.prepare(
+      `UPDATE newsletter_subscription
+       SET status = 'unsubscribed',
+           unsubscribed_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
+           updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+       WHERE id = ?`
+    ).bind(subscription.id).run();
+    await insertNewsletterEvent(env, subscription.id, subscription.email_normalized, 'unsubscribe', 'email_link', getClientIp(request), request.headers.get('user-agent'), {
+      lang: payload.lang,
+    });
+
+    ctx.waitUntil(sendUnsubscribeConfirmationEmail(env, subscription, payload.lang, 'email_link').catch((error) => {
+      console.error('Failed to send unsubscribe confirmation email', error);
+    }));
+  }
+
+  const resubscribeUrl = await createNewsletterActionUrl(env, 'resubscribe', payload.email, payload.lang);
+  const title = payload.lang === 'fr' ? 'À bientôt.' : 'See you soon.';
+  const body = payload.lang === 'fr'
+    ? 'Vous ne recevrez plus nos courriels quotidiens. Les archives de Montréal restent accessibles quand vous le souhaitez.'
+    : 'You will no longer receive our daily emails. The Montreal archives remain here whenever you want to explore them.';
+  const cta = payload.lang === 'fr' ? 'Se réabonner' : 'Subscribe again';
+
+  return htmlResponse(renderNewsletterStatusPage({
+    lang: payload.lang,
+    archiveUrl,
+    ctaStyle: 'outline',
+    ctaLabel: cta,
+    ctaUrl: resubscribeUrl,
+    body,
+    title,
+  }));
+}
+
+async function handleNewsletterResubscribe(
+  request: Request,
+  url: URL,
+  env: Env,
+  ctx: ExecutionContext,
+): Promise<Response> {
+  const lang = normalizeNewsletterLang(url.searchParams.get('lang'));
+  const archiveUrl = buildNewsletterSiteUrl(env, '/', lang);
+  const token = url.searchParams.get('token');
+  if (!token || !env.NEWSLETTER_TOKEN_SECRET) {
+    return renderNewsletterErrorPage(lang, archiveUrl);
+  }
+
+  const payload = await verifyNewsletterToken(token, env.NEWSLETTER_TOKEN_SECRET);
+  if (!payload || payload.action !== 'resubscribe') {
+    return renderNewsletterErrorPage(lang, archiveUrl);
+  }
+
+  const consentCopy = getNewsletterConsentCopy(payload.lang);
+  const existing = await getNewsletterSubscriptionByEmail(env, payload.email);
+  if (existing) {
+    await env.DB.prepare(
+      `UPDATE newsletter_subscription
+       SET status = 'active',
+           locale = ?,
+           source = 'resubscribe',
+           consent_type = 'express',
+           consent_version = ?,
+           consent_copy = ?,
+           subscribed_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
+           resubscribed_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
+           unsubscribed_at = NULL,
+           updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+       WHERE id = ?`
+    ).bind(payload.lang, NEWSLETTER_CONSENT_VERSION, consentCopy, existing.id).run();
+  } else {
+    await env.DB.prepare(
+      `INSERT INTO newsletter_subscription (
+        email, email_normalized, locale, status, source, consent_type, consent_version, consent_copy
+      ) VALUES (?, ?, ?, 'active', 'resubscribe', 'express', ?, ?)`
+    ).bind(payload.email, normalizeEmail(payload.email), payload.lang, NEWSLETTER_CONSENT_VERSION, consentCopy).run();
+  }
+
+  const subscription = await getNewsletterSubscriptionByEmail(env, payload.email);
+  if (!subscription) {
+    return renderNewsletterErrorPage(payload.lang, archiveUrl);
+  }
+
+  await insertNewsletterEvent(env, subscription.id, subscription.email_normalized, 'resubscribe', 'email_link', getClientIp(request), request.headers.get('user-agent'), {
+    lang: payload.lang,
+  });
+
+  ctx.waitUntil(sendWelcomeNewsletterEmail(env, subscription, 'resubscribe').catch((error) => {
+    console.error('Failed to send welcome email after resubscribe', error);
+  }));
+
+  const title = payload.lang === 'fr' ? 'Bienvenue de nouveau.' : 'Welcome back.';
+  const body = payload.lang === 'fr'
+    ? 'Vous recevrez de nouveau le jeu du jour et une photo surprise chaque matin.'
+    : 'You will once again receive the daily game and a surprise photo every morning.';
+  const ctaLabel = payload.lang === 'fr' ? "Jouer au jeu d'aujourd'hui" : "Play today's game";
+  const playUrl = buildNewsletterSiteUrl(env, '/game', payload.lang, {
+    utm_source: 'newsletter',
+    utm_medium: 'email',
+    utm_campaign: 'newsletter_resubscribe',
+  });
+
+  return htmlResponse(renderNewsletterStatusPage({
+    lang: payload.lang,
+    archiveUrl,
+    ctaStyle: 'filled',
+    ctaLabel,
+    ctaUrl: playUrl,
+    body,
+    title,
+  }));
+}
+
+async function handleNewsletterAdminRun(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+): Promise<Response> {
+  if (!isNewsletterAdminAuthorized(request, env)) {
+    return jsonResponse({ success: false, error: 'Unauthorized' }, 401);
+  }
+
+  let payload: Record<string, unknown> = {};
+  try {
+    payload = await request.json() as Record<string, unknown>;
+  } catch {
+    // Empty body is fine.
+  }
+
+  const requestedDateKey = typeof payload.dateKey === 'string' && payload.dateKey.trim()
+    ? payload.dateKey.trim()
+    : getTorontoDateKey();
+  const requestedSource: NewsletterRunSource = payload.source === 'vercel_cron' ? 'vercel_cron' : 'admin';
+  const summary = await runDailyNewsletter(env, ctx, {
+    dateKey: requestedDateKey,
+    runDate: new Date(),
+    source: requestedSource,
+  });
+
+  return jsonResponse({ success: true, summary });
 }
 
 async function handlePhotos(url: URL, env: Env): Promise<Response> {
@@ -1234,7 +2203,7 @@ async function handleSitemap(env: Env): Promise<Response> {
 }
 
 function getTodayKey(): string {
-  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Toronto' });
+  return getTorontoDateKey();
 }
 
 function toRadians(value: number): number {

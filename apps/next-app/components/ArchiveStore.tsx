@@ -150,6 +150,13 @@ const translations = {
     newsletterBody: 'Le jeu du jour + une photo surprise dans votre boîte.',
     newsletterPlaceholder: 'votre@courriel.com',
     newsletterSubmit: "S'inscrire",
+    newsletterSubmitting: 'Inscription...',
+    newsletterConsent: 'En vous inscrivant, vous acceptez de recevoir le jeu du jour et une photo surprise par courriel. Désabonnement en tout temps.',
+    newsletterInvalid: 'Entrez une adresse courriel valide.',
+    newsletterSuccess: 'Inscription confirmée. Vérifiez votre boîte de réception.',
+    newsletterAlready: 'Vous êtes déjà inscrit.',
+    newsletterResubscribed: 'Votre abonnement est réactivé.',
+    newsletterError: 'Impossible de terminer l’inscription pour le moment.',
     printSearchPlaceholder: 'Rechercher les archives...',
     // Hook
     hookDefault: 'Explorez 13 499 photos d\'archives de Montréal',
@@ -220,6 +227,13 @@ const translations = {
     newsletterBody: 'The daily game + a surprise photo in your inbox.',
     newsletterPlaceholder: 'your@email.com',
     newsletterSubmit: 'Sign up',
+    newsletterSubmitting: 'Signing up...',
+    newsletterConsent: 'By signing up, you agree to receive the daily game and a surprise photo by email. Unsubscribe anytime.',
+    newsletterInvalid: 'Enter a valid email address.',
+    newsletterSuccess: 'You are subscribed. Check your inbox.',
+    newsletterAlready: 'You are already subscribed.',
+    newsletterResubscribed: 'Your subscription is active again.',
+    newsletterError: 'Unable to complete signup right now.',
     printSearchPlaceholder: 'Search the archives...',
     // Hook
     hookDefault: 'Explore 13, 499 archival photos of Montreal',
@@ -675,6 +689,9 @@ function ArchiveStoreInner({ initialView = 'landing' }: ArchiveStoreProps) {
   const [initialLoading, setInitialLoading] = useState(true);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
   const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [newsletterTrap, setNewsletterTrap] = useState('');
+  const [newsletterState, setNewsletterState] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+  const [newsletterFeedback, setNewsletterFeedback] = useState('');
 
   const t = translations[lang];
   const homeLink = appendLangParam('/', lang);
@@ -1076,17 +1093,52 @@ function ArchiveStoreInner({ initialView = 'landing' }: ArchiveStoreProps) {
   const handleNewsletterSubmit = useCallback((event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const trimmed = newsletterEmail.trim();
-    const subject = lang === 'fr' ? 'Inscription infolettre MTL Archives' : 'MTL Archives newsletter signup';
-    const body = trimmed
-      ? lang === 'fr'
-        ? `Bonjour,\n\nVeuillez ajouter ${trimmed} à l'infolettre MTL Archives.`
-        : `Hello,\n\nPlease add ${trimmed} to the MTL Archives newsletter.`
-      : lang === 'fr'
-        ? 'Bonjour,\n\nVeuillez m’ajouter à l’infolettre MTL Archives.'
-        : 'Hello,\n\nPlease add me to the MTL Archives newsletter.';
+    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setNewsletterState('error');
+      setNewsletterFeedback(t.newsletterInvalid);
+      return;
+    }
 
-    window.location.href = `mailto:support@mtlarchives.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-  }, [lang, newsletterEmail]);
+    setNewsletterState('submitting');
+    setNewsletterFeedback('');
+
+    void fetch('/api/newsletter/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: trimmed,
+        lang,
+        source: 'landing',
+        company: newsletterTrap,
+      }),
+    })
+      .then(async (response) => {
+        const json = await response.json().catch(() => ({})) as { status?: string; error?: string };
+        if (!response.ok) {
+          throw new Error(json.error || t.newsletterError);
+        }
+
+        setNewsletterState('success');
+        setNewsletterTrap('');
+        setNewsletterEmail('');
+
+        switch (json.status) {
+          case 'already_subscribed':
+            setNewsletterFeedback(t.newsletterAlready);
+            break;
+          case 'resubscribed':
+            setNewsletterFeedback(t.newsletterResubscribed);
+            break;
+          default:
+            setNewsletterFeedback(t.newsletterSuccess);
+            break;
+        }
+      })
+      .catch((error: unknown) => {
+        setNewsletterState('error');
+        setNewsletterFeedback(error instanceof Error ? error.message : t.newsletterError);
+      });
+  }, [lang, newsletterEmail, newsletterTrap, t.newsletterAlready, t.newsletterError, t.newsletterInvalid, t.newsletterResubscribed, t.newsletterSuccess]);
 
   // === Landing & Bounce Intelligence ===
 
@@ -1698,22 +1750,46 @@ function ArchiveStoreInner({ initialView = 'landing' }: ArchiveStoreProps) {
               onSubmit={handleNewsletterSubmit}
               className="mt-6 grid max-w-xl grid-cols-[minmax(0,1fr)_auto] gap-3 sm:mx-auto"
             >
+              <div className="sr-only" aria-hidden="true">
+                <label htmlFor="newsletter-company">Company</label>
+                <input
+                  id="newsletter-company"
+                  tabIndex={-1}
+                  autoComplete="off"
+                  value={newsletterTrap}
+                  onChange={(event) => setNewsletterTrap(event.target.value)}
+                />
+              </div>
               <div className="input-shell flex h-12 min-w-0 items-center px-4">
                 <input
                   type="email"
                   value={newsletterEmail}
                   onChange={(event) => setNewsletterEmail(event.target.value)}
                   placeholder={t.newsletterPlaceholder}
+                  disabled={newsletterState === 'submitting'}
                   className="h-full w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/70"
                 />
               </div>
               <button
                 type="submit"
+                disabled={newsletterState === 'submitting'}
                 className="inline-flex h-12 items-center justify-center rounded-[0.9rem] bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/92 sm:rounded-full sm:px-6"
               >
-                {t.newsletterSubmit}
+                {newsletterState === 'submitting' ? t.newsletterSubmitting : t.newsletterSubmit}
               </button>
             </form>
+            <p className="mt-3 max-w-xl text-xs leading-5 text-muted-foreground sm:mx-auto">
+              {t.newsletterConsent}
+            </p>
+            {newsletterFeedback ? (
+              <p
+                className={`mt-3 text-sm sm:text-center ${
+                  newsletterState === 'error' ? 'text-brand-copper' : 'text-brand-blue'
+                }`}
+              >
+                {newsletterFeedback}
+              </p>
+            ) : null}
           </section>
 
           <section className="border-y border-border/50 px-5 py-5 sm:px-12">

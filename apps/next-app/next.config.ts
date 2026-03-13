@@ -43,6 +43,10 @@ const nextConfig: NextConfig = {
         source: '/api/sitemap',
         destination: `${apiBase}/api/sitemap`,
       },
+      {
+        source: '/api/newsletter/subscribe',
+        destination: `${apiBase}/api/newsletter/subscribe`,
+      },
     ];
   },
 };

@@ -16,6 +16,7 @@ Built on Cloudflare's edge infrastructure: Workers, D1, Vectorize, R2, and Worke
 - **Daily Game** — Guess-the-location daily challenge + practice round
 - **Map Exploration** — Leaflet-based map view for geolocated photos
 - **Print Ordering** — Manual print requests via email checkout
+- **Daily Newsletter** — Explicit opt-in email list with landing/game signup, welcome flow, daily send, and one-click unsubscribe
 - **V4 Frontend** — Paper-driven editorial landing, search, photo, print, checkout, auth, and game surfaces across desktop + mobile
 - **Bilingual UI** — French + English across the site and game
 - **Signed URLs** — Secure, time-limited access to R2-hosted images
@@ -78,6 +79,14 @@ For `apps/next-app`, API and asset origins are env-driven:
 - `NEXT_PUBLIC_API_URL` (required in production)
 - `NEXT_PUBLIC_R2_PUBLIC_DOMAIN` (preferred; falls back to `CLOUDFLARE_R2_PUBLIC_DOMAIN` if present)
 - `RESEND_SECRET_KEY` is required for production builds that include `/api/checkout`
+- Next newsletter cron env:
+  - `CRON_SECRET` for the Vercel cron route authorization header
+  - `NEWSLETTER_ADMIN_SECRET` so the Next cron route can call the Worker admin endpoint
+- Worker newsletter env:
+  - `RESEND_SECRET_KEY` for welcome/daily/unsubscribe sends
+  - `NEWSLETTER_TOKEN_SECRET` for signed unsubscribe/resubscribe links
+  - `NEWSLETTER_ADMIN_SECRET` for manual `/api/newsletter/admin/run`
+  - `SITE_URL`, `API_ORIGIN`, `NEWSLETTER_REPLY_TO`
 - Clerk publishable/secret keys are required for production builds that include `/game`, `/sign-in`, and `/sign-up`
 - Clerk client auth is loaded on auth/game routes, not globally, to reduce public-route script cost.
 - Next metadata routes publish SEO endpoints (`/sitemap.xml`, `/robots.txt`) from the app layer.
@@ -92,16 +101,29 @@ Smoke checks:
 - `npm run smoke:game -- http://localhost:3001/game`
 - `npm run smoke:game:prod`
 
+Newsletter ops:
+- Apply D1 migrations `0009_newsletter.sql` and `0010_newsletter_runs.sql`
+- Vercel cron lives in `apps/next-app/vercel.json` and runs hourly
+- The Next cron route gates on `7:00 AM` Toronto time before calling the Worker admin endpoint, which avoids DST drift from a fixed UTC schedule
+- Public signup entry points live on `/` and `/game`
+- Vercel cron endpoint:
+  - `GET /api/cron/newsletter` with `Authorization: Bearer ${CRON_SECRET}`
+- Worker endpoints:
+  - `POST /api/newsletter/subscribe`
+  - `GET /api/newsletter/unsubscribe?token=...`
+  - `GET /api/newsletter/resubscribe?token=...`
+  - `POST /api/newsletter/admin/run` with `x-newsletter-admin-secret`
+
 ## Frontend Routes
 
 The main `apps/next-app` product surface now follows the V4 Paper redesign:
-- `/` — editorial landing page with brand system, discovery shortcuts, route cards, commitments, and daily-game promo
+- `/` — editorial landing page with brand system, discovery shortcuts, route cards, commitments, daily-game promo, and newsletter signup wired to the Worker
 - `/search` — dedicated search surface with semantic/visual mode switching and responsive result grids
 - `/photo/[id]` — desktop/mobile photo detail plus order mode
 - `/print` — curated print gallery
 - `/checkout` — manual order submission flow
 - `/order-confirmation` — post-checkout confirmation page
-- `/sign-in`, `/sign-up`, `/game` — dark-shell auth and game surfaces
+- `/sign-in`, `/sign-up`, `/game` — dark-shell auth and game surfaces, with explicit newsletter opt-in on `/game`
 
 ## Project Structure
 

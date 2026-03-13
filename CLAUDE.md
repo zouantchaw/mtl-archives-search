@@ -67,6 +67,7 @@ pipelines/
 - `VECTORIZE_CLIP`: CLIP index (512-dim visual search)
 - `AI`: Workers AI for BGE embeddings
 - R2 secrets for signed image URLs
+- Newsletter runs are triggered by Vercel cron, not Worker cron. Keep `wrangler.toml` free of `triggers.crons` unless the account limit situation changes.
 
 ### Search Modes
 | Mode | Vector Index | Embedding |
@@ -88,6 +89,7 @@ pipelines/
 2. ETL: canonicalize → dates → link-records → VLM tags + OCR → merge → trust score
 3. Output: `manifest_scored.jsonl` → SQL seed → D1
 4. Embeddings: BGE (text) and CLIP (images) → Vectorize indices
+5. Newsletter: explicit signup from `/` or `/game` → Worker → D1 (`newsletter_*` tables) → Resend, with Vercel cron calling the Worker admin endpoint for daily sends
 
 ## Environment
 
@@ -96,6 +98,10 @@ Node 23.5.0 (see `.nvmrc`). Python 3.10+ for OCR/CLIP scripts.
 Secrets via `wrangler secret put`:
 - R2 credentials: `CLOUDFLARE_R2_ACCESS_KEY`, `CLOUDFLARE_R2_SECRET_ACCESS_KEY`, `CLOUDFLARE_R2_ACCOUNT_ID`, `CLOUDFLARE_R2_BUCKET`
 - Visual search: `HF_API_TOKEN` (HuggingFace)
+- Newsletter:
+  - `RESEND_SECRET_KEY`
+  - `NEWSLETTER_TOKEN_SECRET`
+  - `NEWSLETTER_ADMIN_SECRET`
 
 Local `.env` for scripts: `CLOUDFLARE_AI_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`
 
@@ -103,6 +109,9 @@ Next app runtime env:
 - `NEXT_PUBLIC_API_URL` (required in production)
 - `NEXT_PUBLIC_R2_PUBLIC_DOMAIN` (preferred public asset host)
 - `RESEND_SECRET_KEY` is required for production builds that include `/api/checkout`
+- The same `RESEND_SECRET_KEY` is also used by the Worker newsletter sender.
+- `CRON_SECRET` protects `/api/cron/newsletter` on Vercel.
+- `NEWSLETTER_ADMIN_SECRET` must match between the Vercel project and the Worker so the cron route can call `/api/newsletter/admin/run`.
 - Clerk publishable/secret keys are required for production builds that include `/game`, `/sign-in`, and `/sign-up`
 - Clerk client provider is scoped to auth/game routes to keep public route payload lighter.
 - If `NEXT_PUBLIC_API_URL` is ever missing in a client bundle, Next app falls back to same-origin relative API paths and logs an explicit runtime error (no hard client crash).
@@ -114,6 +123,7 @@ Next app runtime env:
 - Public entry now defaults to the editorial landing page on `/`; do not reintroduce random home-to-game redirects.
 - Route-specific V4 surfaces exist for `/`, `/search`, `/photo/[id]`, `/print`, `/checkout`, `/order-confirmation`, `/sign-in`, `/sign-up`, and `/game`.
 - Manual print checkout is still invariant: redesigned UI, same manual fulfillment path.
+- Newsletter consent is explicit-only. Do not auto-enroll Clerk/game signups without a dedicated opt-in action and audit log entry.
 
 ## Skills
 

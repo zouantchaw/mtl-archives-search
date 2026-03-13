@@ -26,6 +26,7 @@ Deliver the best on-site user experience (especially mobile/in-app browsers) bef
 - [x] **Mobile QA** — Executed iPhone Safari + iOS in-app browser checklist (`docs/performance/mobile-touch-qa-checklist-2026-02-18.md`) with no issues observed.
 - [ ] **Social proof** — "X people viewed this photo" or "Popular in [neighborhood]".
 - [x] **Reduce auth/script cost on public routes** — Clerk provider is route-scoped to `/game`, `/sign-in`, `/sign-up`; public home/photo routes no longer wrap root in Clerk.
+- [x] **Ship explicit newsletter opt-in system** — Landing + game signup, D1 consent log, signed unsubscribe/resubscribe links, Resend welcome/daily sends, and Vercel cron wiring are implemented.
 
 ### Reliability + correctness
 - [x] **Retry + resume ingestion** — Vectorize text + CLIP ingest now support retry/backoff, resumable checkpoints, and manual resume overrides.
@@ -41,6 +42,8 @@ Deliver the best on-site user experience (especially mobile/in-app browsers) bef
   - `npm run image-orientation:audit --workspace=@mtl-archives/scripts -- --input /absolute/path/to/manifest_clean.jsonl.gz --r2-domain pub-...r2.dev --write-preview-dir /absolute/path/to/reports/image_orientation_preview --write-sql /absolute/path/to/reports/image_orientation_updates.sql`
   - Temporary fallback for known bad records uses `apps/api/src/photo-orientation-overrides.ts` until DB backfill is complete.
 - [ ] **Run GSC triage pass on remaining non-indexed buckets** — Prioritize `duplicate without user-selected canonical` and `discovered - currently not indexed`, then validate fixes in Search Console.
+- [ ] **Add newsletter bounce/complaint webhook sync** — Ingest provider-level suppressions back into D1 so deliverability events are reflected in subscription state automatically.
+- [ ] **Deploy Vercel cron env for newsletter** — Set `CRON_SECRET` and matching `NEWSLETTER_ADMIN_SECRET` on the Vercel project, then ship the Next app so `/api/cron/newsletter` starts running in production.
 
 ### Recently completed platform blockers
 - [x] **Fix sitemap/photo ID mismatch** — `/api/photos` now normalizes bare IDs and `.json` IDs, sitemap/photo URLs use canonical bare IDs, and OG/Twitter photo fetches use the same normalized format.
@@ -139,6 +142,7 @@ New archive source is `archivesdemontreal.ica-atom.org`; ingest safely before fu
 - [x] FR/EN bilingual UI.
 - [x] Manual print ordering via Resend.
 - [x] Daily game MVP (Leaflet map, API, leaderboard, practice mode, share card, Clerk optional auth, mobile UX pass, shared i18n helper).
+- [x] Daily newsletter system (explicit consent, welcome email, scheduled daily issue, signed unsubscribe/resubscribe, landing/game capture).
 
 ### Analytics + distribution
 - [x] Seline -> Vercel Analytics migration.

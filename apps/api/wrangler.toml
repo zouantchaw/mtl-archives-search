@@ -21,3 +21,6 @@ binding = "AI"
 
 [vars]
 CLOUDFLARE_R2_PUBLIC_DOMAIN = "pub-6a29793ea7664738880d1cc5afb21b87.r2.dev"
+SITE_URL = "https://www.mtlarchives.com"
+API_ORIGIN = "https://mtl-archives-worker.wiel.workers.dev"
+NEWSLETTER_REPLY_TO = "zouantchaw74@gmail.com"

@@ -57,6 +57,8 @@
 - Production requires `NEXT_PUBLIC_API_URL`; local fallback is `http://localhost:8787`.
 - Clerk client auth provider is route-scoped (`/game`, `/sign-in`, `/sign-up`) to reduce public-route script cost.
 - Manual commerce still relies on `apps/next-app/app/api/checkout/route.ts` + Resend; the redesigned checkout UI does not introduce live payment processing.
+- Newsletter subscription lives in Worker + D1 + Resend. The landing page and game page post explicit opt-in requests to Worker routes; game auth alone does not imply newsletter consent.
+- Vercel cron hits `apps/next-app/app/api/cron/newsletter/route.ts` hourly. That route gates on `America/Toronto` local hour `7` and then calls the Worker admin endpoint, which avoids DST mistakes from a single hard-coded UTC schedule.
 - The V4 Paper redesign lives in `apps/next-app` and centers route-specific surfaces for `/`, `/search`, `/photo/[id]`, `/print`, `/checkout`, `/order-confirmation`, `/sign-in`, `/sign-up`, and `/game`.
 - Home no longer A/B redirects visitors into `/game`; the editorial landing page is now the default public entry point.
 
@@ -159,6 +161,25 @@ Next.js /game ──▶ Worker /api/game/daily|guess|leaderboard ──▶ D1
 Next.js /api/checkout ──▶ Resend (emails) ──▶ Manual fulfillment
 ```
 
+### 5. Newsletter Flow (Runtime)
+
+```
+Landing/Game signup ──▶ Worker /api/newsletter/subscribe ──▶ D1 newsletter_subscription
+                             │                                  │
+                             │                                  └─▶ newsletter_subscription_event
+                             ▼
+                        Resend welcome email
+
+Vercel Cron (hourly) ──▶ Next /api/cron/newsletter ──▶ Worker /api/newsletter/admin/run
+                                                           │
+                                                           ├─▶ newsletter_run lock/log
+                                                           ├─▶ getDailyChallenge + newsletter_issue
+                                                           ├─▶ newsletter_delivery log
+                                                           └─▶ Resend daily email
+
+Email unsubscribe link ──▶ Worker /api/newsletter/unsubscribe ──▶ D1 status update + confirmation email
+```
+
 ## D1 Schema
 
 ```sql
@@ -185,6 +206,13 @@ CREATE TABLE manifest (
 
 Note: D1 currently stores core fields plus `vlm_caption`. Structured VLM tags and OCR outputs live in
 `manifest_enriched_v3.jsonl` and `manifest_scored.jsonl` until the schema is expanded.
+
+Newsletter tables added in `0009_newsletter.sql`:
+- `newsletter_subscription`: source of truth for consented subscribers, locale, source, Clerk linkage, and timestamps
+- `newsletter_issue`: deterministic daily pairing of the game photo and a surprise archive photo
+- `newsletter_delivery`: delivery log for welcome/daily/unsubscribe emails
+- `newsletter_subscription_event`: consent and lifecycle audit trail, including source and IP metadata
+- `newsletter_run` in `0010_newsletter_runs.sql`: per-day dispatch lock and run summary used by cron/admin triggers
 
 ## Repository Structure
 
@@ -241,6 +269,7 @@ mtl-archives-search/
 - **Image Delivery**: Vercel Image Optimization (Pro plan) — resizes, converts to WebP/AVIF, edge-caches. Source images from R2 public URLs.
 - **Caching**: Cloudflare Cache API (read-through on Worker endpoints, 5m–24h TTLs). In-memory cached COUNT keyed by WHERE clause.
 - **Analytics**: Vercel Analytics (custom events)
+- **Email**: Resend (manual checkout emails + newsletter sends)
 - **ETL**: Python 3.10+, Node.js 23+
 
 ## Vision Enrichment Pipeline

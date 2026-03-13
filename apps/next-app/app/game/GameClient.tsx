@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { API_BASE } from '@/lib/runtime-config';
-import { SignedIn, SignedOut, UserButton, useAuth } from '@clerk/nextjs';
+import { SignedIn, SignedOut, UserButton, useAuth, useUser } from '@clerk/nextjs';
 import type { PhotoRecord } from '@/lib/types';
 import { Share2, X, MapPin, Trophy, ChevronLeft, Maximize2, ShoppingBag, LogIn } from 'lucide-react';
 import { appendLangParam, DEFAULT_LANG, getLangFromSearchParams } from '@/lib/i18n';
@@ -171,6 +171,14 @@ const translations = {
     orderPrintShort: 'Commander l\'impression',
     emailPlaceholder: 'votre@courriel.com',
     emailSend: 'Envoyer',
+    newsletterTitle: 'Recevez le défi du jour par courriel',
+    newsletterBody: 'Le jeu quotidien + une photo surprise chaque matin.',
+    newsletterSubmitting: 'Inscription...',
+    newsletterSuccess: 'Inscription confirmée. Vérifiez votre boîte de réception.',
+    newsletterAlready: 'Vous êtes déjà inscrit.',
+    newsletterResubscribed: 'Votre abonnement est réactivé.',
+    newsletterInvalid: 'Entrez une adresse courriel valide.',
+    newsletterError: 'Impossible de terminer l’inscription pour le moment.',
     dailyLabel: 'JEU QUOTIDIEN',
     orderCta: 'Commander',
   },
@@ -231,6 +239,14 @@ const translations = {
     orderPrintShort: 'Order print',
     emailPlaceholder: 'your@email.com',
     emailSend: 'Send',
+    newsletterTitle: 'Get the daily challenge by email',
+    newsletterBody: 'The daily game + a surprise archive photo every morning.',
+    newsletterSubmitting: 'Signing up...',
+    newsletterSuccess: 'You are subscribed. Check your inbox.',
+    newsletterAlready: 'You are already subscribed.',
+    newsletterResubscribed: 'Your subscription is active again.',
+    newsletterInvalid: 'Enter a valid email address.',
+    newsletterError: 'Unable to complete signup right now.',
     dailyLabel: 'DAILY GAME',
     orderCta: 'Order',
   },
@@ -301,12 +317,16 @@ export function GameClient() {
   const [showIntro, setShowIntro] = useState(false);
   const [introAnimating, setIntroAnimating] = useState(false);
   const { getToken, isLoaded, isSignedIn } = useAuth();
+  const { user } = useUser();
   const abVariantRef = useRef<string | null>(null);
   const landedRef = useRef(false);
   const pinPlacedRef = useRef(false);
   const prevModeRef = useRef<'daily' | 'practice'>('daily');
   const zoomedAfterPinRef = useRef(false);
   const [showZoomHint, setShowZoomHint] = useState(false);
+  const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [newsletterState, setNewsletterState] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+  const [newsletterFeedback, setNewsletterFeedback] = useState('');
 
   const currentPhoto = mode === 'daily' ? data?.daily.photo : data?.practice.photo;
   const currentPlayed = mode === 'daily' ? data?.daily.played : data?.practice.result !== null;
@@ -382,6 +402,12 @@ export function GameClient() {
     if (!isLoaded) return;
     setAnonId(getAnonId());
   }, [isLoaded]);
+
+  useEffect(() => {
+    const primaryEmail = user?.primaryEmailAddress?.emailAddress?.trim();
+    if (!primaryEmail) return;
+    setNewsletterEmail((current) => current || primaryEmail);
+  }, [user?.primaryEmailAddress?.emailAddress]);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -572,6 +598,57 @@ export function GameClient() {
   const handleTogglePhoto = () => {
     setPhotoExpanded(!photoExpanded);
   };
+
+  const handleNewsletterSubmit = useCallback(async () => {
+    const trimmed = newsletterEmail.trim();
+    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setNewsletterState('error');
+      setNewsletterFeedback(t.newsletterInvalid);
+      return;
+    }
+
+    setNewsletterState('submitting');
+    setNewsletterFeedback('');
+
+    try {
+      const token = isSignedIn ? await getToken() : null;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`${API_BASE}/api/newsletter/subscribe`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          email: trimmed,
+          lang,
+          source: 'game',
+        }),
+      });
+
+      const json = await response.json().catch(() => ({})) as { status?: string; error?: string };
+      if (!response.ok) {
+        throw new Error(json.error || t.newsletterError);
+      }
+
+      setNewsletterState('success');
+      switch (json.status) {
+        case 'already_subscribed':
+          setNewsletterFeedback(t.newsletterAlready);
+          break;
+        case 'resubscribed':
+          setNewsletterFeedback(t.newsletterResubscribed);
+          break;
+        default:
+          setNewsletterFeedback(t.newsletterSuccess);
+          break;
+      }
+    } catch (error) {
+      setNewsletterState('error');
+      setNewsletterFeedback(error instanceof Error ? error.message : t.newsletterError);
+    }
+  }, [API_BASE, getToken, isSignedIn, lang, newsletterEmail, t.newsletterAlready, t.newsletterError, t.newsletterInvalid, t.newsletterResubscribed, t.newsletterSuccess]);
 
   const dismissIntro = () => {
     setShowIntro(false);
@@ -897,16 +974,31 @@ export function GameClient() {
                   ))}
                 </div>
 
-                {/* Newsletter email input */}
-                <div className="mt-6 flex items-center rounded-full border border-input overflow-hidden">
-                  <input
-                    type="email"
-                    placeholder={t.emailPlaceholder}
-                    className="flex-1 bg-transparent px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none"
-                  />
-                  <button className="bg-primary text-primary-foreground rounded-full px-5 h-9 text-sm font-medium shrink-0 mr-0.5">
-                    {t.emailSend}
-                  </button>
+                <div className="mt-6 rounded-[1.5rem] border border-input bg-card/60 p-4">
+                  <p className="text-sm font-semibold text-foreground">{t.newsletterTitle}</p>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">{t.newsletterBody}</p>
+                  <div className="mt-4 flex items-center overflow-hidden rounded-full border border-input">
+                    <input
+                      type="email"
+                      value={newsletterEmail}
+                      onChange={(event) => setNewsletterEmail(event.target.value)}
+                      placeholder={t.emailPlaceholder}
+                      disabled={newsletterState === 'submitting'}
+                      className="flex-1 bg-transparent px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none disabled:cursor-not-allowed"
+                    />
+                    <button
+                      onClick={handleNewsletterSubmit}
+                      disabled={newsletterState === 'submitting'}
+                      className="bg-primary text-primary-foreground rounded-full px-5 h-9 text-sm font-medium shrink-0 mr-0.5 disabled:opacity-60"
+                    >
+                      {newsletterState === 'submitting' ? t.newsletterSubmitting : t.emailSend}
+                    </button>
+                  </div>
+                  {newsletterFeedback ? (
+                    <p className={`mt-3 text-sm ${newsletterState === 'error' ? 'text-orange-600' : 'text-primary'}`}>
+                      {newsletterFeedback}
+                    </p>
+                  ) : null}
                 </div>
 
                 <div className="mt-6 border-t border-border pt-6">
@@ -1000,6 +1092,33 @@ export function GameClient() {
               <Share2 className="w-4 h-4" />
               {shareMessage || t.shareResult}
             </button>
+
+            <div className="rounded-[1.5rem] border border-input/70 bg-card p-4">
+              <p className="text-sm font-semibold text-foreground">{t.newsletterTitle}</p>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">{t.newsletterBody}</p>
+              <div className="mt-4 flex items-center overflow-hidden rounded-full border border-input">
+                <input
+                  type="email"
+                  value={newsletterEmail}
+                  onChange={(event) => setNewsletterEmail(event.target.value)}
+                  placeholder={t.emailPlaceholder}
+                  disabled={newsletterState === 'submitting'}
+                  className="flex-1 bg-transparent px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none disabled:cursor-not-allowed"
+                />
+                <button
+                  onClick={handleNewsletterSubmit}
+                  disabled={newsletterState === 'submitting'}
+                  className="bg-primary text-primary-foreground rounded-full px-5 h-9 text-sm font-medium shrink-0 mr-0.5 disabled:opacity-60"
+                >
+                  {newsletterState === 'submitting' ? t.newsletterSubmitting : t.emailSend}
+                </button>
+              </div>
+              {newsletterFeedback ? (
+                <p className={`mt-3 text-sm ${newsletterState === 'error' ? 'text-orange-600' : 'text-primary'}`}>
+                  {newsletterFeedback}
+                </p>
+              ) : null}
+            </div>
 
             {/* Mode tabs */}
             <div className="flex justify-center items-center gap-6">
