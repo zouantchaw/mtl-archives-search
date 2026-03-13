@@ -56,6 +56,9 @@
 - `apps/next-app/lib/runtime-config.ts` and `apps/next-app/next.config.ts` both consume this resolver to prevent client/server/rewrite drift.
 - Production requires `NEXT_PUBLIC_API_URL`; local fallback is `http://localhost:8787`.
 - Clerk client auth provider is route-scoped (`/game`, `/sign-in`, `/sign-up`) to reduce public-route script cost.
+- Manual commerce still relies on `apps/next-app/app/api/checkout/route.ts` + Resend; the redesigned checkout UI does not introduce live payment processing.
+- The V4 Paper redesign lives in `apps/next-app` and centers route-specific surfaces for `/`, `/search`, `/photo/[id]`, `/print`, `/checkout`, `/order-confirmation`, `/sign-in`, `/sign-up`, and `/game`.
+- Home no longer A/B redirects visitors into `/game`; the editorial landing page is now the default public entry point.
 
 ### 1. ETL Pipeline (Offline)
 

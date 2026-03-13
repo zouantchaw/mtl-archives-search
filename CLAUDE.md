@@ -102,9 +102,18 @@ Local `.env` for scripts: `CLOUDFLARE_AI_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`
 Next app runtime env:
 - `NEXT_PUBLIC_API_URL` (required in production)
 - `NEXT_PUBLIC_R2_PUBLIC_DOMAIN` (preferred public asset host)
+- `RESEND_SECRET_KEY` is required for production builds that include `/api/checkout`
+- Clerk publishable/secret keys are required for production builds that include `/game`, `/sign-in`, and `/sign-up`
 - Clerk client provider is scoped to auth/game routes to keep public route payload lighter.
 - If `NEXT_PUBLIC_API_URL` is ever missing in a client bundle, Next app falls back to same-origin relative API paths and logs an explicit runtime error (no hard client crash).
 - Smoke command for game route: `npm run smoke:game:prod`
+
+## Frontend UX Notes
+
+- `apps/next-app/app/globals.css` now carries the V4 Paper brand tokens (warm paper background, Spectral/Figtree/IBM Plex Mono stack, editorial card surfaces).
+- Public entry now defaults to the editorial landing page on `/`; do not reintroduce random home-to-game redirects.
+- Route-specific V4 surfaces exist for `/`, `/search`, `/photo/[id]`, `/print`, `/checkout`, `/order-confirmation`, `/sign-in`, `/sign-up`, and `/game`.
+- Manual print checkout is still invariant: redesigned UI, same manual fulfillment path.
 
 ## Skills
 

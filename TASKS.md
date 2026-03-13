@@ -134,6 +134,7 @@ New archive source is `archivesdemontreal.ica-atom.org`; ingest safely before fu
 - [x] Three search modes (text, semantic, visual).
 - [x] 13,499 photos indexed with trust scores.
 - [x] Shuffle discovery flow.
+- [x] V4 frontend redesign shipped for landing, search, photo detail/order mode, print gallery, checkout, order confirmation, auth shell, and game shell.
 - [x] Photo page with view/order modes and visible print CTA.
 - [x] FR/EN bilingual UI.
 - [x] Manual print ordering via Resend.

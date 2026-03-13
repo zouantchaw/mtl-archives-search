@@ -16,6 +16,7 @@ Built on Cloudflare's edge infrastructure: Workers, D1, Vectorize, R2, and Worke
 - **Daily Game** — Guess-the-location daily challenge + practice round
 - **Map Exploration** — Leaflet-based map view for geolocated photos
 - **Print Ordering** — Manual print requests via email checkout
+- **V4 Frontend** — Paper-driven editorial landing, search, photo, print, checkout, auth, and game surfaces across desktop + mobile
 - **Bilingual UI** — French + English across the site and game
 - **Signed URLs** — Secure, time-limited access to R2-hosted images
 - **Edge Performance** — Sub-50ms response times globally via Cloudflare's network
@@ -76,6 +77,8 @@ npm run deploy
 For `apps/next-app`, API and asset origins are env-driven:
 - `NEXT_PUBLIC_API_URL` (required in production)
 - `NEXT_PUBLIC_R2_PUBLIC_DOMAIN` (preferred; falls back to `CLOUDFLARE_R2_PUBLIC_DOMAIN` if present)
+- `RESEND_SECRET_KEY` is required for production builds that include `/api/checkout`
+- Clerk publishable/secret keys are required for production builds that include `/game`, `/sign-in`, and `/sign-up`
 - Clerk client auth is loaded on auth/game routes, not globally, to reduce public-route script cost.
 - Next metadata routes publish SEO endpoints (`/sitemap.xml`, `/robots.txt`) from the app layer.
 - `/game` exports canonical + language alternates to reduce duplicate indexing variants.
@@ -88,6 +91,17 @@ Client safety: if `NEXT_PUBLIC_API_URL` is missing from a client bundle, the app
 Smoke checks:
 - `npm run smoke:game -- http://localhost:3001/game`
 - `npm run smoke:game:prod`
+
+## Frontend Routes
+
+The main `apps/next-app` product surface now follows the V4 Paper redesign:
+- `/` — editorial landing page with brand system, discovery shortcuts, route cards, commitments, and daily-game promo
+- `/search` — dedicated search surface with semantic/visual mode switching and responsive result grids
+- `/photo/[id]` — desktop/mobile photo detail plus order mode
+- `/print` — curated print gallery
+- `/checkout` — manual order submission flow
+- `/order-confirmation` — post-checkout confirmation page
+- `/sign-in`, `/sign-up`, `/game` — dark-shell auth and game surfaces
 
 ## Project Structure
 

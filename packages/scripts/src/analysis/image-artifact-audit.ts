@@ -54,6 +54,25 @@ function cleanText(value: unknown): string {
   return String(value).trim();
 }
 
+function resolveCliPath(input: string, options?: { mustExist?: boolean }) {
+  const mustExist = options?.mustExist ?? false;
+  if (path.isAbsolute(input)) {
+    return input;
+  }
+
+  const isDataPath = input === 'data' || input.startsWith('data/');
+  if (isDataPath) {
+    return path.resolve(MONOREPO_ROOT, input);
+  }
+
+  const cwdPath = path.resolve(process.cwd(), input);
+  if (!mustExist || fs.existsSync(cwdPath)) {
+    return cwdPath;
+  }
+
+  return path.resolve(MONOREPO_ROOT, input);
+}
+
 function ensureDir(filePath: string) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
 }
@@ -296,16 +315,16 @@ async function main() {
     },
   });
 
-  const inputPath = path.resolve(process.cwd(), values.input!);
-  const reportPath = path.resolve(process.cwd(), values.report!);
-  const decisionsPath = path.resolve(process.cwd(), values.decisions!);
-  const flaggedPath = path.resolve(process.cwd(), values.flagged!);
+  const inputPath = resolveCliPath(values.input!, { mustExist: true });
+  const reportPath = resolveCliPath(values.report!);
+  const decisionsPath = resolveCliPath(values.decisions!);
+  const flaggedPath = resolveCliPath(values.flagged!);
   const limit = Number(values.limit || '0');
   const concurrency = Number(values.concurrency || '4');
   const fetchTimeoutMs = Number(values['fetch-timeout-ms'] || '20000');
   const minKeepAreaRatio = Number(values['min-keep-area-ratio'] || '0.72');
   const publicDomain = cleanText(values['public-domain']);
-  const cleanedDir = values['write-cleaned-dir'] ? path.resolve(process.cwd(), values['write-cleaned-dir']) : null;
+  const cleanedDir = values['write-cleaned-dir'] ? resolveCliPath(values['write-cleaned-dir']) : null;
 
   if (!fs.existsSync(inputPath)) {
     fail(`Input file not found: ${inputPath}`);
