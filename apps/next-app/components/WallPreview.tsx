@@ -95,7 +95,7 @@ export const WallPreview = ({
     : currentSlide.room.name[lang];
 
   return (
-    <div className="relative bg-neutral-100" role="region" aria-label={lang === 'fr' ? 'Aperçu du produit' : 'Product preview'}>
+    <div className="relative bg-muted" role="region" aria-label={lang === 'fr' ? 'Aperçu du produit' : 'Product preview'}>
       {/* Carousel Container */}
       <div
         ref={scrollContainerRef}
@@ -146,8 +146,8 @@ export const WallPreview = ({
             onClick={() => handleDotClick(index)}
             className={`transition-all duration-300 ${
               index === currentIndex
-                ? 'w-6 h-2 bg-white rounded-full'
-                : 'w-2 h-2 bg-white/50 rounded-full hover:bg-white/80'
+                ? 'w-6 h-2 bg-card rounded-full'
+                : 'w-2 h-2 bg-card/50 rounded-full hover:bg-card/80'
             }`}
             aria-label={slide.type === 'original' 
               ? (lang === 'fr' ? 'Voir photo originale' : 'View original photo')
@@ -189,13 +189,13 @@ const OriginalPhotoSlide = ({
 }: OriginalPhotoSlideProps) => {
   return (
     <div
-      className="relative flex-shrink-0 w-full snap-center aspect-[4/3] flex items-center justify-center bg-neutral-100"
+      className="relative flex-shrink-0 w-full snap-center aspect-[4/3] flex items-center justify-center bg-muted"
       aria-hidden={!isActive}
     >
       {/* Product Preview - centered with styling based on product type */}
       <div className="relative w-[65%] max-w-md">
         <ProductFrame product={selectedProduct}>
-          <div className="relative w-full aspect-[4/3] bg-neutral-200 overflow-hidden">
+          <div className="relative w-full aspect-[4/3] bg-muted overflow-hidden">
             {photoUrl && !imageError ? (
               <Image
                 src={photoUrl}
@@ -208,8 +208,8 @@ const OriginalPhotoSlide = ({
                 onError={onImageError}
               />
             ) : (
-              <div className="absolute inset-0 flex items-center justify-center bg-neutral-200">
-                <span className="text-neutral-400 text-xs">
+              <div className="absolute inset-0 flex items-center justify-center bg-muted">
+                <span className="text-muted-foreground/70 text-xs">
                   {lang === 'fr' ? 'Image non disponible' : 'Image unavailable'}
                 </span>
               </div>
@@ -271,7 +271,7 @@ const RoomSlide = ({
         }}
       >
         <ProductFrame product={selectedProduct} inRoom>
-          <div className="relative w-full aspect-[4/3] overflow-hidden bg-neutral-200">
+          <div className="relative w-full aspect-[4/3] overflow-hidden bg-muted">
             {photoUrl && !imageError ? (
               <Image
                 src={photoUrl}
@@ -283,8 +283,8 @@ const RoomSlide = ({
                 onError={onImageError}
               />
             ) : (
-              <div className="absolute inset-0 flex items-center justify-center bg-neutral-200">
-                <span className="text-neutral-400 text-[10px]">Photo</span>
+              <div className="absolute inset-0 flex items-center justify-center bg-muted">
+                <span className="text-muted-foreground/70 text-[10px]">Photo</span>
               </div>
             )}
           </div>
