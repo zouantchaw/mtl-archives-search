@@ -16,6 +16,16 @@
       "sourceType": "github",
       "computedHash": "95d96a22d53f9f74e3ed116ef55a36a15599344a790baf012fff8be91c9c09b8"
     },
+    "product-led-sales": {
+      "source": "refoundai/lenny-skills",
+      "sourceType": "github",
+      "computedHash": "da3fcdb534f96fd015a8cb130869972da7167671e5d0f4faa4621ab67c88750f"
+    },
+    "sales-enablement": {
+      "source": "masonshare/coreyhaines31-marketing-skills",
+      "sourceType": "github",
+      "computedHash": "aaba13bea7b98c41225a1893d90778ef53044642c3099e42876434f8f3712622"
+    },
     "shadcn-ui": {
       "source": "giuseppe-trisciuoglio/developer-kit",
       "sourceType": "github",
