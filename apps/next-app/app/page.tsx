@@ -15,5 +15,5 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <ArchiveStore />;
+  return <ArchiveStore initialView="landing" />;
 }

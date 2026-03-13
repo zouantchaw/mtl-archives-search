@@ -17,7 +17,7 @@ export function PhotoTile({ src, alt, priority = false, onClick, onError }: Phot
   return (
     <button
       onClick={onClick}
-      className="relative aspect-square bg-neutral-100 overflow-hidden group"
+      className="relative aspect-square bg-muted overflow-hidden group"
       style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 200px' }}
     >
       {/* Skeleton placeholder - shows until image loads */}

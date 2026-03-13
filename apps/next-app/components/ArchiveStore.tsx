@@ -1,15 +1,17 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef, useMemo, Suspense } from 'react';
+import { type FormEvent, type ReactNode, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Search, X, ShoppingBag } from 'lucide-react';
+import Link from 'next/link';
+import Image from 'next/image';
+import { CircleDot, Frame, Search, ShoppingBag, X } from 'lucide-react';
 import type { PhotoRecord, SearchResponse, SearchMode } from '@/lib/types';
 import { events } from '@/lib/analytics';
 import { useCart } from '@/lib/cart-context';
 import { PhotoTile } from './PhotoTile';
 import { appendLangParam, DEFAULT_LANG, getLangFromSearchParams, type Lang } from '@/lib/i18n';
-import { assignAbVariant, getAbVariant, parseAbParam, setAbVariant } from '@/lib/experiments';
 import { normalizePhotoId } from '@/lib/photo-id';
+import { LandingHero, MtlArchivesLogo } from './LandingHero';
 
 const API_BASE = '';
 
@@ -21,7 +23,6 @@ const MOBILE_PAGE_SIZE = 12;      // 4 rows of 3
 const MOBILE_MAX_IMAGES = 24;     // 8 rows max
 const DESKTOP_PAGE_SIZE = 24;     // Good batch size
 const DESKTOP_MAX_IMAGES = 72;    // Generous but bounded
-const AB_GAME_RATIO = 0.6;
 const FILTER_BURST_WINDOW_MS = 5000;
 
 // ============================================================
@@ -113,6 +114,42 @@ const translations = {
     instagram: 'Instagram',
     facebook: 'Facebook',
     game: 'Jeu',
+    // Landing sections
+    gameTitle: 'Jeu quotidien',
+    gameSubtitle: 'Devine le quartier. Compare ton score.',
+    gameQuestion: 'Où est cette photo?',
+    gameMetaLine: '2 500+ joueurs · nouveau chaque jour',
+    gamePlay: 'Jouer',
+    printHeadline: 'Vos murs méritent une histoire.',
+    printMeta: "Impressions d'archives \u00b7 d\u00e8s 45$",
+    footerSource: 'Source: Archives de la Ville de Montréal',
+    footerUrl: 'mtlarchives.com',
+    // Desktop nav (landing mode)
+    navExplore: 'Explorer',
+    navDailyGame: 'Jeu quotidien',
+    navPrints: 'Impressions',
+    modeSemantic: 'Sémantique',
+    modeVisual: 'Visuelle',
+    sortRelevance: 'Pertinence',
+    resultsFor: 'résultats pour',
+    discoverLead: 'Explorer',
+    discoverLeadBody: 'Chercher par mot, lieu ou époque',
+    playLead: 'Jouer',
+    playLeadBody: 'Deviner le quartier chaque jour',
+    printLead: 'Imprimer',
+    printLeadBody: "Papier d'art, dès 45 $",
+    commitmentsTitle: 'Nos engagements',
+    commitmentMemoryTitle: 'Mémoire civique',
+    commitmentMemoryBody: "Préserver l'histoire de la ville",
+    commitmentSourcesTitle: 'Rigueur des sources',
+    commitmentSourcesBody: 'Métadonnées vérifiées, archives officielles',
+    commitmentAccessTitle: 'Accès pour tous',
+    commitmentAccessBody: 'Gratuit, bilingue, mobile-first',
+    newsletterTitle: 'Chaque matin, une couche de plus.',
+    newsletterBody: 'Le jeu du jour + une photo surprise dans votre boîte.',
+    newsletterPlaceholder: 'votre@courriel.com',
+    newsletterSubmit: "S'inscrire",
+    printSearchPlaceholder: 'Rechercher les archives...',
     // Hook
     hookDefault: 'Explorez 13 499 photos d\'archives de Montréal',
     hookInstagram: 'Vu sur Instagram? Il y en a 14 822 autres...',
@@ -147,12 +184,50 @@ const translations = {
     instagram: 'Instagram',
     facebook: 'Facebook',
     game: 'Game',
+    // Landing sections
+    gameTitle: 'Daily game',
+    gameSubtitle: 'Guess the neighbourhood. Compare your score.',
+    gameQuestion: 'Where was this photo taken?',
+    gameMetaLine: '2,500+ players · new every day',
+    gamePlay: 'Play',
+    printHeadline: 'Your walls deserve a story.',
+    printMeta: 'Archive prints \u00b7 from $45',
+    footerSource: 'Source: Archives de la Ville de Montréal',
+    footerUrl: 'mtlarchives.com',
+    // Desktop nav (landing mode)
+    navExplore: 'Explore',
+    navDailyGame: 'Daily game',
+    navPrints: 'Prints',
+    modeSemantic: 'Semantic',
+    modeVisual: 'Visual',
+    sortRelevance: 'Relevance',
+    resultsFor: 'results for',
+    discoverLead: 'Explore',
+    discoverLeadBody: 'Search by keyword, place, or decade',
+    playLead: 'Play',
+    playLeadBody: 'Guess the neighbourhood every day',
+    printLead: 'Print',
+    printLeadBody: 'Fine art paper, from $45',
+    commitmentsTitle: 'Our commitments',
+    commitmentMemoryTitle: 'Civic memory',
+    commitmentMemoryBody: "Preserving the city's history",
+    commitmentSourcesTitle: 'Source rigor',
+    commitmentSourcesBody: 'Verified metadata, official archives',
+    commitmentAccessTitle: 'Open to all',
+    commitmentAccessBody: 'Free, bilingual, mobile-first',
+    newsletterTitle: 'Every morning, another layer.',
+    newsletterBody: 'The daily game + a surprise photo in your inbox.',
+    newsletterPlaceholder: 'your@email.com',
+    newsletterSubmit: 'Sign up',
+    printSearchPlaceholder: 'Search the archives...',
     // Hook
     hookDefault: 'Explore 13, 499 archival photos of Montreal',
     hookInstagram: 'Saw this on Instagram? There are 14,822 more...',
     hookFacebook: 'Saw this on Facebook? There are 14,822 more...',
   },
 } as const;
+
+type SiteStrings = (typeof translations)[Lang];
 
 // Typewriter search examples - short, evocative (5 examples for faster cycling)
 const searchExamples = {
@@ -291,6 +366,118 @@ function IconInfo({ className }: { className?: string }) {
   );
 }
 
+function SearchModeTabs({
+  value,
+  onChange,
+  labels,
+}: {
+  value: SearchMode;
+  onChange: (nextMode: SearchMode) => void;
+  labels: Pick<SiteStrings, 'modeSemantic' | 'modeVisual'>;
+}) {
+  const semanticActive = value !== 'visual';
+
+  return (
+    <div className="inline-flex rounded-full bg-secondary p-1">
+      <button
+        type="button"
+        onClick={() => onChange('smart')}
+        className={`rounded-full px-4 py-2 text-label text-[11px] transition-colors ${
+          semanticActive ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
+        }`}
+      >
+        {labels.modeSemantic}
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange('visual')}
+        className={`rounded-full px-4 py-2 text-label text-[11px] transition-colors ${
+          !semanticActive ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'
+        }`}
+      >
+        {labels.modeVisual}
+      </button>
+    </div>
+  );
+}
+
+function LandingRouteCard({
+  href,
+  icon,
+  title,
+  body,
+}: {
+  href: string;
+  icon: ReactNode;
+  title: string;
+  body: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="surface-card flex min-h-[11rem] flex-col items-center justify-center gap-3 px-6 py-7 text-center no-underline transition-transform duration-200 hover:-translate-y-0.5"
+    >
+      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-background">{icon}</div>
+      <div className="space-y-2">
+        <p className="text-display text-[2rem] font-semibold leading-none tracking-[-0.03em] text-foreground">{title}</p>
+        <p className="mx-auto max-w-[17rem] text-sm leading-6 text-muted-foreground">{body}</p>
+      </div>
+    </Link>
+  );
+}
+
+function EditorialPhotoCard({
+  photo,
+  onClick,
+  priority = false,
+  aspectClassName = 'aspect-[4/3]',
+}: {
+  photo: PhotoRecord;
+  onClick: () => void;
+  priority?: boolean;
+  aspectClassName?: string;
+}) {
+  const caption = photo.name || photo.portalTitle || photo.cote || 'MTL Archives';
+  const meta = photo.dateValue || photo.portalDate || photo.cote || '';
+
+  return (
+    <button type="button" onClick={onClick} className="group block text-left">
+      <div className={`relative overflow-hidden rounded-[1.15rem] bg-muted ${aspectClassName}`}>
+        <Image
+          src={photo.imageUrl}
+          alt={caption}
+          fill
+          className="object-cover transition-transform duration-200 group-hover:scale-[1.02]"
+          sizes="(max-width: 640px) 44vw, (max-width: 1024px) 28vw, 22vw"
+          priority={priority}
+        />
+      </div>
+      <p className="mt-2 line-clamp-2 text-sm font-medium text-foreground">{caption}</p>
+      {meta ? <p className="mt-1 text-xs text-muted-foreground">{meta}</p> : null}
+    </button>
+  );
+}
+
+function CommitmentBlurb({
+  colorClassName,
+  title,
+  body,
+}: {
+  colorClassName: string;
+  title: string;
+  body: string;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <span className={`mt-[0.45rem] h-2.5 w-2.5 rounded-full ${colorClassName}`} />
+      <div>
+        <p className="text-lg font-semibold text-foreground">{title}</p>
+        <p className="mt-1 text-sm leading-6 text-muted-foreground">{body}</p>
+      </div>
+    </div>
+  );
+}
+
 // ============================================================
 // About Drawer Component
 // ============================================================
@@ -329,13 +516,13 @@ function AboutDrawer({
       
       {/* Mobile: Bottom drawer */}
       <div 
-        className={`fixed inset-x-0 bottom-0 z-[70] bg-white rounded-t-2xl max-h-[85vh] overflow-hidden sm:hidden transform transition-transform duration-300 ease-out ${
+        className={`fixed inset-x-0 bottom-0 z-[70] bg-card rounded-t-2xl max-h-[85vh] overflow-hidden sm:hidden transform transition-transform duration-300 ease-out ${
           isOpen ? 'translate-y-0' : 'translate-y-full'
         }`}
       >
         {/* Handle */}
         <div className="flex justify-center pt-3 pb-2">
-          <div className="w-10 h-1 bg-neutral-200 rounded-full" />
+          <div className="w-10 h-1 bg-muted rounded-full" />
         </div>
         
         {/* Content */}
@@ -346,19 +533,19 @@ function AboutDrawer({
 
       {/* Desktop: Right drawer */}
       <div 
-        className={`fixed inset-y-0 right-0 z-[70] bg-white w-full max-w-md shadow-2xl hidden sm:block transform transition-transform duration-300 ease-out ${
+        className={`fixed inset-y-0 right-0 z-[70] bg-card w-full max-w-md shadow-2xl hidden sm:block transform transition-transform duration-300 ease-out ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between h-14 px-5 border-b border-neutral-100">
+        <div className="flex items-center justify-between h-14 px-5 border-b border-border">
           <span className="text-xs font-medium tracking-[0.1em] uppercase">{t.about}</span>
           <button 
             onClick={onClose}
-            className="p-2 hover:bg-neutral-100 rounded-full transition-colors"
+            className="p-2 hover:bg-muted rounded-full transition-colors"
             aria-label={t.close}
           >
-            <X className="h-4 w-4 text-neutral-500" />
+            <X className="h-4 w-4 text-muted-foreground" />
           </button>
         </div>
         
@@ -376,31 +563,31 @@ function AboutContent({ t, onClose }: { t: (typeof translations)[Lang]; onClose:
     <div className="space-y-6">
       {/* About section */}
       <section>
-        <h2 className="text-base font-semibold text-neutral-900 mb-1.5">{t.aboutTitle}</h2>
-        <p className="text-[13px] text-neutral-500 leading-relaxed">{t.aboutDescription}</p>
+        <h2 className="text-base font-semibold text-foreground mb-1.5">{t.aboutTitle}</h2>
+        <p className="text-[13px] text-muted-foreground leading-relaxed">{t.aboutDescription}</p>
       </section>
 
       {/* Divider */}
-      <div className="h-px bg-neutral-100" />
+      <div className="h-px bg-muted" />
 
       {/* How to search - simplified */}
       <section>
-        <h3 className="text-[11px] font-medium tracking-[0.05em] uppercase text-neutral-400 mb-2">{t.howToUseTitle}</h3>
-        <p className="text-[13px] text-neutral-500 leading-relaxed mb-3">{t.howToUseText}</p>
-        <div className="bg-neutral-50 rounded-lg px-3 py-2.5">
-          <p className="text-[11px] font-medium text-neutral-400 uppercase tracking-wide mb-1">{t.examplesTitle}</p>
-          <p className="text-[12px] text-neutral-600 leading-relaxed">{t.examplesText}</p>
+        <h3 className="text-[11px] font-medium tracking-[0.05em] uppercase text-muted-foreground/70 mb-2">{t.howToUseTitle}</h3>
+        <p className="text-[13px] text-muted-foreground leading-relaxed mb-3">{t.howToUseText}</p>
+        <div className="bg-secondary rounded-lg px-3 py-2.5">
+          <p className="text-[11px] font-medium text-muted-foreground/70 uppercase tracking-wide mb-1">{t.examplesTitle}</p>
+          <p className="text-[12px] text-muted-foreground leading-relaxed">{t.examplesText}</p>
         </div>
       </section>
 
       {/* Prints */}
       <section>
-        <h3 className="text-[11px] font-medium tracking-[0.05em] uppercase text-neutral-400 mb-2">{t.printsTitle}</h3>
-        <p className="text-[13px] text-neutral-500 leading-relaxed">{t.printsText}</p>
+        <h3 className="text-[11px] font-medium tracking-[0.05em] uppercase text-muted-foreground/70 mb-2">{t.printsTitle}</h3>
+        <p className="text-[13px] text-muted-foreground leading-relaxed">{t.printsText}</p>
       </section>
 
       {/* Divider */}
-      <div className="h-px bg-neutral-100" />
+      <div className="h-px bg-muted" />
 
       {/* Source - Apple style row */}
       <section>
@@ -412,10 +599,10 @@ function AboutContent({ t, onClose }: { t: (typeof translations)[Lang]; onClose:
           className="flex items-center justify-between py-2 group"
         >
           <div>
-            <h3 className="text-[13px] font-medium text-neutral-900">{t.sourceTitle}</h3>
-            <p className="text-[11px] text-neutral-400 mt-0.5">{t.sourceText}</p>
+            <h3 className="text-[13px] font-medium text-foreground">{t.sourceTitle}</h3>
+            <p className="text-[11px] text-muted-foreground/70 mt-0.5">{t.sourceText}</p>
           </div>
-          <svg className="h-4 w-4 text-neutral-300 group-hover:text-neutral-500 transition-colors flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg className="h-4 w-4 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M7 17L17 7M17 7H7M17 7v10" />
           </svg>
         </a>
@@ -423,7 +610,7 @@ function AboutContent({ t, onClose }: { t: (typeof translations)[Lang]; onClose:
 
       {/* Version/Credits - very subtle, Apple style */}
       <section className="pt-2">
-        <p className="text-[10px] text-neutral-300 text-center">
+        <p className="text-[10px] text-muted-foreground/50 text-center">
           MTL Archives · v1.0
         </p>
       </section>
@@ -431,7 +618,7 @@ function AboutContent({ t, onClose }: { t: (typeof translations)[Lang]; onClose:
       {/* Close button - mobile only, Apple style */}
       <button 
         onClick={onClose}
-        className="w-full py-3.5 bg-neutral-100 text-neutral-900 text-[15px] font-medium rounded-xl sm:hidden active:bg-neutral-200 transition-colors"
+        className="w-full py-3.5 bg-muted text-foreground text-[15px] font-medium rounded-xl sm:hidden active:bg-muted transition-colors"
       >
         {t.close}
       </button>
@@ -442,18 +629,22 @@ function AboutContent({ t, onClose }: { t: (typeof translations)[Lang]; onClose:
 // ============================================================
 // Main Component
 // ============================================================
-export function ArchiveStore() {
+type ArchiveStoreProps = {
+  initialView?: 'landing' | 'search';
+};
+
+export function ArchiveStore({ initialView = 'landing' }: ArchiveStoreProps) {
   return (
     <Suspense fallback={<LoadingSpinner />}>
-      <ArchiveStoreInner />
+      <ArchiveStoreInner initialView={initialView} />
     </Suspense>
   );
 }
 
 function LoadingSpinner() {
   return (
-    <div className="min-h-screen bg-[#fafafa] flex items-center justify-center">
-      <div className="h-6 w-6 border-2 border-neutral-300 border-t-neutral-900 rounded-full animate-spin" />
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="h-6 w-6 border-2 border-border border-t-foreground rounded-full animate-spin" />
     </div>
   );
 }
@@ -477,10 +668,11 @@ function SkeletonGrid() {
   );
 }
 
-function ArchiveStoreInner() {
+function ArchiveStoreInner({ initialView = 'landing' }: ArchiveStoreProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { itemCount, openCart } = useCart();
+  const isSearchView = initialView === 'search';
 
   // Detect mobile ONCE on mount
   const [isMobile, setIsMobile] = useState<boolean | null>(null); // Detect after mount
@@ -489,103 +681,47 @@ function ArchiveStoreInner() {
     setIsMobile(mobile);
   }, []);
 
-  // Auto-scrolling marquee for discovery pills
-  const marqueeTrackRef = useRef<HTMLDivElement>(null);
-  const marqueeCleanup = useRef<(() => void) | null>(null);
-  const marqueeContainerRef = useCallback((el: HTMLDivElement | null) => {
-    if (marqueeCleanup.current) {
-      marqueeCleanup.current();
-      marqueeCleanup.current = null;
-    }
-    if (!el) return;
-
-    const track = marqueeTrackRef.current;
-    if (!track) return;
-
-    let animId: number;
-    let offset = 0;
-    let interacting = false;
-    let resumeTimer: ReturnType<typeof setTimeout>;
-    let dragStartX = 0;
-    let dragStartOffset = 0;
-    const speed = 0.3; // px per frame
-
-    const halfWidth = () => track.scrollWidth / 2;
-
-    const applyTransform = () => {
-      track.style.transform = `translateX(${-offset}px)`;
-    };
-
-    const tick = () => {
-      if (!interacting) {
-        offset += speed;
-        if (offset >= halfWidth()) offset -= halfWidth();
-        applyTransform();
-      }
-      animId = requestAnimationFrame(tick);
-    };
-    animId = requestAnimationFrame(tick);
-
-    // Drag/swipe — no pointer capture so button clicks work naturally
-    let dragging = false;
-
-    const onPointerDown = (e: PointerEvent) => {
-      interacting = true;
-      dragging = true;
-      clearTimeout(resumeTimer);
-      dragStartX = e.clientX;
-      dragStartOffset = offset;
-    };
-    const onPointerMove = (e: PointerEvent) => {
-      if (!dragging) return;
-      const dx = dragStartX - e.clientX;
-      if (Math.abs(dx) > 3) {
-        offset = dragStartOffset + dx;
-        const hw = halfWidth();
-        if (hw > 0) offset = ((offset % hw) + hw) % hw;
-        applyTransform();
-      }
-    };
-    const onPointerUp = () => {
-      dragging = false;
-      clearTimeout(resumeTimer);
-      resumeTimer = setTimeout(() => { interacting = false; }, 3000);
-    };
-
-    el.addEventListener('pointerdown', onPointerDown);
-    el.addEventListener('pointermove', onPointerMove);
-    el.addEventListener('pointerup', onPointerUp);
-    el.addEventListener('pointercancel', onPointerUp);
-
-    marqueeCleanup.current = () => {
-      cancelAnimationFrame(animId);
-      clearTimeout(resumeTimer);
-      el.removeEventListener('pointerdown', onPointerDown);
-      el.removeEventListener('pointermove', onPointerMove);
-      el.removeEventListener('pointerup', onPointerUp);
-      el.removeEventListener('pointercancel', onPointerUp);
-    };
-  }, []);
-
   // State from URL
   const initialQuery = searchParams.get('q') || '';
   const initialMode = (searchParams.get('mode') as SearchMode) || 'smart';
   const initialLang = getLangFromSearchParams(searchParams);
 
   const [lang, setLang] = useState<Lang>(initialLang);
-  const abRedirectedRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [searchMode, setSearchMode] = useState<SearchMode>(initialMode);
   const [searchResults, setSearchResults] = useState<PhotoRecord[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [hasSearched, setHasSearched] = useState(!!initialQuery);
+  const [hasSearched, setHasSearched] = useState(isSearchView || !!initialQuery);
   const [photos, setPhotos] = useState<PhotoRecord[]>([]);
+  const [heroPhotos, setHeroPhotos] = useState<PhotoRecord[]>([]);
   const [initialLoading, setInitialLoading] = useState(true);
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+  const [newsletterEmail, setNewsletterEmail] = useState('');
 
   const t = translations[lang];
   const homeLink = appendLangParam('/', lang);
   const gameLink = appendLangParam('/game', lang);
+  const printLink = appendLangParam('/print', lang);
+  const landingCards = [
+    {
+      href: appendLangParam('/search', lang),
+      icon: <Search className="h-4 w-4 text-brand-blue" />,
+      title: t.discoverLead,
+      body: t.discoverLeadBody,
+    },
+    {
+      href: gameLink,
+      icon: <CircleDot className="h-4 w-4 text-brand-orange" />,
+      title: t.playLead,
+      body: t.playLeadBody,
+    },
+    {
+      href: printLink,
+      icon: <Frame className="h-4 w-4 text-brand-green" />,
+      title: t.printLead,
+      body: t.printLeadBody,
+    },
+  ];
   const isMobileSafe = isMobile ?? true;
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -614,8 +750,7 @@ function ArchiveStoreInner() {
   // About drawer state
   const [isAboutOpen, setIsAboutOpen] = useState(false);
 
-  // Hook state (above-fold messaging for IG bounce reduction)
-  const [showHook, setShowHook] = useState(true);
+  // Social referrer detection (for analytics)
   const [isFromInstagram, setIsFromInstagram] = useState(false);
   const [isFromFacebook, setIsFromFacebook] = useState(false);
 
@@ -635,51 +770,15 @@ function ArchiveStoreInner() {
     }
   }, []);
 
-  // A/B: route a portion of visitors to the game
+  // Clean up return-to-home query params from the game flow.
   useEffect(() => {
-    if (abRedirectedRef.current) return;
     const params = new URLSearchParams(window.location.search);
     const fromGame = params.get('from') === 'game' || document.referrer.includes('/game');
     if (fromGame) {
+      params.delete('ab');
       params.delete('from');
       const cleaned = params.toString();
-      abRedirectedRef.current = true;
       router.replace(cleaned ? `/?${cleaned}` : '/', { scroll: false });
-      return;
-    }
-    const override = parseAbParam(params);
-    const stored = getAbVariant();
-
-    let variant = override || stored;
-    let source = override ? 'override' : stored ? 'cookie' : 'auto';
-    let assigned = false;
-
-    if (!variant) {
-      variant = assignAbVariant(AB_GAME_RATIO);
-      setAbVariant(variant);
-      assigned = true;
-    } else if (override && override !== stored) {
-      setAbVariant(override);
-      assigned = true;
-    }
-
-    if (assigned) {
-      events.abAssigned(variant, source);
-    }
-
-    const hasSearch = params.has('q');
-    if (variant === 'game' && !hasSearch) {
-      params.delete('ab');
-      if (lang !== DEFAULT_LANG) {
-        params.set('lang', lang);
-      } else {
-        params.delete('lang');
-      }
-      const query = params.toString();
-      const target = query ? `/game?${query}` : '/game';
-      abRedirectedRef.current = true;
-      events.abRedirected(variant);
-      router.replace(target);
     }
   }, [lang, router]);
 
@@ -692,8 +791,9 @@ function ArchiveStoreInner() {
     if (q) params.set('q', q);
     if (mode !== 'smart') params.set('mode', mode);
     if (currentLang !== DEFAULT_LANG) params.set('lang', currentLang);
-    router.replace(params.toString() ? `/?${params}` : '/', { scroll: false });
-  }, [router]);
+    const basePath = isSearchView ? '/search' : '/';
+    router.replace(params.toString() ? `${basePath}?${params}` : basePath, { scroll: false });
+  }, [isSearchView, router]);
 
   // Typewriter placeholder - pauses when input is focused
   const placeholders = useMemo(() => searchExamples[lang], [lang]);
@@ -715,7 +815,7 @@ function ArchiveStoreInner() {
   const trackFirstInteraction = useCallback((action: string) => {
     if (firstInteractionTracked.current) return;
     firstInteractionTracked.current = true;
-    setShowHook(false); // Dismiss hook on first interaction
+    // First interaction tracked
     events.pageFirstInteraction(action);
   }, []);
 
@@ -784,8 +884,9 @@ function ArchiveStoreInner() {
       }
     }
 
-    // Fetch fresh shuffled photos
-    setInitialLoading(true);
+    // Only show full skeleton on initial load (no existing photos yet).
+    // Shuffle refreshes keep existing photos visible for a smoother transition.
+    if (!forceRefresh) setInitialLoading(true);
     try {
     if (isMobile === null) return;
     const pageSize = isMobile ? MOBILE_PAGE_SIZE : DESKTOP_PAGE_SIZE;
@@ -798,6 +899,17 @@ function ArchiveStoreInner() {
       const items = data.items || [];
 
       setPhotos(items);
+
+      // Fetch 3 high-trust photos for the mobile hero stack (separate from grid)
+      if (isMobile && heroPhotos.length === 0) {
+        try {
+          const heroRes = await fetch(`${API_BASE}/api/photos?limit=3&shuffle=true&maxSize=1000000&minTrust=0.65`);
+          const heroData = await heroRes.json();
+          if (heroData.items?.length) setHeroPhotos(heroData.items);
+        } catch {
+          // Fall back silently — mobile stack will use grid photos
+        }
+      }
 
       // Cache in session storage for back navigation
       if (typeof window !== 'undefined') {
@@ -820,13 +932,13 @@ function ArchiveStoreInner() {
     if (hasSearched) {
       setSearchQuery('');
       setSearchResults([]);
-      setHasSearched(false);
+      setHasSearched(isSearchView);
     }
     trackFirstInteraction('shuffle');
     trackSessionAction('shuffle');
     events.shuffleClicked();
     loadPhotos(true); // Force refresh
-  }, [hasSearched, loadPhotos, trackFirstInteraction, trackSessionAction]);
+  }, [hasSearched, isSearchView, loadPhotos, trackFirstInteraction, trackSessionAction]);
 
   useEffect(() => {
     if (isMobile === null) return;
@@ -841,7 +953,7 @@ function ArchiveStoreInner() {
 
     if (!searchQuery.trim()) {
       setSearchResults([]);
-      setHasSearched(false);
+      setHasSearched(isSearchView);
       lastCommittedRef.current = null;
       if (!isInitialMount.current) updateUrl('', searchMode, lang);
       return;
@@ -912,11 +1024,11 @@ function ArchiveStoreInner() {
     events.searchCleared();
     setSearchQuery('');
     setSearchResults([]);
-    setHasSearched(false);
+    setHasSearched(isSearchView);
     lastCommittedRef.current = null;
     updateUrl('', searchMode, lang);
     searchInputRef.current?.focus();
-  }, [updateUrl, searchMode, lang]);
+  }, [isSearchView, updateUrl, searchMode, lang]);
 
   // Dedupe
   const displayPhotos = useMemo(() => {
@@ -982,6 +1094,21 @@ function ArchiveStoreInner() {
     setSearchMode(newMode);
     if (searchQuery) updateUrl(searchQuery, newMode, lang);
   }, [searchQuery, lang, updateUrl]);
+
+  const handleNewsletterSubmit = useCallback((event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const trimmed = newsletterEmail.trim();
+    const subject = lang === 'fr' ? 'Inscription infolettre MTL Archives' : 'MTL Archives newsletter signup';
+    const body = trimmed
+      ? lang === 'fr'
+        ? `Bonjour,\n\nVeuillez ajouter ${trimmed} à l'infolettre MTL Archives.`
+        : `Hello,\n\nPlease add ${trimmed} to the MTL Archives newsletter.`
+      : lang === 'fr'
+        ? 'Bonjour,\n\nVeuillez m’ajouter à l’infolettre MTL Archives.'
+        : 'Hello,\n\nPlease add me to the MTL Archives newsletter.';
+
+    window.location.href = `mailto:support@mtlarchives.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  }, [lang, newsletterEmail]);
 
   // === Landing & Bounce Intelligence ===
 
@@ -1102,49 +1229,67 @@ function ArchiveStoreInner() {
 
 
   return (
-    <div className="min-h-screen bg-[#fafafa]">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-[#fafafa]/95 backdrop-blur-sm border-b border-neutral-100">
+      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
         {/* Mobile */}
         <div className="flex flex-col sm:hidden">
-          <div className="flex items-center justify-between h-11 px-3">
-            <a href={homeLink} className="text-[11px] font-medium tracking-[0.1em] uppercase">MTL Archives</a>
-            <div className="flex items-center gap-0.5">
+          <div className="flex items-center justify-between h-[52px] px-5">
+            {/* Logo — landing: lowercase Figtree 600; search: uppercase label */}
+            <a href={homeLink} className={hasSearched
+              ? 'text-[11px] font-medium tracking-[0.1em] uppercase'
+              : 'flex items-center gap-2'
+            }>
+              {!hasSearched && <MtlArchivesLogo size={24} />}
+              <span className={hasSearched ? '' : 'text-[15px] font-semibold text-foreground'}>
+                {hasSearched ? 'MTL Archives' : 'mtl archives'}
+              </span>
+            </a>
+            <div className={`flex items-center ${hasSearched ? 'gap-0.5' : 'gap-4'}`}>
               <a
                 href={gameLink}
                 onClick={() => events.gameNavClicked()}
-                className="px-2.5 py-1 rounded-full border border-neutral-200 text-[10px] uppercase tracking-[0.2em] text-neutral-500 hover:text-neutral-800"
+                className={hasSearched
+                  ? 'px-2.5 py-1 rounded-full border border-input text-[10px] uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground'
+                  : 'text-[13px] font-medium text-primary hover:text-primary/80 transition-colors'
+                }
               >
                 {t.game}
               </a>
-              <button onClick={handleLangChange} className="p-1.5" aria-label={lang === 'fr' ? 'Changer en anglais' : 'Switch to French'}>
-                {lang === 'fr' ? <FlagQC /> : <FlagEN />}
-              </button>
-              <button
+              {hasSearched ? (
+                <button onClick={handleLangChange} className="p-1.5" aria-label={lang === 'fr' ? 'Changer en anglais' : 'Switch to French'}>
+                  {lang === 'fr' ? <FlagQC /> : <FlagEN />}
+                </button>
+              ) : (
+                <button onClick={handleLangChange} className="text-[13px] font-medium text-foreground/50 hover:text-foreground transition-colors" aria-label={lang === 'fr' ? 'Changer en anglais' : 'Switch to French'}>
+                  {lang === 'fr' ? 'FR' : 'EN'}
+                </button>
+              )}
+              {hasSearched && <button
                 onClick={() => {
                   trackSessionAction('cart');
                   events.cartOpened();
                   openCart();
                 }}
-                className="p-1.5 text-neutral-400 hover:text-neutral-600 transition-colors relative"
+                className="p-1.5 text-muted-foreground/70 hover:text-muted-foreground transition-colors relative"
                 aria-label={t.cart}
               >
                 <ShoppingBag className="h-4 w-4" />
                 {itemCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 h-4 w-4 bg-neutral-900 text-white text-[9px] font-medium rounded-full flex items-center justify-center">
+                  <span className="absolute -top-0.5 -right-0.5 h-4 w-4 bg-primary text-primary-foreground text-[9px] font-medium rounded-full flex items-center justify-center">
                     {itemCount > 9 ? '9+' : itemCount}
                   </span>
                 )}
-              </button>
+              </button>}
             </div>
           </div>
-          <div className="px-3 pb-2.5">
+          {hasSearched && <div className="px-3 pb-2.5">
             {/* Search input with integrated mode toggle */}
-            <div className={`flex items-center bg-white border h-11 rounded-xl relative transition-all duration-200 ${
-              isInputFocused ? 'border-neutral-300 shadow-sm' : 'border-neutral-200'
+            <div className={`flex items-center bg-card border h-11 rounded-xl relative transition-all duration-200 ${
+              isInputFocused ? 'border-border shadow-sm' : 'border-input'
             }`}>
               <Search className={`ml-3 h-4 w-4 flex-shrink-0 transition-colors duration-200 ${
-                isInputFocused ? 'text-neutral-600' : 'text-neutral-400'
+                isInputFocused ? 'text-muted-foreground' : 'text-muted-foreground/70'
               }`} />
               <div className="flex-1 relative h-full min-w-0">
               <input
@@ -1161,162 +1306,209 @@ function ArchiveStoreInner() {
                 <div className={`absolute inset-0 flex items-center px-2 pointer-events-none transition-opacity duration-200 ${
                   showTypewriter ? 'opacity-100' : 'opacity-0'
                 }`}>
-                  <span className="text-base text-neutral-400 truncate">{typewriterText}</span>
-                  <span className="text-base text-neutral-900 animate-blink">|</span>
+                  <span className="text-base text-muted-foreground/70 truncate">{typewriterText}</span>
+                  <span className="text-base text-foreground animate-blink">|</span>
                 </div>
                 {/* Static placeholder when focused */}
                 <div className={`absolute inset-0 flex items-center px-2 pointer-events-none transition-opacity duration-200 ${
                   showFocusedPlaceholder ? 'opacity-100' : 'opacity-0'
                 }`}>
-                  <span className="text-base text-neutral-300">{t.searchPlaceholder}</span>
+                  <span className="text-base text-muted-foreground/50">{t.searchPlaceholder}</span>
                 </div>
               </div>
-              {isSearching && <div className="mr-2 h-4 w-4 border-2 border-neutral-200 border-t-neutral-900 rounded-full animate-spin flex-shrink-0" />}
+              {isSearching && <div className="mr-2 h-4 w-4 border-2 border-input border-t-foreground rounded-full animate-spin flex-shrink-0" />}
               {searchQuery && !isSearching && (
                 <button
                   onClick={clearSearch}
-                  className="mr-2 p-1.5 hover:bg-neutral-100 rounded-full transition-colors flex-shrink-0"
+                  className="mr-2 p-1.5 hover:bg-muted rounded-full transition-colors flex-shrink-0"
                   aria-label={t.clear}
                 >
-                  <X className="h-4 w-4 text-neutral-500" />
+                  <X className="h-4 w-4 text-muted-foreground" />
                 </button>
               )}
             </div>
-          </div>
+          </div>}
         </div>
 
-        {/* Desktop */}
-        <div className="hidden sm:flex items-center h-14 px-4 lg:px-6 gap-4">
-          <a href={homeLink} className="text-xs font-medium tracking-[0.12em] uppercase shrink-0">MTL Archives</a>
-          <a
-            href={gameLink}
-            onClick={() => events.gameNavClicked()}
-            className="px-2.5 py-1 rounded-full border border-neutral-200 text-[10px] uppercase tracking-[0.2em] text-neutral-500 hover:text-neutral-800"
-          >
-            {t.game}
-          </a>
-          <div className="flex-1 flex justify-center">
-            <div className="w-full max-w-lg">
-              <div className={`flex items-center bg-white border h-9 rounded-lg transition-all duration-200 ${
-                isInputFocused ? 'border-neutral-300 shadow-sm' : 'border-neutral-200'
-              }`}>
-                <Search className={`ml-3 h-3.5 w-3.5 flex-shrink-0 transition-colors duration-200 ${
-                  isInputFocused ? 'text-neutral-600' : 'text-neutral-400'
-                }`} />
-                <div className="flex-1 relative h-full min-w-0">
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    onFocus={() => { setIsInputFocused(true); trackFirstInteraction('search_focus'); }}
-                    onBlur={() => setIsInputFocused(false)}
-                    className="w-full h-full px-2.5 text-sm bg-transparent outline-none"
-                    aria-label={t.searchPlaceholder}
-                  />
-                  {/* Typewriter animation - fades out on focus */}
-                  <div className={`absolute inset-0 flex items-center px-2.5 pointer-events-none transition-opacity duration-200 ${
-                    showTypewriter ? 'opacity-100' : 'opacity-0'
-                  }`}>
-                    <span className="text-sm text-neutral-400">{typewriterText}</span>
-                    <span className="text-sm text-neutral-900 animate-blink">|</span>
-        </div>
-                  {/* Static placeholder when focused */}
-                  <div className={`absolute inset-0 flex items-center px-2.5 pointer-events-none transition-opacity duration-200 ${
-                    showFocusedPlaceholder ? 'opacity-100' : 'opacity-0'
-                  }`}>
-                    <span className="text-sm text-neutral-300">{t.searchPlaceholder}</span>
-          </div>
-        </div>
-                {isSearching && <div className="mr-3 h-3.5 w-3.5 border border-neutral-300 border-t-neutral-900 rounded-full animate-spin flex-shrink-0" />}
-                {searchQuery && !isSearching && (
-                  <button
-                    onClick={clearSearch}
-                    className="mr-2 p-1 hover:bg-neutral-100 rounded-full transition-colors flex-shrink-0"
-                    aria-label={t.clear}
-                  >
-                    <X className="h-3.5 w-3.5 text-neutral-500" />
-                  </button>
-                )}
+        {/* Desktop — search mode */}
+        {hasSearched && (
+          <div className="hidden sm:flex items-center h-14 px-4 lg:px-6 gap-4">
+            <a href={homeLink} className="text-xs font-medium tracking-[0.12em] uppercase shrink-0">MTL Archives</a>
+            <a
+              href={gameLink}
+              onClick={() => events.gameNavClicked()}
+              className="px-2.5 py-1 rounded-full border border-input text-[10px] uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground"
+            >
+              {t.game}
+            </a>
+            <a
+              href={printLink}
+              className="px-2.5 py-1 rounded-full border border-input text-[10px] uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground"
+            >
+              {t.navPrints}
+            </a>
+            <div className="flex-1 flex justify-center">
+              <div className="w-full max-w-lg">
+                <div className={`flex items-center bg-card border h-9 rounded-lg transition-all duration-200 ${
+                  isInputFocused ? 'border-border shadow-sm' : 'border-input'
+                }`}>
+                  <Search className={`ml-3 h-3.5 w-3.5 flex-shrink-0 transition-colors duration-200 ${
+                    isInputFocused ? 'text-muted-foreground' : 'text-muted-foreground/70'
+                  }`} />
+                  <div className="flex-1 relative h-full min-w-0">
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      onFocus={() => { setIsInputFocused(true); trackFirstInteraction('search_focus'); }}
+                      onBlur={() => setIsInputFocused(false)}
+                      className="w-full h-full px-2.5 text-sm bg-transparent outline-none"
+                      aria-label={t.searchPlaceholder}
+                    />
+                    <div className={`absolute inset-0 flex items-center px-2.5 pointer-events-none transition-opacity duration-200 ${
+                      showTypewriter ? 'opacity-100' : 'opacity-0'
+                    }`}>
+                      <span className="text-sm text-muted-foreground/70">{typewriterText}</span>
+                      <span className="text-sm text-foreground animate-blink">|</span>
+                    </div>
+                    <div className={`absolute inset-0 flex items-center px-2.5 pointer-events-none transition-opacity duration-200 ${
+                      showFocusedPlaceholder ? 'opacity-100' : 'opacity-0'
+                    }`}>
+                      <span className="text-sm text-muted-foreground/50">{t.searchPlaceholder}</span>
+                    </div>
+                  </div>
+                  {isSearching && <div className="mr-3 h-3.5 w-3.5 border border-border border-t-foreground rounded-full animate-spin flex-shrink-0" />}
+                  {searchQuery && !isSearching && (
+                    <button
+                      onClick={clearSearch}
+                      className="mr-2 p-1 hover:bg-muted rounded-full transition-colors flex-shrink-0"
+                      aria-label={t.clear}
+                    >
+                      <X className="h-3.5 w-3.5 text-muted-foreground" />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
+            <div className="flex items-center gap-0.5 shrink-0">
+              <button
+                onClick={handleLangChange}
+                className="flex items-center gap-1.5 px-2 py-1 hover:bg-muted rounded transition-colors"
+                aria-label={lang === 'fr' ? 'Changer en anglais' : 'Switch to French'}
+              >
+                {lang === 'fr' ? <FlagQC /> : <FlagEN />}
+                <span className="text-[10px] text-muted-foreground uppercase">{lang === 'fr' ? 'FR' : 'EN'}</span>
+              </button>
+              <button
+                onClick={() => {
+                  trackSessionAction('cart');
+                  events.cartOpened();
+                  openCart();
+                }}
+                className="p-2 text-muted-foreground/70 hover:text-muted-foreground transition-colors relative"
+                aria-label={t.cart}
+              >
+                <ShoppingBag className="h-4 w-4" />
+                {itemCount > 0 && (
+                  <span className="absolute top-0.5 right-0.5 h-4 w-4 bg-primary text-primary-foreground text-[9px] font-medium rounded-full flex items-center justify-center">
+                    {itemCount > 9 ? '9+' : itemCount}
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-0.5 shrink-0">
-            <button
-              onClick={handleLangChange}
-              className="flex items-center gap-1.5 px-2 py-1 hover:bg-neutral-100 rounded transition-colors"
-              aria-label={lang === 'fr' ? 'Changer en anglais' : 'Switch to French'}
-            >
-              {lang === 'fr' ? <FlagQC /> : <FlagEN />}
-              <span className="text-[10px] text-neutral-500 uppercase">{lang === 'fr' ? 'FR' : 'EN'}</span>
-            </button>
-            <button
-              onClick={() => {
-                trackSessionAction('cart');
-                events.cartOpened();
-                openCart();
-              }}
-              className="p-2 text-neutral-400 hover:text-neutral-600 transition-colors relative"
-              aria-label={t.cart}
-            >
-              <ShoppingBag className="h-4 w-4" />
-              {itemCount > 0 && (
-                <span className="absolute top-0.5 right-0.5 h-4 w-4 bg-neutral-900 text-white text-[9px] font-medium rounded-full flex items-center justify-center">
-                  {itemCount > 9 ? '9+' : itemCount}
-                </span>
-            )}
-            </button>
+        )}
+        {/* Desktop — landing mode */}
+        {!hasSearched && (
+          <div className="hidden sm:flex items-center justify-between h-14 px-12">
+            <a href={homeLink} className="flex items-center gap-2.5">
+              <MtlArchivesLogo size={28} />
+              <span className="text-[16px] font-semibold text-foreground">mtl archives</span>
+            </a>
+            <div className="flex items-center gap-8">
+              <button
+                onClick={() => {
+                  const heroInput = document.querySelector('section input[type="text"]') as HTMLInputElement;
+                  heroInput?.focus();
+                }}
+                className="text-[14px] text-foreground/60 hover:text-foreground transition-colors"
+              >
+                {t.navExplore}
+              </button>
+              <a
+                href={gameLink}
+                onClick={() => events.gameNavClicked()}
+                className="text-[14px] font-medium text-primary hover:text-primary/80 transition-colors"
+              >
+                {t.navDailyGame}
+              </a>
+              <a
+                href={printLink}
+                className="text-[14px] text-foreground/60 hover:text-foreground transition-colors"
+              >
+                {t.navPrints}
+              </a>
+              <button
+                onClick={handleLangChange}
+                className="text-[13px] text-border hover:text-foreground/60 transition-colors"
+                aria-label={lang === 'fr' ? 'Changer en anglais' : 'Switch to French'}
+              >
+                {lang === 'fr' ? 'FR / EN' : 'EN / FR'}
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </header>
       
       {/* About Drawer */}
       <AboutDrawer isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} t={t} />
 
-      {/* Above-fold hook - dismisses on first interaction or after 10s */}
-      <div
-        className={`overflow-hidden transition-all duration-500 ease-out ${
-          showHook ? 'max-h-20 opacity-100' : 'max-h-0 opacity-0'
-        }`}
-      >
-        <div className="px-4 py-3 text-center">
-          <p className="text-sm sm:text-base font-medium text-neutral-700">
-            {isFromInstagram ? t.hookInstagram : isFromFacebook ? t.hookFacebook : t.hookDefault}
-          </p>
-        </div>
-      </div>
+      {/* Landing hero — visible only when not searching */}
+      {!hasSearched && !initialLoading && (
+        <LandingHero
+          lang={lang}
+          onSearchSubmit={(q) => {
+            const trimmed = q.trim();
+            if (!trimmed) return;
+            if (isSearchView) {
+              setSearchQuery(trimmed);
+              return;
+            }
+            const params = new URLSearchParams();
+            params.set('q', trimmed);
+            if (searchMode !== 'smart') params.set('mode', searchMode);
+            if (lang !== DEFAULT_LANG) params.set('lang', lang);
+            router.push(`/search?${params.toString()}`);
+          }}
+          discoveryShortcuts={DISCOVERY_SHORTCUTS}
+          typewriterText={typewriterText}
+          isTypewriterActive={isTypewriterActive}
+          photos={displayPhotos}
+          mobilePhotos={heroPhotos}
+          onPhotoClick={handlePhotoClick}
+        />
+      )}
 
-      {/* Shortcuts row: pinned Shuffle + scrollable discovery pills */}
-      <div className="flex items-center gap-2 px-2 sm:px-3 py-2">
-          {/* Shuffle button - always visible, never scrolls */}
-          <button
-            onClick={handleShuffle}
-            disabled={initialLoading}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-neutral-900 text-white rounded-full hover:bg-neutral-800 transition-colors disabled:opacity-50 shrink-0"
-          >
-            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="16 3 21 3 21 8" />
-              <line x1="4" y1="20" x2="21" y2="3" />
-              <polyline points="21 16 21 21 16 21" />
-              <line x1="15" y1="15" x2="21" y2="21" />
-              <line x1="4" y1="4" x2="9" y2="9" />
-            </svg>
-            {t.shuffle}
-          </button>
-          {/* Auto-scrolling discovery pills — draggable + swipeable */}
-          <div
-            ref={marqueeContainerRef}
-            className="flex-1 min-w-0 overflow-hidden touch-pan-x cursor-grab active:cursor-grabbing [mask-image:linear-gradient(to_right,transparent,black_8px,black_calc(100%-24px),transparent)]"
-          >
-            <div ref={marqueeTrackRef} className="flex items-center gap-2 w-max will-change-transform">
-              {[...DISCOVERY_SHORTCUTS, ...DISCOVERY_SHORTCUTS].map((shortcut, i) => (
+      {hasSearched ? (
+        <>
+          <section className="px-5 pb-4 pt-4 sm:px-12 sm:pb-5 sm:pt-6">
+            <div className="sm:hidden">
+              <SearchModeTabs
+                value={searchMode}
+                onChange={handleModeChange}
+                labels={{ modeSemantic: t.modeSemantic, modeVisual: t.modeVisual }}
+              />
+            </div>
+
+            <div className="mt-4 flex items-center gap-2 overflow-x-auto pb-1">
+              {DISCOVERY_SHORTCUTS.slice(0, 8).map((shortcut) => (
                 <button
-                  key={`${shortcut.query}-${i}`}
+                  key={shortcut.query}
+                  type="button"
                   disabled={isSearching}
                   onClick={() => {
-                    if (isSearching) return;
                     const now = Date.now();
-                    const recentTaps = filterTapTimestampsRef.current
-                      .filter((ts) => now - ts <= FILTER_BURST_WINDOW_MS);
+                    const recentTaps = filterTapTimestampsRef.current.filter((ts) => now - ts <= FILTER_BURST_WINDOW_MS);
                     recentTaps.push(now);
                     filterTapTimestampsRef.current = recentTaps;
 
@@ -1333,82 +1525,234 @@ function ArchiveStoreInner() {
                     trackFirstInteraction('neighborhood_shortcut');
                     events.discoveryFilterClicked(shortcut.name.en, shortcut.query);
                   }}
-                  className="px-3 py-1.5 text-xs font-medium bg-neutral-100 text-neutral-600 rounded-full hover:bg-neutral-200 transition-colors disabled:opacity-60 shrink-0"
+                  className={`shrink-0 rounded-full border px-4 py-2 text-sm transition-colors ${
+                    shortcut.query === searchQuery
+                      ? 'border-foreground bg-foreground text-background'
+                      : 'border-input bg-card text-foreground hover:bg-secondary'
+                  }`}
                 >
                   {shortcut.name[lang]}
                 </button>
               ))}
             </div>
-          </div>
-      </div>
 
-      {/* Results header */}
-      <div className="flex items-center justify-between py-2 px-2 sm:px-3">
-        {hasSearched ? (
-          <>
-            <span className="text-xs text-neutral-400 uppercase" translate="no">{displayPhotos.length} {displayPhotos.length === 1 ? t.result : t.results}</span>
-            <button onClick={clearSearch} className="text-xs text-neutral-400 uppercase">{t.clear}</button>
-          </>
-        ) : (
-          <span className="text-xs text-neutral-400 uppercase">
-            {t.featured}
-            <span className="ml-1.5 text-neutral-300" translate="no">
-              · {t.photos}
-            </span>
-          </span>
-        )}
-      </div>
+            <div className="mt-4 flex items-center justify-between gap-4">
+              <p className="text-sm text-muted-foreground">
+                <span className="text-foreground">{displayPhotos.length}</span>{' '}
+                {searchQuery ? `${t.resultsFor} « ${searchQuery} »` : displayPhotos.length === 1 ? t.result : t.results}
+              </p>
+              <div className="flex items-center gap-5">
+                <span className="text-label text-[11px] tracking-[0.12em] text-muted-foreground">
+                  {t.sortRelevance} ↓
+                </span>
+                <button
+                  type="button"
+                  onClick={clearSearch}
+                  className="hidden text-label text-[11px] tracking-[0.12em] text-muted-foreground transition-colors hover:text-foreground sm:block"
+                >
+                  {t.clear}
+                </button>
+              </div>
+            </div>
+          </section>
 
-      {/* Empty state */}
-      {hasSearched && displayPhotos.length === 0 && !isSearching && (
-        <div className="text-center py-16 px-4">
-          <p className="text-neutral-500 text-sm mb-3">{t.noResults} &ldquo;{searchQuery}&rdquo;</p>
-          <button onClick={clearSearch} className="text-xs text-neutral-400 underline uppercase">{t.clearSearch}</button>
-        </div>
-      )}
+          {hasSearched && displayPhotos.length === 0 && !isSearching ? (
+            <div className="px-5 py-16 text-center sm:px-12">
+              <p className="text-lg text-foreground">{t.noResults} “{searchQuery}”</p>
+              <button
+                type="button"
+                onClick={clearSearch}
+                className="mt-4 text-label text-[11px] tracking-[0.12em] text-muted-foreground transition-colors hover:text-foreground"
+              >
+                {t.clearSearch}
+              </button>
+            </div>
+          ) : null}
 
-      {/* Loading skeleton — initial load or active search */}
-      {(initialLoading || (isSearching && displayPhotos.length === 0)) && <SkeletonGrid />}
+          {(initialLoading || (isSearching && displayPhotos.length === 0)) ? <SkeletonGrid /> : null}
 
-      {/* Photo Grid - with smooth fade-in loading */}
-      {!initialLoading && displayPhotos.length > 0 && (
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-0.5 px-0.5">
-          {displayPhotos.map((photo, index) => (
-            photo.imageUrl && (
-              <PhotoTile
-                key={photo.metadataFilename}
-                src={photo.imageUrl}
-                alt={photo.name || ''}
-                priority={index < (isMobileSafe ? 3 : 9)}
-                onClick={() => handlePhotoClick(photo, index + 1)}
-                onError={() => handleImageError(photo.metadataFilename)}
+          {!initialLoading && displayPhotos.length > 0 && !isSearching ? (
+            <>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-5 px-5 pb-10 sm:hidden">
+                {displayPhotos.map((photo, index) => (
+                  <EditorialPhotoCard
+                    key={photo.metadataFilename}
+                    photo={photo}
+                    onClick={() => handlePhotoClick(photo, index + 1)}
+                    priority={index < 4}
+                    aspectClassName="aspect-[0.92]"
+                  />
+                ))}
+              </div>
+              <div className="hidden grid-cols-3 gap-1.5 px-12 pb-14 md:grid lg:grid-cols-5">
+                {displayPhotos.map((photo, index) =>
+                  photo.imageUrl ? (
+                    <PhotoTile
+                      key={photo.metadataFilename}
+                      src={photo.imageUrl}
+                      alt={photo.name || ''}
+                      priority={index < 8}
+                      onClick={() => handlePhotoClick(photo, index + 1)}
+                      onError={() => handleImageError(photo.metadataFilename)}
+                    />
+                  ) : null,
+                )}
+              </div>
+            </>
+          ) : null}
+        </>
+      ) : (
+        <>
+          {(initialLoading || (isSearching && displayPhotos.length === 0)) ? <SkeletonGrid /> : null}
+
+          {!initialLoading && displayPhotos.length > 0 ? (
+            <section className="px-5 pb-10 sm:px-12">
+              <div className="hidden grid-cols-3 gap-5 sm:grid">
+                {landingCards.map((card) => (
+                  <LandingRouteCard key={card.href} {...card} />
+                ))}
+              </div>
+
+              <div className="mt-10 flex items-center justify-between sm:mt-16">
+                <span className="text-label text-[11px] tracking-[0.12em] text-primary">{t.featured}</span>
+                <button
+                  type="button"
+                  onClick={handleShuffle}
+                  disabled={initialLoading}
+                  className="text-sm font-medium text-primary transition-colors hover:text-primary/80 disabled:opacity-50"
+                >
+                  {t.shuffle}
+                </button>
+              </div>
+
+              <div className="mt-4 grid gap-3 sm:hidden">
+                <div className="grid grid-cols-2 gap-3">
+                  {displayPhotos.slice(0, 2).map((photo, index) => (
+                    <EditorialPhotoCard
+                      key={photo.metadataFilename}
+                      photo={photo}
+                      onClick={() => handlePhotoClick(photo, index + 1)}
+                      priority={index === 0}
+                    />
+                  ))}
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  {displayPhotos.slice(2, 5).map((photo, index) => (
+                    <EditorialPhotoCard
+                      key={photo.metadataFilename}
+                      photo={photo}
+                      onClick={() => handlePhotoClick(photo, index + 3)}
+                      aspectClassName="aspect-square"
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-5 hidden grid-cols-4 gap-4 sm:grid">
+                {displayPhotos.slice(0, 4).map((photo, index) => (
+                  <EditorialPhotoCard
+                    key={photo.metadataFilename}
+                    photo={photo}
+                    onClick={() => handlePhotoClick(photo, index + 1)}
+                    priority={index < 2}
+                  />
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          <section className="surface-subtle rounded-none border-x-0 px-5 py-10 sm:mx-12 sm:rounded-[1.8rem] sm:border-x sm:px-8 lg:px-10">
+            <p className="text-label text-[11px] tracking-[0.14em] text-muted-foreground">{t.commitmentsTitle}</p>
+            <div className="mt-6 grid gap-6 sm:grid-cols-3">
+              <CommitmentBlurb
+                colorClassName="bg-brand-blue"
+                title={t.commitmentMemoryTitle}
+                body={t.commitmentMemoryBody}
               />
-            )
-          ))}
-        </div>
-      )}
+              <CommitmentBlurb
+                colorClassName="bg-brand-orange"
+                title={t.commitmentSourcesTitle}
+                body={t.commitmentSourcesBody}
+              />
+              <CommitmentBlurb
+                colorClassName="bg-brand-green"
+                title={t.commitmentAccessTitle}
+                body={t.commitmentAccessBody}
+              />
+            </div>
+          </section>
 
-      {/* Shuffle Button - Apple-style understated call to action */}
-      {!hasSearched && !initialLoading && (
-        <div className="flex justify-center py-8">
-          <button
-            onClick={handleShuffle}
-            className="flex items-center gap-2 px-5 py-2.5 text-neutral-500 hover:text-neutral-900 text-xs uppercase tracking-wide transition-colors"
-          >
-            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="16 3 21 3 21 8" />
-              <line x1="4" y1="20" x2="21" y2="3" />
-              <polyline points="21 16 21 21 16 21" />
-              <line x1="15" y1="15" x2="21" y2="21" />
-              <line x1="4" y1="4" x2="9" y2="9" />
-            </svg>
-            {t.shuffle}
-          </button>
-        </div>
+          <section className="px-5 py-8 sm:px-12 sm:py-12">
+            <Link
+              href={gameLink}
+              className="surface-dark flex items-center justify-between gap-4 px-5 py-5 no-underline sm:px-8 sm:py-7"
+            >
+              <div className="min-w-0">
+                <p className="text-label text-[11px] tracking-[0.14em] text-brand-orange">{t.gameTitle}</p>
+                <h2 className="text-display mt-2 text-[1.95rem] font-semibold leading-none tracking-[-0.03em] text-white sm:mt-3 sm:text-[2rem]">
+                  {t.gameQuestion}
+                </h2>
+                <p className="mt-2 text-sm text-white/70">{t.gameMetaLine}</p>
+              </div>
+              <span className="inline-flex h-10 shrink-0 items-center justify-center rounded-[0.9rem] bg-primary px-5 text-sm font-medium text-primary-foreground sm:h-11 sm:rounded-full sm:px-6">
+                {t.gamePlay}
+              </span>
+            </Link>
+          </section>
+
+          <section className="px-5 pb-10 text-left sm:px-12 sm:pb-12 sm:text-center">
+            <h2 className="text-display text-[2.35rem] font-semibold leading-[0.98] tracking-[-0.03em] text-foreground sm:text-[3.5rem]">
+              {t.newsletterTitle}
+            </h2>
+            <p className="mt-3 max-w-[23rem] text-sm leading-6 text-muted-foreground sm:mx-auto sm:max-w-2xl sm:text-base">
+              {t.newsletterBody}
+            </p>
+            <form
+              onSubmit={handleNewsletterSubmit}
+              className="mt-6 grid max-w-xl grid-cols-[minmax(0,1fr)_auto] gap-3 sm:mx-auto"
+            >
+              <div className="input-shell flex h-12 min-w-0 items-center px-4">
+                <input
+                  type="email"
+                  value={newsletterEmail}
+                  onChange={(event) => setNewsletterEmail(event.target.value)}
+                  placeholder={t.newsletterPlaceholder}
+                  className="h-full w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground/70"
+                />
+              </div>
+              <button
+                type="submit"
+                className="inline-flex h-12 items-center justify-center rounded-[0.9rem] bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/92 sm:rounded-full sm:px-6"
+              >
+                {t.newsletterSubmit}
+              </button>
+            </form>
+          </section>
+
+          <section className="border-y border-border/50 px-5 py-5 sm:px-12">
+            <div className="flex flex-col items-center justify-between gap-4 text-center sm:flex-row sm:text-left">
+              <div>
+                <p className="text-label text-[11px] tracking-[0.14em] text-foreground/35">{t.footerSource}</p>
+                <p className="mt-1 text-label text-[11px] tracking-[0.14em] text-foreground/25">{t.footerUrl}</p>
+              </div>
+              <p className="text-sm text-muted-foreground">{t.printMeta}</p>
+            </div>
+            <div className="mt-5 sm:hidden">
+              <button
+                type="button"
+                onClick={() => router.push(appendLangParam('/search', lang))}
+                className="input-shell flex h-12 w-full items-center gap-3 px-4 text-left text-sm text-muted-foreground"
+              >
+                <Search className="h-4 w-4" />
+                <span>{t.printSearchPlaceholder}</span>
+              </button>
+            </div>
+          </section>
+        </>
       )}
 
       {/* Footer */}
-      <footer className="py-8 px-4">
+      {hasSearched ? <footer className="px-4 py-8">
         <div className="flex flex-col items-center gap-4">
           {/* Links */}
           <div className="flex items-center gap-4">
@@ -1417,7 +1761,7 @@ function ArchiveStoreInner() {
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => events.instagramClicked()}
-              className="text-neutral-300 hover:text-neutral-500 transition-colors"
+              className="text-muted-foreground/50 hover:text-muted-foreground transition-colors"
               aria-label={t.instagram}
             >
               <IconInstagram className="h-5 w-5" />
@@ -1427,7 +1771,7 @@ function ArchiveStoreInner() {
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => events.facebookClicked()}
-              className="text-neutral-300 hover:text-neutral-500 transition-colors"
+              className="text-muted-foreground/50 hover:text-muted-foreground transition-colors"
               aria-label={t.facebook}
             >
               <IconFacebook className="h-5 w-5" />
@@ -1437,16 +1781,16 @@ function ArchiveStoreInner() {
                 events.aboutOpened();
                 setIsAboutOpen(true);
               }}
-              className="text-neutral-300 hover:text-neutral-500 transition-colors"
+              className="text-muted-foreground/50 hover:text-muted-foreground transition-colors"
               aria-label={t.about}
             >
               <IconInfo className="h-5 w-5" />
             </button>
           </div>
           {/* Copyright */}
-          <p className="text-[10px] text-neutral-300 tracking-wide">© {new Date().getFullYear()} MTL Archives</p>
+          <p className="text-[10px] text-muted-foreground/50 tracking-wide">© {new Date().getFullYear()} MTL Archives</p>
         </div>
-      </footer>
+      </footer> : null}
     </div>
   );
 }
