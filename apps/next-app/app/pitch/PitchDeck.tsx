@@ -575,10 +575,10 @@ const SLIDES = [
   SlideAudience,
   SlideIncluded,
   SlideTraction,
-  SlideNextSteps,
   SlideAppendixFacebook,
   SlideAppendixInstagram,
   SlideAppendixWeb,
+  SlideNextSteps,
 ];
 
 /* ------------------------------------------------------------------ */
