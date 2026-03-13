@@ -18,6 +18,7 @@ const isPublicRoute = createRouteMatcher([
   '/apple-icon(.*)',
   '/sign-in(.*)',
   '/sign-up(.*)',
+  '/pitch(.*)',
   '/sitemap.xml',
   '/robots.txt',
 ]);
