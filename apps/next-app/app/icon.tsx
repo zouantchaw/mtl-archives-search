@@ -20,7 +20,7 @@ export default function Icon() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: '#0a0a0a',
+          background: '#111318',
           borderRadius: 6,
           position: 'relative',
         }}
@@ -33,7 +33,7 @@ export default function Icon() {
 
         {/* Center V */}
         <div style={{ position: 'absolute', left: 10, top: 7, width: 4, height: 4, borderRadius: '50%', background: '#ffd60a' }} />
-        <div style={{ position: 'absolute', left: 14, top: 12, width: 5, height: 5, borderRadius: '50%', background: '#fafafa' }} />
+        <div style={{ position: 'absolute', left: 14, top: 12, width: 5, height: 5, borderRadius: '50%', background: '#F5F2EA' }} />
         <div style={{ position: 'absolute', left: 18, top: 7, width: 4, height: 4, borderRadius: '50%', background: '#ffd60a' }} />
 
         {/* Right vertical */}

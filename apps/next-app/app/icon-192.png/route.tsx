@@ -8,13 +8,13 @@ export async function GET() {
       <div
         style={{
           fontSize: 120,
-          background: '#171717',
+          background: '#111318',
           width: '100%',
           height: '100%',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: '#fafafa',
+          color: '#F5F2EA',
           fontWeight: 700,
           fontFamily: 'system-ui, sans-serif',
           borderRadius: 32,

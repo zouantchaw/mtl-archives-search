@@ -39,7 +39,7 @@ export default async function OGImage() {
     (
       <div
         style={{
-          background: '#171717',
+          background: '#111318',
           width: '100%',
           height: '100%',
           display: 'flex',
@@ -93,7 +93,7 @@ export default async function OGImage() {
             left: 0,
             right: 0,
             bottom: 0,
-            background: 'radial-gradient(ellipse at center, rgba(23,23,23,0.95) 0%, rgba(23,23,23,0.7) 50%, rgba(23,23,23,0.4) 100%)',
+            background: 'radial-gradient(ellipse at center, rgba(17,19,24,0.95) 0%, rgba(17,19,24,0.7) 50%, rgba(17,19,24,0.4) 100%)',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -121,14 +121,14 @@ export default async function OGImage() {
             style={{
               width: 100,
               height: 100,
-              background: '#fafafa',
+              background: '#F5F2EA',
               borderRadius: 20,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               fontSize: 60,
               fontWeight: 700,
-              color: '#171717',
+              color: '#111318',
             }}
           >
             M
@@ -139,7 +139,7 @@ export default async function OGImage() {
             style={{
               fontSize: 56,
               fontWeight: 600,
-              color: '#fafafa',
+              color: '#F5F2EA',
               letterSpacing: '0.05em',
               display: 'flex',
             }}
@@ -168,7 +168,7 @@ export default async function OGImage() {
             left: 0,
             right: 0,
             height: 6,
-            background: 'linear-gradient(90deg, #003DA5 0%, #003DA5 25%, #fafafa 25%, #fafafa 50%, #003DA5 50%, #003DA5 75%, #fafafa 75%, #fafafa 100%)',
+            background: 'linear-gradient(90deg, #003DA5 0%, #003DA5 25%, #F5F2EA 25%, #F5F2EA 50%, #003DA5 50%, #003DA5 75%, #F5F2EA 75%, #F5F2EA 100%)',
             display: 'flex',
           }}
         />

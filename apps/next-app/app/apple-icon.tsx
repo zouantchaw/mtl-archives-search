@@ -20,7 +20,7 @@ export default function AppleIcon() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: '#0a0a0a',
+          background: '#111318',
           borderRadius: 32,
           position: 'relative',
         }}
@@ -37,7 +37,7 @@ export default function AppleIcon() {
         <div style={{ position: 'absolute', left: 75, top: 65, width: 20, height: 20, borderRadius: '50%', background: '#ffd60a' }} />
 
         {/* Center */}
-        <div style={{ position: 'absolute', left: 80, top: 90, width: 26, height: 26, borderRadius: '50%', background: '#fafafa' }} />
+        <div style={{ position: 'absolute', left: 80, top: 90, width: 26, height: 26, borderRadius: '50%', background: '#F5F2EA' }} />
 
         {/* Right diagonal */}
         <div style={{ position: 'absolute', right: 75, top: 65, width: 20, height: 20, borderRadius: '50%', background: '#ffd60a' }} />

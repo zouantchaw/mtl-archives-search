@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Figtree } from "next/font/google";
+import { Figtree, Spectral, Manrope, IBM_Plex_Mono } from "next/font/google";
 import { AnalyticsProvider } from "@/components/AnalyticsProvider";
 import "./globals.css";
 import { CartProvider } from "@/lib/cart-context";
@@ -13,6 +13,26 @@ const figtree = Figtree({
   display: 'swap',
 });
 
+const spectral = Spectral({
+  subsets: ['latin'],
+  variable: '--font-display',
+  weight: ['400', '600', '700'],
+  display: 'swap',
+});
+
+const manrope = Manrope({
+  subsets: ['latin'],
+  variable: '--font-brand',
+  display: 'swap',
+});
+
+const ibmPlexMono = IBM_Plex_Mono({
+  subsets: ['latin'],
+  variable: '--font-mono',
+  weight: ['400', '500'],
+  display: 'swap',
+});
+
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.mtlarchives.com';
 
 export const viewport: Viewport = {
@@ -22,8 +42,8 @@ export const viewport: Viewport = {
   userScalable: true,
   viewportFit: 'cover',
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#fafafa' },
-    { media: '(prefers-color-scheme: dark)', color: '#0a0a0a' },
+    { media: '(prefers-color-scheme: light)', color: '#F5F2EA' },
+    { media: '(prefers-color-scheme: dark)', color: '#111318' },
   ],
 };
 
@@ -69,8 +89,8 @@ export const metadata: Metadata = {
   other: {
     'apple-mobile-web-app-title': 'MTL Archives',
     'application-name': 'MTL Archives',
-    'msapplication-TileColor': '#171717',
-    'theme-color': '#fafafa',
+    'msapplication-TileColor': '#111318',
+    'theme-color': '#F5F2EA',
   },
   
   // Icons - using Next.js generated icons
@@ -145,7 +165,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${figtree.variable}`}>
+    <html lang="en" className={`${figtree.variable} ${spectral.variable} ${manrope.variable} ${ibmPlexMono.variable}`}>
       <head>
         {/* Preconnect to API for faster initial fetch */}
         {API_ORIGIN ? (
@@ -174,7 +194,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="font-sans antialiased bg-neutral-50 text-neutral-900 min-h-screen">
+      <body className="font-sans antialiased bg-background text-foreground min-h-screen">
         <CartProvider>
           {children}
           <CartDrawer />

@@ -1,54 +1,36 @@
 export default function Loading() {
   return (
-    <div className="min-h-screen bg-[#fafafa]">
-      {/* Header skeleton - matches actual header layout */}
-      <header className="sticky top-0 z-50 bg-[#fafafa]/95 backdrop-blur-sm border-b border-neutral-100">
-        <div className="h-14 px-4 flex items-center justify-between">
-          {/* Logo */}
-          <div className="h-4 w-20 sm:w-24 skeleton rounded" />
-
-          {/* Search bar - hidden on mobile, visible on desktop */}
-          <div className="hidden sm:flex items-center gap-3 flex-1 max-w-md mx-8">
-            <div className="h-9 flex-1 skeleton rounded-full" />
-          </div>
-
-          {/* Right actions */}
-          <div className="flex items-center gap-2">
-            {/* Mobile search icon */}
-            <div className="sm:hidden h-5 w-5 skeleton rounded" />
-            {/* Language toggle */}
-            <div className="h-4 w-8 skeleton rounded" />
-            {/* Cart */}
-            <div className="h-5 w-5 skeleton rounded" />
-          </div>
-        </div>
-
-        {/* Mobile search bar - below header on mobile */}
-        <div className="sm:hidden px-4 pb-3">
-          <div className="h-10 w-full skeleton rounded-full" />
+    <main className="min-h-screen bg-background">
+      <header className="border-b border-border/60 px-5 py-4 sm:px-12">
+        <div className="mx-auto flex max-w-7xl items-center justify-between">
+          <div className="h-5 w-28 rounded-full skeleton" />
+          <div className="hidden h-11 w-[32rem] rounded-full skeleton sm:block" />
+          <div className="h-5 w-16 rounded-full skeleton" />
         </div>
       </header>
 
-      {/* Stats bar skeleton */}
-      <div className="flex items-center justify-between px-4 py-3 text-sm">
-        <div className="h-3 w-32 skeleton rounded" />
-        <div className="h-3 w-16 skeleton rounded" />
-      </div>
+      <section className="px-5 py-8 sm:px-12">
+        <div className="mx-auto grid max-w-7xl gap-10 sm:grid-cols-[minmax(0,31rem)_minmax(0,1fr)] sm:items-start">
+          <div className="space-y-5">
+            <div className="h-[4.5rem] w-full max-w-[22rem] rounded-[1.5rem] skeleton sm:h-24 sm:max-w-[28rem]" />
+            <div className="h-8 w-full rounded-full skeleton" />
+            <div className="flex gap-2">
+              <div className="h-10 w-24 rounded-full skeleton" />
+              <div className="h-10 w-24 rounded-full skeleton" />
+              <div className="h-10 w-24 rounded-full skeleton" />
+            </div>
+          </div>
 
-      {/* Grid skeleton - responsive columns matching actual grid */}
-      <div className="px-0.5">
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-0.5">
-          {Array.from({ length: 24 }).map((_, i) => (
-            <div
-              key={i}
-              className="aspect-square skeleton"
-              style={{
-                animationDelay: `${(i % 8) * 0.1}s`,
-              }}
-            />
-          ))}
+          <div className="hidden gap-3 sm:flex">
+            {Array.from({ length: 3 }).map((_, column) => (
+              <div key={column} className="flex flex-1 flex-col gap-3">
+                <div className="h-48 rounded-[1.4rem] skeleton" />
+                <div className="h-32 rounded-[1.4rem] skeleton" />
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }
