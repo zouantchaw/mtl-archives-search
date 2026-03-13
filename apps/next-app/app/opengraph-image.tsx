@@ -3,7 +3,7 @@ import { API_BASE } from '@/lib/runtime-config';
 
 export const runtime = 'edge';
 
-export const alt = 'MTL Archives - Photos historiques de Montréal';
+export const alt = 'MTL Archives — Photos historiques de Montréal';
 
 export const size = {
   width: 1200,
@@ -12,16 +12,13 @@ export const size = {
 
 export const contentType = 'image/png';
 
-// API endpoint for fetching photos
-
 type PhotoData = {
   imageUrl?: string;
-  name?: string;
 };
 
 async function getPhotos(): Promise<PhotoData[]> {
   try {
-    const res = await fetch(`${API_BASE}/api/photos?limit=6`, {
+    const res = await fetch(`${API_BASE}/api/photos?limit=4&minTrust=0.65`, {
       next: { revalidate: 3600 },
     });
     if (!res.ok) return [];
@@ -32,38 +29,61 @@ async function getPhotos(): Promise<PhotoData[]> {
   }
 }
 
+// V4 brand tokens
+const CREAM = '#F5F2EA';
+const CHARCOAL = '#111318';
+const BLUE = '#0F5EA8';
+const ORANGE = '#F0A11A';
+const GREEN = '#34C759';
+const YELLOW = '#F5CF4D';
+const MUTED = '#888888';
+
+function DotCluster({ dotSize = 10, gap = 5 }: { dotSize?: number; gap?: number }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap }}>
+      <div style={{ display: 'flex', gap }}>
+        <div style={{ width: dotSize, height: dotSize, borderRadius: '50%', background: BLUE }} />
+        <div style={{ width: dotSize, height: dotSize, borderRadius: '50%', background: ORANGE }} />
+      </div>
+      <div style={{ display: 'flex', gap }}>
+        <div style={{ width: dotSize, height: dotSize, borderRadius: '50%', background: GREEN }} />
+        <div style={{ width: dotSize, height: dotSize, borderRadius: '50%', background: YELLOW }} />
+      </div>
+    </div>
+  );
+}
+
 export default async function OGImage() {
   const photos = await getPhotos();
-  
+
   return new ImageResponse(
     (
       <div
         style={{
-          background: '#111318',
+          background: CREAM,
           width: '100%',
           height: '100%',
           display: 'flex',
-          flexDirection: 'column',
           position: 'relative',
         }}
       >
-        {/* Photo grid background */}
+        {/* Right side — photo strip */}
         <div
           style={{
             position: 'absolute',
             top: 0,
-            left: 0,
             right: 0,
             bottom: 0,
+            width: 480,
             display: 'flex',
             flexWrap: 'wrap',
           }}
         >
-          {photos.slice(0, 6).map((photo, i) => (
+          {photos.slice(0, 4).map((photo, i) => (
             <div
               key={i}
               style={{
-                width: '33.333%',
+                width: '50%',
                 height: '50%',
                 display: 'flex',
                 overflow: 'hidden',
@@ -77,101 +97,87 @@ export default async function OGImage() {
                     width: '100%',
                     height: '100%',
                     objectFit: 'cover',
-                    filter: 'brightness(0.6)',
+                    filter: 'sepia(0.12) brightness(0.95)',
                   }}
                 />
-              ) : null}
+              ) : (
+                <div style={{ width: '100%', height: '100%', background: '#d7d0c5', display: 'flex' }} />
+              )}
             </div>
           ))}
+          {/* Fade edge into cream */}
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              bottom: 0,
+              width: 120,
+              background: `linear-gradient(to right, ${CREAM} 0%, ${CREAM}00 100%)`,
+              display: 'flex',
+            }}
+          />
         </div>
-        
-        {/* Center overlay */}
+
+        {/* Left side — branding */}
         <div
           style={{
             position: 'absolute',
             top: 0,
             left: 0,
-            right: 0,
             bottom: 0,
-            background: 'radial-gradient(ellipse at center, rgba(17,19,24,0.95) 0%, rgba(17,19,24,0.7) 50%, rgba(17,19,24,0.4) 100%)',
+            width: 760,
             display: 'flex',
             flexDirection: 'column',
-            alignItems: 'center',
             justifyContent: 'center',
-          }}
-        />
-        
-        {/* Content */}
-        <div
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 20,
+            padding: '0 72px',
           }}
         >
-          {/* Logo mark */}
+          {/* Logo row */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 48 }}>
+            <DotCluster dotSize={14} gap={6} />
+            <span
+              style={{
+                fontSize: 22,
+                fontWeight: 700,
+                color: CHARCOAL,
+                letterSpacing: '-0.01em',
+              }}
+            >
+              mtl archives
+            </span>
+          </div>
+
+          {/* Headline */}
           <div
             style={{
-              width: 100,
-              height: 100,
-              background: '#F5F2EA',
-              borderRadius: 20,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 60,
+              fontSize: 64,
               fontWeight: 700,
-              color: '#111318',
-            }}
-          >
-            M
-          </div>
-          
-          {/* Title */}
-          <div
-            style={{
-              fontSize: 56,
-              fontWeight: 600,
-              color: '#F5F2EA',
-              letterSpacing: '0.05em',
+              color: CHARCOAL,
+              lineHeight: 1.08,
+              letterSpacing: '-0.03em',
+              fontFamily: 'Georgia, serif',
               display: 'flex',
+              flexDirection: 'column',
             }}
           >
-            MTL ARCHIVES
+            <span>Photos historiques</span>
+            <span>de Montréal.</span>
           </div>
-          
+
           {/* Subtitle */}
           <div
             style={{
-              fontSize: 24,
-              color: '#a3a3a3',
-              letterSpacing: '0.15em',
+              fontSize: 22,
+              color: MUTED,
+              marginTop: 24,
+              lineHeight: 1.5,
               display: 'flex',
             }}
           >
-            14 822 PHOTOS HISTORIQUES DE MONTRÉAL
+            14 822 photos d'archives  ·  jeu quotidien  ·  tirages
           </div>
         </div>
-        
-        {/* Bottom accent - Quebec flag colors */}
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: 6,
-            background: 'linear-gradient(90deg, #003DA5 0%, #003DA5 25%, #F5F2EA 25%, #F5F2EA 50%, #003DA5 50%, #003DA5 75%, #F5F2EA 75%, #F5F2EA 100%)',
-            display: 'flex',
-          }}
-        />
       </div>
     ),
     {

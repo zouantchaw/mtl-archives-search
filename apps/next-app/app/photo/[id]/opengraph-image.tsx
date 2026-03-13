@@ -16,7 +16,12 @@ export const contentType = 'image/png';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.mtlarchives.com';
 const PHOTO_API_CACHE_VERSION = '2026-02-20-rotation-v2';
 
-// API endpoint for fetching photo data
+const CREAM = '#F5F2EA';
+const CHARCOAL = '#111318';
+const BLUE = '#0F5EA8';
+const ORANGE = '#F0A11A';
+const GREEN = '#34C759';
+const YELLOW = '#F5CF4D';
 
 type PhotoData = {
   name?: string;
@@ -42,7 +47,7 @@ async function getPhoto(id: string): Promise<PhotoData | null> {
 export default async function OGImage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const photo = await getPhoto(normalizePhotoId(decodeURIComponent(id)));
-  
+
   const title = photo?.name || 'Photo historique';
   const date = photo?.dateValue || '';
   const imageUrl = photo?.imageUrl
@@ -53,11 +58,10 @@ export default async function OGImage({ params }: { params: Promise<{ id: string
     (
       <div
         style={{
-          background: '#111318',
+          background: CHARCOAL,
           width: '100%',
           height: '100%',
           display: 'flex',
-          flexDirection: 'column',
           position: 'relative',
         }}
       >
@@ -76,94 +80,86 @@ export default async function OGImage({ params }: { params: Promise<{ id: string
             }}
           />
         ) : null}
-        
-        {/* Gradient overlay */}
+
+        {/* Gradient overlay — bottom */}
         <div
           style={{
             position: 'absolute',
             bottom: 0,
             left: 0,
             right: 0,
-            height: '50%',
-            background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0) 100%)',
+            height: '55%',
+            background: 'linear-gradient(to top, rgba(17,19,24,0.92) 0%, rgba(17,19,24,0.5) 60%, rgba(17,19,24,0) 100%)',
             display: 'flex',
           }}
         />
-        
-        {/* Content */}
+
+        {/* Content — bottom-left */}
         <div
           style={{
             position: 'absolute',
             bottom: 0,
             left: 0,
             right: 0,
-            padding: 48,
+            padding: '0 56px 48px',
             display: 'flex',
             flexDirection: 'column',
-            gap: 12,
           }}
         >
-          {/* Title */}
-          <div
-            style={{
-              fontSize: 48,
-              fontWeight: 600,
-              color: '#F5F2EA',
-              lineHeight: 1.1,
-              display: 'flex',
-            }}
-          >
-            {title.length > 60 ? title.substring(0, 60) + '...' : title}
-          </div>
-          
-          {/* Date */}
+          {/* Date label */}
           {date ? (
             <div
               style={{
-                fontSize: 24,
-                color: '#a3a3a3',
+                fontSize: 16,
+                fontWeight: 500,
+                color: 'rgba(255,255,255,0.5)',
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+                marginBottom: 10,
                 display: 'flex',
               }}
             >
               {date}
             </div>
           ) : null}
-          
-          {/* Branding */}
+
+          {/* Title — editorial serif */}
           <div
             style={{
+              fontSize: 48,
+              fontWeight: 700,
+              color: CREAM,
+              lineHeight: 1.12,
+              letterSpacing: '-0.02em',
+              fontFamily: 'Georgia, serif',
               display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-              marginTop: 8,
+              maxWidth: 900,
             }}
           >
-            <div
+            {title.length > 70 ? title.substring(0, 70) + '\u2026' : title}
+          </div>
+
+          {/* Branding row — dot cluster + wordmark */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 24 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{ display: 'flex', gap: 4 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: BLUE }} />
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: ORANGE }} />
+              </div>
+              <div style={{ display: 'flex', gap: 4 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: GREEN }} />
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: YELLOW }} />
+              </div>
+            </div>
+            <span
               style={{
-                width: 40,
-                height: 40,
-                background: '#F5F2EA',
-                borderRadius: 8,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 24,
+                fontSize: 18,
                 fontWeight: 700,
-                color: '#111318',
+                color: 'rgba(255,255,255,0.7)',
               }}
             >
-              M
-            </div>
-            <div
-              style={{
-                fontSize: 20,
-                color: '#a3a3a3',
-                letterSpacing: '0.1em',
-                display: 'flex',
-              }}
-            >
-              MTL ARCHIVES
-            </div>
+              mtl archives
+            </span>
           </div>
         </div>
       </div>
