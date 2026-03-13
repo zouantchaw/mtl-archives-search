@@ -117,12 +117,12 @@ const translations = {
   fr: {
     title: 'Devine où la photo a été prise',
     subtitle: 'MTL Archives',
-    daily: 'Défi du jour',
-    practice: 'Essai',
-    practiceAvailable: 'Essai',
+    daily: 'Quotidien',
+    practice: 'Pratique',
+    practiceAvailable: 'Pratique',
     practiceUsed: 'Essai utilisé',
     tapToPlaceHint: 'Touche la carte pour placer ton repère. Zoome pour être précis.',
-    tapToPlaceButton: 'Placer mon point',
+    tapToPlaceButton: 'Placez votre repère',
     submitGuess: 'Valider mon point',
     loading: 'Chargement...',
     alreadyPlayed: 'Déjà joué',
@@ -144,7 +144,7 @@ const translations = {
     streakSaved: 'Série sauvegardée!',
     playAgain: 'Essai gratuit',
     comeBackTomorrow: 'Reviens demain!',
-    leaderboard: 'Classement',
+    leaderboard: 'Classement du jour',
     yourRank: 'Ton rang',
     signIn: 'Connexion',
     back: 'Retour',
@@ -157,6 +157,22 @@ const translations = {
     clue: 'Indice',
     photoOnWall: 'Cette photo sur votre mur?',
     send: 'Envoyer',
+    // New translations
+    introHeadline: 'Où cette photo a-t-elle été prise?',
+    introBody: 'Placez votre repère sur la carte. Plus vous êtes près, plus vous marquez de points.',
+    introStart: 'Commencer',
+    introProof: '2 500+ joueurs · nouveau chaque jour',
+    introSkipLink: 'Passer',
+    confirm: 'Confirmer',
+    alreadyPlayedTitle: 'Déjà joué aujourd\'hui',
+    alreadyPlayedBody: 'Revenez demain pour un nouveau défi. En attendant, essayez le mode pratique.',
+    practiceMode: 'Mode pratique',
+    shareMyScore: 'Partager mon score',
+    orderPrintShort: 'Commander l\'impression',
+    emailPlaceholder: 'votre@courriel.com',
+    emailSend: 'Envoyer',
+    dailyLabel: 'JEU QUOTIDIEN',
+    orderCta: 'Commander',
   },
   en: {
     title: 'Guess where this photo was taken',
@@ -166,7 +182,7 @@ const translations = {
     practiceAvailable: 'Practice',
     practiceUsed: 'Practice used',
     tapToPlaceHint: 'Tap the map to place your pin. Zoom in to be precise.',
-    tapToPlaceButton: 'Place my pin',
+    tapToPlaceButton: 'Place your pin',
     submitGuess: 'Submit my guess',
     loading: 'Loading...',
     alreadyPlayed: 'Already played',
@@ -188,7 +204,7 @@ const translations = {
     streakSaved: 'Streak saved!',
     playAgain: 'Free practice',
     comeBackTomorrow: 'Come back tomorrow!',
-    leaderboard: 'Leaderboard',
+    leaderboard: 'Today\'s leaderboard',
     yourRank: 'Your rank',
     signIn: 'Sign in',
     back: 'Back',
@@ -201,6 +217,22 @@ const translations = {
     clue: 'Clue',
     photoOnWall: 'This photo on your wall?',
     send: 'Send',
+    // New translations
+    introHeadline: 'Where was this photo taken?',
+    introBody: 'Place your pin on the map. The closer you get, the more points you earn.',
+    introStart: 'Start',
+    introProof: '2,500+ players · new every day',
+    introSkipLink: 'Skip',
+    confirm: 'Confirm',
+    alreadyPlayedTitle: 'Already played today',
+    alreadyPlayedBody: 'Come back tomorrow for a new challenge. In the meantime, try practice mode.',
+    practiceMode: 'Practice mode',
+    shareMyScore: 'Share my score',
+    orderPrintShort: 'Order print',
+    emailPlaceholder: 'your@email.com',
+    emailSend: 'Send',
+    dailyLabel: 'DAILY GAME',
+    orderCta: 'Order',
   },
 } as const;
 
@@ -381,15 +413,21 @@ export function GameClient() {
     }
   }, [data, mode]);
 
-  // Intro animation on first load
+  // Intro screen on first load
   const introShownRef = useRef(false);
   const forceIntro = searchParams?.get('intro') === '1';
-  
+
   useEffect(() => {
     // Only run once per session
     if (introShownRef.current) return;
     if (!currentPhoto || loading) return;
-    
+
+    // Don't show intro if already played
+    if (currentPlayed) {
+      introShownRef.current = true;
+      return;
+    }
+
     // Check if user has seen intro today (skip check if forcing via URL)
     if (!forceIntro) {
       try {
@@ -403,35 +441,13 @@ export function GameClient() {
         // Ignore storage errors
       }
     }
-    
+
     // Mark as shown for this session
     introShownRef.current = true;
-    
-    // Small delay to ensure everything is rendered
-    const startTimer = setTimeout(() => {
-      setShowIntro(true);
-      
-      // After 2.5 seconds, start shrink animation
-      setTimeout(() => {
-        setIntroAnimating(true);
-      }, 2500);
-      
-      // After animation completes, hide intro and mark as seen
-      setTimeout(() => {
-        setShowIntro(false);
-        setIntroAnimating(false);
-        try {
-          localStorage.setItem(INTRO_SEEN_KEY, new Date().toDateString());
-        } catch {
-          // Ignore storage errors
-        }
-      }, 3200); // 2500ms view + 700ms animation
-    }, 100);
-    
-    return () => {
-      clearTimeout(startTimer);
-    };
-  }, [currentPhoto, loading, forceIntro]);
+
+    // Show intro immediately (no auto-dismiss — user must click to start)
+    setShowIntro(true);
+  }, [currentPhoto, loading, forceIntro, currentPlayed]);
 
   // Analytics
   useEffect(() => {
@@ -514,14 +530,14 @@ export function GameClient() {
   const handleShareScore = async () => {
     if (!result || !data?.date) return;
     const accuracy = generateAccuracyBlocks(result.score);
-    const text = `MTL Archives 📍 ${data.date}\n${result.score}/1000 ${t.points}\n${accuracy}\n\n${formatDistance(result.distanceMeters)} ${lang === 'fr' ? 'du lieu réel' : 'from actual'}`;
+    const text = `MTL Archives ${data.date}\n${result.score}/1000 ${t.points}\n${accuracy}\n\n${formatDistance(result.distanceMeters)} ${lang === 'fr' ? 'du lieu réel' : 'from actual'}`;
     const shareUrl = new URL(`${window.location.origin}${appendLangParam('/game', lang)}`);
     shareUrl.searchParams.set('utm_source', 'game');
     shareUrl.searchParams.set('utm_medium', 'share');
     shareUrl.searchParams.set('utm_campaign', 'game_share');
     const url = shareUrl.toString();
     events.gameShareClicked(mode, result.score);
-    
+
     if (navigator.share) {
       try {
         await navigator.share({ title: 'MTL Archives', text, url });
@@ -544,7 +560,7 @@ export function GameClient() {
   const handleModeChange = (newMode: 'daily' | 'practice') => {
     if (newMode === mode) return;
     if (newMode === 'practice' && !practiceAvailable) return;
-    
+
     // Clean up previous result display
     setShowResults(false);
     setResult(null);
@@ -555,6 +571,14 @@ export function GameClient() {
 
   const handleTogglePhoto = () => {
     setPhotoExpanded(!photoExpanded);
+  };
+
+  const dismissIntro = () => {
+    setShowIntro(false);
+    setIntroAnimating(false);
+    try {
+      localStorage.setItem(INTRO_SEEN_KEY, new Date().toDateString());
+    } catch { /* ignore */ }
   };
 
   const handleLangChange = useCallback(() => {
@@ -581,22 +605,34 @@ export function GameClient() {
   const currentPhotoDate = currentPhoto?.dateValue || '?';
   const desktopSidePanelWidth = 'lg:pr-[360px]';
 
-  // Determine CTA state
-  const ctaDisabled = !guess || submitting || currentPlayed;
-  const ctaLabel = currentPlayed 
-    ? t.alreadyPlayed 
-    : submitting 
-      ? t.calculating 
-      : guess 
-        ? t.submitGuess 
+  // Determine CTA state for mobile floating pill
+  const confirmLabel = submitting
+    ? t.calculating
+    : guess
+      ? t.confirm
+      : t.tapToPlaceButton;
+  const confirmDisabled = !guess || submitting || !!currentPlayed;
+
+  // Desktop CTA label (keep original behavior)
+  const ctaDisabled = !guess || submitting || !!currentPlayed;
+  const ctaLabel = currentPlayed
+    ? t.alreadyPlayed
+    : submitting
+      ? t.calculating
+      : guess
+        ? t.submitGuess
         : t.tapToPlaceButton;
 
+  // Already-played state with result data from previous play
+  const alreadyPlayedResult = mode === 'daily' ? data?.daily.result : data?.practice.result;
+  const alreadyPlayedFilled = alreadyPlayedResult ? Math.round((alreadyPlayedResult.score / 1000) * 5) : 0;
+
   return (
-    <div 
+    <div
       className="flex w-full flex-col overflow-hidden bg-brand-dark text-white"
       style={{ height: '100dvh', minHeight: '100vh' }}
     >
-      {/* Minimal Header - 44px */}
+      {/* Header */}
       <header className="z-30 flex h-12 shrink-0 items-center justify-between border-b border-white/8 bg-brand-dark px-3 text-white lg:px-5">
         <a
           href={homeLink}
@@ -605,18 +641,21 @@ export function GameClient() {
           aria-label={t.back}
         >
           <ChevronLeft className="w-5 h-5" />
-          <span className="hidden text-xs font-medium tracking-wide sm:inline">mtl archives</span>
+          <span className="text-xs font-medium tracking-wide">mtl archives</span>
         </a>
 
         <div className="flex items-center gap-2 lg:gap-4">
-          {/* Score pill */}
-          <div className="flex items-center gap-1.5 rounded-full bg-white/4 px-2.5 py-1 text-primary">
-            <Trophy className="h-3.5 w-3.5" />
-            <span className="text-xs font-semibold tabular-nums text-primary">
-              {result ? result.score : '--'} {t.score}
-            </span>
-          </div>
+          {/* Score — mono metric, no pill/icon */}
+          <span className="mono-metric text-[11px] text-primary tabular-nums">
+            {result ? result.score : '--'} PTS
+          </span>
 
+          {/* Round / mode indicator — mobile */}
+          <span className="text-[11px] text-white/50 lg:hidden">
+            {mode === 'daily' ? t.daily : t.practice}
+          </span>
+
+          {/* Mode tabs — desktop only */}
           <div className="hidden items-center gap-4 text-sm lg:flex">
             <button
               onClick={() => handleModeChange('daily')}
@@ -675,7 +714,7 @@ export function GameClient() {
             boundsOptions={{ padding: [80, 80], maxZoom: 14 }}
             className="game-map min-h-0 rounded-none z-0"
           >
-            <MapTileLayer 
+            <MapTileLayer
               url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions" target="_blank">CARTO</a>'
             />
@@ -736,7 +775,7 @@ export function GameClient() {
         )}
 
         {/* Pin placement hint - shows when no pin placed */}
-        {!guess && !currentPlayed && !loading && (
+        {!guess && !currentPlayed && !loading && !showIntro && (
           <div className="pointer-events-none absolute inset-0 z-10 flex items-end justify-center pb-28 lg:pb-18">
             <div className="flex flex-col items-center gap-3">
               <div className="relative">
@@ -752,8 +791,8 @@ export function GameClient() {
           </div>
         )}
 
-        {/* Floating Photo Thumbnail */}
-        {currentPhoto && !photoExpanded && (
+        {/* Floating Photo Thumbnail — mobile only */}
+        {currentPhoto && !photoExpanded && !showIntro && (
           <button
             onClick={handleTogglePhoto}
             className="group absolute top-3 left-3 z-20 lg:hidden"
@@ -783,15 +822,36 @@ export function GameClient() {
           </button>
         )}
 
-        {/* Mode indicator pill */}
-        <div className="absolute top-3 right-3 z-20 lg:hidden">
-          <div className="px-3 py-1.5 bg-card/90 backdrop-blur rounded-full shadow-sm border border-input/60">
-            <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-              {mode === 'daily' ? t.daily : t.practice}
-            </span>
+        {/* Mobile floating CTA pill — only during playing state (no results) */}
+        {!showResults && !showIntro && !loading && !currentPlayed && (
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 lg:hidden">
+            <button
+              onClick={handleSubmitGuess}
+              disabled={confirmDisabled}
+              className={`
+                h-[52px] min-w-[200px] rounded-full font-medium px-8 shadow-xl transition-all
+                active:scale-[0.98] disabled:active:scale-100
+                ${guess
+                  ? 'bg-white text-brand-charcoal'
+                  : 'bg-white/40 text-white/55 cursor-default'
+                }
+                ${submitting ? 'animate-pulse' : ''}
+              `}
+              aria-label={confirmLabel}
+            >
+              {confirmLabel}
+            </button>
+            {/* Zoom hint */}
+            {showZoomHint && guess && (
+              <div className="text-center text-xs text-white/60 animate-pulse mt-2">
+                <Maximize2 className="w-3 h-3 inline mr-1" />
+                {t.zoomHint}
+              </div>
+            )}
           </div>
-        </div>
+        )}
 
+        {/* Desktop floating CTA */}
         {!showResults ? (
           <div className="pointer-events-none absolute inset-x-0 bottom-6 z-20 hidden justify-center lg:flex">
             <button
@@ -808,6 +868,7 @@ export function GameClient() {
           </div>
         ) : null}
 
+        {/* Desktop Side Panel */}
         <aside
           className={`absolute inset-y-0 right-0 hidden w-[360px] border-l lg:flex ${
             showResults
@@ -819,7 +880,7 @@ export function GameClient() {
             {showResults && result ? (
               <>
                 <div className="text-center">
-                  <div className="text-display text-7xl font-semibold leading-none tracking-[-0.06em] text-primary">
+                  <div className={`text-display text-7xl font-semibold leading-none tracking-[-0.06em] ${getScoreColor(result.score)}`}>
                     {result.score}
                   </div>
                   <p className="mt-3 text-sm text-muted-foreground">
@@ -831,9 +892,21 @@ export function GameClient() {
                   {[...Array(5)].map((_, i) => (
                     <div
                       key={i}
-                      className={`h-9 w-9 rounded-xl ${i < filledAccuracy ? 'bg-brand-green' : 'bg-brand-steel/55'}`}
+                      className={`h-9 w-9 rounded-xl ${i < filledAccuracy ? 'bg-brand-green' : 'bg-brand-steel/40'}`}
                     />
                   ))}
+                </div>
+
+                {/* Newsletter email input */}
+                <div className="mt-6 flex items-center rounded-full border border-input overflow-hidden">
+                  <input
+                    type="email"
+                    placeholder={t.emailPlaceholder}
+                    className="flex-1 bg-transparent px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground outline-none"
+                  />
+                  <button className="bg-primary text-primary-foreground rounded-full px-5 h-9 text-sm font-medium shrink-0 mr-0.5">
+                    {t.emailSend}
+                  </button>
                 </div>
 
                 <div className="mt-6 border-t border-border pt-6">
@@ -866,19 +939,19 @@ export function GameClient() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-foreground">{t.photoOnWall}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">dès 45$</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{lang === 'fr' ? 'dès 45$' : 'from $45'}</p>
                     </div>
-                    <span className="text-sm font-medium text-primary">{t.orderPrint} →</span>
+                    <span className="text-sm font-medium text-primary">{t.orderCta} &rarr;</span>
                   </a>
                 ) : null}
 
                 <div className="mt-auto flex items-center justify-center gap-5 pt-8 text-sm">
                   <button onClick={handleShareScore} className="text-primary transition-colors hover:text-primary/80">
-                    {shareMessage || t.share}
+                    {shareMessage || t.shareMyScore}
                   </button>
                   {mode === 'daily' && practiceAvailable ? (
                     <button onClick={() => handleModeChange('practice')} className="text-primary transition-colors hover:text-primary/80">
-                      {t.playAgain} →
+                      {t.playAgain} &rarr;
                     </button>
                   ) : (
                     <span className="text-muted-foreground">{t.comeBackTomorrow}</span>
@@ -915,37 +988,10 @@ export function GameClient() {
         </aside>
       </div>
 
-      {/* Bottom Action Bar - Thumb Zone */}
-      <div className="z-30 shrink-0 border-t border-input/60 bg-card safe-area-pb lg:hidden">
-        <div className="px-4 pt-3 pb-3 space-y-3">
-          {/* Primary CTA */}
-          {!showResults && currentPlayed && result ? (
-            <button
-              onClick={() => setShowResults(true)}
-              className="w-full h-12 rounded-full bg-primary text-primary-foreground font-medium text-xs sm:text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
-              aria-label={t.viewMyScore}
-            >
-              <Trophy className="w-4 h-4" />
-              {t.viewMyScore} · {result.score} {t.score}
-            </button>
-          ) : !showResults ? (
-            <button
-              onClick={handleSubmitGuess}
-              disabled={ctaDisabled}
-              className={`
-                w-full h-12 rounded-full font-medium text-xs sm:text-sm transition-all
-                active:scale-[0.98] disabled:active:scale-100
-                ${guess && !currentPlayed
-                  ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
-                  : 'bg-muted text-muted-foreground/70'
-                }
-                ${submitting ? 'animate-pulse' : ''}
-              `}
-              aria-label={ctaLabel}
-            >
-              {ctaLabel}
-            </button>
-          ) : (
+      {/* Mobile bottom bar — only show mode tabs during results */}
+      {showResults && result && (
+        <div className="z-30 shrink-0 border-t border-input/60 bg-card safe-area-pb lg:hidden">
+          <div className="px-4 pt-3 pb-3 space-y-3">
             <button
               onClick={handleShareScore}
               className="w-full h-12 rounded-full bg-primary text-primary-foreground font-medium text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
@@ -954,51 +1000,57 @@ export function GameClient() {
               <Share2 className="w-4 h-4" />
               {shareMessage || t.shareResult}
             </button>
-          )}
 
-          {/* Zoom hint - nudge after pin placement */}
-          {showZoomHint && guess && !showResults && !currentPlayed && (
-            <div className="text-center text-xs text-muted-foreground/70 animate-pulse -mt-1">
-              <Maximize2 className="w-3 h-3 inline mr-1" />
-              {t.zoomHint}
+            {/* Mode tabs */}
+            <div className="flex justify-center items-center gap-6">
+              <button
+                onClick={() => handleModeChange('daily')}
+                className={`text-xs font-medium transition-colors flex items-center gap-1.5 ${
+                  mode === 'daily' ? 'text-foreground' : 'text-muted-foreground/70'
+                }`}
+                aria-pressed={mode === 'daily'}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${mode === 'daily' ? 'bg-primary' : 'bg-transparent'}`} />
+                {t.daily}
+              </button>
+              <button
+                onClick={() => handleModeChange('practice')}
+                disabled={!practiceAvailable && mode !== 'practice'}
+                className={`text-xs font-medium transition-colors flex items-center gap-1.5 ${
+                  mode === 'practice'
+                    ? 'text-foreground'
+                    : practiceAvailable
+                      ? 'text-muted-foreground/70'
+                      : 'text-muted-foreground/50 cursor-not-allowed'
+                }`}
+                aria-pressed={mode === 'practice'}
+                aria-disabled={!practiceAvailable && mode !== 'practice'}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${mode === 'practice' ? 'bg-primary' : 'bg-transparent'}`} />
+                {practiceAvailable ? t.practiceAvailable : t.practiceUsed}
+              </button>
             </div>
-          )}
-
-          {/* Mode tabs - secondary */}
-          <div className="flex justify-center items-center gap-6">
-            <button
-              onClick={() => handleModeChange('daily')}
-              className={`text-xs font-medium transition-colors flex items-center gap-1.5 ${
-                mode === 'daily' ? 'text-foreground' : 'text-muted-foreground/70'
-              }`}
-              aria-pressed={mode === 'daily'}
-            >
-              <span className={`w-1.5 h-1.5 rounded-full ${mode === 'daily' ? 'bg-primary' : 'bg-transparent'}`} />
-              {t.daily}
-            </button>
-            <button
-              onClick={() => handleModeChange('practice')}
-              disabled={!practiceAvailable && mode !== 'practice'}
-              className={`text-xs font-medium transition-colors flex items-center gap-1.5 ${
-                mode === 'practice' 
-                  ? 'text-foreground' 
-                  : practiceAvailable 
-                    ? 'text-muted-foreground/70' 
-                    : 'text-muted-foreground/50 cursor-not-allowed'
-              }`}
-              aria-pressed={mode === 'practice'}
-              aria-disabled={!practiceAvailable && mode !== 'practice'}
-            >
-              <span className={`w-1.5 h-1.5 rounded-full ${mode === 'practice' ? 'bg-primary' : 'bg-transparent'}`} />
-              {practiceAvailable ? t.practiceAvailable : t.practiceUsed}
-            </button>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Already played — mobile: show "view score" pill on map */}
+      {!showResults && currentPlayed && result && !showIntro && !loading && (
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 lg:hidden">
+          <button
+            onClick={() => setShowResults(true)}
+            className="h-[52px] min-w-[200px] rounded-full bg-primary text-primary-foreground font-medium px-8 shadow-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
+            aria-label={t.viewMyScore}
+          >
+            <Trophy className="w-4 h-4" />
+            {t.viewMyScore} · {result.score} {t.score}
+          </button>
+        </div>
+      )}
 
       {/* Photo Expanded Modal */}
       {photoExpanded && currentPhoto && (
-        <div 
+        <div
           className="fixed inset-0 z-50 bg-black/95 flex flex-col animate-fade-in"
           onClick={handleTogglePhoto}
           role="dialog"
@@ -1029,94 +1081,81 @@ export function GameClient() {
             </div>
           </div>
 
-          {/* Photo info */}
+          {/* Photo info — updated title styling */}
           <div className="p-4 text-center text-white safe-area-pb">
-            <h3 className="font-medium text-sm mb-1">{currentPhoto.name || 'Historical photo'}</h3>
-            <p className="text-xs text-white/60">{currentPhoto.dateValue}</p>
+            <h3 className="text-display font-semibold text-lg text-white">{currentPhoto.name || 'Historical photo'}</h3>
+            <p className="mono-metric text-[10px] text-white/50 tracking-[0.14em] uppercase mt-1">{currentPhoto.dateValue}</p>
           </div>
         </div>
       )}
 
-      {/* Intro Animation - Shows photo then shrinks to thumbnail */}
+      {/* Intro Screen — full dark background with photo and CTA */}
       {showIntro && currentPhoto && (
-        <div 
-          className={`fixed inset-0 z-50 flex flex-col transition-all duration-700 ease-in-out ${
-            introAnimating ? 'bg-transparent' : 'bg-black/90'
-          }`}
+        <div
+          className="fixed inset-0 z-50 flex flex-col bg-brand-dark"
+          role="dialog"
+          aria-modal="true"
         >
-          {/* Photo container - animates from center to top-left */}
-          <div 
-            className={`
-              absolute transition-all duration-700 ease-in-out
-              ${introAnimating 
-                ? 'top-[56px] left-3 w-20 h-20 sm:w-24 sm:h-24 rounded-xl' 
-                : 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[85vw] max-w-md aspect-[4/3] rounded-2xl'
-              }
-            `}
-          >
-            <div className={`relative w-full h-full overflow-hidden rounded-inherit ${introAnimating ? 'rounded-xl shadow-xl border-2 border-white' : 'rounded-2xl shadow-2xl'}`}>
-              <Image
-                src={currentPhoto.imageUrl}
-                alt={currentPhoto.name || 'Historical photo'}
-                fill
-                sizes={introAnimating ? '96px' : '85vw'}
-                className="object-cover"
-                priority
-                unoptimized
-              />
-              {/* Date badge - always visible */}
-              <div className={`absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 to-transparent transition-all duration-700 ${introAnimating ? 'p-1.5' : 'p-3'}`}>
-                <span className={`font-medium text-white transition-all duration-700 ${introAnimating ? 'text-[10px]' : 'text-sm'}`}>
-                  {currentPhoto.dateValue || '?'}
-                </span>
-              </div>
-            </div>
+          {/* Header bar */}
+          <div className="flex items-center justify-between px-4 pt-4 lg:px-6 lg:pt-6">
+            <span className="text-[15px] font-semibold text-white">mtl archives</span>
+            <button
+              onClick={dismissIntro}
+              className="text-sm text-white/50 transition-colors hover:text-white/80"
+            >
+              {t.introSkipLink} &rarr;
+            </button>
           </div>
 
-          {/* Caption - fades out during animation */}
-          <div 
-            className={`
-              absolute bottom-0 inset-x-0 p-6 text-center transition-opacity duration-500
-              ${introAnimating ? 'opacity-0' : 'opacity-100'}
-            `}
-          >
-            <h3 className="text-white font-semibold text-lg mb-2">
-              {currentPhoto.name || (lang === 'fr' ? 'Photo historique' : 'Historical photo')}
-            </h3>
-            <p className="text-white/70 text-sm mb-4">
-              {currentPhoto.dateValue}
-            </p>
-            <p className="text-white/50 text-xs">
-              {t.introQuestion}
-            </p>
+          {/* Photo — fills most of the screen */}
+          <div className="relative flex-1 mx-4 mt-4 lg:mx-6 lg:mt-6 overflow-hidden rounded-2xl">
+            <Image
+              src={currentPhoto.imageUrl}
+              alt={currentPhoto.name || 'Historical photo'}
+              fill
+              sizes="100vw"
+              className="object-cover"
+              priority
+              unoptimized
+            />
+            {/* Gradient overlay at bottom */}
+            <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-brand-dark/90 via-brand-dark/40 to-transparent" />
           </div>
 
-          {/* Skip hint - tap anywhere */}
-          <button 
-            onClick={() => {
-              setShowIntro(false);
-              setIntroAnimating(false);
-              try {
-                localStorage.setItem(INTRO_SEEN_KEY, new Date().toDateString());
-              } catch { /* ignore */ }
-            }}
-            className={`absolute top-4 right-4 text-white/50 text-xs transition-opacity duration-500 ${introAnimating ? 'opacity-0' : 'opacity-100'}`}
-          >
-            {t.introSkip} →
-          </button>
+          {/* Bottom content — mobile: full width, desktop: bottom-left overlay */}
+          <div className="px-6 pb-8 lg:absolute lg:bottom-0 lg:left-0 lg:max-w-lg lg:px-8 lg:pb-10">
+            <p className="mono-metric text-[10px] text-primary tracking-[0.14em]">
+              {t.dailyLabel}
+            </p>
+            <h2 className="text-display text-[2.5rem] font-semibold leading-[1.05] tracking-[-0.04em] text-white mt-2">
+              {t.introHeadline}
+            </h2>
+            <p className="text-[15px] leading-7 text-white/55 mt-3">
+              {t.introBody}
+            </p>
+            <button
+              onClick={dismissIntro}
+              className="w-full h-[52px] rounded-full bg-primary text-primary-foreground font-medium mt-6 transition-transform active:scale-[0.98]"
+            >
+              {t.introStart}
+            </button>
+            <p className="text-[11px] text-white/30 text-center mt-4">
+              {t.introProof}
+            </p>
+          </div>
         </div>
       )}
 
-      {/* Results Overlay - Slides up from bottom */}
+      {/* Results Overlay — Mobile slide-up white card */}
       {showResults && result && (
-        <div 
+        <div
           className="fixed inset-x-0 bottom-0 z-40 animate-slide-up lg:hidden"
           role="dialog"
           aria-modal="true"
           aria-label={t.result}
         >
           {/* Backdrop */}
-          <div 
+          <div
             className="absolute inset-0 -top-screen bg-black/20 backdrop-blur-sm"
             onClick={() => setShowResults(false)}
           />
@@ -1131,123 +1170,82 @@ export function GameClient() {
             <div className="px-6 pb-6 space-y-5">
               {/* Score display */}
               <div className="text-center">
-                <div className={`text-5xl font-bold tabular-nums ${getScoreColor(result.score)}`}>
+                <div className={`text-display text-5xl font-semibold tabular-nums ${getScoreColor(result.score)}`}>
                   {result.score}
                 </div>
-                <div className="text-sm text-muted-foreground mt-1">{t.points}</div>
-                <div className="text-sm text-muted-foreground mt-2">
-                  {t.distance.replace('{distance}', formatDistance(result.distanceMeters))}
+                <div className="text-sm text-muted-foreground mt-1">
+                  {t.points} · {formatDistance(result.distanceMeters)}
                 </div>
               </div>
 
-              {/* Accuracy visualization */}
-              <div className="flex justify-center gap-1.5">
-                {[...Array(5)].map((_, i) => {
-                  const filled = Math.round((result.score / 1000) * 5);
-                  return (
-                    <div
-                      key={i}
-                      className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg ${
-                        i < filled ? 'bg-emerald-500' : 'bg-muted'
-                      }`}
-                    >
-                      {i < filled ? '🎯' : ''}
-                    </div>
-                  );
-                })}
+              {/* Accuracy squares — no emojis, just colored blocks */}
+              <div className="flex justify-center gap-2">
+                {[...Array(5)].map((_, i) => (
+                  <div
+                    key={i}
+                    className={`h-9 w-9 rounded-xl ${i < filledAccuracy ? 'bg-brand-green' : 'bg-brand-steel/40'}`}
+                  />
+                ))}
               </div>
 
-              {/* Actions */}
-              <div className="space-y-2">
-                {!isSignedIn ? (
-                  <>
-                    <p className="text-xs text-center text-muted-foreground">{t.saveStreak}</p>
-                    <a
-                      href={signInUrl}
-                      onClick={() => events.gameSignInCtaClicked()}
-                      className="w-full h-11 rounded-full bg-primary text-primary-foreground font-medium text-xs flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors"
-                    >
-                      <LogIn className="w-4 h-4" />
-                      {t.signInToSave}
-                    </a>
-                    <button
-                      onClick={handleShareScore}
-                      className="w-full h-10 rounded-full border border-input text-foreground/80 font-medium text-xs flex items-center justify-center gap-2 hover:bg-secondary transition-colors"
-                    >
-                      <Share2 className="w-4 h-4" />
-                      {shareMessage || t.shareResult}
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      onClick={handleShareScore}
-                      className="w-full h-12 rounded-full bg-primary text-primary-foreground font-medium text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
-                    >
-                      <Share2 className="w-4 h-4" />
-                      {shareMessage || t.shareResult}
-                    </button>
-                    <p className="text-[11px] text-center text-muted-foreground">
-                      {t.shareHint}
-                    </p>
-                    <div className="text-xs text-center text-emerald-600 font-medium py-2">
-                      ✓ {t.streakSaved}
-                    </div>
-                  </>
-                )}
-
-                {printLink && (
-                  <a
-                    href={printLink}
-                    onClick={() => {
-                      if (currentPhoto) {
-                        events.gamePrintCtaClicked(mode, currentPhoto.metadataFilename);
-                        events.printCtaClicked(currentPhoto.metadataFilename);
-                      }
-                    }}
-                    className="w-full h-11 rounded-full border border-input text-foreground/80 font-medium text-xs flex items-center justify-center gap-2 hover:bg-secondary transition-colors"
-                  >
-                    <ShoppingBag className="w-4 h-4" />
-                    {t.orderPrint}
-                  </a>
-                )}
-              </div>
-
-              {/* Next action hint */}
-              <div className="text-center pt-2">
-                {mode === 'daily' && practiceAvailable ? (
-                  <button
-                    onClick={() => handleModeChange('practice')}
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {t.playAgain} →
-                  </button>
-                ) : (
-                  <span className="text-sm text-muted-foreground/70">{t.comeBackTomorrow}</span>
-                )}
-              </div>
-
-              {/* Mini leaderboard peek */}
+              {/* Leaderboard */}
               {leaderboard.length > 0 && (
-                <div className="border-t border-border pt-4 mt-4">
-                  <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground/70 mb-3">
+                <div className="border-t border-border pt-4">
+                  <h4 className="mono-metric text-[10px] text-muted-foreground mb-3">
                     {t.leaderboard}
                   </h4>
                   <div className="space-y-2">
                     {leaderboard.slice(0, 3).map((entry) => (
-                      <div 
-                        key={`${entry.rank}-${entry.anonTag}`} 
+                      <div
+                        key={`${entry.rank}-${entry.anonTag}`}
                         className="flex items-center justify-between text-sm"
                       >
                         <span className="text-muted-foreground">
                           #{entry.rank} · {entry.anonTag}
                         </span>
-                        <span className="font-medium tabular-nums">{entry.score} {t.score}</span>
+                        <span className={`font-medium tabular-nums ${entry.rank === 1 ? 'text-brand-green' : 'text-foreground'}`}>
+                          {entry.score} {t.score}
+                        </span>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
+
+              {/* Print CTA card */}
+              {printLink && currentPhoto && (
+                <a
+                  href={printLink}
+                  onClick={() => {
+                    events.gamePrintCtaClicked(mode, currentPhoto.metadataFilename);
+                    events.printCtaClicked(currentPhoto.metadataFilename);
+                  }}
+                  className="surface-subtle flex items-center gap-3 p-3"
+                >
+                  <div className="relative h-9 w-12 overflow-hidden rounded-xl bg-muted shrink-0">
+                    <Image src={currentPhoto.imageUrl} alt={currentPhotoTitle} fill sizes="48px" className="object-cover" unoptimized />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-foreground">{t.photoOnWall}</p>
+                  </div>
+                  <span className="text-sm font-medium text-primary shrink-0">{t.orderCta} &rarr;</span>
+                </a>
+              )}
+
+              {/* Bottom links */}
+              <div className="flex items-center justify-center gap-4 pt-2 text-sm">
+                <button onClick={handleShareScore} className="text-primary transition-colors hover:text-primary/80">
+                  {shareMessage || t.shareMyScore}
+                </button>
+                <span className="text-muted-foreground/30">·</span>
+                {mode === 'daily' && practiceAvailable ? (
+                  <button onClick={() => handleModeChange('practice')} className="text-primary transition-colors hover:text-primary/80">
+                    {t.playAgain} &rarr;
+                  </button>
+                ) : (
+                  <span className="text-muted-foreground">{t.comeBackTomorrow}</span>
+                )}
+              </div>
             </div>
           </div>
         </div>
