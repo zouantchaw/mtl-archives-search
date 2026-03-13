@@ -1,41 +1,48 @@
 import type { Metadata } from 'next';
 import { GameClient } from './GameClient';
+import { bilingualMetadata, langFromSearchParams, SITE_URL } from '@/lib/seo';
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.mtlarchives.com';
-const gameShareDescription = 'Devine l’emplacement d’une photo d’archive de Montréal, marque des points, puis compare ton score.';
-const gameShareImageUrl = `${siteUrl}/opengraph-image`;
+const gameShareImageUrl = `${SITE_URL}/opengraph-image`;
 
-export const metadata: Metadata = {
-  title: 'Jeu quotidien',
-  description: gameShareDescription,
-  alternates: {
-    canonical: `${siteUrl}/game`,
-    languages: {
-      'fr-CA': `${siteUrl}/game?lang=fr`,
-      'en-CA': `${siteUrl}/game?lang=en`,
-      'x-default': `${siteUrl}/game`,
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}): Promise<Metadata> {
+  const lang = langFromSearchParams(await searchParams);
+  return bilingualMetadata(lang, '/game', {
+    fr: {
+      title: 'Jeu quotidien',
+      description: 'Devine l\u2019emplacement d\u2019une photo d\u2019archive de Montréal, marque des points, puis compare ton score.',
     },
-  },
-  openGraph: {
-    title: 'Jeu quotidien | MTL Archives',
-    description: gameShareDescription,
-    url: `${siteUrl}/game`,
-    images: [
-      {
+    en: {
+      title: 'Daily game',
+      description: 'Guess where a Montreal archive photo was taken, earn points, and compare your score.',
+    },
+  }, {
+    openGraph: {
+      title: lang === 'fr' ? 'Jeu quotidien | MTL Archives' : 'Daily game | MTL Archives',
+      description: lang === 'fr'
+        ? 'Devine l\u2019emplacement d\u2019une photo d\u2019archive de Montréal.'
+        : 'Guess where a Montreal archive photo was taken.',
+      url: `${SITE_URL}/game`,
+      images: [{
         url: gameShareImageUrl,
         width: 1200,
         height: 630,
-        alt: 'Jeu quotidien MTL Archives',
-      },
-    ],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Jeu quotidien | MTL Archives',
-    description: gameShareDescription,
-    images: [gameShareImageUrl],
-  },
-};
+        alt: lang === 'fr' ? 'Jeu quotidien MTL Archives' : 'MTL Archives daily game',
+      }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: lang === 'fr' ? 'Jeu quotidien | MTL Archives' : 'Daily game | MTL Archives',
+      description: lang === 'fr'
+        ? 'Devine l\u2019emplacement d\u2019une photo d\u2019archive de Montréal.'
+        : 'Guess where a Montreal archive photo was taken.',
+      images: [gameShareImageUrl],
+    },
+  });
+}
 
 export default function GamePage() {
   return <GameClient />;

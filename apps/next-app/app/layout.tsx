@@ -165,7 +165,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${figtree.variable} ${spectral.variable} ${manrope.variable} ${ibmPlexMono.variable}`}>
+    <html lang="fr" className={`${figtree.variable} ${spectral.variable} ${manrope.variable} ${ibmPlexMono.variable}`}>
       <head>
         {/* Preconnect to API for faster initial fetch */}
         {API_ORIGIN ? (

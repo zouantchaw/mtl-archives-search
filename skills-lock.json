@@ -11,6 +11,11 @@
       "sourceType": "github",
       "computedHash": "8f5b6b588c638139854181f80a241c16575810a3bd45b0983e55078b6aed347a"
     },
+    "nextjs-seo": {
+      "source": "laguagu/claude-code-nextjs-skills",
+      "sourceType": "github",
+      "computedHash": "95d96a22d53f9f74e3ed116ef55a36a15599344a790baf012fff8be91c9c09b8"
+    },
     "shadcn-ui": {
       "source": "giuseppe-trisciuoglio/developer-kit",
       "sourceType": "github",

@@ -1,9 +1,7 @@
 import type { Metadata } from 'next';
 import { API_BASE } from '@/lib/runtime-config';
 import { normalizePhotoId } from '@/lib/photo-id';
-
-// API endpoint for fetching photo data
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.mtlarchives.com';
+import { SITE_URL, localizedAlternates } from '@/lib/seo';
 const PHOTO_API_CACHE_VERSION = '2026-02-20-rotation-v2';
 
 // Clean text: remove escaped newlines, normalize whitespace
@@ -124,6 +122,9 @@ export async function generateMetadata({
     ? cleanText(photo.description)
     : cleanText(photo?.portalDescription) || 'Photo historique des archives de Montréal';
 
+  const photoPath = `/photo/${encodeURIComponent(normalizedId)}`;
+  const ogImageUrl = `${SITE_URL}${photoPath}/opengraph-image`;
+
   return {
     title: `${title}${date}`,
     description: description.slice(0, 160),
@@ -132,17 +133,23 @@ export async function generateMetadata({
       description: description.slice(0, 160),
       type: 'article',
       locale: 'fr_CA',
+      alternateLocale: 'en_CA',
       siteName: 'MTL Archives',
       url: canonicalUrl,
+      images: [{
+        url: ogImageUrl,
+        width: 1200,
+        height: 630,
+        alt: title,
+      }],
     },
     twitter: {
       card: 'summary_large_image',
       title: `${title}${date}`,
       description: description.slice(0, 160),
+      images: [{ url: ogImageUrl, alt: title }],
     },
-    alternates: {
-      canonical: canonicalUrl,
-    },
+    alternates: localizedAlternates(photoPath),
   };
 }
 
@@ -157,6 +164,21 @@ export default async function PhotoLayout({
   const normalizedId = normalizePhotoId(decodeURIComponent(id));
   const photo = await getPhoto(normalizedId);
 
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'MTL Archives', item: SITE_URL },
+      { '@type': 'ListItem', position: 2, name: 'Recherche', item: `${SITE_URL}/search` },
+      ...(photo ? [{
+        '@type': 'ListItem',
+        position: 3,
+        name: cleanText(photo.name) || cleanText(photo.portalTitle) || 'Photo',
+        item: `${SITE_URL}/photo/${encodeURIComponent(normalizedId)}`,
+      }] : []),
+    ],
+  };
+
   return (
     <>
       {photo && (
@@ -167,6 +189,12 @@ export default async function PhotoLayout({
           }}
         />
       )}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(breadcrumbJsonLd),
+        }}
+      />
       {children}
     </>
   );

@@ -27,15 +27,28 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     console.error('Failed to fetch photos for sitemap:', error);
   }
 
-  // Static pages
-  const staticPages: MetadataRoute.Sitemap = [
-    {
-      url: SITE_URL,
-      lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 1.0,
-    },
+  // Static pages with language alternates
+  const staticRoutes = [
+    { path: '/', changeFrequency: 'daily' as const, priority: 1.0 },
+    { path: '/search', changeFrequency: 'daily' as const, priority: 0.9 },
+    { path: '/game', changeFrequency: 'daily' as const, priority: 0.8 },
+    { path: '/print', changeFrequency: 'weekly' as const, priority: 0.7 },
   ];
+
+  const staticPages: MetadataRoute.Sitemap = staticRoutes.flatMap((route) => [
+    {
+      url: `${SITE_URL}${route.path}`,
+      lastModified: new Date(),
+      changeFrequency: route.changeFrequency,
+      priority: route.priority,
+      alternates: {
+        languages: {
+          'fr-CA': `${SITE_URL}${route.path}${route.path === '/' ? '?' : '?'}lang=fr`,
+          'en-CA': `${SITE_URL}${route.path}${route.path === '/' ? '?' : '?'}lang=en`,
+        },
+      },
+    },
+  ]);
 
   // Dynamic photo pages with image metadata for Google Image Search
   const photoPages: MetadataRoute.Sitemap = photos.map((photo) => ({
@@ -44,6 +57,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     changeFrequency: 'monthly' as const,
     priority: 0.8,
     images: photo.imageUrl ? [photo.imageUrl] : undefined,
+    alternates: {
+      languages: {
+        'fr-CA': `${SITE_URL}/photo/${encodeURIComponent(photo.id)}?lang=fr`,
+        'en-CA': `${SITE_URL}/photo/${encodeURIComponent(photo.id)}?lang=en`,
+      },
+    },
   }));
 
   return [...staticPages, ...photoPages];

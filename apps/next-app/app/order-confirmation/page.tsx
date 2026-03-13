@@ -1,16 +1,27 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { appendLangParam, normalizeLang } from '@/lib/i18n';
+import { bilingualMetadata, langFromSearchParams } from '@/lib/seo';
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.mtlarchives.com';
-
-export const metadata: Metadata = {
-  title: 'Confirmation',
-  description: 'Votre commande MTL Archives a été reçue.',
-  alternates: {
-    canonical: `${siteUrl}/order-confirmation`,
-  },
-};
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}): Promise<Metadata> {
+  const lang = langFromSearchParams(await searchParams);
+  return bilingualMetadata(lang, '/order-confirmation', {
+    fr: {
+      title: 'Confirmation',
+      description: 'Votre commande MTL Archives a été reçue.',
+    },
+    en: {
+      title: 'Confirmation',
+      description: 'Your MTL Archives order has been received.',
+    },
+  }, {
+    robots: { index: false, follow: true },
+  });
+}
 
 const translations = {
   fr: {
