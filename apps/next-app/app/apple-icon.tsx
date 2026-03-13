@@ -9,8 +9,14 @@ export const size = {
 
 export const contentType = 'image/png';
 
-// Dot-based M icon representing the point cloud - Apple Touch Icon version
+// V4 brand mark — 2x2 colored dot cluster, Apple Touch Icon version
 export default function AppleIcon() {
+  const d = 44; // dot diameter
+  const gap = 14; // gap between dots
+  const block = d * 2 + gap; // total cluster size
+  const ox = (180 - block) / 2;
+  const oy = (180 - block) / 2;
+
   return new ImageResponse(
     (
       <div
@@ -20,40 +26,15 @@ export default function AppleIcon() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: '#111318',
-          borderRadius: 32,
+          background: '#F5F2EA',
+          borderRadius: 36,
           position: 'relative',
         }}
       >
-        {/* Left vertical */}
-        <div style={{ position: 'absolute', left: 30, top: 25, width: 24, height: 24, borderRadius: '50%', background: '#ff9500' }} />
-        <div style={{ position: 'absolute', left: 30, top: 55, width: 20, height: 20, borderRadius: '50%', background: '#ffd60a' }} />
-        <div style={{ position: 'absolute', left: 30, top: 82, width: 24, height: 24, borderRadius: '50%', background: '#34c759' }} />
-        <div style={{ position: 'absolute', left: 30, top: 112, width: 20, height: 20, borderRadius: '50%', background: '#34c759' }} />
-        <div style={{ position: 'absolute', left: 30, top: 138, width: 24, height: 24, borderRadius: '50%', background: '#0a84ff' }} />
-
-        {/* Left diagonal */}
-        <div style={{ position: 'absolute', left: 55, top: 45, width: 18, height: 18, borderRadius: '50%', background: '#ff9500' }} />
-        <div style={{ position: 'absolute', left: 75, top: 65, width: 20, height: 20, borderRadius: '50%', background: '#ffd60a' }} />
-
-        {/* Center */}
-        <div style={{ position: 'absolute', left: 80, top: 90, width: 26, height: 26, borderRadius: '50%', background: '#F5F2EA' }} />
-
-        {/* Right diagonal */}
-        <div style={{ position: 'absolute', right: 75, top: 65, width: 20, height: 20, borderRadius: '50%', background: '#ffd60a' }} />
-        <div style={{ position: 'absolute', right: 55, top: 45, width: 18, height: 18, borderRadius: '50%', background: '#ff9500' }} />
-
-        {/* Right vertical */}
-        <div style={{ position: 'absolute', right: 30, top: 25, width: 24, height: 24, borderRadius: '50%', background: '#ff9500' }} />
-        <div style={{ position: 'absolute', right: 30, top: 55, width: 20, height: 20, borderRadius: '50%', background: '#ffd60a' }} />
-        <div style={{ position: 'absolute', right: 30, top: 82, width: 24, height: 24, borderRadius: '50%', background: '#34c759' }} />
-        <div style={{ position: 'absolute', right: 30, top: 112, width: 20, height: 20, borderRadius: '50%', background: '#34c759' }} />
-        <div style={{ position: 'absolute', right: 30, top: 138, width: 24, height: 24, borderRadius: '50%', background: '#0a84ff' }} />
-
-        {/* Scatter dots */}
-        <div style={{ position: 'absolute', left: 55, top: 130, width: 10, height: 10, borderRadius: '50%', background: '#8e8e93', opacity: 0.6 }} />
-        <div style={{ position: 'absolute', left: 90, top: 140, width: 12, height: 12, borderRadius: '50%', background: '#8e8e93', opacity: 0.5 }} />
-        <div style={{ position: 'absolute', right: 55, top: 130, width: 10, height: 10, borderRadius: '50%', background: '#8e8e93', opacity: 0.6 }} />
+        <div style={{ position: 'absolute', left: ox, top: oy, width: d, height: d, borderRadius: '50%', background: '#0F5EA8' }} />
+        <div style={{ position: 'absolute', left: ox + d + gap, top: oy, width: d, height: d, borderRadius: '50%', background: '#F0A11A' }} />
+        <div style={{ position: 'absolute', left: ox, top: oy + d + gap, width: d, height: d, borderRadius: '50%', background: '#34C759' }} />
+        <div style={{ position: 'absolute', left: ox + d + gap, top: oy + d + gap, width: d, height: d, borderRadius: '50%', background: '#F5CF4D' }} />
       </div>
     ),
     {
