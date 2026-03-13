@@ -442,7 +442,7 @@ function SlideNextSteps() {
         className="mt-8 px-8 py-3 rounded-full text-[14px] sm:text-[16px] font-medium"
         style={{ background: '#0F5EA8', color: '#fff' }}
       >
-        R&eacute;pondre &agrave; ce message pour r&eacute;server un cr&eacute;neau
+        R&eacute;pondez &agrave; ce DM pour planifier un appel
       </div>
       <div className="mt-12">
         <span className="font-semibold text-[14px]">mtl archives</span>
