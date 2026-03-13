@@ -1,9 +1,10 @@
 import { SignUp } from '@clerk/nextjs';
+import { AuthShell, clerkV4Appearance } from '@/components/auth/AuthShell';
 
 export default function SignUpPage() {
   return (
-    <div className="min-h-screen bg-neutral-950 text-white flex items-center justify-center px-4">
-      <SignUp routing="path" path="/sign-up" />
-    </div>
+    <AuthShell>
+      <SignUp routing="path" path="/sign-up" signInUrl="/sign-in" appearance={clerkV4Appearance} />
+    </AuthShell>
   );
 }
