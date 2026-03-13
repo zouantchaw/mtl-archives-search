@@ -68,7 +68,10 @@ function SlideCover() {
       <h1 className="text-display text-[28px] sm:text-[40px] md:text-[56px] leading-[1.1] mt-8 max-w-3xl">
         11&nbsp;600 Montr&eacute;alais vous suivent d&eacute;j&agrave;.
       </h1>
-      <p className="mt-4 text-[16px] sm:text-[20px] md:text-[24px] max-w-xl" style={{ color: 'rgba(255,255,255,0.55)' }}>
+      <p className="mt-3 text-[14px] sm:text-[16px] md:text-[18px] font-medium" style={{ color: '#34C759' }}>
+        +42% ce trimestre
+      </p>
+      <p className="mt-3 text-[16px] sm:text-[20px] md:text-[24px] max-w-xl" style={{ color: 'rgba(255,255,255,0.55)' }}>
         Et si cette audience devenait la v&ocirc;tre?
       </p>
       <p className="mono-metric text-[10px] md:text-[11px] mt-12" style={{ color: 'rgba(255,255,255,0.35)' }}>
