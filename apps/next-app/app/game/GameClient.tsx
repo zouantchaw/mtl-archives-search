@@ -13,6 +13,7 @@ import { getAbVariant } from '@/lib/experiments';
 import { Map, MapMarker, MapPolyline, MapTileLayer, MapZoomControl } from '@/components/ui/map';
 import { useMap, useMapEvents } from 'react-leaflet';
 import { normalizePhotoId } from '@/lib/photo-id';
+import { FlagQC, FlagEN } from '@/components/ui/lang-flags';
 
 type GameResult = {
   score: number;
@@ -641,10 +642,10 @@ export function GameClient() {
           {/* Language toggle */}
           <button
             onClick={handleLangChange}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-medium text-white/60 transition-colors hover:bg-white/6 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-white/6"
             aria-label={lang === 'fr' ? 'Switch to English' : 'Passer en français'}
           >
-            {lang === 'fr' ? 'EN' : 'FR'}
+            {lang === 'fr' ? <FlagQC /> : <FlagEN />}
           </button>
 
           {/* Auth */}

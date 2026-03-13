@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, MapPin, Share, ShoppingBag, X } from 'lucide-react';
 import { MtlArchivesLogo } from '@/components/LandingHero';
+import { FlagQC, FlagEN } from '@/components/ui/lang-flags';
 import {
   PRINT_SIZES,
   PRODUCT_TYPES,
@@ -420,10 +421,10 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
                 else params.set('lang', nextLang);
                 router.push(params.toString() ? `/photo/${encodeURIComponent(photoId)}?${params.toString()}` : `/photo/${encodeURIComponent(photoId)}`);
               }}
-              className="text-border transition-colors hover:text-foreground/60"
+              className="p-1.5 hover:bg-muted rounded transition-colors"
               aria-label={lang === 'fr' ? 'Changer en anglais' : 'Switch to French'}
             >
-              {lang === 'fr' ? 'FR / EN' : 'EN / FR'}
+              {lang === 'fr' ? <FlagQC /> : <FlagEN />}
             </button>
           </div>
         </div>

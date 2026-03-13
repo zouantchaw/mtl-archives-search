@@ -12,6 +12,7 @@ import { PhotoTile } from './PhotoTile';
 import { appendLangParam, DEFAULT_LANG, getLangFromSearchParams, type Lang } from '@/lib/i18n';
 import { normalizePhotoId } from '@/lib/photo-id';
 import { LandingHero, MtlArchivesLogo } from './LandingHero';
+import { FlagQC, FlagEN } from './ui/lang-flags';
 
 const API_BASE = '';
 
@@ -290,30 +291,7 @@ const DISCOVERY_SHORTCUTS = [
   { name: { fr: 'Port', en: 'Harbour' }, query: 'port de Montréal' },
 ] as const;
 
-// ============================================================
-// Flag Icons
-// ============================================================
-function FlagQC() {
-  return (
-    <svg width="20" height="14" viewBox="0 0 20 14" className="rounded-[2px] shadow-sm">
-      <rect width="20" height="14" fill="#003DA5" />
-      <path d="M10 0v14M0 7h20" stroke="white" strokeWidth="2" />
-      <circle cx="5" cy="3.5" r="1.2" fill="white" />
-      <circle cx="15" cy="3.5" r="1.2" fill="white" />
-      <circle cx="5" cy="10.5" r="1.2" fill="white" />
-      <circle cx="15" cy="10.5" r="1.2" fill="white" />
-    </svg>
-  );
-}
-
-function FlagEN() {
-  return (
-    <svg width="20" height="14" viewBox="0 0 20 14" className="rounded-[2px] shadow-sm">
-      <rect width="20" height="14" fill="white" />
-      <path d="M10 0v14M0 7h20" stroke="#C8102E" strokeWidth="2.5" />
-    </svg>
-  );
-}
+// Flag icons imported from ./ui/lang-flags
 
 // ============================================================
 // Social Icons
@@ -1256,16 +1234,10 @@ function ArchiveStoreInner({ initialView = 'landing' }: ArchiveStoreProps) {
               >
                 {t.game}
               </a>
-              {hasSearched ? (
-                <button onClick={handleLangChange} className="p-1.5" aria-label={lang === 'fr' ? 'Changer en anglais' : 'Switch to French'}>
-                  {lang === 'fr' ? <FlagQC /> : <FlagEN />}
-                </button>
-              ) : (
-                <button onClick={handleLangChange} className="text-[13px] font-medium text-foreground/50 hover:text-foreground transition-colors" aria-label={lang === 'fr' ? 'Changer en anglais' : 'Switch to French'}>
-                  {lang === 'fr' ? 'FR' : 'EN'}
-                </button>
-              )}
-              {hasSearched && <button
+              <button onClick={handleLangChange} className="p-1.5" aria-label={lang === 'fr' ? 'Changer en anglais' : 'Switch to French'}>
+                {lang === 'fr' ? <FlagQC /> : <FlagEN />}
+              </button>
+              <button
                 onClick={() => {
                   trackSessionAction('cart');
                   events.cartOpened();
@@ -1280,7 +1252,7 @@ function ArchiveStoreInner({ initialView = 'landing' }: ArchiveStoreProps) {
                     {itemCount > 9 ? '9+' : itemCount}
                   </span>
                 )}
-              </button>}
+              </button>
             </div>
           </div>
           {hasSearched && <div className="px-3 pb-2.5">
@@ -1393,11 +1365,10 @@ function ArchiveStoreInner({ initialView = 'landing' }: ArchiveStoreProps) {
             <div className="flex items-center gap-0.5 shrink-0">
               <button
                 onClick={handleLangChange}
-                className="flex items-center gap-1.5 px-2 py-1 hover:bg-muted rounded transition-colors"
+                className="p-2 hover:bg-muted rounded transition-colors"
                 aria-label={lang === 'fr' ? 'Changer en anglais' : 'Switch to French'}
               >
                 {lang === 'fr' ? <FlagQC /> : <FlagEN />}
-                <span className="text-[10px] text-muted-foreground uppercase">{lang === 'fr' ? 'FR' : 'EN'}</span>
               </button>
               <button
                 onClick={() => {
@@ -1450,10 +1421,26 @@ function ArchiveStoreInner({ initialView = 'landing' }: ArchiveStoreProps) {
               </a>
               <button
                 onClick={handleLangChange}
-                className="text-[13px] text-border hover:text-foreground/60 transition-colors"
+                className="p-1.5 hover:bg-muted rounded transition-colors"
                 aria-label={lang === 'fr' ? 'Changer en anglais' : 'Switch to French'}
               >
-                {lang === 'fr' ? 'FR / EN' : 'EN / FR'}
+                {lang === 'fr' ? <FlagQC /> : <FlagEN />}
+              </button>
+              <button
+                onClick={() => {
+                  trackSessionAction('cart');
+                  events.cartOpened();
+                  openCart();
+                }}
+                className="p-1.5 text-muted-foreground/70 hover:text-muted-foreground transition-colors relative"
+                aria-label={t.cart}
+              >
+                <ShoppingBag className="h-4 w-4" />
+                {itemCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 h-4 w-4 bg-primary text-primary-foreground text-[9px] font-medium rounded-full flex items-center justify-center">
+                    {itemCount > 9 ? '9+' : itemCount}
+                  </span>
+                )}
               </button>
             </div>
           </div>
