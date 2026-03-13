@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 
-const TOTAL_SLIDES = 9;
+const TOTAL_SLIDES = 12;
 
 /* ------------------------------------------------------------------ */
 /*  Dot cluster logo (2x2: blue, orange, green, yellow)               */
@@ -30,11 +30,40 @@ function SlideLabel({ children }: { children: React.ReactNode }) {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Navigation arrow                                                   */
+/* ------------------------------------------------------------------ */
+function NavArrow({ direction, onClick, visible }: { direction: 'left' | 'right'; onClick: () => void; visible: boolean }) {
+  if (!visible) return null;
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      className={`fixed top-1/2 -translate-y-1/2 z-50 flex items-center justify-center
+        w-10 h-10 sm:w-12 sm:h-12 rounded-full
+        transition-opacity duration-200
+        opacity-50 hover:opacity-90 active:scale-95
+        ${direction === 'left' ? 'left-3 sm:left-5' : 'right-3 sm:right-5'}`}
+      style={{
+        background: 'rgba(0,0,0,0.45)',
+        backdropFilter: 'blur(8px)',
+        color: 'rgba(255,255,255,0.9)',
+      }}
+      aria-label={direction === 'left' ? 'Previous slide' : 'Next slide'}
+    >
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        {direction === 'left'
+          ? <polyline points="12,4 6,10 12,16" />
+          : <polyline points="8,4 14,10 8,16" />}
+      </svg>
+    </button>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  Slide 1: Cover                                                    */
 /* ------------------------------------------------------------------ */
 function SlideCover() {
   return (
-    <div className="flex flex-col items-center justify-center h-full px-6 text-center" style={{ background: '#111318', color: '#fff' }}>
+    <div className="flex flex-col items-center justify-center min-h-full px-6 text-center" style={{ background: '#111318', color: '#fff' }}>
       <DotLogo size={14} gap={6} />
       <h1 className="text-display text-[28px] sm:text-[40px] md:text-[56px] leading-[1.1] mt-8 max-w-3xl">
         11&nbsp;600 Montr&eacute;alais vous suivent d&eacute;j&agrave;.
@@ -401,7 +430,7 @@ function SlideTraction() {
 /* ------------------------------------------------------------------ */
 function SlideNextSteps() {
   return (
-    <div className="flex flex-col items-center justify-center h-full px-6 text-center" style={{ background: '#111318', color: '#fff' }}>
+    <div className="flex flex-col items-center justify-center min-h-full px-6 text-center" style={{ background: '#111318', color: '#fff' }}>
       <SlideLabel>PROCHAINE &Eacute;TAPE</SlideLabel>
       <h2 className="text-display text-[28px] sm:text-[40px] md:text-[56px] leading-[1.1] mt-6 max-w-2xl">
         Planifions un appel de 15&nbsp;minutes.
@@ -424,6 +453,216 @@ function SlideNextSteps() {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Appendix stat row helper                                          */
+/* ------------------------------------------------------------------ */
+function AppendixRow({ label, value, green, red }: { label: string; value: string; green?: boolean; red?: boolean }) {
+  let valueColor = '#111318';
+  if (green) valueColor = '#34C759';
+  if (red) valueColor = '#D63B3B';
+  return (
+    <div className="flex justify-between py-1.5 text-[12px] sm:text-[13px]" style={{ borderBottom: '1px solid rgba(17,19,24,0.06)' }}>
+      <span style={{ color: '#666' }}>{label}</span>
+      <span className="font-medium tabular-nums" style={{ color: valueColor }}>{value}</span>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Slide 10: Appendix — Facebook                                     */
+/* ------------------------------------------------------------------ */
+function SlideAppendixFacebook() {
+  return (
+    <div className="flex flex-col justify-center min-h-full px-6 sm:px-10 md:px-20 py-12 md:py-16" style={{ background: '#F5F2EA', color: '#111318' }}>
+      <div className="max-w-5xl mx-auto w-full">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="rounded-full" style={{ width: 8, height: 8, background: '#0F5EA8' }} />
+          <span className="mono-metric text-[11px] md:text-[12px] font-medium" style={{ color: '#666' }}>
+            ANNEXE &mdash; FACEBOOK &middot; DONN&Eacute;ES BRUTES
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+          {/* Performance */}
+          <div className="rounded-2xl p-5 sm:p-6" style={{ background: '#fff', border: '1px solid rgba(17,19,24,0.08)' }}>
+            <p className="mono-metric text-[10px] mb-4" style={{ color: '#666' }}>PERFORMANCE (28 DERNIERS JOURS)</p>
+            <p className="text-display text-[36px] sm:text-[44px] leading-none font-semibold" style={{ color: '#0F5EA8' }}>8&nbsp;273</p>
+            <p className="text-[13px] mt-1 mb-5" style={{ color: '#666' }}>abonn&eacute;s &middot; page Facebook</p>
+            <AppendixRow label="Vues" value="1,2M" green />
+            <AppendixRow label="Croissance vues" value="+42,2%" green />
+            <AppendixRow label="Spectateurs uniques" value="386,0K" green />
+            <AppendixRow label="Croissance spectateurs" value="+29,2%" green />
+            <AppendixRow label="Interactions contenu" value="9 700+" green />
+            <AppendixRow label="Croissance interactions" value="+53,8%" green />
+            <AppendixRow label="Clics sur liens" value="78" green />
+            <AppendixRow label="Croissance clics" value="+100%" green />
+            <AppendixRow label="Visites de la page" value="14,8K" />
+            <AppendixRow label="Nouveaux abonn&eacute;s" value="3 900+" green />
+            <AppendixRow label="Croissance abonn&eacute;s" value="+18%" green />
+          </div>
+
+          {/* Audience */}
+          <div className="rounded-2xl p-5 sm:p-6" style={{ background: '#fff', border: '1px solid rgba(17,19,24,0.08)' }}>
+            <p className="mono-metric text-[10px] mb-4" style={{ color: '#666' }}>AUDIENCE (DEPUIS LA CR&Eacute;ATION)</p>
+            <p className="text-[14px] font-semibold mb-4">D&eacute;mographie</p>
+            <AppendixRow label="Hommes" value="63,2%" />
+            <AppendixRow label="Femmes" value="36,8%" />
+            <AppendixRow label="Tranche dominante" value="35\u201354 ans" />
+
+            <p className="text-[14px] font-semibold mt-6 mb-4">Villes principales</p>
+            <AppendixRow label="Montr&eacute;al, QC" value="28,9%" />
+            <AppendixRow label="Laval, QC" value="5,3%" />
+            <AppendixRow label="Longueuil, QC" value="3,7%" />
+            <AppendixRow label="Qu&eacute;bec, QC" value="2,2%" />
+            <AppendixRow label="Terrebonne, QC" value="2%" />
+
+            <p className="text-[14px] font-semibold mt-6 mb-4">Pays</p>
+            <AppendixRow label="Canada" value="93%" />
+            <AppendixRow label="France" value="2,3%" />
+            <AppendixRow label="&Eacute;tats-Unis" value="1,1%" />
+          </div>
+        </div>
+
+        <p className="mt-6 text-[11px] text-center" style={{ color: '#999' }}>
+          Source : Meta Business Suite &middot; P&eacute;riode : 9 f&eacute;vrier &ndash; 8 mars 2026
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Slide 11: Appendix — Instagram                                    */
+/* ------------------------------------------------------------------ */
+function SlideAppendixInstagram() {
+  return (
+    <div className="flex flex-col justify-center min-h-full px-6 sm:px-10 md:px-20 py-12 md:py-16" style={{ background: '#F5F2EA', color: '#111318' }}>
+      <div className="max-w-5xl mx-auto w-full">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="rounded-full" style={{ width: 8, height: 8, background: '#F0A11A' }} />
+          <span className="mono-metric text-[11px] md:text-[12px] font-medium" style={{ color: '#666' }}>
+            ANNEXE &mdash; INSTAGRAM &middot; DONN&Eacute;ES BRUTES
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+          {/* Performance */}
+          <div className="rounded-2xl p-5 sm:p-6" style={{ background: '#fff', border: '1px solid rgba(17,19,24,0.08)' }}>
+            <p className="mono-metric text-[10px] mb-4" style={{ color: '#666' }}>PERFORMANCE (28 DERNIERS JOURS)</p>
+            <p className="text-display text-[36px] sm:text-[44px] leading-none font-semibold" style={{ color: '#F0A11A' }}>3&nbsp;338</p>
+            <p className="text-[13px] mt-1 mb-5" style={{ color: '#666' }}>abonn&eacute;s &middot; compte Instagram</p>
+            <AppendixRow label="Vues" value="51,7K" />
+            <AppendixRow label="Port&eacute;e" value="10,7K" />
+            <AppendixRow label="Interactions contenu" value="1 500+" green />
+            <AppendixRow label="Croissance interactions" value="+2,5%" green />
+            <AppendixRow label="Clics sur liens" value="13" />
+            <AppendixRow label="Visites du profil" value="366" />
+            <AppendixRow label="Nouveaux abonn&eacute;s" value="136" />
+          </div>
+
+          {/* Audience */}
+          <div className="rounded-2xl p-5 sm:p-6" style={{ background: '#fff', border: '1px solid rgba(17,19,24,0.08)' }}>
+            <p className="mono-metric text-[10px] mb-4" style={{ color: '#666' }}>AUDIENCE (DEPUIS LA CR&Eacute;ATION)</p>
+            <p className="text-[14px] font-semibold mb-4">D&eacute;mographie</p>
+            <AppendixRow label="Hommes" value="72,2%" />
+            <AppendixRow label="Femmes" value="27,8%" />
+            <AppendixRow label="Tranche dominante" value="35\u201344 ans" />
+
+            <p className="text-[14px] font-semibold mt-6 mb-4">Villes principales</p>
+            <AppendixRow label="Montr&eacute;al, QC" value="58,7%" />
+            <AppendixRow label="Laval, QC" value="2,6%" />
+            <AppendixRow label="Longueuil, QC" value="2,3%" />
+            <AppendixRow label="Toronto, ON" value="1,9%" />
+            <AppendixRow label="Qu&eacute;bec, QC" value="1,4%" />
+
+            <p className="text-[14px] font-semibold mt-6 mb-4">Pays</p>
+            <AppendixRow label="Canada" value="90,9%" />
+            <AppendixRow label="&Eacute;tats-Unis" value="2,7%" />
+            <AppendixRow label="France" value="1,8%" />
+          </div>
+        </div>
+
+        <p className="mt-6 text-[11px] text-center" style={{ color: '#999' }}>
+          Source : Meta Business Suite &middot; P&eacute;riode : 13 f&eacute;vrier &ndash; 12 mars 2026
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Slide 12: Appendix — Site Web                                     */
+/* ------------------------------------------------------------------ */
+function SlideAppendixWeb() {
+  return (
+    <div className="flex flex-col justify-center min-h-full px-6 sm:px-10 md:px-20 py-12 md:py-16" style={{ background: '#F5F2EA', color: '#111318' }}>
+      <div className="max-w-5xl mx-auto w-full">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="rounded-full" style={{ width: 8, height: 8, background: '#34C759' }} />
+          <span className="mono-metric text-[11px] md:text-[12px] font-medium" style={{ color: '#666' }}>
+            ANNEXE &mdash; SITE WEB &middot; DONN&Eacute;ES BRUTES
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+          {/* Traffic */}
+          <div className="rounded-2xl p-5 sm:p-6" style={{ background: '#fff', border: '1px solid rgba(17,19,24,0.08)' }}>
+            <p className="mono-metric text-[10px] mb-4" style={{ color: '#666' }}>TRAFIC (30 DERNIERS JOURS)</p>
+            <p className="text-display text-[36px] sm:text-[44px] leading-none font-semibold" style={{ color: '#34C759' }}>980</p>
+            <p className="text-[13px] mt-1 mb-5" style={{ color: '#666' }}>visiteurs uniques</p>
+            <AppendixRow label="Croissance visiteurs" value="+105%" green />
+            <AppendixRow label="Pages vues" value="5 731" green />
+            <AppendixRow label="Croissance pages vues" value="+109%" green />
+            <AppendixRow label="Taux de rebond" value="25%" green />
+            <AppendixRow label="Am&eacute;lioration rebond" value="-63%" green />
+          </div>
+
+          {/* Pages & Referrers */}
+          <div className="rounded-2xl p-5 sm:p-6" style={{ background: '#fff', border: '1px solid rgba(17,19,24,0.08)' }}>
+            <p className="mono-metric text-[10px] mb-4" style={{ color: '#666' }}>PAGES PRINCIPALES</p>
+            <AppendixRow label="/" value="872" />
+            <AppendixRow label="/game" value="605" />
+            <AppendixRow label="/sign-in" value="50" />
+            <AppendixRow label="/photo/*" value="67" />
+
+            <p className="mono-metric text-[10px] mt-6 mb-4" style={{ color: '#666' }}>SOURCES DE TRAFIC</p>
+            <AppendixRow label="m.facebook.com" value="293" />
+            <AppendixRow label="l.facebook.com" value="108" />
+            <AppendixRow label="lm.facebook.com" value="92" />
+            <AppendixRow label="l.instagram.com" value="48" />
+            <AppendixRow label="google.com" value="42" />
+          </div>
+
+          {/* Demographics */}
+          <div className="rounded-2xl p-5 sm:p-6" style={{ background: '#fff', border: '1px solid rgba(17,19,24,0.08)' }}>
+            <p className="mono-metric text-[10px] mb-4" style={{ color: '#666' }}>D&Eacute;MOGRAPHIE</p>
+
+            <p className="text-[13px] font-semibold mb-3">Pays</p>
+            <AppendixRow label="Canada" value="82%" />
+            <AppendixRow label="&Eacute;tats-Unis" value="9%" />
+            <AppendixRow label="Singapour" value="3%" />
+            <AppendixRow label="France" value="2%" />
+
+            <p className="text-[13px] font-semibold mt-5 mb-3">Appareils</p>
+            <AppendixRow label="Mobile" value="64%" />
+            <AppendixRow label="Desktop" value="29%" />
+            <AppendixRow label="Tablette" value="6%" />
+
+            <p className="text-[13px] font-semibold mt-5 mb-3">Syst&egrave;mes</p>
+            <AppendixRow label="iOS" value="45%" />
+            <AppendixRow label="Android" value="25%" />
+            <AppendixRow label="Windows" value="22%" />
+          </div>
+        </div>
+
+        <p className="mt-6 text-[11px] text-center" style={{ color: '#999' }}>
+          Source : Analytics &middot; P&eacute;riode : 7 f&eacute;vrier &ndash; 8 mars 2026
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  Slides array                                                      */
 /* ------------------------------------------------------------------ */
 const SLIDES = [
@@ -436,6 +675,9 @@ const SLIDES = [
   SlideIncluded,
   SlideTraction,
   SlideNextSteps,
+  SlideAppendixFacebook,
+  SlideAppendixInstagram,
+  SlideAppendixWeb,
 ];
 
 /* ------------------------------------------------------------------ */
@@ -482,7 +724,7 @@ export function PitchDeck() {
     touchStartX.current = null;
   }
 
-  // Click edge navigation
+  // Click edge navigation (center zone only — arrows handle sides on desktop)
   function handleClick(e: React.MouseEvent) {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -502,9 +744,10 @@ export function PitchDeck() {
     >
       {/* Slide track */}
       <div
-        className="flex h-full"
+        className="flex"
         style={{
           width: `${TOTAL_SLIDES * 100}vw`,
+          height: '100dvh',
           transform: `translateX(-${current * 100}vw)`,
           transition: 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
@@ -512,14 +755,17 @@ export function PitchDeck() {
         {SLIDES.map((SlideComponent, i) => (
           <div
             key={i}
-            className="w-screen min-h-screen overflow-y-auto shrink-0"
+            className="w-screen shrink-0 overflow-y-auto"
+            style={{ height: '100dvh' }}
           >
-            <div className="min-h-screen">
-              <SlideComponent />
-            </div>
+            <SlideComponent />
           </div>
         ))}
       </div>
+
+      {/* Navigation arrows */}
+      <NavArrow direction="left" onClick={prev} visible={current > 0} />
+      <NavArrow direction="right" onClick={next} visible={current < TOTAL_SLIDES - 1} />
 
       {/* Slide counter */}
       <div
