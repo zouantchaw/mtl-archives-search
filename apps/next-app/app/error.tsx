@@ -15,19 +15,23 @@ export default function Error({
   }, [error]);
 
   return (
-    <div className="min-h-screen bg-[#fafafa] flex flex-col items-center justify-center px-4">
-      <div className="text-center max-w-md">
-        <h2 className="text-xl font-light mb-2">Something went wrong</h2>
-        <p className="text-neutral-500 text-sm mb-6">
+    <main className="min-h-screen bg-background px-5 py-12 sm:px-12">
+      <div className="mx-auto flex min-h-[75vh] max-w-3xl flex-col items-center justify-center text-center">
+        <p className="mono-metric text-[11px] text-primary">mtl archives</p>
+        <h1 className="text-display mt-5 text-[3rem] font-semibold tracking-[-0.04em] text-foreground sm:text-[4.2rem]">
+          Something went wrong
+        </h1>
+        <p className="mt-4 max-w-xl text-base leading-8 text-muted-foreground">
           We encountered an unexpected error. Please try again.
         </p>
+
         <button
           onClick={reset}
-          className="px-6 py-2.5 bg-neutral-900 text-white text-xs uppercase tracking-wide hover:bg-neutral-800 transition-colors"
+          className="mt-8 inline-flex h-12 items-center justify-center rounded-full bg-primary px-6 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/92"
         >
           Try again
         </button>
       </div>
-    </div>
+    </main>
   );
 }
