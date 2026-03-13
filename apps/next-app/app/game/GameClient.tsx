@@ -642,10 +642,10 @@ export function GameClient() {
           {/* Language toggle */}
           <button
             onClick={handleLangChange}
-            className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-white/6"
+            className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-white/6 animate-lang-nudge"
             aria-label={lang === 'fr' ? 'Switch to English' : 'Passer en français'}
           >
-            {lang === 'fr' ? <FlagQC /> : <FlagEN />}
+            {lang === 'fr' ? <FlagEN /> : <FlagQC />}
           </button>
 
           {/* Auth */}

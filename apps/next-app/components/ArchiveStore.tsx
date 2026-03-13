@@ -1234,8 +1234,8 @@ function ArchiveStoreInner({ initialView = 'landing' }: ArchiveStoreProps) {
               >
                 {t.game}
               </a>
-              <button onClick={handleLangChange} className="p-1.5" aria-label={lang === 'fr' ? 'Changer en anglais' : 'Switch to French'}>
-                {lang === 'fr' ? <FlagQC /> : <FlagEN />}
+              <button onClick={handleLangChange} className="p-1.5 animate-lang-nudge" aria-label={lang === 'fr' ? 'Changer en anglais' : 'Switch to French'}>
+                {lang === 'fr' ? <FlagEN /> : <FlagQC />}
               </button>
               <button
                 onClick={() => {
@@ -1365,10 +1365,10 @@ function ArchiveStoreInner({ initialView = 'landing' }: ArchiveStoreProps) {
             <div className="flex items-center gap-0.5 shrink-0">
               <button
                 onClick={handleLangChange}
-                className="p-2 hover:bg-muted rounded transition-colors"
+                className="p-2 hover:bg-muted rounded transition-colors animate-lang-nudge"
                 aria-label={lang === 'fr' ? 'Changer en anglais' : 'Switch to French'}
               >
-                {lang === 'fr' ? <FlagQC /> : <FlagEN />}
+                {lang === 'fr' ? <FlagEN /> : <FlagQC />}
               </button>
               <button
                 onClick={() => {
@@ -1421,10 +1421,10 @@ function ArchiveStoreInner({ initialView = 'landing' }: ArchiveStoreProps) {
               </a>
               <button
                 onClick={handleLangChange}
-                className="p-1.5 hover:bg-muted rounded transition-colors"
+                className="p-1.5 hover:bg-muted rounded transition-colors animate-lang-nudge"
                 aria-label={lang === 'fr' ? 'Changer en anglais' : 'Switch to French'}
               >
-                {lang === 'fr' ? <FlagQC /> : <FlagEN />}
+                {lang === 'fr' ? <FlagEN /> : <FlagQC />}
               </button>
               <button
                 onClick={() => {

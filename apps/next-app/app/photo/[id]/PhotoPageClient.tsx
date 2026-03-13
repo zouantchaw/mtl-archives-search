@@ -421,10 +421,10 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
                 else params.set('lang', nextLang);
                 router.push(params.toString() ? `/photo/${encodeURIComponent(photoId)}?${params.toString()}` : `/photo/${encodeURIComponent(photoId)}`);
               }}
-              className="p-1.5 hover:bg-muted rounded transition-colors"
+              className="p-1.5 hover:bg-muted rounded transition-colors animate-lang-nudge"
               aria-label={lang === 'fr' ? 'Changer en anglais' : 'Switch to French'}
             >
-              {lang === 'fr' ? <FlagQC /> : <FlagEN />}
+              {lang === 'fr' ? <FlagEN /> : <FlagQC />}
             </button>
           </div>
         </div>
