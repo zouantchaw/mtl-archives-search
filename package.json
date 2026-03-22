@@ -46,7 +46,12 @@
     "smoke:filters": "npm run smoke:filters --workspace=apps/next-app --",
     "smoke:filters:prod": "npm run smoke:filters:prod --workspace=apps/next-app",
     "smoke:filters:mobile": "npm run smoke:filters:mobile --workspace=apps/next-app --",
-    "smoke:filters:mobile:prod": "npm run smoke:filters:mobile:prod --workspace=apps/next-app"
+    "smoke:filters:mobile:prod": "npm run smoke:filters:mobile:prod --workspace=apps/next-app",
+    "social:fallback": "python3 pipelines/daily-reel/main.py",
+    "social:promote-story": "python3 pipelines/daily-reel/story_pages.py",
+    "social:register-publish": "python3 pipelines/daily-reel/publish_registry.py",
+    "social:token-bootstrap": "python3 pipelines/daily-reel/token_manager.py bootstrap",
+    "social:token-status": "python3 pipelines/daily-reel/token_manager.py status"
   },
   "devDependencies": {
     "typescript": "^5.6.3",

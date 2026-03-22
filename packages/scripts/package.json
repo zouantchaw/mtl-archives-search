@@ -29,6 +29,7 @@
     "image-orientation:audit": "tsx src/analysis/image-orientation-audit.ts",
     "image-artifacts:audit": "tsx src/analysis/image-artifact-audit.ts",
     "image-dedupe:audit": "tsx src/analysis/image-dedupe-audit.ts",
+    "social:fetch-history": "tsx src/analysis/fetch-social-history.ts",
     "smoke:pipeline": "tsx src/analysis/smoke-pipeline.ts",
     "vlm:caption": "tsx src/vlm/caption-images.ts",
     "vlm:tags": "tsx src/vlm/tag-images.ts",

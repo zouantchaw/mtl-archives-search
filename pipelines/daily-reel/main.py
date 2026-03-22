@@ -1,191 +1,847 @@
 #!/usr/bin/env python3
-"""Daily reel pipeline: search → grids → research → reel → caption."""
+"""Local fallback social pipeline for MTL Archives.
+
+Builds a dual package:
+- Instagram square carousel + caption
+- Facebook reel + caption
+
+This runner is designed to work when the remote OpenClaw/spruce host is unavailable.
+"""
+
+from __future__ import annotations
+
 import argparse
 import json
 import os
+import shutil
 import sys
-import tempfile
-from datetime import date
+from datetime import UTC, date, datetime
 from pathlib import Path
 
-# Load .env from repo root
 REPO_ROOT = Path(__file__).resolve().parents[2]
 _env_file = REPO_ROOT / ".env"
 if _env_file.exists():
-    with open(_env_file) as f:
-        for line in f:
-            line = line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                key, _, val = line.partition("=")
-                val = val.strip().strip('"').strip("'")
-                os.environ.setdefault(key.strip(), val)
+    for raw_line in _env_file.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            key, _, value = line.partition("=")
+            os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
 
-from search import search_images, get_random_images, download_image, format_metadata
-from grids import generate_grids
-from research import research_image
+from caption import format_reel_caption, format_static_caption
+from carousel import generate_story_carousel
+from ledger import append_entry, blocked_keys, build_package_id, record_keys
+from obsidian import export_package_note
 from reel import generate_reel
-from caption import generate_caption
+from research import DEFAULT_MODEL, generate_research_package, refresh_public_story_from_payload
+from search import download_image, format_metadata, get_photo_by_id, get_random_images, search_images
+from story_pages import build_story_seed
+from themes import resolve_theme
 
 
-OUTPUT_DIR = Path.home() / "Downloads" / "Recents"
+DEFAULT_OUTPUT_ROOT = Path.home() / "Desktop" / "mtl-social-fallback"
+DEFAULT_LEDGER_PATH = REPO_ROOT / "data" / "social" / "publish-ledger.jsonl"
+DEFAULT_OBSIDIAN_EXPORT_DIR = os.environ.get("MTL_OBSIDIAN_EXPORT_DIR")
 
 
 def run_pipeline(
-    query: str | None = None,
-    image_id: str | None = None,
-    output_dir: str | None = None,
-    num_grids: int = 5,
-    skip_reel: bool = False,
+    *,
+    run_date: date,
+    output_root: Path,
+    theme_override: str | None,
+    editorial_brief: str | None,
+    query: str | None,
+    image_id: str | None,
+    image_path: str | None,
+    metadata_text: str | None,
+    metadata_file: str | None,
+    package_dir: str | None,
+    reuse_research: bool,
+    model: str,
+    skip_reel: bool,
+    skip_carousel: bool,
+    max_rerolls: int,
+    candidate_pool: int,
+    ledger_path: Path,
+    cooldown_days: int,
+    obsidian_dir: Path | None,
 ) -> dict:
-    """
-    Run the full daily reel pipeline.
+    theme_spec = resolve_theme(theme_override, run_date)
+    output_dir = output_root / run_date.isoformat()
+    attempt_root = output_root / ".attempts" / run_date.isoformat()
+    _reset_dir(attempt_root)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    Args:
-        query: Search query for finding an image (uses random if None)
-        image_id: Specific photo ID to use (overrides query)
-        output_dir: Where to save outputs (defaults to ~/Downloads/Recents)
-        num_grids: Number of grid crops to generate
-        skip_reel: If True, skip video generation (useful for research-only runs)
+    combined_brief = _combine_editorial_briefs(theme_spec.editorial_brief, editorial_brief)
+    fixed_source = bool(package_dir or image_path or image_id)
+    candidate_limit = max(1, max_rerolls + 1)
+    candidates = _resolve_candidates(
+        query=query,
+        image_id=image_id,
+        image_path=image_path,
+        package_dir=package_dir,
+        candidate_pool=max(candidate_pool, candidate_limit),
+        ledger_path=ledger_path,
+        cooldown_days=cooldown_days,
+        run_date=run_date,
+    )
+    if not candidates:
+        raise SystemExit("No candidate images available for this run.")
 
-    Returns:
-        Dict with paths and metadata for all outputs
-    """
-    out_dir = Path(output_dir) if output_dir else OUTPUT_DIR
-    out_dir.mkdir(parents=True, exist_ok=True)
+    attempts: list[dict] = []
+    accepted_attempt: dict | None = None
+    best_attempt: dict | None = None
 
-    today = date.today().isoformat()
-    work_dir = tempfile.mkdtemp(prefix=f"reel_{today}_")
+    for index, candidate in enumerate(candidates[:candidate_limit], start=1):
+        attempt_dir = attempt_root / f"attempt-{index:02d}"
+        _reset_dir(attempt_dir)
+        source = _materialize_candidate(candidate, attempt_dir)
+        metadata = _resolve_metadata(
+            source["record"],
+            metadata_text=metadata_text,
+            metadata_file=metadata_file,
+        )
+        manifest, inspection = _build_package_for_source(
+            run_date=run_date,
+            output_dir=attempt_dir,
+            theme_spec=theme_spec,
+            source=source,
+            metadata=metadata,
+            combined_brief=combined_brief,
+            package_dir=package_dir,
+            reuse_research=reuse_research,
+            model=model,
+            skip_reel=skip_reel,
+            skip_carousel=skip_carousel,
+        )
+        attempt_summary = {
+            "attempt": index,
+            "brand_ready": bool(inspection.get("brand_ready")),
+            "score": _attempt_score(inspection),
+            "selected_photo": (manifest or {}).get("selected_photo") or source.get("record"),
+            "inspection_summary": str(attempt_dir / "inspection_summary.json"),
+            "inspection_report": str(attempt_dir / "inspection_report.txt"),
+            "package_dir": str(attempt_dir),
+        }
+        attempts.append(attempt_summary)
 
-    print(f"🔍 Working directory: {work_dir}")
+        if best_attempt is None or attempt_summary["score"] > best_attempt["score"]:
+            best_attempt = attempt_summary
 
-    # --- Step 1: Find an image ---
-    print("\n📷 Step 1: Finding image...")
+        if inspection.get("brand_ready"):
+            accepted_attempt = attempt_summary
+            break
+
+        if fixed_source:
+            break
+
+    selected_attempt = accepted_attempt or best_attempt
+    if selected_attempt is None:
+        raise SystemExit("Failed to build any candidate package.")
+
+    selection_status = _selection_status(
+        fixed_source=fixed_source,
+        accepted_attempt=accepted_attempt,
+        selected_attempt=selected_attempt,
+    )
+    _promote_attempt_dir(Path(selected_attempt["package_dir"]), output_dir)
+    attempts_path = output_dir / "attempts_summary.json"
+    attempts_payload = {
+        "selection_status": selection_status,
+        "selected_attempt": selected_attempt["attempt"],
+        "accepted_attempt": accepted_attempt["attempt"] if accepted_attempt else None,
+        "max_rerolls": max_rerolls,
+        "candidate_pool": candidate_pool,
+        "attempts": attempts,
+    }
+    attempts_path.write_text(
+        json.dumps(attempts_payload, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+    manifest_path = output_dir / "package.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["selection_status"] = selection_status
+    manifest["brand_ready"] = bool(accepted_attempt)
+    manifest["reroll_attempts"] = len(attempts) - 1
+    manifest["attempts_summary"] = str(attempts_path)
+    manifest["attempts"] = attempts
+    manifest["outputs"]["attempts_summary"] = str(attempts_path)
+    manifest["ledger_path"] = str(ledger_path)
+
+    inspection_path = output_dir / "inspection_summary.json"
+    inspection = json.loads(inspection_path.read_text(encoding="utf-8"))
+    inspection["selection_status"] = selection_status
+    inspection["reroll_attempts"] = len(attempts) - 1
+    inspection["attempts_considered"] = len(attempts)
+    inspection_path.write_text(
+        json.dumps(inspection, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    (output_dir / "inspection_report.txt").write_text(
+        _format_inspection_report(inspection),
+        encoding="utf-8",
+    )
+    if obsidian_dir:
+        story_seed = json.loads((output_dir / "story_seed.json").read_text(encoding="utf-8"))
+        ig_caption = (output_dir / "caption_instagram.txt").read_text(encoding="utf-8")
+        fb_caption = (output_dir / "caption_facebook.txt").read_text(encoding="utf-8")
+        obsidian_export = export_package_note(
+            export_root=obsidian_dir,
+            manifest=manifest,
+            inspection=inspection,
+            story_seed=story_seed,
+            output_dir=output_dir,
+            ig_caption=ig_caption,
+            fb_caption=fb_caption,
+        )
+        manifest["outputs"]["obsidian_note"] = obsidian_export["note_path"]
+        manifest["outputs"]["obsidian_export_dir"] = obsidian_export["export_dir"]
+        inspection["obsidian"] = {
+            "note_path": obsidian_export["note_path"],
+            "export_dir": obsidian_export["export_dir"],
+        }
+        inspection_path.write_text(
+            json.dumps(inspection, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        (output_dir / "inspection_report.txt").write_text(
+            _format_inspection_report(inspection),
+            encoding="utf-8",
+        )
+    manifest_path.write_text(
+        json.dumps(manifest, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    _append_generation_ledger(
+        ledger_path=ledger_path,
+        run_date=run_date,
+        manifest=manifest,
+        selection_status=selection_status,
+        output_dir=output_dir,
+    )
+    return manifest
+
+
+def _resolve_source(
+    *,
+    output_dir: Path,
+    package_dir: str | None,
+    query: str | None,
+    image_id: str | None,
+    image_path: str | None,
+) -> dict:
+    if image_path:
+        source_path = Path(image_path).expanduser().resolve()
+        if not source_path.exists():
+            raise FileNotFoundError(f"Image not found: {source_path}")
+        copied = _copy_source_image(source_path, output_dir)
+        return {"image_path": str(copied), "record": {"source": "manual-image", "filename": source_path.name}}
+
+    if package_dir:
+        return _resolve_source_from_package(Path(package_dir).expanduser().resolve(), output_dir)
+
     if image_id:
-        from search import get_photo_by_id
         record = get_photo_by_id(image_id)
         if not record:
-            print(f"  ❌ Photo ID '{image_id}' not found")
-            sys.exit(1)
-        results = [record]
+            raise SystemExit(f"Photo ID not found: {image_id}")
     elif query:
         results = search_images(query, mode="smart", limit=5)
+        if not results:
+            raise SystemExit(f"No search results for query: {query}")
+        record = results[0]
     else:
         results = get_random_images(limit=5)
+        if not results:
+            raise SystemExit("No random images returned from worker API.")
+        record = results[0]
 
-    if not results:
-        print("  ❌ No images found")
-        sys.exit(1)
-
-    # Pick the first result (or could add selection logic)
-    record = results[0]
-    print(f"  ✓ Selected: {record.get('name', record.get('metadata_filename', 'unknown'))}")
-
-    # Download the image
-    image_url = record.get("imageUrl") or record.get("externalUrl")
+    image_url = (
+        record.get("imageUrl")
+        or record.get("image_url")
+        or record.get("externalUrl")
+        or record.get("external_url")
+    )
     if not image_url:
-        print("  ❌ No image URL in record")
-        sys.exit(1)
+        raise SystemExit("Selected record has no image URL.")
 
-    main_image = os.path.join(work_dir, "source.jpg")
-    print(f"  ⬇ Downloading image...")
-    download_image(image_url, main_image)
-    print(f"  ✓ Downloaded to {main_image}")
+    source_path = output_dir / "source.jpg"
+    download_image(image_url, str(source_path))
+    return {"image_path": str(source_path), "record": record}
 
-    # --- Step 2: Generate grids ---
-    print("\n🔲 Step 2: Generating grid crops...")
-    grid_dir = os.path.join(work_dir, "grids")
-    grid_paths = generate_grids(main_image, grid_dir, num_grids=num_grids)
-    print(f"  ✓ Generated {len(grid_paths)} grid crops")
 
-    # --- Step 3: Research via Gemini ---
-    print("\n🔬 Step 3: Researching image with Gemini...")
-    metadata = format_metadata(record)
-    if metadata:
-        print(f"  📋 Using D1 metadata as context")
+def _resolve_candidates(
+    *,
+    query: str | None,
+    image_id: str | None,
+    image_path: str | None,
+    package_dir: str | None,
+    candidate_pool: int,
+    ledger_path: Path,
+    cooldown_days: int,
+    run_date: date,
+) -> list[dict]:
+    if image_path:
+        source_path = Path(image_path).expanduser().resolve()
+        if not source_path.exists():
+            raise FileNotFoundError(f"Image not found: {source_path}")
+        return [{"type": "local-image", "path": str(source_path), "record": {"source": "manual-image", "filename": source_path.name}}]
 
-    research = research_image(main_image, grid_paths, metadata)
-    # Handle edge case where Gemini returns a list
-    if isinstance(research, list):
-        research = research[0] if research else {}
-    print(f"  ✓ Research complete: {research.get('title', 'untitled')}")
+    if package_dir:
+        return [{"type": "package", "path": str(Path(package_dir).expanduser().resolve())}]
 
-    # Save research JSON
-    research_path = os.path.join(work_dir, "research.json")
-    with open(research_path, "w") as f:
-        json.dump(research, f, indent=2, ensure_ascii=False)
+    if image_id:
+        record = get_photo_by_id(image_id)
+        if not record:
+            raise SystemExit(f"Photo ID not found: {image_id}")
+        return [{"type": "record", "record": record}]
 
-    # --- Step 4: Generate reel ---
-    reel_path = None
-    if not skip_reel:
-        print("\n🎬 Step 4: Generating reel video...")
-        slug = research.get("title", "reel").lower().replace(" ", "_")[:30]
-        reel_path = str(out_dir / f"mtl_archives_{slug}_{today}.mp4")
-        generate_reel(research, main_image, grid_paths, reel_path, work_dir)
-        print(f"  ✓ Reel saved: {reel_path}")
+    if query:
+        results = search_images(query, mode="smart", limit=candidate_pool)
+        if not results:
+            raise SystemExit(f"No search results for query: {query}")
+        deduped = _dedupe_records(results)
+        filtered = _filter_recent_records(deduped, ledger_path=ledger_path, cooldown_days=cooldown_days, run_date=run_date)
+        return [{"type": "record", "record": record} for record in filtered]
+
+    results = get_random_images(limit=candidate_pool)
+    if not results:
+        raise SystemExit("No random images returned from worker API.")
+    deduped = _dedupe_records(results)
+    filtered = _filter_recent_records(deduped, ledger_path=ledger_path, cooldown_days=cooldown_days, run_date=run_date)
+    return [{"type": "record", "record": record} for record in filtered]
+
+
+def _materialize_candidate(candidate: dict, output_dir: Path) -> dict:
+    kind = candidate.get("type")
+    if kind == "local-image":
+        source_path = Path(candidate["path"]).expanduser().resolve()
+        copied = _copy_source_image(source_path, output_dir)
+        return {"image_path": str(copied), "record": candidate.get("record")}
+    if kind == "package":
+        return _resolve_source_from_package(Path(candidate["path"]), output_dir)
+    if kind == "record":
+        record = candidate["record"]
+        image_url = (
+            record.get("imageUrl")
+            or record.get("image_url")
+            or record.get("externalUrl")
+            or record.get("external_url")
+        )
+        if not image_url:
+            raise SystemExit("Selected record has no image URL.")
+        source_path = output_dir / "source.jpg"
+        download_image(image_url, str(source_path))
+        return {"image_path": str(source_path), "record": record}
+    raise SystemExit(f"Unsupported candidate type: {kind}")
+
+
+def _resolve_source_from_package(package_dir: Path, output_dir: Path) -> dict:
+    if not package_dir.exists():
+        raise FileNotFoundError(f"Package dir not found: {package_dir}")
+
+    for pattern in ("source.*", "photo.*", "image.*"):
+        matches = sorted(package_dir.glob(pattern))
+        if matches:
+            copied = _copy_source_image(matches[0], output_dir)
+            record = _record_from_package_dir(package_dir)
+            return {"image_path": str(copied), "record": record}
+
+    record = _record_from_package_dir(package_dir)
+    if record:
+        resolved = _resolve_record_from_package(record)
+        if resolved:
+            image_url = (
+                resolved.get("imageUrl")
+                or resolved.get("image_url")
+                or resolved.get("externalUrl")
+                or resolved.get("external_url")
+            )
+            if image_url:
+                source_path = output_dir / "source.jpg"
+                download_image(image_url, str(source_path))
+                return {"image_path": str(source_path), "record": resolved}
+
+    raise SystemExit(
+        "Package dir does not contain a local source image and could not be rehydrated from metadata."
+    )
+
+
+def _record_from_package_dir(package_dir: Path) -> dict | None:
+    package_path = package_dir / "package.json"
+    if package_path.exists():
+        data = json.loads(package_path.read_text(encoding="utf-8"))
+        return data.get("selected_photo") or None
+    return None
+
+
+def _load_existing_research(package_dir: str | None) -> dict | None:
+    if not package_dir:
+        return None
+    candidate = Path(package_dir).expanduser().resolve() / "research.json"
+    if not candidate.exists():
+        return None
+    try:
+        return json.loads(candidate.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
+
+
+def _resolve_record_from_package(record: dict) -> dict | None:
+    metadata_id = record.get("metadata_filename") or record.get("metadataFilename")
+    if metadata_id:
+        found = get_photo_by_id(metadata_id)
+        if found:
+            return found
+
+    filename = record.get("filename") or record.get("imageFilename") or ""
+    digits = "".join(ch for ch in Path(filename).stem if ch.isdigit())
+    if digits:
+        found = get_photo_by_id(digits)
+        if found:
+            return found
+
+    name = record.get("name")
+    if name:
+        results = search_images(name, mode="smart", limit=1)
+        if results:
+            return results[0]
+    return None
+
+
+def _filter_recent_records(
+    records: list[dict],
+    *,
+    ledger_path: Path,
+    cooldown_days: int,
+    run_date: date,
+) -> list[dict]:
+    if cooldown_days <= 0:
+        return records
+    blocked = blocked_keys(ledger_path, cooldown_days=cooldown_days, as_of=run_date)
+    if not blocked:
+        return records
+    filtered = [record for record in records if not (record_keys(record) & blocked)]
+    return filtered or records
+
+
+def _copy_source_image(source_path: Path, output_dir: Path) -> Path:
+    destination = output_dir / f"source{source_path.suffix.lower() or '.jpg'}"
+    shutil.copy2(source_path, destination)
+    return destination
+
+
+def _reset_dir(path: Path) -> None:
+    if path.exists():
+        shutil.rmtree(path)
+    path.mkdir(parents=True, exist_ok=True)
+
+
+def _promote_attempt_dir(attempt_dir: Path, output_dir: Path) -> None:
+    _reset_dir(output_dir)
+    for child in attempt_dir.iterdir():
+        destination = output_dir / child.name
+        if child.is_dir():
+            shutil.copytree(child, destination)
+        else:
+            shutil.copy2(child, destination)
+
+
+def _dedupe_records(records: list[dict]) -> list[dict]:
+    seen: set[str] = set()
+    deduped: list[dict] = []
+    for record in records:
+        key = _record_identity(record)
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(record)
+    return deduped
+
+
+def _record_identity(record: dict) -> str:
+    return (
+        str(record.get("metadata_filename") or record.get("metadataFilename") or "")
+        or str(record.get("filename") or record.get("imageFilename") or "")
+        or str(record.get("name") or "")
+    )
+
+
+def _attempt_score(inspection: dict) -> int:
+    reel_score = ((inspection.get("reel") or {}).get("score")) or 0
+    ig_score = ((inspection.get("instagram") or {}).get("score")) or 0
+    return int(reel_score) + int(ig_score)
+
+
+def _append_generation_ledger(
+    *,
+    ledger_path: Path,
+    run_date: date,
+    manifest: dict,
+    selection_status: str,
+    output_dir: Path,
+) -> None:
+    selected = manifest.get("selected_photo") or {}
+    story_seed_path = ((manifest.get("outputs") or {}).get("story_seed")) or ""
+    entry = {
+        "recorded_at": datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z"),
+        "date": run_date.isoformat(),
+        "package_id": build_package_id(manifest, package_dir=output_dir),
+        "status": "generated",
+        "metadata_filename": selected.get("metadata_filename") or selected.get("metadataFilename"),
+        "image_filename": selected.get("filename") or selected.get("imageFilename"),
+        "theme_key": manifest.get("theme_key"),
+        "theme_label": manifest.get("theme"),
+        "delivery_plan": manifest.get("delivery_plan"),
+        "selection_status": selection_status,
+        "brand_ready": bool(manifest.get("brand_ready")),
+        "source_title": selected.get("name"),
+        "cote": selected.get("cote"),
+        "output_dir": str(output_dir),
+        "story_seed": story_seed_path,
+    }
+    append_entry(ledger_path, entry)
+
+
+def _selection_status(*, fixed_source: bool, accepted_attempt: dict | None, selected_attempt: dict) -> str:
+    if accepted_attempt and accepted_attempt["attempt"] == 1:
+        return "accepted_first_candidate"
+    if accepted_attempt:
+        return "rerolled_to_brand_ready_candidate"
+    if fixed_source:
+        return "explicit_source_requires_review"
+    return "no_brand_ready_candidate"
+
+
+def _resolve_metadata(record: dict | None, *, metadata_text: str | None, metadata_file: str | None) -> str:
+    if metadata_text:
+        return metadata_text.strip()
+    if metadata_file:
+        return Path(metadata_file).expanduser().read_text(encoding="utf-8").strip()
+    if record:
+        formatted = format_metadata(record)
+        if formatted:
+            return formatted
+    return (
+        "This is definitely an archival Montreal image.\n"
+        "Exact location, date, building name, and neighborhood are not independently verified by metadata.\n"
+        "Treat Montreal as the only hard geographic anchor and avoid inventing specifics."
+    )
+
+
+def _combine_editorial_briefs(theme_brief: str, extra_brief: str | None) -> str:
+    if extra_brief:
+        return f"{theme_brief}\n\nAdditional brief:\n{extra_brief.strip()}"
+    return theme_brief
+
+
+def _build_package_for_source(
+    *,
+    run_date: date,
+    output_dir: Path,
+    theme_spec,
+    source: dict,
+    metadata: str,
+    combined_brief: str,
+    package_dir: str | None,
+    reuse_research: bool,
+    model: str,
+    skip_reel: bool,
+    skip_carousel: bool,
+) -> tuple[dict, dict]:
+    (output_dir / "metadata.txt").write_text(metadata, encoding="utf-8")
+    existing_research = _load_existing_research(package_dir) if reuse_research else None
+    if existing_research:
+        research = refresh_public_story_from_payload(
+            existing_research,
+            metadata,
+            theme=theme_spec.key,
+        )
+        package = {
+            "model": model,
+            "theme": theme_spec.key,
+            "metadata": metadata,
+            "editorial_brief": combined_brief,
+            "payload": research,
+        }
     else:
-        print("\n⏭ Step 4: Skipping reel generation")
+        package = generate_research_package(
+            source["image_path"],
+            metadata,
+            theme=theme_spec.key,
+            model=model,
+            editorial_brief=combined_brief,
+        )
+        research = package["payload"]
+        research["theme_key"] = theme_spec.key
 
-    # --- Step 5: Generate caption ---
-    print("\n✍️  Step 5: Generating caption...")
-    cap = generate_caption(research)
-    caption_path = os.path.join(work_dir, "caption.txt")
-    with open(caption_path, "w") as f:
-        f.write(cap)
-    print(f"  ✓ Caption saved: {caption_path}")
+    (output_dir / "research_full.json").write_text(
+        json.dumps(package, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    (output_dir / "research.json").write_text(
+        json.dumps(research, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
 
-    # Also save to output dir
-    caption_out = str(out_dir / f"mtl_archives_{today}_caption.txt")
-    with open(caption_out, "w") as f:
-        f.write(cap)
+    ig_caption = format_static_caption(research)
+    fb_caption = format_reel_caption(research)
+    (output_dir / "caption_instagram.txt").write_text(ig_caption, encoding="utf-8")
+    (output_dir / "caption_facebook.txt").write_text(fb_caption, encoding="utf-8")
 
-    # --- Summary ---
-    print("\n" + "=" * 50)
-    print("✅ Pipeline complete!")
-    print(f"  📁 Work dir:  {work_dir}")
-    if reel_path:
-        print(f"  🎬 Reel:      {reel_path}")
-    print(f"  ✍️  Caption:   {caption_out}")
-    print(f"  🔬 Research:  {research_path}")
-    print("=" * 50)
+    carousel_paths: list[str] = []
+    if not skip_carousel:
+        carousel_paths = generate_story_carousel(
+            research,
+            source["image_path"],
+            str(output_dir / "instagram_carousel"),
+            selected_photo=source["record"] or {},
+        )
 
-    # Print caption preview
-    print("\n--- Caption Preview ---")
-    print(cap[:500])
-    print("---")
+    reel_path = ""
+    if not skip_reel:
+        reel_path = str(output_dir / "facebook_reel.mp4")
+        generate_reel(
+            research,
+            source["image_path"],
+            grid_images=None,
+            output_path=reel_path,
+            work_dir=str(output_dir / "_reel_work"),
+        )
+
+    inspection = _build_inspection_summary(
+        run_date=run_date,
+        theme_label=theme_spec.label,
+        theme_description=theme_spec.description,
+        source=source,
+        research=research,
+        carousel_paths=carousel_paths,
+        reel_path=reel_path,
+    )
+    (output_dir / "inspection_summary.json").write_text(
+        json.dumps(inspection, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    (output_dir / "inspection_report.txt").write_text(
+        _format_inspection_report(inspection),
+        encoding="utf-8",
+    )
+    story_seed = build_story_seed(
+        run_date=run_date,
+        theme_key=theme_spec.key,
+        theme_label=theme_spec.label,
+        selected_photo=source.get("record") or {},
+        research=research,
+        package_dir=output_dir,
+    )
+    story_seed_path = output_dir / "story_seed.json"
+    story_seed_path.write_text(
+        json.dumps(story_seed, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+    manifest = {
+        "date": run_date.isoformat(),
+        "day": run_date.strftime("%A").lower(),
+        "content_type": "dual",
+        "delivery_plan": {"instagram": "carousel", "facebook": "reel"},
+        "theme": theme_spec.label,
+        "theme_key": theme_spec.key,
+        "theme_description": theme_spec.description,
+        "editorial_brief": combined_brief,
+        "selected_photo": source["record"],
+        "source_image": source["image_path"],
+        "research_model": model,
+        "outputs": {
+            "research": str(output_dir / "research.json"),
+            "research_full": str(output_dir / "research_full.json"),
+            "metadata": str(output_dir / "metadata.txt"),
+            "instagram_caption": str(output_dir / "caption_instagram.txt"),
+            "facebook_caption": str(output_dir / "caption_facebook.txt"),
+            "instagram_carousel": carousel_paths,
+            "facebook_reel": reel_path,
+            "inspection_summary": str(output_dir / "inspection_summary.json"),
+            "inspection_report": str(output_dir / "inspection_report.txt"),
+            "story_seed": str(story_seed_path),
+        },
+    }
+    manifest["package_id"] = build_package_id(manifest, package_dir=output_dir)
+    (output_dir / "package.json").write_text(
+        json.dumps(manifest, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    return manifest, inspection
+
+
+def _build_inspection_summary(
+    *,
+    run_date: date,
+    theme_label: str,
+    theme_description: str,
+    source: dict,
+    research: dict,
+    carousel_paths: list[str],
+    reel_path: str,
+) -> dict:
+    story_quality = research.get("story_quality", {}) or {}
+    static_quality = story_quality.get("static", {}) or {}
+    reel_quality = story_quality.get("reel", {}) or {}
+    verification = research.get("verification_summary", {}) or {}
+    grounding = research.get("grounded_context", {}) or {}
 
     return {
-        "work_dir": work_dir,
-        "main_image": main_image,
-        "grid_paths": grid_paths,
-        "research": research,
-        "research_path": research_path,
-        "reel_path": reel_path,
-        "caption_path": caption_out,
+        "date": run_date.isoformat(),
+        "theme": theme_label,
+        "theme_description": theme_description,
+        "brand_ready": bool(story_quality.get("pass", False)),
+        "selected_photo": {
+            "title": (source.get("record") or {}).get("name"),
+            "filename": (source.get("record") or {}).get("filename"),
+            "cote": (source.get("record") or {}).get("cote"),
+            "source_image": source.get("image_path"),
+        },
+        "reel": {
+            "title": ((research.get("public_story") or {}).get("reel") or {}).get("title_fr") or research.get("title_fr"),
+            "hook": ((research.get("public_story") or {}).get("reel") or {}).get("hook_fr") or research.get("most_striking_fr"),
+            "badge": ((research.get("public_story") or {}).get("reel") or {}).get("badge_fr") or "",
+            "score": reel_quality.get("selected_score"),
+            "caption_ok": reel_quality.get("pass", False),
+            "output": reel_path,
+        },
+        "instagram": {
+            "score": static_quality.get("selected_score"),
+            "caption_ok": static_quality.get("pass", False),
+            "slides": carousel_paths,
+        },
+        "verification": verification,
+        "grounding": {
+            "used": bool(grounding.get("used")),
+            "mode": grounding.get("mode"),
+            "search_usefulness": grounding.get("search_usefulness"),
+            "queries": grounding.get("queries") or [],
+            "source_count": len(grounding.get("sources") or []),
+        },
     }
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Daily reel pipeline for @mtlarchives")
-    parser.add_argument("query", nargs="?", help="Search query (random if omitted)")
-    parser.add_argument("--id", help="Specific photo ID to use")
-    parser.add_argument("--output", "-o", help="Output directory")
-    parser.add_argument("--grids", type=int, default=5, help="Number of grid crops (default: 5)")
-    parser.add_argument("--no-reel", action="store_true", help="Skip video generation")
-    parser.add_argument("--research-only", action="store_true", help="Only do search + research (no video/caption)")
+def _format_inspection_report(summary: dict) -> str:
+    selected = summary.get("selected_photo", {})
+    reel = summary.get("reel", {})
+    verification = summary.get("verification", {})
+    grounding = summary.get("grounding", {})
+    obsidian = summary.get("obsidian", {})
+    lines = [
+        f"Date: {summary.get('date')}",
+        f"Theme: {summary.get('theme')}",
+        f"Theme description: {summary.get('theme_description')}",
+        f"Brand ready: {'yes' if summary.get('brand_ready') else 'no'}",
+        f"Selection status: {summary.get('selection_status') or 'Unknown'}",
+        f"Reroll attempts: {summary.get('reroll_attempts') if summary.get('reroll_attempts') is not None else 'Unknown'}",
+        "",
+        f"Selected photo: {selected.get('title') or 'Unknown'}",
+        f"Cote: {selected.get('cote') or 'Unknown'}",
+        f"Source image: {selected.get('source_image')}",
+        "",
+        f"Reel title: {reel.get('title') or 'Unknown'}",
+        f"Reel hook: {reel.get('hook') or 'Unknown'}",
+        f"Reel badge: {reel.get('badge') or 'Unknown'}",
+        f"Reel score: {reel.get('score') if reel.get('score') is not None else 'Unknown'}",
+        f"Reel caption ok: {'yes' if reel.get('caption_ok') else 'no'}",
+        f"Reel output: {reel.get('output') or 'Skipped'}",
+        f"Instagram score: {summary.get('instagram', {}).get('score') if summary.get('instagram', {}).get('score') is not None else 'Unknown'}",
+        f"Instagram caption ok: {'yes' if summary.get('instagram', {}).get('caption_ok') else 'no'}",
+        "",
+        "Evidence ladder:",
+        f"  Verified: {verification.get('verified_count', 0)}",
+        f"  Probable: {verification.get('probable_count', 0)}",
+        f"  Open questions: {verification.get('open_question_count', 0)}",
+    ]
+    if grounding.get("used"):
+        lines.extend(
+            [
+                "",
+                "Grounding:",
+                f"  Mode: {grounding.get('mode') or 'Unknown'}",
+                f"  Usefulness: {grounding.get('search_usefulness') or 'Unknown'}",
+                f"  Sources: {grounding.get('source_count', 0)}",
+                f"  Queries: {', '.join(grounding.get('queries') or []) or 'Unknown'}",
+            ]
+        )
+    if obsidian:
+        lines.extend(
+            [
+                "",
+                "Obsidian:",
+                f"  Note: {obsidian.get('note_path') or 'Unknown'}",
+                f"  Export dir: {obsidian.get('export_dir') or 'Unknown'}",
+            ]
+        )
+    return "\n".join(lines).strip() + "\n"
 
+
+def _parse_date(value: str | None) -> date:
+    if not value:
+        return date.today()
+    return datetime.strptime(value, "%Y-%m-%d").date()
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Local fallback social pipeline for MTL Archives")
+    parser.add_argument("query", nargs="?", help="Optional search query")
+    parser.add_argument("--id", help="Specific photo identifier to fetch from the worker API")
+    parser.add_argument("--image", help="Use a local image file instead of searching/downloading")
+    parser.add_argument("--metadata", help="Inline metadata text")
+    parser.add_argument("--metadata-file", help="Path to a metadata text file")
+    parser.add_argument("--package-dir", help="Rerender from an existing local package directory")
+    parser.add_argument("--reuse-research", action="store_true", help="Reuse research.json from --package-dir instead of calling Gemini again")
+    parser.add_argument("--date", help="Run date in YYYY-MM-DD format (defaults to today)")
+    parser.add_argument("--theme", help="Theme override (key, weekday, or label)")
+    parser.add_argument("--brief", help="Additional editorial brief")
+    parser.add_argument("--model", default=DEFAULT_MODEL, help=f"Gemini model (default: {DEFAULT_MODEL})")
+    parser.add_argument("--output-root", help=f"Output root directory (default: {DEFAULT_OUTPUT_ROOT})")
+    parser.add_argument("--no-reel", action="store_true", help="Skip Facebook reel generation")
+    parser.add_argument("--no-carousel", action="store_true", help="Skip Instagram carousel generation")
+    parser.add_argument("--research-only", action="store_true", help="Skip both renderers and only write package files")
+    parser.add_argument("--max-rerolls", type=int, default=4, help="Maximum additional candidates to try after the first weak package")
+    parser.add_argument("--candidate-pool", type=int, default=8, help="How many search/random candidates to fetch before reroll selection")
+    parser.add_argument("--ledger-path", help=f"Publish/generation ledger path (default: {DEFAULT_LEDGER_PATH})")
+    parser.add_argument("--cooldown-days", type=int, default=90, help="Skip recently used archive images for this many days when auto-selecting")
+    parser.add_argument("--obsidian-dir", help="Optional Obsidian export directory for mirrored package notes")
     args = parser.parse_args()
 
     if args.research_only:
         args.no_reel = True
+        args.no_carousel = True
 
-    run_pipeline(
+    manifest = run_pipeline(
+        run_date=_parse_date(args.date),
+        output_root=Path(args.output_root).expanduser() if args.output_root else DEFAULT_OUTPUT_ROOT,
+        theme_override=args.theme,
+        editorial_brief=args.brief,
         query=args.query,
         image_id=args.id,
-        output_dir=args.output,
-        num_grids=args.grids,
+        image_path=args.image,
+        metadata_text=args.metadata,
+        metadata_file=args.metadata_file,
+        package_dir=args.package_dir,
+        reuse_research=args.reuse_research,
+        model=args.model,
         skip_reel=args.no_reel,
+        skip_carousel=args.no_carousel,
+        max_rerolls=max(0, args.max_rerolls),
+        candidate_pool=max(1, args.candidate_pool),
+        ledger_path=Path(args.ledger_path).expanduser() if args.ledger_path else DEFAULT_LEDGER_PATH,
+        cooldown_days=max(0, args.cooldown_days),
+        obsidian_dir=(
+            Path(args.obsidian_dir).expanduser()
+            if args.obsidian_dir
+            else (Path(DEFAULT_OBSIDIAN_EXPORT_DIR).expanduser() if DEFAULT_OBSIDIAN_EXPORT_DIR else None)
+        ),
     )
+    print(json.dumps(manifest, indent=2, ensure_ascii=False))
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        sys.exit(130)
