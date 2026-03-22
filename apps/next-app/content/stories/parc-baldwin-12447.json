@@ -1,0 +1,42 @@
+{
+  "slug": "parc-baldwin-12447",
+  "story_url": "https://www.mtlarchives.com/stories/parc-baldwin-12447",
+  "theme_key": "detective",
+  "theme_label": "Detective",
+  "date": "2026-03-19",
+  "status": "draft",
+  "promotable": true,
+  "title": "Parc Baldwin",
+  "dek": "aout 1970, Parc Baldwin (entre les rues Rachel et Sherbrooke, Montreal) On voit ici Parc Baldwin tel qu'il se présentait dans le Montréal de l'époque.",
+  "metadata_filename": "mtl_archives_metadata_12447.json",
+  "image_filename": "mtl_archives_image_12447.jpg",
+  "photo_id": "12447",
+  "photo_url": "https://www.mtlarchives.com/photo/12447",
+  "hero_image": "/images/mtl_archives_image_12447.jpg",
+  "selected_photo": {
+    "name": "Parc Baldwin entre les rues Rachel et Sherbrooke - Parcs M. Gauvin / Raymond Gagnon . - 25 août 1970",
+    "description": "Terrain du Parc Baldwin (images 1-6).",
+    "cote": "VM94-B081",
+    "date_value": "1970"
+  },
+  "cta": "Le contexte complet sur mtlarchives.com.",
+  "sections": [
+    {
+      "id": "what-you-see",
+      "title": "Ce que l'image montre",
+      "body": "Au parc Baldwin, le parc baldwin tenait le quartier en mouvement."
+    },
+    {
+      "id": "what-changed",
+      "title": "Ce qui a changé",
+      "body": "Le quartier a change, mais cette archive garde la memoire d'un Montreal qui passait ses journees entieres au parc."
+    }
+  ],
+  "related_queries": [
+    "Parc Baldwin",
+    "VM94-B081",
+    "Parc Baldwin entre les rues Rachel et Sherbrooke - Parcs M. Gauvin / Raymond Gagnon . - 25 août 1970"
+  ],
+  "source_package_dir": "/private/tmp/mtl-story-seed-proof/.attempts/2026-03-19/attempt-01",
+  "generated_at": "2026-03-19T16:21:00Z"
+}

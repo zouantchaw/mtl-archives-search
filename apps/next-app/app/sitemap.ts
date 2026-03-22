@@ -1,5 +1,6 @@
 import { MetadataRoute } from 'next';
 import { API_BASE } from '@/lib/runtime-config';
+import { getAllStories } from '@/lib/story-pages';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.mtlarchives.com';
 const API_URL = API_BASE;
@@ -33,6 +34,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: '/search', changeFrequency: 'daily' as const, priority: 0.9 },
     { path: '/game', changeFrequency: 'daily' as const, priority: 0.8 },
     { path: '/print', changeFrequency: 'weekly' as const, priority: 0.7 },
+    { path: '/stories', changeFrequency: 'weekly' as const, priority: 0.7 },
   ];
 
   const staticPages: MetadataRoute.Sitemap = staticRoutes.flatMap((route) => [
@@ -65,5 +67,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   }));
 
-  return [...staticPages, ...photoPages];
+  const storyPages: MetadataRoute.Sitemap = getAllStories().map((story) => ({
+    url: `${SITE_URL}/stories/${encodeURIComponent(story.slug)}`,
+    lastModified: story.generated_at ? new Date(story.generated_at) : new Date(story.date),
+    changeFrequency: 'monthly' as const,
+    priority: 0.7,
+    images: story.hero_image ? [`${SITE_URL}${story.hero_image}`] : undefined,
+  }));
+
+  return [...staticPages, ...photoPages, ...storyPages];
 }
