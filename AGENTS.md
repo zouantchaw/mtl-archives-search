@@ -1,10 +1,10 @@
 # AGENTS.md
 
 ## Purpose
-This repo powers **MTL Archives**: a Montreal city archives photo search engine with a daily location-guessing game and a manual print-order flow. It is optimized for fast, mobile-first discovery (Instagram traffic is a major funnel).
+This repo powers **MTL Archives**: a Montreal city archives photo search engine with a daily location-guessing game and a Stripe-backed print-order flow. It is optimized for fast, mobile-first discovery (Instagram traffic is a major funnel).
 
 ## Product Invariants
-- **Manual print flow stays enabled**: checkout sends emails via Resend for manual fulfillment (no Stripe/Prodigi yet).
+- **Manual fulfillment stays enabled**: Stripe handles payment collection, and Resend still kicks off the manual print-fulfillment workflow.
 - **Leaflet maps** are the current map stack (gallery map + game map).
 - **3D embedding explorer is research-facing** (`apps/web`) and not a core user product surface.
 

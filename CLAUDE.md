@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Monorepo for the Montréal city archives photo search (~15k historical images), daily game, and manual print ordering. REST API on Cloudflare Workers with D1/R2/Vectorize, a Next.js main UI (Leaflet maps + game), and a Vite/Three.js research explorer.
+Monorepo for the Montréal city archives photo search (~15k historical images), daily game, and Stripe-backed print ordering with manual fulfillment. REST API on Cloudflare Workers with D1/R2/Vectorize, a Next.js main UI (Leaflet maps + game), and a Vite/Three.js research explorer.
 
 ## Commands
 
@@ -40,6 +40,9 @@ npm run vectorize:clip:photos  # CLIP ingest excluding document-likely records
 # Workspace-specific
 npm run dev --workspace=apps/api
 npm run dev --workspace=apps/next-app
+npm run social:fallback -- --date 2026-03-19 --id mtl_archives_metadata_65.json
+npm run social:fallback -- --date 2026-03-19 --package-dir /absolute/path/to/package --reuse-research
+npm run social:promote-story -- --package-dir /absolute/path/to/package
 ```
 
 ## Architecture
@@ -90,6 +93,8 @@ pipelines/
 3. Output: `manifest_scored.jsonl` → SQL seed → D1
 4. Embeddings: BGE (text) and CLIP (images) → Vectorize indices
 5. Newsletter: explicit signup from `/` or `/game` → Worker → D1 (`newsletter_*` tables) → Resend, with Vercel cron calling the Worker admin endpoint for daily sends
+6. Social fallback: local machine → `pipelines/daily-reel/main.py` → Worker API + Gemini → IG carousel + FB reel package under `~/Desktop/mtl-social-fallback/YYYY-MM-DD`
+7. Story promotion: `story_seed.json` from a strong social package → `pipelines/daily-reel/story_pages.py` → `apps/next-app/content/stories/*.json` → `/stories/[slug]`
 
 ## Environment
 
@@ -108,8 +113,9 @@ Local `.env` for scripts: `CLOUDFLARE_AI_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`
 Next app runtime env:
 - `NEXT_PUBLIC_API_URL` (required in production)
 - `NEXT_PUBLIC_R2_PUBLIC_DOMAIN` (preferred public asset host)
-- `RESEND_SECRET_KEY` is required for production builds that include `/api/checkout`
-- The same `RESEND_SECRET_KEY` is also used by the Worker newsletter sender.
+- `STRIPE_SECRET_KEY` is required for `/api/checkout`
+- `STRIPE_WEBHOOK_SECRET` is required for `/api/stripe/webhook`
+- `RESEND_SECRET_KEY` is required for post-payment order emails and is also used by the Worker newsletter sender.
 - `CRON_SECRET` protects `/api/cron/newsletter` on Vercel.
 - `NEWSLETTER_ADMIN_SECRET` must match between the Vercel project and the Worker so the cron route can call `/api/newsletter/admin/run`.
 - Clerk publishable/secret keys are required for production builds that include `/game`, `/sign-in`, and `/sign-up`
@@ -122,8 +128,19 @@ Next app runtime env:
 - `apps/next-app/app/globals.css` now carries the V4 Paper brand tokens (warm paper background, Spectral/Figtree/IBM Plex Mono stack, editorial card surfaces).
 - Public entry now defaults to the editorial landing page on `/`; do not reintroduce random home-to-game redirects.
 - Route-specific V4 surfaces exist for `/`, `/search`, `/photo/[id]`, `/print`, `/checkout`, `/order-confirmation`, `/sign-in`, `/sign-up`, and `/game`.
-- Manual print checkout is still invariant: redesigned UI, same manual fulfillment path.
+- Stripe Checkout now handles payment collection for prints; fulfillment remains manual after the paid order webhook fires.
 - Newsletter consent is explicit-only. Do not auto-enroll Clerk/game signups without a dedicated opt-in action and audit log entry.
+- The local social fallback is the outage path for MTL Archives daily posting. It must keep the platform split intact: IG carousel, FB reel, and weekday theme as lens.
+- In fallback mode, `--reuse-research` should reuse saved evidence while rebuilding the latest local public-story templates so copy/design iteration is still possible during outages.
+- Reels should progressively reveal the source image via portrait panels or equivalent full-frame traversal, not sit inside one static crop for the entire video.
+- Treat fallback inspection artifacts as operational signals, not decoration: if `brand_ready` or per-channel `caption_ok` is false, that package should be considered a reroll/review case rather than quietly shipped.
+- Search/random fallback runs should prefer automatic reroll over silent acceptance. The final date folder should represent the first brand-ready candidate that passes; if nothing passes, the package must stay explicitly marked as review-required rather than pretending the strongest failed attempt is publishable.
+- The social pipeline now writes `data/social/publish-ledger.jsonl`. Use that ledger for exact recent-use blocking; scraped social captions alone are not authoritative enough to prevent accidental duplicate image reuse.
+- Real publish reconciliation belongs in `data/social/publish-registry.jsonl`. Generation state and publish state are different things; do not collapse them.
+- Strong packages should emit `story_seed.json`. Daily social and deeper archive-linked story pages should share that handoff object instead of rebuilding story structure from scratch later.
+- Weak-metadata images can escalate through a bounded grounding ladder: archive metadata first, then Gemini image understanding, then optional web-grounded visual/context lookup. If identity is still too weak for the day’s theme, reroll instead of forcing a story.
+- Obsidian should stay an optional editorial mirror. Generated packages should mirror into `experiments/`; registered published packages can be mirrored into `final/`. Do not make generation depend on the vault being mounted.
+- The durable Meta token flow should live outside Graph API Explorer. Bootstrap a long-lived user token once via `pipelines/daily-reel/token_manager.py`, store state in `data/social/meta-token-state.json`, and let `spruce` run status checks against that file instead of depending on ad hoc browser-minted tokens.
 
 ## Skills
 

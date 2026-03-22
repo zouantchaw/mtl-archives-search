@@ -27,9 +27,11 @@ interface AdminOrderNotificationEmailProps {
   customerAddress: string;
   customerNotes?: string;
   items: OrderItem[];
-  subtotal: number;
+  total: number;
   orderId: string;
   orderDate: string;
+  stripeSessionId?: string;
+  stripePaymentIntentId?: string;
 }
 
 export function AdminOrderNotificationEmail({
@@ -39,14 +41,16 @@ export function AdminOrderNotificationEmail({
   customerAddress,
   customerNotes,
   items,
-  subtotal,
+  total,
   orderId,
   orderDate,
+  stripeSessionId,
+  stripePaymentIntentId,
 }: AdminOrderNotificationEmailProps) {
-  const formattedSubtotal = new Intl.NumberFormat('en-CA', {
+  const formattedTotal = new Intl.NumberFormat('en-CA', {
     style: 'currency',
     currency: 'CAD',
-  }).format(subtotal);
+  }).format(total);
 
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -54,12 +58,12 @@ export function AdminOrderNotificationEmail({
     <Html>
       <Head />
       <Preview>
-        New Order #{orderId} - {customerName} - {formattedSubtotal}
+        Paid Order #{orderId} - {customerName} - {formattedTotal}
       </Preview>
       <Body style={main}>
         <Container style={container}>
           <Section style={content}>
-            <Heading style={heading}>New Print Order Received</Heading>
+            <Heading style={heading}>Paid Print Order Received</Heading>
 
             {/* Alert Box */}
             <Section style={alertContainer}>
@@ -73,8 +77,18 @@ export function AdminOrderNotificationEmail({
                 <strong>Total Items:</strong> {totalItems}
               </Text>
               <Text style={alertText}>
-                <strong>Order Value:</strong> {formattedSubtotal}
+                <strong>Amount Paid:</strong> {formattedTotal}
               </Text>
+              {stripeSessionId ? (
+                <Text style={alertText}>
+                  <strong>Stripe Session:</strong> {stripeSessionId}
+                </Text>
+              ) : null}
+              {stripePaymentIntentId ? (
+                <Text style={alertText}>
+                  <strong>Payment Intent:</strong> {stripePaymentIntentId}
+                </Text>
+              ) : null}
             </Section>
 
             {/* Customer Info */}
@@ -136,7 +150,7 @@ export function AdminOrderNotificationEmail({
               ))}
               <Hr style={hr} />
               <Text style={totalRow}>
-                <strong>Order Total: {formattedSubtotal}</strong>
+                <strong>Amount Paid: {formattedTotal}</strong>
               </Text>
             </Section>
 
@@ -146,21 +160,21 @@ export function AdminOrderNotificationEmail({
                 Action Required
               </Heading>
               <Text style={actionItem}>
-                1. Contact customer to confirm order details
+                1. Verify the paid order details and archive reference
               </Text>
               <Text style={actionItem}>
-                2. Arrange payment (e-transfer or card)
+                2. Prepare the print order for production
               </Text>
-              <Text style={actionItem}>3. Prepare prints for fulfillment</Text>
+              <Text style={actionItem}>3. Coordinate delivery or pickup if needed</Text>
               <Text style={actionItem}>
-                4. Coordinate delivery or pickup with customer
+                4. Contact the customer only if a production or shipping detail needs confirmation
               </Text>
             </Section>
 
             <Hr style={hr} />
 
             <Text style={footerText}>
-              This order was submitted through mtlarchives.com
+              This paid order was submitted through mtlarchives.com
             </Text>
             <Text style={footerText}>
               Reply to customer: {customerEmail}

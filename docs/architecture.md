@@ -56,7 +56,7 @@
 - `apps/next-app/lib/runtime-config.ts` and `apps/next-app/next.config.ts` both consume this resolver to prevent client/server/rewrite drift.
 - Production requires `NEXT_PUBLIC_API_URL`; local fallback is `http://localhost:8787`.
 - Clerk client auth provider is route-scoped (`/game`, `/sign-in`, `/sign-up`) to reduce public-route script cost.
-- Manual commerce still relies on `apps/next-app/app/api/checkout/route.ts` + Resend; the redesigned checkout UI does not introduce live payment processing.
+- Commerce now creates Stripe Checkout Sessions in `apps/next-app/app/api/checkout/route.ts`, then finalizes confirmation/admin email delivery from `apps/next-app/app/api/stripe/webhook/route.ts`.
 - Newsletter subscription lives in Worker + D1 + Resend. The landing page and game page post explicit opt-in requests to Worker routes; game auth alone does not imply newsletter consent.
 - Vercel cron hits `apps/next-app/app/api/cron/newsletter/route.ts` hourly. That route gates on `America/Toronto` local hour `7` and then calls the Worker admin endpoint, which avoids DST mistakes from a single hard-coded UTC schedule.
 - The V4 Paper redesign lives in `apps/next-app` and centers route-specific surfaces for `/`, `/search`, `/photo/[id]`, `/print`, `/checkout`, `/order-confirmation`, `/sign-in`, `/sign-up`, and `/game`.
@@ -158,7 +158,7 @@ Next.js /game ──▶ Worker /api/game/daily|guess|leaderboard ──▶ D1
 ### 4. Print Ordering Flow (Runtime)
 
 ```
-Next.js /api/checkout ──▶ Resend (emails) ──▶ Manual fulfillment
+Next.js /api/checkout ──▶ Stripe Checkout ──▶ Next.js /api/stripe/webhook ──▶ Resend ──▶ Manual fulfillment
 ```
 
 ### 5. Newsletter Flow (Runtime)
@@ -179,6 +179,54 @@ Vercel Cron (hourly) ──▶ Next /api/cron/newsletter ──▶ Worker /api/n
 
 Email unsubscribe link ──▶ Worker /api/newsletter/unsubscribe ──▶ D1 status update + confirmation email
 ```
+
+### 6. Social Packaging Fallback (Local Runtime)
+
+```
+Local machine ──▶ pipelines/daily-reel/main.py ──▶ Worker API (/api/search, /api/photos)
+        │                         │
+        │                         ├─▶ Gemini research chain (theme + archivist public story)
+        │                         ├─▶ Instagram carousel renderer
+        │                         ├─▶ Facebook reel renderer
+        │                         └─▶ inspection report + package manifest
+        ▼
+~/Desktop/mtl-social-fallback/YYYY-MM-DD/
+```
+
+- This path exists so the daily social operation can continue when the remote `spruce` host is unavailable.
+- The fallback runner preserves the platform split:
+  - Instagram: square carousel + archivist-teacher caption
+  - Facebook: reel + hook-first caption
+- The runner also supports package re-renders from an existing local directory via `--package-dir --reuse-research`, which avoids a second Gemini call during incident recovery while rebuilding the latest local public-story templates from saved research.
+- The local FB reel renderer now traverses portrait panels derived from the original archive image so the full frame is progressively revealed across the video instead of living inside a single crop.
+- Inspection artifacts now carry explicit review signals (`brand_ready`, per-channel scores, `caption_ok`) so the local runtime can flag weak packages instead of treating every render as publishable by default.
+- Search/random fallback runs now keep a candidate pool and auto-reroll until a package passes the brand gate. If no candidate passes, the strongest attempt is still preserved for review, but the final package is explicitly marked with a failing `selection_status` rather than silently treated as publishable.
+- Exact recent-use filtering now starts at generation time through `data/social/publish-ledger.jsonl`, which stores archive identifiers, theme, selection status, and package outputs so the fallback can avoid recently used images before it renders a new package.
+- Publish reconciliation now has its own event log in `data/social/publish-registry.jsonl`, which records actual platform publishes, permalinks, post IDs, and publish timestamps separately from generation-time package state.
+- Every strong package now emits `story_seed.json`, which is the handoff object for deeper archive-linked story pages. This keeps the daily social flow and long-form narrative flow connected to the same research package instead of forking into separate editorial systems.
+- The fallback can also mirror a package into an Obsidian note bundle when `--obsidian-dir` (or `MTL_OBSIDIAN_EXPORT_DIR`) is set. Generated packages land under `experiments/`; once a real publish is registered, the package can be mirrored into `final/`. That mirror is deliberately optional: useful for editorial memory and synced review, but not part of the core generation dependency graph.
+
+### 7. Story Promotion Flow (Optional, Slower Path)
+
+```
+Daily social package ──▶ story_seed.json ──▶ story_pages.py promote
+        │                                      │
+        │                                      ├─▶ apps/next-app/content/stories/*.json
+        │                                      └─▶ Next.js /stories + /stories/[slug]
+        ▼
+IG carousel + FB reel
+```
+
+- Story pages are not part of the mandatory daily publish path.
+- The daily package remains the fast surface: image selection, platform packaging, and captions.
+- The story promotion path exists for stronger archive packages that deserve more depth.
+- A promoted story page can carry:
+  - stronger title and dek
+  - the selected archive image
+  - deeper sections derived from the same research package
+  - related archive search links
+  - product CTA back to archive search / game / prints
+- This keeps social as the hook, the photo page as the object, and the story page as the deeper narrative surface.
 
 ## D1 Schema
 
@@ -269,7 +317,8 @@ mtl-archives-search/
 - **Image Delivery**: Vercel Image Optimization (Pro plan) — resizes, converts to WebP/AVIF, edge-caches. Source images from R2 public URLs.
 - **Caching**: Cloudflare Cache API (read-through on Worker endpoints, 5m–24h TTLs). In-memory cached COUNT keyed by WHERE clause.
 - **Analytics**: Vercel Analytics (custom events)
-- **Email**: Resend (manual checkout emails + newsletter sends)
+- **Payments**: Stripe Checkout + webhooks
+- **Email**: Resend (post-payment order emails + newsletter sends)
 - **ETL**: Python 3.10+, Node.js 23+
 
 ## Vision Enrichment Pipeline

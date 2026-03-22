@@ -22,7 +22,7 @@ Deliver the best on-site user experience (especially mobile/in-app browsers) bef
 
 ### Mobile performance + conversion
 - [x] **Diagnose mobile load time** — Baseline captured via `agent-browser` iPhone emulation (`docs/performance/mobile-load-diagnosis-2026-02-17.md`), showing photo/game route client-side render cost as the main issue.
-- [x] **Review print order flow on mobile** — Added clearer mobile pricing breakdown, shipping/tax expectation copy, and explicit “no payment now” messaging in photo order mode + cart checkout UI.
+- [x] **Review print order flow on mobile** — Added clearer mobile pricing breakdown and fulfillment/payment messaging in photo order mode + cart checkout UI.
 - [x] **Mobile QA** — Executed iPhone Safari + iOS in-app browser checklist (`docs/performance/mobile-touch-qa-checklist-2026-02-18.md`) with no issues observed.
 - [ ] **Social proof** — "X people viewed this photo" or "Popular in [neighborhood]".
 - [x] **Reduce auth/script cost on public routes** — Clerk provider is route-scoped to `/game`, `/sign-in`, `/sign-up`; public home/photo routes no longer wrap root in Clerk.
@@ -35,6 +35,10 @@ Deliver the best on-site user experience (especially mobile/in-app browsers) bef
 - [x] **Worker endpoint tests** — Added coverage for `/api/photos` id normalization + 404, `/api/sitemap` canonical IDs + TTL, and `/api/search` mode behavior (missing q, text cote fast-path, semantic configured/unconfigured, visual POST embedding).
 - [x] **Pipeline smoke tests** — Added `npm run smoke:pipeline` fixture harness to validate canonicalize/normalize CLI flow and verify vectorize failure-report logging on controlled failure.
 - [x] **Production game smoke check** — Added `npm run smoke:game` + `npm run smoke:game:prod` guardrail for `/game` regressions.
+- [x] **Add local social fallback pipeline** — `pipelines/daily-reel/main.py` now builds the daily IG carousel + FB reel package locally, with inspection artifacts, brand-readiness flags, and a `--reuse-research` rerender path for outage recovery when `spruce` is unavailable. Saved packages now rebuild the latest local public-story templates instead of freezing stale captions, and search/random runs auto-reroll until a brand-ready candidate passes or explicitly mark the strongest failed attempt for review.
+- [x] **Add exact social usage ledger + story seed handoff** — the local pipeline now writes `data/social/publish-ledger.jsonl`, filters recent search/random candidates against that ledger, and emits `story_seed.json` so strong daily packages can be promoted into archive-linked story pages under `apps/next-app/content/stories/`.
+- [x] **Add publish reconciliation + final package mirroring** — generated packages can now be reconciled against real IG/FB posts through `data/social/publish-registry.jsonl`, and registered publishes can be mirrored from Obsidian `experiments/` into `final/` so runtime state and editorial memory no longer have to guess at each other.
+- [x] **Add durable Meta token bootstrap + health check** — `pipelines/daily-reel/token_manager.py` can now exchange a short-lived user token into a long-lived user token, derive the Page token, write `data/social/meta-token-state.json`, and report expiry/health so `spruce` does not depend on manually pasted Graph API Explorer tokens.
 - [x] **Restore `robots.txt` endpoint** — Added Next metadata robots route with host + sitemap output so `/robots.txt` no longer resolves to HTML 404.
 - [x] **Add canonical metadata on `/game`** — Added `/game` canonical + language alternates to reduce duplicate route/indexing variants.
 - [x] **Normalize escaped metadata control chars** — Worker now normalizes literal `\\n` and control-char artifacts in API text fields (photos/map/sitemap), with tests.
@@ -72,6 +76,7 @@ Deliver the best on-site user experience (especially mobile/in-app browsers) bef
 ### Core UX improvements
 - [ ] **Share button** — Shareable deep links to search results.
 - [ ] **Neighborhood landing pages** — `/quartier/ahuntsic` with pre-filtered results (SEO + shareable).
+- [x] **Weak-metadata grounding tier for social selection** — the local social pipeline now adds a bounded Gemini + Google Search grounding pass for thin-metadata archive images, keeps that material in the probable/supporting lane, surfaces grounding metadata in inspection artifacts, and still relies on the brand/reroll gate when place identity remains too weak for the day’s theme. Cloud Vision web detection remains an optional future escalation, not a required dependency.
 - [ ] **Expand geocoding** — More map pins (155 -> 400+ records).
 - [ ] **Neighborhood/area filter** — SQL-based, not just search.
 - [ ] **Date range filter**.
@@ -140,7 +145,7 @@ New archive source is `archivesdemontreal.ica-atom.org`; ingest safely before fu
 - [x] V4 frontend redesign shipped for landing, search, photo detail/order mode, print gallery, checkout, order confirmation, auth shell, and game shell.
 - [x] Photo page with view/order modes and visible print CTA.
 - [x] FR/EN bilingual UI.
-- [x] Manual print ordering via Resend.
+- [x] Stripe Checkout for print orders, with webhook-triggered Resend fulfillment emails.
 - [x] Daily game MVP (Leaflet map, API, leaderboard, practice mode, share card, Clerk optional auth, mobile UX pass, shared i18n helper).
 - [x] Daily newsletter system (explicit consent, welcome email, scheduled daily issue, signed unsubscribe/resubscribe, landing/game capture).
 

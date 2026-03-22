@@ -1,15 +1,16 @@
 'use client';
 
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useCart } from '@/lib/cart-context';
+import { CHECKOUT_DRAFT_STORAGE_KEY, SHIPPING_FEE } from '@/lib/checkout';
 import { appendLangParam, getLangFromSearchParams } from '@/lib/i18n';
 import { events } from '@/lib/analytics';
 
@@ -35,12 +36,13 @@ const translations = {
     summary: 'Résumé',
     shippingLine: 'Livraison',
     total: 'Total',
-    submit: 'Envoyer la commande',
-    submitting: 'Envoi en cours',
+    submit: 'Payer de façon sécurisée',
+    submitting: 'Redirection',
     fulfillment: 'Imprimé à Montréal · Livraison 5-7 jours',
-    manualPayment: 'Aucun paiement maintenant. Nous confirmons taxes, livraison et paiement par courriel.',
+    paymentNotice: 'Paiement sécurisé par Stripe. L’adresse de livraison et le paiement seront confirmés sur la page Stripe.',
     requiredError: 'Veuillez remplir les champs obligatoires.',
     genericError: 'Une erreur est survenue. Veuillez réessayer.',
+    canceled: 'Le paiement a été annulé. Votre panier et vos informations sont toujours enregistrés.',
   },
   en: {
     title: 'Order',
@@ -63,23 +65,32 @@ const translations = {
     summary: 'Summary',
     shippingLine: 'Shipping',
     total: 'Total',
-    submit: 'Submit order',
-    submitting: 'Submitting',
+    submit: 'Pay securely',
+    submitting: 'Redirecting',
     fulfillment: 'Printed in Montreal · Ships in 5-7 days',
-    manualPayment: 'No payment now. We confirm shipping, taxes, and payment by email.',
+    paymentNotice: 'Secure payment powered by Stripe. Shipping address and payment details are confirmed on the Stripe page.',
     requiredError: 'Please complete the required fields.',
     genericError: 'Something went wrong. Please try again.',
+    canceled: 'Checkout was canceled. Your cart and details are still saved.',
   },
 } as const;
 
-const SHIPPING_FEE = 15;
+type CheckoutDraft = {
+  email: string;
+  firstName: string;
+  lastName: string;
+  address: string;
+  city: string;
+  postalCode: string;
+  notes: string;
+};
 
 export function CheckoutClient() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const lang = getLangFromSearchParams(searchParams);
   const t = translations[lang];
-  const { items, total, itemCount, clearItems } = useCart();
+  const canceled = searchParams?.get('canceled') === '1';
+  const { items, total } = useCart();
 
   const [email, setEmail] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -90,8 +101,48 @@ export function CheckoutClient() {
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [draftReady, setDraftReady] = useState(false);
 
   const finalTotal = useMemo(() => total + SHIPPING_FEE, [total]);
+
+  useEffect(() => {
+    try {
+      const stored = window.sessionStorage.getItem(CHECKOUT_DRAFT_STORAGE_KEY);
+      if (!stored) return;
+      const draft = JSON.parse(stored) as Partial<CheckoutDraft>;
+      setEmail(draft.email ?? '');
+      setFirstName(draft.firstName ?? '');
+      setLastName(draft.lastName ?? '');
+      setAddress(draft.address ?? '');
+      setCity(draft.city ?? '');
+      setPostalCode(draft.postalCode ?? '');
+      setNotes(draft.notes ?? '');
+    } catch {
+      // Ignore draft restore errors.
+    } finally {
+      setDraftReady(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!draftReady) return;
+
+    const draft: CheckoutDraft = {
+      email,
+      firstName,
+      lastName,
+      address,
+      city,
+      postalCode,
+      notes,
+    };
+
+    try {
+      window.sessionStorage.setItem(CHECKOUT_DRAFT_STORAGE_KEY, JSON.stringify(draft));
+    } catch {
+      // Ignore draft persistence errors.
+    }
+  }, [address, city, draftReady, email, firstName, lastName, notes, postalCode]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -109,20 +160,24 @@ export function CheckoutClient() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          customerName: `${firstName.trim()} ${lastName.trim()}`.trim(),
           customerEmail: email.trim(),
-          customerAddress: `${address.trim()}, ${city.trim()}, ${postalCode.trim()}`,
+          customerFirstName: firstName.trim(),
+          customerLastName: lastName.trim(),
+          customerAddressLine1: address.trim(),
+          customerCity: city.trim(),
+          customerPostalCode: postalCode.trim(),
           customerNotes: notes.trim() || undefined,
           items: items.map((item) => ({
             photoId: item.photoId,
             photoName: item.photoName,
             photoUrl: item.photoUrl,
             size: item.size,
+            sizeId: item.sizeId,
             frame: item.frame,
+            frameId: item.frameId,
             price: item.price,
             quantity: item.quantity,
           })),
-          subtotal: finalTotal,
           lang,
         }),
       });
@@ -133,13 +188,11 @@ export function CheckoutClient() {
         throw new Error(data.error || t.genericError);
       }
 
-      events.checkoutCompleted(data.orderId, finalTotal, itemCount, items.map((item) => `${item.size}/${item.frame}`).join(', '));
-      clearItems();
-      const next = new URLSearchParams();
-      next.set('orderId', data.orderId);
-      next.set('email', email.trim());
-      if (lang !== 'fr') next.set('lang', lang);
-      router.replace(`/order-confirmation?${next.toString()}`);
+      if (!data.url) {
+        throw new Error(t.genericError);
+      }
+
+      window.location.assign(data.url);
     } catch (submitError) {
       events.checkoutFailed(submitError instanceof Error ? submitError.message : 'checkout_error');
       setError(submitError instanceof Error ? submitError.message : t.genericError);
@@ -205,6 +258,12 @@ export function CheckoutClient() {
             <h1 className="text-display text-[2.5rem] font-semibold leading-none tracking-[-0.03em] text-foreground">{t.title}</h1>
 
             <form id="checkout-form" onSubmit={handleSubmit} className="mt-8 space-y-8">
+              {canceled ? (
+                <p className="rounded-2xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
+                  {t.canceled}
+                </p>
+              ) : null}
+
               <div className="space-y-4">
                 <Label>{t.coordinates}</Label>
                 <div className="space-y-4">
@@ -257,7 +316,7 @@ export function CheckoutClient() {
                   {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                   <span>{submitting ? `${t.submitting}...` : `${t.submit} · ${finalTotal} $`}</span>
                 </Button>
-                <p className="text-center text-xs text-muted-foreground">{t.manualPayment}</p>
+                <p className="text-center text-xs text-muted-foreground">{t.paymentNotice}</p>
               </div>
             </form>
           </section>
@@ -301,7 +360,7 @@ export function CheckoutClient() {
                 <span>{submitting ? `${t.submitting}...` : `${t.submit} · ${finalTotal} $`}</span>
               </Button>
               <p className="text-xs text-muted-foreground">{t.fulfillment}</p>
-              <p className="text-xs text-muted-foreground">{t.manualPayment}</p>
+              <p className="text-xs text-muted-foreground">{t.paymentNotice}</p>
             </div>
           </aside>
         </div>

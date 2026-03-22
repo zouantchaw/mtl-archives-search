@@ -28,7 +28,7 @@ interface OrderConfirmationEmailProps {
   customerPhone?: string;
   customerAddress: string;
   items: OrderItem[];
-  subtotal: number;
+  total: number;
   orderId: string;
   orderDate: string;
   lang?: 'fr' | 'en';
@@ -39,14 +39,14 @@ const translations = {
     preview: 'Confirmation de votre commande #{orderId} - MTL Archives',
     heading: 'Merci pour votre commande!',
     greeting: 'Bonjour',
-    intro: 'Nous avons bien recu votre demande d\'impression. Voici les details de votre commande.',
+    intro: 'Nous avons bien recu votre commande et votre paiement. Voici les details de votre impression.',
     whatHappensNext: 'Que se passe-t-il ensuite?',
-    step1Title: 'Examen de la commande',
-    step1Desc: 'Notre equipe verifiera votre commande et preparera un devis final.',
-    step2Title: 'Prise de contact',
-    step2Desc: 'Nous vous contacterons par courriel ou telephone dans les 24-48 heures pour confirmer les details et le mode de paiement.',
-    step3Title: 'Paiement',
-    step3Desc: 'Nous acceptons les virements Interac et les paiements par carte de credit.',
+    step1Title: 'Paiement confirme',
+    step1Desc: 'Votre paiement a bien ete accepte et votre commande est maintenant dans notre file de production.',
+    step2Title: 'Preparation',
+    step2Desc: 'Notre equipe verifie les references d\'archives et prepare vos impressions avec les specifications choisies.',
+    step3Title: 'Suivi',
+    step3Desc: 'Nous vous contacterons seulement si nous avons besoin de confirmer un detail de livraison ou de production.',
     step4Title: 'Production et livraison',
     step4Desc: 'Vos impressions seront preparees avec soin et livrees a l\'adresse indiquee, ou disponibles pour cueillette.',
     orderSummary: 'Resume de la commande',
@@ -56,8 +56,7 @@ const translations = {
     quantity: 'Qte',
     size: 'Format',
     frame: 'Encadrement',
-    estimatedTotal: 'Total estime',
-    taxesNote: '* Le total final sera confirme avec les taxes et frais de livraison applicables.',
+    estimatedTotal: 'Montant paye',
     deliveryAddress: 'Adresse de livraison',
     contactInfo: 'Vos coordonnees',
     name: 'Nom',
@@ -76,14 +75,14 @@ const translations = {
     preview: 'Order Confirmation #{orderId} - MTL Archives',
     heading: 'Thank you for your order!',
     greeting: 'Hello',
-    intro: 'We have received your print order request. Here are the details of your order.',
+    intro: 'We have received your order and payment. Here are the details of your print purchase.',
     whatHappensNext: 'What happens next?',
-    step1Title: 'Order Review',
-    step1Desc: 'Our team will review your order and prepare a final quote.',
-    step2Title: 'We\'ll Be in Touch',
-    step2Desc: 'We will contact you by email or phone within 24-48 hours to confirm details and payment method.',
-    step3Title: 'Payment',
-    step3Desc: 'We accept Interac e-Transfers and credit card payments.',
+    step1Title: 'Payment Confirmed',
+    step1Desc: 'Your payment has been accepted and your order is now in our production queue.',
+    step2Title: 'Preparation',
+    step2Desc: 'Our team reviews the archive reference and prepares your print with the selected specifications.',
+    step3Title: 'Follow-up if Needed',
+    step3Desc: 'We will only contact you if we need to confirm a delivery or production detail.',
     step4Title: 'Production & Delivery',
     step4Desc: 'Your prints will be carefully prepared and delivered to the address provided, or available for pickup.',
     orderSummary: 'Order Summary',
@@ -93,8 +92,7 @@ const translations = {
     quantity: 'Qty',
     size: 'Size',
     frame: 'Frame',
-    estimatedTotal: 'Estimated Total',
-    taxesNote: '* Final total will be confirmed with applicable taxes and shipping.',
+    estimatedTotal: 'Amount Paid',
     deliveryAddress: 'Delivery Address',
     contactInfo: 'Your Contact Information',
     name: 'Name',
@@ -117,16 +115,16 @@ export function OrderConfirmationEmail({
   customerPhone,
   customerAddress,
   items,
-  subtotal,
+  total,
   orderId,
   orderDate,
   lang = 'fr',
 }: OrderConfirmationEmailProps) {
   const t = translations[lang];
-  const formattedSubtotal = new Intl.NumberFormat(lang === 'fr' ? 'fr-CA' : 'en-CA', {
+  const formattedTotal = new Intl.NumberFormat(lang === 'fr' ? 'fr-CA' : 'en-CA', {
     style: 'currency',
     currency: 'CAD',
-  }).format(subtotal);
+  }).format(total);
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
@@ -238,10 +236,8 @@ export function OrderConfirmationEmail({
 
               <div style={totalRow}>
                 <Text style={totalLabel}>{t.estimatedTotal}</Text>
-                <Text style={totalValue}>{formattedSubtotal}</Text>
+                <Text style={totalValue}>{formattedTotal}</Text>
               </div>
-
-              <Text style={taxesNote}>{t.taxesNote}</Text>
             </Section>
 
             <Hr style={hr} />
