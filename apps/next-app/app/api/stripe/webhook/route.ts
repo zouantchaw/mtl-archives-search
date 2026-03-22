@@ -4,6 +4,7 @@ import {
   formatMailingAddress,
   formatOrderDate,
   fromStripeAmount,
+  type MailingAddress,
 } from '@/lib/checkout';
 import { normalizeLang } from '@/lib/i18n';
 import { sendOrderEmails, type FinalizedOrderItem } from '@/lib/print-orders';
@@ -35,6 +36,40 @@ function mapStripeLineItem(lineItem: Stripe.LineItem): FinalizedOrderItem {
   };
 }
 
+function getMetadataAddress(metadata?: Stripe.Metadata | null): MailingAddress | null {
+  if (!metadata?.customerAddressLine1) return null;
+
+  return {
+    line1: metadata.customerAddressLine1,
+    line2: metadata.customerAddressLine2 || null,
+    city: metadata.customerCity || null,
+    state: metadata.customerState || null,
+    postal_code: metadata.customerPostalCode || null,
+    country: metadata.customerCountry || null,
+  };
+}
+
+async function getFallbackCustomerAddress(
+  stripe: Stripe,
+  session: Stripe.Checkout.Session
+): Promise<MailingAddress | null> {
+  const customerId = typeof session.customer === 'string' ? session.customer : session.customer?.id;
+  if (!customerId) {
+    return getMetadataAddress(session.metadata);
+  }
+
+  try {
+    const customer = await stripe.customers.retrieve(customerId);
+    if (!('deleted' in customer && customer.deleted)) {
+      return customer.shipping?.address || customer.address || getMetadataAddress(session.metadata);
+    }
+  } catch (error) {
+    console.error('Failed to retrieve Stripe customer for shipping address fallback:', error);
+  }
+
+  return getMetadataAddress(session.metadata);
+}
+
 async function handleCompletedCheckoutSession(session: Stripe.Checkout.Session) {
   const stripe = getStripe();
   const latestSession = await stripe.checkout.sessions.retrieve(session.id);
@@ -63,8 +98,12 @@ async function handleCompletedCheckoutSession(session: Stripe.Checkout.Session) 
     latestSession.customer_details?.name ||
     latestSession.metadata?.customerName ||
     'MTL Archives customer';
+  const shippingAddress =
+    latestSession.collected_information?.shipping_details?.address ||
+    latestSession.customer_details?.address ||
+    (await getFallbackCustomerAddress(stripe, latestSession));
   const customerAddress = formatMailingAddress(
-    latestSession.collected_information?.shipping_details?.address || latestSession.customer_details?.address
+    shippingAddress
   );
   const orderId = latestSession.client_reference_id || latestSession.metadata?.orderId || latestSession.id;
   const lang = normalizeLang(latestSession.metadata?.lang);

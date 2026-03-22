@@ -1,10 +1,12 @@
 import { z } from 'zod';
 import type { Lang } from '@/lib/i18n';
+import {
+  ALLOWED_SHIPPING_COUNTRIES,
+  getShippingCountryLabel,
+  validateShippingAddress,
+} from '@/lib/shipping';
 
 export const CHECKOUT_CURRENCY = 'cad';
-export const SHIPPING_FEE = 15;
-export const SHIPPING_FEE_CENTS = SHIPPING_FEE * 100;
-export const ALLOWED_SHIPPING_COUNTRIES = ['CA'] as const;
 export const CHECKOUT_DRAFT_STORAGE_KEY = 'mtl-archives-checkout-draft';
 
 function isValidCheckoutImageReference(url: string): boolean {
@@ -39,8 +41,16 @@ export const checkoutRequestSchema = z.object({
   customerFirstName: z.string().trim().min(1).max(100),
   customerLastName: z.string().trim().min(1).max(100),
   customerAddressLine1: z.string().trim().min(1).max(200),
+  customerAddressLine2: z
+    .string()
+    .trim()
+    .max(200)
+    .optional()
+    .transform((value) => value || undefined),
   customerCity: z.string().trim().min(1).max(120),
+  customerState: z.string().trim().min(1).max(120),
   customerPostalCode: z.string().trim().min(1).max(20),
+  customerCountry: z.string().trim().min(2).max(2),
   customerNotes: z
     .string()
     .trim()
@@ -49,6 +59,43 @@ export const checkoutRequestSchema = z.object({
     .transform((value) => value || undefined),
   items: z.array(checkoutItemSchema).min(1).max(20),
   lang: z.enum(['fr', 'en']).optional().default('fr'),
+}).superRefine((value, ctx) => {
+  const validation = validateShippingAddress({
+    line1: value.customerAddressLine1,
+    line2: value.customerAddressLine2,
+    city: value.customerCity,
+    state: value.customerState,
+    postalCode: value.customerPostalCode,
+    country: value.customerCountry,
+  });
+
+  for (const [field, code] of Object.entries(validation.fieldErrors)) {
+    const path =
+      field === 'line1'
+        ? ['customerAddressLine1']
+        : field === 'city'
+          ? ['customerCity']
+          : field === 'state'
+            ? ['customerState']
+            : field === 'postalCode'
+              ? ['customerPostalCode']
+              : ['customerCountry'];
+
+    const message =
+      code === 'required'
+        ? 'Required'
+        : code === 'unsupported_country'
+          ? `We currently ship to ${ALLOWED_SHIPPING_COUNTRIES.join(' and ')} only`
+          : code === 'invalid_region'
+            ? 'Invalid province or state'
+            : 'Invalid postal or ZIP code';
+
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message,
+      path,
+    });
+  }
 });
 
 export type CheckoutItemInput = z.infer<typeof checkoutItemSchema>;
@@ -85,7 +132,12 @@ export function formatMailingAddress(address?: MailingAddress | null): string {
     address.line1,
     address.line2,
     [address.city, address.state].filter(Boolean).join(', '),
-    [address.postal_code, address.country].filter(Boolean).join(' '),
+    [
+      address.postal_code,
+      address.country
+        ? getShippingCountryLabel((address.country.toUpperCase() as 'CA' | 'US') ?? 'CA')
+        : undefined,
+    ].filter(Boolean).join(' '),
   ]
     .map((value) => value?.trim())
     .filter(Boolean)

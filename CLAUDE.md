@@ -116,6 +116,7 @@ Next app runtime env:
 - `STRIPE_SECRET_KEY` is required for `/api/checkout`
 - `STRIPE_WEBHOOK_SECRET` is required for `/api/stripe/webhook`
 - `RESEND_SECRET_KEY` is required for post-payment order emails and is also used by the Worker newsletter sender.
+- Print checkout currently validates Canadian and US shipping addresses in-app and computes shipping before redirecting to Stripe Checkout.
 - `CRON_SECRET` protects `/api/cron/newsletter` on Vercel.
 - `NEWSLETTER_ADMIN_SECRET` must match between the Vercel project and the Worker so the cron route can call `/api/newsletter/admin/run`.
 - Clerk publishable/secret keys are required for production builds that include `/game`, `/sign-in`, and `/sign-up`
@@ -129,6 +130,7 @@ Next app runtime env:
 - Public entry now defaults to the editorial landing page on `/`; do not reintroduce random home-to-game redirects.
 - Route-specific V4 surfaces exist for `/`, `/search`, `/photo/[id]`, `/print`, `/checkout`, `/order-confirmation`, `/sign-in`, `/sign-up`, and `/game`.
 - Stripe Checkout now handles payment collection for prints; fulfillment remains manual after the paid order webhook fires.
+- Hosted Stripe Checkout is not the shipping-pricing authority in this repo; the app validates the address and fixes the quote before redirect.
 - Newsletter consent is explicit-only. Do not auto-enroll Clerk/game signups without a dedicated opt-in action and audit log entry.
 - The local social fallback is the outage path for MTL Archives daily posting. It must keep the platform split intact: IG carousel, FB reel, and weekday theme as lens.
 - In fallback mode, `--reuse-research` should reuse saved evidence while rebuilding the latest local public-story templates so copy/design iteration is still possible during outages.

@@ -81,6 +81,7 @@ For `apps/next-app`, API and asset origins are env-driven:
 - `STRIPE_SECRET_KEY` is required for hosted Stripe Checkout session creation
 - `STRIPE_WEBHOOK_SECRET` is required for `/api/stripe/webhook`
 - `RESEND_SECRET_KEY` is required for Stripe post-payment confirmation/admin emails
+- Print checkout currently validates and quotes shipping for Canada and the US before redirecting to Stripe.
 - Next newsletter cron env:
   - `CRON_SECRET` for the Vercel cron route authorization header
   - `NEWSLETTER_ADMIN_SECRET` so the Next cron route can call the Worker admin endpoint
@@ -104,6 +105,7 @@ Stripe local test flow:
 - Start the Next app on `http://localhost:3001`
 - Forward Stripe webhooks with `stripe listen --forward-to localhost:3001/api/stripe/webhook`
 - Put the emitted webhook signing secret into `STRIPE_WEBHOOK_SECRET`
+- Hosted Checkout payment happens after the site checkout has already validated the address and calculated shipping.
 
 Client safety: if `NEXT_PUBLIC_API_URL` is missing from a client bundle, the app logs an explicit runtime error and falls back to same-origin relative API paths instead of throwing a white-screen error.
 

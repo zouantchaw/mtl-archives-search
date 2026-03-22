@@ -17,7 +17,7 @@ const translations = {
     shippingLater: 'Livraison et paiement sécurisés à l’étape suivante',
     checkout: 'Passer la commande',
     closeCart: 'Fermer le panier',
-    fulfillment: 'Imprimé à Montréal · Livraison 5-7 jours',
+    fulfillment: 'Imprime a Montreal · Le delai estime s’ajuste selon la destination',
     clearCart: 'Vider le panier',
   },
   en: {
@@ -28,7 +28,7 @@ const translations = {
     shippingLater: 'Shipping and secure payment handled at checkout',
     checkout: 'Proceed to checkout',
     closeCart: 'Close cart',
-    fulfillment: 'Printed in Montreal · Ships in 5-7 days',
+    fulfillment: 'Printed in Montreal · Delivery estimate adjusts by destination',
     clearCart: 'Clear cart',
   },
 } as const;

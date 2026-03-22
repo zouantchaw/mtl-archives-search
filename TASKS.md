@@ -145,7 +145,7 @@ New archive source is `archivesdemontreal.ica-atom.org`; ingest safely before fu
 - [x] V4 frontend redesign shipped for landing, search, photo detail/order mode, print gallery, checkout, order confirmation, auth shell, and game shell.
 - [x] Photo page with view/order modes and visible print CTA.
 - [x] FR/EN bilingual UI.
-- [x] Stripe Checkout for print orders, with webhook-triggered Resend fulfillment emails.
+- [x] Stripe Checkout for print orders, with webhook-triggered Resend fulfillment emails and app-side CA/US shipping quotes.
 - [x] Daily game MVP (Leaflet map, API, leaderboard, practice mode, share card, Clerk optional auth, mobile UX pass, shared i18n helper).
 - [x] Daily newsletter system (explicit consent, welcome email, scheduled daily issue, signed unsubscribe/resubscribe, landing/game capture).
 

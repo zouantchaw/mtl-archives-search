@@ -1,8 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import {
-  ALLOWED_SHIPPING_COUNTRIES,
   CHECKOUT_CURRENCY,
-  SHIPPING_FEE_CENTS,
   checkoutRequestSchema,
   generateOrderId,
   resolveStripeImageUrl,
@@ -10,6 +8,7 @@ import {
   toStripeAmount,
 } from '@/lib/checkout';
 import { appendLangParam } from '@/lib/i18n';
+import { calculateShippingQuote, validateShippingAddress } from '@/lib/shipping';
 import { getStripe } from '@/lib/stripe';
 
 export const runtime = 'nodejs';
@@ -33,22 +32,44 @@ export async function POST(request: NextRequest) {
     const stripe = getStripe();
     const orderId = generateOrderId();
     const customerName = `${body.customerFirstName} ${body.customerLastName}`.trim();
+    const shippingAddressValidation = validateShippingAddress({
+      line1: body.customerAddressLine1,
+      line2: body.customerAddressLine2,
+      city: body.customerCity,
+      state: body.customerState,
+      postalCode: body.customerPostalCode,
+      country: body.customerCountry,
+    });
+
+    if (!shippingAddressValidation.normalized) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid shipping address' },
+        { status: 400 }
+      );
+    }
+
+    const shippingAddress = shippingAddressValidation.normalized;
+    const shippingQuote = calculateShippingQuote(shippingAddress, body.items, body.lang);
     const customer = await stripe.customers.create({
       email: body.customerEmail,
       name: customerName,
       address: {
-        line1: body.customerAddressLine1,
-        city: body.customerCity,
-        postal_code: body.customerPostalCode,
-        country: 'CA',
+        line1: shippingAddress.line1,
+        ...(shippingAddress.line2 ? { line2: shippingAddress.line2 } : {}),
+        city: shippingAddress.city,
+        state: shippingAddress.state,
+        postal_code: shippingAddress.postalCode,
+        country: shippingAddress.country,
       },
       shipping: {
         name: customerName,
         address: {
-          line1: body.customerAddressLine1,
-          city: body.customerCity,
-          postal_code: body.customerPostalCode,
-          country: 'CA',
+          line1: shippingAddress.line1,
+          ...(shippingAddress.line2 ? { line2: shippingAddress.line2 } : {}),
+          city: shippingAddress.city,
+          state: shippingAddress.state,
+          postal_code: shippingAddress.postalCode,
+          country: shippingAddress.country,
         },
       },
     });
@@ -63,11 +84,6 @@ export async function POST(request: NextRequest) {
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       customer: customer.id,
-      customer_update: {
-        address: 'auto',
-        name: 'auto',
-        shipping: 'auto',
-      },
       client_reference_id: orderId,
       payment_method_types: ['card'],
       locale: body.lang,
@@ -97,21 +113,23 @@ export async function POST(request: NextRequest) {
           };
         })(),
       })),
-      shipping_address_collection: {
-        allowed_countries: [...ALLOWED_SHIPPING_COUNTRIES],
-      },
       shipping_options: [
         {
           shipping_rate_data: {
             type: 'fixed_amount',
             display_name: body.lang === 'fr' ? 'Livraison' : 'Shipping',
             fixed_amount: {
-              amount: SHIPPING_FEE_CENTS,
+              amount: shippingQuote.amountCents,
               currency: CHECKOUT_CURRENCY,
             },
             delivery_estimate: {
-              minimum: { unit: 'business_day', value: 5 },
-              maximum: { unit: 'business_day', value: 7 },
+              minimum: { unit: 'business_day', value: shippingQuote.deliveryEstimate.minBusinessDays },
+              maximum: { unit: 'business_day', value: shippingQuote.deliveryEstimate.maxBusinessDays },
+            },
+            metadata: {
+              orderId,
+              shippingZone: shippingQuote.zone,
+              shippingWeightOz: String(shippingQuote.totalWeightOz),
             },
           },
         },
@@ -123,6 +141,22 @@ export async function POST(request: NextRequest) {
         metadata: {
           orderId,
           orderSource: 'mtl-archives-next-app',
+          shippingZone: shippingQuote.zone,
+          shippingAmountCents: String(shippingQuote.amountCents),
+          shippingCountry: shippingAddress.country,
+          shippingState: shippingAddress.state,
+          shippingPostalCode: shippingAddress.postalCode,
+        },
+        shipping: {
+          name: customerName,
+          address: {
+            line1: shippingAddress.line1,
+            ...(shippingAddress.line2 ? { line2: shippingAddress.line2 } : {}),
+            city: shippingAddress.city,
+            state: shippingAddress.state,
+            postal_code: shippingAddress.postalCode,
+            country: shippingAddress.country,
+          },
         },
       },
       metadata: {
@@ -130,6 +164,14 @@ export async function POST(request: NextRequest) {
         lang: body.lang,
         customerName: trimMetadataValue(customerName) || '',
         customerNotes: trimMetadataValue(body.customerNotes) || '',
+        customerAddressLine1: trimMetadataValue(shippingAddress.line1) || '',
+        customerAddressLine2: trimMetadataValue(shippingAddress.line2) || '',
+        customerCity: trimMetadataValue(shippingAddress.city) || '',
+        customerState: trimMetadataValue(shippingAddress.state) || '',
+        customerPostalCode: trimMetadataValue(shippingAddress.postalCode) || '',
+        customerCountry: trimMetadataValue(shippingAddress.country) || '',
+        shippingAmountCents: String(shippingQuote.amountCents),
+        shippingZone: shippingQuote.zone,
       },
       success_url: successUrlWithSessionId,
       cancel_url: cancelUrl.toString(),

@@ -56,7 +56,7 @@
 - `apps/next-app/lib/runtime-config.ts` and `apps/next-app/next.config.ts` both consume this resolver to prevent client/server/rewrite drift.
 - Production requires `NEXT_PUBLIC_API_URL`; local fallback is `http://localhost:8787`.
 - Clerk client auth provider is route-scoped (`/game`, `/sign-in`, `/sign-up`) to reduce public-route script cost.
-- Commerce now creates Stripe Checkout Sessions in `apps/next-app/app/api/checkout/route.ts`, then finalizes confirmation/admin email delivery from `apps/next-app/app/api/stripe/webhook/route.ts`.
+- Commerce now validates CA/US shipping addresses, calculates shipping in `apps/next-app`, creates Stripe Checkout Sessions in `apps/next-app/app/api/checkout/route.ts`, then finalizes confirmation/admin email delivery from `apps/next-app/app/api/stripe/webhook/route.ts`.
 - Newsletter subscription lives in Worker + D1 + Resend. The landing page and game page post explicit opt-in requests to Worker routes; game auth alone does not imply newsletter consent.
 - Vercel cron hits `apps/next-app/app/api/cron/newsletter/route.ts` hourly. That route gates on `America/Toronto` local hour `7` and then calls the Worker admin endpoint, which avoids DST mistakes from a single hard-coded UTC schedule.
 - The V4 Paper redesign lives in `apps/next-app` and centers route-specific surfaces for `/`, `/search`, `/photo/[id]`, `/print`, `/checkout`, `/order-confirmation`, `/sign-in`, `/sign-up`, and `/game`.
@@ -158,7 +158,7 @@ Next.js /game ──▶ Worker /api/game/daily|guess|leaderboard ──▶ D1
 ### 4. Print Ordering Flow (Runtime)
 
 ```
-Next.js /api/checkout ──▶ Stripe Checkout ──▶ Next.js /api/stripe/webhook ──▶ Resend ──▶ Manual fulfillment
+Next.js checkout validation + shipping quote ──▶ Next.js /api/checkout ──▶ Stripe Checkout ──▶ Next.js /api/stripe/webhook ──▶ Resend ──▶ Manual fulfillment
 ```
 
 ### 5. Newsletter Flow (Runtime)
@@ -317,7 +317,7 @@ mtl-archives-search/
 - **Image Delivery**: Vercel Image Optimization (Pro plan) — resizes, converts to WebP/AVIF, edge-caches. Source images from R2 public URLs.
 - **Caching**: Cloudflare Cache API (read-through on Worker endpoints, 5m–24h TTLs). In-memory cached COUNT keyed by WHERE clause.
 - **Analytics**: Vercel Analytics (custom events)
-- **Payments**: Stripe Checkout + webhooks
+- **Payments**: Stripe Checkout + webhooks, with shipping quoted in-app for Canada/US before redirect
 - **Email**: Resend (post-payment order emails + newsletter sends)
 - **ETL**: Python 3.10+, Node.js 23+
 
