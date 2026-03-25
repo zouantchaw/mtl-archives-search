@@ -101,6 +101,7 @@ export async function POST(request: NextRequest) {
                 description: `${item.size} · ${item.frame}`,
                 metadata: {
                   photoId: item.photoId,
+                  imageRotation: String(item.imageRotation),
                   size: item.size,
                   sizeId: item.sizeId,
                   frame: item.frame,

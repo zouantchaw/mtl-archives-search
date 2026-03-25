@@ -1359,6 +1359,7 @@ async function handlePhotos(url: URL, env: Env): Promise<Response> {
   const limit = clamp(Number.isFinite(limitParam) ? limitParam : 50, 1, 100);
   const cursor = url.searchParams.get('cursor');
   const shuffle = url.searchParams.get('shuffle') === 'true';
+  const sort = (url.searchParams.get('sort') ?? '').trim().toLowerCase();
   // maxSize in bytes - default 1.5MB for mobile-friendly images
   const maxSizeParam = Number(url.searchParams.get('maxSize') ?? '0');
   const maxSize = Number.isFinite(maxSizeParam) && maxSizeParam > 0 ? maxSizeParam : 0;
@@ -1399,23 +1400,49 @@ async function handlePhotos(url: URL, env: Env): Promise<Response> {
   }
 
   // Regular paginated mode
-  let sql = `SELECT ${SELECT_FIELDS} FROM manifest WHERE ${baseWhere}`;
+  const sizeFilter = maxSize > 0 ? ` AND image_size_bytes <= ${maxSize}` : '';
+  const trustFilter = minTrust > 0 ? ` AND trust_score >= ${minTrust}` : '';
+  let sql = `SELECT ${SELECT_FIELDS} FROM manifest WHERE ${baseWhere}${sizeFilter}${trustFilter}`;
   const params: unknown[] = [];
 
-  if (cursor) {
+  if (cursor && sort !== 'print_best') {
     sql += ' AND metadata_filename > ?';
     params.push(cursor);
   }
 
-  // Order by portal_match DESC (verified photos first), then name for variety
-  sql += ' ORDER BY portal_match DESC, COALESCE(name, portal_title), metadata_filename LIMIT ?';
-  params.push(limit + 1);
+  if (sort === 'print_best') {
+    sql += ` ORDER BY
+      portal_match DESC,
+      COALESCE(trust_score, 0) DESC,
+      CASE
+        WHEN description IS NOT NULL AND LENGTH(TRIM(description)) >= 120 THEN 3
+        WHEN portal_description IS NOT NULL AND LENGTH(TRIM(portal_description)) >= 120 THEN 2
+        WHEN vlm_caption IS NOT NULL AND LENGTH(TRIM(vlm_caption)) >= 120 THEN 1
+        ELSE 0
+      END DESC,
+      CASE WHEN date_value IS NOT NULL OR portal_date IS NOT NULL THEN 1 ELSE 0 END DESC,
+      CASE WHEN latitude IS NOT NULL AND longitude IS NOT NULL THEN 1 ELSE 0 END DESC,
+      CASE WHEN credits IS NOT NULL AND TRIM(credits) != '' THEN 1 ELSE 0 END DESC,
+      COALESCE(name, portal_title),
+      metadata_filename
+      LIMIT ?`;
+    params.push(limit);
+  } else {
+    // Order by portal_match DESC (verified photos first), then name for variety
+    sql += ' ORDER BY portal_match DESC, COALESCE(name, portal_title), metadata_filename LIMIT ?';
+    params.push(limit + 1);
+  }
 
   const { results = [] } = await env.DB.prepare(sql).bind(...params).all();
 
-  const rows = results.slice(0, limit);
+  const rows = sort === 'print_best' ? results : results.slice(0, limit);
   const items = await Promise.all(rows.map((row) => buildPhotoRecord(row, env)));
-  const nextCursor = results.length > limit ? String(results[limit].metadata_filename) : null;
+  const nextCursor =
+    sort === 'print_best'
+      ? null
+      : results.length > limit
+        ? String(results[limit].metadata_filename)
+        : null;
 
   return jsonResponse({ items, nextCursor });
 }

@@ -10,6 +10,7 @@ export interface FinalizedOrderItem {
   photoId: string;
   photoName: string;
   photoUrl: string;
+  imageRotation: number;
   size: string;
   frame: string;
   price: number;

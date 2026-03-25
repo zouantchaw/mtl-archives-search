@@ -29,6 +29,7 @@ function mapStripeLineItem(lineItem: Stripe.LineItem): FinalizedOrderItem {
     photoId: product?.metadata.photoId || lineItem.description || lineItem.id,
     photoName: lineItem.description || product?.name || 'Archive print',
     photoUrl: product?.images?.[0] || product?.metadata.photoUrl || '',
+    imageRotation: Number.parseInt(product?.metadata.imageRotation || '0', 10) || 0,
     size: product?.metadata.size || '',
     frame: product?.metadata.frame || '',
     price: fromStripeAmount(unitAmount),

@@ -263,6 +263,7 @@ export function CheckoutClient() {
             photoId: item.photoId,
             photoName: item.photoName,
             photoUrl: item.photoUrl,
+            imageRotation: item.imageRotation,
             size: item.size,
             sizeId: item.sizeId,
             frame: item.frame,

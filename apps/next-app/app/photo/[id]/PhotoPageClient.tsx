@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, MapPin, Share, ShoppingBag, X } from 'lucide-react';
+import { ImageRotationControl } from '@/components/ImageRotationControl';
 import { MtlArchivesLogo } from '@/components/LandingHero';
 import { FlagQC, FlagEN } from '@/components/ui/lang-flags';
 import {
@@ -18,7 +19,13 @@ import { Map, MapMarker, MapTileLayer, MapZoomControl } from '@/components/ui/ma
 import { events } from '@/lib/analytics';
 import { useCart } from '@/lib/cart-context';
 import { appendLangParam, DEFAULT_LANG, getLangFromSearchParams, type Lang } from '@/lib/i18n';
-import { buildOrientedImagePath } from '@/lib/oriented-image';
+import {
+  buildOrientedImagePath,
+  combineRotationDegrees,
+  parseImageRotationParam,
+  rotateClockwise,
+  type ImageRotation,
+} from '@/lib/oriented-image';
 import type { PhotoRecord } from '@/lib/types';
 
 const MONTREAL_CENTER: [number, number] = [45.5019, -73.5674];
@@ -42,6 +49,7 @@ const translations = {
     orderCardBody: "Impression d'art · dès 45 $",
     orderModeTitle: 'Commander une impression',
     backToPhoto: 'Retour à la photo',
+    rotateImage: "Tourner l'image",
     size: 'Format',
     product: 'Type',
     addToCart: 'Ajouter au panier',
@@ -75,6 +83,7 @@ const translations = {
     orderCardBody: 'Fine art print · from $45',
     orderModeTitle: 'Order a print',
     backToPhoto: 'Back to photo',
+    rotateImage: 'Rotate image',
     size: 'Size',
     product: 'Type',
     addToCart: 'Add to cart',
@@ -140,6 +149,8 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
   const t = translations[lang];
   const orderParam = searchParams?.get('order');
   const autoOrder = orderParam === '1' || orderParam === 'true' || orderParam === 'print';
+  // The rot query param stores the user's adjustment on top of the archive's base rotation.
+  const initialRotation = parseImageRotationParam(searchParams?.get('rot'));
 
   const [mode, setMode] = useState<'viewing' | 'ordering'>(() => (autoOrder ? 'ordering' : 'viewing'));
   const [selectedSize, setSelectedSize] = useState<PrintSize>(PRINT_SIZES[1]);
@@ -147,11 +158,34 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
   const [justAdded, setJustAdded] = useState(false);
   const [showCopied, setShowCopied] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageRotation, setImageRotation] = useState<ImageRotation>(initialRotation);
 
   const dwellFired = useRef(false);
   const autoOrderTrackedRef = useRef(false);
   const totalPrice = selectedSize.price + selectedProduct.price;
   const backHref = getBackHref(searchParams, lang);
+
+  useEffect(() => {
+    setImageRotation(initialRotation);
+  }, [initialRotation, photo?.metadataFilename]);
+
+  const syncRotationParam = (nextRotation: ImageRotation) => {
+    const params = new URLSearchParams(searchParams?.toString());
+    if (nextRotation === 0) params.delete('rot');
+    else params.set('rot', String(nextRotation));
+
+    const nextHref = params.toString()
+      ? `/photo/${encodeURIComponent(photoId)}?${params.toString()}`
+      : `/photo/${encodeURIComponent(photoId)}`;
+
+    router.replace(nextHref, { scroll: false });
+  };
+
+  const handleRotateImage = () => {
+    const nextRotation = rotateClockwise(imageRotation);
+    setImageRotation(nextRotation);
+    syncRotationParam(nextRotation);
+  };
 
   useEffect(() => {
     if (!photo || dwellFired.current) return;
@@ -211,7 +245,11 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
     addItem({
       photoId: photo.metadataFilename,
       photoName: cleanText(photo.name) || t.untitled,
-      photoUrl: buildOrientedImagePath(photo.imageUrl, photo.rotationDegrees),
+      photoUrl: buildOrientedImagePath(
+        photo.imageUrl,
+        combineRotationDegrees(photo.rotationDegrees, imageRotation)
+      ),
+      imageRotation: combineRotationDegrees(photo.rotationDegrees, imageRotation),
       size: selectedSize.name,
       sizeId: selectedSize.id,
       frame: getProductLabel(selectedProduct, lang),
@@ -264,7 +302,8 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
     photo.description && photo.description !== 'S/O'
       ? cleanText(photo.description)
       : cleanText(photo.portalDescription);
-  const displayImageUrl = buildOrientedImagePath(photo.imageUrl, photo.rotationDegrees);
+  const effectiveRotation = combineRotationDegrees(photo.rotationDegrees, imageRotation);
+  const displayImageUrl = buildOrientedImagePath(photo.imageUrl, effectiveRotation);
   const archiveId = cleanText(photo.cote) || cleanText(photo.portalCote) || photoId;
   const confidence = formatConfidence(photo.geocodeConfidence);
   const location = getDisplayLocation(photo);
@@ -272,6 +311,9 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
 
   const imagePane = (
     <div className="relative overflow-hidden bg-muted lg:h-[calc(100vh-4.5rem)] lg:rounded-none">
+      <div className="absolute right-4 top-4 z-10">
+        <ImageRotationControl lang={lang} rotation={effectiveRotation} onRotate={handleRotateImage} />
+      </div>
       {!imageLoaded ? (
         <div className="absolute inset-0 animate-pulse bg-muted" />
       ) : null}
@@ -510,6 +552,10 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
               </div>
 
               <div className="surface-subtle overflow-hidden p-3 lg:rounded-[2rem] lg:p-6">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <p className="mono-metric text-[10px] text-muted-foreground">{t.rotateImage}</p>
+                  <ImageRotationControl lang={lang} rotation={effectiveRotation} onRotate={handleRotateImage} />
+                </div>
                 {displayImageUrl ? (
                   <WallPreview
                     photoUrl={displayImageUrl}

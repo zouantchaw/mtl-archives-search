@@ -28,6 +28,7 @@ export const checkoutItemSchema = z.object({
   photoUrl: z.string().trim().min(1).max(2000).refine(isValidCheckoutImageReference, {
     message: 'Invalid image URL',
   }),
+  imageRotation: z.number().int().min(0).max(270),
   size: z.string().trim().min(1).max(100),
   sizeId: z.string().trim().min(1).max(100),
   frame: z.string().trim().min(1).max(100),

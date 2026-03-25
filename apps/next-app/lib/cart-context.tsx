@@ -7,6 +7,7 @@ export type CartItem = {
   photoId: string;
   photoName: string;
   photoUrl: string;
+  imageRotation: number;
   size: string;
   sizeId: string;
   frame: string;
@@ -44,7 +45,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
     try {
       const stored = localStorage.getItem(CART_STORAGE_KEY);
       if (stored) {
-        setItems(JSON.parse(stored));
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          setItems(
+            parsed.map((item) => ({
+              ...item,
+              imageRotation: Number.isFinite(Number(item?.imageRotation)) ? Number(item.imageRotation) : 0,
+            }))
+          );
+        }
       }
     } catch {
       // Ignore localStorage errors
@@ -77,7 +86,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         item => 
           item.photoId === newItem.photoId && 
           item.sizeId === newItem.sizeId && 
-          item.frameId === newItem.frameId
+          item.frameId === newItem.frameId &&
+          item.imageRotation === newItem.imageRotation
       );
 
       if (existing) {
@@ -90,7 +100,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
 
       // Add new item
-      const id = `${newItem.photoId}-${newItem.sizeId}-${newItem.frameId}-${Date.now()}`;
+      const id = `${newItem.photoId}-${newItem.sizeId}-${newItem.frameId}-${newItem.imageRotation}-${Date.now()}`;
       return [...prev, { ...newItem, id, quantity: 1 }];
     });
 
