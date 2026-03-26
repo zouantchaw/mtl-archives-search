@@ -54,7 +54,9 @@
     "social:token-status": "python3 pipelines/daily-reel/token_manager.py status",
     "story:render": "npm run render --workspace=apps/story-video --",
     "story:today": "npm run render:today --workspace=apps/story-video",
-    "story:preview": "npm run preview --workspace=apps/story-video"
+    "story:preview": "npm run preview --workspace=apps/story-video",
+    "print:render": "npm run render:print --workspace=apps/story-video",
+    "print:render:photo": "npm run render:print:photo --workspace=apps/story-video --"
   },
   "devDependencies": {
     "typescript": "^5.6.3",

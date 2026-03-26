@@ -1,0 +1,4 @@
+# Room background images are copied from apps/next-app/public/images/
+# at render time. Don't duplicate them in git.
+public/images/backgrounds/
+public/images/items/
