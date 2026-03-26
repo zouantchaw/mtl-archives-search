@@ -3,10 +3,10 @@ import { z } from "zod";
 import { AbsoluteFill } from "remotion";
 import { TransitionSeries, linearTiming } from "@remotion/transitions";
 import { fade } from "@remotion/transitions/fade";
-import { ROOMS, PRODUCTS } from "./lib/print-config";
+import { ROOMS } from "./lib/print-config";
 import { PrintIntro } from "./scenes/PrintIntro";
 import { PhotoShowcase } from "./scenes/PhotoShowcase";
-import { WallScene } from "./scenes/WallScene";
+import { WallCarousel } from "./scenes/WallCarousel";
 import { PricingCta } from "./scenes/PricingCta";
 
 export const PrintOfTheWeekSchema = z.object({
@@ -21,37 +21,42 @@ export type PrintOfTheWeekProps = z.infer<typeof PrintOfTheWeekSchema>;
 
 const T = 12; // transition overlap
 
+// Single wall carousel replaces two separate wall scenes —
+// the print stays anchored while 3 rooms crossfade behind it.
 const SQUARE_SCENES = {
   intro: 55,
   showcase: 80,
-  wall1: 75,
-  wall2: 75,
+  wallCarousel: 165, // ~5.5s for 3 rooms
   pricing: 60,
 } as const;
 
 export const SQUARE_DURATION =
   SQUARE_SCENES.intro +
   SQUARE_SCENES.showcase +
-  SQUARE_SCENES.wall1 +
-  SQUARE_SCENES.wall2 +
+  SQUARE_SCENES.wallCarousel +
   SQUARE_SCENES.pricing -
-  T * 4;
+  T * 3;
 
 const STORY_SCENES = {
   intro: 55,
   showcase: 90,
-  wall1: 80,
-  wall2: 80,
+  wallCarousel: 180, // 6s for 3 rooms
   pricing: 60,
 } as const;
 
 export const STORY_DURATION =
   STORY_SCENES.intro +
   STORY_SCENES.showcase +
-  STORY_SCENES.wall1 +
-  STORY_SCENES.wall2 +
+  STORY_SCENES.wallCarousel +
   STORY_SCENES.pricing -
-  T * 4;
+  T * 3;
+
+// Room rotation: plateau → cozy → coffee (3 distinct vibes)
+const WALL_STOPS = [
+  { room: ROOMS[0], productStyle: "framed" as const, productLabel: "Canvas encadré" },
+  { room: ROOMS[2], productStyle: "poster" as const, productLabel: "Affiche Fine Art" },
+  { room: ROOMS[3], productStyle: "hanger" as const, productLabel: "Cintre en bois" },
+];
 
 // ── Square composition (1080 × 1080) ────────────────────────────────
 
@@ -77,25 +82,11 @@ export const PrintOfTheWeekSquare: React.FC<PrintOfTheWeekProps> = ({
 
         <TransitionSeries.Transition presentation={fade()} timing={timing} />
 
-        <TransitionSeries.Sequence durationInFrames={SQUARE_SCENES.wall1}>
-          <WallScene
+        <TransitionSeries.Sequence durationInFrames={SQUARE_SCENES.wallCarousel}>
+          <WallCarousel
             imageUrl={imageUrl}
-            room={ROOMS[0]} // plateau
-            productStyle="framed"
+            stops={WALL_STOPS}
             sizeScale={0.85}
-            productLabel="Canvas encadré"
-          />
-        </TransitionSeries.Sequence>
-
-        <TransitionSeries.Transition presentation={fade()} timing={timing} />
-
-        <TransitionSeries.Sequence durationInFrames={SQUARE_SCENES.wall2}>
-          <WallScene
-            imageUrl={imageUrl}
-            room={ROOMS[2]} // cozy
-            productStyle="hanger"
-            sizeScale={0.8}
-            productLabel="Cintre"
           />
         </TransitionSeries.Sequence>
 
@@ -138,25 +129,11 @@ export const PrintOfTheWeekStory: React.FC<PrintOfTheWeekProps> = ({
 
         <TransitionSeries.Transition presentation={fade()} timing={timing} />
 
-        <TransitionSeries.Sequence durationInFrames={STORY_SCENES.wall1}>
-          <WallScene
+        <TransitionSeries.Sequence durationInFrames={STORY_SCENES.wallCarousel}>
+          <WallCarousel
             imageUrl={imageUrl}
-            room={ROOMS[0]} // plateau
-            productStyle="framed"
+            stops={WALL_STOPS}
             sizeScale={0.85}
-            productLabel="Canvas encadré"
-          />
-        </TransitionSeries.Sequence>
-
-        <TransitionSeries.Transition presentation={fade()} timing={timing} />
-
-        <TransitionSeries.Sequence durationInFrames={STORY_SCENES.wall2}>
-          <WallScene
-            imageUrl={imageUrl}
-            room={ROOMS[3]} // coffee shop
-            productStyle="poster"
-            sizeScale={0.9}
-            productLabel="Affiche Fine Art"
           />
         </TransitionSeries.Sequence>
 
