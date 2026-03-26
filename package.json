@@ -51,7 +51,10 @@
     "social:promote-story": "python3 pipelines/daily-reel/story_pages.py",
     "social:register-publish": "python3 pipelines/daily-reel/publish_registry.py",
     "social:token-bootstrap": "python3 pipelines/daily-reel/token_manager.py bootstrap",
-    "social:token-status": "python3 pipelines/daily-reel/token_manager.py status"
+    "social:token-status": "python3 pipelines/daily-reel/token_manager.py status",
+    "story:render": "npm run render --workspace=apps/story-video --",
+    "story:today": "npm run render:today --workspace=apps/story-video",
+    "story:preview": "npm run preview --workspace=apps/story-video"
   },
   "devDependencies": {
     "typescript": "^5.6.3",

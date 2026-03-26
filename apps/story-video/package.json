@@ -1,0 +1,27 @@
+{
+  "name": "@mtl-archives/story-video",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "preview": "remotion studio",
+    "render": "npx tsx render.ts",
+    "render:today": "npx tsx render.ts --today",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "remotion": "^4.0.0",
+    "@remotion/cli": "^4.0.0",
+    "@remotion/renderer": "^4.0.0",
+    "@remotion/bundler": "^4.0.0",
+    "@remotion/google-fonts": "^4.0.0",
+    "@remotion/transitions": "^4.0.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.0",
+    "typescript": "^5.6.0",
+    "tsx": "^4.19.0"
+  }
+}
