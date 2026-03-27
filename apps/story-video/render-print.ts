@@ -13,53 +13,6 @@ import { bundle } from "@remotion/bundler";
 import { renderMedia, selectComposition } from "@remotion/renderer";
 import { FPS } from "./src/lib/brand";
 import { SQUARE_DURATION, STORY_DURATION } from "./src/PrintOfTheWeek";
-import { exifOrientationToDegrees } from "./src/lib/orientation";
-
-/**
- * Read EXIF Orientation tag from a JPEG URL (first ~64KB only).
- */
-async function readExifOrientation(imageUrl: string): Promise<number> {
-  try {
-    const res = await fetch(imageUrl, {
-      headers: { Range: "bytes=0-65535" },
-    });
-    const buf = Buffer.from(await res.arrayBuffer());
-    if (buf[0] !== 0xff || buf[1] !== 0xd8) return 1;
-    let offset = 2;
-    while (offset < buf.length - 4) {
-      if (buf[offset] !== 0xff) break;
-      const marker = buf[offset + 1];
-      if (marker === 0xe1) {
-        const exifStart = offset + 4;
-        if (
-          buf.toString("ascii", exifStart, exifStart + 4) === "Exif" &&
-          buf[exifStart + 4] === 0 &&
-          buf[exifStart + 5] === 0
-        ) {
-          const tiffStart = exifStart + 6;
-          const littleEndian = buf.toString("ascii", tiffStart, tiffStart + 2) === "II";
-          const read16 = (pos: number) =>
-            littleEndian
-              ? buf.readUInt16LE(tiffStart + pos)
-              : buf.readUInt16BE(tiffStart + pos);
-          const ifdOffset = littleEndian
-            ? buf.readUInt32LE(tiffStart + 4)
-            : buf.readUInt32BE(tiffStart + 4);
-          const entries = read16(ifdOffset);
-          for (let i = 0; i < entries; i++) {
-            const entryOffset = ifdOffset + 2 + i * 12;
-            const tag = read16(entryOffset);
-            if (tag === 0x0112) return read16(entryOffset + 8);
-          }
-        }
-        break;
-      }
-      const segLen = buf.readUInt16BE(offset + 2);
-      offset += 2 + segLen;
-    }
-  } catch {}
-  return 1;
-}
 
 const API_BASE =
   process.env.API_BASE || "https://mtl-archives-worker.wiel.workers.dev";
@@ -74,18 +27,15 @@ type PhotoRecord = {
 
 type PrintProps = { imageUrl: string; title: string; date: string; rotation: number };
 
-async function resolveRotation(photo: PhotoRecord): Promise<PrintProps> {
-  let rotation = photo.rotationDegrees || 0;
-  if (!rotation) {
-    const exif = await readExifOrientation(photo.imageUrl);
-    rotation = exifOrientationToDegrees(exif);
-    if (rotation) console.log(`  EXIF orientation: ${exif} → ${rotation}°`);
-  }
+function toProps(photo: PhotoRecord): PrintProps {
+  // Only trust DB rotationDegrees (manually verified).
+  // EXIF tags on archive scans are unreliable — OrientedImg sets
+  // image-orientation: none to ignore them.
   return {
     imageUrl: photo.imageUrl,
     title: photo.name || "Photo historique de Montréal",
     date: photo.dateValue || "",
-    rotation,
+    rotation: photo.rotationDegrees || 0,
   };
 }
 
@@ -101,8 +51,7 @@ async function fetchFeaturedPrint(
       throw new Error(`API returned ${res.status}: ${await res.text()}`);
     const data = await res.json();
     const items = Array.isArray(data) ? data : data.items || [data];
-    const photo: PhotoRecord = items[0];
-    return resolveRotation(photo);
+    return toProps(items[0]);
   }
 
   // Fetch a batch and pick one at random (print-worthy photos)
@@ -116,9 +65,7 @@ async function fetchFeaturedPrint(
   const photos: PhotoRecord[] = Array.isArray(data) ? data : data.items || data.photos || [];
   if (photos.length === 0) throw new Error("No photos returned from API");
 
-  const photo = photos[0];
-  return resolveRotation(photo);
-  };
+  return toProps(photos[0]);
 }
 
 function parseArgs() {

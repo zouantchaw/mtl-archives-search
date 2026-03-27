@@ -1,12 +1,9 @@
 /**
- * Image orientation helpers — mirrors apps/next-app/lib/oriented-image.ts
+ * Image orientation helpers.
  *
- * Two sources of rotation:
- * 1. DB `rotationDegrees` — explicit manual override stored in the manifest.
- * 2. EXIF Orientation tag — embedded in the JPEG by the scanner/camera.
- *
- * The render scripts resolve both at fetch time into a single `rotation`
- * value (0, 90, 180, 270) before passing it to the compositions.
+ * Archive scans often have incorrect EXIF Orientation tags, so we
+ * ignore EXIF entirely (image-orientation: none in OrientedImg) and
+ * only trust the DB `rotationDegrees` field which is manually verified.
  */
 
 export type ImageRotation = 0 | 90 | 180 | 270;
@@ -21,25 +18,4 @@ export function coerceRotation(
   if (normalized === 90 || normalized === 180 || normalized === 270)
     return normalized;
   return 0;
-}
-
-/**
- * Convert EXIF Orientation tag (1-8) to degrees of clockwise rotation.
- * Only handles the simple rotation cases (1, 3, 6, 8).
- * Mirror/transpose orientations (2, 4, 5, 7) are treated as 0.
- */
-export function exifOrientationToDegrees(
-  exifOrientation: number | null | undefined
-): ImageRotation {
-  if (exifOrientation == null) return 0;
-  switch (exifOrientation) {
-    case 3:
-      return 180;
-    case 6:
-      return 90;
-    case 8:
-      return 270;
-    default:
-      return 0;
-  }
 }

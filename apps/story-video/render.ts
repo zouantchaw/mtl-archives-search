@@ -12,65 +12,9 @@ import fs from "node:fs";
 import { bundle } from "@remotion/bundler";
 import { renderMedia, selectComposition } from "@remotion/renderer";
 import { STORY_WIDTH, STORY_HEIGHT, FPS, TOTAL_DURATION } from "./src/lib/brand";
-import { exifOrientationToDegrees } from "./src/lib/orientation";
 
 const API_BASE =
   process.env.API_BASE || "https://mtl-archives-worker.wiel.workers.dev";
-
-/**
- * Read the EXIF Orientation tag from a JPEG URL.
- * Parses just the first ~64KB to find the tag without downloading the full image.
- */
-async function readExifOrientation(imageUrl: string): Promise<number> {
-  try {
-    const res = await fetch(imageUrl, {
-      headers: { Range: "bytes=0-65535" },
-    });
-    const buf = Buffer.from(await res.arrayBuffer());
-
-    // Quick EXIF parser — find orientation tag (0x0112) in TIFF IFD
-    if (buf[0] !== 0xff || buf[1] !== 0xd8) return 1; // not JPEG
-    let offset = 2;
-    while (offset < buf.length - 4) {
-      if (buf[offset] !== 0xff) break;
-      const marker = buf[offset + 1];
-      if (marker === 0xe1) {
-        // APP1 — likely EXIF
-        const exifStart = offset + 4;
-        if (
-          buf.toString("ascii", exifStart, exifStart + 4) === "Exif" &&
-          buf[exifStart + 4] === 0 &&
-          buf[exifStart + 5] === 0
-        ) {
-          const tiffStart = exifStart + 6;
-          const littleEndian = buf.toString("ascii", tiffStart, tiffStart + 2) === "II";
-          const read16 = (pos: number) =>
-            littleEndian
-              ? buf.readUInt16LE(tiffStart + pos)
-              : buf.readUInt16BE(tiffStart + pos);
-          const ifdOffset = littleEndian
-            ? buf.readUInt32LE(tiffStart + 4)
-            : buf.readUInt32BE(tiffStart + 4);
-          const entries = read16(ifdOffset);
-          for (let i = 0; i < entries; i++) {
-            const entryOffset = ifdOffset + 2 + i * 12;
-            const tag = read16(entryOffset);
-            if (tag === 0x0112) {
-              // Orientation tag
-              return read16(entryOffset + 8);
-            }
-          }
-        }
-        break;
-      }
-      const segLen = buf.readUInt16BE(offset + 2);
-      offset += 2 + segLen;
-    }
-  } catch {
-    // If EXIF parsing fails, assume normal orientation
-  }
-  return 1;
-}
 
 type PhotoRecord = {
   metadataFilename: string;
@@ -108,18 +52,15 @@ async function fetchDailyGame(): Promise<{
   const data: DailyResponse = await res.json();
   const photo = data.daily.photo;
 
+  // Only trust the DB rotationDegrees field (manually verified).
+  // EXIF tags on archive scans are unreliable — OrientedImg sets
+  // image-orientation: none to ignore them.
+  const rotation = photo.rotationDegrees || 0;
+
   console.log(`  Photo: ${photo.name || photo.metadataFilename}`);
   console.log(`  Date: ${photo.dateValue}`);
-  console.log(`  Image: ${photo.imageUrl}`);
-
-  // Resolve rotation: prefer DB value, fall back to EXIF
-  let rotation = photo.rotationDegrees || 0;
-  if (!rotation) {
-    const exif = await readExifOrientation(photo.imageUrl);
-    rotation = exifOrientationToDegrees(exif);
-    if (rotation) console.log(`  EXIF orientation: ${exif} → ${rotation}°`);
-  }
   console.log(`  Rotation: ${rotation}°`);
+  console.log(`  Image: ${photo.imageUrl}`);
 
   return {
     imageUrl: photo.imageUrl,
@@ -171,7 +112,6 @@ async function main() {
   console.log("\nBundling Remotion project...");
   const bundled = await bundle({
     entryPoint: path.resolve(__dirname, "src/index.ts"),
-    // Silence webpack output
     onProgress: (progress) => {
       if (progress === 100) console.log("  Bundle complete.");
     },

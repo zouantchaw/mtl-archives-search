@@ -3,15 +3,12 @@ import { Img } from "remotion";
 import type { ImageRotation } from "../lib/orientation";
 
 /**
- * OrientedImg — wraps Remotion's <Img> with explicit orientation control.
+ * OrientedImg — wraps Remotion's <Img> with rotation correction.
  *
- * The render scripts resolve the final rotation (from DB rotationDegrees
- * or EXIF Orientation tag) into a single 0/90/180/270 value before
- * passing it here.
- *
- * We set `image-orientation: none` to DISABLE the browser's automatic
- * EXIF rotation, then apply our own CSS transform. This avoids double-
- * rotation (browser EXIF + our transform both firing).
+ * Archive scans often have incorrect EXIF Orientation tags, so we
+ * set `image-orientation: none` to ignore EXIF entirely. The only
+ * rotation we trust is the DB `rotationDegrees` field, which is
+ * manually verified.
  */
 type Props = {
   src: string;
@@ -35,7 +32,7 @@ export const OrientedImg: React.FC<Props> = ({ src, rotation, style }) => {
       <Img
         src={src}
         style={{
-          // Disable browser EXIF auto-rotation — we handle it ourselves
+          // Ignore EXIF — archive scans have unreliable orientation tags
           imageOrientation: "none" as React.CSSProperties["imageOrientation"],
           ...(needsSwap
             ? {
