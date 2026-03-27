@@ -13,9 +13,11 @@ import { GameHeader } from "../components/GameHeader";
 import { FloatingThumbnail } from "../components/FloatingThumbnail";
 import { GuessPin } from "../components/GamePin";
 import { CtaPill } from "../components/CtaPill";
+import type { ImageRotation } from "../lib/orientation";
 
 type Props = {
   imageUrl: string;
+  rotation?: ImageRotation;
   date: string;
 };
 
@@ -29,7 +31,7 @@ type Props = {
  * - "Placez votre épingle" CTA pill at bottom
  * - A pulsing hint circle before the pin lands
  */
-export const MapChallenge: React.FC<Props> = ({ imageUrl, date }) => {
+export const MapChallenge: React.FC<Props> = ({ imageUrl, date, rotation = 0 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -209,7 +211,7 @@ export const MapChallenge: React.FC<Props> = ({ imageUrl, date }) => {
           transform: `scale(${thumbScale})`,
         }}
       >
-        <FloatingThumbnail imageUrl={imageUrl} date={date} size={96} />
+        <FloatingThumbnail imageUrl={imageUrl} date={date} rotation={rotation} size={96} />
       </div>
 
       {/* Pulsing target hint */}

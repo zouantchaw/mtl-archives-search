@@ -5,17 +5,18 @@ import {
   useVideoConfig,
   spring,
   interpolate,
-  Img,
 } from "remotion";
 import { colors } from "../lib/brand";
 import { spectral, ibmPlexMono } from "../lib/fonts";
 import { ProductFrame } from "../components/ProductFrame";
+import { OrientedImg } from "../components/OrientedImg";
+import type { ImageRotation } from "../lib/orientation";
 
 type Props = {
   imageUrl: string;
+  rotation?: ImageRotation;
   title: string;
   date: string;
-  /** Whether this is a story (vertical) or square format */
   isStory?: boolean;
 };
 
@@ -27,6 +28,7 @@ type Props = {
  */
 export const PhotoShowcase: React.FC<Props> = ({
   imageUrl,
+  rotation = 0,
   title,
   date,
   isStory = false,
@@ -94,15 +96,9 @@ export const PhotoShowcase: React.FC<Props> = ({
               overflow: "hidden",
             }}
           >
-            <Img
-              src={imageUrl}
-              style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                transform: `scale(${kenBurnsScale})`,
-              }}
-            />
+            <div style={{ width: "100%", height: "100%", transform: `scale(${kenBurnsScale})` }}>
+              <OrientedImg src={imageUrl} rotation={rotation} />
+            </div>
           </div>
         </ProductFrame>
       </div>

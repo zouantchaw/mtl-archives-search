@@ -12,7 +12,9 @@ import {
 import { colors } from "../lib/brand";
 import { figtree, ibmPlexMono } from "../lib/fonts";
 import { ProductFrame } from "../components/ProductFrame";
+import { OrientedImg } from "../components/OrientedImg";
 import type { RoomBackground, ProductStyle } from "../lib/print-config";
+import type { ImageRotation } from "../lib/orientation";
 
 type RoomStop = {
   room: RoomBackground;
@@ -22,6 +24,7 @@ type RoomStop = {
 
 type Props = {
   imageUrl: string;
+  rotation?: ImageRotation;
   stops: RoomStop[];
   sizeScale?: number;
 };
@@ -36,6 +39,7 @@ type Props = {
  */
 export const WallCarousel: React.FC<Props> = ({
   imageUrl,
+  rotation = 0,
   stops,
   sizeScale = 0.85,
 }) => {
@@ -147,10 +151,7 @@ export const WallCarousel: React.FC<Props> = ({
         }}
       >
         <ProductFrame style={currentStop.productStyle} inRoom>
-          <Img
-            src={imageUrl}
-            style={{ width: "100%", display: "block" }}
-          />
+          <OrientedImg src={imageUrl} rotation={rotation} />
         </ProductFrame>
       </div>
 

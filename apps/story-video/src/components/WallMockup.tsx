@@ -1,29 +1,27 @@
 import React from "react";
 import { Img, staticFile } from "remotion";
 import type { RoomBackground, ProductStyle } from "../lib/print-config";
+import type { ImageRotation } from "../lib/orientation";
 import { ProductFrame } from "./ProductFrame";
+import { OrientedImg } from "./OrientedImg";
 
 /**
  * WallMockup — composites a photo onto a room wall background.
  * Mirrors: WallPreview.tsx RoomSlide in apps/next-app.
- *
- * Positions the photo at the room's configured wall center point
- * using percentage-based absolute positioning.
  */
 type Props = {
   imageUrl: string;
+  rotation?: ImageRotation;
   room: RoomBackground;
   productStyle: ProductStyle;
-  /** Scale factor: 0.4 (8×10"), 0.7 (18×24"), 1.0 (24×36") */
   sizeScale?: number;
-  /** Container width in px */
   width: number;
-  /** Container height in px */
   height: number;
 };
 
 export const WallMockup: React.FC<Props> = ({
   imageUrl,
+  rotation = 0,
   room,
   productStyle,
   sizeScale = 1.0,
@@ -63,13 +61,7 @@ export const WallMockup: React.FC<Props> = ({
         }}
       >
         <ProductFrame style={productStyle} inRoom>
-          <Img
-            src={imageUrl}
-            style={{
-              width: "100%",
-              display: "block",
-            }}
-          />
+          <OrientedImg src={imageUrl} rotation={rotation} />
         </ProductFrame>
       </div>
     </div>

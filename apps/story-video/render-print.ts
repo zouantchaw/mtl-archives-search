@@ -22,11 +22,14 @@ type PhotoRecord = {
   imageUrl: string;
   name: string;
   dateValue: string;
+  rotationDegrees: number | null;
 };
+
+type PrintProps = { imageUrl: string; title: string; date: string; rotation: number };
 
 async function fetchFeaturedPrint(
   photoId?: string
-): Promise<{ imageUrl: string; title: string; date: string }> {
+): Promise<PrintProps> {
   if (photoId) {
     console.log(`Fetching photo ${photoId}...`);
     const res = await fetch(
@@ -41,6 +44,7 @@ async function fetchFeaturedPrint(
       imageUrl: photo.imageUrl,
       title: photo.name || "Photo historique de Montréal",
       date: photo.dateValue || "",
+      rotation: photo.rotationDegrees || 0,
     };
   }
 
@@ -60,6 +64,7 @@ async function fetchFeaturedPrint(
     imageUrl: photo.imageUrl,
     title: photo.name || "Photo historique de Montréal",
     date: photo.dateValue || "",
+    rotation: photo.rotationDegrees || 0,
   };
 }
 
@@ -78,6 +83,7 @@ async function main() {
   const inputProps = await fetchFeaturedPrint(photoId);
   console.log(`  Photo: ${inputProps.title}`);
   console.log(`  Date: ${inputProps.date}`);
+  console.log(`  Rotation: ${inputProps.rotation}°`);
   console.log(`  Image: ${inputProps.imageUrl}`);
 
   // Output directory

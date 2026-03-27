@@ -1,5 +1,6 @@
 import React from "react";
-import { Img } from "remotion";
+import { OrientedImg } from "./OrientedImg";
+import type { ImageRotation } from "../lib/orientation";
 
 /**
  * Floating photo thumbnail — matches the game's mobile top-left preview.
@@ -8,12 +9,14 @@ import { Img } from "remotion";
 type Props = {
   imageUrl: string;
   date: string;
+  rotation?: ImageRotation;
   size?: number;
 };
 
 export const FloatingThumbnail: React.FC<Props> = ({
   imageUrl,
   date,
+  rotation = 0,
   size = 96,
 }) => (
   <div
@@ -27,14 +30,7 @@ export const FloatingThumbnail: React.FC<Props> = ({
       position: "relative",
     }}
   >
-    <Img
-      src={imageUrl}
-      style={{
-        width: "100%",
-        height: "100%",
-        objectFit: "cover",
-      }}
-    />
+    <OrientedImg src={imageUrl} rotation={rotation} />
     {/* Date badge — matches gradient overlay */}
     <div
       style={{
@@ -46,13 +42,7 @@ export const FloatingThumbnail: React.FC<Props> = ({
         padding: "6px 8px 4px",
       }}
     >
-      <span
-        style={{
-          fontSize: 10,
-          fontWeight: 500,
-          color: "white",
-        }}
-      >
+      <span style={{ fontSize: 10, fontWeight: 500, color: "white" }}>
         {date}
       </span>
     </div>

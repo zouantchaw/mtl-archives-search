@@ -21,6 +21,7 @@ const sampleProps = {
   imageUrl: "https://res.cloudinary.com/demo/image/upload/sample.jpg",
   title: "Rue Sainte-Catherine, vue vers l'est",
   date: "vers 1930",
+  rotation: 0,
 };
 
 export const RemotionRoot: React.FC = () => {

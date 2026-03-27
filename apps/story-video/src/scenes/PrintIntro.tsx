@@ -9,9 +9,12 @@ import {
 } from "remotion";
 import { colors } from "../lib/brand";
 import { spectral, ibmPlexMono, manrope } from "../lib/fonts";
+import { OrientedImg } from "../components/OrientedImg";
+import type { ImageRotation } from "../lib/orientation";
 
 type Props = {
   imageUrl: string;
+  rotation?: ImageRotation;
 };
 
 /**
@@ -21,7 +24,7 @@ type Props = {
  * appears in mono metric, copper accent line grows, and a small
  * preview thumbnail of the print fades in.
  */
-export const PrintIntro: React.FC<Props> = ({ imageUrl }) => {
+export const PrintIntro: React.FC<Props> = ({ imageUrl, rotation = 0 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -86,10 +89,7 @@ export const PrintIntro: React.FC<Props> = ({ imageUrl }) => {
           marginBottom: 48,
         }}
       >
-        <Img
-          src={imageUrl}
-          style={{ width: "100%", display: "block" }}
-        />
+        <OrientedImg src={imageUrl} rotation={rotation} />
       </div>
 
       {/* "ESTAMPE DE LA SEMAINE" label */}

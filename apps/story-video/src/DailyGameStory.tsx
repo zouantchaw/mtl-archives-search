@@ -9,10 +9,12 @@ import { PhotoReveal } from "./scenes/PhotoReveal";
 import { MapChallenge } from "./scenes/MapChallenge";
 import { ScoreReveal } from "./scenes/ScoreReveal";
 import { CallToAction } from "./scenes/CallToAction";
+import type { ImageRotation } from "./lib/orientation";
 
 export const DailyGameStorySchema = z.object({
   imageUrl: z.string(),
   title: z.string(),
+  rotation: z.number().default(0),
   date: z.string(),
 });
 
@@ -21,8 +23,10 @@ export type DailyGameStoryProps = z.infer<typeof DailyGameStorySchema>;
 export const DailyGameStory: React.FC<DailyGameStoryProps> = ({
   imageUrl,
   title,
+  rotation: rawRotation = 0,
   date,
 }) => {
+  const rotation = (rawRotation as ImageRotation) || 0;
   const transitionTiming = linearTiming({
     durationInFrames: SCENES.transition,
   });
@@ -42,7 +46,7 @@ export const DailyGameStory: React.FC<DailyGameStoryProps> = ({
 
         {/* Scene 2: Photo reveal — game desktop panel style */}
         <TransitionSeries.Sequence durationInFrames={SCENES.photoReveal}>
-          <PhotoReveal imageUrl={imageUrl} title={title} date={date} />
+          <PhotoReveal imageUrl={imageUrl} rotation={rotation} title={title} date={date} />
         </TransitionSeries.Sequence>
 
         <TransitionSeries.Transition
@@ -52,7 +56,7 @@ export const DailyGameStory: React.FC<DailyGameStoryProps> = ({
 
         {/* Scene 3: Map challenge — pin drop on stylized map */}
         <TransitionSeries.Sequence durationInFrames={SCENES.mapChallenge}>
-          <MapChallenge imageUrl={imageUrl} date={date} />
+          <MapChallenge imageUrl={imageUrl} rotation={rotation} date={date} />
         </TransitionSeries.Sequence>
 
         <TransitionSeries.Transition

@@ -9,10 +9,13 @@ import { PhotoShowcase } from "./scenes/PhotoShowcase";
 import { WallCarousel } from "./scenes/WallCarousel";
 import { PricingCta } from "./scenes/PricingCta";
 
+import type { ImageRotation } from "./lib/orientation";
+
 export const PrintOfTheWeekSchema = z.object({
   imageUrl: z.string(),
   title: z.string(),
   date: z.string(),
+  rotation: z.number().default(0),
 });
 
 export type PrintOfTheWeekProps = z.infer<typeof PrintOfTheWeekSchema>;
@@ -64,20 +67,22 @@ export const PrintOfTheWeekSquare: React.FC<PrintOfTheWeekProps> = ({
   imageUrl,
   title,
   date,
+  rotation: rawRotation = 0,
 }) => {
+  const rotation = (rawRotation as ImageRotation) || 0;
   const timing = linearTiming({ durationInFrames: T });
 
   return (
     <AbsoluteFill>
       <TransitionSeries>
         <TransitionSeries.Sequence durationInFrames={SQUARE_SCENES.intro}>
-          <PrintIntro imageUrl={imageUrl} />
+          <PrintIntro imageUrl={imageUrl} rotation={rotation} />
         </TransitionSeries.Sequence>
 
         <TransitionSeries.Transition presentation={fade()} timing={timing} />
 
         <TransitionSeries.Sequence durationInFrames={SQUARE_SCENES.showcase}>
-          <PhotoShowcase imageUrl={imageUrl} title={title} date={date} />
+          <PhotoShowcase imageUrl={imageUrl} rotation={rotation} title={title} date={date} />
         </TransitionSeries.Sequence>
 
         <TransitionSeries.Transition presentation={fade()} timing={timing} />
@@ -85,6 +90,7 @@ export const PrintOfTheWeekSquare: React.FC<PrintOfTheWeekProps> = ({
         <TransitionSeries.Sequence durationInFrames={SQUARE_SCENES.wallCarousel}>
           <WallCarousel
             imageUrl={imageUrl}
+            rotation={rotation}
             stops={WALL_STOPS}
             sizeScale={0.85}
           />
@@ -106,14 +112,16 @@ export const PrintOfTheWeekStory: React.FC<PrintOfTheWeekProps> = ({
   imageUrl,
   title,
   date,
+  rotation: rawRotation = 0,
 }) => {
+  const rotation = (rawRotation as ImageRotation) || 0;
   const timing = linearTiming({ durationInFrames: T });
 
   return (
     <AbsoluteFill>
       <TransitionSeries>
         <TransitionSeries.Sequence durationInFrames={STORY_SCENES.intro}>
-          <PrintIntro imageUrl={imageUrl} />
+          <PrintIntro imageUrl={imageUrl} rotation={rotation} />
         </TransitionSeries.Sequence>
 
         <TransitionSeries.Transition presentation={fade()} timing={timing} />
@@ -121,6 +129,7 @@ export const PrintOfTheWeekStory: React.FC<PrintOfTheWeekProps> = ({
         <TransitionSeries.Sequence durationInFrames={STORY_SCENES.showcase}>
           <PhotoShowcase
             imageUrl={imageUrl}
+            rotation={rotation}
             title={title}
             date={date}
             isStory
@@ -132,6 +141,7 @@ export const PrintOfTheWeekStory: React.FC<PrintOfTheWeekProps> = ({
         <TransitionSeries.Sequence durationInFrames={STORY_SCENES.wallCarousel}>
           <WallCarousel
             imageUrl={imageUrl}
+            rotation={rotation}
             stops={WALL_STOPS}
             sizeScale={0.85}
           />

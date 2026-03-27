@@ -5,19 +5,21 @@ import {
   useVideoConfig,
   spring,
   interpolate,
-  Img,
 } from "remotion";
 import { colors, STORY_WIDTH } from "../lib/brand";
 import { spectral, ibmPlexMono } from "../lib/fonts";
 import { GameHeader } from "../components/GameHeader";
+import { OrientedImg } from "../components/OrientedImg";
+import type { ImageRotation } from "../lib/orientation";
 
 type Props = {
   imageUrl: string;
+  rotation?: ImageRotation;
   title: string;
   date: string;
 };
 
-export const PhotoReveal: React.FC<Props> = ({ imageUrl, title, date }) => {
+export const PhotoReveal: React.FC<Props> = ({ imageUrl, title, date, rotation = 0 }) => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
 
@@ -106,15 +108,9 @@ export const PhotoReveal: React.FC<Props> = ({ imageUrl, title, date }) => {
             backgroundColor: "rgba(255,255,255,0.08)",
           }}
         >
-          <Img
-            src={imageUrl}
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              transform: `scale(${kenBurnsScale}) translateY(${kenBurnsDrift}px)`,
-            }}
-          />
+          <div style={{ width: "100%", height: "100%", transform: `scale(${kenBurnsScale}) translateY(${kenBurnsDrift}px)` }}>
+            <OrientedImg src={imageUrl} rotation={rotation} />
+          </div>
         </div>
 
         {/* Metadata — matches game desktop panel text layout */}

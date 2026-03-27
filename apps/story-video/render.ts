@@ -26,6 +26,7 @@ type PhotoRecord = {
   description: string;
   credits: string;
   cote: string;
+  rotationDegrees: number | null;
 };
 
 type DailyResponse = {
@@ -41,6 +42,7 @@ async function fetchDailyGame(): Promise<{
   imageUrl: string;
   title: string;
   date: string;
+  rotation: number;
 }> {
   console.log("Fetching today's daily game...");
   const res = await fetch(`${API_BASE}/api/game/daily`);
@@ -50,14 +52,17 @@ async function fetchDailyGame(): Promise<{
   const data: DailyResponse = await res.json();
   const photo = data.daily.photo;
 
+  const rotation = photo.rotationDegrees || 0;
   console.log(`  Photo: ${photo.name || photo.metadataFilename}`);
   console.log(`  Date: ${photo.dateValue}`);
+  console.log(`  Rotation: ${rotation}°`);
   console.log(`  Image: ${photo.imageUrl}`);
 
   return {
     imageUrl: photo.imageUrl,
     title: photo.name || "Photo historique de Montréal",
     date: photo.dateValue || data.date,
+    rotation,
   };
 }
 
@@ -73,7 +78,7 @@ async function main() {
   const { today, out } = parseArgs();
 
   // Resolve props
-  let inputProps: { imageUrl: string; title: string; date: string };
+  let inputProps: { imageUrl: string; title: string; date: string; rotation: number };
 
   if (today) {
     inputProps = await fetchDailyGame();
@@ -82,6 +87,7 @@ async function main() {
       imageUrl: "https://res.cloudinary.com/demo/image/upload/sample.jpg",
       title: "Rue Sainte-Catherine, vue vers l'est",
       date: "vers 1930",
+      rotation: 0,
     };
     console.log("Using sample data. Pass --today to fetch the real daily game.");
   }
