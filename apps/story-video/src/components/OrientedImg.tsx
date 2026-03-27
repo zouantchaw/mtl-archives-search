@@ -3,11 +3,21 @@ import { Img } from "remotion";
 import type { ImageRotation } from "../lib/orientation";
 
 /**
- * OrientedImg — wraps Remotion's <Img> with rotation correction.
+ * OrientedImg — wraps Remotion's <Img> with orientation correction.
  *
- * For 0° or 180°, the image keeps its natural aspect ratio.
- * For 90° or 270°, the image is rotated and the container is
- * adjusted so the rotated result fills the same bounding box.
+ * Two layers of orientation handling:
+ *
+ * 1. EXIF orientation — most archive JPEGs carry an EXIF Orientation tag
+ *    (e.g. tag 6 = rotate 90° CW). We set `image-orientation: from-image`
+ *    so the browser auto-applies this. This is the default in modern
+ *    browsers but we set it explicitly to be safe in headless Chromium.
+ *
+ * 2. DB rotationDegrees — some photos have a manual rotation override
+ *    stored in the manifest. When non-zero, we apply an additional CSS
+ *    transform on top of the EXIF correction.
+ *
+ * For 90°/270° DB rotations, the image swaps width/height so we
+ * center + crop within the parent container.
  */
 type Props = {
   src: string;
@@ -16,6 +26,7 @@ type Props = {
 };
 
 export const OrientedImg: React.FC<Props> = ({ src, rotation, style }) => {
+  const needsDbRotation = rotation !== 0;
   const needsSwap = rotation === 90 || rotation === 270;
 
   return (
@@ -31,8 +42,9 @@ export const OrientedImg: React.FC<Props> = ({ src, rotation, style }) => {
       <Img
         src={src}
         style={{
-          // When rotated 90/270, the image's natural w/h swap.
-          // We render it larger then crop via the overflow:hidden parent.
+          // Always respect EXIF orientation from the JPEG
+          imageOrientation: "from-image" as React.CSSProperties["imageOrientation"],
+          // DB rotation override
           ...(needsSwap
             ? {
                 position: "absolute",
@@ -48,8 +60,9 @@ export const OrientedImg: React.FC<Props> = ({ src, rotation, style }) => {
                 width: "100%",
                 height: "100%",
                 objectFit: "cover",
-                transform:
-                  rotation === 0 ? undefined : `rotate(${rotation}deg)`,
+                transform: needsDbRotation
+                  ? `rotate(${rotation}deg)`
+                  : undefined,
               }),
         }}
       />
