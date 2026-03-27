@@ -12,6 +12,9 @@ import fs from "node:fs";
 import { bundle } from "@remotion/bundler";
 import { renderMedia, selectComposition } from "@remotion/renderer";
 import { STORY_WIDTH, STORY_HEIGHT, FPS, TOTAL_DURATION } from "./src/lib/brand";
+import { detectOrientation, stripExifAndCache } from "./src/lib/detect-orientation";
+import dotenv from "dotenv";
+dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
 const API_BASE =
   process.env.API_BASE || "https://mtl-archives-worker.wiel.workers.dev";
@@ -52,18 +55,28 @@ async function fetchDailyGame(): Promise<{
   const data: DailyResponse = await res.json();
   const photo = data.daily.photo;
 
-  // Only trust the DB rotationDegrees field (manually verified).
-  // EXIF tags on archive scans are unreliable — OrientedImg sets
-  // image-orientation: none to ignore them.
-  const rotation = photo.rotationDegrees || 0;
-
   console.log(`  Photo: ${photo.name || photo.metadataFilename}`);
   console.log(`  Date: ${photo.dateValue}`);
-  console.log(`  Rotation: ${rotation}°`);
   console.log(`  Image: ${photo.imageUrl}`);
 
+  // Strip EXIF to prevent Chromium from applying bad orientation tags
+  const publicDir = path.resolve(__dirname, "public");
+  console.log("  Stripping EXIF and caching locally...");
+  const staticKey = await stripExifAndCache(photo.imageUrl, publicDir);
+  const cleanImageUrl = staticKey; // OrientedImg resolves via staticFile()
+
+  // Use DB rotationDegrees if set, otherwise ask Gemini to detect
+  let rotation = photo.rotationDegrees || 0;
+  if (!rotation) {
+    console.log("  Detecting orientation via Gemini...");
+    rotation = await detectOrientation(photo.imageUrl);
+    if (rotation) console.log(`  Gemini detected: needs ${rotation}° rotation`);
+    else console.log("  Gemini: image is correctly oriented");
+  }
+  console.log(`  Rotation: ${rotation}°`);
+
   return {
-    imageUrl: photo.imageUrl,
+    imageUrl: cleanImageUrl,
     title: photo.name || "Photo historique de Montréal",
     date: photo.dateValue || data.date,
     rotation,

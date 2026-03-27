@@ -2,3 +2,5 @@
 # at render time. Don't duplicate them in git.
 public/images/backgrounds/
 public/images/items/
+# EXIF-stripped image cache (generated at render time)
+public/cached/

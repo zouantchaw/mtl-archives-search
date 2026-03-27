@@ -13,6 +13,9 @@ import { bundle } from "@remotion/bundler";
 import { renderMedia, selectComposition } from "@remotion/renderer";
 import { FPS } from "./src/lib/brand";
 import { SQUARE_DURATION, STORY_DURATION } from "./src/PrintOfTheWeek";
+import { detectOrientation, stripExifAndCache } from "./src/lib/detect-orientation";
+import dotenv from "dotenv";
+dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
 const API_BASE =
   process.env.API_BASE || "https://mtl-archives-worker.wiel.workers.dev";
@@ -27,15 +30,26 @@ type PhotoRecord = {
 
 type PrintProps = { imageUrl: string; title: string; date: string; rotation: number };
 
-function toProps(photo: PhotoRecord): PrintProps {
-  // Only trust DB rotationDegrees (manually verified).
-  // EXIF tags on archive scans are unreliable — OrientedImg sets
-  // image-orientation: none to ignore them.
+async function toProps(photo: PhotoRecord): Promise<PrintProps> {
+  // Strip EXIF to prevent Chromium from applying bad orientation tags
+  const publicDir = path.resolve(__dirname, "public");
+  console.log("  Stripping EXIF and caching locally...");
+  const staticKey = await stripExifAndCache(photo.imageUrl, publicDir);
+  const cleanImageUrl = staticKey; // OrientedImg resolves via staticFile()
+
+  // Use DB rotationDegrees if set, otherwise ask Gemini to detect
+  let rotation = photo.rotationDegrees || 0;
+  if (!rotation) {
+    console.log("  Detecting orientation via Gemini...");
+    rotation = await detectOrientation(photo.imageUrl);
+    if (rotation) console.log(`  Gemini detected: needs ${rotation}° rotation`);
+    else console.log("  Gemini: image is correctly oriented");
+  }
   return {
-    imageUrl: photo.imageUrl,
+    imageUrl: cleanImageUrl,
     title: photo.name || "Photo historique de Montréal",
     date: photo.dateValue || "",
-    rotation: photo.rotationDegrees || 0,
+    rotation,
   };
 }
 

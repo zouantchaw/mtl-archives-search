@@ -1,14 +1,16 @@
 import React from "react";
-import { Img } from "remotion";
+import { Img, staticFile } from "remotion";
 import type { ImageRotation } from "../lib/orientation";
 
 /**
- * OrientedImg — wraps Remotion's <Img> with rotation correction.
+ * OrientedImg — wraps Remotion's <Img> with orientation correction.
  *
- * Archive scans often have incorrect EXIF Orientation tags, so we
- * set `image-orientation: none` to ignore EXIF entirely. The only
- * rotation we trust is the DB `rotationDegrees` field, which is
- * manually verified.
+ * The render scripts strip EXIF from archive images and place them
+ * in public/cached/. If `src` doesn't start with "http", it's
+ * treated as a staticFile key.
+ *
+ * The `rotation` prop comes from either DB rotationDegrees or
+ * Gemini vision detection.
  */
 type Props = {
   src: string;
@@ -18,6 +20,8 @@ type Props = {
 
 export const OrientedImg: React.FC<Props> = ({ src, rotation, style }) => {
   const needsSwap = rotation === 90 || rotation === 270;
+  // If src is a local static key (not a URL), resolve via staticFile
+  const resolvedSrc = src.startsWith("http") ? src : staticFile(src);
 
   return (
     <div
@@ -30,10 +34,8 @@ export const OrientedImg: React.FC<Props> = ({ src, rotation, style }) => {
       }}
     >
       <Img
-        src={src}
+        src={resolvedSrc}
         style={{
-          // Ignore EXIF — archive scans have unreliable orientation tags
-          imageOrientation: "none" as React.CSSProperties["imageOrientation"],
           ...(needsSwap
             ? {
                 position: "absolute",
