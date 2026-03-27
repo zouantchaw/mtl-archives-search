@@ -3,21 +3,15 @@ import { Img } from "remotion";
 import type { ImageRotation } from "../lib/orientation";
 
 /**
- * OrientedImg — wraps Remotion's <Img> with orientation correction.
+ * OrientedImg — wraps Remotion's <Img> with explicit orientation control.
  *
- * Two layers of orientation handling:
+ * The render scripts resolve the final rotation (from DB rotationDegrees
+ * or EXIF Orientation tag) into a single 0/90/180/270 value before
+ * passing it here.
  *
- * 1. EXIF orientation — most archive JPEGs carry an EXIF Orientation tag
- *    (e.g. tag 6 = rotate 90° CW). We set `image-orientation: from-image`
- *    so the browser auto-applies this. This is the default in modern
- *    browsers but we set it explicitly to be safe in headless Chromium.
- *
- * 2. DB rotationDegrees — some photos have a manual rotation override
- *    stored in the manifest. When non-zero, we apply an additional CSS
- *    transform on top of the EXIF correction.
- *
- * For 90°/270° DB rotations, the image swaps width/height so we
- * center + crop within the parent container.
+ * We set `image-orientation: none` to DISABLE the browser's automatic
+ * EXIF rotation, then apply our own CSS transform. This avoids double-
+ * rotation (browser EXIF + our transform both firing).
  */
 type Props = {
   src: string;
@@ -26,7 +20,6 @@ type Props = {
 };
 
 export const OrientedImg: React.FC<Props> = ({ src, rotation, style }) => {
-  const needsDbRotation = rotation !== 0;
   const needsSwap = rotation === 90 || rotation === 270;
 
   return (
@@ -42,9 +35,8 @@ export const OrientedImg: React.FC<Props> = ({ src, rotation, style }) => {
       <Img
         src={src}
         style={{
-          // Always respect EXIF orientation from the JPEG
-          imageOrientation: "from-image" as React.CSSProperties["imageOrientation"],
-          // DB rotation override
+          // Disable browser EXIF auto-rotation — we handle it ourselves
+          imageOrientation: "none" as React.CSSProperties["imageOrientation"],
           ...(needsSwap
             ? {
                 position: "absolute",
@@ -60,9 +52,8 @@ export const OrientedImg: React.FC<Props> = ({ src, rotation, style }) => {
                 width: "100%",
                 height: "100%",
                 objectFit: "cover",
-                transform: needsDbRotation
-                  ? `rotate(${rotation}deg)`
-                  : undefined,
+                transform:
+                  rotation === 0 ? undefined : `rotate(${rotation}deg)`,
               }),
         }}
       />
