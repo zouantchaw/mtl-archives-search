@@ -13,11 +13,11 @@ import { bundle } from "@remotion/bundler";
 import { renderMedia, selectComposition } from "@remotion/renderer";
 import { STORY_WIDTH, STORY_HEIGHT, FPS, TOTAL_DURATION } from "./src/lib/brand";
 import { detectOrientation, stripExifAndCache } from "./src/lib/detect-orientation";
-import dotenv from "dotenv";
-dotenv.config({ path: path.resolve(__dirname, "../../.env") });
+import { loadRepoEnv, resolveApiBase } from "./src/lib/load-env";
 
-const API_BASE =
-  process.env.API_BASE || "https://mtl-archives-worker.wiel.workers.dev";
+loadRepoEnv(path.resolve(__dirname, "../.."));
+
+const API_BASE = resolveApiBase();
 
 type PhotoRecord = {
   metadataFilename: string;

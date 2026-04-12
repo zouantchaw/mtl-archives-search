@@ -84,3 +84,8 @@ docs/analytics/january-2026.md
 *.bak
 FORWIEL.md
 apps/api/.dev.vars
+
+# Local social runtime state
+data/social/meta-token-state.json
+data/social/story-publish-log.jsonl
+.tmp_live_patch/

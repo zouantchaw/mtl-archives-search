@@ -17,35 +17,34 @@ import shutil
 import sys
 from datetime import UTC, date, datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-_env_file = REPO_ROOT / ".env"
-if _env_file.exists():
-    for raw_line in _env_file.read_text(encoding="utf-8").splitlines():
-        line = raw_line.strip()
-        if line and not line.startswith("#") and "=" in line:
-            key, _, value = line.partition("=")
-            os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+from env_loader import load_repo_env
+
+load_repo_env(REPO_ROOT)
 
 from caption import format_reel_caption, format_static_caption
 from carousel import generate_story_carousel
 from ledger import append_entry, blocked_keys, build_package_id, record_keys
 from obsidian import export_package_note
 from reel import generate_reel
-from research import DEFAULT_MODEL, generate_research_package, refresh_public_story_from_payload
+from research import DEFAULT_MODEL, GeminiRequestError, generate_research_package, refresh_public_story_from_payload
 from search import download_image, format_metadata, get_photo_by_id, get_random_images, search_images
 from story_pages import build_story_seed
 from themes import resolve_theme
 
 
-DEFAULT_OUTPUT_ROOT = Path.home() / "Desktop" / "mtl-social-fallback"
+DEFAULT_OUTPUT_ROOT = Path.home() / "Downloads" / "mtl-daily"
 DEFAULT_LEDGER_PATH = REPO_ROOT / "data" / "social" / "publish-ledger.jsonl"
 DEFAULT_OBSIDIAN_EXPORT_DIR = os.environ.get("MTL_OBSIDIAN_EXPORT_DIR")
+DEFAULT_SOCIAL_TIMEZONE = os.environ.get("MTL_SOCIAL_TIMEZONE", "").strip()
 
 
 def run_pipeline(
     *,
     run_date: date,
+    timezone_name: str | None,
     output_root: Path,
     theme_override: str | None,
     editorial_brief: str | None,
@@ -160,6 +159,7 @@ def run_pipeline(
 
     manifest_path = output_dir / "package.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    _canonicalize_manifest_paths(manifest, output_dir)
     manifest["selection_status"] = selection_status
     manifest["brand_ready"] = bool(accepted_attempt)
     manifest["reroll_attempts"] = len(attempts) - 1
@@ -167,12 +167,15 @@ def run_pipeline(
     manifest["attempts"] = attempts
     manifest["outputs"]["attempts_summary"] = str(attempts_path)
     manifest["ledger_path"] = str(ledger_path)
+    manifest["resolved_timezone"] = timezone_name
 
     inspection_path = output_dir / "inspection_summary.json"
     inspection = json.loads(inspection_path.read_text(encoding="utf-8"))
+    _canonicalize_inspection_paths(inspection, output_dir)
     inspection["selection_status"] = selection_status
     inspection["reroll_attempts"] = len(attempts) - 1
     inspection["attempts_considered"] = len(attempts)
+    inspection["resolved_timezone"] = timezone_name
     inspection_path.write_text(
         json.dumps(inspection, indent=2, ensure_ascii=False),
         encoding="utf-8",
@@ -502,6 +505,61 @@ def _append_generation_ledger(
     append_entry(ledger_path, entry)
 
 
+def _canonicalize_manifest_paths(manifest: dict, output_dir: Path) -> None:
+    outputs = manifest.get("outputs") or {}
+    file_map = {
+        "research": "research.json",
+        "research_full": "research_full.json",
+        "metadata": "metadata.txt",
+        "instagram_caption": "caption_instagram.txt",
+        "facebook_caption": "caption_facebook.txt",
+        "inspection_summary": "inspection_summary.json",
+        "inspection_report": "inspection_report.txt",
+        "story_seed": "story_seed.json",
+    }
+    for key, filename in file_map.items():
+        candidate = output_dir / filename
+        if candidate.exists():
+            outputs[key] = str(candidate)
+
+    carousel_dir = output_dir / "instagram_carousel"
+    outputs["instagram_carousel"] = (
+        [str(path) for path in sorted(carousel_dir.glob("*")) if path.is_file()]
+        if carousel_dir.exists()
+        else []
+    )
+
+    reel_path = output_dir / "facebook_reel.mp4"
+    outputs["facebook_reel"] = str(reel_path) if reel_path.exists() else ""
+    manifest["outputs"] = outputs
+
+    source_image = output_dir / "source.jpg"
+    if source_image.exists():
+        manifest["source_image"] = str(source_image)
+
+
+def _canonicalize_inspection_paths(inspection: dict, output_dir: Path) -> None:
+    selected = inspection.get("selected_photo") or {}
+    source_image = output_dir / "source.jpg"
+    if source_image.exists():
+        selected["source_image"] = str(source_image)
+    inspection["selected_photo"] = selected
+
+    reel = inspection.get("reel") or {}
+    reel_path = output_dir / "facebook_reel.mp4"
+    reel["output"] = str(reel_path) if reel_path.exists() else ""
+    inspection["reel"] = reel
+
+    instagram = inspection.get("instagram") or {}
+    carousel_dir = output_dir / "instagram_carousel"
+    instagram["slides"] = (
+        [str(path) for path in sorted(carousel_dir.glob("*")) if path.is_file()]
+        if carousel_dir.exists()
+        else []
+    )
+    inspection["instagram"] = instagram
+
+
 def _selection_status(*, fixed_source: bool, accepted_attempt: dict | None, selected_attempt: dict) -> str:
     if accepted_attempt and accepted_attempt["attempt"] == 1:
         return "accepted_first_candidate"
@@ -693,6 +751,8 @@ def _build_inspection_summary(
         "theme": theme_label,
         "theme_description": theme_description,
         "brand_ready": bool(story_quality.get("pass", False)),
+        "location_confidence": research.get("location_confidence") or "normal",
+        "exact_location_public_safe": bool(research.get("exact_location_public_safe", True)),
         "selected_photo": {
             "title": (source.get("record") or {}).get("name"),
             "filename": (source.get("record") or {}).get("filename"),
@@ -731,9 +791,12 @@ def _format_inspection_report(summary: dict) -> str:
     obsidian = summary.get("obsidian", {})
     lines = [
         f"Date: {summary.get('date')}",
+        f"Resolved timezone: {summary.get('resolved_timezone') or 'Unknown'}",
         f"Theme: {summary.get('theme')}",
         f"Theme description: {summary.get('theme_description')}",
         f"Brand ready: {'yes' if summary.get('brand_ready') else 'no'}",
+        f"Location confidence: {summary.get('location_confidence') or 'Unknown'}",
+        f"Exact location public-safe: {'yes' if summary.get('exact_location_public_safe') else 'no'}",
         f"Selection status: {summary.get('selection_status') or 'Unknown'}",
         f"Reroll attempts: {summary.get('reroll_attempts') if summary.get('reroll_attempts') is not None else 'Unknown'}",
         "",
@@ -778,9 +841,97 @@ def _format_inspection_report(summary: dict) -> str:
     return "\n".join(lines).strip() + "\n"
 
 
-def _parse_date(value: str | None) -> date:
+def _package_ready_phrase(manifest: dict) -> str:
+    run_date = manifest.get("date") or "Unknown date"
+    day = str(manifest.get("day") or "").strip()
+    if day:
+        return f"{day.capitalize()} package is ready locally."
+    return f"Package for {run_date} is ready locally."
+
+
+def _story_source_label(manifest: dict) -> str:
+    selected = manifest.get("selected_photo") or {}
+    title = (
+        selected.get("name")
+        or selected.get("title")
+        or selected.get("filename")
+        or selected.get("imageFilename")
+        or "Unknown archive image"
+    )
+    return str(title).strip()
+
+
+def _format_cli_summary(manifest: dict) -> str:
+    outputs = manifest.get("outputs") or {}
+    theme = manifest.get("theme") or "Unknown theme"
+    source = _story_source_label(manifest)
+    package_dir = Path(outputs.get("research", "")).parent if outputs.get("research") else None
+    lines = [
+        _package_ready_phrase(manifest),
+        f"It's a {theme} package built around {source}.",
+        "",
+        "Main outputs:",
+    ]
+
+    if package_dir:
+        lines.append(f"- full package: {package_dir}")
+    if outputs.get("facebook_reel"):
+        lines.append(f"- FB reel: {outputs['facebook_reel']}")
+    if outputs.get("instagram_caption"):
+        lines.append(f"- IG caption: {outputs['instagram_caption']}")
+    if outputs.get("facebook_caption"):
+        lines.append(f"- FB caption: {outputs['facebook_caption']}")
+    if outputs.get("inspection_report"):
+        lines.append(f"- inspection report: {outputs['inspection_report']}")
+
+    carousel = outputs.get("instagram_carousel") or []
+    if carousel:
+        lines.extend(["", "Carousel slides:"])
+        for index, slide in enumerate(carousel, start=1):
+            lines.append(f"- slide {index}: {slide}")
+        lines.extend(["", "Preview:", carousel[0]])
+
+    return "\n".join(lines).strip()
+
+
+def _format_gemini_failure(*, run_date: date, timezone_name: str | None, output_root: Path, exc: Exception) -> str:
+    message = str(exc).strip() or "Unknown Gemini request failure."
+    lines = [
+        "Today's social run failed during Gemini research.",
+        "",
+        f"Run date: {run_date.isoformat()}",
+        f"Resolved timezone: {timezone_name or 'Unknown'}",
+        f"Output root: {output_root}",
+        "",
+        "Reason:",
+        f"- {message}",
+        "",
+        "What to do next:",
+        "- Check that this Mac has working network access to generativelanguage.googleapis.com.",
+        "- If you already have a saved package, rerun with `--package-dir ... --reuse-research`.",
+        "- If the network outage persists, fall back to a manual curated package instead of trusting a partial run.",
+    ]
+    return "\n".join(lines).strip()
+
+
+def _resolve_timezone(value: str | None) -> ZoneInfo:
+    if value and value.strip():
+        return ZoneInfo(value.strip())
+    if DEFAULT_SOCIAL_TIMEZONE:
+        return ZoneInfo(DEFAULT_SOCIAL_TIMEZONE)
+
+    local_tz = datetime.now().astimezone().tzinfo
+    if local_tz is None:
+        return ZoneInfo("UTC")
+    key = getattr(local_tz, "key", None)
+    if key:
+        return ZoneInfo(str(key))
+    return ZoneInfo("UTC")
+
+
+def _parse_date(value: str | None, *, timezone_name: str | None) -> date:
     if not value:
-        return date.today()
+        return datetime.now(_resolve_timezone(timezone_name)).date()
     return datetime.strptime(value, "%Y-%m-%d").date()
 
 
@@ -798,6 +949,13 @@ def main() -> None:
     parser.add_argument("--brief", help="Additional editorial brief")
     parser.add_argument("--model", default=DEFAULT_MODEL, help=f"Gemini model (default: {DEFAULT_MODEL})")
     parser.add_argument("--output-root", help=f"Output root directory (default: {DEFAULT_OUTPUT_ROOT})")
+    parser.add_argument(
+        "--timezone",
+        help=(
+            "Timezone used when resolving 'today' if --date is omitted "
+            f"(default: env MTL_SOCIAL_TIMEZONE or local system timezone{f' / {DEFAULT_SOCIAL_TIMEZONE}' if DEFAULT_SOCIAL_TIMEZONE else ''})"
+        ),
+    )
     parser.add_argument("--no-reel", action="store_true", help="Skip Facebook reel generation")
     parser.add_argument("--no-carousel", action="store_true", help="Skip Instagram carousel generation")
     parser.add_argument("--research-only", action="store_true", help="Skip both renderers and only write package files")
@@ -806,15 +964,21 @@ def main() -> None:
     parser.add_argument("--ledger-path", help=f"Publish/generation ledger path (default: {DEFAULT_LEDGER_PATH})")
     parser.add_argument("--cooldown-days", type=int, default=90, help="Skip recently used archive images for this many days when auto-selecting")
     parser.add_argument("--obsidian-dir", help="Optional Obsidian export directory for mirrored package notes")
+    parser.add_argument("--json", action="store_true", help="Print the final manifest as JSON instead of the operator summary")
     args = parser.parse_args()
 
     if args.research_only:
         args.no_reel = True
         args.no_carousel = True
 
-    manifest = run_pipeline(
-        run_date=_parse_date(args.date),
-        output_root=Path(args.output_root).expanduser() if args.output_root else DEFAULT_OUTPUT_ROOT,
+    resolved_timezone = _resolve_timezone(args.timezone).key
+    run_date = _parse_date(args.date, timezone_name=args.timezone)
+    output_root = Path(args.output_root).expanduser() if args.output_root else DEFAULT_OUTPUT_ROOT
+    try:
+        manifest = run_pipeline(
+            run_date=run_date,
+        timezone_name=resolved_timezone,
+        output_root=output_root,
         theme_override=args.theme,
         editorial_brief=args.brief,
         query=args.query,
@@ -836,8 +1000,22 @@ def main() -> None:
             if args.obsidian_dir
             else (Path(DEFAULT_OBSIDIAN_EXPORT_DIR).expanduser() if DEFAULT_OBSIDIAN_EXPORT_DIR else None)
         ),
-    )
-    print(json.dumps(manifest, indent=2, ensure_ascii=False))
+        )
+    except GeminiRequestError as exc:
+        print(
+            _format_gemini_failure(
+                run_date=run_date,
+                timezone_name=resolved_timezone,
+                output_root=output_root,
+                exc=exc,
+            ),
+            file=sys.stderr,
+        )
+        sys.exit(2)
+    if args.json:
+        print(json.dumps(manifest, indent=2, ensure_ascii=False))
+    else:
+        print(_format_cli_summary(manifest))
 
 
 if __name__ == "__main__":

@@ -14,11 +14,11 @@ import { renderMedia, selectComposition } from "@remotion/renderer";
 import { FPS } from "./src/lib/brand";
 import { SQUARE_DURATION, STORY_DURATION } from "./src/PrintOfTheWeek";
 import { detectOrientation, stripExifAndCache } from "./src/lib/detect-orientation";
-import dotenv from "dotenv";
-dotenv.config({ path: path.resolve(__dirname, "../../.env") });
+import { loadRepoEnv, resolveApiBase } from "./src/lib/load-env";
 
-const API_BASE =
-  process.env.API_BASE || "https://mtl-archives-worker.wiel.workers.dev";
+loadRepoEnv(path.resolve(__dirname, "../.."));
+
+const API_BASE = resolveApiBase();
 
 type PhotoRecord = {
   metadataFilename: string;

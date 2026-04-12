@@ -4,10 +4,10 @@
   "private": true,
   "scripts": {
     "preview": "remotion studio",
-    "render": "npx tsx render.ts",
-    "render:today": "npx tsx render.ts --today",
-    "render:print": "npx tsx render-print.ts",
-    "render:print:photo": "npx tsx render-print.ts --photo",
+    "render": "node ../../scripts/run-tsx.mjs ./render.ts",
+    "render:today": "node ../../scripts/run-tsx.mjs ./render.ts --today",
+    "render:print": "node ../../scripts/run-tsx.mjs ./render-print.ts",
+    "render:print:photo": "node ../../scripts/run-tsx.mjs ./render-print.ts --photo",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -10,12 +10,19 @@ import urllib.request
 from datetime import UTC, datetime
 from pathlib import Path
 
+from env_loader import load_repo_env
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+load_repo_env(REPO_ROOT)
+
 DEFAULT_STATE_PATH = Path(
     os.environ.get("MTL_META_TOKEN_STATE", str(REPO_ROOT / "data" / "social" / "meta-token-state.json"))
 ).expanduser()
 GRAPH_VERSION = os.environ.get("META_GRAPH_VERSION", "v25.0")
+DEFAULT_APP_ID = os.environ.get("META_APP_ID", "").strip()
+DEFAULT_APP_SECRET = os.environ.get("META_APP_SECRET", "").strip()
+DEFAULT_SHORT_LIVED_USER_TOKEN = os.environ.get("META_SHORT_LIVED_USER_TOKEN", "").strip()
+DEFAULT_PAGE_ID = os.environ.get("META_PAGE_ID", "").strip()
 
 
 def _fail(message: str) -> None:
@@ -118,9 +125,51 @@ def _load_state(path: Path) -> dict:
         _fail(f"Invalid JSON in state file {path}: {exc}")
 
 
+def _state_app_id(path: Path) -> str:
+    state = _load_state(path)
+    return str(((state.get("app") or {}).get("id")) or "").strip()
+
+
+def _resolve_required(*values: str | None, label: str, help_hint: str) -> str:
+    for value in values:
+        if value and str(value).strip():
+            return str(value).strip()
+    _fail(f"Missing {label}. {help_hint}")
+
+
 def _write_state(path: Path, payload: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def _normalize_granular_scopes(items: list[dict] | list[str] | None) -> list[dict] | list[str]:
+    if not items:
+        return []
+    if all(isinstance(item, str) for item in items):
+        return sorted(str(item) for item in items)
+
+    normalized: list[dict] = []
+    for item in items:
+        if not isinstance(item, dict):
+            normalized.append({"scope": str(item)})
+            continue
+        normalized.append(
+            {
+                "scope": str(item.get("scope") or ""),
+                "target_ids": sorted(str(value) for value in (item.get("target_ids") or [])),
+            }
+        )
+    normalized.sort(key=lambda item: (item.get("scope") or "", ",".join(item.get("target_ids") or [])))
+    return normalized
+
+
+def _extract_page_tasks(page_debug: dict) -> list[str]:
+    tasks: set[str] = set()
+    for scope in page_debug.get("granular_scopes") or []:
+        if isinstance(scope, dict) and str(scope.get("scope") or "") == "pages_show_list":
+            for value in scope.get("target_ids") or []:
+                tasks.add(str(value))
+    return sorted(tasks)
 
 
 def bootstrap_state(
@@ -161,13 +210,13 @@ def bootstrap_state(
             "is_valid": bool(user_debug.get("is_valid")),
             "user_id": str(user_debug.get("user_id") or ""),
             "scopes": sorted(user_debug.get("scopes") or []),
-            "granular_scopes": user_debug.get("granular_scopes") or [],
+            "granular_scopes": _normalize_granular_scopes(user_debug.get("granular_scopes") or []),
         },
         "page": {
             "id": str(page.get("id") or ""),
             "name": page.get("name"),
             "access_token": page_access_token,
-            "tasks": sorted(page_debug.get("granular_scopes") or []),
+            "tasks": _extract_page_tasks(page_debug),
         },
         "instagram": {
             "id": str(instagram_business.get("id") or ""),
@@ -217,13 +266,13 @@ def status_state(
         "is_valid": bool(user_debug.get("is_valid")),
         "user_id": str(user_debug.get("user_id") or ""),
         "scopes": sorted(user_debug.get("scopes") or []),
-        "granular_scopes": user_debug.get("granular_scopes") or [],
+        "granular_scopes": _normalize_granular_scopes(user_debug.get("granular_scopes") or []),
     }
     state["page"] = {
         "id": str(page.get("id") or ""),
         "name": page.get("name"),
         "access_token": refreshed_page_token,
-        "tasks": sorted(page_debug.get("granular_scopes") or []),
+        "tasks": _extract_page_tasks(page_debug),
     }
     state["instagram"] = {
         "id": str(instagram_business.get("id") or ""),
@@ -271,9 +320,9 @@ def main() -> None:
         "bootstrap",
         help="Exchange a short-lived user token into a long-lived user token and derive the page token",
     )
-    bootstrap_parser.add_argument("--app-id", required=True)
-    bootstrap_parser.add_argument("--app-secret", required=True)
-    bootstrap_parser.add_argument("--short-token", required=True, help="Short-lived user token from Graph API Explorer or login flow")
+    bootstrap_parser.add_argument("--app-id")
+    bootstrap_parser.add_argument("--app-secret")
+    bootstrap_parser.add_argument("--short-token", help="Short-lived user token from Graph API Explorer or login flow")
     bootstrap_parser.add_argument("--page-id", help="Optional page id if more than one page is returned")
     bootstrap_parser.add_argument("--state-path", default=str(DEFAULT_STATE_PATH))
     bootstrap_parser.add_argument("--print-env", action="store_true", help="Also print shell-friendly env lines")
@@ -282,8 +331,8 @@ def main() -> None:
         "status",
         help="Validate the stored user/page tokens, refresh page linkage, and print expiry status",
     )
-    status_parser.add_argument("--app-id", required=True)
-    status_parser.add_argument("--app-secret", required=True)
+    status_parser.add_argument("--app-id")
+    status_parser.add_argument("--app-secret")
     status_parser.add_argument("--state-path", default=str(DEFAULT_STATE_PATH))
     status_parser.add_argument("--warn-days", type=int, default=14, help="Warn when the user token expires within this many days")
     status_parser.add_argument("--print-env", action="store_true", help="Also print shell-friendly env lines")
@@ -292,11 +341,29 @@ def main() -> None:
     state_path = Path(args.state_path).expanduser()
 
     if args.command == "bootstrap":
+        app_id = _resolve_required(
+            args.app_id,
+            DEFAULT_APP_ID,
+            label="Meta app id",
+            help_hint="Set META_APP_ID in .env.local/.env or pass --app-id.",
+        )
+        app_secret = _resolve_required(
+            args.app_secret,
+            DEFAULT_APP_SECRET,
+            label="Meta app secret",
+            help_hint="Set META_APP_SECRET in .env.local/.env or pass --app-secret.",
+        )
+        short_token = _resolve_required(
+            args.short_token,
+            DEFAULT_SHORT_LIVED_USER_TOKEN,
+            label="short-lived Meta user token",
+            help_hint="Set META_SHORT_LIVED_USER_TOKEN in .env.local/.env or pass --short-token.",
+        )
         payload = bootstrap_state(
-            app_id=args.app_id,
-            app_secret=args.app_secret,
-            short_lived_token=args.short_token,
-            page_id=args.page_id,
+            app_id=app_id,
+            app_secret=app_secret,
+            short_lived_token=short_token,
+            page_id=args.page_id or DEFAULT_PAGE_ID or None,
             state_path=state_path,
         )
         result = {
@@ -318,9 +385,22 @@ def main() -> None:
         return
 
     if args.command == "status":
+        app_id = _resolve_required(
+            args.app_id,
+            DEFAULT_APP_ID,
+            _state_app_id(state_path),
+            label="Meta app id",
+            help_hint="Set META_APP_ID in .env.local/.env, bootstrap first, or pass --app-id.",
+        )
+        app_secret = _resolve_required(
+            args.app_secret,
+            DEFAULT_APP_SECRET,
+            label="Meta app secret",
+            help_hint="Set META_APP_SECRET in .env.local/.env or pass --app-secret.",
+        )
         payload = status_state(
-            app_id=args.app_id,
-            app_secret=args.app_secret,
+            app_id=app_id,
+            app_secret=app_secret,
             state_path=state_path,
         )
         expiry = ((payload.get("user_token") or {}).get("expires_at")) or None
