@@ -172,6 +172,10 @@ npm run social:analyze-content -- --input data/social/2026-03-31-q1-refresh/comb
 # Join daily Meta export CSVs to the post snapshot for day-level correlation
 npm run social:analyze-daily -- --posts-input data/social/2026-03-31-q1-refresh/combined_posts.json --export-dir /absolute/path/to/Recents --export-dir /absolute/path/to/marchstats --fetch-facebook-live --output-prefix data/social/2026-03-31-analysis-q1-daily
 
+# Generate a review-only autoresearch shortlist for the resolved daily theme
+npm run social:autoresearch-shortlist -- --theme friday --limit 20
+npm run social:autoresearch-shortlist -- --theme "civic memory" --theme-min-score 0.2
+
 # Check Story publishing capabilities and prepare/publish an IG or Facebook Page Story
 npm run social:story-status
 npm run social:publish-story -- --platform instagram --story-path /absolute/path/to/story.mp4 --prepare-only

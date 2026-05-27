@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from collections import Counter, defaultdict
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
+
+from themes import ThemeSpec, resolve_theme
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -35,6 +38,142 @@ CANDIDATE_BONUSES = {
     "rare_find": 0.24,
     "sequence": 0.2,
     "print": 0.1,
+}
+THEME_PROFILES = {
+    "mystery": {
+        "keywords": {
+            "clue",
+            "hidden",
+            "mystery",
+            "secret",
+            "uncertain",
+            "unknown",
+            "forgotten",
+            "rare",
+            "unusual",
+            "enigmatic",
+        },
+        "themes": {"urban_scene", "architecture", "institutional"},
+        "social_tags": {"uncertain", "architecture", "street_scene", "rare_find"},
+        "candidate_types": {"rare_find"},
+        "collections": {"editorial-oddities", "sequence-"},
+    },
+    "erased history": {
+        "keywords": {
+            "demolished",
+            "displaced",
+            "erased",
+            "gone",
+            "lost",
+            "overwritten",
+            "rail",
+            "industrial",
+            "construction",
+            "infrastructure",
+            "urban renewal",
+        },
+        "themes": {"industrial", "infrastructure", "urban_change", "waterfront_industry"},
+        "social_tags": {"industrial", "infrastructure", "before_after", "demolition", "street_scene"},
+        "candidate_types": {"sequence", "rare_find"},
+        "collections": {"waterfront-industry", "sequence-", "industrial"},
+    },
+    "beauty": {
+        "keywords": {
+            "beautiful",
+            "beauty",
+            "composition",
+            "atmosphere",
+            "snow",
+            "winter",
+            "trees",
+            "park",
+            "river",
+            "view",
+            "landscape",
+        },
+        "themes": {"park_green_space", "waterfront", "landmark", "streetscape"},
+        "social_tags": {"parks", "waterfront", "architecture", "winter", "landscape"},
+        "candidate_types": {"social", "print"},
+        "collections": {"parks", "waterfront", "landmark"},
+    },
+    "detective": {
+        "keywords": {
+            "clue",
+            "detective",
+            "sign",
+            "signage",
+            "street",
+            "corner",
+            "architecture",
+            "facade",
+            "intersection",
+            "tram",
+            "streetcar",
+            "wires",
+        },
+        "themes": {"urban_scene", "architecture", "transportation", "infrastructure"},
+        "social_tags": {"street_scene", "architecture", "transportation", "signage"},
+        "candidate_types": {"social", "sequence", "rare_find"},
+        "collections": {"sequence-", "street", "transport"},
+    },
+    "nostalgia": {
+        "keywords": {
+            "neighborhood",
+            "children",
+            "family",
+            "pool",
+            "park",
+            "sidewalk",
+            "balcony",
+            "triplex",
+            "street life",
+            "everyday",
+            "summer",
+            "winter",
+        },
+        "themes": {"park_green_space", "residential", "neighborhood", "leisure"},
+        "social_tags": {"parks", "neighborhood", "residential", "children", "everyday_life"},
+        "candidate_types": {"social", "sequence"},
+        "collections": {"parks", "neighborhood", "residential", "sequence-"},
+    },
+    "weekend archive": {
+        "keywords": {
+            "landmark",
+            "streetscape",
+            "view",
+            "aerial",
+            "park",
+            "waterfront",
+            "church",
+            "market",
+            "square",
+            "boulevard",
+        },
+        "themes": {"landmark", "park_green_space", "waterfront", "urban_scene", "architecture"},
+        "social_tags": {"landmark", "parks", "waterfront", "architecture", "street_scene"},
+        "candidate_types": {"social", "print", "rare_find"},
+        "collections": {"landmark", "parks", "waterfront", "sequence-"},
+    },
+    "civic memory": {
+        "keywords": {
+            "civic",
+            "city hall",
+            "institution",
+            "school",
+            "church",
+            "hospital",
+            "library",
+            "market",
+            "public",
+            "monument",
+            "square",
+            "station",
+        },
+        "themes": {"institutional", "landmark", "architecture", "civic", "transportation"},
+        "social_tags": {"institution", "landmark", "architecture", "public_life", "transportation"},
+        "candidate_types": {"social", "print", "rare_find"},
+        "collections": {"civic", "landmark", "institution", "transport"},
+    },
 }
 
 
@@ -93,6 +232,123 @@ def _score_value(value: Any) -> float:
     if numeric > 1:
         return min(numeric / 10, 1.0)
     return max(0.0, min(numeric, 1.0))
+
+
+def _normalize_match(value: Any) -> str:
+    text = _clean_string(value).lower()
+    return re.sub(r"[^a-z0-9]+", " ", text).strip()
+
+
+def _contains_profile_value(text: str, values: set[str]) -> str | None:
+    normalized_text = f" {_normalize_match(text)} "
+    for value in sorted(values):
+        normalized_value = _normalize_match(value)
+        if normalized_value and f" {normalized_value} " in normalized_text:
+            return value
+    return None
+
+
+def _theme_profile(theme_spec: ThemeSpec | None) -> dict[str, set[str]]:
+    if not theme_spec:
+        return {}
+    profile = THEME_PROFILES.get(theme_spec.key, {})
+    return {key: set(values) for key, values in profile.items()}
+
+
+def _score_theme_match(
+    *,
+    theme_spec: ThemeSpec | None,
+    candidate_types: list[str],
+    social_tags: list[str],
+    themes: list[str],
+    product_tags: list[str],
+    search_facets: list[str],
+    collection_ids: list[str],
+    collection_titles: list[str],
+    candidate_reasons: list[str],
+    collection_reasons: list[str],
+    text_fields: list[str],
+) -> dict[str, Any]:
+    if not theme_spec:
+        return {
+            "themeKey": "",
+            "themeLabel": "",
+            "score": 0.0,
+            "matched": False,
+            "signals": [],
+        }
+
+    profile = _theme_profile(theme_spec)
+    signals: list[str] = []
+    score = 0.0
+    normalized_theme_key = _normalize_match(theme_spec.key)
+    normalized_theme_label = _normalize_match(theme_spec.label)
+
+    for value in themes:
+        normalized = _normalize_match(value)
+        if normalized in {normalized_theme_key, normalized_theme_label}:
+            score += 0.34
+            signals.append(f"taxonomy_theme:exact:{value}")
+        elif value in profile.get("themes", set()):
+            score += 0.24
+            signals.append(f"taxonomy_theme:profile:{value}")
+
+    for tag in social_tags:
+        if tag in profile.get("social_tags", set()):
+            score += 0.2
+            signals.append(f"social_tag:{tag}")
+
+    for tag in product_tags:
+        tag_text = _normalize_match(tag)
+        if normalized_theme_key and normalized_theme_key in tag_text:
+            score += 0.16
+            signals.append(f"product_tag:theme:{tag}")
+        elif _contains_profile_value(tag, profile.get("themes", set()) | profile.get("social_tags", set())):
+            score += 0.08
+            signals.append(f"product_tag:profile:{tag}")
+
+    for facet in search_facets:
+        facet_text = _normalize_match(facet)
+        if normalized_theme_key and normalized_theme_key in facet_text:
+            score += 0.14
+            signals.append(f"search_facet:theme:{facet}")
+        elif _contains_profile_value(facet, profile.get("themes", set()) | profile.get("social_tags", set())):
+            score += 0.08
+            signals.append(f"search_facet:profile:{facet}")
+
+    for candidate_type in candidate_types:
+        if candidate_type in profile.get("candidate_types", set()):
+            score += 0.03
+            signals.append(f"candidate_type:{candidate_type}")
+
+    collection_profile = profile.get("collections", set())
+    for collection_id in collection_ids:
+        matched = _contains_profile_value(collection_id, collection_profile)
+        if matched:
+            score += 0.12
+            signals.append(f"collection_id:{collection_id}")
+    for collection_title in collection_titles:
+        matched = _contains_profile_value(collection_title, collection_profile)
+        if matched:
+            score += 0.1
+            signals.append(f"collection_title:{collection_title}")
+
+    keyword_text = " ".join(text_fields + candidate_reasons + collection_reasons)
+    for keyword in sorted(profile.get("keywords", set())):
+        if _contains_profile_value(keyword_text, {keyword}):
+            score += 0.05
+            signals.append(f"keyword:{keyword}")
+            if len([signal for signal in signals if signal.startswith("keyword:")]) >= 5:
+                break
+
+    signals = list(dict.fromkeys(signals))
+    return {
+        "themeKey": theme_spec.key,
+        "themeLabel": theme_spec.label,
+        "score": round(min(score, 1.0), 4),
+        "matched": score >= 0.12,
+        "signals": signals[:10],
+    }
 
 
 def _display_title(record_id: str, *sources: dict[str, Any] | None) -> str:
@@ -235,6 +491,8 @@ def _make_shortlist(
     cooldown_days: int,
     as_of: date,
     ledger_path: Path,
+    theme_spec: ThemeSpec | None,
+    theme_min_score: float,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     candidates_by_id = _aggregate_candidates(candidate_rows)
     collections_by_id, collection_records_by_id = _build_collection_maps(collection_rows, collection_record_rows)
@@ -248,6 +506,7 @@ def _make_shortlist(
     rows: list[dict[str, Any]] = []
     excluded_count = 0
     recent_excluded_count = 0
+    theme_filtered_count = 0
     for record_id in sorted(candidate_ids):
         candidate = candidates_by_id.get(record_id, {})
         candidate_sources = candidate.get("sourceRows") or []
@@ -276,10 +535,37 @@ def _make_shortlist(
         candidate_types = sorted(candidate.get("candidateTypes") or [])
         social_tags = _clean_list((taxonomy or {}).get("socialTags"), limit=4)
         themes = _clean_list((taxonomy or {}).get("themes"), limit=4)
+        product_tags = _clean_list((taxonomy or {}).get("productTags"), limit=8)
+        search_facets = _clean_list((taxonomy or {}).get("searchFacets"), limit=8)
         collection_ids = [row["collection_id"] for row in collections if row.get("collection_id")]
         collection_ids = list(dict.fromkeys(collection_ids))
         collection_titles = [_clean_string(row.get("collection_title")) for row in collections if row.get("collection_title")]
         collection_titles = list(dict.fromkeys(collection_titles))
+        candidate_reasons = _clean_list(candidate.get("candidateReasons"), limit=8)
+        collection_reasons = _clean_list((primary_collection or {}).get("matchReasons"), limit=8)
+        title = _display_title(record_id, primary_candidate, primary_collection, taxonomy, quality)
+        theme_match = _score_theme_match(
+            theme_spec=theme_spec,
+            candidate_types=candidate_types,
+            social_tags=social_tags,
+            themes=themes,
+            product_tags=product_tags,
+            search_facets=search_facets,
+            collection_ids=collection_ids,
+            collection_titles=collection_titles,
+            candidate_reasons=candidate_reasons,
+            collection_reasons=collection_reasons,
+            text_fields=[
+                title,
+                _display_field("date", primary_candidate, primary_collection, taxonomy, quality),
+                _display_field("cote", primary_candidate, primary_collection),
+                _display_field("vlmCaption", primary_candidate, primary_collection),
+                _display_field("socialHook", primary_candidate, primary_collection),
+            ],
+        )
+        if theme_spec and theme_match["score"] < theme_min_score:
+            theme_filtered_count += 1
+            continue
 
         reason_codes: list[str] = []
         for candidate_type in candidate_types:
@@ -294,6 +580,9 @@ def _make_shortlist(
             reason_codes.append(f"taxonomy:{primary_category}")
         if social_tags:
             reason_codes.extend(f"social_tag:{tag}" for tag in social_tags[:2])
+        if theme_spec:
+            reason_codes.append(f"weekday_theme:{theme_spec.key}")
+            reason_codes.extend(f"theme_signal:{signal}" for signal in theme_match["signals"][:3])
         reason_codes = list(dict.fromkeys(reason_codes))
 
         candidate_bonus = sum(CANDIDATE_BONUSES.get(candidate_type, 0.05) for candidate_type in candidate_types)
@@ -301,6 +590,7 @@ def _make_shortlist(
         theme_bonus = min(0.16, 0.04 * (len(themes) + len(social_tags)))
         quality_bonus = 0.16 if quality_pass else 0.0
         story_bonus = 0.08 if primary_category and primary_category != "uncertain" else 0.0
+        theme_bonus = min(theme_bonus + (float(theme_match["score"]) * 0.62), 0.78)
         score = (
             float(candidate.get("candidateScore") or 0.0)
             + candidate_bonus
@@ -315,7 +605,7 @@ def _make_shortlist(
         rows.append(
             {
                 "id": record_id,
-                "title": _display_title(record_id, primary_candidate, primary_collection, taxonomy, quality),
+                "title": title,
                 "date": _display_field("date", primary_candidate, primary_collection, taxonomy, quality),
                 "cote": _display_field("cote", primary_candidate, primary_collection),
                 "imageUrl": _display_field("imageUrl", primary_candidate, primary_collection, taxonomy, quality),
@@ -328,6 +618,7 @@ def _make_shortlist(
                 "primaryCategory": primary_category,
                 "themes": themes,
                 "socialTags": social_tags,
+                "themeMatch": theme_match,
                 "quality": {
                     "pass": quality_pass,
                     "recommendedAction": quality_action,
@@ -335,8 +626,8 @@ def _make_shortlist(
                     "labels": _clean_list((quality or {}).get("labels")),
                 },
                 "reasonCodes": reason_codes,
-                "candidateReasons": _clean_list(candidate.get("candidateReasons"), limit=6),
-                "collectionReasons": _clean_list((primary_collection or {}).get("matchReasons"), limit=6),
+                "candidateReasons": candidate_reasons[:6],
+                "collectionReasons": collection_reasons[:6],
                 "vlmCaption": _display_field("vlmCaption", primary_candidate, primary_collection),
                 "socialHook": _display_field("socialHook", primary_candidate, primary_collection),
                 "recentLedgerMatches": recent_matches,
@@ -387,7 +678,18 @@ def _make_shortlist(
         "eligibleRecords": len(rows),
         "excludedRecords": excluded_count,
         "recentlyUsedExcludedRecords": recent_excluded_count,
+        "themeFilteredRecords": theme_filtered_count,
         "selectedRecords": len(selected),
+        "theme": (
+            {
+                "key": theme_spec.key,
+                "label": theme_spec.label,
+                "description": theme_spec.description,
+                "minScore": theme_min_score,
+            }
+            if theme_spec
+            else None
+        ),
         "includeExcluded": include_excluded,
         "includeRecent": include_recent,
         "cooldownDays": cooldown_days,
@@ -397,21 +699,31 @@ def _make_shortlist(
         "candidateTypeCounts": Counter(candidate_type for row in selected for candidate_type in row["candidateTypes"]),
         "qualityActionCounts": Counter(row["quality"]["recommendedAction"] for row in selected),
         "collectionCoverage": Counter(collection_id for row in selected for collection_id in row["collectionIds"]),
+        "themeSignalCounts": Counter(signal for row in selected for signal in row["themeMatch"]["signals"]),
     }
     return summary, selected
 
 
 def _markdown_table(rows: list[dict[str, Any]]) -> str:
     lines = [
-        "| Rank | Record | Score | Reasons | Quality | Collections |",
-        "| ---: | --- | ---: | --- | --- | --- |",
+        "| Rank | Record | Score | Theme | Reasons | Quality | Collections |",
+        "| ---: | --- | ---: | --- | --- | --- | --- |",
     ]
     for row in rows:
         reasons = ", ".join(row["reasonCodes"][:6])
         collections = ", ".join(row["collectionTitles"][:2] or row["collectionIds"][:2])
         quality = row["quality"]["recommendedAction"]
+        theme = row.get("themeMatch") or {}
+        theme_label = theme.get("themeLabel") or ""
+        theme_score = theme.get("score") or 0
+        theme_signals = ", ".join((theme.get("signals") or [])[:3])
+        theme_summary = f"{theme_label} `{theme_score:.4f}`"
+        if theme_signals:
+            theme_summary = f"{theme_summary}<br>{theme_signals}"
         record = f"{row['id']}<br>{row['title']}"
-        lines.append(f"| {row['rank']} | {record} | {row['score']:.4f} | {reasons} | {quality} | {collections} |")
+        lines.append(
+            f"| {row['rank']} | {record} | {row['score']:.4f} | {theme_summary} | {reasons} | {quality} | {collections} |"
+        )
     return "\n".join(lines)
 
 
@@ -419,6 +731,8 @@ def _write_markdown_report(path: Path, summary: dict[str, Any], rows: list[dict[
     reason_counts = dict(summary["reasonCodeCounts"].most_common(12))
     candidate_counts = dict(summary["candidateTypeCounts"].most_common())
     quality_counts = dict(summary["qualityActionCounts"].most_common())
+    theme_signal_counts = dict(summary["themeSignalCounts"].most_common(12))
+    theme = summary.get("theme") or {}
     lines = [
         "# Autoresearch Social/Story Shortlist",
         "",
@@ -430,7 +744,11 @@ def _write_markdown_report(path: Path, summary: dict[str, Any], rows: list[dict[
         f"- Eligible records: `{summary['eligibleRecords']}`",
         f"- Excluded records: `{summary['excludedRecords']}`",
         f"- Recently used records excluded: `{summary['recentlyUsedExcludedRecords']}`",
+        f"- Theme-filtered records: `{summary['themeFilteredRecords']}`",
         f"- Selected records: `{summary['selectedRecords']}`",
+        f"- Theme: `{theme.get('label') or 'none'}`",
+        f"- Theme key: `{theme.get('key') or ''}`",
+        f"- Theme minimum score: `{theme.get('minScore') if theme else ''}`",
         f"- Include excluded: `{summary['includeExcluded']}`",
         f"- Include recent: `{summary['includeRecent']}`",
         f"- Cooldown days: `{summary['cooldownDays']}`",
@@ -438,6 +756,7 @@ def _write_markdown_report(path: Path, summary: dict[str, Any], rows: list[dict[
         f"- Candidate types: `{json.dumps(candidate_counts, ensure_ascii=False)}`",
         f"- Quality actions: `{json.dumps(quality_counts, ensure_ascii=False)}`",
         f"- Top reason codes: `{json.dumps(reason_counts, ensure_ascii=False)}`",
+        f"- Top theme signals: `{json.dumps(theme_signal_counts, ensure_ascii=False)}`",
         "",
         "## Shortlist",
         "",
@@ -448,6 +767,7 @@ def _write_markdown_report(path: Path, summary: dict[str, Any], rows: list[dict[
         "- This report does not publish, render, or modify daily package output.",
         "- Records with `exclude_until_fixed` or taxonomy visual-search exclusion are omitted unless `--include-excluded` is passed.",
         "- Records found in the recent generation ledger are omitted unless `--include-recent` is passed.",
+        "- Theme scoring is advisory unless `--theme-min-score` is greater than zero.",
         "- Use the reason codes to pick a record for the normal social pipeline with `npm run social:today -- --id <record-id>`.",
         "",
     ]
@@ -458,6 +778,18 @@ def _write_markdown_report(path: Path, summary: dict[str, Any], rows: list[dict[
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Build a review-only autoresearch shortlist for social/story selection.")
     parser.add_argument("--limit", type=int, default=20, help="Number of records to include in the shortlist.")
+    parser.add_argument(
+        "--theme",
+        "--theme-key",
+        dest="theme",
+        help="Weekday, theme key, or theme label to use when scoring candidates.",
+    )
+    parser.add_argument(
+        "--theme-min-score",
+        type=float,
+        default=0.0,
+        help="Optional minimum theme-match score. Defaults to advisory scoring only.",
+    )
     parser.add_argument("--include-excluded", action="store_true", help="Include quality/taxonomy excluded records.")
     parser.add_argument("--include-recent", action="store_true", help="Include records seen in the recent generation ledger.")
     parser.add_argument("--cooldown-days", type=int, default=90, help="Recent-use cooldown window in days.")
@@ -477,6 +809,7 @@ def main() -> None:
     output_dir = Path(args.output_dir).expanduser()
     as_of = date.fromisoformat(args.as_of) if args.as_of else datetime.now().date()
     ledger_path = Path(args.ledger).expanduser()
+    theme_spec = resolve_theme(args.theme, as_of) if args.theme else None
     summary, rows = _make_shortlist(
         candidate_rows=_read_jsonl(Path(args.candidates).expanduser()),
         collection_rows=_read_jsonl(Path(args.collections).expanduser()),
@@ -490,6 +823,8 @@ def main() -> None:
         cooldown_days=max(0, args.cooldown_days),
         as_of=as_of,
         ledger_path=ledger_path,
+        theme_spec=theme_spec,
+        theme_min_score=max(0.0, min(float(args.theme_min_score), 1.0)),
     )
     report = {"summary": summary, "shortlist": rows}
     _write_json(output_dir / "shortlist_report.json", report)
