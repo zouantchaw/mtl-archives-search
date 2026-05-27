@@ -145,20 +145,50 @@ npm run social:fallback -- --date 2026-03-19 --theme mystery --max-rerolls 4 --c
 # Mirror the generated package into an Obsidian project folder for synced review
 npm run social:fallback -- --date 2026-03-19 --id mtl_archives_metadata_65.json --obsidian-dir "/Users/wiel/pkm/0xPKM_O/03_projects/active/MTL Archives/Daily Social Packages"
 
+# Generate today's package using the local timezone (or MTL_SOCIAL_TIMEZONE)
+npm run social:today
+npm run social:today -- --timezone Europe/Paris
+npm run social:today:json
+
 # Register a real published post and mirror it into final/
 npm run social:register-publish -- --package-dir /absolute/path/to/package --platform instagram --permalink https://instagram.com/p/ABC123 --post-id ABC123 --obsidian-dir "/Users/wiel/pkm/0xPKM_O/03_projects/active/MTL Archives/Daily Social Packages"
 
 # Bootstrap durable Meta tokens from one short-lived Graph API Explorer token
+# If `.env.local` already contains META_APP_ID, META_APP_SECRET,
+# META_SHORT_LIVED_USER_TOKEN, and optionally META_PAGE_ID, no flags are needed.
+npm run social:token-bootstrap -- --print-env
 npm run social:token-bootstrap -- --app-id 1979061736153270 --app-secret YOUR_APP_SECRET --short-token YOUR_SHORT_LIVED_USER_TOKEN --page-id 100799958627875 --print-env
 
 # Check token health later and warn if expiry is close
-npm run social:token-status -- --app-id 1979061736153270 --app-secret YOUR_APP_SECRET --warn-days 14 --print-env
+npm run social:token-status
+npm run social:token-status -- --warn-days 14 --print-env
+
+# Fetch full post history + insights using the durable token state
+npm run social:fetch-history -- --output-dir data/social/2026-03-31-q1-refresh
+
+# Analyze a combined_posts snapshot for Q1 content/performance correlations
+npm run social:analyze-content -- --input data/social/2026-03-31-q1-refresh/combined_posts.json --start 2026-01-01 --end 2026-03-31 --output-prefix data/social/2026-03-31-analysis-q1-content
+
+# Join daily Meta export CSVs to the post snapshot for day-level correlation
+npm run social:analyze-daily -- --posts-input data/social/2026-03-31-q1-refresh/combined_posts.json --export-dir /absolute/path/to/Recents --export-dir /absolute/path/to/marchstats --fetch-facebook-live --output-prefix data/social/2026-03-31-analysis-q1-daily
+
+# Check Story publishing capabilities and prepare/publish an IG or Facebook Page Story
+npm run social:story-status
+npm run social:publish-story -- --platform instagram --story-path /absolute/path/to/story.mp4 --prepare-only
+npm run social:publish-story -- --platform instagram --story-path /absolute/path/to/story.mp4
+npm run social:publish-story -- --platform facebook --story-path /absolute/path/to/story.mp4 --prepare-only
+npm run social:publish-story -- --platform facebook --story-path /absolute/path/to/story.mp4
+
+# Publish the generated daily IG carousel + FB reel posts
+npm run social:publish-post -- --package-dir /absolute/path/to/package --all --check-only
+npm run social:publish-post -- --package-dir /absolute/path/to/package --all --prepare-only
+npm run social:publish-post -- --package-dir /absolute/path/to/package --all
 
 # Promote a generated package into a committed story page draft
 npm run social:promote-story -- --package-dir /absolute/path/to/package
 ```
 
-The fallback runner lives in [`pipelines/daily-reel/main.py`](/Users/wiel/Development/mtl-archives-search/pipelines/daily-reel/main.py) and writes a complete package under `~/Desktop/mtl-social-fallback/YYYY-MM-DD/`:
+The fallback runner lives in [`pipelines/daily-reel/main.py`](/Users/wiel/Development/mtl-archives-search/pipelines/daily-reel/main.py) and writes a complete package under `~/Downloads/mtl-daily/YYYY-MM-DD/`:
 - `research.json` + `research_full.json`
 - `caption_instagram.txt`
 - `caption_facebook.txt`
@@ -176,14 +206,27 @@ This keeps the platform split intact even during an outage:
 - Instagram: square carousel, archivist-teacher voice
 - Facebook: reel, hook-first Montreal reveal
 - Reels now traverse portrait panels derived from the source image so the viewer sees the full archive frame over the course of the video
+- Carousel detail slides now use content-aware contextual crops instead of fixed quadrants, so the package prefers story-relevant regions like signage, street activity, and architectural detail over empty sky.
 - Daily theme: still applied as a lens for the chosen date
+- `npm run social:today` is the operator-facing outage command. It resolves the run date with a real timezone (`--timezone`, `MTL_SOCIAL_TIMEZONE`, or the local system timezone), persists that choice as `resolved_timezone`, writes the package under `~/Downloads/mtl-daily/YYYY-MM-DD`, and finishes with a human-readable operator summary instead of raw JSON.
+- If Gemini is unreachable, `npm run social:today` now fails with a concise operator message that explains the network issue and the fallback options instead of dumping a raw Python traceback.
+- `npm run social:today:json` is the machine-friendly variant when an agent or wrapper needs the final manifest on stdout.
+- Cron/worktree runs now also load `.env.local` / `.env` from the canonical checkout, not just the ephemeral worktree, so Gemini and Meta credentials remain available to Codex automations without copying untracked env files into every worktree.
+- The story-video workspace now runs through `scripts/run-tsx.mjs` instead of `npx tsx`, so Codex worktrees reuse the canonical repo's installed `tsx` binary instead of trying to fetch packages from npm mid-run.
 - Thin-metadata cases can now escalate into a Google-grounded Gemini pass before story generation. The grounded output is treated as supporting context only, never as archive metadata.
+- Thin-metadata cases now also carry a factual-confidence gate: if exact place identity only comes from grounded search and the archive record is still weak, the pipeline downgrades public labels to a broader sector or fails reroll instead of shipping a confident intersection/building claim.
 - The inspection artifacts now include brand-readiness gates (`caption_ok`, per-channel scores, overall `brand_ready`) so weak edge cases like thin-metadata `beauty` or unresolved `mystery` packages can fail review explicitly instead of looking implicitly acceptable.
 - Search/random fallback runs now auto-reroll across a small candidate pool. The final date folder is the first `brand_ready` package that passes; if nothing passes, the runner still preserves the strongest attempt but marks it as `selection_status: no_brand_ready_candidate` and writes `attempts_summary.json`.
 - Exact image reuse tracking now starts at generation time via `data/social/publish-ledger.jsonl`. The fallback can consult that ledger and skip recently used archive images before it builds a new package.
 - Strong packages now emit `story_seed.json`, which can be promoted into `apps/next-app/content/stories/*.json` for deeper archive-linked story pages.
 - If `--obsidian-dir` (or `MTL_OBSIDIAN_EXPORT_DIR`) is set, the fallback mirrors generated packages into `Daily Social Packages/experiments/...`. `npm run social:register-publish` can then promote real posted packages into `Daily Social Packages/final/...` while writing actual permalinks into a publish registry.
-- The durable Meta token flow is separate from Graph API Explorer. Use `npm run social:token-bootstrap` once with a short-lived user token to write `data/social/meta-token-state.json`, then use `npm run social:token-status` on `spruce` to verify health and warn before expiry.
+- The durable Meta token flow is separate from Graph API Explorer. Use `npm run social:token-bootstrap` once with a short-lived user token to write `data/social/meta-token-state.json`, then use `npm run social:token-status` to verify health and warn before expiry. The token manager now auto-loads `.env.local` / `.env`, so the normal repo workflow no longer needs you to pass `--app-id` and `--app-secret` every time.
+- `npm run social:fetch-history` now falls back to the persisted `data/social/meta-token-state.json` user token when `META_USER_ACCESS_TOKEN` is not set, so post-history fetches and insight refreshes can run from the durable auth path rather than depending on copied tokens.
+- `npm run social:analyze-content` turns a `combined_posts.json` snapshot into dated JSON + Markdown summaries, including per-platform format splits, monthly posting mix, and content-feature correlations for a chosen date window such as Q1.
+- `npm run social:analyze-daily` joins downloaded Meta daily export CSVs to a `combined_posts.json` snapshot so we can compare publish-day format mix against daily views, follows, interactions, and visits. When `--fetch-facebook-live` is enabled, it supplements the exports with live Page Insights and uses `page_media_view` for Facebook page-level Views, which matches the Business Suite daily Views export.
+- `npm run social:story-status` reports the current Story capability surface from the persisted Meta auth state. `npm run social:publish-story` can now take a local Story video, upload it to public R2, and publish it through either the Instagram Story container flow or the Facebook Page `video_stories` flow. Story runs are logged to `data/social/story-publish-log.jsonl`.
+- Important limitation: server-side Story publishing does **not** support stickers like link, poll, or location. If you need the usual clickable `DEFI DU JOUR` link sticker to `mtlarchives.com/game`, that still requires a mobile Share-to-Stories flow or a manual app step.
+- `npm run social:publish-post` publishes the normal daily package surfaces: Instagram carousel slides from `instagram_carousel/` and the Facebook reel from `facebook_reel.mp4`. It uses the same persisted Meta auth state, uploads media to public R2 first, writes publish logs to `data/social/post-publish-log.jsonl`, and reconciles successful live publishes into `data/social/publish-registry.jsonl`.
 - State ownership is intentionally split:
   - repo = code, templates, schemas, docs
   - `spruce` = operational truth (canonical day package, ledgers, publish registry, delivery state)
@@ -269,9 +312,19 @@ npm run vectorize:clip:photos  # Ingest CLIP vectors while excluding document-li
 npm run vectorize:status  # Show checkpoint/failure-log status for both ingest jobs
 npm run smoke:pipeline  # Fixture-based ETL/vectorize smoke test + failure-log assertion
 npm run search-quality:audit  # Non-destructive doc-vs-photo + duplicate audit report
+npm run autoresearch:search  # Evaluate editable smart-search fusion config
+npm run autoresearch:social  # Evaluate saved daily social packages for brand readiness
+npm run autoresearch:lambda:plan  # Check Lambda Labs GPU capacity/env before VLM runs
+npm run autoresearch:vlm:managed -- --input data/mtl_archives/manifest_clean.jsonl --source r2 --limit 2000  # Managed Lambda VLM run with auto-termination
 npm run image-artifacts:audit  # Border/template detection audit + optional cleaned previews
 npm run image-dedupe:audit  # Perceptual image hash dedupe audit (clusters + keep/drop decisions)
 ```
+
+Autoresearch notes:
+- The active plan is documented in `docs/autoresearch.md`.
+- Search experiments edit `experiments/autoresearch/search/config.json` and write `data/mtl_archives/reports/autoresearch_search_report.json`.
+- Social experiments read saved packages from `~/Downloads/mtl-daily` by default and write `data/social/autoresearch_social_report.json`.
+- Lambda GPU planning requires `LAMBDA_API_KEY` in the local shell or repo env; the command does not launch instances.
 
 Vectorize reliability notes:
 - `vectorize:text` and `vectorize:clip` now support resumable checkpoints by default.

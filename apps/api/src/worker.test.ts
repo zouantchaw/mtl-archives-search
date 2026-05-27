@@ -554,6 +554,74 @@ test('/api/search semantic mode returns results when Vectorize and AI are config
   assert.equal(data.items[0].score, 0.91);
 });
 
+test('/api/search suppresses autoresearch-excluded records without permanently hiding them', async () => {
+  setupCacheMock();
+  const excluded = createManifestRow({
+    metadata_filename: 'excluded_hit.json',
+    image_quality_action: 'exclude_until_fixed',
+    image_quality_severity: 'high',
+    image_quality_labels: '["unsafe_crop_candidate"]',
+  });
+  const visible = createManifestRow({ metadata_filename: 'visible_hit.json' });
+  const env = {
+    ...createPublicEnv([excluded, visible]),
+    AI: {
+      async run() {
+        return { data: [[0.1, 0.2, 0.3]] };
+      },
+    },
+    VECTORIZE: createMockVector([
+      { id: 'excluded_hit.json', score: 0.99 },
+      { id: 'visible_hit.json', score: 0.96 },
+    ]),
+  } as const;
+
+  const defaultResponse = await worker.fetch(new Request('https://example.com/api/search?q=tramway&mode=semantic&limit=5'), env, ctx);
+  assert.equal(defaultResponse.status, 200);
+  const defaultData = (await defaultResponse.json()) as { count: number; items: Array<{ metadataFilename: string; score: number }> };
+  assert.equal(defaultData.count, 2);
+  assert.equal(defaultData.items[0].metadataFilename, 'visible_hit.json');
+  assert.equal(defaultData.items[1].metadataFilename, 'excluded_hit.json');
+  assert.ok(defaultData.items[1].score < 0.99);
+
+  const reviewResponse = await worker.fetch(new Request('https://example.com/api/search?q=tramway&mode=semantic&limit=5&includeExcluded=true'), env, ctx);
+  assert.equal(reviewResponse.status, 200);
+  const reviewData = (await reviewResponse.json()) as { count: number; items: Array<{ metadataFilename: string }> };
+  assert.equal(reviewData.count, 2);
+  assert.ok(reviewData.items.some((item) => item.metadataFilename === 'excluded_hit.json'));
+});
+
+test('/api/search demotes lower-rank quality records without hiding them', async () => {
+  setupCacheMock();
+  const demoted = createManifestRow({
+    metadata_filename: 'demoted_hit.json',
+    image_quality_action: 'lower_rank',
+    image_quality_severity: 'medium',
+    image_quality_labels: '["border_light"]',
+  });
+  const clean = createManifestRow({ metadata_filename: 'clean_hit.json' });
+  const env = {
+    ...createPublicEnv([demoted, clean]),
+    AI: {
+      async run() {
+        return { data: [[0.1, 0.2, 0.3]] };
+      },
+    },
+    VECTORIZE: createMockVector([
+      { id: 'demoted_hit.json', score: 0.99 },
+      { id: 'clean_hit.json', score: 0.96 },
+    ]),
+  } as const;
+
+  const response = await worker.fetch(new Request('https://example.com/api/search?q=tramway&mode=semantic&limit=5'), env, ctx);
+  assert.equal(response.status, 200);
+  const data = (await response.json()) as { count: number; items: Array<{ metadataFilename: string; score: number }> };
+  assert.equal(data.count, 2);
+  assert.equal(data.items[0].metadataFilename, 'clean_hit.json');
+  assert.equal(data.items[1].metadataFilename, 'demoted_hit.json');
+  assert.ok(data.items[1].score < 0.99);
+});
+
 test('/api/search visual mode accepts precomputed POST embedding', async () => {
   setupCacheMock();
   const row = createManifestRow({ metadata_filename: 'visual_hit.json' });

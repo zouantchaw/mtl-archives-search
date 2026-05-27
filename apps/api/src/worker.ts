@@ -63,7 +63,7 @@ const JSON_HEADERS: HeadersInit = {
   ...CORS_HEADERS,
 };
 
-const SELECT_FIELDS = `metadata_filename, image_filename, resolved_image_filename, image_size_bytes, rotation_degrees, name, description, vlm_caption, date_value, credits, cote, external_url, portal_match, portal_title, portal_description, portal_date, portal_cote, aerial_datasets, latitude, longitude, geocode_confidence`;
+const SELECT_FIELDS = `metadata_filename, image_filename, resolved_image_filename, image_size_bytes, rotation_degrees, name, description, vlm_caption, date_value, credits, cote, external_url, portal_match, portal_title, portal_description, portal_date, portal_cote, aerial_datasets, latitude, longitude, geocode_confidence, taxonomy_primary_category, taxonomy_themes, taxonomy_search_facets, taxonomy_review_required, taxonomy_exclude_default_visual, image_quality_labels, image_quality_severity, image_quality_action`;
 
 // Lightweight fields for map pins (faster queries)
 const MAP_FIELDS = `metadata_filename, name, date_value, latitude, longitude, external_url, resolved_image_filename`;
@@ -93,6 +93,36 @@ const NEWSLETTER_EMAIL_TYPES = {
   WELCOME: 'welcome',
   UNSUBSCRIBE_CONFIRMATION: 'unsubscribe_confirmation',
 } as const;
+
+type SearchPolicyOptions = {
+  includeExcluded: boolean;
+};
+
+type SearchMetadata = {
+  primaryCategory: string | null;
+  themes: string[];
+  searchFacets: string[];
+  reviewRequired: boolean;
+  excludeFromDefaultVisualSearch: boolean;
+  qualityLabels: string[];
+  qualitySeverity: string | null;
+  qualityAction: string | null;
+};
+
+type SearchPolicyAnnotation = {
+  excludedFromDefault: boolean;
+  demotion: number;
+  boost: number;
+  reasons: string[];
+};
+
+type SearchAwarePhotoRecord = PhotoRecord & {
+  searchMetadata?: SearchMetadata;
+};
+
+type SearchPolicyAnnotated<T extends PhotoRecord> = T & {
+  searchPolicy: SearchPolicyAnnotation;
+};
 
 function usesSignedR2Urls(env: Env): boolean {
   return Boolean(
@@ -329,12 +359,12 @@ function htmlResponse(html: string, status = 200, extraHeaders: HeadersInit = {}
   });
 }
 
-async function buildPhotoRecord(row: Record<string, unknown>, env: Env): Promise<PhotoRecord> {
+async function buildPhotoRecord(row: Record<string, unknown>, env: Env): Promise<SearchAwarePhotoRecord> {
   const metadataFilename = String(row.metadata_filename);
   const dbRotation = normalizeRotationDegrees(row.rotation_degrees);
   const overrideRotation = getPhotoOrientationOverride(metadataFilename);
 
-  const record: PhotoRecord = {
+  const record: SearchAwarePhotoRecord = {
     metadataFilename,
     imageFilename: String(row.image_filename),
     resolvedImageFilename: String(row.resolved_image_filename ?? row.image_filename ?? ''),
@@ -357,6 +387,16 @@ async function buildPhotoRecord(row: Record<string, unknown>, env: Env): Promise
     latitude: row.latitude != null ? Number(row.latitude) : null,
     longitude: row.longitude != null ? Number(row.longitude) : null,
     geocodeConfidence: row.geocode_confidence != null ? Number(row.geocode_confidence) : null,
+    searchMetadata: {
+      primaryCategory: normalizeNullableText(row.taxonomy_primary_category),
+      themes: parseJsonArray(row.taxonomy_themes),
+      searchFacets: parseJsonArray(row.taxonomy_search_facets),
+      reviewRequired: Boolean(Number(row.taxonomy_review_required ?? 0)),
+      excludeFromDefaultVisualSearch: Boolean(Number(row.taxonomy_exclude_default_visual ?? 0)),
+      qualityLabels: parseJsonArray(row.image_quality_labels),
+      qualitySeverity: normalizeNullableText(row.image_quality_severity),
+      qualityAction: normalizeNullableText(row.image_quality_action),
+    },
   };
 
   validateMetadataQuality(record);
@@ -376,6 +416,106 @@ function parseJsonArray(value: unknown): string[] {
     console.warn('Failed to parse aerial_datasets', error);
   }
   return [];
+}
+
+function queryIntent(query: string): string[] {
+  const normalized = query
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+  const intents: string[] = [];
+  const add = (intent: string, pattern: RegExp) => {
+    if (pattern.test(normalized)) intents.push(intent);
+  };
+  add('park_green_space', /\b(park|parc|trees?|garden|fountain|fontaine)\b/);
+  add('winter', /\b(winter|snow|neige|hiver)\b/);
+  add('waterfront', /\b(waterfront|river|fleuve|port|harbou?r|ships?|shore|canal)\b/);
+  add('residential', /\b(residential|neighbou?rhood|houses?|homes?|quartier)\b/);
+  add('industrial', /\b(industrial|factory|factories|usine|port)\b/);
+  add('transit', /\b(transit|tramway|streetcar|metro|station|rail|train)\b/);
+  add('construction', /\b(construction|demolition|chantier)\b/);
+  add('crowd_event', /\b(children|school|people|playing|event|crowd|enfants?|ecole)\b/);
+  return intents;
+}
+
+function searchPolicyFor(item: SearchAwarePhotoRecord, query = ''): SearchPolicyAnnotation {
+  const metadata = item.searchMetadata;
+  const reasons: string[] = [];
+  let demotion = 1;
+  let boost = 1;
+
+  if (!metadata) {
+    return { excludedFromDefault: false, demotion, boost, reasons };
+  }
+
+  const qualityAction = metadata.qualityAction ?? '';
+  const qualitySeverity = metadata.qualitySeverity ?? '';
+  const excludedFromDefault = false;
+
+  if (qualityAction === 'exclude_until_fixed') {
+    demotion *= 0.94;
+    reasons.push('quality:exclude_until_fixed');
+  }
+  if (metadata.excludeFromDefaultVisualSearch) reasons.push('taxonomy:exclude_from_default_visual');
+
+  if (qualityAction === 'lower_rank') {
+    demotion *= 0.94;
+    reasons.push('quality:lower_rank');
+  } else if (['review', 'rotate', 'crop_or_mask'].includes(qualityAction)) {
+    demotion *= 0.97;
+    reasons.push(`quality:${qualityAction}`);
+  }
+
+  if (qualitySeverity === 'high') {
+    demotion *= 0.97;
+    reasons.push('quality:high_severity');
+  } else if (qualitySeverity === 'medium') {
+    demotion *= 0.99;
+    reasons.push('quality:medium_severity');
+  }
+
+  if (metadata.reviewRequired && !excludedFromDefault) reasons.push('taxonomy:review_required');
+
+  const intents = queryIntent(query);
+  const taxonomyTokens = new Set([
+    metadata.primaryCategory ?? '',
+    ...metadata.themes,
+    ...metadata.searchFacets,
+  ]);
+  for (const intent of intents) {
+    if (
+      taxonomyTokens.has(intent) ||
+      taxonomyTokens.has(`theme:${intent}`) ||
+      taxonomyTokens.has(`primary:aerial_${intent}`) ||
+      taxonomyTokens.has(`primary:${intent}`)
+    ) {
+      boost *= 1.22;
+      reasons.push(`taxonomy:intent:${intent}`);
+    }
+  }
+
+  return { excludedFromDefault, demotion, boost, reasons };
+}
+
+function applySearchPolicy<T extends SearchAwarePhotoRecord & { score?: number }>(
+  items: T[],
+  options: SearchPolicyOptions,
+  query = '',
+): Array<SearchPolicyAnnotated<T> & { score?: number }> {
+  return items
+    .map((item) => {
+      const policy = searchPolicyFor(item, query);
+      return {
+        ...item,
+        score: item.score != null ? item.score * policy.demotion * policy.boost : item.score,
+        searchPolicy: policy,
+      };
+    })
+    .filter((item) => options.includeExcluded || !item.searchPolicy.excludedFromDefault)
+    .sort((a, b) => {
+      if (a.score == null || b.score == null) return 0;
+      return b.score - a.score;
+    });
 }
 
 function clamp(num: number, min: number, max: number): number {
@@ -1458,14 +1598,17 @@ async function handleSearch(url: URL, env: Env, request: Request): Promise<Respo
   const limit = clamp(Number.isFinite(limitParam) ? limitParam : 25, 1, 100);
   const maxSizeParam = Number(url.searchParams.get('maxSize') ?? '0');
   const maxSize = Number.isFinite(maxSizeParam) && maxSizeParam > 0 ? maxSizeParam : 0;
+  const searchPolicy: SearchPolicyOptions = {
+    includeExcluded: url.searchParams.get('includeExcluded') === 'true',
+  };
 
   // Smart mode: combine visual + semantic for best results
   if (mode === 'smart') {
-    return handleSmartSearch(q, limit, env, maxSize);
+    return handleSmartSearch(q, limit, env, maxSize, searchPolicy);
   }
 
   if (mode === 'semantic') {
-    return handleSemanticSearch(q, limit, env, maxSize);
+    return handleSemanticSearch(q, limit, env, maxSize, searchPolicy);
   }
 
   if (mode === 'visual' || mode === 'clip') {
@@ -1481,7 +1624,7 @@ async function handleSearch(url: URL, env: Env, request: Request): Promise<Respo
         // Ignore JSON parse errors, will try to generate embedding
       }
     }
-    return handleVisualSearch(q, limit, env, embedding, maxSize);
+    return handleVisualSearch(q, limit, env, embedding, maxSize, searchPolicy);
   }
 
   // Text mode: redirect to semantic search to avoid full table scans (LIKE on 4 columns).
@@ -1501,7 +1644,7 @@ async function handleSearch(url: URL, env: Env, request: Request): Promise<Respo
     }
   }
   // Fall through to semantic search for all other text queries
-  return handleSemanticSearch(q, limit, env, maxSize);
+  return handleSemanticSearch(q, limit, env, maxSize, searchPolicy);
 }
 
 async function handleThumbnail(url: URL, env: Env): Promise<Response> {
@@ -1601,7 +1744,7 @@ function escapeForLike(value: string): string {
 }
 
 // Smart search: combines visual (CLIP) + semantic (BGE) for best results
-async function handleSmartSearch(query: string, limit: number, env: Env, maxSize = 0): Promise<Response> {
+async function handleSmartSearch(query: string, limit: number, env: Env, maxSize = 0, searchPolicy: SearchPolicyOptions = { includeExcluded: false }): Promise<Response> {
   const maxSizeSqlFilter = maxSize > 0 ? ' AND image_size_bytes <= ?' : '';
   const maxSizeSqlParams = maxSize > 0 ? [maxSize] : [];
   if (COTE_PATTERN.test(query)) {
@@ -1619,11 +1762,11 @@ async function handleSmartSearch(query: string, limit: number, env: Env, maxSize
 
   // Run visual and semantic searches in parallel
   const [visualResult, semanticResult] = await Promise.allSettled([
-    getVisualResults(query, limit, env, maxSize),
-    getSemanticResults(query, limit, env, maxSize),
+    getVisualResults(query, limit, env, maxSize, searchPolicy),
+    getSemanticResults(query, limit, env, maxSize, searchPolicy),
   ]);
 
-  type ScoredPhoto = PhotoRecord & { score?: number; source?: string };
+  type ScoredPhoto = SearchAwarePhotoRecord & { score?: number; source?: string; searchPolicy?: SearchPolicyAnnotation };
   const visualItems = visualResult.status === 'fulfilled' ? visualResult.value : null;
   const semanticItems = semanticResult.status === 'fulfilled' ? semanticResult.value : null;
 
@@ -1644,11 +1787,13 @@ async function handleSmartSearch(query: string, limit: number, env: Env, maxSize
   const k = 60;
   const scored = new Map<string, { item: ScoredPhoto; score: number; sources: Set<string>; ranks: { visual?: number; semantic?: number } }>();
 
-  const applyRrf = (items: (PhotoRecord & { score?: number })[], source: 'visual' | 'semantic') => {
+  const applyRrf = (items: (SearchAwarePhotoRecord & { score?: number })[], source: 'visual' | 'semantic') => {
     items.forEach((item, index) => {
       const id = item.metadataFilename;
       const rank = index + 1;
-      const increment = 1 / (k + rank);
+      const policy = searchPolicyFor(item, query);
+      if (!searchPolicy.includeExcluded && policy.excludedFromDefault) return;
+      const increment = (1 / (k + rank)) * policy.demotion * policy.boost;
       const existing = scored.get(id);
       if (existing) {
         existing.score += increment;
@@ -1657,7 +1802,7 @@ async function handleSmartSearch(query: string, limit: number, env: Env, maxSize
         return;
       }
       scored.set(id, {
-        item: { ...item },
+        item: { ...item, searchPolicy: policy },
         score: increment,
         sources: new Set([source]),
         ranks: { [source]: rank },
@@ -1692,7 +1837,7 @@ async function handleSmartSearch(query: string, limit: number, env: Env, maxSize
 
 // Helper: get visual search results without Response wrapper
 // Note: Vectorize topK is capped at 50
-async function getVisualResults(query: string, limit: number, env: Env, maxSize = 0): Promise<(PhotoRecord & { score?: number })[] | null> {
+async function getVisualResults(query: string, limit: number, env: Env, maxSize = 0, searchPolicy: SearchPolicyOptions = { includeExcluded: false }): Promise<(PhotoRecord & { score?: number })[] | null> {
   if (!env.VECTORIZE_CLIP || !env.CLIP_EMBEDDING_URL) return null;
 
   try {
@@ -1727,7 +1872,7 @@ async function getVisualResults(query: string, limit: number, env: Env, maxSize 
       })
     );
 
-    return items.filter((i): i is PhotoRecord & { score: number } => i !== null);
+    return applySearchPolicy(items.filter((i): i is PhotoRecord & { score: number } => i !== null), searchPolicy, query);
   } catch (e) {
     console.error('Smart search visual error:', e);
     return null;
@@ -1736,7 +1881,7 @@ async function getVisualResults(query: string, limit: number, env: Env, maxSize 
 
 // Helper: get semantic search results without Response wrapper
 // Note: Vectorize topK is capped at 50
-async function getSemanticResults(query: string, limit: number, env: Env, maxSize = 0): Promise<(PhotoRecord & { score?: number })[] | null> {
+async function getSemanticResults(query: string, limit: number, env: Env, maxSize = 0, searchPolicy: SearchPolicyOptions = { includeExcluded: false }): Promise<(PhotoRecord & { score?: number })[] | null> {
   if (!env.VECTORIZE || !env.AI) return null;
 
   try {
@@ -1772,14 +1917,14 @@ async function getSemanticResults(query: string, limit: number, env: Env, maxSiz
       })
     );
 
-    return items.filter((i): i is PhotoRecord & { score: number } => i !== null);
+    return applySearchPolicy(items.filter((i): i is PhotoRecord & { score: number } => i !== null), searchPolicy, query);
   } catch (e) {
     console.error('Smart search semantic error:', e);
     return null;
   }
 }
 
-async function handleSemanticSearch(query: string, limit: number, env: Env, maxSize = 0): Promise<Response> {
+async function handleSemanticSearch(query: string, limit: number, env: Env, maxSize = 0, searchPolicy: SearchPolicyOptions = { includeExcluded: false }): Promise<Response> {
   if (!env.VECTORIZE || !env.AI) {
     return jsonResponse(
       { error: 'Semantic search is not configured. Bind Vectorize + Workers AI to enable this feature.' },
@@ -1846,7 +1991,7 @@ async function handleSemanticSearch(query: string, limit: number, env: Env, maxS
     );
 
     // Filter out any null results
-    const filteredItems = items.filter((item) => item !== null);
+    const filteredItems = applySearchPolicy(items.filter((item): item is PhotoRecord & { score: number } => item !== null), searchPolicy, query).slice(0, limit);
 
     return jsonResponse({
       items: filteredItems,
@@ -1865,7 +2010,7 @@ async function handleSemanticSearch(query: string, limit: number, env: Env, maxS
   }
 }
 
-async function handleVisualSearch(query: string, limit: number, env: Env, precomputedEmbedding?: number[], maxSize = 0): Promise<Response> {
+async function handleVisualSearch(query: string, limit: number, env: Env, precomputedEmbedding?: number[], maxSize = 0, searchPolicy: SearchPolicyOptions = { includeExcluded: false }): Promise<Response> {
   if (!env.VECTORIZE_CLIP) {
     return jsonResponse(
       { error: 'Visual search is not configured. Bind VECTORIZE_CLIP index to enable this feature.' },
@@ -1941,7 +2086,7 @@ async function handleVisualSearch(query: string, limit: number, env: Env, precom
       })
     );
 
-    const filteredItems = items.filter((item) => item !== null);
+    const filteredItems = applySearchPolicy(items.filter((item): item is PhotoRecord & { score: number } => item !== null), searchPolicy, query).slice(0, limit);
 
     return jsonResponse({
       items: filteredItems,

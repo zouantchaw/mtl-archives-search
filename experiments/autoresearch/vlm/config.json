@@ -1,0 +1,12 @@
+{
+  "instanceTypeOrder": ["gpu_1x_a10", "gpu_1x_a100_sxm4", "gpu_1x_a100", "gpu_1x_rtx6000"],
+  "defaultInstanceName": "mtl-autoresearch-vlm",
+  "script": "pipelines/vlm/caption_images.py",
+  "sampleInput": "data/mtl_archives/manifest_clean.jsonl",
+  "sampleSize": 100,
+  "metricTargets": {
+    "maxErrorRate": 0.03,
+    "minCaptionsPerHour": 800,
+    "maxCostPerThousandImagesUsd": 1.5
+  }
+}

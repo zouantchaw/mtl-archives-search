@@ -19,14 +19,20 @@ from PIL import Image
 from tqdm import tqdm
 import torch
 from transformers import AutoProcessor, LlavaForConditionalGeneration
+from structured_metadata import apply_model_response, build_structured_prompt
 
 # Configuration
 DEFAULT_MODEL = "llava-hf/llava-1.5-7b-hf"
-MAX_NEW_TOKENS = 200
+MAX_NEW_TOKENS = 400
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 # R2 Configuration - set via environment or default
-R2_PUBLIC_DOMAIN = os.environ.get('R2_PUBLIC_DOMAIN', 'pub-6a29793ea7664738880d1cc5afb21b87.r2.dev')
+R2_PUBLIC_DOMAIN = (
+    os.environ.get('R2_PUBLIC_DOMAIN')
+    or os.environ.get('CLOUDFLARE_R2_PUBLIC_DOMAIN')
+    or os.environ.get('NEXT_PUBLIC_R2_PUBLIC_DOMAIN')
+    or 'pub-6a29793ea7664738880d1cc5afb21b87.r2.dev'
+)
 
 
 def is_real_name(name: str) -> bool:
@@ -43,7 +49,7 @@ def is_real_name(name: str) -> bool:
     return len(alpha_content) >= 3
 
 
-def build_prompt(record: dict) -> str:
+def build_prompt(record: dict, variant: str = "detailed") -> str:
     """Build a contextual prompt for the VLM."""
     parts = []
     name = record.get('name', '').strip()
@@ -66,20 +72,14 @@ def build_prompt(record: dict) -> str:
     else:
         parts.append("This is a historical photograph from Montreal's city archives.")
 
-    parts.append("\nDescribe what you see in this image in 2-3 sentences. Focus on:")
-    parts.append("- The main subject (building, street, park, people, event)")
-    parts.append("- Notable visual details (architecture style, vehicles, clothing)")
-    parts.append("- The setting (urban, rural, indoor, outdoor)")
-    parts.append("\nBe specific and descriptive.")
-
-    return " ".join(parts)
+    return build_structured_prompt(" ".join(parts), variant=variant)
 
 
 def get_image_url(record: dict) -> Optional[str]:
     """Get the R2 image URL for a record."""
     filename = record.get('resolved_image_filename') or record.get('image_filename')
     if filename:
-        return f"https://{R2_PUBLIC_DOMAIN}/{filename}"
+        return f"https://{R2_PUBLIC_DOMAIN}/{filename.lstrip('/')}"
     return None
 
 
@@ -168,6 +168,9 @@ def main():
     parser.add_argument("--model", default=DEFAULT_MODEL, help=f"Model to use (default: {DEFAULT_MODEL})")
     parser.add_argument("--limit", type=int, default=0, help="Limit number of records")
     parser.add_argument("--offset", type=int, default=0, help="Skip first N records")
+    parser.add_argument("--prompt-variant", default=os.environ.get("VLM_PROMPT_VARIANT", "detailed"), choices=["detailed", "compact"], help="Structured metadata prompt variant")
+    parser.add_argument("--only-synthetic", action="store_true", default=True, help="Only caption synthetic descriptions")
+    parser.add_argument("--all", action="store_true", help="Caption all records (override --only-synthetic)")
     args = parser.parse_args()
 
     input_path = Path(args.input)
@@ -196,8 +199,12 @@ def main():
 
     print(f"Total records: {len(records)}")
 
-    to_process = [r for r in records if needs_captioning(r)]
-    print(f"Records needing captioning: {len(to_process)}")
+    only_synthetic = args.only_synthetic and not args.all
+    if only_synthetic:
+        to_process = [r for r in records if needs_captioning(r)]
+        print(f"Records needing captioning: {len(to_process)}")
+    else:
+        to_process = records
 
     if not to_process:
         print("No records to process.")
@@ -212,13 +219,15 @@ def main():
 
     with open(output_path, 'w') as out_f:
         for record in tqdm(records, desc="Captioning"):
-            should_caption = needs_captioning(record)
+            should_caption = not only_synthetic or needs_captioning(record)
 
             if should_caption:
                 url = get_image_url(record)
 
                 if not url:
                     record['vlm_caption'] = None
+                    record['vlm_metadata'] = None
+                    record['vlm_metadata_valid'] = False
                     record['vlm_error'] = 'no_image_filename'
                     errors += 1
                 else:
@@ -226,17 +235,21 @@ def main():
 
                     if image is None:
                         record['vlm_caption'] = None
+                        record['vlm_metadata'] = None
+                        record['vlm_metadata_valid'] = False
                         record['vlm_error'] = 'fetch_failed'
                         errors += 1
                     else:
                         try:
-                            prompt = build_prompt(record)
-                            caption = caption_image(model, processor, image, prompt)
-                            record['vlm_caption'] = caption
-                            record['vlm_captioned_at'] = __import__('datetime').datetime.now().isoformat()
+                            prompt = build_prompt(record, args.prompt_variant)
+                            response = caption_image(model, processor, image, prompt)
+                            generated_at = __import__('datetime').datetime.now().isoformat()
+                            apply_model_response(record, response, generated_at)
                             captioned += 1
                         except Exception as e:
                             record['vlm_caption'] = None
+                            record['vlm_metadata'] = None
+                            record['vlm_metadata_valid'] = False
                             record['vlm_error'] = str(e)
                             errors += 1
 

@@ -12,6 +12,7 @@ Requirements (install on Lambda):
 
 import argparse
 import json
+import os
 import sys
 from io import BytesIO
 from pathlib import Path
@@ -21,11 +22,12 @@ from PIL import Image
 from tqdm import tqdm
 import torch
 from transformers import AutoProcessor, LlavaForConditionalGeneration
+from structured_metadata import apply_model_response, build_structured_prompt
 
 # Configuration
 DEFAULT_MODEL = "llava-hf/llava-1.5-7b-hf"  # Good balance of speed/quality
 BATCH_SIZE = 1  # VLMs typically process one at a time
-MAX_NEW_TOKENS = 200
+MAX_NEW_TOKENS = 400
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 
@@ -46,7 +48,7 @@ def is_real_name(name: str) -> bool:
     return len(alpha_content) >= 3
 
 
-def build_prompt(record: dict) -> str:
+def build_prompt(record: dict, variant: str = "detailed") -> str:
     """Build a contextual prompt for the VLM."""
     parts = []
 
@@ -71,13 +73,7 @@ def build_prompt(record: dict) -> str:
     else:
         parts.append("This is a historical photograph from Montreal's city archives.")
 
-    parts.append("\nDescribe what you see in this image in 2-3 sentences. Focus on:")
-    parts.append("- The main subject (building, street, park, people, event)")
-    parts.append("- Notable visual details (architecture style, vehicles, clothing)")
-    parts.append("- The setting (urban, rural, indoor, outdoor)")
-    parts.append("\nBe specific and descriptive.")
-
-    return " ".join(parts)
+    return build_structured_prompt(" ".join(parts), variant=variant)
 
 
 def get_image_url(record: dict) -> Optional[str]:
@@ -177,6 +173,7 @@ def main():
     parser.add_argument("--model", default=DEFAULT_MODEL, help=f"Model to use (default: {DEFAULT_MODEL})")
     parser.add_argument("--limit", type=int, default=0, help="Limit number of records to process")
     parser.add_argument("--offset", type=int, default=0, help="Skip first N records")
+    parser.add_argument("--prompt-variant", default=os.environ.get("VLM_PROMPT_VARIANT", "detailed"), choices=["detailed", "compact"], help="Structured metadata prompt variant")
     parser.add_argument("--only-synthetic", action="store_true", default=True, help="Only caption synthetic descriptions")
     parser.add_argument("--all", action="store_true", help="Caption all records (override --only-synthetic)")
     args = parser.parse_args()
@@ -237,6 +234,8 @@ def main():
 
                 if not url:
                     record['vlm_caption'] = None
+                    record['vlm_metadata'] = None
+                    record['vlm_metadata_valid'] = False
                     record['vlm_error'] = 'no_image_url'
                     errors += 1
                 else:
@@ -244,17 +243,21 @@ def main():
 
                     if image is None:
                         record['vlm_caption'] = None
+                        record['vlm_metadata'] = None
+                        record['vlm_metadata_valid'] = False
                         record['vlm_error'] = 'fetch_failed'
                         errors += 1
                     else:
                         try:
-                            prompt = build_prompt(record)
-                            caption = caption_image(model, processor, image, prompt)
-                            record['vlm_caption'] = caption
-                            record['vlm_captioned_at'] = __import__('datetime').datetime.now().isoformat()
+                            prompt = build_prompt(record, args.prompt_variant)
+                            response = caption_image(model, processor, image, prompt)
+                            generated_at = __import__('datetime').datetime.now().isoformat()
+                            apply_model_response(record, response, generated_at)
                             captioned += 1
                         except Exception as e:
                             record['vlm_caption'] = None
+                            record['vlm_metadata'] = None
+                            record['vlm_metadata_valid'] = False
                             record['vlm_error'] = str(e)
                             errors += 1
 

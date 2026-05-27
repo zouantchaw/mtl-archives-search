@@ -5,9 +5,14 @@ import json
 import os
 import re
 import unicodedata
+from collections import Counter
 from pathlib import Path
 
 import requests
+
+
+class GeminiRequestError(RuntimeError):
+    """Raised when a Gemini API request fails in a user-facing pipeline context."""
 
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
@@ -196,6 +201,41 @@ TITLE_STOPWORDS = {
     "photo",
 }
 
+PUBLIC_LOCATION_STOPWORDS = {
+    "montreal",
+    "montréal",
+    "sector",
+    "secteur",
+    "intersection",
+    "corner",
+    "west",
+    "ouest",
+    "east",
+    "est",
+    "north",
+    "nord",
+    "south",
+    "sud",
+    "street",
+    "rue",
+    "avenue",
+    "boulevard",
+    "chemin",
+    "road",
+    "autoroute",
+    "highway",
+    "metro",
+    "métro",
+    "station",
+    "years",
+    "annees",
+    "années",
+    "late",
+    "early",
+    "montrealais",
+    "montrealer",
+}
+
 STATIC_STYLE_REFERENCE = """Vers 1969, Parc Kent (aujourd'hui Parc Martin-Luther-King Jr.)
 
 Une vue aerienne fascinante d'un parc de quartier en pleine vie.
@@ -303,6 +343,11 @@ def generate_research_package(
         editorial_brief=editorial_brief,
     )
     payload["theme_key"] = theme
+    payload["verification_summary"] = _verification_summary(audited_evidence, grounded_context)
+    payload["research_model"] = model
+    payload["grounded_context"] = grounded_context
+    payload["metadata_assessment"] = metadata_assessment
+    payload = _apply_public_confidence_guards(payload, metadata_fields, grounded_context)
     story_quality = {}
     static_story = {}
     reel_story = {}
@@ -348,11 +393,7 @@ def generate_research_package(
         "open_questions": audited_evidence.get("open_questions", []),
     }
     payload["anti_hallucination_notes"] = audited_evidence.get("anti_hallucination_notes", [])
-    payload["verification_summary"] = _verification_summary(audited_evidence, grounded_context)
     payload["editorial_memo"] = memo
-    payload["research_model"] = model
-    payload["grounded_context"] = grounded_context
-    payload["metadata_assessment"] = metadata_assessment
     payload["public_story"] = public_story
     payload["story_quality"] = story_quality
     if static_story.get("caption_fr"):
@@ -394,6 +435,12 @@ def refresh_public_story_from_payload(
     metadata_fields = _parse_metadata_fields(metadata_block)
     refreshed = json.loads(json.dumps(payload))
     refreshed["theme_key"] = theme
+    refreshed["metadata_assessment"] = refreshed.get("metadata_assessment") or _assess_metadata_grounding(metadata_fields)
+    refreshed = _apply_public_confidence_guards(
+        refreshed,
+        metadata_fields,
+        refreshed.get("grounded_context") or {},
+    )
 
     static_story = _build_static_template_candidate(refreshed, metadata_fields)
     static_score = _score_static_candidate(static_story, refreshed, metadata_fields)
@@ -416,6 +463,7 @@ def refresh_public_story_from_payload(
                 static_score["score"] >= 8
                 and not static_score["minor_detail_dominance"]
                 and static_score["off_brand_hits"] == 0
+                and static_score["unsupported_location_hits"] == 0
                 and not beauty_thin_metadata
             ),
             "candidates": [
@@ -425,6 +473,7 @@ def refresh_public_story_from_payload(
                     "anchor_ok": static_score["anchor_ok"],
                     "off_brand_hits": static_score["off_brand_hits"],
                     "minor_detail_dominance": static_score["minor_detail_dominance"],
+                    "unsupported_location_hits": static_score["unsupported_location_hits"],
                 }
             ],
         },
@@ -435,6 +484,7 @@ def refresh_public_story_from_payload(
                 reel_score["score"] >= 9
                 and not reel_score["minor_detail_dominance"]
                 and reel_score["off_brand_hits"] == 0
+                and reel_score["unsupported_location_hits"] == 0
                 and not beauty_thin_metadata
             ),
             "candidates": [
@@ -444,6 +494,7 @@ def refresh_public_story_from_payload(
                     "anchor_ok": reel_score["anchor_ok"],
                     "off_brand_hits": reel_score["off_brand_hits"],
                     "minor_detail_dominance": reel_score["minor_detail_dominance"],
+                    "unsupported_location_hits": reel_score["unsupported_location_hits"],
                 }
             ],
         },
@@ -454,6 +505,8 @@ def refresh_public_story_from_payload(
             and reel_score["off_brand_hits"] == 0
             and not static_score["minor_detail_dominance"]
             and not reel_score["minor_detail_dominance"]
+            and static_score["unsupported_location_hits"] == 0
+            and reel_score["unsupported_location_hits"] == 0
             and not beauty_thin_metadata
         ),
     }
@@ -961,7 +1014,12 @@ def _select_static_public_story(
     quality = {
         "selected_source": best["source"],
         "selected_score": best["score"],
-        "pass": best["score"] >= 8 and not best["minor_detail_dominance"] and best["off_brand_hits"] == 0,
+        "pass": (
+            best["score"] >= 8
+            and not best["minor_detail_dominance"]
+            and best["off_brand_hits"] == 0
+            and best["unsupported_location_hits"] == 0
+        ),
         "candidates": [
             {
                 "source": item["source"],
@@ -969,6 +1027,7 @@ def _select_static_public_story(
                 "anchor_ok": item["anchor_ok"],
                 "off_brand_hits": item["off_brand_hits"],
                 "minor_detail_dominance": item["minor_detail_dominance"],
+                "unsupported_location_hits": item["unsupported_location_hits"],
             }
             for item in scored
         ],
@@ -1025,7 +1084,12 @@ def _select_reel_public_story(
     quality = {
         "selected_source": best["source"],
         "selected_score": best["score"],
-        "pass": best["score"] >= 9 and not best["minor_detail_dominance"] and best["off_brand_hits"] == 0,
+        "pass": (
+            best["score"] >= 9
+            and not best["minor_detail_dominance"]
+            and best["off_brand_hits"] == 0
+            and best["unsupported_location_hits"] == 0
+        ),
         "candidates": [
             {
                 "source": item["source"],
@@ -1033,6 +1097,7 @@ def _select_reel_public_story(
                 "anchor_ok": item["anchor_ok"],
                 "off_brand_hits": item["off_brand_hits"],
                 "minor_detail_dominance": item["minor_detail_dominance"],
+                "unsupported_location_hits": item["unsupported_location_hits"],
             }
             for item in scored
         ],
@@ -1673,6 +1738,8 @@ def _hook_thumbnail_line(payload: dict, metadata_fields: dict, theme: str, *, la
         if family == "infrastructure":
             if "erased" in theme_key:
                 return f"{place}, ce chantier a effacé un paysage entier." if place else "Ce chantier a effacé un paysage entier."
+            if place and _place_duplicates_subject(place, subject_open):
+                return f"{place}, le territoire changeait déjà de forme."
             return f"{place}, {subject_open.lower()} redessinait déjà le territoire." if place else f"{subject_open} redessinait déjà le territoire."
         if family == "market":
             changed = _clean_sentence(payload.get("what_changed_fr"))
@@ -1862,6 +1929,17 @@ def _score_static_candidate(candidate: dict, payload: dict, metadata_fields: dic
     slide_count_ok = len(slides) == 5
     slide_anchor_ok = bool(slides and _starts_with_anchor(str(slides[0].get("headline", "")), payload, metadata_fields))
     slide_cta_ok = bool(slides and "mtlarchives.com" in _normalize_match(f"{slides[-1].get('headline', '')} {slides[-1].get('body', '')}"))
+    unsupported_location_hits = _unsupported_location_hits(
+        " ".join(
+            [
+                text,
+                " ".join(f"{slide.get('headline', '')} {slide.get('body', '')}" for slide in slides),
+                str(candidate.get("meta_fr", "")),
+                str(candidate.get("title_fr", "")),
+            ]
+        ),
+        payload,
+    )
 
     score = 0
     score += 3 if anchor_ok else 0
@@ -1878,6 +1956,7 @@ def _score_static_candidate(candidate: dict, payload: dict, metadata_fields: dic
     score -= speculative_hits * 2
     score -= 3 if early_minor else 0
     score -= 8 if "beauty" in theme_key and _is_thin_metadata_case(payload, metadata_fields) else 0
+    score -= unsupported_location_hits * 5
     nostalgia_penalty = _nostalgia_theme_penalty(text, payload, metadata_fields)
     score -= nostalgia_penalty
 
@@ -1887,6 +1966,7 @@ def _score_static_candidate(candidate: dict, payload: dict, metadata_fields: dic
         "off_brand_hits": off_brand_hits,
         "minor_detail_dominance": minor_detail_dominance,
         "nostalgia_penalty": nostalgia_penalty,
+        "unsupported_location_hits": unsupported_location_hits,
     }
 
 
@@ -1925,6 +2005,21 @@ def _score_reel_candidate(candidate: dict, payload: dict, metadata_fields: dict)
         str((cards[-1] or {}).get("subhead", "")) if cards else "",
     ]))
     question_marks = caption.count("?") + sum(str(card.get("headline", "")).count("?") + str(card.get("subhead", "")).count("?") for card in cards)
+    unsupported_location_hits = _unsupported_location_hits(
+        " ".join(
+            part
+            for part in (
+                caption,
+                card_text,
+                extra_text,
+                str(candidate.get("meta_fr", "")),
+                str(candidate.get("title_fr", "")),
+                str(candidate.get("subhead_fr", "")),
+            )
+            if part
+        ),
+        payload,
+    )
 
     score = 0
     score += 3 if anchor_ok else 0
@@ -1947,6 +2042,7 @@ def _score_reel_candidate(candidate: dict, payload: dict, metadata_fields: dict)
     score -= 3 if early_minor else 0
     score -= 2 if hook_minor else 0
     score -= 8 if "beauty" in theme_key and _is_thin_metadata_case(payload, metadata_fields) else 0
+    score -= unsupported_location_hits * 5
     nostalgia_penalty = _nostalgia_theme_penalty(" ".join(part for part in (caption, card_text, extra_text) if part), payload, metadata_fields)
     score -= nostalgia_penalty
 
@@ -1956,6 +2052,7 @@ def _score_reel_candidate(candidate: dict, payload: dict, metadata_fields: dict)
         "off_brand_hits": off_brand_hits,
         "minor_detail_dominance": minor_detail_dominance,
         "nostalgia_penalty": nostalgia_penalty,
+        "unsupported_location_hits": unsupported_location_hits,
     }
 
 
@@ -2085,6 +2182,18 @@ def _starts_with_anchor(text: str, payload: dict, metadata_fields: dict) -> bool
     if era and era in lowered and ("montreal" in lowered or "montreal" in location):
         return True
     return False
+
+
+def _unsupported_location_hits(text: str, payload: dict) -> int:
+    if payload.get("exact_location_public_safe", True):
+        return 0
+    lowered = _normalize_match(text)
+    hits = 0
+    for term in payload.get("suppressed_location_terms") or []:
+        normalized = _normalize_match(term)
+        if normalized and normalized in lowered:
+            hits += 1
+    return hits
 
 
 def _carousel_headline(text: str) -> str:
@@ -2274,8 +2383,20 @@ def _subject_location_context(payload: dict, subject: str) -> str:
     subject_clean = _clean_sentence(subject)
     if subject_clean and _normalize_match(location).startswith(_normalize_match(subject_clean)):
         trimmed = location[len(subject_clean):].lstrip(" ,-/")
+        if trimmed.startswith("(") and trimmed.endswith(")") and len(trimmed) > 2:
+            trimmed = trimmed[1:-1].strip()
         return trimmed
     return location
+
+
+def _place_duplicates_subject(place: str, subject: str) -> bool:
+    place_clean = _normalize_match(place)
+    subject_clean = _normalize_match(subject)
+    if not place_clean or not subject_clean:
+        return False
+
+    stripped_place = re.sub(r"^(a|au|aux|sur|dans|in|at|on)\s+", "", place_clean).strip()
+    return subject_clean in stripped_place or stripped_place in subject_clean
 
 
 def _hook_place_phrase(payload: dict, metadata_fields: dict, *, lang: str) -> str:
@@ -2547,10 +2668,10 @@ def _civic_intro_line(payload: dict, metadata_fields: dict, *, lang: str) -> str
         if lang == "fr":
             return "Derrière le monument Vauquelin, l'ancien Palais de justice encadrait un coin où se croisaient tramways, passants et vie publique."
         return "Behind the Vauquelin monument, the old courthouse framed a corner where streetcars, pedestrians, and public life crossed paths."
-    place = _civic_place_label(payload, metadata_fields, lang=lang)
+    subject = _clean_sentence(_plain_title(metadata_fields, payload)) or _civic_place_label(payload, metadata_fields, lang=lang)
     if lang == "fr":
-        return f"Cette image montre comment {place} structuraient la vie publique montréalaise bien au-delà de leurs façades."
-    return f"This image shows how {place} structured public life in Montreal well beyond their facades."
+        return f"Cette image montre comment {subject} structurait la vie publique montréalaise bien au-delà de sa façade."
+    return f"This image shows how {subject} structured public life in Montreal well beyond its facade."
 
 
 def _civic_detail_line(payload: dict, metadata_fields: dict, *, lang: str) -> str:
@@ -2568,6 +2689,9 @@ def _civic_survival_line(payload: dict, metadata_fields: dict, *, lang: str) -> 
         if lang == "fr":
             return "L'ancien palais, devenu l'édifice Lucien-Saulnier, et le monument Vauquelin restent deux repères majeurs de la rue Notre-Dame."
         return "The old courthouse, now the Lucien-Saulnier building, and the Vauquelin monument remain major landmarks on Notre-Dame Street."
+    explicit = _clean_sentence(payload.get("what_survived_fr" if lang == "fr" else "what_survived_en"))
+    if explicit:
+        return explicit
     text, _label = _best_change_or_survival(payload, metadata_fields, lang=lang)
     return text
 
@@ -2578,6 +2702,9 @@ def _civic_change_line(payload: dict, metadata_fields: dict, *, lang: str) -> st
         if lang == "fr":
             return "Les fils aériens du tramway et le petit kiosque utilitaire ont disparu, ce qui change complètement la lecture de ce coin de rue aujourd'hui."
         return "The overhead streetcar wires and small utility kiosk have disappeared, completely changing how this corner reads today."
+    explicit = _clean_sentence(payload.get("what_changed_fr" if lang == "fr" else "what_changed_en"))
+    if explicit:
+        return explicit
     text, _label = _best_change_or_survival(payload, metadata_fields, lang=lang)
     return text
 
@@ -2588,6 +2715,9 @@ def _civic_reflection_line(payload: dict, metadata_fields: dict, *, lang: str) -
         if lang == "fr":
             return "Cette archive rappelle que la mémoire civique de Montréal se construisait autant dans la rue que derrière les murs de ses institutions."
         return "This archive shows that Montreal's civic memory was built as much in the street as behind the walls of its institutions."
+    explicit = _clean_sentence(payload.get("closing_reflection_fr" if lang == "fr" else "closing_reflection_en"))
+    if explicit:
+        return explicit
     return _best_reflection(payload, metadata_fields, lang=lang)
 
 
@@ -2595,8 +2725,8 @@ def _civic_hook_line(payload: dict, metadata_fields: dict, *, lang: str) -> str:
     blob = " ".join(filter(None, [metadata_fields.get("title"), payload.get("title_fr"), payload.get("location")]))
     if "palais de justice" in _normalize_match(blob):
         return "Dans le Vieux-Montréal, ce palais réglait le tempo de la vie publique." if lang == "fr" else "In Old Montreal, this courthouse set the tempo of public life."
-    place = _civic_place_label(payload, metadata_fields, lang=lang)
-    return f"Dans {place}, une institution donnait encore son rythme à la ville." if lang == "fr" else f"In {place}, an institution still set the city's rhythm."
+    subject = _clean_sentence(_plain_title(metadata_fields, payload)) or _civic_place_label(payload, metadata_fields, lang=lang)
+    return f"{subject} donnait encore son rythme à la ville." if lang == "fr" else f"{subject} still set the city's rhythm."
 
 
 def _is_thin_metadata_case(payload: dict, metadata_fields: dict) -> bool:
@@ -2663,7 +2793,7 @@ def _build_anchor_from_payload(payload: dict, metadata_fields: dict, *, lang: st
     subject = _plain_title(metadata_fields, payload)
     location = payload.get("location") or metadata_fields.get("title") or "Montréal"
     era = _display_era_label(payload, metadata_fields)
-    if subject and _normalize_match(subject) not in {"montreal", "montréal"}:
+    if subject and _normalize_match(subject) not in {"montreal", "montréal"} and not _place_duplicates_subject(str(location), subject):
         return f"{subject}, {era}".strip(", ")
     if lang == "fr":
         return f"{location}, {era}".strip(", ")
@@ -2674,13 +2804,14 @@ def _build_static_anchor_from_payload(payload: dict, metadata_fields: dict, *, l
     subject = _plain_title(metadata_fields, payload)
     location = _subject_location_context(payload, subject)
     era = _display_era_label(payload, metadata_fields)
+    subject_duplicates_location = bool(subject and location and _place_duplicates_subject(location, subject))
     if lang == "fr":
-        if subject and location:
+        if subject and location and not subject_duplicates_location:
             return f"{era}, {subject} ({location})".strip(", ")
         if subject:
             return f"{era}, {subject}".strip(", ")
         return f"{era}, {location}".strip(", ")
-    if subject and location:
+    if subject and location and not subject_duplicates_location:
         return f"{era}, {subject} ({location})".strip(", ")
     if subject:
         return f"{era}, {subject}".strip(", ")
@@ -3260,14 +3391,17 @@ def _generate_content_response(
 
     timeout_seconds = GEMINI_GROUNDING_TIMEOUT_SECONDS if tools else GEMINI_REQUEST_TIMEOUT_SECONDS
 
-    resp = requests.post(
-        GEMINI_URL.format(model=model),
-        params={"key": GEMINI_API_KEY},
-        json=payload,
-        timeout=timeout_seconds,
-    )
-    resp.raise_for_status()
-    return resp.json()
+    try:
+        resp = requests.post(
+            GEMINI_URL.format(model=model),
+            params={"key": GEMINI_API_KEY},
+            json=payload,
+            timeout=timeout_seconds,
+        )
+        resp.raise_for_status()
+        return resp.json()
+    except requests.exceptions.RequestException as exc:
+        raise GeminiRequestError(str(exc)) from exc
 
 
 def _extract_text_from_response(data: dict) -> str:
@@ -3295,18 +3429,24 @@ def _default_grounding_context(*, reason: str, assessment: dict | None = None) -
 def _assess_metadata_grounding(metadata_fields: dict) -> dict:
     title = _clean_sentence(metadata_fields.get("title") or "")
     description = _clean_sentence(metadata_fields.get("description") or "")
+    official_title = _clean_sentence(metadata_fields.get("official title") or "")
+    official_description = _clean_sentence(metadata_fields.get("official description") or "")
     date_value = _clean_sentence(metadata_fields.get("date") or metadata_fields.get("date/era") or metadata_fields.get("date_value") or "")
     cote = _clean_sentence(metadata_fields.get("cote") or metadata_fields.get("archive reference") or "")
+    portal_match = _normalize_match(metadata_fields.get("portal match") or "") in {"true", "yes", "1"}
     normalized_title = _normalize_match(title)
     title_code_like = bool(normalized_title and re.fullmatch(r"vm\d+[-_a-z0-9.]+", normalized_title))
-    title_specific = bool(title and not title_code_like and len(_tokenize(title)) >= 2)
-    description_specific = bool(description and len(_tokenize(description)) >= 5)
+    official_title_specific = bool(official_title and len(_tokenize(official_title)) >= 2)
+    official_description_specific = bool(official_description and len(_tokenize(official_description)) >= 5)
+    title_specific = bool((title and not title_code_like and len(_tokenize(title)) >= 2) or official_title_specific)
+    description_specific = bool((description and len(_tokenize(description)) >= 5) or official_description_specific)
     score = sum(
         [
             2 if title_specific else 0,
             1 if description_specific else 0,
             1 if bool(date_value) else 0,
             1 if bool(cote) else 0,
+            1 if portal_match else 0,
         ]
     )
     return {
@@ -3315,11 +3455,188 @@ def _assess_metadata_grounding(metadata_fields: dict) -> dict:
         "title_code_like": title_code_like,
         "description_present": bool(description),
         "description_specific": description_specific,
+        "official_title_present": bool(official_title),
+        "official_title_specific": official_title_specific,
+        "official_description_present": bool(official_description),
+        "official_description_specific": official_description_specific,
         "date_present": bool(date_value),
         "cote_present": bool(cote),
+        "portal_match": portal_match,
         "score": score,
         "thin": score <= 2 or (not title_specific and not description_specific),
     }
+
+
+def _contains_exact_place_markers(text: str) -> bool:
+    clean = _normalize_match(text or "")
+    if not clean:
+        return False
+    if any(marker in clean for marker in (" & ", "/", "intersection", "between ", " coin ", " angle ")):
+        return True
+    if clean.count(",") >= 1 and any(token in clean for token in ("street", "rue", "avenue", "boulevard", "chemin")):
+        return True
+    return False
+
+
+def _location_support_is_weak(payload: dict, metadata_fields: dict, grounded_context: dict | None) -> bool:
+    assessment = payload.get("metadata_assessment") or _assess_metadata_grounding(metadata_fields)
+    location = _clean_sentence(payload.get("location") or payload.get("location_short_fr") or "")
+    if not location:
+        return False
+    if not assessment.get("thin"):
+        return False
+    if assessment.get("portal_match"):
+        return False
+    grounded_used = bool((grounded_context or {}).get("used"))
+    if not grounded_used:
+        return False
+    return True
+
+
+def _grounding_place_counts(payload: dict, grounded_context: dict | None) -> list[tuple[str, str, int]]:
+    texts: list[str] = []
+    texts.extend(str(query) for query in ((grounded_context or {}).get("queries") or []))
+    texts.extend(str(item.get("name") or "") for item in ((grounded_context or {}).get("candidate_subjects") or []))
+    texts.extend(str(item) for item in ((grounded_context or {}).get("notes") or []))
+    texts.extend(str(item) for item in ((grounded_context or {}).get("probable_context") or []))
+    texts.extend(
+        str(value or "")
+        for value in (
+            (grounded_context or {}).get("summary"),
+            payload.get("location"),
+            payload.get("location_short_fr"),
+            payload.get("title_fr"),
+        )
+    )
+    counts: Counter[str] = Counter()
+    display: dict[str, str] = {}
+    for text in texts:
+        for raw in re.findall(r"[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'’.-]{3,}", text):
+            normalized = _normalize_match(raw).strip(".-'")
+            if not normalized or normalized in PUBLIC_LOCATION_STOPWORDS:
+                continue
+            counts[normalized] += 1
+            display.setdefault(normalized, raw)
+    ranked = sorted(((key, display[key], count) for key, count in counts.items()), key=lambda item: (-item[2], item[0]))
+    return ranked
+
+
+def _best_query_corridor_token(grounded_context: dict | None) -> str:
+    queries = [str(query) for query in ((grounded_context or {}).get("queries") or []) if str(query).strip()]
+    if not queries:
+        return ""
+    counts: Counter[str] = Counter()
+    display: dict[str, str] = {}
+    for query in queries:
+        seen: set[str] = set()
+        for raw in re.findall(r"[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'’.-]{3,}", query):
+            normalized = _normalize_match(raw).strip(".-'")
+            if not normalized or normalized in PUBLIC_LOCATION_STOPWORDS or normalized in seen:
+                continue
+            seen.add(normalized)
+            counts[normalized] += 1
+            display.setdefault(normalized, raw)
+    threshold = max(2, min(3, len(queries)))
+    for normalized, count in counts.most_common():
+        if count >= threshold:
+            return _clean_sentence(display[normalized])
+    return ""
+
+
+def _best_broad_location_label(payload: dict, metadata_fields: dict, grounded_context: dict | None, *, lang: str) -> tuple[str, str]:
+    broad_token = _best_query_corridor_token(grounded_context)
+    if not broad_token:
+        ranked = _grounding_place_counts(payload, grounded_context)
+        for normalized, original, count in ranked:
+            if count >= 2:
+                broad_token = original
+                break
+    broad_token = _clean_sentence(broad_token)
+    if broad_token:
+        if lang == "fr":
+            return (f"secteur {broad_token}", f"secteur {broad_token}, Montréal")
+        return (f"{broad_token} sector", f"{broad_token} sector, Montreal")
+    if lang == "fr":
+        return ("secteur à confirmer", "secteur à confirmer, Montréal")
+    return ("sector to confirm", "Montreal sector to confirm")
+
+
+def _suppressed_location_terms(payload: dict, grounded_context: dict | None, broad_short_fr: str) -> list[str]:
+    broad_normalized = _normalize_match(broad_short_fr)
+    candidates: list[str] = []
+    for value in (
+        payload.get("location"),
+        payload.get("location_short_fr"),
+        payload.get("title_fr"),
+        payload.get("title_en"),
+    ):
+        clean = _clean_sentence(value or "")
+        if clean:
+            candidates.append(clean)
+    for query in ((grounded_context or {}).get("queries") or []):
+        candidates.extend(re.findall(r'"([^"]+)"', str(query)))
+    for item in ((grounded_context or {}).get("candidate_subjects") or []):
+        clean = _clean_sentence((item or {}).get("name") or "")
+        if clean:
+            candidates.append(clean)
+    terms: list[str] = []
+    for candidate in candidates:
+        for fragment in re.split(r"[,&/()]| and | et ", candidate):
+            clean = _clean_sentence(fragment)
+            normalized = _normalize_match(clean)
+            if not clean or not normalized or normalized in PUBLIC_LOCATION_STOPWORDS:
+                continue
+            if re.search(r"\d", clean) or any(marker in normalized for marker in ("annee", "années", "annees", "years")):
+                continue
+            if broad_normalized and normalized in broad_normalized:
+                continue
+            if any(term == normalized for term in map(_normalize_match, terms)):
+                continue
+            if len(normalized) < 5:
+                continue
+            terms.append(clean)
+    return terms[:8]
+
+
+def _apply_public_confidence_guards(payload: dict, metadata_fields: dict, grounded_context: dict | None) -> dict:
+    sanitized = json.loads(json.dumps(payload))
+    assessment = sanitized.get("metadata_assessment") or _assess_metadata_grounding(metadata_fields)
+    sanitized["metadata_assessment"] = assessment
+    weak_location = _location_support_is_weak(sanitized, metadata_fields, grounded_context)
+    exact_markers = _contains_exact_place_markers(sanitized.get("location") or "") or _contains_exact_place_markers(sanitized.get("location_short_fr") or "")
+
+    if weak_location:
+        short_fr, location_fr = _best_broad_location_label(sanitized, metadata_fields, grounded_context, lang="fr")
+        short_en, location_en = _best_broad_location_label(sanitized, metadata_fields, grounded_context, lang="en")
+        sanitized["original_inferred_location"] = _clean_sentence(sanitized.get("location") or "")
+        sanitized["original_inferred_location_short_fr"] = _clean_sentence(sanitized.get("location_short_fr") or "")
+        sanitized["location_short_fr"] = short_fr
+        sanitized["location_short_en"] = short_en
+        sanitized["location"] = location_fr
+        sanitized["location_en"] = location_en
+        sanitized["location_confidence"] = "low"
+        sanitized["exact_location_public_safe"] = False
+        sanitized["suppressed_location_terms"] = _suppressed_location_terms(sanitized, grounded_context, short_fr)
+        era = _display_era_label(sanitized, metadata_fields)
+        title_fr = _clean_sentence(sanitized.get("title_fr") or "")
+        title_en = _clean_sentence(sanitized.get("title_en") or "")
+        old_location_terms = {
+            _normalize_match(sanitized.get("original_inferred_location") or ""),
+            _normalize_match(sanitized.get("original_inferred_location_short_fr") or ""),
+        }
+        if not title_fr or _normalize_match(title_fr) in old_location_terms or exact_markers:
+            sanitized["title_fr"] = short_fr
+        if not title_en or _normalize_match(title_en) in old_location_terms or exact_markers:
+            sanitized["title_en"] = short_en
+        meta_fr = _clean_sentence(sanitized.get("meta_fr") or "")
+        if not meta_fr or _contains_exact_place_markers(meta_fr):
+            sanitized["meta_fr"] = ", ".join(part for part in (short_fr, era) if part)
+    else:
+        sanitized["location_confidence"] = "normal"
+        sanitized["exact_location_public_safe"] = True
+        sanitized["suppressed_location_terms"] = []
+
+    return sanitized
 
 
 def _should_use_search_grounding(metadata_fields: dict, theme: str) -> bool:

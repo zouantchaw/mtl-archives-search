@@ -199,6 +199,7 @@ Local machine ──▶ pipelines/daily-reel/main.py ──▶ Worker API (/api/
   - Facebook: reel + hook-first caption
 - The runner also supports package re-renders from an existing local directory via `--package-dir --reuse-research`, which avoids a second Gemini call during incident recovery while rebuilding the latest local public-story templates from saved research.
 - The local FB reel renderer now traverses portrait panels derived from the original archive image so the full frame is progressively revealed across the video instead of living inside a single crop.
+- The local IG carousel renderer now uses content-aware contextual detail crops instead of fixed quadrant splits, so slide-level closeups prefer meaningful regions in the image itself.
 - Inspection artifacts now carry explicit review signals (`brand_ready`, per-channel scores, `caption_ok`) so the local runtime can flag weak packages instead of treating every render as publishable by default.
 - Search/random fallback runs now keep a candidate pool and auto-reroll until a package passes the brand gate. If no candidate passes, the strongest attempt is still preserved for review, but the final package is explicitly marked with a failing `selection_status` rather than silently treated as publishable.
 - Exact recent-use filtering now starts at generation time through `data/social/publish-ledger.jsonl`, which stores archive identifiers, theme, selection status, and package outputs so the fallback can avoid recently used images before it renders a new package.
@@ -342,3 +343,37 @@ See `docs/metrics/vlm-captioning/` for detailed run metrics.
 - Both ingest paths read JSONL manifests as streams and process fixed-size batches, avoiding full-manifest memory loads.
 - Both ingest paths can optionally exclude records classified as `document_likely` (`--exclude-document-likely`) using shared rules from `packages/scripts/src/analysis/search-quality-rules.ts`.
 - Default behavior is fail-loud on integrity issues so partial ingest does not silently reduce index coverage.
+
+## Social Auth State
+
+- Durable Meta auth for the social pipeline lives in `pipelines/daily-reel/token_manager.py`.
+- Bootstrapped state is stored in `data/social/meta-token-state.json`.
+- The token manager auto-loads repo env files (`.env.local`, then `.env`) so the common local workflow is:
+  - `npm run social:token-bootstrap -- --print-env`
+  - `npm run social:token-status`
+- This keeps Graph API Explorer in the bootstrap role only. Ongoing health checks and page/IG linkage should run against the stored state file instead of requiring fresh pasted tokens.
+- Historical social pulls can reuse the same saved state through `packages/scripts/src/analysis/fetch-social-history.ts`, which falls back to `data/social/meta-token-state.json` for the user token, page ID, and Instagram account ID.
+- Content-performance correlation runs through `packages/scripts/src/analysis/social-content-correlation.ts`, which turns a post history snapshot into Q1-style summaries of format mix, feature correlations, and top-performing IG/FB patterns.
+- Day-level social correlation runs through `packages/scripts/src/analysis/social-daily-correlation.ts`, which joins downloaded Meta export CSVs to the post snapshot and can optionally supplement Facebook with live Page Insights (`page_media_view`, `page_daily_follows`) for cleaner Q1 daily comparisons.
+- The current history fetch stores per-post Instagram views for all IG Q1 posts and per-post Facebook views for reels via the `/{page-id}/video_reels` edge. That is intentionally separate from Facebook page-level Views: the Business Suite daily/monthly Views export aligns with Page Insights `page_media_view`, not with the sum of reel `views`.
+- Story publishing uses the same persisted auth state through `pipelines/daily-reel/story_publish.py`.
+- The current repo implementation supports Instagram and Facebook Page Story publishing from a local video asset by uploading the media to public R2 first, then using either the Instagram Story container flow or the Facebook Page `video_stories` flow.
+- Story publish attempts are written to `data/social/story-publish-log.jsonl`.
+- Server-side Story publishing does not support link/poll/location stickers, so Story CTA workflows that depend on a clickable `mtlarchives.com/game` sticker still require a mobile/manual flow.
+- Daily post publishing runs through `pipelines/daily-reel/post_publish.py`. It publishes Instagram carousel packages from `instagram_carousel/slide*.jpg` and Facebook reels from `facebook_reel.mp4`, uploads media to public R2 before calling Meta Graph, logs attempts to `data/social/post-publish-log.jsonl`, and records successful live posts in `data/social/publish-registry.jsonl`.
+
+## Local Social Outage Path
+
+- The local fallback runner lives in `pipelines/daily-reel/main.py`.
+- The operator-facing entrypoint is `npm run social:today`.
+- When no `--date` is provided, the runner resolves the run date in this order:
+  - `--timezone`
+  - `MTL_SOCIAL_TIMEZONE`
+  - local system timezone
+- The default local output root is `~/Downloads/mtl-daily/YYYY-MM-DD`.
+- The final package records `resolved_timezone`, which makes weekday/theme selection auditable for outage-generated packages.
+- The operator path prints a human-readable run summary by default. Use `npm run social:today:json` if an agent or wrapper needs the manifest on stdout.
+- Codex cron/worktree runs do not automatically inherit untracked repo env files. The local social pipeline now loads `.env.local` / `.env` from both the current checkout and the canonical git checkout so Gemini and Meta credentials stay available to automations without duplicating secret files.
+- The story-video workspace runs through `scripts/run-tsx.mjs` so automation worktrees can reuse the canonical repo's installed `tsx` binary rather than relying on `npx` to fetch it at run time.
+- Gemini request failures are normalized into a concise operator error message so temporary network issues do not explode into raw library tracebacks during the outage workflow.
+- Weak records now carry explicit location-confidence state (`location_confidence`, `exact_location_public_safe`). If exact place identity only comes from grounded search on thin metadata, the pipeline downgrades to a broader sector label and candidate scoring rejects any caption/reel that reintroduces the suppressed exact place names.

@@ -1,0 +1,8 @@
+{
+  "packageRoot": "~/Downloads/mtl-daily",
+  "minimumBrandReadyRate": 0.8,
+  "minimumAverageScore": 18,
+  "recentPackageLimit": 30,
+  "excludeMissingInspection": true,
+  "minimumInspectedPackages": 10
+}

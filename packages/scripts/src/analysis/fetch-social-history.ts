@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MONOREPO_ROOT = path.resolve(__dirname, '../../../../');
+const DEFAULT_TOKEN_STATE_PATH = path.join(MONOREPO_ROOT, 'data', 'social', 'meta-token-state.json');
 
 dotenv.config({ path: path.join(MONOREPO_ROOT, '.env.local') });
 dotenv.config({ path: path.join(MONOREPO_ROOT, '.env') });
@@ -115,6 +116,21 @@ function requireEnv(name: string): string {
   return value;
 }
 
+function readTokenState(tokenStatePath: string) {
+  if (!fs.existsSync(tokenStatePath)) {
+    return undefined;
+  }
+
+  const raw = fs.readFileSync(tokenStatePath, 'utf8');
+  const parsed = JSON.parse(raw) as {
+    user_token?: { access_token?: string };
+    page?: { id?: string; access_token?: string };
+    instagram?: { id?: string };
+  };
+
+  return parsed;
+}
+
 function sanitizeTimestamp(value: string) {
   return value.replace(/[:.]/g, '-');
 }
@@ -193,7 +209,16 @@ function mediaSurface(item: IgMedia): CombinedPost['surface'] {
 }
 
 async function main() {
-  const userToken = getArg('--token') ?? process.env.META_USER_ACCESS_TOKEN ?? requireEnv('META_USER_ACCESS_TOKEN');
+  const tokenStatePath = path.resolve(
+    MONOREPO_ROOT,
+    getArg('--token-state') ?? process.env.MTL_META_TOKEN_STATE ?? DEFAULT_TOKEN_STATE_PATH,
+  );
+  const tokenState = readTokenState(tokenStatePath);
+  const userToken =
+    getArg('--token')
+    ?? process.env.META_USER_ACCESS_TOKEN
+    ?? tokenState?.user_token?.access_token
+    ?? requireEnv('META_USER_ACCESS_TOKEN');
   const outputRoot = path.resolve(
     MONOREPO_ROOT,
     getArg('--output-dir') ?? path.join('data', 'social', sanitizeTimestamp(new Date().toISOString())),
@@ -228,7 +253,7 @@ async function main() {
     fail('No Facebook Pages returned by /me/accounts');
   }
 
-  const requestedPageId = getArg('--page-id') ?? process.env.META_PAGE_ID;
+  const requestedPageId = getArg('--page-id') ?? process.env.META_PAGE_ID ?? tokenState?.page?.id;
   const page: PageAccount | undefined = requestedPageId
     ? accounts.data.find((row) => row.id === requestedPageId)
     : accounts.data[0];
@@ -247,6 +272,7 @@ async function main() {
 
   const igAccountId = getArg('--ig-account-id')
     ?? process.env.META_IG_ACCOUNT_ID
+    ?? tokenState?.instagram?.id
     ?? pageInfo.instagram_business_account?.id;
 
   if (!igAccountId) {
@@ -394,6 +420,17 @@ async function main() {
 
   const summary = {
     fetched_at: new Date().toISOString(),
+    auth: {
+      token_state_path: fs.existsSync(tokenStatePath) ? tokenStatePath : null,
+      token_source:
+        getArg('--token')
+          ? 'cli'
+          : process.env.META_USER_ACCESS_TOKEN
+            ? 'env'
+            : tokenState?.user_token?.access_token
+              ? 'state'
+              : 'missing',
+    },
     page: {
       id: page.id,
       name: page.name,

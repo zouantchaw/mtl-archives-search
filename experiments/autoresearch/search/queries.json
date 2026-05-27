@@ -1,0 +1,142 @@
+[
+  {
+    "id": "church-1",
+    "query": "old church building",
+    "expectedKeywords": ["eglise", "church", "cathedral", "basilique", "notre-dame"],
+    "category": "religious-architecture",
+    "language": "en"
+  },
+  {
+    "id": "aerial-1",
+    "query": "aerial view of downtown",
+    "expectedKeywords": ["aerienne", "aerial", "centre-ville", "downtown", "vue"],
+    "category": "aerial-urban",
+    "language": "en"
+  },
+  {
+    "id": "aerial-2",
+    "query": "vue aérienne du port",
+    "expectedKeywords": ["port", "aerienne", "aerial", "montreal"],
+    "category": "aerial-port",
+    "language": "fr"
+  },
+  {
+    "id": "transport-1",
+    "query": "metro station construction",
+    "expectedKeywords": ["metro", "station", "construction", "tunnel"],
+    "category": "transport-infrastructure",
+    "language": "en"
+  },
+  {
+    "id": "architecture-1",
+    "query": "place ville marie building",
+    "expectedKeywords": ["place ville-marie", "ville marie", "place ville marie"],
+    "category": "modern-architecture",
+    "language": "en"
+  },
+  {
+    "id": "historical-1",
+    "query": "vieux montréal",
+    "expectedKeywords": ["vieux", "old montreal", "vieux montreal"],
+    "category": "historical-district",
+    "language": "fr"
+  },
+  {
+    "id": "bridge-1",
+    "query": "pont jacques cartier",
+    "expectedKeywords": ["pont", "jacques-cartier", "jacques cartier", "bridge"],
+    "category": "infrastructure-bridge",
+    "language": "fr"
+  },
+  {
+    "id": "park-1",
+    "query": "park with trees",
+    "expectedKeywords": ["parc", "park", "trees", "arbres"],
+    "category": "nature-parks",
+    "language": "en"
+  },
+  {
+    "id": "winter-1",
+    "query": "snow winter scene",
+    "expectedKeywords": ["neige", "hiver", "winter", "snow"],
+    "category": "seasonal-winter",
+    "language": "en"
+  },
+  {
+    "id": "port-1",
+    "query": "montreal harbor ships",
+    "expectedKeywords": ["port", "harbour", "harbor", "navires", "ships"],
+    "category": "port-maritime",
+    "language": "en"
+  },
+  {
+    "id": "winter-2",
+    "query": "snow covered street with old cars",
+    "expectedKeywords": ["neige", "hiver", "snow", "voiture", "cars", "street", "rue"],
+    "category": "seasonal-winter",
+    "language": "en"
+  },
+  {
+    "id": "park-2",
+    "query": "people walking in a city park",
+    "expectedKeywords": ["parc", "park", "people", "personnes", "walking", "promenade"],
+    "category": "nature-parks",
+    "language": "en"
+  },
+  {
+    "id": "streetcar-1",
+    "query": "tramway on montreal street",
+    "expectedKeywords": ["tramway", "streetcar", "rue", "street", "transport"],
+    "category": "transport-streetcar",
+    "language": "en"
+  },
+  {
+    "id": "market-1",
+    "query": "public market building",
+    "expectedKeywords": ["marché", "market", "public", "building", "bâtiment"],
+    "category": "civic-market",
+    "language": "en"
+  },
+  {
+    "id": "factory-1",
+    "query": "industrial factory building",
+    "expectedKeywords": ["industrie", "industrial", "factory", "usine", "building", "bâtiment"],
+    "category": "industrial",
+    "language": "en"
+  },
+  {
+    "id": "residential-1",
+    "query": "residential neighborhood houses",
+    "expectedKeywords": ["résidentiel", "residential", "quartier", "neighborhood", "houses", "maisons"],
+    "category": "residential",
+    "language": "en"
+  },
+  {
+    "id": "demolition-1",
+    "query": "demolition and construction site",
+    "expectedKeywords": ["démolition", "demolition", "construction", "chantier", "site"],
+    "category": "construction",
+    "language": "en"
+  },
+  {
+    "id": "children-1",
+    "query": "children playing outside",
+    "expectedKeywords": ["enfants", "children", "playing", "jouent", "extérieur", "outside"],
+    "category": "people-activity",
+    "language": "en"
+  },
+  {
+    "id": "horse-1",
+    "query": "horse cart on street",
+    "expectedKeywords": ["cheval", "horse", "cart", "voiture", "rue", "street"],
+    "category": "transport-horse",
+    "language": "en"
+  },
+  {
+    "id": "waterfront-1",
+    "query": "waterfront buildings and river",
+    "expectedKeywords": ["waterfront", "fleuve", "river", "eau", "port", "buildings"],
+    "category": "waterfront",
+    "language": "en"
+  }
+]

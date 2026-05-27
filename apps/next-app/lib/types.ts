@@ -40,6 +40,16 @@ export type PhotoRecord = {
   latitude: number | null;
   longitude: number | null;
   geocodeConfidence: number | null;
+  searchMetadata?: {
+    primaryCategory: string | null;
+    themes: string[];
+    searchFacets: string[];
+    reviewRequired: boolean;
+    excludeFromDefaultVisualSearch: boolean;
+    qualityLabels: string[];
+    qualitySeverity: string | null;
+    qualityAction: string | null;
+  };
   score?: number;
 };
 

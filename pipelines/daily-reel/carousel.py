@@ -57,7 +57,13 @@ def generate_story_carousel(
     out_dir.mkdir(parents=True, exist_ok=True)
 
     raw_dir = out_dir / "_raw"
-    raw_paths = generate_grids(image_path, str(raw_dir), num_grids=5)
+    raw_paths = generate_grids(
+        image_path,
+        str(raw_dir),
+        num_grids=5,
+        research=research,
+        selected_photo=selected_photo,
+    )
     slides = _build_slides(research, selected_photo or {})
 
     outputs: list[str] = []

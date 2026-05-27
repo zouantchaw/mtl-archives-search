@@ -109,6 +109,8 @@ def download_image(url: str, output_path: str) -> str:
 def format_metadata(record: dict) -> str:
     """Format D1 metadata for use as research context."""
     parts = []
+    if record.get("portalMatch") is not None:
+        parts.append(f"Portal Match: {record['portalMatch']}")
     if record.get("name"):
         parts.append(f"Title: {record['name']}")
     if record.get("description"):
@@ -119,6 +121,10 @@ def format_metadata(record: dict) -> str:
         parts.append(f"Official Description: {record['portalDescription']}")
     if record.get("dateValue"):
         parts.append(f"Date: {record['dateValue']}")
+    if record.get("metadataFilename"):
+        parts.append(f"Metadata Filename: {record['metadataFilename']}")
+    if record.get("filename"):
+        parts.append(f"Image Filename: {record['filename']}")
     if record.get("credits"):
         parts.append(f"Credits: {record['credits']}")
     if record.get("cote"):

@@ -43,6 +43,9 @@ npm run dev --workspace=apps/next-app
 npm run social:fallback -- --date 2026-03-19 --id mtl_archives_metadata_65.json
 npm run social:fallback -- --date 2026-03-19 --package-dir /absolute/path/to/package --reuse-research
 npm run social:promote-story -- --package-dir /absolute/path/to/package
+npm run autoresearch:search     # Evaluate smart-search fusion experiment config
+npm run autoresearch:social     # Score saved daily social packages
+npm run autoresearch:lambda:plan # Check Lambda Labs GPU capacity/env; does not launch
 ```
 
 ## Architecture
@@ -133,16 +136,26 @@ Next app runtime env:
 - Hosted Stripe Checkout is not the shipping-pricing authority in this repo; the app validates the address and fixes the quote before redirect.
 - Newsletter consent is explicit-only. Do not auto-enroll Clerk/game signups without a dedicated opt-in action and audit log entry.
 - The local social fallback is the outage path for MTL Archives daily posting. It must keep the platform split intact: IG carousel, FB reel, and weekday theme as lens.
+- The standard outage command is `npm run social:today`. It should resolve "today" using a real timezone (`--timezone`, `MTL_SOCIAL_TIMEZONE`, or local system timezone), write the package to `~/Downloads/mtl-daily`, record that timezone in the package metadata so the chosen weekday/theme is auditable later, print an operator-readable summary by default, and fail with a concise operator message if Gemini is unreachable.
 - In fallback mode, `--reuse-research` should reuse saved evidence while rebuilding the latest local public-story templates so copy/design iteration is still possible during outages.
+- Carousel detail slides should use contextual image crops, not fixed quadrants. Empty sky and dead edge crops are a bug, not a style choice.
 - Reels should progressively reveal the source image via portrait panels or equivalent full-frame traversal, not sit inside one static crop for the entire video.
 - Treat fallback inspection artifacts as operational signals, not decoration: if `brand_ready` or per-channel `caption_ok` is false, that package should be considered a reroll/review case rather than quietly shipped.
 - Search/random fallback runs should prefer automatic reroll over silent acceptance. The final date folder should represent the first brand-ready candidate that passes; if nothing passes, the package must stay explicitly marked as review-required rather than pretending the strongest failed attempt is publishable.
 - The social pipeline now writes `data/social/publish-ledger.jsonl`. Use that ledger for exact recent-use blocking; scraped social captions alone are not authoritative enough to prevent accidental duplicate image reuse.
 - Real publish reconciliation belongs in `data/social/publish-registry.jsonl`. Generation state and publish state are different things; do not collapse them.
 - Strong packages should emit `story_seed.json`. Daily social and deeper archive-linked story pages should share that handoff object instead of rebuilding story structure from scratch later.
+- Autoresearch lanes are documented in `docs/autoresearch.md`. Keep search experiments constrained to `experiments/autoresearch/search/config.json` until a winning config is promoted into Worker code, and do not let Lambda-backed VLM experiments launch GPU instances until planning, SSH selection, artifact upload, and termination have been manually tested.
 - Weak-metadata images can escalate through a bounded grounding ladder: archive metadata first, then Gemini image understanding, then optional web-grounded visual/context lookup. If identity is still too weak for the day’s theme, reroll instead of forcing a story.
+- Treat exact location labels as a higher bar than general Montreal context. If a thin record only gets a place identity from grounded search, public copy should downgrade to a broader sector label or fail reroll; it must not publish a confident intersection/building claim just because the web-grounded guess sounded plausible.
 - Obsidian should stay an optional editorial mirror. Generated packages should mirror into `experiments/`; registered published packages can be mirrored into `final/`. Do not make generation depend on the vault being mounted.
-- The durable Meta token flow should live outside Graph API Explorer. Bootstrap a long-lived user token once via `pipelines/daily-reel/token_manager.py`, store state in `data/social/meta-token-state.json`, and let `spruce` run status checks against that file instead of depending on ad hoc browser-minted tokens.
+- The durable Meta token flow should live outside Graph API Explorer. Bootstrap a long-lived user token once via `pipelines/daily-reel/token_manager.py`, store state in `data/social/meta-token-state.json`, and let repo or `spruce` status checks run against that file instead of depending on ad hoc browser-minted tokens. The token manager auto-loads `.env.local` / `.env`, so `npm run social:token-status` should work without manual flags in the normal local workflow.
+- Codex automations run in worktrees. Do not assume the worktree contains untracked `.env.local` files or a populated `node_modules`. The repo now solves that in code: social/token paths load env from the canonical checkout, and story-video runs through `scripts/run-tsx.mjs` to reuse the canonical repo's installed `tsx`.
+- Post-history refreshes should reuse that same durable Meta auth path. Prefer `npm run social:fetch-history` against `data/social/meta-token-state.json` over one-off env tokens, use `npm run social:analyze-content` for post-level pattern reports, and use `npm run social:analyze-daily` when the question is about daily Business Suite exports versus publish-day content mix.
+- Be precise about Facebook Views vocabulary. Page-level daily/monthly Views come from Page Insights `page_media_view`; per-post Facebook reel `views` from `/{page-id}/video_reels` are useful but they do not recreate page-level totals by themselves.
+- Story operations should use `pipelines/daily-reel/story_publish.py` against the persisted Meta token state. The repo now supports local-video -> public R2 URL -> Instagram Story container or Facebook Page `video_stories` upload -> optional live publish.
+- Post operations should use `pipelines/daily-reel/post_publish.py` against the persisted Meta token state. The repo supports daily-package publishing for Instagram carousel posts and Facebook Page reels, with idempotency through `data/social/publish-registry.jsonl`.
+- Do not imply feature parity with manual Story posting. Server-side Story publishing does not support link, poll, or location stickers. If the creative depends on a clickable `DEFI DU JOUR` link to `/game`, that is a manual/mobile step, not something the repo can silently fake.
 
 ## Skills
 
