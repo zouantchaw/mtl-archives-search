@@ -42,6 +42,7 @@
     "autoresearch:social": "npm run autoresearch:social --workspace=@mtl-archives/scripts",
     "autoresearch:candidates": "npm run autoresearch:candidates --workspace=@mtl-archives/scripts --",
     "autoresearch:collections": "npm run autoresearch:collections --workspace=@mtl-archives/scripts --",
+    "autoresearch:collection-surfaces": "npm run autoresearch:collection-surfaces --workspace=@mtl-archives/scripts --",
     "autoresearch:image-quality": "npm run autoresearch:image-quality --workspace=@mtl-archives/scripts --",
     "autoresearch:cleanup-embedding": "npm run autoresearch:cleanup-embedding --workspace=@mtl-archives/scripts --",
     "autoresearch:taxonomy": "npm run autoresearch:taxonomy --workspace=@mtl-archives/scripts --",

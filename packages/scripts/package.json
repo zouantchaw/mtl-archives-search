@@ -31,6 +31,7 @@
     "autoresearch:social": "tsx src/autoresearch/social-evaluate.ts",
     "autoresearch:candidates": "tsx src/autoresearch/candidate-discovery.ts",
     "autoresearch:collections": "tsx src/autoresearch/visual-collections.ts",
+    "autoresearch:collection-surfaces": "tsx src/autoresearch/collection-surfaces.ts",
     "autoresearch:image-quality": "tsx src/autoresearch/image-quality-issues.ts",
     "autoresearch:cleanup-embedding": "tsx src/autoresearch/cleanup-embedding-experiment.ts",
     "autoresearch:taxonomy": "tsx src/autoresearch/visual-taxonomy-classifier.ts",

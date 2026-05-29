@@ -109,6 +109,8 @@ Candidate discovery produced 100 rare-find candidates, 13 sequence candidates, 1
 
 The collection run generated 21 collections: 10 theme collections, 8 sequence collections, and 3 editorial collections. The collection-record downstream artifact contains 383 rows.
 
+`npm run autoresearch:collection-surfaces` converts those downstream rows into review-only product/story exports under `data/mtl_archives/reports/autoresearch_collection_surfaces/`: a Markdown review report, an HTML gallery, search-browse JSONL, story-draft JSONL, and full downstream surface JSONL. These artifacts preserve collection reasons, source metadata, and sequence ordering context, but they do not create public routes or publish stories.
+
 ### Cleanup
 
 - Command: `npm run autoresearch:cleanup-embedding -- --limit 12`
@@ -155,6 +157,7 @@ npm run autoresearch:social
 npm run autoresearch:taxonomy
 npm run autoresearch:image-quality
 npm run autoresearch:collections
+npm run autoresearch:collection-surfaces
 npm run autoresearch:candidates
 npm run autoresearch:cleanup-embedding -- --limit 12
 npm run autoresearch:embedding-eval -- --limit 20 --models clip
