@@ -38,6 +38,7 @@ The practical outcome is clear: product work should now use the generated taxono
 ### Search
 
 - Baseline evaluator: `npm run autoresearch:search`
+- Policy comparison: `npm run autoresearch:search:compare`
 - Sweep evaluator: `npm run autoresearch:search:sweep`
 - Query set: `experiments/autoresearch/search/queries.json`
 - Summary reports:
@@ -46,6 +47,8 @@ The practical outcome is clear: product work should now use the generated taxono
   - `data/mtl_archives/reports/autoresearch_search_sweep/`
 
 Current search evidence showed weak areas around winter/snow, residential neighborhoods, children/activity, parks, waterfront, and null-title aerial/visual records. The best recorded sweep config in the prior plan was `visualWeight=0.9`, `semanticWeight=1.3`, `rrfK=60`, `bothBonus=0.012`, with `precisionAt5=0.440`, `mrr=0.591`, and `duplicateRate=0`.
+
+Issue #27 compared baseline, current autoresearch ranking, and a revised policy. The current broad taxonomy/quality demotion/boost policy underperformed baseline, mostly because taxonomy intent boosts moved visually plausible but keyword-irrelevant records ahead of keyword-relevant records for `park-2` and `waterfront-1`. The revised decision is to keep taxonomy and quality policy signals score-neutral in search responses until richer relevance labels prove a ranking lift; this restores the baseline weighted score while preserving explainability fields for review and future experiments.
 
 ### Social
 
@@ -152,6 +155,7 @@ Use these commands to regenerate or inspect the current research lanes:
 ```bash
 npm run autoresearch:status
 npm run autoresearch:search
+npm run autoresearch:search:compare
 npm run autoresearch:search:sweep
 npm run autoresearch:social
 npm run autoresearch:taxonomy

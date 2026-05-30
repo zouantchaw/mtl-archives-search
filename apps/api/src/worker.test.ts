@@ -554,7 +554,7 @@ test('/api/search semantic mode returns results when Vectorize and AI are config
   assert.equal(data.items[0].score, 0.91);
 });
 
-test('/api/search suppresses autoresearch-excluded records without permanently hiding them', async () => {
+test('/api/search annotates autoresearch-excluded records without rank demotion', async () => {
   setupCacheMock();
   const excluded = createManifestRow({
     metadata_filename: 'excluded_hit.json',
@@ -578,11 +578,15 @@ test('/api/search suppresses autoresearch-excluded records without permanently h
 
   const defaultResponse = await worker.fetch(new Request('https://example.com/api/search?q=tramway&mode=semantic&limit=5'), env, ctx);
   assert.equal(defaultResponse.status, 200);
-  const defaultData = (await defaultResponse.json()) as { count: number; items: Array<{ metadataFilename: string; score: number }> };
+  const defaultData = (await defaultResponse.json()) as {
+    count: number;
+    items: Array<{ metadataFilename: string; score: number; searchPolicy?: { reasons: string[] } }>;
+  };
   assert.equal(defaultData.count, 2);
-  assert.equal(defaultData.items[0].metadataFilename, 'visible_hit.json');
-  assert.equal(defaultData.items[1].metadataFilename, 'excluded_hit.json');
-  assert.ok(defaultData.items[1].score < 0.99);
+  assert.equal(defaultData.items[0].metadataFilename, 'excluded_hit.json');
+  assert.equal(defaultData.items[0].score, 0.99);
+  assert.ok(defaultData.items[0].searchPolicy?.reasons.includes('quality:exclude_until_fixed'));
+  assert.ok(defaultData.items[0].searchPolicy?.reasons.includes('quality:high_severity'));
 
   const reviewResponse = await worker.fetch(new Request('https://example.com/api/search?q=tramway&mode=semantic&limit=5&includeExcluded=true'), env, ctx);
   assert.equal(reviewResponse.status, 200);
@@ -591,7 +595,7 @@ test('/api/search suppresses autoresearch-excluded records without permanently h
   assert.ok(reviewData.items.some((item) => item.metadataFilename === 'excluded_hit.json'));
 });
 
-test('/api/search demotes lower-rank quality records without hiding them', async () => {
+test('/api/search annotates lower-rank quality records without rank demotion', async () => {
   setupCacheMock();
   const demoted = createManifestRow({
     metadata_filename: 'demoted_hit.json',
@@ -615,11 +619,15 @@ test('/api/search demotes lower-rank quality records without hiding them', async
 
   const response = await worker.fetch(new Request('https://example.com/api/search?q=tramway&mode=semantic&limit=5'), env, ctx);
   assert.equal(response.status, 200);
-  const data = (await response.json()) as { count: number; items: Array<{ metadataFilename: string; score: number }> };
+  const data = (await response.json()) as {
+    count: number;
+    items: Array<{ metadataFilename: string; score: number; searchPolicy?: { reasons: string[] } }>;
+  };
   assert.equal(data.count, 2);
-  assert.equal(data.items[0].metadataFilename, 'clean_hit.json');
-  assert.equal(data.items[1].metadataFilename, 'demoted_hit.json');
-  assert.ok(data.items[1].score < 0.99);
+  assert.equal(data.items[0].metadataFilename, 'demoted_hit.json');
+  assert.equal(data.items[0].score, 0.99);
+  assert.ok(data.items[0].searchPolicy?.reasons.includes('quality:lower_rank'));
+  assert.ok(data.items[0].searchPolicy?.reasons.includes('quality:medium_severity'));
 });
 
 test('/api/search visual mode accepts precomputed POST embedding', async () => {

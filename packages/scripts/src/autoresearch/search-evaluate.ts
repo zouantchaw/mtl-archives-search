@@ -46,7 +46,7 @@ type SearchItem = {
 };
 
 type Source = 'visual' | 'semantic';
-type SearchPolicy = 'none' | 'autoresearch';
+type SearchPolicy = 'none' | 'autoresearch' | 'autoresearch-v2';
 type TaxonomyRow = {
   id: string;
   primaryCategory?: string;
@@ -154,6 +154,7 @@ function queryIntent(query: string): string[] {
 function applyPolicy(
   item: SearchItem,
   queryText: string,
+  policy: SearchPolicy,
   taxonomyById: Map<string, TaxonomyRow>,
   qualityById: Map<string, QualityRow>,
 ): { excluded: boolean; demotion: number; boost: number; reasons: string[] } {
@@ -167,23 +168,31 @@ function applyPolicy(
   const qualitySeverity = quality?.severity ?? '';
   const excluded = false;
 
+  const isRevised = policy === 'autoresearch-v2';
+  const excludedPenalty = isRevised ? 1 : 0.94;
+  const lowerRankPenalty = isRevised ? 1 : 0.94;
+  const reviewPenalty = isRevised ? 1 : 0.97;
+  const highSeverityPenalty = isRevised ? 1 : 0.97;
+  const mediumSeverityPenalty = isRevised ? 1 : 0.99;
+  const intentBoost = isRevised ? 1 : 1.22;
+
   if (qualityAction === 'exclude_until_fixed') {
-    demotion *= 0.94;
+    demotion *= excludedPenalty;
     reasons.push('quality:exclude_until_fixed');
   }
   if (taxonomy?.excludeFromDefaultVisualSearch) reasons.push('taxonomy:exclude_from_default_visual');
   if (qualityAction === 'lower_rank') {
-    demotion *= 0.94;
+    demotion *= lowerRankPenalty;
     reasons.push('quality:lower_rank');
   } else if (['review', 'rotate', 'crop_or_mask'].includes(qualityAction)) {
-    demotion *= 0.97;
+    demotion *= reviewPenalty;
     reasons.push(`quality:${qualityAction}`);
   }
   if (qualitySeverity === 'high') {
-    demotion *= 0.97;
+    demotion *= highSeverityPenalty;
     reasons.push('quality:high_severity');
   } else if (qualitySeverity === 'medium') {
-    demotion *= 0.99;
+    demotion *= mediumSeverityPenalty;
     reasons.push('quality:medium_severity');
   }
   if (taxonomy?.reviewRequired && !excluded) reasons.push('taxonomy:review_required');
@@ -199,7 +208,7 @@ function applyPolicy(
       taxonomyTokens.has(`primary:aerial_${intent}`) ||
       taxonomyTokens.has(`primary:${intent}`)
     ) {
-      boost *= 1.22;
+      boost *= intentBoost;
       reasons.push(`taxonomy:intent:${intent}`);
     }
   }
@@ -244,8 +253,8 @@ function fuseResults(
   const apply = (items: SearchItem[], source: Source, weight: number) => {
     items.forEach((item, index) => {
       const id = item.metadataFilename || `${source}-${index}`;
-      const itemPolicy = policy === 'autoresearch'
-        ? applyPolicy(item, queryText, taxonomyById, qualityById)
+      const itemPolicy = policy !== 'none'
+        ? applyPolicy(item, queryText, policy, taxonomyById, qualityById)
         : { excluded: false, demotion: 1, boost: 1, reasons: [] };
       if (itemPolicy.excluded) {
         policyStats.excluded += 1;
@@ -338,11 +347,11 @@ async function main() {
   const outputPath = resolveRepoPath(values.output!);
   const config = readJson<SearchConfig>(configPath);
   const queries = readJson<QueryCase[]>(queriesPath);
-  const policy = values.policy === 'autoresearch' ? 'autoresearch' : 'none';
+  const policy = values.policy === 'autoresearch' || values.policy === 'autoresearch-v2' ? values.policy : 'none';
   const taxonomyPath = resolveRepoPath(values.taxonomy!);
   const qualityPath = resolveRepoPath(values.quality!);
-  const taxonomyById = policy === 'autoresearch' ? readJsonlMap<TaxonomyRow>(taxonomyPath) : new Map<string, TaxonomyRow>();
-  const qualityById = policy === 'autoresearch' ? readJsonlMap<QualityRow>(qualityPath) : new Map<string, QualityRow>();
+  const taxonomyById = policy !== 'none' ? readJsonlMap<TaxonomyRow>(taxonomyPath) : new Map<string, TaxonomyRow>();
+  const qualityById = policy !== 'none' ? readJsonlMap<QualityRow>(qualityPath) : new Map<string, QualityRow>();
   const policyStats: PolicyStats = { excluded: 0, demoted: 0, reasons: {} };
 
   const results = [];
@@ -393,7 +402,7 @@ async function main() {
     queriesPath,
     config,
     policy,
-    policyInputs: policy === 'autoresearch'
+    policyInputs: policy !== 'none'
       ? {
           taxonomy: taxonomyPath,
           quality: qualityPath,

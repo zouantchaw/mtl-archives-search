@@ -453,24 +453,19 @@ function searchPolicyFor(item: SearchAwarePhotoRecord, query = ''): SearchPolicy
   const excludedFromDefault = false;
 
   if (qualityAction === 'exclude_until_fixed') {
-    demotion *= 0.94;
     reasons.push('quality:exclude_until_fixed');
   }
   if (metadata.excludeFromDefaultVisualSearch) reasons.push('taxonomy:exclude_from_default_visual');
 
   if (qualityAction === 'lower_rank') {
-    demotion *= 0.94;
     reasons.push('quality:lower_rank');
   } else if (['review', 'rotate', 'crop_or_mask'].includes(qualityAction)) {
-    demotion *= 0.97;
     reasons.push(`quality:${qualityAction}`);
   }
 
   if (qualitySeverity === 'high') {
-    demotion *= 0.97;
     reasons.push('quality:high_severity');
   } else if (qualitySeverity === 'medium') {
-    demotion *= 0.99;
     reasons.push('quality:medium_severity');
   }
 
@@ -489,7 +484,6 @@ function searchPolicyFor(item: SearchAwarePhotoRecord, query = ''): SearchPolicy
       taxonomyTokens.has(`primary:aerial_${intent}`) ||
       taxonomyTokens.has(`primary:${intent}`)
     ) {
-      boost *= 1.22;
       reasons.push(`taxonomy:intent:${intent}`);
     }
   }

@@ -38,6 +38,7 @@
     "smoke:pipeline": "npm run smoke:pipeline --workspace=@mtl-archives/scripts",
     "search-quality:audit": "npm run search-quality:audit --workspace=@mtl-archives/scripts",
     "autoresearch:search": "npm run autoresearch:search --workspace=@mtl-archives/scripts",
+    "autoresearch:search:compare": "npm run autoresearch:search:compare --workspace=@mtl-archives/scripts --",
     "autoresearch:search:sweep": "npm run autoresearch:search:sweep --workspace=@mtl-archives/scripts",
     "autoresearch:social": "npm run autoresearch:social --workspace=@mtl-archives/scripts",
     "autoresearch:candidates": "npm run autoresearch:candidates --workspace=@mtl-archives/scripts --",

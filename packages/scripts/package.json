@@ -27,6 +27,7 @@
     "link-records:report": "tsx src/analysis/record-linkage-report.ts",
     "search-quality:audit": "tsx src/analysis/search-quality-audit.ts",
     "autoresearch:search": "tsx src/autoresearch/search-evaluate.ts",
+    "autoresearch:search:compare": "tsx src/autoresearch/search-policy-compare.ts",
     "autoresearch:search:sweep": "tsx src/autoresearch/search-sweep.ts",
     "autoresearch:social": "tsx src/autoresearch/social-evaluate.ts",
     "autoresearch:candidates": "tsx src/autoresearch/candidate-discovery.ts",
