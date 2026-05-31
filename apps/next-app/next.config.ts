@@ -40,6 +40,10 @@ const nextConfig: NextConfig = {
         destination: `${apiBase}/api/map`,
       },
       {
+        source: '/api/thumb',
+        destination: `${apiBase}/api/thumb`,
+      },
+      {
         source: '/api/sitemap',
         destination: `${apiBase}/api/sitemap`,
       },
