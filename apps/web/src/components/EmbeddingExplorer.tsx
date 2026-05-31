@@ -8,7 +8,7 @@ import { events as analytics } from '../lib/analytics';
 transformersEnv.allowLocalModels = false;
 
 // Data URLs
-const R2_BASE = 'https://pub-6a29793ea7664738880d1cc5afb21b87.r2.dev/embeddings';
+const R2_BASE = import.meta.env.VITE_R2_EMBEDDINGS_BASE_URL ?? 'https://pub-6a29793ea7664738880d1cc5afb21b87.r2.dev/embeddings';
 const DATA_URL_2D = `${R2_BASE}/embeddings_2d.json`;
 const DATA_URL_512D = `${R2_BASE}/embeddings_512d.bin`;
 const DATA_URL_IDS = `${R2_BASE}/embeddings_ids.json`;
@@ -1368,7 +1368,7 @@ function PhotoModal({
         {/* Image */}
         <div className="relative aspect-[16/10] bg-black/50">
           <img
-            src={`${API_ORIGIN}/api/thumb?src=${encodeURIComponent(photo.image_url)}&w=1000&q=90&format=auto`}
+            src={`${API_ORIGIN}/api/thumb?src=${encodeURIComponent(photo.image_url)}&w=1600&h=1000&fit=contain&q=90&format=auto`}
             alt={photo.name || 'Historical photo'}
             className="w-full h-full object-contain"
             onError={() => {
@@ -1977,6 +1977,7 @@ export function EmbeddingExplorer() {
   const [showLegend, setShowLegend] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [sheetExpanded, setSheetExpanded] = useState(false);
   const [activeSubject, setActiveSubject] = useState<string | null>(null);
   const [showConstellations, setShowConstellations] = useState(true);
   const [showClusterAnnotations, setShowClusterAnnotations] = useState(false);
@@ -2131,6 +2132,7 @@ export function EmbeddingExplorer() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadProgress, setLoadProgress] = useState(0);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [webglError, setWebglError] = useState<string | null>(null);
 
   // View state
   const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
@@ -2624,7 +2626,14 @@ export function EmbeddingExplorer() {
     camera.position.copy(config2D.position);
     camera.lookAt(config2D.target);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: !isMobile }); // Disable AA on mobile
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: !isMobile, failIfMajorPerformanceCaveat: false });
+    } catch (err) {
+      console.error('WebGL initialization failed', err);
+      setWebglError('Your browser or device could not start WebGL, so the 3D explorer cannot render. Try a different browser or enable hardware acceleration.');
+      return;
+    }
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
     container.appendChild(renderer.domElement);
@@ -3301,6 +3310,17 @@ export function EmbeddingExplorer() {
     );
   }
 
+  if (webglError) {
+    return (
+      <div className="w-screen h-screen bg-[#0a0a0a] flex items-center justify-center p-6">
+        <div className="max-w-md text-center space-y-3">
+          <p className="text-white text-base font-semibold">WebGL unavailable</p>
+          <p className="text-white/50 text-sm leading-relaxed">{webglError}</p>
+        </div>
+      </div>
+    );
+  }
+
   const visualSearchReady = clipStatus === 'ready' && embeddingsStatus === 'ready';
   const visualSearchLoading = clipStatus === 'loading' || embeddingsStatus === 'loading';
 
@@ -3493,7 +3513,10 @@ export function EmbeddingExplorer() {
       )}
 
       {/* Top Controls */}
-      <div className="fixed top-4 sm:top-5 left-3 sm:left-5 right-3 sm:right-5 z-30 flex items-start justify-between gap-2 sm:gap-4">
+      <div
+        className="fixed left-3 sm:left-5 right-3 sm:right-5 z-30 flex items-start justify-between gap-2 sm:gap-4"
+        style={{ top: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}
+      >
         {/* Left side - View toggle (compact on mobile) */}
         <GlassPanel variant="elevated" className="rounded-xl sm:rounded-2xl p-1 sm:p-1.5 flex shrink-0 gap-0.5 sm:gap-1">
           {(['2d', '3d'] as const).map(v => (
@@ -3674,8 +3697,53 @@ export function EmbeddingExplorer() {
         )}
       </div>
 
+      {/* Mobile search mode switch - stays available when results are open */}
+      {isMobile && results.length > 0 && (
+        <div
+          className="fixed left-1/2 -translate-x-1/2 z-30"
+          style={{ top: 'calc(env(safe-area-inset-top, 0px) + 62px)' }}
+        >
+          <GlassPanel variant="elevated" className="rounded-full p-1 flex items-center gap-1">
+            <button
+              onClick={() => setSearchMode('semantic')}
+              className={`px-4 py-2 rounded-full text-[12px] font-semibold transition-all ${
+                searchMode === 'semantic'
+                  ? 'bg-white/[0.14] text-white'
+                  : 'text-white/45 hover:text-white/75'
+              }`}
+            >
+              Text
+            </button>
+            <button
+              onClick={() => {
+                if (visualSearchReady) {
+                  setSearchMode('visual');
+                } else if (!visualSearchLoading) {
+                  enableVisualSearch();
+                }
+              }}
+              disabled={visualSearchLoading}
+              className={`px-4 py-2 rounded-full text-[12px] font-semibold transition-all ${
+                searchMode === 'visual'
+                  ? 'bg-orange-500/25 text-orange-100'
+                  : 'text-white/45 hover:text-white/75'
+              } ${visualSearchLoading ? 'cursor-wait opacity-70' : ''}`}
+            >
+              {visualSearchLoading ? 'Loading' : 'Visual'}
+            </button>
+          </GlassPanel>
+        </div>
+      )}
+
       {/* Unified Floating Toolbar - Apple Style */}
-      <div className="fixed bottom-6 sm:bottom-5 left-1/2 -translate-x-1/2 z-30 max-w-[calc(100vw-24px)] sm:max-w-[calc(100vw-40px)]">
+      <div
+        className={`fixed left-1/2 -translate-x-1/2 z-40 max-w-[calc(100vw-24px)] sm:max-w-[calc(100vw-40px)] transition-[bottom] duration-300 ease-out ${
+          isMobile && displayResults.length > 0
+            ? (sheetExpanded ? 'bottom-[calc(78vh+12px)]' : 'bottom-[calc(44vh+12px)]')
+            : 'bottom-6 sm:bottom-5'
+        }`}
+        style={isMobile ? { paddingBottom: 'env(safe-area-inset-bottom, 0px)' } : undefined}
+      >
         <GlassPanel variant="elevated" className="rounded-full px-3 py-2 flex items-center gap-1.5">
           {/* Photo count - compact on mobile */}
           <span className="text-[13px] text-white/60 font-medium tabular-nums whitespace-nowrap">
@@ -3805,22 +3873,50 @@ export function EmbeddingExplorer() {
         </a>
       )}
 
-      {/* Results Panel */}
+      {/* Results Panel - mobile bottom sheet / desktop right inspector */}
       {displayResults.length > 0 && (
-        <GlassPanel variant="elevated" className={`fixed top-20 z-30 rounded-2xl overflow-hidden ${isMobile ? 'left-5 right-5' : 'right-5 w-[380px]'}`}>
+        <GlassPanel
+          variant="elevated"
+          className={`fixed z-30 overflow-hidden ${
+            isMobile
+              ? `left-0 right-0 bottom-0 rounded-t-2xl border-t border-white/[0.08] transition-[max-height] duration-300 ease-out ${
+                  sheetExpanded ? 'max-h-[78vh]' : 'max-h-[44vh]'
+                }`
+              : 'right-4 top-20 bottom-20 w-[min(420px,calc(100vw-32px))] rounded-2xl flex flex-col'
+          }`}
+          style={isMobile ? { paddingBottom: 'env(safe-area-inset-bottom, 0px)' } : undefined}
+        >
+          {/* Mobile drag handle */}
+          {isMobile && (
+            <button
+              onClick={() => setSheetExpanded(v => !v)}
+              className="w-full pt-2 pb-1 flex items-center justify-center"
+              aria-label={sheetExpanded ? 'Collapse results' : 'Expand results'}
+            >
+              <span className="block w-10 h-1 rounded-full bg-white/25" />
+            </button>
+          )}
           {/* Results header */}
-          <div className="px-5 py-4 border-b border-white/[0.06] bg-gradient-to-b from-white/[0.02] to-transparent">
-            <div className="flex items-center justify-between">
-              <div>
+          <div
+            className={`px-4 sm:px-5 py-3 sm:py-4 border-b border-white/[0.06] bg-gradient-to-b from-white/[0.02] to-transparent ${
+              isMobile ? 'cursor-pointer' : ''
+            }`}
+            onClick={isMobile ? () => setSheetExpanded(v => !v) : undefined}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="text-[15px] font-semibold text-white tracking-tight">Results</p>
                   <span className="px-2 py-0.5 rounded-md bg-white/[0.08] text-[12px] font-semibold text-white/60 tabular-nums">{results.length}</span>
                 </div>
-                <p className="text-[12px] text-white/35 mt-1 truncate max-w-[180px] font-medium">"{query}"</p>
+                {query && (
+                  <p className="text-[12px] text-white/35 mt-1 truncate font-medium">for "{query}"</p>
+                )}
               </div>
               <button
-                onClick={() => { setResults([]); setQuery(''); setSelectedIndex(-1); }}
-                className="w-8 h-8 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] flex items-center justify-center text-white/40 hover:text-white/80 transition-all duration-200 hover:scale-105 active:scale-95"
+                onClick={(e) => { e.stopPropagation(); setResults([]); setQuery(''); setSelectedIndex(-1); setSheetExpanded(false); }}
+                className="w-8 h-8 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] flex items-center justify-center text-white/40 hover:text-white/80 transition-all duration-200 hover:scale-105 active:scale-95 shrink-0"
+                aria-label="Clear results"
               >
                 <CloseIcon size={14} />
               </button>
@@ -3851,7 +3947,7 @@ export function EmbeddingExplorer() {
               </div>
             )}
           </div>
-          <div className={`overflow-y-auto ${isMobile ? 'max-h-[50vh]' : 'max-h-[calc(100vh-200px)]'}`}>
+          <div className={`overflow-y-auto overscroll-contain ${isMobile ? (sheetExpanded ? 'max-h-[calc(78vh-72px)]' : 'max-h-[calc(44vh-72px)]') : 'flex-1'}`}>
             {displayResults.map((r, i) => {
               const allDetails = [
                 r.name && `Name: ${r.name}`,
@@ -3914,20 +4010,25 @@ export function EmbeddingExplorer() {
                     </div>
 
                     <div className="flex-1 min-w-0 pt-0.5">
-                      {r.name && (
-                        <div className="flex items-center gap-1.5 group/row">
-                          <p className="text-[15px] text-white font-semibold truncate flex-1 tracking-tight leading-tight">{r.name}</p>
-                          {!isMobile && (
-                            <div className="opacity-0 group-hover/row:opacity-100 transition-opacity duration-200 -translate-x-1 group-hover/row:translate-x-0">
-                              <CopyButton text={r.name} label="Name copied" onCopy={showToast} />
-                            </div>
-                          )}
-                        </div>
-                      )}
+                      {(() => {
+                        const fallbackTitle = r.name
+                          || (r.image_url ? r.image_url.split('/').pop()?.replace(/\.[a-z0-9]+$/i, '') : null)
+                          || r.id;
+                        return (
+                          <div className="flex items-center gap-1.5 group/row">
+                            <p className="text-[15px] text-white font-semibold truncate flex-1 tracking-tight leading-tight">{fallbackTitle}</p>
+                            {!isMobile && r.name && (
+                              <div className="opacity-0 group-hover/row:opacity-100 transition-opacity duration-200 -translate-x-1 group-hover/row:translate-x-0">
+                                <CopyButton text={r.name} label="Name copied" onCopy={showToast} />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
 
-                      {r.date && (
-                        <p className="text-[13px] text-white/40 mt-1.5 font-medium">{r.date}</p>
-                      )}
+                      <p className="text-[13px] text-white/40 mt-1.5 font-medium">
+                        {r.date || 'Date unknown'}
+                      </p>
 
                       {/* Similarity bar with animated fill */}
                       <div className="flex items-center gap-2.5 mt-3">
@@ -3950,22 +4051,24 @@ export function EmbeddingExplorer() {
                     </div>
                   </div>
 
-                  {/* Actions - fade in on hover */}
-                  {!isMobile && (
-                    <div className="mt-4 pt-3 border-t border-white/[0.04] opacity-0 group-hover:opacity-100 transition-all duration-200 -translate-y-1 group-hover:translate-y-0">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigator.clipboard.writeText(allDetails);
-                          showToast('All details copied');
-                        }}
-                        className="w-full py-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-[13px] text-white/50 hover:text-white/80 transition-all duration-200 flex items-center justify-center gap-2 font-medium"
-                      >
-                        <CopyIcon size={13} />
-                        Copy Details
-                      </button>
-                    </div>
-                  )}
+                  {/* Actions */}
+                  <div className={`mt-3 pt-3 border-t border-white/[0.04] ${
+                    isMobile
+                      ? ''
+                      : 'opacity-0 group-hover:opacity-100 transition-all duration-200 -translate-y-1 group-hover:translate-y-0'
+                  }`}>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigator.clipboard.writeText(allDetails);
+                        showToast('Details copied');
+                      }}
+                      className="w-full py-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] active:bg-white/[0.12] text-[13px] text-white/60 hover:text-white/80 transition-all duration-200 flex items-center justify-center gap-2 font-medium"
+                    >
+                      <CopyIcon size={13} />
+                      Copy Details
+                    </button>
+                  </div>
                 </div>
               );
             })}
