@@ -20,7 +20,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-from env_loader import load_repo_env
+from env_loader import load_repo_env, repo_state_path
 
 load_repo_env(REPO_ROOT)
 
@@ -31,12 +31,21 @@ from obsidian import export_package_note
 from reel import generate_reel
 from research import DEFAULT_MODEL, GeminiRequestError, generate_research_package, refresh_public_story_from_payload
 from search import download_image, format_metadata, get_photo_by_id, get_random_images, search_images
+from social_identity import (
+    ReusePolicyConfig,
+    build_story_angle_key,
+    evaluate_reuse_policy,
+    format_reuse_block,
+    load_usage_events,
+)
 from story_pages import build_story_seed
 from themes import resolve_theme
 
 
 DEFAULT_OUTPUT_ROOT = Path.home() / "Downloads" / "mtl-daily"
-DEFAULT_LEDGER_PATH = REPO_ROOT / "data" / "social" / "publish-ledger.jsonl"
+DEFAULT_LEDGER_PATH = repo_state_path(REPO_ROOT, "data/social/publish-ledger.jsonl")
+DEFAULT_PUBLISH_REGISTRY_PATH = repo_state_path(REPO_ROOT, "data/social/publish-registry.jsonl")
+DEFAULT_STORY_REGISTRY_PATH = repo_state_path(REPO_ROOT, "data/social/story-registry.jsonl")
 DEFAULT_OBSIDIAN_EXPORT_DIR = os.environ.get("MTL_OBSIDIAN_EXPORT_DIR")
 DEFAULT_SOCIAL_TIMEZONE = os.environ.get("MTL_SOCIAL_TIMEZONE", "").strip()
 
@@ -61,7 +70,12 @@ def run_pipeline(
     max_rerolls: int,
     candidate_pool: int,
     ledger_path: Path,
+    publish_registry_path: Path,
+    story_registry_path: Path,
     cooldown_days: int,
+    allow_intentional_image_reuse: bool,
+    reuse_reason: str | None,
+    story_angle_key: str | None,
     obsidian_dir: Path | None,
 ) -> dict:
     theme_spec = resolve_theme(theme_override, run_date)
@@ -73,6 +87,16 @@ def run_pipeline(
     combined_brief = _combine_editorial_briefs(theme_spec.editorial_brief, editorial_brief)
     fixed_source = bool(package_dir or image_path or image_id)
     candidate_limit = max(1, max_rerolls + 1)
+    reuse_policy = ReusePolicyConfig(
+        exact_cooldown_days=cooldown_days,
+        family_cooldown_days=cooldown_days,
+    )
+    usage_events = load_usage_events(
+        ledger_paths=[ledger_path],
+        registry_paths=[publish_registry_path],
+        story_registry_paths=[story_registry_path],
+        package_roots=_usage_package_roots(output_root),
+    )
     candidates = _resolve_candidates(
         query=query,
         image_id=image_id,
@@ -82,6 +106,11 @@ def run_pipeline(
         ledger_path=ledger_path,
         cooldown_days=cooldown_days,
         run_date=run_date,
+        usage_events=usage_events,
+        reuse_policy=reuse_policy,
+        allow_intentional_image_reuse=allow_intentional_image_reuse,
+        reuse_reason=reuse_reason,
+        story_angle_key=story_angle_key,
     )
     if not candidates:
         raise SystemExit("No candidate images available for this run.")
@@ -111,6 +140,11 @@ def run_pipeline(
             model=model,
             skip_reel=skip_reel,
             skip_carousel=skip_carousel,
+            usage_events=usage_events,
+            reuse_policy=reuse_policy,
+            allow_intentional_image_reuse=allow_intentional_image_reuse,
+            reuse_reason=reuse_reason,
+            story_angle_key_override=story_angle_key,
         )
         attempt_summary = {
             "attempt": index,
@@ -282,6 +316,11 @@ def _resolve_candidates(
     ledger_path: Path,
     cooldown_days: int,
     run_date: date,
+    usage_events: list[dict],
+    reuse_policy: ReusePolicyConfig,
+    allow_intentional_image_reuse: bool,
+    reuse_reason: str | None,
+    story_angle_key: str | None,
 ) -> list[dict]:
     if image_path:
         source_path = Path(image_path).expanduser().resolve()
@@ -296,6 +335,17 @@ def _resolve_candidates(
         record = get_photo_by_id(image_id)
         if not record:
             raise SystemExit(f"Photo ID not found: {image_id}")
+        decision = evaluate_reuse_policy(
+            record=record,
+            as_of=run_date,
+            events=usage_events,
+            config=reuse_policy,
+            story_angle_key=story_angle_key,
+            reuse_reason=reuse_reason,
+            allow_intentional_reuse=allow_intentional_image_reuse,
+        )
+        if not decision.get("allowed"):
+            raise SystemExit(format_reuse_block(decision))
         return [{"type": "record", "record": record}]
 
     if query:
@@ -304,6 +354,15 @@ def _resolve_candidates(
             raise SystemExit(f"No search results for query: {query}")
         deduped = _dedupe_records(results)
         filtered = _filter_recent_records(deduped, ledger_path=ledger_path, cooldown_days=cooldown_days, run_date=run_date)
+        filtered = _filter_reuse_policy_records(
+            filtered,
+            run_date=run_date,
+            usage_events=usage_events,
+            reuse_policy=reuse_policy,
+            allow_intentional_image_reuse=allow_intentional_image_reuse,
+            reuse_reason=reuse_reason,
+            story_angle_key=story_angle_key,
+        )
         return [{"type": "record", "record": record} for record in filtered]
 
     results = get_random_images(limit=candidate_pool)
@@ -311,6 +370,15 @@ def _resolve_candidates(
         raise SystemExit("No random images returned from worker API.")
     deduped = _dedupe_records(results)
     filtered = _filter_recent_records(deduped, ledger_path=ledger_path, cooldown_days=cooldown_days, run_date=run_date)
+    filtered = _filter_reuse_policy_records(
+        filtered,
+        run_date=run_date,
+        usage_events=usage_events,
+        reuse_policy=reuse_policy,
+        allow_intentional_image_reuse=allow_intentional_image_reuse,
+        reuse_reason=reuse_reason,
+        story_angle_key=story_angle_key,
+    )
     return [{"type": "record", "record": record} for record in filtered]
 
 
@@ -427,6 +495,41 @@ def _filter_recent_records(
     return filtered or records
 
 
+def _usage_package_roots(output_root: Path) -> list[Path]:
+    roots: list[Path] = []
+    for candidate in (output_root, DEFAULT_OUTPUT_ROOT):
+        resolved = candidate.expanduser()
+        if resolved not in roots:
+            roots.append(resolved)
+    return roots
+
+
+def _filter_reuse_policy_records(
+    records: list[dict],
+    *,
+    run_date: date,
+    usage_events: list[dict],
+    reuse_policy: ReusePolicyConfig,
+    allow_intentional_image_reuse: bool,
+    reuse_reason: str | None,
+    story_angle_key: str | None,
+) -> list[dict]:
+    filtered: list[dict] = []
+    for record in records:
+        decision = evaluate_reuse_policy(
+            record=record,
+            as_of=run_date,
+            events=usage_events,
+            config=reuse_policy,
+            story_angle_key=story_angle_key,
+            reuse_reason=reuse_reason,
+            allow_intentional_reuse=allow_intentional_image_reuse,
+        )
+        if decision.get("allowed"):
+            filtered.append(record)
+    return filtered
+
+
 def _copy_source_image(source_path: Path, output_dir: Path) -> Path:
     destination = output_dir / f"source{source_path.suffix.lower() or '.jpg'}"
     shutil.copy2(source_path, destination)
@@ -501,6 +604,14 @@ def _append_generation_ledger(
         "cote": selected.get("cote"),
         "output_dir": str(output_dir),
         "story_seed": story_seed_path,
+        "story_angle_key": manifest.get("story_angle_key"),
+        "image_identity": manifest.get("image_identity"),
+        "image_reuse_policy": {
+            "status": (manifest.get("image_reuse_policy") or {}).get("status"),
+            "blocked_reason": (manifest.get("image_reuse_policy") or {}).get("blocked_reason"),
+            "reuse_count": (manifest.get("image_reuse_policy") or {}).get("reuse_count"),
+            "reuse_reason": (manifest.get("image_reuse_policy") or {}).get("reuse_reason"),
+        },
     }
     append_entry(ledger_path, entry)
 
@@ -605,6 +716,11 @@ def _build_package_for_source(
     model: str,
     skip_reel: bool,
     skip_carousel: bool,
+    usage_events: list[dict],
+    reuse_policy: ReusePolicyConfig,
+    allow_intentional_image_reuse: bool,
+    reuse_reason: str | None,
+    story_angle_key_override: str | None,
 ) -> tuple[dict, dict]:
     (output_dir / "metadata.txt").write_text(metadata, encoding="utf-8")
     existing_research = _load_existing_research(package_dir) if reuse_research else None
@@ -723,6 +839,41 @@ def _build_package_for_source(
         },
     }
     manifest["package_id"] = build_package_id(manifest, package_dir=output_dir)
+    story_angle_key = build_story_angle_key(
+        record=source.get("record") or {},
+        research=research,
+        manifest=manifest,
+        override=story_angle_key_override,
+    )
+    manifest["story_angle_key"] = story_angle_key
+    reuse_decision = evaluate_reuse_policy(
+        record=source.get("record") or {},
+        as_of=run_date,
+        events=usage_events,
+        config=reuse_policy,
+        image_path=source.get("image_path"),
+        story_angle_key=story_angle_key,
+        reuse_reason=reuse_reason,
+        allow_intentional_reuse=allow_intentional_image_reuse,
+        current_package_id=manifest["package_id"],
+        current_output_dir=output_dir,
+    )
+    manifest["image_identity"] = reuse_decision.get("identity")
+    manifest["image_reuse_policy"] = reuse_decision
+    inspection["story_angle_key"] = story_angle_key
+    inspection["image_reuse_policy"] = reuse_decision
+    if not reuse_decision.get("allowed"):
+        inspection["brand_ready"] = False
+        inspection["reuse_blocked"] = True
+        inspection["reuse_block_reason"] = reuse_decision.get("blocked_reason")
+    (output_dir / "inspection_summary.json").write_text(
+        json.dumps(inspection, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    (output_dir / "inspection_report.txt").write_text(
+        _format_inspection_report(inspection),
+        encoding="utf-8",
+    )
     (output_dir / "package.json").write_text(
         json.dumps(manifest, indent=2, ensure_ascii=False),
         encoding="utf-8",
@@ -789,6 +940,7 @@ def _format_inspection_report(summary: dict) -> str:
     verification = summary.get("verification", {})
     grounding = summary.get("grounding", {})
     obsidian = summary.get("obsidian", {})
+    reuse_policy = summary.get("image_reuse_policy") or {}
     lines = [
         f"Date: {summary.get('date')}",
         f"Resolved timezone: {summary.get('resolved_timezone') or 'Unknown'}",
@@ -799,6 +951,9 @@ def _format_inspection_report(summary: dict) -> str:
         f"Exact location public-safe: {'yes' if summary.get('exact_location_public_safe') else 'no'}",
         f"Selection status: {summary.get('selection_status') or 'Unknown'}",
         f"Reroll attempts: {summary.get('reroll_attempts') if summary.get('reroll_attempts') is not None else 'Unknown'}",
+        f"Image reuse policy: {reuse_policy.get('status') or 'Unknown'}",
+        f"Reuse block reason: {reuse_policy.get('blocked_reason') or 'None'}",
+        f"Story angle key: {summary.get('story_angle_key') or reuse_policy.get('story_angle_key') or 'Unknown'}",
         "",
         f"Selected photo: {selected.get('title') or 'Unknown'}",
         f"Cote: {selected.get('cote') or 'Unknown'}",
@@ -843,6 +998,9 @@ def _format_inspection_report(summary: dict) -> str:
 
 def _package_ready_phrase(manifest: dict) -> str:
     run_date = manifest.get("date") or "Unknown date"
+    if not manifest.get("brand_ready", False):
+        status = manifest.get("selection_status") or "review_required"
+        return f"Package for {run_date} requires review locally ({status})."
     day = str(manifest.get("day") or "").strip()
     if day:
         return f"{day.capitalize()} package is ready locally."
@@ -962,7 +1120,12 @@ def main() -> None:
     parser.add_argument("--max-rerolls", type=int, default=4, help="Maximum additional candidates to try after the first weak package")
     parser.add_argument("--candidate-pool", type=int, default=8, help="How many search/random candidates to fetch before reroll selection")
     parser.add_argument("--ledger-path", help=f"Publish/generation ledger path (default: {DEFAULT_LEDGER_PATH})")
+    parser.add_argument("--publish-registry-path", help=f"Publish registry path (default: {DEFAULT_PUBLISH_REGISTRY_PATH})")
+    parser.add_argument("--story-registry-path", help=f"Story registry path (default: {DEFAULT_STORY_REGISTRY_PATH})")
     parser.add_argument("--cooldown-days", type=int, default=90, help="Skip recently used archive images for this many days when auto-selecting")
+    parser.add_argument("--allow-intentional-image-reuse", action="store_true", help="Permit policy-bounded subject-family reuse when story angle and reason differ")
+    parser.add_argument("--reuse-reason", help="Required explanation when --allow-intentional-image-reuse is used")
+    parser.add_argument("--story-angle-key", help="Explicit story angle key for intentional image-family reuse audits")
     parser.add_argument("--obsidian-dir", help="Optional Obsidian export directory for mirrored package notes")
     parser.add_argument("--json", action="store_true", help="Print the final manifest as JSON instead of the operator summary")
     args = parser.parse_args()
@@ -970,6 +1133,8 @@ def main() -> None:
     if args.research_only:
         args.no_reel = True
         args.no_carousel = True
+    if args.allow_intentional_image_reuse and not args.reuse_reason:
+        raise SystemExit("--allow-intentional-image-reuse requires --reuse-reason")
 
     resolved_timezone = _resolve_timezone(args.timezone).key
     run_date = _parse_date(args.date, timezone_name=args.timezone)
@@ -977,29 +1142,42 @@ def main() -> None:
     try:
         manifest = run_pipeline(
             run_date=run_date,
-        timezone_name=resolved_timezone,
-        output_root=output_root,
-        theme_override=args.theme,
-        editorial_brief=args.brief,
-        query=args.query,
-        image_id=args.id,
-        image_path=args.image,
-        metadata_text=args.metadata,
-        metadata_file=args.metadata_file,
-        package_dir=args.package_dir,
-        reuse_research=args.reuse_research,
-        model=args.model,
-        skip_reel=args.no_reel,
-        skip_carousel=args.no_carousel,
-        max_rerolls=max(0, args.max_rerolls),
-        candidate_pool=max(1, args.candidate_pool),
-        ledger_path=Path(args.ledger_path).expanduser() if args.ledger_path else DEFAULT_LEDGER_PATH,
-        cooldown_days=max(0, args.cooldown_days),
-        obsidian_dir=(
-            Path(args.obsidian_dir).expanduser()
-            if args.obsidian_dir
-            else (Path(DEFAULT_OBSIDIAN_EXPORT_DIR).expanduser() if DEFAULT_OBSIDIAN_EXPORT_DIR else None)
-        ),
+            timezone_name=resolved_timezone,
+            output_root=output_root,
+            theme_override=args.theme,
+            editorial_brief=args.brief,
+            query=args.query,
+            image_id=args.id,
+            image_path=args.image,
+            metadata_text=args.metadata,
+            metadata_file=args.metadata_file,
+            package_dir=args.package_dir,
+            reuse_research=args.reuse_research,
+            model=args.model,
+            skip_reel=args.no_reel,
+            skip_carousel=args.no_carousel,
+            max_rerolls=max(0, args.max_rerolls),
+            candidate_pool=max(1, args.candidate_pool),
+            ledger_path=Path(args.ledger_path).expanduser() if args.ledger_path else DEFAULT_LEDGER_PATH,
+            publish_registry_path=(
+                Path(args.publish_registry_path).expanduser()
+                if args.publish_registry_path
+                else DEFAULT_PUBLISH_REGISTRY_PATH
+            ),
+            story_registry_path=(
+                Path(args.story_registry_path).expanduser()
+                if args.story_registry_path
+                else DEFAULT_STORY_REGISTRY_PATH
+            ),
+            cooldown_days=max(0, args.cooldown_days),
+            allow_intentional_image_reuse=bool(args.allow_intentional_image_reuse),
+            reuse_reason=args.reuse_reason,
+            story_angle_key=args.story_angle_key,
+            obsidian_dir=(
+                Path(args.obsidian_dir).expanduser()
+                if args.obsidian_dir
+                else (Path(DEFAULT_OBSIDIAN_EXPORT_DIR).expanduser() if DEFAULT_OBSIDIAN_EXPORT_DIR else None)
+            ),
         )
     except GeminiRequestError as exc:
         print(

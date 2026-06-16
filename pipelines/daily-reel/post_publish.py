@@ -18,6 +18,7 @@ from story_publish import (
     _post_binary_url,
     _upload_file_to_r2,
 )
+from env_loader import repo_state_path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(Path(__file__).resolve().parent) not in sys.path:
@@ -25,11 +26,21 @@ if str(Path(__file__).resolve().parent) not in sys.path:
 
 from ledger import build_package_id, read_entries
 from publish_registry import DEFAULT_PUBLISH_REGISTRY_PATH, register_publish
+from social_identity import (
+    ReusePolicyConfig,
+    build_story_angle_key,
+    evaluate_reuse_policy,
+    format_reuse_block,
+    load_usage_events,
+)
 
 
 DEFAULT_LOG_PATH = Path(
-    os.environ.get("MTL_POST_PUBLISH_LOG", str(REPO_ROOT / "data" / "social" / "post-publish-log.jsonl"))
+    os.environ.get("MTL_POST_PUBLISH_LOG", str(repo_state_path(REPO_ROOT, "data/social/post-publish-log.jsonl")))
 ).expanduser()
+DEFAULT_LEDGER_PATH = repo_state_path(REPO_ROOT, "data/social/publish-ledger.jsonl")
+DEFAULT_STORY_REGISTRY_PATH = repo_state_path(REPO_ROOT, "data/social/story-registry.jsonl")
+DEFAULT_PACKAGE_ROOT = Path.home() / "Downloads" / "mtl-daily"
 
 
 class PostPublishError(RuntimeError):
@@ -90,7 +101,18 @@ def _load_package(package_dir: Path) -> tuple[dict[str, Any], dict[str, Any]]:
     )
 
 
-def _require_publishable_package(package_dir: Path, manifest: dict[str, Any], inspection: dict[str, Any]) -> None:
+def _require_publishable_package(
+    package_dir: Path,
+    manifest: dict[str, Any],
+    inspection: dict[str, Any],
+    *,
+    registry_path: Path,
+    ledger_path: Path,
+    story_registry_path: Path,
+    allow_intentional_image_reuse: bool,
+    reuse_reason: str | None,
+    story_angle_key: str | None,
+) -> None:
     manifest_brand_ready = manifest.get("brand_ready")
     manifest_exact_safe = manifest.get("exact_location_public_safe")
     brand_ready = bool(
@@ -103,6 +125,64 @@ def _require_publishable_package(package_dir: Path, manifest: dict[str, Any], in
         _fail(f"Package is not brand_ready: {package_dir}")
     if not exact_safe:
         _fail(f"Package exact location is not public safe: {package_dir}")
+    decision = _evaluate_package_reuse_policy(
+        package_dir=package_dir,
+        manifest=manifest,
+        inspection=inspection,
+        registry_path=registry_path,
+        ledger_path=ledger_path,
+        story_registry_path=story_registry_path,
+        allow_intentional_image_reuse=allow_intentional_image_reuse,
+        reuse_reason=reuse_reason,
+        story_angle_key=story_angle_key,
+    )
+    if not decision.get("allowed"):
+        _fail(format_reuse_block(decision))
+
+
+def _evaluate_package_reuse_policy(
+    *,
+    package_dir: Path,
+    manifest: dict[str, Any],
+    inspection: dict[str, Any],
+    registry_path: Path,
+    ledger_path: Path,
+    story_registry_path: Path,
+    allow_intentional_image_reuse: bool,
+    reuse_reason: str | None,
+    story_angle_key: str | None,
+) -> dict[str, Any]:
+    selected = manifest.get("selected_photo") or inspection.get("selected_photo") or {}
+    package_date = str(manifest.get("date") or inspection.get("date") or "").strip()
+    try:
+        as_of = datetime.fromisoformat(package_date).date() if package_date else datetime.now(UTC).date()
+    except ValueError:
+        as_of = datetime.now(UTC).date()
+    source_image = manifest.get("source_image") or ((inspection.get("selected_photo") or {}).get("source_image"))
+    events = load_usage_events(
+        ledger_paths=[ledger_path],
+        registry_paths=[registry_path],
+        story_registry_paths=[story_registry_path],
+        package_roots=[DEFAULT_PACKAGE_ROOT],
+    )
+    package_id = build_package_id(manifest, package_dir=package_dir)
+    angle_key = story_angle_key or build_story_angle_key(
+        record=selected,
+        manifest=manifest,
+        override=manifest.get("story_angle_key"),
+    )
+    return evaluate_reuse_policy(
+        record=selected,
+        as_of=as_of,
+        events=events,
+        config=ReusePolicyConfig(),
+        image_path=source_image,
+        story_angle_key=angle_key,
+        reuse_reason=reuse_reason or ((manifest.get("image_reuse_policy") or {}).get("reuse_reason")),
+        allow_intentional_reuse=allow_intentional_image_reuse,
+        current_package_id=package_id,
+        current_output_dir=package_dir,
+    )
 
 
 def _platform_already_published(
@@ -134,16 +214,31 @@ def publish_instagram_carousel(
     state_path: Path,
     registry_path: Path,
     log_path: Path,
+    ledger_path: Path,
+    story_registry_path: Path,
     prepare_only: bool,
     check_only: bool,
     force: bool,
+    allow_intentional_image_reuse: bool,
+    reuse_reason: str | None,
+    story_angle_key: str | None,
 ) -> dict[str, Any]:
     manifest, inspection = _load_package(package_dir)
-    _require_publishable_package(package_dir, manifest, inspection)
     package_id = build_package_id(manifest, package_dir=package_dir)
     existing = _platform_already_published(registry_path=registry_path, package_id=package_id, platform="instagram")
     if existing and not force:
         return {"mode": "skip", "platform": "instagram", "reason": "already_published", "entry": existing}
+    _require_publishable_package(
+        package_dir,
+        manifest,
+        inspection,
+        registry_path=registry_path,
+        ledger_path=ledger_path,
+        story_registry_path=story_registry_path,
+        allow_intentional_image_reuse=allow_intentional_image_reuse,
+        reuse_reason=reuse_reason,
+        story_angle_key=story_angle_key,
+    )
 
     context = _load_context(state_path)
     if "instagram_content_publish" not in context["permissions"]:
@@ -253,16 +348,31 @@ def publish_facebook_reel(
     state_path: Path,
     registry_path: Path,
     log_path: Path,
+    ledger_path: Path,
+    story_registry_path: Path,
     prepare_only: bool,
     check_only: bool,
     force: bool,
+    allow_intentional_image_reuse: bool,
+    reuse_reason: str | None,
+    story_angle_key: str | None,
 ) -> dict[str, Any]:
     manifest, inspection = _load_package(package_dir)
-    _require_publishable_package(package_dir, manifest, inspection)
     package_id = build_package_id(manifest, package_dir=package_dir)
     existing = _platform_already_published(registry_path=registry_path, package_id=package_id, platform="facebook")
     if existing and not force:
         return {"mode": "skip", "platform": "facebook", "reason": "already_published", "entry": existing}
+    _require_publishable_package(
+        package_dir,
+        manifest,
+        inspection,
+        registry_path=registry_path,
+        ledger_path=ledger_path,
+        story_registry_path=story_registry_path,
+        allow_intentional_image_reuse=allow_intentional_image_reuse,
+        reuse_reason=reuse_reason,
+        story_angle_key=story_angle_key,
+    )
 
     context = _load_context(state_path)
     if "pages_manage_posts" not in context["permissions"]:
@@ -380,16 +490,25 @@ def main() -> None:
     parser.add_argument("--force", action="store_true", help="Ignore existing published registry entries")
     parser.add_argument("--state-path", default=str(DEFAULT_STATE_PATH), help="Meta token state path")
     parser.add_argument("--registry-path", default=str(DEFAULT_PUBLISH_REGISTRY_PATH), help="Publish registry path")
+    parser.add_argument("--ledger-path", default=str(DEFAULT_LEDGER_PATH), help="Generation ledger path")
+    parser.add_argument("--story-registry-path", default=str(DEFAULT_STORY_REGISTRY_PATH), help="Story registry path")
     parser.add_argument("--log-path", default=str(DEFAULT_LOG_PATH), help="Post publish log path")
+    parser.add_argument("--allow-intentional-image-reuse", action="store_true", help="Permit policy-bounded image-family reuse with a distinct story angle")
+    parser.add_argument("--reuse-reason", help="Required explanation when --allow-intentional-image-reuse is used")
+    parser.add_argument("--story-angle-key", help="Explicit story angle key for image reuse audit")
     parser.add_argument("--json", action="store_true", help="Print raw JSON")
     args = parser.parse_args()
 
     if not args.all and not args.platform:
         _fail("Pass --all or --platform")
+    if args.allow_intentional_image_reuse and not args.reuse_reason:
+        _fail("--allow-intentional-image-reuse requires --reuse-reason")
 
     package_dir = Path(args.package_dir).expanduser().resolve()
     state_path = Path(args.state_path).expanduser()
     registry_path = Path(args.registry_path).expanduser()
+    ledger_path = Path(args.ledger_path).expanduser()
+    story_registry_path = Path(args.story_registry_path).expanduser()
     log_path = Path(args.log_path).expanduser()
     platforms = ["instagram", "facebook"] if args.all else [args.platform]
 
@@ -402,9 +521,14 @@ def main() -> None:
                     state_path=state_path,
                     registry_path=registry_path,
                     log_path=log_path,
+                    ledger_path=ledger_path,
+                    story_registry_path=story_registry_path,
                     prepare_only=bool(args.prepare_only),
                     check_only=bool(args.check_only),
                     force=bool(args.force),
+                    allow_intentional_image_reuse=bool(args.allow_intentional_image_reuse),
+                    reuse_reason=args.reuse_reason,
+                    story_angle_key=args.story_angle_key,
                 )
             )
         elif platform == "facebook":
@@ -414,9 +538,14 @@ def main() -> None:
                     state_path=state_path,
                     registry_path=registry_path,
                     log_path=log_path,
+                    ledger_path=ledger_path,
+                    story_registry_path=story_registry_path,
                     prepare_only=bool(args.prepare_only),
                     check_only=bool(args.check_only),
                     force=bool(args.force),
+                    allow_intentional_image_reuse=bool(args.allow_intentional_image_reuse),
+                    reuse_reason=args.reuse_reason,
+                    story_angle_key=args.story_angle_key,
                 )
             )
 

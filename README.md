@@ -183,6 +183,11 @@ npm run social:publish-story -- --platform instagram --story-path /absolute/path
 npm run social:publish-story -- --platform facebook --story-path /absolute/path/to/story.mp4 --prepare-only
 npm run social:publish-story -- --platform facebook --story-path /absolute/path/to/story.mp4
 
+# Render/check/prepare the daily game Story video for both platforms.
+# This command is check-only by default; live publish requires --publish.
+npm run social:publish-game-story -- --all --check-only
+npm run social:publish-game-story -- --all --prepare-only
+
 # Publish the generated daily IG carousel + FB reel posts
 npm run social:publish-post -- --package-dir /absolute/path/to/package --all --check-only
 npm run social:publish-post -- --package-dir /absolute/path/to/package --all --prepare-only
@@ -203,6 +208,7 @@ The fallback runner lives in [`pipelines/daily-reel/main.py`](/Users/wiel/Develo
 - `story_seed.json`
 - ledger entry in `data/social/publish-ledger.jsonl`
 - publish reconciliation entry in `data/social/publish-registry.jsonl`
+- Story delivery entries in `data/social/story-registry.jsonl` when daily game Stories are prepared or published
 - optional durable token state in `data/social/meta-token-state.json`
 - optional Obsidian note export with mirrored text artifacts
 
@@ -221,7 +227,7 @@ This keeps the platform split intact even during an outage:
 - Thin-metadata cases now also carry a factual-confidence gate: if exact place identity only comes from grounded search and the archive record is still weak, the pipeline downgrades public labels to a broader sector or fails reroll instead of shipping a confident intersection/building claim.
 - The inspection artifacts now include brand-readiness gates (`caption_ok`, per-channel scores, overall `brand_ready`) so weak edge cases like thin-metadata `beauty` or unresolved `mystery` packages can fail review explicitly instead of looking implicitly acceptable.
 - Search/random fallback runs now auto-reroll across a small candidate pool. The final date folder is the first `brand_ready` package that passes; if nothing passes, the runner still preserves the strongest attempt but marks it as `selection_status: no_brand_ready_candidate` and writes `attempts_summary.json`.
-- Exact image reuse tracking now starts at generation time via `data/social/publish-ledger.jsonl`. The fallback can consult that ledger and skip recently used archive images before it builds a new package.
+- Image reuse tracking now starts at generation time via `data/social/publish-ledger.jsonl` and is reinforced at publish time with `data/social/publish-registry.jsonl`, local package scans, and Story registry/log context. The policy blocks exact image/metadata reuse for the cooldown window and blocks near subject-family reuse, such as variant filenames for the same aerial subject, unless an intentional reuse carries a different `story_angle_key`, an explicit `reuse_reason`, and passes the minimum-gap/lifetime caps.
 - Strong packages now emit `story_seed.json`, which can be promoted into `apps/next-app/content/stories/*.json` for deeper archive-linked story pages.
 - If `--obsidian-dir` (or `MTL_OBSIDIAN_EXPORT_DIR`) is set, the fallback mirrors generated packages into `Daily Social Packages/experiments/...`. `npm run social:register-publish` can then promote real posted packages into `Daily Social Packages/final/...` while writing actual permalinks into a publish registry.
 - The durable Meta token flow is separate from Graph API Explorer. Use `npm run social:token-bootstrap` once with a short-lived user token to write `data/social/meta-token-state.json`, then use `npm run social:token-status` to verify health and warn before expiry. The token manager now auto-loads `.env.local` / `.env`, so the normal repo workflow no longer needs you to pass `--app-id` and `--app-secret` every time.
@@ -229,6 +235,7 @@ This keeps the platform split intact even during an outage:
 - `npm run social:analyze-content` turns a `combined_posts.json` snapshot into dated JSON + Markdown summaries, including per-platform format splits, monthly posting mix, and content-feature correlations for a chosen date window such as Q1.
 - `npm run social:analyze-daily` joins downloaded Meta daily export CSVs to a `combined_posts.json` snapshot so we can compare publish-day format mix against daily views, follows, interactions, and visits. When `--fetch-facebook-live` is enabled, it supplements the exports with live Page Insights and uses `page_media_view` for Facebook page-level Views, which matches the Business Suite daily Views export.
 - `npm run social:story-status` reports the current Story capability surface from the persisted Meta auth state. `npm run social:publish-story` can now take a local Story video, upload it to public R2, and publish it through either the Instagram Story container flow or the Facebook Page `video_stories` flow. Story runs are logged to `data/social/story-publish-log.jsonl`.
+- `npm run social:publish-game-story` wraps the daily game Story workflow. It reuses a valid `/Users/wiel/Desktop/mtl-game-stories/YYYY-MM-DD-daily-game-story.mp4`, renders only when needed for prepare/publish, records prepared/published platform deliveries in `data/social/story-registry.jsonl`, and skips date/platform repeats unless `--force` is explicitly passed. It defaults to check-only; live publishing requires `--publish`.
 - Important limitation: server-side Story publishing does **not** support stickers like link, poll, or location. If you need the usual clickable `DEFI DU JOUR` link sticker to `mtlarchives.com/game`, that still requires a mobile Share-to-Stories flow or a manual app step.
 - `npm run social:publish-post` publishes the normal daily package surfaces: Instagram carousel slides from `instagram_carousel/` and the Facebook reel from `facebook_reel.mp4`. It uses the same persisted Meta auth state, uploads media to public R2 first, writes publish logs to `data/social/post-publish-log.jsonl`, and reconciles successful live publishes into `data/social/publish-registry.jsonl`.
 - State ownership is intentionally split:

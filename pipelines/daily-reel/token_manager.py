@@ -10,13 +10,13 @@ import urllib.request
 from datetime import UTC, datetime
 from pathlib import Path
 
-from env_loader import load_repo_env
+from env_loader import load_repo_env, repo_state_path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 load_repo_env(REPO_ROOT)
 
 DEFAULT_STATE_PATH = Path(
-    os.environ.get("MTL_META_TOKEN_STATE", str(REPO_ROOT / "data" / "social" / "meta-token-state.json"))
+    os.environ.get("MTL_META_TOKEN_STATE", str(repo_state_path(REPO_ROOT, "data/social/meta-token-state.json")))
 ).expanduser()
 GRAPH_VERSION = os.environ.get("META_GRAPH_VERSION", "v25.0")
 DEFAULT_APP_ID = os.environ.get("META_APP_ID", "").strip()
