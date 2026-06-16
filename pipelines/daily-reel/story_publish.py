@@ -15,12 +15,13 @@ from urllib.parse import quote, urlencode
 
 import requests
 
+from env_loader import repo_state_path
 from token_manager import DEFAULT_STATE_PATH, _load_state
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_LOG_PATH = Path(
-    os.environ.get("MTL_STORY_PUBLISH_LOG", str(REPO_ROOT / "data" / "social" / "story-publish-log.jsonl"))
+    os.environ.get("MTL_STORY_PUBLISH_LOG", str(repo_state_path(REPO_ROOT, "data/social/story-publish-log.jsonl")))
 ).expanduser()
 GRAPH_VERSION = os.environ.get("META_GRAPH_VERSION", "v25.0")
 DEFAULT_R2_PUBLIC_DOMAIN = os.environ.get("CLOUDFLARE_R2_PUBLIC_DOMAIN", "").strip()

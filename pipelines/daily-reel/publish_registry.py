@@ -12,12 +12,14 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(Path(__file__).resolve().parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from env_loader import repo_state_path
 from ledger import append_entry, build_package_id, read_entries
 from obsidian import promote_package_note
+from social_identity import build_story_angle_key, identity_from_record
 
 
 DEFAULT_PUBLISH_REGISTRY_PATH = Path(
-    os.environ.get("MTL_PUBLISH_REGISTRY", str(REPO_ROOT / "data" / "social" / "publish-registry.jsonl"))
+    os.environ.get("MTL_PUBLISH_REGISTRY", str(repo_state_path(REPO_ROOT, "data/social/publish-registry.jsonl")))
 ).expanduser()
 DEFAULT_OBSIDIAN_EXPORT_DIR = os.environ.get("MTL_OBSIDIAN_EXPORT_DIR")
 PLATFORMS = {"instagram", "facebook"}
@@ -40,6 +42,12 @@ def register_publish(
     manifest, inspection, story_seed, ig_caption, fb_caption = _load_package_context(package_root)
     package_id = build_package_id(manifest, package_dir=package_root)
     selected = manifest.get("selected_photo") or {}
+    image_identity = identity_from_record(selected, image_path=manifest.get("source_image"))
+    story_angle_key = build_story_angle_key(
+        record=selected,
+        manifest=manifest,
+        override=manifest.get("story_angle_key"),
+    )
     platform_key = _normalize_platform(platform)
     status_value = _normalize_status(status)
     publish_timestamp = _normalize_timestamp(published_at)
@@ -62,6 +70,9 @@ def register_publish(
         "image_filename": selected.get("filename") or selected.get("imageFilename"),
         "source_title": selected.get("name"),
         "cote": selected.get("cote"),
+        "story_angle_key": story_angle_key,
+        "image_identity": image_identity.to_dict(),
+        "image_reuse_policy": manifest.get("image_reuse_policy"),
         "brand_ready": bool(manifest.get("brand_ready", inspection.get("brand_ready", False))),
         "selection_status": manifest.get("selection_status") or inspection.get("selection_status"),
         "package_dir": output_dir,

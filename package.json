@@ -80,6 +80,7 @@
     "social:analyze-daily": "npm run social:analyze-daily --workspace=@mtl-archives/scripts --",
     "social:story-status": "python3 pipelines/daily-reel/story_publish.py status",
     "social:publish-story": "python3 pipelines/daily-reel/story_publish.py publish",
+    "social:publish-game-story": "python3 pipelines/daily-reel/game_story_pipeline.py",
     "social:publish-post": "python3 pipelines/daily-reel/post_publish.py",
     "story:render": "npm run render --workspace=apps/story-video --",
     "story:today": "npm run render:today --workspace=apps/story-video --",

@@ -61,3 +61,17 @@ def load_repo_env(repo_root: Path) -> None:
     for root in roots:
         for env_name in (".env.local", ".env"):
             _parse_env_file(root / env_name)
+
+
+def canonical_repo_root(repo_root: Path) -> Path:
+    return _canonical_repo_root(repo_root) or repo_root.resolve()
+
+
+def repo_state_path(repo_root: Path, relative_path: str) -> Path:
+    """Resolve mutable social state to the canonical checkout when running from a worktree."""
+    relative = Path(relative_path)
+    configured = canonical_repo_root(repo_root)
+    configured_path = configured / relative
+    if configured_path.exists() or configured != repo_root.resolve():
+        return configured_path
+    return repo_root.resolve() / relative
