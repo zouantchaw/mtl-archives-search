@@ -5,6 +5,7 @@ import argparse
 import json
 import os
 import sys
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -208,6 +209,29 @@ def _upload_public_asset(*, local_path: Path, platform: str, object_key: str | N
     return _upload_file_to_r2(local_path=local_path, object_key=resolved_key), resolved_key
 
 
+def _publish_instagram_creation(*, ig_id: str, user_token: str, creation_id: str) -> dict[str, Any]:
+    retry_delays = (5, 10, 15, 20)
+    last_error: StoryPublishError | None = None
+    for attempt in range(len(retry_delays) + 1):
+        try:
+            return _graph_post(
+                f"{ig_id}/media_publish",
+                data={
+                    "access_token": user_token,
+                    "creation_id": creation_id,
+                },
+            )
+        except StoryPublishError as exc:
+            message = str(exc)
+            if "Media ID is not available" not in message or attempt >= len(retry_delays):
+                raise
+            last_error = exc
+            time.sleep(retry_delays[attempt])
+    if last_error is not None:
+        raise last_error
+    raise PostPublishError("Instagram media publish failed without a Graph API response")
+
+
 def publish_instagram_carousel(
     *,
     package_dir: Path,
@@ -305,12 +329,10 @@ def publish_instagram_carousel(
     }
 
     if not prepare_only:
-        publish = _graph_post(
-            f"{context['ig_id']}/media_publish",
-            data={
-                "access_token": context["user_token"],
-                "creation_id": creation_id,
-            },
+        publish = _publish_instagram_creation(
+            ig_id=context["ig_id"],
+            user_token=context["user_token"],
+            creation_id=creation_id,
         )
         media_id = str(publish.get("id") or "").strip()
         result["post_id"] = media_id

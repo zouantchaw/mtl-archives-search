@@ -2558,6 +2558,9 @@ def _weekend_enduring_line(payload: dict, metadata_fields: dict, *, lang: str) -
 
 
 def _weekend_reflection_line(payload: dict, metadata_fields: dict, *, lang: str) -> str:
+    explicit = _clean_sentence(payload.get("closing_reflection_fr" if lang == "fr" else "closing_reflection_en"))
+    if explicit and _off_brand_hits(explicit) == 0 and not _is_overwrought_line(explicit):
+        return explicit
     title_blob = " ".join(filter(None, [payload.get("title_fr"), payload.get("location"), metadata_fields.get("title")]))
     lowered = _normalize_match(title_blob)
     if "berkeley" in lowered:
@@ -2577,6 +2580,8 @@ def _weekend_hook_line(payload: dict, metadata_fields: dict, *, lang: str) -> st
     if "westmount" in lowered and "saint leon" in lowered:
         return "À Westmount, le parc et l'église donnent encore son rythme au quartier." if lang == "fr" else "In Westmount, the park and church still set the rhythm of the neighborhood."
     place = _weekend_place_label(payload, metadata_fields, lang=lang)
+    if lang == "fr" and _normalize_match(place).startswith("parc "):
+        return f"Au {place[:1].lower()}{place[1:]}, une image calme en dit long sur la ville."
     return f"À {place}, une image calme en dit long sur la ville." if lang == "fr" else f"In {place}, a quiet image says a lot about the city."
 
 
