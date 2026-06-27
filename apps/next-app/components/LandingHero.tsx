@@ -34,11 +34,11 @@ export function MtlArchivesLogo({ size = 24 }: { size?: number }) {
 const translations = {
   fr: {
     headline: 'Montréal, couche par couche.',
-    subtitle: '14 000+ photos historiques à explorer, jouer et collectionner.',
+    subtitle: '13 000+ photos historiques à explorer, jouer et collectionner.',
     searchPlaceholder: 'Rue Sainte-Catherine, 1960...',
     ctaExplore: 'Explorer les archives',
     ctaPlay: 'Jouer',
-    proofPhotos: '14 000+ photos',
+    proofPhotos: '13 000+ photos',
     proofPlayers: '2 500+ joueurs',
     proofSource: 'Archives de Montréal',
     exploreTitle: 'Explorer',
@@ -50,11 +50,11 @@ const translations = {
   },
   en: {
     headline: 'Montreal, layer by layer.',
-    subtitle: '14,000+ historical photos to explore, play, and collect.',
+    subtitle: '13,000+ historical photos to explore, play, and collect.',
     searchPlaceholder: 'Sainte-Catherine Street, 1960...',
     ctaExplore: 'Explore the archives',
     ctaPlay: 'Play',
-    proofPhotos: '14,000+ photos',
+    proofPhotos: '13,000+ photos',
     proofPlayers: '2,500+ players',
     proofSource: 'Montreal archives',
     exploreTitle: 'Explore',

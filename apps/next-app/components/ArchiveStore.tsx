@@ -159,9 +159,9 @@ const translations = {
     newsletterError: 'Impossible de terminer l’inscription pour le moment.',
     printSearchPlaceholder: 'Rechercher les archives...',
     // Hook
-    hookDefault: 'Explorez 13 499 photos d\'archives de Montréal',
-    hookInstagram: 'Vu sur Instagram? Il y en a 14 822 autres...',
-    hookFacebook: 'Vu sur Facebook? Il y en a 14 822 autres...',
+    hookDefault: 'Explorez 13 000+ photos d\'archives de Montréal',
+    hookInstagram: 'Vu sur Instagram? Explorez les archives complètes...',
+    hookFacebook: 'Vu sur Facebook? Explorez les archives complètes...',
   },
   en: {
     featured: 'Discover',
@@ -236,9 +236,9 @@ const translations = {
     newsletterError: 'Unable to complete signup right now.',
     printSearchPlaceholder: 'Search the archives...',
     // Hook
-    hookDefault: 'Explore 13, 499 archival photos of Montreal',
-    hookInstagram: 'Saw this on Instagram? There are 14,822 more...',
-    hookFacebook: 'Saw this on Facebook? There are 14,822 more...',
+    hookDefault: 'Explore 13,000+ archival photos of Montreal',
+    hookInstagram: 'Saw this on Instagram? Explore the full archive...',
+    hookFacebook: 'Saw this on Facebook? Explore the full archive...',
   },
 } as const;
 

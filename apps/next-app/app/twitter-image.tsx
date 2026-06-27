@@ -174,7 +174,7 @@ export default async function TwitterImage() {
               display: 'flex',
             }}
           >
-            14 822 photos d'archives  ·  jeu quotidien  ·  tirages
+            13 000+ photos d'archives  ·  jeu quotidien  ·  tirages
           </div>
         </div>
       </div>

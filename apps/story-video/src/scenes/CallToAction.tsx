@@ -128,7 +128,7 @@ export const CallToAction: React.FC = () => {
         }}
       >
         {[
-          { value: "14 822", label: "photos" },
+          { value: "13 000+", label: "photos" },
           { value: "100+", label: "ans d'histoire" },
         ].map((stat) => (
           <div

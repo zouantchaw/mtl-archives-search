@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'MTL Archives',
     short_name: 'MTL Archives',
-    description: 'Explorez 14 822 photos historiques de Montréal',
+    description: 'Explorez 13 000+ photos historiques de Montréal',
     start_url: '/',
     display: 'standalone',
     background_color: '#F5F2EA',

@@ -11,11 +11,11 @@ export async function generateMetadata({
   return bilingualMetadata(lang, '/', {
     fr: {
       title: 'MTL Archives — Photos historiques de Montréal',
-      description: 'Explorez 14 822 photos historiques de Montréal. Recherchez par rue, quartier ou lieu emblématique.',
+      description: 'Explorez 13 000+ photos historiques de Montréal. Recherchez par rue, quartier ou lieu emblématique.',
     },
     en: {
       title: 'MTL Archives — Historical Photos of Montreal',
-      description: 'Explore 14,822 historical photos of Montreal. Search by street, neighbourhood, or landmark.',
+      description: 'Explore 13,000+ historical photos of Montreal. Search by street, neighbourhood, or landmark.',
     },
   });
 }
