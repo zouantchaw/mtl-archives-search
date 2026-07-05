@@ -44,6 +44,7 @@
     "autoresearch:vlm:bakeoff-report": "tsx src/autoresearch/vlm-bakeoff-report.ts",
     "autoresearch:vlm:benchmark-report": "tsx src/autoresearch/vlm-benchmark-report.ts",
     "autoresearch:status": "tsx src/autoresearch/status-report.ts",
+    "dataset-factory:production-apply-gate-v0": "tsx src/dataset-factory/build-production-apply-gate-v0.ts",
     "image-orientation:audit": "tsx src/analysis/image-orientation-audit.ts",
     "image-artifacts:audit": "tsx src/analysis/image-artifact-audit.ts",
     "image-dedupe:audit": "tsx src/analysis/image-dedupe-audit.ts",
