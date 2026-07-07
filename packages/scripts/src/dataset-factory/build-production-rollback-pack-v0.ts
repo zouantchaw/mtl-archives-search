@@ -134,6 +134,20 @@ function assertUnique(values: string[], label: string): void {
   if (duplicates.size) throw new Error(`${label} contains duplicate IDs: ${[...duplicates].sort().join(', ')}`);
 }
 
+function isPathInside(candidate: string, root: string): boolean {
+  const relativePath = path.relative(root, candidate);
+  return Boolean(relativePath) && !relativePath.startsWith('..') && !path.isAbsolute(relativePath);
+}
+
+function statRegularFile(filePath: string): fs.Stats | null {
+  try {
+    const stats = fs.statSync(filePath);
+    return stats.isFile() ? stats : null;
+  } catch {
+    return null;
+  }
+}
+
 function normalizeRotationPlanRow(row: unknown, label: string): RotationPlanRow {
   if (!isObject(row)) throw new Error(`${label}: row is not an object.`);
   const recordId = asString(row.record_id, `${label}.record_id`);
@@ -229,7 +243,7 @@ function buildPreconditionQueries(rows: RotationPlanRow[], scopedReport: string)
       `  ${chunkIndex} AS chunk,`,
       `  ${chunk.length} AS expected_targets,`,
       '  (SELECT COUNT(*) FROM expected e LEFT JOIN manifest m ON m.metadata_filename = e.metadata_filename WHERE m.metadata_filename IS NULL) AS missing_targets,',
-      '  (SELECT COUNT(*) FROM expected e JOIN manifest m ON m.metadata_filename = e.metadata_filename WHERE COALESCE(m.rotation_degrees, -1) != COALESCE(e.current_rotation_degrees, -1)) AS current_value_mismatches;',
+      '  (SELECT COUNT(*) FROM expected e JOIN manifest m ON m.metadata_filename = e.metadata_filename WHERE m.rotation_degrees IS NOT e.current_rotation_degrees) AS current_value_mismatches;',
       '',
     ].join('\n');
     queries.push({ chunk: chunkIndex, expected_targets: chunk.length, sql });
@@ -255,6 +269,7 @@ function buildR2RollbackRows(
   rows: R2PlanRow[],
   category: R2RollbackRow['category'],
   snapshots: Map<string, R2SnapshotRow>,
+  preservedRoot: string,
 ): R2RollbackRow[] {
   return rows.map((row) => {
     const objectKey = row.image_path!;
@@ -277,8 +292,15 @@ function buildR2RollbackRows(
 
     const wasMissing = snapshot.http_status === 404;
     const preservedCopy = snapshot.preserved_copy_path ? resolveRepoPath(snapshot.preserved_copy_path) : null;
-    const preservedCopyExists = preservedCopy ? fs.existsSync(preservedCopy) : false;
-    const restoreReady = snapshot.http_status >= 200 && snapshot.http_status < 300 && preservedCopyExists;
+    const preservedCopyStats = preservedCopy ? statRegularFile(preservedCopy) : null;
+    const preservedCopyMatchesSnapshot = Boolean(
+      preservedCopy
+        && preservedCopyStats
+        && isPathInside(preservedCopy, preservedRoot)
+        && path.basename(preservedCopy) === objectKey
+        && (snapshot.content_length === null || preservedCopyStats.size === snapshot.content_length),
+    );
+    const restoreReady = snapshot.http_status >= 200 && snapshot.http_status < 300 && preservedCopyMatchesSnapshot;
     return {
       record_id: row.record_id,
       object_key: objectKey,
@@ -374,9 +396,10 @@ async function main(): Promise<void> {
   assertUnique(r2Snapshots.map((row) => row.object_key), 'R2 snapshot');
 
   const snapshotByKey = new Map(r2Snapshots.map((row) => [row.object_key, row]));
+  const r2PreservedRoot = path.join(path.dirname(r2SnapshotPath), 'r2-preserved');
   const r2RollbackRows = [
-    ...buildR2RollbackRows(r2Backfills, 'image_backfill', snapshotByKey),
-    ...buildR2RollbackRows(pdfRemediations, 'pdf_remediation', snapshotByKey),
+    ...buildR2RollbackRows(r2Backfills, 'image_backfill', snapshotByKey, r2PreservedRoot),
+    ...buildR2RollbackRows(pdfRemediations, 'pdf_remediation', snapshotByKey, r2PreservedRoot),
   ];
   const manualR2Rows = r2RollbackRows.filter((row) => !row.ready);
   const scopedSummary = isObject(scopedReport.summary) ? scopedReport.summary : {};
