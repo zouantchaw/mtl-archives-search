@@ -79,6 +79,8 @@ type TransactionEnvelope = {
   beginCount: number;
   commitCount: number;
   updateOutsideTransactionCount: number;
+  disallowedStatementCount: number;
+  disallowedStatementSamples: string[];
   statementsBeforeBeginCount: number;
   statementsAfterCommitCount: number;
 };
@@ -159,8 +161,11 @@ function analyzeTransactionEnvelope(sql: string): TransactionEnvelope {
   let beginCount = 0;
   let commitCount = 0;
   let updateOutsideTransactionCount = 0;
+  let disallowedStatementCount = 0;
+  const disallowedStatementSamples: string[] = [];
   let statementsBeforeBeginCount = 0;
   let statementsAfterCommitCount = 0;
+  const allowedRotationUpdate = /^UPDATE\s+manifest\s+SET\s+rotation_degrees=(90|180|270)\s+WHERE\s+metadata_filename='mtl_archives_metadata_\d+\.json';$/i;
 
   for (const rawLine of sql.split('\n')) {
     const line = rawLine.trim();
@@ -185,6 +190,10 @@ function analyzeTransactionEnvelope(sql: string): TransactionEnvelope {
     if (/^UPDATE\s+manifest\s+SET\s+rotation_degrees=/i.test(line) && !inTransaction) {
       updateOutsideTransactionCount += 1;
     }
+    if (!inTransaction || !allowedRotationUpdate.test(line)) {
+      disallowedStatementCount += 1;
+      if (disallowedStatementSamples.length < 10) disallowedStatementSamples.push(line);
+    }
   }
 
   return {
@@ -192,11 +201,14 @@ function analyzeTransactionEnvelope(sql: string): TransactionEnvelope {
       && commitCount === 1
       && !inTransaction
       && updateOutsideTransactionCount === 0
+      && disallowedStatementCount === 0
       && statementsBeforeBeginCount === 0
       && statementsAfterCommitCount === 0,
     beginCount,
     commitCount,
     updateOutsideTransactionCount,
+    disallowedStatementCount,
+    disallowedStatementSamples,
     statementsBeforeBeginCount,
     statementsAfterCommitCount,
   };
@@ -224,12 +236,16 @@ function rotationReportPasses(report: JsonObject, expectedUpdateCount: number): 
 
 function guardrailPasses(summaries: JsonObject[], magicImpact: GuardrailImpact): boolean {
   const rotationPolicy = summaries.find((summary) => summary.policy === 'smart_rotation_metadata_only');
+  const baselineRank = asNumber(magicImpact.baseline_rank);
+  const policyRank = asNumber(magicImpact.policy_rank);
   return Boolean(rotationPolicy)
     && asNumber(rotationPolicy?.lost_reviewed_gold_passes) === 0
     && asNumber(rotationPolicy?.lost_expected_bucket_passes) === 0
     && magicImpact.baseline_pass === true
     && magicImpact.policy_pass === true
-    && magicImpact.baseline_rank === magicImpact.policy_rank;
+    && baselineRank !== null
+    && policyRank !== null
+    && baselineRank === policyRank;
 }
 
 function generatedAtFromInputs(reports: JsonObject[]): string {
