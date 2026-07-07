@@ -74,6 +74,15 @@ type GuardrailImpact = {
   expected_repair_status?: JsonObject;
 };
 
+type TransactionEnvelope = {
+  wrapped: boolean;
+  beginCount: number;
+  commitCount: number;
+  updateOutsideTransactionCount: number;
+  statementsBeforeBeginCount: number;
+  statementsAfterCommitCount: number;
+};
+
 function resolveRepoPath(input: string): string {
   return path.isAbsolute(input) ? input : path.resolve(MONOREPO_ROOT, input);
 }
@@ -130,6 +139,97 @@ function assertUnique(ids: string[], label: string): void {
     seen.add(id);
   }
   if (duplicates.size) throw new Error(`${label} contains duplicate IDs: ${Array.from(duplicates).sort().join(', ')}`);
+}
+
+function asNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function asBoolean(value: unknown): boolean | null {
+  return typeof value === 'boolean' ? value : null;
+}
+
+function arrayLength(value: unknown): number | null {
+  return Array.isArray(value) ? value.length : null;
+}
+
+function analyzeTransactionEnvelope(sql: string): TransactionEnvelope {
+  let inTransaction = false;
+  let afterCommit = false;
+  let beginCount = 0;
+  let commitCount = 0;
+  let updateOutsideTransactionCount = 0;
+  let statementsBeforeBeginCount = 0;
+  let statementsAfterCommitCount = 0;
+
+  for (const rawLine of sql.split('\n')) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('--')) continue;
+
+    if (/^BEGIN\s+TRANSACTION;$/i.test(line)) {
+      beginCount += 1;
+      if (afterCommit) statementsAfterCommitCount += 1;
+      inTransaction = true;
+      continue;
+    }
+
+    if (/^COMMIT;$/i.test(line)) {
+      commitCount += 1;
+      inTransaction = false;
+      afterCommit = true;
+      continue;
+    }
+
+    if (!beginCount) statementsBeforeBeginCount += 1;
+    if (afterCommit) statementsAfterCommitCount += 1;
+    if (/^UPDATE\s+manifest\s+SET\s+rotation_degrees=/i.test(line) && !inTransaction) {
+      updateOutsideTransactionCount += 1;
+    }
+  }
+
+  return {
+    wrapped: beginCount === 1
+      && commitCount === 1
+      && !inTransaction
+      && updateOutsideTransactionCount === 0
+      && statementsBeforeBeginCount === 0
+      && statementsAfterCommitCount === 0,
+    beginCount,
+    commitCount,
+    updateOutsideTransactionCount,
+    statementsBeforeBeginCount,
+    statementsAfterCommitCount,
+  };
+}
+
+function rotationReportPasses(report: JsonObject, expectedUpdateCount: number): boolean {
+  const summary = report.summary as JsonObject | undefined;
+  const anomalies = report.anomalies as JsonObject | undefined;
+  if (!summary || !anomalies) return false;
+
+  return asNumber(summary.sql_update_rows) === expectedUpdateCount
+    && asNumber(summary.duplicate_sql_ids) === 0
+    && asNumber(summary.invalid_sql_rotation_values) === 0
+    && asNumber(summary.sql_ids_missing_from_manifest) === 0
+    && asNumber(summary.sql_ids_without_orientation_label) === 0
+    && asNumber(summary.sql_value_mismatches) === 0
+    && asBoolean(summary.migration_has_rotation_column) === true
+    && asBoolean(summary.worker_selects_rotation_column) === true
+    && arrayLength(anomalies.duplicate_sql_ids) === 0
+    && arrayLength(anomalies.invalid_sql_rotation_values) === 0
+    && arrayLength(anomalies.sql_ids_missing_from_manifest) === 0
+    && arrayLength(anomalies.sql_ids_without_orientation_label) === 0
+    && arrayLength(anomalies.sql_value_mismatches) === 0;
+}
+
+function guardrailPasses(summaries: JsonObject[], magicImpact: GuardrailImpact): boolean {
+  const rotationPolicy = summaries.find((summary) => summary.policy === 'smart_rotation_metadata_only');
+  return Boolean(rotationPolicy)
+    && asNumber(rotationPolicy?.lost_reviewed_gold_passes) === 0
+    && asNumber(rotationPolicy?.lost_expected_bucket_passes) === 0
+    && magicImpact.baseline_pass === true
+    && magicImpact.policy_pass === true
+    && magicImpact.baseline_rank === magicImpact.policy_rank;
 }
 
 function generatedAtFromInputs(reports: JsonObject[]): string {
@@ -303,7 +403,8 @@ async function main(): Promise<void> {
   assertUnique(pdfObjects.map((row) => row.record_id), 'PDF object remediations');
   assertUnique(rotationUpdates.map((row) => row.record_id), 'Rotation updates');
 
-  const transactionWrapped = /^\s*--[\s\S]*?BEGIN TRANSACTION;[\s\S]*COMMIT;\s*$/m.test(sqlText);
+  const transactionEnvelope = analyzeTransactionEnvelope(sqlText);
+  const transactionWrapped = transactionEnvelope.wrapped;
   const invalidRotationValues = rotationUpdates.filter((row) => ![90, 180, 270].includes(row.rotation_degrees));
   const magicImpact = guardrailImpacts.find((row) =>
     row.policy === 'smart_rotation_metadata_only'
@@ -319,6 +420,15 @@ async function main(): Promise<void> {
     lost_reviewed_gold_passes: summary.lost_reviewed_gold_passes,
     aggregate: summary.aggregate,
   }));
+  const rotationReportClean = rotationReportPasses(rotationReport, rotationUpdates.length);
+  const guardrailClean = guardrailPasses(guardrailSummaries, magicImpact);
+  const hardGateErrors = [
+    transactionWrapped ? null : `Rotation SQL is not fully transaction-wrapped: ${JSON.stringify(transactionEnvelope)}`,
+    invalidRotationValues.length === 0 ? null : `Rotation SQL has ${invalidRotationValues.length} invalid rotation values.`,
+    rotationReportClean ? null : 'Rotation SQL review report contains anomalies or missing migration/worker support.',
+    guardrailClean ? null : 'Search guardrail does not prove rotation metadata preserves reviewed-gold passes and Magic baking powder rank.',
+  ].filter((value): value is string => Boolean(value));
+  if (hardGateErrors.length) throw new Error(`Production apply gate failed closed:\n- ${hardGateErrors.join('\n- ')}`);
 
   const plan = {
     generated_at: generatedAtFromInputs([failureReport, rotationReport, guardrailReport, repairReport]),
@@ -346,7 +456,10 @@ async function main(): Promise<void> {
       pdf_backed_r2_image_objects: pdfObjects.length,
       rotation_sql_updates: rotationUpdates.length,
       rotation_sql_transaction_wrapped: transactionWrapped,
+      rotation_sql_transaction_envelope: transactionEnvelope,
       invalid_rotation_values: invalidRotationValues.length,
+      rotation_sql_review_passed: rotationReportClean,
+      search_guardrail_passed: guardrailClean,
       broad_quality_filtering_or_demotion_approved: false,
       vectorize_rebuild_proposed: false,
     },
@@ -376,6 +489,7 @@ async function main(): Promise<void> {
       sql_input: rel(sqlPath),
       update_count: rotationUpdates.length,
       transaction_wrapped: transactionWrapped,
+      transaction_envelope: transactionEnvelope,
       rotation_counts: countBy(rotationUpdates, (row) => String(row.rotation_degrees)),
       updates: rotationUpdates,
     },
@@ -397,12 +511,12 @@ async function main(): Promise<void> {
       },
       {
         check: 'Confirm rotation SQL review has no duplicate IDs, missing manifest IDs, invalid values, or value mismatches.',
-        status: 'pass',
+        status: rotationReportClean ? 'pass' : 'fail',
         evidence: rel(rotationReportPath),
       },
       {
         check: 'Confirm current guardrail rejects broad filtering/demotion and preserves reviewed-gold passes for rotation metadata only.',
-        status: 'pass',
+        status: guardrailClean ? 'pass' : 'fail',
         evidence: rel(guardrailReportPath),
       },
       {
