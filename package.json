@@ -58,6 +58,7 @@
     "autoresearch:status": "npm run autoresearch:status --workspace=@mtl-archives/scripts --",
     "dataset-factory:production-apply-gate-v0": "npm run dataset-factory:production-apply-gate-v0 --workspace=@mtl-archives/scripts --",
     "dataset-factory:production-scoped-apply-v0": "npm run dataset-factory:production-scoped-apply-v0 --workspace=@mtl-archives/scripts --",
+    "dataset-factory:production-rollback-pack-v0": "npm run dataset-factory:production-rollback-pack-v0 --workspace=@mtl-archives/scripts --",
     "image-artifacts:audit": "npm run image-artifacts:audit --workspace=@mtl-archives/scripts",
     "image-dedupe:audit": "npm run image-dedupe:audit --workspace=@mtl-archives/scripts",
     "vectorize:export": "npm run vectorize:export --workspace=@mtl-archives/scripts",
