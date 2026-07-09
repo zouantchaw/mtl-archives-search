@@ -1,0 +1,920 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://mtlarchives.com/schemas/dataset-factory-label-v0.json",
+  "title": "MTL Archives Dataset Factory Label v0",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "record_id",
+    "image_filename",
+    "source",
+    "review",
+    "labels",
+    "evidence",
+    "confidence",
+    "pairwise_preferences"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "dataset_factory_label_v0"
+    },
+    "record_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "image_filename": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source": {
+      "$ref": "#/$defs/source"
+    },
+    "review": {
+      "$ref": "#/$defs/review"
+    },
+    "labels": {
+      "$ref": "#/$defs/labels"
+    },
+    "evidence": {
+      "$ref": "#/$defs/evidenceBuckets"
+    },
+    "confidence": {
+      "$ref": "#/$defs/confidence"
+    },
+    "pairwise_preferences": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/pairwisePreference"
+      }
+    }
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "required": [
+        "source_system",
+        "package_slug",
+        "resource_id",
+        "source_url",
+        "license_id",
+        "license_url",
+        "credit_line",
+        "commercial_use_allowed",
+        "rights_checked_at",
+        "rights_notes"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "source_system": {
+          "enum": [
+            "montreal_open_data_ckan",
+            "archives_montreal_atom",
+            "r2_derivative",
+            "unknown"
+          ]
+        },
+        "package_slug": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "resource_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_url": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "license_id": {
+          "type": "string"
+        },
+        "license_url": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "credit_line": {
+          "type": "string"
+        },
+        "commercial_use_allowed": {
+          "type": "boolean"
+        },
+        "rights_checked_at": {
+          "type": "string",
+          "format": "date"
+        },
+        "rights_notes": {
+          "type": "string"
+        }
+      }
+    },
+    "review": {
+      "type": "object",
+      "required": [
+        "labeler_type",
+        "labeler_id",
+        "labeled_at",
+        "review_stage"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "labeler_type": {
+          "enum": [
+            "codex",
+            "human",
+            "model",
+            "hybrid"
+          ]
+        },
+        "labeler_id": {
+          "type": "string"
+        },
+        "labeled_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "review_stage": {
+          "enum": [
+            "example",
+            "batch",
+            "gold",
+            "adjudicated"
+          ]
+        }
+      }
+    },
+    "labels": {
+      "type": "object",
+      "required": [
+        "human_legible",
+        "story_value",
+        "print_value",
+        "partner_fit",
+        "search_value",
+        "quality_action",
+        "geo_time_extractable",
+        "provenance_depth",
+        "commercial_surface"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "human_legible": {
+          "enum": [
+            "high",
+            "medium",
+            "low",
+            "unusable"
+          ]
+        },
+        "story_value": {
+          "enum": [
+            "high",
+            "medium",
+            "low",
+            "none"
+          ]
+        },
+        "print_value": {
+          "enum": [
+            "high",
+            "medium",
+            "low",
+            "none"
+          ]
+        },
+        "partner_fit": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "museum_archive",
+              "urbanism_planning",
+              "art_design",
+              "education",
+              "tourism_local",
+              "real_estate_development",
+              "civic_infrastructure",
+              "environmental",
+              "none"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "search_value": {
+          "enum": [
+            "priority",
+            "high",
+            "medium",
+            "low",
+            "exclude"
+          ]
+        },
+        "quality_action": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "no_action",
+              "rotate",
+              "crop",
+              "border_trim",
+              "tone_normalize",
+              "retry_fetch",
+              "exclude",
+              "review",
+              "preserve_original"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "geo_time_extractable": {
+          "$ref": "#/$defs/geoTime"
+        },
+        "provenance_depth": {
+          "enum": [
+            "observed_only",
+            "metadata_supported",
+            "inferred",
+            "externally_verified",
+            "uncertain"
+          ]
+        },
+        "commercial_surface": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "print",
+              "reel",
+              "deck",
+              "installation",
+              "partner_brief",
+              "newsletter",
+              "search_feature",
+              "dataset_eval",
+              "none"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "image_mode": {
+          "$ref": "#/$defs/imageMode"
+        },
+        "scene_text": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/sceneText"
+          }
+        },
+        "entities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/entityMention"
+          }
+        },
+        "aerial_land_use": {
+          "$ref": "#/$defs/aerialLandUse"
+        },
+        "geo_hypotheses": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/geoHypothesis"
+          }
+        },
+        "search_expectations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/searchExpectation"
+          }
+        },
+        "ml_tasks": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "ocr_scene_text",
+              "entity_linking",
+              "landmark_recognition",
+              "geo_estimation",
+              "aerial_land_use",
+              "aerial_segmentation",
+              "quality_repair",
+              "search_reranking",
+              "reward_preference",
+              "active_learning"
+            ]
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "imageMode": {
+      "enum": [
+        "ground_street",
+        "ground_interior",
+        "ground_object",
+        "aerial_vertical",
+        "aerial_oblique",
+        "document_map",
+        "low_information",
+        "unknown"
+      ]
+    },
+    "sceneText": {
+      "type": "object",
+      "required": [
+        "text",
+        "text_type",
+        "normalized_text",
+        "location_hint",
+        "confidence",
+        "evidence_refs",
+        "review_flags"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "text_type": {
+          "enum": [
+            "billboard",
+            "storefront",
+            "street_sign",
+            "poster",
+            "vehicle",
+            "document",
+            "inscription",
+            "caption_or_overlay",
+            "unknown"
+          ]
+        },
+        "normalized_text": {
+          "type": "string"
+        },
+        "location_hint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "confidence": {
+          "$ref": "#/$defs/unitConfidence"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "review_flags": {
+          "$ref": "#/$defs/reviewFlags"
+        }
+      }
+    },
+    "entityMention": {
+      "type": "object",
+      "required": [
+        "name",
+        "entity_type",
+        "source",
+        "canonical_id",
+        "confidence",
+        "evidence_refs",
+        "review_flags"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "entity_type": {
+          "enum": [
+            "brand",
+            "business",
+            "street",
+            "landmark",
+            "institution",
+            "transit",
+            "neighborhood",
+            "person",
+            "event",
+            "natural_feature",
+            "unknown"
+          ]
+        },
+        "source": {
+          "enum": [
+            "observed_text",
+            "observed_visual",
+            "source_metadata",
+            "external_verified",
+            "inferred"
+          ]
+        },
+        "canonical_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "confidence": {
+          "$ref": "#/$defs/unitConfidence"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "review_flags": {
+          "$ref": "#/$defs/reviewFlags"
+        }
+      }
+    },
+    "aerialLandUse": {
+      "type": "object",
+      "required": [
+        "dominant_land_use",
+        "land_use_mix",
+        "urbanization_stage",
+        "segmentation_candidate",
+        "georeference_candidate",
+        "notes"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "dominant_land_use": {
+          "enum": [
+            "farmland",
+            "residential",
+            "industrial",
+            "commercial",
+            "waterfront",
+            "rail",
+            "road_infrastructure",
+            "park_green_space",
+            "institutional",
+            "water",
+            "forest",
+            "mixed_urban",
+            "low_information",
+            "unknown"
+          ]
+        },
+        "land_use_mix": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/landUseEstimate"
+          }
+        },
+        "urbanization_stage": {
+          "enum": [
+            "rural",
+            "transitional",
+            "suburbanizing",
+            "urban",
+            "industrial",
+            "unknown"
+          ]
+        },
+        "segmentation_candidate": {
+          "type": "boolean"
+        },
+        "georeference_candidate": {
+          "type": "boolean"
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "landUseEstimate": {
+      "type": "object",
+      "required": [
+        "class",
+        "approx_share",
+        "confidence"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "class": {
+          "enum": [
+            "farmland",
+            "residential",
+            "industrial",
+            "commercial",
+            "waterfront",
+            "rail",
+            "road_infrastructure",
+            "park_green_space",
+            "institutional",
+            "water",
+            "forest",
+            "mixed_urban",
+            "low_information",
+            "unknown"
+          ]
+        },
+        "approx_share": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "confidence": {
+          "$ref": "#/$defs/unitConfidence"
+        }
+      }
+    },
+    "geoHypothesis": {
+      "type": "object",
+      "required": [
+        "place_label",
+        "latitude",
+        "longitude",
+        "precision",
+        "method",
+        "confidence",
+        "evidence_refs",
+        "public_safe_exact_location",
+        "review_flags"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "place_label": {
+          "type": "string"
+        },
+        "latitude": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "longitude": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "precision": {
+          "enum": [
+            "none",
+            "city",
+            "neighborhood",
+            "corridor",
+            "specific_place",
+            "exact_point"
+          ]
+        },
+        "method": {
+          "enum": [
+            "source_metadata",
+            "geocoded_text",
+            "visual_place_recognition",
+            "aerial_georeference",
+            "external_verified",
+            "human_inference"
+          ]
+        },
+        "confidence": {
+          "$ref": "#/$defs/unitConfidence"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "public_safe_exact_location": {
+          "type": "boolean"
+        },
+        "review_flags": {
+          "$ref": "#/$defs/reviewFlags"
+        }
+      }
+    },
+    "searchExpectation": {
+      "type": "object",
+      "required": [
+        "query",
+        "expected_rank_bucket",
+        "mode",
+        "rationale",
+        "evidence_refs"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "query": {
+          "type": "string"
+        },
+        "expected_rank_bucket": {
+          "enum": [
+            "top_1",
+            "top_3",
+            "top_10",
+            "discoverable",
+            "negative"
+          ]
+        },
+        "mode": {
+          "enum": [
+            "semantic",
+            "visual",
+            "smart",
+            "ocr_lexical",
+            "reranked",
+            "any"
+          ]
+        },
+        "rationale": {
+          "type": "string"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "geoTime": {
+      "type": "object",
+      "required": [
+        "geo",
+        "time",
+        "public_safe_exact_location",
+        "notes"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "geo": {
+          "enum": [
+            "none",
+            "broad_area",
+            "specific_place",
+            "exact_point"
+          ]
+        },
+        "time": {
+          "enum": [
+            "none",
+            "year_range",
+            "year",
+            "date"
+          ]
+        },
+        "public_safe_exact_location": {
+          "type": "boolean"
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "evidenceBuckets": {
+      "type": "object",
+      "required": [
+        "observed",
+        "metadata",
+        "inferred",
+        "verified"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "observed": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidenceItem"
+          }
+        },
+        "metadata": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidenceItem"
+          }
+        },
+        "inferred": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidenceItem"
+          }
+        },
+        "verified": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidenceItem"
+          }
+        }
+      }
+    },
+    "evidenceItem": {
+      "type": "object",
+      "required": [
+        "id",
+        "claim",
+        "evidence_type",
+        "source_field",
+        "source_url",
+        "confidence",
+        "review_flags"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "claim": {
+          "type": "string"
+        },
+        "evidence_type": {
+          "enum": [
+            "visual_observation",
+            "source_metadata",
+            "vlm_output",
+            "ocr_text",
+            "external_source",
+            "inference",
+            "human_judgment"
+          ]
+        },
+        "source_field": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_url": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "confidence": {
+          "$ref": "#/$defs/unitConfidence"
+        },
+        "review_flags": {
+          "$ref": "#/$defs/reviewFlags"
+        }
+      }
+    },
+    "confidence": {
+      "type": "object",
+      "required": [
+        "overall",
+        "field_confidence",
+        "needs_human_review",
+        "review_flags"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "overall": {
+          "$ref": "#/$defs/unitConfidence"
+        },
+        "field_confidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "human_legible": {
+              "$ref": "#/$defs/unitConfidence"
+            },
+            "story_value": {
+              "$ref": "#/$defs/unitConfidence"
+            },
+            "print_value": {
+              "$ref": "#/$defs/unitConfidence"
+            },
+            "partner_fit": {
+              "$ref": "#/$defs/unitConfidence"
+            },
+            "search_value": {
+              "$ref": "#/$defs/unitConfidence"
+            },
+            "quality_action": {
+              "$ref": "#/$defs/unitConfidence"
+            },
+            "geo_time_extractable": {
+              "$ref": "#/$defs/unitConfidence"
+            },
+            "provenance_depth": {
+              "$ref": "#/$defs/unitConfidence"
+            },
+            "image_mode": {
+              "$ref": "#/$defs/unitConfidence"
+            },
+            "scene_text": {
+              "$ref": "#/$defs/unitConfidence"
+            },
+            "entities": {
+              "$ref": "#/$defs/unitConfidence"
+            },
+            "aerial_land_use": {
+              "$ref": "#/$defs/unitConfidence"
+            },
+            "geo_hypotheses": {
+              "$ref": "#/$defs/unitConfidence"
+            },
+            "search_expectations": {
+              "$ref": "#/$defs/unitConfidence"
+            }
+          }
+        },
+        "needs_human_review": {
+          "type": "boolean"
+        },
+        "review_flags": {
+          "$ref": "#/$defs/reviewFlags"
+        }
+      }
+    },
+    "pairwisePreference": {
+      "type": "object",
+      "required": [
+        "pair_id",
+        "other_record_id",
+        "criterion",
+        "query_or_context",
+        "preferred_record_id",
+        "rationale",
+        "confidence",
+        "evidence_refs"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "pair_id": {
+          "type": "string"
+        },
+        "other_record_id": {
+          "type": "string"
+        },
+        "criterion": {
+          "enum": [
+            "search_relevance",
+            "story_value",
+            "print_value",
+            "partner_fit",
+            "human_legibility",
+            "commercial_value",
+            "ocr_relevance",
+            "land_use_value",
+            "geo_confidence"
+          ]
+        },
+        "query_or_context": {
+          "type": "string"
+        },
+        "preferred_record_id": {
+          "type": "string"
+        },
+        "rationale": {
+          "type": "string"
+        },
+        "confidence": {
+          "$ref": "#/$defs/unitConfidence"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "reviewFlags": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "needs_human_review",
+          "thin_metadata",
+          "synthetic_description",
+          "attribution_detail_missing",
+          "exact_location_unsafe",
+          "date_uncertain",
+          "orientation_uncertain",
+          "quality_repair_needed",
+          "rights_review_needed",
+          "model_disagreement",
+          "external_verification_needed",
+          "ocr_uncertain",
+          "entity_resolution_needed",
+          "geo_reference_needed",
+          "aerial_land_use_uncertain",
+          "low_information_image",
+          "none"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "unitConfidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    }
+  }
+}

@@ -1,0 +1,217 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mtlarchives.com/schemas/dataset-factory-artifact-registry-v0.json",
+  "title": "MTL Archives Dataset Factory artifact registry entry v0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "stable_id",
+    "schema_version",
+    "artifact_schema_version",
+    "artifact_kind",
+    "content_digest",
+    "counts",
+    "source_lineage",
+    "storage",
+    "generation",
+    "dependency_ids",
+    "required_by",
+    "rights_boundary",
+    "created_at",
+    "creation_time_basis"
+  ],
+  "properties": {
+    "stable_id": {
+      "type": "string",
+      "pattern": "^dfv0_[a-z0-9_]+$"
+    },
+    "schema_version": {
+      "const": "dataset_factory_artifact_registry_v0"
+    },
+    "artifact_schema_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "artifact_kind": {
+      "enum": ["file", "directory", "file_set"]
+    },
+    "content_digest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "value", "scope"],
+      "properties": {
+        "algorithm": { "const": "sha256" },
+        "value": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "scope": {
+          "enum": ["file_bytes", "sorted_tree_manifest"]
+        }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file_count", "byte_count"],
+      "properties": {
+        "file_count": { "type": "integer", "minimum": 1 },
+        "byte_count": { "type": "integer", "minimum": 0 },
+        "row_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "source_lineage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["description", "source_artifact_ids", "source_urls"],
+      "properties": {
+        "description": { "type": "string", "minLength": 1 },
+        "source_artifact_ids": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^dfv0_[a-z0-9_]+$" },
+          "uniqueItems": true
+        },
+        "source_urls": {
+          "type": "array",
+          "items": { "type": "string", "format": "uri" },
+          "uniqueItems": true
+        }
+      }
+    },
+    "storage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["storage_class", "path_class", "locator"],
+      "properties": {
+        "storage_class": {
+          "enum": ["local_filesystem", "object_store", "tracked_repository", "remote_snapshot"]
+        },
+        "path_class": {
+          "enum": ["repo_ignored_local", "external_object_store", "tracked_fixture", "remote_api_snapshot"]
+        },
+        "locator": {
+          "type": "string",
+          "minLength": 1,
+          "not": { "pattern": "[?&](X-Amz-|sig=|signature=|token=)" }
+        },
+        "members": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "generation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method", "command", "code_ref", "human_input_ids"],
+      "properties": {
+        "method": {
+          "enum": [
+            "automated",
+            "review_assisted",
+            "human_authored",
+            "automated_with_human_inputs",
+            "external_snapshot"
+          ]
+        },
+        "command": { "type": "string", "minLength": 1 },
+        "code_ref": { "type": "string", "minLength": 1 },
+        "acquisition_boundary": { "type": "string", "minLength": 1 },
+        "human_input_ids": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^dfv0_[a-z0-9_]+$" },
+          "uniqueItems": true
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "method": { "const": "human_authored" } } },
+          "then": {
+            "properties": {
+              "command": { "pattern": "^MANUAL REVIEW REQUIRED:" },
+              "human_input_ids": { "maxItems": 0 }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "method": { "const": "automated_with_human_inputs" } } },
+          "then": { "properties": { "human_input_ids": { "minItems": 1 } } },
+          "else": {
+            "if": { "properties": { "method": { "not": { "const": "human_authored" } } } },
+            "then": { "properties": { "human_input_ids": { "maxItems": 0 } } }
+          }
+        },
+        {
+          "if": { "properties": { "method": { "const": "external_snapshot" } } },
+          "then": { "required": ["acquisition_boundary"] },
+          "else": { "not": { "required": ["acquisition_boundary"] } }
+        }
+      ]
+    },
+    "dependency_ids": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^dfv0_[a-z0-9_]+$" },
+      "uniqueItems": true
+    },
+    "required_by": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "rights_boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["license_id", "attribution", "commercial_use_allowed", "notes"],
+      "properties": {
+        "license_id": { "type": "string", "minLength": 1 },
+        "attribution": { "type": "string", "minLength": 1 },
+        "commercial_use_allowed": { "type": "boolean" },
+        "notes": { "type": "string", "minLength": 1 }
+      }
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "creation_time_basis": {
+      "enum": ["report_metadata", "filesystem_mtime", "latest_file_mtime"]
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "artifact_kind": { "const": "file" } } },
+      "then": {
+        "properties": {
+          "content_digest": { "properties": { "scope": { "const": "file_bytes" } } },
+          "counts": { "properties": { "file_count": { "const": 1 } } },
+          "storage": { "not": { "required": ["members"] } }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "artifact_kind": { "const": "directory" } } },
+      "then": {
+        "properties": {
+          "content_digest": { "properties": { "scope": { "const": "sorted_tree_manifest" } } },
+          "storage": { "not": { "required": ["members"] } }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "artifact_kind": { "const": "file_set" } } },
+      "then": {
+        "properties": {
+          "content_digest": { "properties": { "scope": { "const": "sorted_tree_manifest" } } },
+          "storage": { "required": ["members"] }
+        }
+      }
+    }
+  ]
+}

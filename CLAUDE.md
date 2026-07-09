@@ -46,6 +46,11 @@ npm run social:promote-story -- --package-dir /absolute/path/to/package
 npm run autoresearch:search     # Evaluate smart-search fusion experiment config
 npm run autoresearch:social     # Score saved daily social packages
 npm run autoresearch:lambda:plan # Check Lambda Labs GPU capacity/env; does not launch
+npm run dataset-factory:artifacts:check
+npm run dataset-factory:artifacts:self-test
+npm run dataset-factory:clock:self-test
+npm run dataset-factory:artifacts:check -- --verify-files --artifact-root /absolute/path/to/populated/repo
+npm run dataset-factory:smoke-v0 # Fixture contract smoke; no Cloudflare/social mutation
 ```
 
 ## Architecture
@@ -98,6 +103,7 @@ pipelines/
 5. Newsletter: explicit signup from `/` or `/game` → Worker → D1 (`newsletter_*` tables) → Resend, with Vercel cron calling the Worker admin endpoint for daily sends
 6. Social fallback: local machine → `pipelines/daily-reel/main.py` → Worker API + Gemini → IG carousel + FB reel package under `~/Desktop/mtl-social-fallback/YYYY-MM-DD`
 7. Story promotion: `story_seed.json` from a strong social package → `pipelines/daily-reel/story_pages.py` → `apps/next-app/content/stories/*.json` → `/stories/[slug]`
+8. Dataset Factory v0: ignored report artifacts → tracked registry + schemas + fixture smoke → packets, labels/adjudication, benchmark, active learning, repair, family graph, enrichment, judgments, and reward-data outputs
 
 ## Environment
 
@@ -158,6 +164,12 @@ Next app runtime env:
 - Daily game Story operations should use `npm run social:publish-game-story -- --all --check-only` or `--prepare-only`. That wrapper reuses a valid 1080x1920 MP4, renders only when needed outside check-only mode, records prepared/published Story deliveries in `data/social/story-registry.jsonl`, and skips date/platform repeats unless `--force` is explicit. Live Story publishing requires the wrapper's `--publish` flag and explicit user approval.
 - Post operations should use `pipelines/daily-reel/post_publish.py` against the persisted Meta token state. The repo supports daily-package publishing for Instagram carousel posts and Facebook Page reels, with idempotency through `data/social/publish-registry.jsonl`.
 - Do not imply feature parity with manual Story posting. Server-side Story publishing does not support link, poll, or location stickers. If the creative depends on a clickable `DEFI DU JOUR` link to `/game`, that is a manual/mobile step, not something the repo can silently fake.
+- Dataset Factory v0 lives under `docs/dataset-factory/` and `packages/scripts/src/dataset-factory/`. Keep large generated output under ignored `data/mtl_archives/reports/`; do not commit generated report trees.
+- The artifact registry is `docs/dataset-factory/artifact-registry.v0.jsonl`. Its 76 entries must stay a schema-valid acyclic phase graph with stable IDs, SHA-256 digests, exact non-overlapping membership, lineage, explicit human decision/external acquisition boundaries, generation methods/commands, dependency IDs, rights boundaries, and created timestamps. Never put secrets, `.env` values, private keys, or expiring signed URLs in it.
+- Run `npm run dataset-factory:artifacts:self-test` after registry/checker changes; its 14 cases must accept the regular in-root control and reject schema, containment, symlink, overlap, identity, dependency, cycle, boundary, and missing-command violations.
+- Run `npm run dataset-factory:clock:self-test` after clock changes; timezone-less fixed timestamps must remain invalid.
+- Use `npm run dataset-factory:smoke-v0` for clean-checkout contract coverage. It uses tracked fixtures, a fixed clock, exact content assertions, a committed tree hash, and a local mock `/api/search`; it is not a live API quality proof.
+- Use `npm run dataset-factory:artifacts:check -- --verify-files --artifact-root /absolute/path/to/populated/repo` before trusting full ignored artifact coverage.
 
 ## Skills
 

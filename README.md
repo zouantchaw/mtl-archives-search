@@ -329,6 +329,13 @@ npm run autoresearch:lambda:plan  # Check Lambda Labs GPU capacity/env before VL
 npm run autoresearch:vlm:managed -- --input data/mtl_archives/manifest_clean.jsonl --source r2 --limit 2000  # Managed Lambda VLM run with auto-termination
 npm run image-artifacts:audit  # Border/template detection audit + optional cleaned previews
 npm run image-dedupe:audit  # Perceptual image hash dedupe audit (clusters + keep/drop decisions)
+
+# Dataset Factory v0 durability and smoke checks
+npm run dataset-factory:artifacts:check
+npm run dataset-factory:artifacts:self-test
+npm run dataset-factory:clock:self-test
+npm run dataset-factory:artifacts:check -- --verify-files --artifact-root /absolute/path/to/populated/repo
+npm run dataset-factory:smoke-v0
 ```
 
 Autoresearch notes:
@@ -336,6 +343,14 @@ Autoresearch notes:
 - Search experiments edit `experiments/autoresearch/search/config.json` and write `data/mtl_archives/reports/autoresearch_search_report.json`.
 - Social experiments read saved packages from `~/Downloads/mtl-daily` by default and write `data/social/autoresearch_social_report.json`.
 - Lambda GPU planning requires `LAMBDA_API_KEY` in the local shell or repo env; the command does not launch instances.
+
+Dataset Factory v0 notes:
+- The reproducibility plan and schemas live under `docs/dataset-factory/`.
+- `docs/dataset-factory/artifact-registry.v0.jsonl` is the machine-readable registry for ignored v0 artifacts. Its 76 entries form an acyclic phase graph: broad batch/benchmark/search/quality trees are split into exact non-overlapping file sets, human-authored review decisions are immutable inputs, and live API or remote-image results carry explicit acquisition boundaries rather than false reconstruction claims. The three search-judgment entries cover 12 files and the 25 quality-repair entries cover 636 files exactly once. Each entry records a stable ID, schema version, SHA-256 digest, file/row counts where meaningful, lineage, storage/path class, generation method/command, dependency IDs, rights boundary, and created timestamp. It must not contain secrets or signed URLs.
+- `npm run dataset-factory:artifacts:self-test` proves 14 contract and adversarial cases, including a normal in-root file plus schema enforcement, dependency cycles, external-snapshot boundaries, file overlap, and leaf/parent-directory symlink rejection. `--verify-files` additionally checks artifact kind, real-path containment, unique membership, and registered bytes against a populated artifact root.
+- `npm run dataset-factory:clock:self-test` proves that fixed timestamps require RFC 3339 `Z` or an explicit offset and normalize independently of the host timezone.
+- `docs/dataset-factory/fixtures/v0-smoke/` contains small tracked contract fixtures. `npm run dataset-factory:smoke-v0` uses those fixtures plus a local mock `/api/search` server to exercise packets, labels/adjudication, benchmark, active learning, search/reranker evaluation, quality repair, visual family graph, research enrichment, search judgments, and reward data without D1/R2/Vectorize/network mutation. It fixes fixture timestamps, asserts exact counts and representative content, and enforces the committed output-tree SHA-256.
+- Large generated reports remain ignored under `data/mtl_archives/reports/`. Use `dataset-factory:artifacts:check -- --verify-files` against a populated artifact root when you need to prove the registry still matches the real ignored artifacts.
 
 Vectorize reliability notes:
 - `vectorize:text` and `vectorize:clip` now support resumable checkpoints by default.
