@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+import { datasetFactoryNowIso } from './clock.js';
 import { requireArtifacts } from './artifact-io.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -688,7 +689,7 @@ async function main(): Promise<void> {
   const records = readJsonl<ArchiveRecord>(manifestPath).filter((record) => Boolean(recordId(record)));
   const taxonomyRows = readJsonl<TaxonomyRow>(taxonomyPath);
   const taxonomyMap = taxonomyById(taxonomyRows);
-  const selectedAt = new Date().toISOString();
+  const selectedAt = datasetFactoryNowIso();
   const selected = chooseRecords(records, taxonomyMap, seed, aerialLimit, includeAllGround);
   const packetRows = selected.map((row, index) => toPacket(row, index, seed, selectedAt, taxonomyMap, publicR2Domain));
 

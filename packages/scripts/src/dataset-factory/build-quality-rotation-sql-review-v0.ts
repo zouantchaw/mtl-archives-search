@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+import { datasetFactoryNowIso } from './clock.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MONOREPO_ROOT = path.resolve(__dirname, '../../../../');
@@ -187,7 +188,7 @@ async function main(): Promise<void> {
     && migrationHasRotationColumn
     && workerSelectsRotationColumn;
   const report = {
-    generated_at: new Date().toISOString(),
+    generated_at: datasetFactoryNowIso(),
     issue: 53,
     inputs: {
       manifest: rel(manifestPath),

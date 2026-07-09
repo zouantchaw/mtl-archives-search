@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+import { datasetFactoryNowIso } from './clock.js';
 import { requireArtifacts } from './artifact-io.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -295,7 +296,7 @@ async function main(): Promise<void> {
   writeJsonl(outputJsonl, signals);
 
   const report = {
-    generated_at: new Date().toISOString(),
+    generated_at: datasetFactoryNowIso(),
     schema_version: 'mtl_reward_signal_v0',
     input_pairwise_preferences: preferences.length,
     input_active_learning_rows: activeLearningRows.length,

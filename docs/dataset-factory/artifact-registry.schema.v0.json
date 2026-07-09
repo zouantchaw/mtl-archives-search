@@ -93,17 +93,60 @@
           "type": "string",
           "minLength": 1,
           "not": { "pattern": "[?&](X-Amz-|sig=|signature=|token=)" }
+        },
+        "members": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+          },
+          "uniqueItems": true
         }
       }
     },
     "generation": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["command", "code_ref"],
+      "required": ["method", "command", "code_ref", "human_input_ids"],
       "properties": {
+        "method": {
+          "enum": [
+            "automated",
+            "review_assisted",
+            "human_authored",
+            "automated_with_human_inputs",
+            "external_snapshot"
+          ]
+        },
         "command": { "type": "string", "minLength": 1 },
-        "code_ref": { "type": "string", "minLength": 1 }
-      }
+        "code_ref": { "type": "string", "minLength": 1 },
+        "human_input_ids": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^dfv0_[a-z0-9_]+$" },
+          "uniqueItems": true
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "method": { "const": "human_authored" } } },
+          "then": {
+            "properties": {
+              "command": { "pattern": "^MANUAL REVIEW REQUIRED:" },
+              "human_input_ids": { "maxItems": 0 }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "method": { "const": "automated_with_human_inputs" } } },
+          "then": { "properties": { "human_input_ids": { "minItems": 1 } } },
+          "else": {
+            "if": { "properties": { "method": { "not": { "const": "human_authored" } } } },
+            "then": { "properties": { "human_input_ids": { "maxItems": 0 } } }
+          }
+        }
+      ]
     },
     "dependency_ids": {
       "type": "array",
@@ -134,5 +177,35 @@
     "creation_time_basis": {
       "enum": ["report_metadata", "filesystem_mtime", "latest_file_mtime"]
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "artifact_kind": { "const": "file" } } },
+      "then": {
+        "properties": {
+          "content_digest": { "properties": { "scope": { "const": "file_bytes" } } },
+          "counts": { "properties": { "file_count": { "const": 1 } } },
+          "storage": { "not": { "required": ["members"] } }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "artifact_kind": { "const": "directory" } } },
+      "then": {
+        "properties": {
+          "content_digest": { "properties": { "scope": { "const": "sorted_tree_manifest" } } },
+          "storage": { "not": { "required": ["members"] } }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "artifact_kind": { "const": "file_set" } } },
+      "then": {
+        "properties": {
+          "content_digest": { "properties": { "scope": { "const": "sorted_tree_manifest" } } },
+          "storage": { "required": ["members"] }
+        }
+      }
+    }
+  ]
 }

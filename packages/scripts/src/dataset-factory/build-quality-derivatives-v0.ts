@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+import { datasetFactoryNowIso } from './clock.js';
 import dotenv from 'dotenv';
 import sharp from 'sharp';
 
@@ -321,7 +322,7 @@ async function main(): Promise<void> {
   const existingFailures = resume && skipExistingFailures ? readJsonl<FailureRow>(failuresPath) : [];
   const existingFailureIds = new Set(existingFailures.map((row) => row.id));
   const pending = sample.filter((record) => !existingIds.has(metadataId(record)) && !existingFailureIds.has(metadataId(record)));
-  const runStartedAt = new Date().toISOString();
+  const runStartedAt = datasetFactoryNowIso();
   let completed = 0;
   let failed = 0;
   let originalBytes = existing.reduce((sum, row) => sum + row.originalBytes, 0);
@@ -331,7 +332,7 @@ async function main(): Promise<void> {
     writeJsonAtomic(progressPath, {
       status,
       started_at: runStartedAt,
-      updated_at: new Date().toISOString(),
+      updated_at: datasetFactoryNowIso(),
       input_rows: records.length,
       sample_rows: sample.length,
       existing_rows_reused: existing.length,
@@ -383,7 +384,7 @@ async function main(): Promise<void> {
         sourceOrientation: sourceMetadata.orientation ?? null,
         derivativeWidth: derivativeMetadata.width ?? null,
         derivativeHeight: derivativeMetadata.height ?? null,
-        generatedAt: new Date().toISOString(),
+        generatedAt: datasetFactoryNowIso(),
       };
       appendJsonl(manifestPath, row);
       completed += 1;
@@ -397,7 +398,7 @@ async function main(): Promise<void> {
         imagePath: imagePath(record),
         originalImageUrl: url,
         error: error instanceof Error ? error.message : String(error),
-        generatedAt: new Date().toISOString(),
+        generatedAt: datasetFactoryNowIso(),
       });
     }
     if ((completed + failed) % progressInterval === 0 || completed + failed === pending.length) {
@@ -415,7 +416,7 @@ async function main(): Promise<void> {
   const finalFailures = [...latestFailureById.values()];
   writeJsonl(failuresPath, finalFailures);
   const report = {
-    generated_at: new Date().toISOString(),
+    generated_at: datasetFactoryNowIso(),
     issue: 53,
     inputs: {
       manifest: path.relative(MONOREPO_ROOT, inputPath),

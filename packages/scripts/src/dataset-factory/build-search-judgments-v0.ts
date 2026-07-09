@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+import { datasetFactoryNowIso } from './clock.js';
 import { requireArtifacts } from './artifact-io.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -392,7 +393,7 @@ async function main(): Promise<void> {
   }));
 
   const report = {
-    generated_at: new Date().toISOString(),
+    generated_at: datasetFactoryNowIso(),
     issue: 52,
     output_dir: rel(outputDir),
     inputs: {

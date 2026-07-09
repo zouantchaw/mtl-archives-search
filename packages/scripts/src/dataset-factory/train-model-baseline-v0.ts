@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+import { datasetFactoryNowIso } from './clock.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MONOREPO_ROOT = path.resolve(__dirname, '../../../../');
@@ -22,7 +23,7 @@ const DEFAULT_OUTPUT_DIR = path.resolve(
   MONOREPO_ROOT,
   'data/mtl_archives/reports/model_baseline_v0_cpu_text',
 );
-const GENERATED_AT = new Date().toISOString();
+const GENERATED_AT = datasetFactoryNowIso();
 
 type EvidenceItem = {
   id: string;
@@ -644,7 +645,7 @@ function registryEntry(outputDir: string, report: { labels: LabelReport[] }): Re
     execution_surface: 'local_cpu',
     workload_type: 'training',
     started_at: GENERATED_AT,
-    ended_at: new Date().toISOString(),
+    ended_at: datasetFactoryNowIso(),
     budget: {
       approved: false,
       max_runtime_minutes: 10,

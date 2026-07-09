@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+import { datasetFactoryNowIso } from './clock.js';
 import { requireArtifacts } from './artifact-io.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -785,7 +786,7 @@ async function main(): Promise<void> {
   ]);
   const queueRows = readJsonl<ActiveQueueRow>(queuePath).slice(0, limit);
   const existingLabels = readJsonl<LabelRow>(existingPath);
-  const labeledAt = new Date().toISOString();
+  const labeledAt = datasetFactoryNowIso();
   const labels = queueRows.map((row) => toLabel(row, labeledAt));
   const combined = [...existingLabels, ...labels];
   const validationErrors = labels.flatMap((label) => validateLabel(label).map((error) => `${label.record_id}: ${error}`));

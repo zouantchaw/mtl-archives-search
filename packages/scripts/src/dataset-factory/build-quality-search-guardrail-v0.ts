@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+import { datasetFactoryNowIso } from './clock.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MONOREPO_ROOT = path.resolve(__dirname, '../../../../');
@@ -537,7 +538,7 @@ async function main(): Promise<void> {
   const report = {
     issue: 53,
     guardrail_id: 'quality_repair_search_guardrail_v0',
-    generated_at: new Date().toISOString(),
+    generated_at: datasetFactoryNowIso(),
     inputs: {
       tasks: rel(tasksPath),
       candidates: rel(candidatesPath),

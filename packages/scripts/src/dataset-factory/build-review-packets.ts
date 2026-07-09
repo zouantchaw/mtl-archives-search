@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+import { datasetFactoryFixedNowIso, datasetFactoryNowIso } from './clock.js';
 import { requireArtifacts } from './artifact-io.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -709,7 +710,7 @@ function artifactInfo(filePath: string): { path: string; exists: boolean; size_b
     path: path.relative(MONOREPO_ROOT, filePath),
     exists: true,
     size_bytes: stat.size,
-    mtime: stat.mtime.toISOString(),
+    mtime: datasetFactoryFixedNowIso() ?? stat.mtime.toISOString(),
   };
 }
 
@@ -891,7 +892,7 @@ async function main(): Promise<void> {
     appendSelection(selections, row.record, 'active_learning_queue', row.reasons.join('; '));
   }
 
-  const selectedAt = new Date().toISOString();
+  const selectedAt = datasetFactoryNowIso();
   const packetRows = Array.from(selections.values())
     .sort((a, b) => recordId(a.record).localeCompare(recordId(b.record)))
     .map((state, index) => toPacketRecord(

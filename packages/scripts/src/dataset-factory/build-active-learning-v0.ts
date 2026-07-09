@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+import { datasetFactoryNowIso } from './clock.js';
 import { requireArtifacts } from './artifact-io.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -1437,6 +1438,7 @@ async function main(): Promise<void> {
       'artifact-decisions': { type: 'string', default: DEFAULT_ARTIFACT_DECISIONS },
       'cleanup-rows': { type: 'string', default: DEFAULT_CLEANUP_ROWS },
       'model-baseline': { type: 'string', default: DEFAULT_MODEL_BASELINE },
+      'skip-model-baseline': { type: 'boolean', default: false },
       output: { type: 'string', default: DEFAULT_OUTPUT_DIR },
       seed: { type: 'string', default: DEFAULT_SEED },
       'queue-size': { type: 'string', default: String(DEFAULT_QUEUE_SIZE) },
@@ -1454,7 +1456,8 @@ async function main(): Promise<void> {
   const searchBaselinePath = resolveRepoPath(values['search-baseline']!);
   const artifactDecisionsPath = resolveRepoPath(values['artifact-decisions']!);
   const cleanupRowsPath = resolveRepoPath(values['cleanup-rows']!);
-  const modelBaselinePath = resolveRepoPath(values['model-baseline']!);
+  const skipModelBaseline = values['skip-model-baseline']!;
+  const modelBaselinePath = skipModelBaseline ? null : resolveRepoPath(values['model-baseline']!);
   const outputDir = resolveRepoPath(values.output!);
   const seed = values.seed!;
   const queueSize = Math.max(1, Number.parseInt(values['queue-size']!, 10) || DEFAULT_QUEUE_SIZE);
@@ -1470,7 +1473,7 @@ async function main(): Promise<void> {
     { path: searchBaselinePath, label: 'benchmark search baseline rows' },
     { path: artifactDecisionsPath, label: 'image artifact decisions' },
     { path: cleanupRowsPath, label: 'cleanup embedding rows' },
-    { path: modelBaselinePath, label: 'model baseline report' },
+    ...(modelBaselinePath ? [{ path: modelBaselinePath, label: 'model baseline report' }] : []),
   ]);
 
   const records = readJsonl<ArchiveRecord>(manifestPath);
@@ -1482,7 +1485,9 @@ async function main(): Promise<void> {
   const searchRows = readJsonl<SearchBaselineRow>(searchBaselinePath);
   const artifactRows = readJsonl<ArtifactDecisionRow>(artifactDecisionsPath);
   const cleanupRows = readJsonl<CleanupRow>(cleanupRowsPath);
-  const modelBaselineReport = readJson<{ labels?: ModelBaselineLabelReport[] }>(modelBaselinePath);
+  const modelBaselineReport = modelBaselinePath
+    ? readJson<{ labels?: ModelBaselineLabelReport[] }>(modelBaselinePath)
+    : {};
 
   const taxonomyMap = byId(taxonomyRows);
   const qualityMap = byId(qualityRows);
@@ -1517,7 +1522,7 @@ async function main(): Promise<void> {
 
   const selected = selectQueue(scored, Math.min(queueSize, scored.length), seed, maxPerFamily);
   const random = selectRandomBaseline(scored, Math.min(queueSize, scored.length), seed, maxPerFamily);
-  const selectedAt = new Date().toISOString();
+  const selectedAt = datasetFactoryNowIso();
   const queueRows = toQueueRows(selected, seed, selectedAt, failures);
   const randomRows = toQueueRows(random, `${seed}:random-baseline`, selectedAt, failures);
   const activeCoverage = coverage(selected);
@@ -1539,7 +1544,7 @@ async function main(): Promise<void> {
       search_baseline: path.relative(MONOREPO_ROOT, searchBaselinePath),
       artifact_decisions: path.relative(MONOREPO_ROOT, artifactDecisionsPath),
       cleanup_rows: path.relative(MONOREPO_ROOT, cleanupRowsPath),
-      model_baseline: path.relative(MONOREPO_ROOT, modelBaselinePath),
+      model_baseline: modelBaselinePath ? path.relative(MONOREPO_ROOT, modelBaselinePath) : null,
     },
     input_counts: {
       records: records.length,

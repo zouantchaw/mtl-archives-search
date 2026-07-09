@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+import { datasetFactoryNowIso } from './clock.js';
 import { requireArtifacts } from './artifact-io.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -416,7 +417,7 @@ async function main(): Promise<void> {
   const labels = readJsonl<LabelRow>(inputPath);
   const decisions = readJsonl<ReviewDecision>(decisionsPath);
   const decisionMap = new Map(decisions.map((decision) => [decision.record_id, decision]));
-  const appliedAt = new Date().toISOString();
+  const appliedAt = datasetFactoryNowIso();
   const beforeGoldIds = new Set(labels.filter((label) => label.review.review_stage === 'gold').map((label) => label.record_id));
   const changedDecisionIds = new Set(decisions.filter((decision) => decision.decision !== 'hold_batch').map((decision) => decision.record_id));
   const reviewed = labels.map((label) => {

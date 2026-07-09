@@ -332,6 +332,7 @@ npm run image-dedupe:audit  # Perceptual image hash dedupe audit (clusters + kee
 
 # Dataset Factory v0 durability and smoke checks
 npm run dataset-factory:artifacts:check
+npm run dataset-factory:artifacts:self-test
 npm run dataset-factory:artifacts:check -- --verify-files --artifact-root /absolute/path/to/populated/repo
 npm run dataset-factory:smoke-v0
 ```
@@ -344,8 +345,9 @@ Autoresearch notes:
 
 Dataset Factory v0 notes:
 - The reproducibility plan and schemas live under `docs/dataset-factory/`.
-- `docs/dataset-factory/artifact-registry.v0.jsonl` is the machine-readable registry for ignored v0 artifacts. Each entry records a stable ID, schema version, SHA-256 digest, file/row counts where meaningful, lineage, storage/path class, generation command, dependency IDs, rights boundary, and created timestamp. It must not contain secrets or signed URLs.
-- `docs/dataset-factory/fixtures/v0-smoke/` contains small tracked contract fixtures. `npm run dataset-factory:smoke-v0` uses those fixtures plus a local mock `/api/search` server to exercise packets, labels/adjudication, benchmark, active learning, search/reranker evaluation, quality repair, visual family graph, research enrichment, search judgments, and reward data without D1/R2/Vectorize/network mutation.
+- `docs/dataset-factory/artifact-registry.v0.jsonl` is the machine-readable registry for ignored v0 artifacts. Its 49 entries form an acyclic phase graph: broad batch/benchmark trees are split into exact file sets, human-authored review decisions are immutable inputs, and apply outputs depend on those decisions explicitly. Each entry records a stable ID, schema version, SHA-256 digest, file/row counts where meaningful, lineage, storage/path class, generation method/command, dependency IDs, rights boundary, and created timestamp. It must not contain secrets or signed URLs.
+- `npm run dataset-factory:artifacts:self-test` proves schema enums/additional-property rejection plus digest, kind, locator, unique-ID, dependency, cycle, and root-command checks. `--verify-files` additionally checks artifact kind and registered bytes against a populated artifact root.
+- `docs/dataset-factory/fixtures/v0-smoke/` contains small tracked contract fixtures. `npm run dataset-factory:smoke-v0` uses those fixtures plus a local mock `/api/search` server to exercise packets, labels/adjudication, benchmark, active learning, search/reranker evaluation, quality repair, visual family graph, research enrichment, search judgments, and reward data without D1/R2/Vectorize/network mutation. It fixes fixture timestamps, asserts exact counts and representative content, and enforces the committed output-tree SHA-256.
 - Large generated reports remain ignored under `data/mtl_archives/reports/`. Use `dataset-factory:artifacts:check -- --verify-files` against a populated artifact root when you need to prove the registry still matches the real ignored artifacts.
 
 Vectorize reliability notes:

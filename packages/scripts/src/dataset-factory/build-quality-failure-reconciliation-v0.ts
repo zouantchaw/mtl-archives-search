@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+import { datasetFactoryNowIso } from './clock.js';
 import sharp from 'sharp';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -470,7 +471,7 @@ async function main(): Promise<void> {
   const sourceBytes = rows.reduce((sum, row) => sum + (row.fallback_probe?.bytes ?? 0), 0);
   const derivativeBytes = rows.reduce((sum, row) => sum + (row.derivative_bytes ?? 0), 0);
   const report = {
-    generated_at: new Date().toISOString(),
+    generated_at: datasetFactoryNowIso(),
     issue: 53,
     inputs: {
       manifest: rel(manifestPath),

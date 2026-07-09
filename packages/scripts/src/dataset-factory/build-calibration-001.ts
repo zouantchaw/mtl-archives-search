@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+import { datasetFactoryNowIso } from './clock.js';
 import { requireArtifact } from './artifact-io.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -312,7 +313,7 @@ async function main(): Promise<void> {
   const seed = values.seed!;
   requireArtifact(inputPath, 'Batch 001 review packet');
   const rows = readJsonl<BatchPacket>(inputPath);
-  const selectedAt = new Date().toISOString();
+  const selectedAt = datasetFactoryNowIso();
   const calibrationRows = toCalibrationRows(selectCalibrationRows(rows, seed), selectedAt);
 
   fs.mkdirSync(outputDir, { recursive: true });

@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+import { datasetFactoryNowIso } from './clock.js';
 import { requireArtifact } from './artifact-io.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -360,7 +361,7 @@ async function main(): Promise<void> {
   const adjudicatedLabels = labels.map((label, index) => applyDecision(label, decisions[index]));
   const goldLabels = adjudicatedLabels.filter((label) => label.review.review_stage === 'gold');
   const heldLabels = adjudicatedLabels.filter((label) => label.review.review_stage !== 'gold');
-  const generatedAt = new Date().toISOString();
+  const generatedAt = datasetFactoryNowIso();
 
   fs.mkdirSync(outputDir, { recursive: true });
   writeJsonl(path.join(outputDir, 'adjudication-decisions.jsonl'), decisions);

@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+import { datasetFactoryNowIso } from './clock.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MONOREPO_ROOT = path.resolve(__dirname, '../../../../');
@@ -476,7 +477,7 @@ async function main(): Promise<void> {
   const clip = gpuModels.find((model) => model.modelKey === 'clip');
   const siglip = gpuModels.find((model) => model.modelKey === 'siglip');
   const report = {
-    generated_at: new Date().toISOString(),
+    generated_at: datasetFactoryNowIso(),
     issue: 55,
     output_dir: rel(outputDir),
     reproducible_commands: {

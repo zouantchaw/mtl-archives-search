@@ -236,7 +236,7 @@ IG carousel + FB reel
 Ignored reports in data/mtl_archives/reports/
         │
         ├─▶ docs/dataset-factory/artifact-registry.v0.jsonl
-        │       stable IDs, SHA-256 digests, counts, lineage, commands, rights
+        │       acyclic phase IDs, SHA-256 digests, counts, lineage, human gates, commands, rights
         │
         └─▶ packages/scripts/src/dataset-factory/*.ts
                 ├─ review packets + calibration/adjudication labels
@@ -247,9 +247,9 @@ Ignored reports in data/mtl_archives/reports/
 ```
 
 - Dataset Factory v0 is an offline durability layer for search-quality evaluation and future training data. It does not deploy, mutate Cloudflare resources, publish social content, or require credentials for its tracked fixture smoke.
-- The real generated artifacts are intentionally gitignored because they include large report trees. Their reproducibility contract is tracked in `docs/dataset-factory/artifact-registry.v0.jsonl` and validated by `npm run dataset-factory:artifacts:check`.
-- `npm run dataset-factory:artifacts:check -- --verify-files --artifact-root /absolute/path/to/populated/repo` verifies every registered ignored artifact by SHA-256, file count, byte count, and row count where meaningful.
-- `docs/dataset-factory/fixtures/v0-smoke/` contains small tracked fixtures that mirror the contracts needed by the v0 workflows. `npm run dataset-factory:smoke-v0` runs the v0 scripts against those fixtures and a local mock search API, proving that a clean checkout can exercise the workflow without copying generated report trees.
+- The real generated artifacts are intentionally gitignored because they include large report trees. Their reproducibility contract is tracked as a 49-entry acyclic phase graph in `docs/dataset-factory/artifact-registry.v0.jsonl`; explicit human decision files are graph inputs rather than outputs falsely attributed to automation.
+- `npm run dataset-factory:artifacts:check` validates the published Draft 2020-12 schema, graph semantics, locator containment, and root command wiring. `npm run dataset-factory:artifacts:self-test` proves the negative cases. `--verify-files --artifact-root /absolute/path/to/populated/repo` additionally verifies every registered ignored artifact by kind, SHA-256, file count, byte count, and row count where meaningful.
+- `docs/dataset-factory/fixtures/v0-smoke/` contains small tracked fixtures that mirror the contracts needed by the v0 workflows. `npm run dataset-factory:smoke-v0` runs the v0 scripts against those fixtures and a local mock search API with a fixed clock, exact count/content assertions, and a committed tree hash, proving that a clean checkout can exercise the workflow deterministically without copying generated report trees.
 - Missing required artifacts should fail loudly through the Dataset Factory artifact helpers rather than silently producing empty downstream reports.
 
 ## D1 Schema

@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+import { datasetFactoryNowIso } from './clock.js';
 import { requireArtifacts } from './artifact-io.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -240,7 +241,7 @@ async function main(): Promise<void> {
   const labels = readJsonl<LabelRow>(inputPath);
   const decisions = readJsonl<VisualReviewDecision>(decisionsPath);
   const decisionMap = new Map(decisions.map((decision) => [decision.record_id, decision]));
-  const appliedAt = new Date().toISOString();
+  const appliedAt = datasetFactoryNowIso();
   const reviewed = labels.map((label) => {
     const decision = decisionMap.get(label.record_id);
     return decision ? applyDecision(label, decision, appliedAt, passId, slug) : label;

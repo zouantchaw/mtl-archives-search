@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+import { datasetFactoryNowIso } from './clock.js';
 import { requireArtifacts } from './artifact-io.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -642,7 +643,7 @@ async function main(): Promise<void> {
   const familyById = new Map(readJsonl<FamilyMapRow>(familyMapPath).map((row) => [clean(row.record_id), row]));
   const activeMap = activeById(readJsonl<ActiveLearningRow>(activeQueuePath));
 
-  const selectedAt = new Date().toISOString();
+  const selectedAt = datasetFactoryNowIso();
   const scored = manifest
     .map((record) => {
       const id = clean(record.metadata_filename);

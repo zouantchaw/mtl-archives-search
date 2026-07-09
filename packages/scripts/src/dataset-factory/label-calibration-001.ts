@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+import { datasetFactoryNowIso } from './clock.js';
 import { requireArtifact } from './artifact-io.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -666,7 +667,7 @@ async function main(): Promise<void> {
   const outputDir = resolveRepoPath(values.output!);
   requireArtifact(inputPath, 'calibration packet');
   const rows = readJsonl<CalibrationRow>(inputPath);
-  const labeledAt = new Date().toISOString();
+  const labeledAt = datasetFactoryNowIso();
   const labels = rows.map((row) => toLabel(row, labeledAt));
 
   fs.mkdirSync(outputDir, { recursive: true });

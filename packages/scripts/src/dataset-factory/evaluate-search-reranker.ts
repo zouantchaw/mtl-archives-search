@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+import { datasetFactoryNowIso } from './clock.js';
 import { requireArtifacts } from './artifact-io.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -877,6 +878,7 @@ async function main(): Promise<void> {
       labels: { type: 'string', default: DEFAULT_LABELS },
       output: { type: 'string', default: DEFAULT_OUTPUT_DIR },
       'api-base': { type: 'string', default: DEFAULT_API_BASE },
+      'report-api-base': { type: 'string' },
       modes: { type: 'string', default: 'semantic,smart,visual' },
       limit: { type: 'string', default: '24' },
       'max-size': { type: 'string', default: '1000000' },
@@ -895,6 +897,7 @@ async function main(): Promise<void> {
   const labelsPath = resolveRepoPath(values.labels!);
   const outputDir = resolveRepoPath(values.output!);
   const apiBase = values['api-base']!;
+  const reportApiBase = values['report-api-base'] ?? apiBase;
   const modes = values.modes!.split(',').map((mode) => mode.trim()).filter(Boolean) as SearchMode[];
   const limit = Math.max(1, Number(values.limit ?? 24));
   const maxSize = Math.max(0, Number(values['max-size'] ?? 0));
@@ -937,8 +940,8 @@ async function main(): Promise<void> {
   const report = {
     benchmark_id: 'mtl_citymemory_bench_v0',
     evaluator_id: 'search_reranker_v0',
-    generated_at: new Date().toISOString(),
-    api_base: apiBase,
+    generated_at: datasetFactoryNowIso(),
+    api_base: reportApiBase,
     cache_bust: cacheBust ?? null,
     inputs: {
       tasks: path.relative(MONOREPO_ROOT, tasksPath),
