@@ -46,6 +46,7 @@
     "autoresearch:status": "tsx src/autoresearch/status-report.ts",
     "dataset-factory:artifacts:check": "tsx src/dataset-factory/check-artifact-registry.ts",
     "dataset-factory:artifacts:self-test": "tsx src/dataset-factory/check-artifact-registry.ts --self-test",
+    "dataset-factory:clock:self-test": "tsx src/dataset-factory/clock-self-test.ts",
     "dataset-factory:smoke-v0": "tsx src/dataset-factory/smoke-v0.ts",
     "dataset-factory:packets": "tsx src/dataset-factory/build-review-packets.ts",
     "dataset-factory:batch-001": "tsx src/dataset-factory/build-batch-001.ts",

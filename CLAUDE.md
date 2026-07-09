@@ -47,6 +47,8 @@ npm run autoresearch:search     # Evaluate smart-search fusion experiment config
 npm run autoresearch:social     # Score saved daily social packages
 npm run autoresearch:lambda:plan # Check Lambda Labs GPU capacity/env; does not launch
 npm run dataset-factory:artifacts:check
+npm run dataset-factory:artifacts:self-test
+npm run dataset-factory:clock:self-test
 npm run dataset-factory:artifacts:check -- --verify-files --artifact-root /absolute/path/to/populated/repo
 npm run dataset-factory:smoke-v0 # Fixture contract smoke; no Cloudflare/social mutation
 ```
@@ -163,8 +165,9 @@ Next app runtime env:
 - Post operations should use `pipelines/daily-reel/post_publish.py` against the persisted Meta token state. The repo supports daily-package publishing for Instagram carousel posts and Facebook Page reels, with idempotency through `data/social/publish-registry.jsonl`.
 - Do not imply feature parity with manual Story posting. Server-side Story publishing does not support link, poll, or location stickers. If the creative depends on a clickable `DEFI DU JOUR` link to `/game`, that is a manual/mobile step, not something the repo can silently fake.
 - Dataset Factory v0 lives under `docs/dataset-factory/` and `packages/scripts/src/dataset-factory/`. Keep large generated output under ignored `data/mtl_archives/reports/`; do not commit generated report trees.
-- The artifact registry is `docs/dataset-factory/artifact-registry.v0.jsonl`. It must stay a schema-valid acyclic phase graph with stable IDs, SHA-256 digests, counts, lineage, explicit human decision inputs, generation methods/commands, dependency IDs, rights boundaries, and created timestamps. Never put secrets, `.env` values, private keys, or expiring signed URLs in it.
-- Run `npm run dataset-factory:artifacts:self-test` after registry/checker changes; it must reject schema, containment, identity, dependency, cycle, and missing-command cases.
+- The artifact registry is `docs/dataset-factory/artifact-registry.v0.jsonl`. Its 76 entries must stay a schema-valid acyclic phase graph with stable IDs, SHA-256 digests, exact non-overlapping membership, lineage, explicit human decision/external acquisition boundaries, generation methods/commands, dependency IDs, rights boundaries, and created timestamps. Never put secrets, `.env` values, private keys, or expiring signed URLs in it.
+- Run `npm run dataset-factory:artifacts:self-test` after registry/checker changes; its 14 cases must accept the regular in-root control and reject schema, containment, symlink, overlap, identity, dependency, cycle, boundary, and missing-command violations.
+- Run `npm run dataset-factory:clock:self-test` after clock changes; timezone-less fixed timestamps must remain invalid.
 - Use `npm run dataset-factory:smoke-v0` for clean-checkout contract coverage. It uses tracked fixtures, a fixed clock, exact content assertions, a committed tree hash, and a local mock `/api/search`; it is not a live API quality proof.
 - Use `npm run dataset-factory:artifacts:check -- --verify-files --artifact-root /absolute/path/to/populated/repo` before trusting full ignored artifact coverage.
 

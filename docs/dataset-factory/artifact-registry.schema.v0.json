@@ -122,6 +122,7 @@
         },
         "command": { "type": "string", "minLength": 1 },
         "code_ref": { "type": "string", "minLength": 1 },
+        "acquisition_boundary": { "type": "string", "minLength": 1 },
         "human_input_ids": {
           "type": "array",
           "items": { "type": "string", "pattern": "^dfv0_[a-z0-9_]+$" },
@@ -145,6 +146,11 @@
             "if": { "properties": { "method": { "not": { "const": "human_authored" } } } },
             "then": { "properties": { "human_input_ids": { "maxItems": 0 } } }
           }
+        },
+        {
+          "if": { "properties": { "method": { "const": "external_snapshot" } } },
+          "then": { "required": ["acquisition_boundary"] },
+          "else": { "not": { "required": ["acquisition_boundary"] } }
         }
       ]
     },

@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { fileURLToPath } from 'node:url';
@@ -41,6 +42,7 @@ type RegistryEntry = {
     command: string;
     code_ref: string;
     human_input_ids: string[];
+    acquisition_boundary?: string;
   };
   dependency_ids: string[];
   required_by: string[];
@@ -126,6 +128,9 @@ function walkFiles(root: string, current = root): string[] {
   const paths: string[] = [];
   for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
     const absolute = path.join(current, entry.name);
+    if (entry.isSymbolicLink()) {
+      throw new Error(`Artifact tree symbolic link is not allowed: ${absolute}`);
+    }
     if (entry.isDirectory()) paths.push(...walkFiles(root, absolute));
     if (entry.isFile()) paths.push(path.relative(root, absolute).split(path.sep).join('/'));
   }
@@ -165,8 +170,25 @@ function schemaErrorMessage(entry: unknown, line: number): string {
 function assertContained(root: string, target: string, label: string): void {
   const relative = path.relative(root, target);
   if (relative === '' || relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
-    throw new Error(`${label} escapes repository root: ${target}`);
+    throw new Error(`${label} escapes artifact root: ${target}`);
   }
+}
+
+function assertSafeExistingPath(artifactRoot: string, target: string, label: string): void {
+  assertContained(artifactRoot, target, label);
+  const relative = path.relative(artifactRoot, target);
+  let current = artifactRoot;
+  for (const part of relative.split(path.sep).filter(Boolean)) {
+    current = path.join(current, part);
+    const stat = fs.lstatSync(current);
+    if (stat.isSymbolicLink()) {
+      throw new Error(`${label} symbolic link is not allowed: ${current}`);
+    }
+  }
+
+  const realRoot = fs.realpathSync(artifactRoot);
+  const realTarget = fs.realpathSync(target);
+  assertContained(realRoot, realTarget, `${label} real path`);
 }
 
 function assertSortedUnique(values: string[], label: string): void {
@@ -295,6 +317,7 @@ function verifyArtifact(entry: RegistryEntry, artifactRoot: string): void {
         + 'Restore it from the recorded lineage or use a tracked fixture for smoke tests.',
     );
   }
+  assertSafeExistingPath(artifactRoot, artifactPath, `${entry.stable_id} locator`);
 
   const stat = fs.statSync(artifactPath);
   let stats: ArtifactStats;
@@ -306,6 +329,11 @@ function verifyArtifact(entry: RegistryEntry, artifactRoot: string): void {
     stats = directoryStats(artifactPath);
   } else {
     if (!stat.isDirectory()) throw new Error(`${entry.stable_id}: file_set locator must be a directory`);
+    for (const member of entry.storage.members ?? []) {
+      const memberPath = path.resolve(artifactPath, member);
+      if (!fs.existsSync(memberPath)) throw new Error(`${entry.stable_id}: registered member is missing: ${memberPath}`);
+      assertSafeExistingPath(artifactRoot, memberPath, `${entry.stable_id} member`);
+    }
     stats = statsForFiles(artifactPath, entry.storage.members ?? []);
   }
 
@@ -318,6 +346,27 @@ function verifyArtifact(entry: RegistryEntry, artifactRoot: string): void {
   }
 }
 
+function registeredFiles(entry: RegistryEntry, artifactRoot: string): string[] {
+  if (entry.storage.path_class !== 'repo_ignored_local' && entry.storage.path_class !== 'tracked_fixture') return [];
+  const artifactPath = path.resolve(artifactRoot, entry.storage.locator);
+  if (entry.artifact_kind === 'file') return [artifactPath];
+  const members = entry.artifact_kind === 'file_set' ? entry.storage.members ?? [] : walkFiles(artifactPath);
+  return members.map((member) => path.resolve(artifactPath, member));
+}
+
+function validateArtifactMembershipUniqueness(entries: RegistryEntry[], artifactRoot: string): void {
+  const owners = new Map<string, string>();
+  for (const entry of entries) {
+    for (const filePath of registeredFiles(entry, artifactRoot)) {
+      const existing = owners.get(filePath);
+      if (existing) {
+        throw new Error(`Artifact member overlap: ${filePath} is registered by both ${existing} and ${entry.stable_id}`);
+      }
+      owners.set(filePath, entry.stable_id);
+    }
+  }
+}
+
 function validateRegistry(entries: RegistryEntry[], options: ValidationOptions): Map<string, RegistryEntry> {
   if (entries.length === 0) throw new Error('Artifact registry contains no entries.');
   entries.forEach((entry, index) => {
@@ -326,7 +375,10 @@ function validateRegistry(entries: RegistryEntry[], options: ValidationOptions):
   });
   const byId = validateDependencyGraph(entries);
   validateGenerationCommands(entries, options.rootScripts);
-  if (options.verifyFiles) entries.forEach((entry) => verifyArtifact(entry, options.artifactRoot));
+  if (options.verifyFiles) {
+    entries.forEach((entry) => verifyArtifact(entry, options.artifactRoot));
+    validateArtifactMembershipUniqueness(entries, options.artifactRoot);
+  }
   return byId;
 }
 
@@ -359,7 +411,7 @@ function runSelfTests(entries: RegistryEntry[], options: ValidationOptions): str
     },
     {
       name: 'locator_containment',
-      expected: 'escapes repository root',
+      expected: 'escapes artifact root',
       mutate: (copy) => { copy[0].storage.locator = '../outside.jsonl'; },
     },
     {
@@ -388,6 +440,15 @@ function runSelfTests(entries: RegistryEntry[], options: ValidationOptions): str
       expected: 'unknown root npm script',
       mutate: (copy) => { copy[0].generation.command = 'npm run definitely-not-a-script'; },
     },
+    {
+      name: 'external_snapshot_boundary',
+      expected: "must have required property 'acquisition_boundary'",
+      mutate: (copy) => {
+        const external = copy.find((entry) => entry.generation.method === 'external_snapshot');
+        if (!external) throw new Error('Registry self-test needs an external_snapshot entry');
+        delete external.generation.acquisition_boundary;
+      },
+    },
   ];
 
   const passed: string[] = [];
@@ -404,6 +465,68 @@ function runSelfTests(entries: RegistryEntry[], options: ValidationOptions): str
       }
       passed.push(test.name);
     }
+  }
+
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'dfv0-artifact-check-'));
+  try {
+    const artifactRoot = path.join(tempRoot, 'root');
+    const outsideRoot = path.join(tempRoot, 'outside');
+    fs.mkdirSync(path.join(artifactRoot, 'data'), { recursive: true });
+    fs.mkdirSync(outsideRoot, { recursive: true });
+    const safeBytes = Buffer.from('tracked artifact\n');
+    fs.writeFileSync(path.join(artifactRoot, 'data/safe.txt'), safeBytes);
+    fs.writeFileSync(path.join(outsideRoot, 'outside.txt'), safeBytes);
+
+    const makeFileEntry = (stableId: string, locator: string): RegistryEntry => ({
+      ...structuredClone(entries[0]),
+      stable_id: stableId,
+      artifact_kind: 'file',
+      content_digest: { algorithm: 'sha256', value: sha256(safeBytes), scope: 'file_bytes' },
+      counts: { file_count: 1, byte_count: safeBytes.byteLength },
+      source_lineage: { description: 'Filesystem adversarial self-test.', source_artifact_ids: [], source_urls: [] },
+      storage: { storage_class: 'local_filesystem', path_class: 'repo_ignored_local', locator },
+      dependency_ids: [],
+    });
+
+    const safeEntry = makeFileEntry('dfv0_self_test_safe', 'data/safe.txt');
+    verifyArtifact(safeEntry, artifactRoot);
+    passed.push('in_root_regular_file');
+
+    fs.symlinkSync(path.join(outsideRoot, 'outside.txt'), path.join(artifactRoot, 'data/leaf-link.txt'));
+    const leafEntry = makeFileEntry('dfv0_self_test_leaf_symlink', 'data/leaf-link.txt');
+    try {
+      verifyArtifact(leafEntry, artifactRoot);
+      throw new Error('Self-test leaf_symlink unexpectedly passed');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!message.includes('symbolic link is not allowed')) throw error;
+      passed.push('leaf_symlink');
+    }
+
+    fs.symlinkSync(outsideRoot, path.join(artifactRoot, 'data/parent-link'));
+    const parentEntry = makeFileEntry('dfv0_self_test_parent_symlink', 'data/parent-link/outside.txt');
+    try {
+      verifyArtifact(parentEntry, artifactRoot);
+      throw new Error('Self-test parent_symlink unexpectedly passed');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!message.includes('symbolic link is not allowed')) throw error;
+      passed.push('parent_directory_symlink');
+    }
+
+    try {
+      validateArtifactMembershipUniqueness(
+        [safeEntry, makeFileEntry('dfv0_self_test_overlap', 'data/safe.txt')],
+        artifactRoot,
+      );
+      throw new Error('Self-test member_overlap unexpectedly passed');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!message.includes('Artifact member overlap')) throw error;
+      passed.push('member_overlap');
+    }
+  } finally {
+    fs.rmSync(tempRoot, { recursive: true, force: true });
   }
   return passed;
 }

@@ -28,36 +28,43 @@ npm run autoresearch:image-quality -- \
   --resume
 ```
 
-Derivative generation run:
+Archived full derivative acquisition command:
 
 ```bash
 npm run dataset-factory:quality-derivatives-v0 -- \
   --input data/mtl_archives/manifest_clean.jsonl \
-  --output-dir data/mtl_archives/reports/quality_repair_v0/audit_derivatives_v0 \
+  --candidates data/mtl_archives/reports/quality_repair_v0/_absent_candidates.json \
+  --collections data/mtl_archives/reports/quality_repair_v0/_absent_collections.json \
+  --output-dir data/mtl_archives/reports/quality_repair_v0/kami_full_derivatives_14822 \
   --limit 14822 \
-  --concurrency 2 \
+  --concurrency 4 \
   --width 1024 \
   --height 1024 \
   --quality 82 \
-  --fetch-timeout-ms 60000 \
+  --fetch-timeout-ms 90000 \
   --fetch-attempts 2 \
-  --progress-interval 25 \
-  --resume
+  --progress-interval 250 \
+  --public-domain pub-6a29793ea7664738880d1cc5afb21b87.r2.dev \
+  --resume \
+  --skip-existing-failures
 ```
 
-Derivative-backed pixel audit run:
+Archived full derivative-backed pixel audit acquisition command:
 
 ```bash
 npm run autoresearch:image-quality -- \
   --input data/mtl_archives/manifest_clean.jsonl \
-  --output-dir data/mtl_archives/reports/quality_repair_v0/full_derivative_quality_audit \
+  --candidates data/mtl_archives/reports/quality_repair_v0/_absent_candidates.json \
+  --collections data/mtl_archives/reports/quality_repair_v0/_absent_collections.json \
+  --output-dir data/mtl_archives/reports/quality_repair_v0/kami_full_audit_14822 \
   --limit 14822 \
   --concurrency 8 \
   --fetch-timeout-ms 30000 \
-  --fetch-attempts 1 \
-  --progress-interval 250 \
+  --fetch-attempts 3 \
+  --progress-interval 500 \
+  --public-domain pub-6a29793ea7664738880d1cc5afb21b87.r2.dev \
   --audit-image-mode local-derivative \
-  --audit-derivatives-manifest data/mtl_archives/reports/quality_repair_v0/audit_derivatives_v0/derivatives_manifest.jsonl \
+  --audit-derivatives-manifest data/mtl_archives/reports/quality_repair_v0/kami_full_derivatives_14822/derivatives_manifest.jsonl \
   --audit-width 1024 \
   --audit-height 1024 \
   --metadata-mode range \
@@ -65,6 +72,8 @@ npm run autoresearch:image-quality -- \
   --require-derivative-resize \
   --resume
 ```
+
+These two commands depend on mutable remote image/object bytes and resume state. They acquire new snapshots; they do not reconstruct the archived SHA-256 byte-for-byte. The registry records the exact archived phase membership, parameter-equivalent commands, dependencies, counts, digests, and acquisition boundary. The empty `bounded_pixel_audit_500/` workspace contains no artifact files and is intentionally excluded from the 25 quality entries.
 
 Outputs:
 

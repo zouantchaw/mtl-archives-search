@@ -58,6 +58,7 @@
     "autoresearch:status": "npm run autoresearch:status --workspace=@mtl-archives/scripts --",
     "dataset-factory:artifacts:check": "npm run dataset-factory:artifacts:check --workspace=@mtl-archives/scripts --",
     "dataset-factory:artifacts:self-test": "npm run dataset-factory:artifacts:self-test --workspace=@mtl-archives/scripts --",
+    "dataset-factory:clock:self-test": "npm run dataset-factory:clock:self-test --workspace=@mtl-archives/scripts --",
     "dataset-factory:smoke-v0": "npm run dataset-factory:smoke-v0 --workspace=@mtl-archives/scripts --",
     "dataset-factory:packets": "npm run dataset-factory:packets --workspace=@mtl-archives/scripts --",
     "dataset-factory:batch-001": "npm run dataset-factory:batch-001 --workspace=@mtl-archives/scripts --",

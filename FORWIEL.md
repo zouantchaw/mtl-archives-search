@@ -19,10 +19,11 @@ Dataset Factory is the offline layer for making search quality measurable. It bu
 
 Issue #65 made this durable:
 
-- `docs/dataset-factory/artifact-registry.v0.jsonl` records every required ignored artifact as a 49-entry acyclic phase graph with stable ID, schema version, SHA-256, file/row counts, lineage, storage/path class, generation method/command, dependencies, rights boundary, and timestamp. Human-authored review decisions are explicit immutable inputs.
+- `docs/dataset-factory/artifact-registry.v0.jsonl` records every required ignored artifact as a 76-entry acyclic phase graph with stable ID, schema version, SHA-256, file/row counts, lineage, storage/path class, generation method/command, dependencies, rights boundary, and timestamp. Human-authored review decisions are explicit immutable inputs; remote/live snapshots state that their commands acquire new state instead of reconstructing archived bytes.
 - `docs/dataset-factory/fixtures/v0-smoke/` has tiny tracked fixture rows that let the workflow run in a clean checkout.
 - `npm run dataset-factory:smoke-v0` runs the v0 chain against those fixtures and a local mock search API. It fixes the fixture clock, asserts exact rows/content, and checks a committed output hash; it proves deterministic contract wiring, not live search quality.
-- `npm run dataset-factory:artifacts:self-test` exercises invalid schema, path, dependency, cycle, and command cases.
+- `npm run dataset-factory:artifacts:self-test` exercises 14 contract/adversarial cases, including a valid in-root file, path-component symlinks, and overlapping members.
+- `npm run dataset-factory:clock:self-test` proves strict timezone-qualified fixed-clock parsing under UTC and America/Toronto.
 - `npm run dataset-factory:artifacts:check -- --verify-files --artifact-root /path/to/populated/repo` proves the registry still matches the real ignored artifacts.
 
 The lesson: if an important workflow depends on ignored files, either track the files, track a registry that proves what the files are, or track small fixtures that prove the code can still run. Here we do the last two.
@@ -41,6 +42,7 @@ npm install
 npm run typecheck --workspace=@mtl-archives/scripts
 npm run dataset-factory:artifacts:check
 npm run dataset-factory:artifacts:self-test
+npm run dataset-factory:clock:self-test
 npm run dataset-factory:artifacts:check -- --verify-files --artifact-root /absolute/path/to/populated/repo
 npm run dataset-factory:smoke-v0
 ```
