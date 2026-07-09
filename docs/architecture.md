@@ -230,6 +230,28 @@ IG carousel + FB reel
   - product CTA back to archive search / game / prints
 - This keeps social as the hook, the photo page as the object, and the story page as the deeper narrative surface.
 
+### 8. Dataset Factory v0 (Offline Evaluation + Training Data)
+
+```
+Ignored reports in data/mtl_archives/reports/
+        │
+        ├─▶ docs/dataset-factory/artifact-registry.v0.jsonl
+        │       stable IDs, SHA-256 digests, counts, lineage, commands, rights
+        │
+        └─▶ packages/scripts/src/dataset-factory/*.ts
+                ├─ review packets + calibration/adjudication labels
+                ├─ MTL-CityMemory-Bench v0 search/reranker evaluation
+                ├─ active-learning and quality-repair queues
+                ├─ visual-family graph and research-enrichment packets
+                └─ search judgments + reward-data exports
+```
+
+- Dataset Factory v0 is an offline durability layer for search-quality evaluation and future training data. It does not deploy, mutate Cloudflare resources, publish social content, or require credentials for its tracked fixture smoke.
+- The real generated artifacts are intentionally gitignored because they include large report trees. Their reproducibility contract is tracked in `docs/dataset-factory/artifact-registry.v0.jsonl` and validated by `npm run dataset-factory:artifacts:check`.
+- `npm run dataset-factory:artifacts:check -- --verify-files --artifact-root /absolute/path/to/populated/repo` verifies every registered ignored artifact by SHA-256, file count, byte count, and row count where meaningful.
+- `docs/dataset-factory/fixtures/v0-smoke/` contains small tracked fixtures that mirror the contracts needed by the v0 workflows. `npm run dataset-factory:smoke-v0` runs the v0 scripts against those fixtures and a local mock search API, proving that a clean checkout can exercise the workflow without copying generated report trees.
+- Missing required artifacts should fail loudly through the Dataset Factory artifact helpers rather than silently producing empty downstream reports.
+
 ## D1 Schema
 
 ```sql
@@ -281,6 +303,7 @@ mtl-archives-search/
 │   └── scripts/                  # Node.js pipeline scripts
 │       └── src/
 │           ├── db/               # D1 seed generation
+│           ├── dataset-factory/  # Offline evaluation/training-data workflows
 │           └── vectorize/        # Embedding ingestion
 ├── pipelines/
 │   ├── etl/                      # Python: clean, export, audit
@@ -290,7 +313,7 @@ mtl-archives-search/
 │   └── vlm/                      # VLM captioning scripts
 ├── infrastructure/
 │   └── d1/migrations/            # D1 schema migrations
-├── docs/                         # Documentation
+├── docs/                         # Documentation, including dataset-factory schemas/fixtures
 └── data/                         # Local data (gitignored)
 ```
 

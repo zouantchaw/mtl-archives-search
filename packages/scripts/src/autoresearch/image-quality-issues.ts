@@ -68,6 +68,10 @@ type QualityLabel = {
   title: string;
   date: string;
   imageUrl: string;
+  originalImageUrl?: string;
+  auditImageUrl?: string;
+  auditImagePath?: string;
+  auditImageSource?: 'original' | 'thumb-api' | 'cloudflare-transform' | 'local-derivative';
   imagePath: string;
   source: 'r2' | 'external';
   audited: boolean;
@@ -81,6 +85,12 @@ type QualityLabel = {
     borderPx: { top: number; bottom: number; left: number; right: number };
     headerRows: number;
     footerRows: number;
+    exifOrientation: number | null;
+    recommendedRotationDegrees: number | null;
+    auditWidth: number;
+    auditHeight: number;
+    sourceWidth: number | null;
+    sourceHeight: number | null;
     meanBrightness: number;
     contrastStd: number;
     edgeEnergy: number;
@@ -89,6 +99,39 @@ type QualityLabel = {
   };
   notes: string[];
   error?: string;
+};
+
+type AuditImageMode = 'original' | 'thumb-api' | 'cloudflare-transform' | 'local-derivative';
+type MetadataMode = 'audit' | 'range' | 'full' | 'skip';
+
+type DerivativeReference = {
+  id: string;
+  derivativePath?: string;
+  derivative_path?: string;
+  outputPath?: string;
+  output_path?: string;
+  imagePath?: string;
+  image_path?: string;
+  derivativeUrl?: string;
+  derivative_url?: string;
+};
+
+type AuditOptions = {
+  publicDomain: string;
+  timeoutMs: number;
+  fetchAttempts: number;
+  auditImageMode: AuditImageMode;
+  thumbApiOrigin: string;
+  imageTransformZone: string;
+  auditWidth: number;
+  auditHeight: number;
+  auditFit: 'cover' | 'contain' | 'scale-down';
+  auditQuality: number;
+  auditFormat: 'auto' | 'webp' | 'avif' | 'jpeg' | 'png';
+  metadataMode: MetadataMode;
+  metadataRangeBytes: number;
+  requireDerivativeResize: boolean;
+  derivativeById: Map<string, DerivativeReference>;
 };
 
 type EdgeStats = {
@@ -106,6 +149,13 @@ class ImageFetchError extends Error {
   ) {
     super(message);
     this.name = 'ImageFetchError';
+  }
+}
+
+class ImageDerivativeError extends Error {
+  constructor(message: string, readonly kind: 'missing' | 'unresized') {
+    super(message);
+    this.name = 'ImageDerivativeError';
   }
 }
 
@@ -127,13 +177,14 @@ function normalize(value: unknown): string {
     .trim();
 }
 
-function readJsonl(filePath: string): ArchiveRecord[] {
+function readJsonl<T = ArchiveRecord>(filePath: string): T[] {
+  if (!fs.existsSync(filePath)) return [];
   return fs.readFileSync(filePath, 'utf-8')
     .split('\n')
     .filter(Boolean)
     .map((line, index) => {
       try {
-        return JSON.parse(line) as ArchiveRecord;
+        return JSON.parse(line) as T;
       } catch (error) {
         throw new Error(`${filePath}:${index + 1}: ${error instanceof Error ? error.message : String(error)}`);
       }
@@ -294,6 +345,79 @@ function rotationFromExif(value: number | undefined): number | null {
   return null;
 }
 
+function parseAllowedValue<T extends string>(value: unknown, allowed: readonly T[], fallback: T): T {
+  const normalized = cleanText(value);
+  return allowed.includes(normalized as T) ? normalized as T : fallback;
+}
+
+function clampNumber(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function thumbApiUrl(originalUrl: string, options: AuditOptions): string {
+  const origin = options.thumbApiOrigin.replace(/\/+$/, '');
+  const url = new URL('/api/thumb', origin);
+  url.searchParams.set('src', originalUrl);
+  url.searchParams.set('w', String(options.auditWidth));
+  url.searchParams.set('h', String(options.auditHeight));
+  url.searchParams.set('fit', options.auditFit);
+  url.searchParams.set('q', String(options.auditQuality));
+  url.searchParams.set('format', options.auditFormat);
+  return url.toString();
+}
+
+function cloudflareTransformUrl(originalUrl: string, options: AuditOptions): string {
+  const zone = options.imageTransformZone.replace(/^https?:\/\//, '').replace(/\/+$/, '');
+  const formatOption = options.auditFormat === 'auto' ? 'format=auto' : `format=${options.auditFormat}`;
+  const transformOptions = [
+    `width=${options.auditWidth}`,
+    `height=${options.auditHeight}`,
+    `quality=${options.auditQuality}`,
+    `fit=${options.auditFit}`,
+    formatOption,
+  ].join(',');
+  return `https://${zone}/cdn-cgi/image/${transformOptions}/${originalUrl}`;
+}
+
+function derivativeLocalPath(reference: DerivativeReference | undefined): string {
+  if (!reference) return '';
+  const value = cleanText(reference.derivativePath ?? reference.derivative_path ?? reference.outputPath ?? reference.output_path ?? reference.imagePath ?? reference.image_path);
+  return value ? resolveRepoPath(value) : '';
+}
+
+function derivativeUrl(reference: DerivativeReference | undefined): string {
+  return cleanText(reference?.derivativeUrl ?? reference?.derivative_url);
+}
+
+function resolveAuditImage(originalUrl: string, recordId: string, options: AuditOptions): { url: string; source: QualityLabel['auditImageSource']; localPath?: string } {
+  if (options.auditImageMode === 'local-derivative') {
+    const reference = options.derivativeById.get(recordId);
+    const localPath = derivativeLocalPath(reference);
+    if (localPath) return { url: derivativeUrl(reference) || localPath, source: 'local-derivative', localPath };
+    const url = derivativeUrl(reference);
+    if (url) return { url, source: 'local-derivative' };
+    throw new ImageDerivativeError(`Missing local derivative for ${recordId}.`, 'missing');
+  }
+  if (options.auditImageMode === 'thumb-api') return { url: thumbApiUrl(originalUrl, options), source: 'thumb-api' };
+  if (options.auditImageMode === 'cloudflare-transform') {
+    if (!options.imageTransformZone) throw new Error('Missing --image-transform-zone for cloudflare-transform audit mode.');
+    return { url: cloudflareTransformUrl(originalUrl, options), source: 'cloudflare-transform' };
+  }
+  return { url: originalUrl, source: 'original' };
+}
+
+function assertDerivativeResized(auditMetadata: sharp.Metadata, options: AuditOptions): void {
+  if (!options.requireDerivativeResize || options.auditImageMode === 'original') return;
+  const width = auditMetadata.width ?? 0;
+  const height = auditMetadata.height ?? 0;
+  if (!width || !height) return;
+  const maxReturnedEdge = Math.max(width, height);
+  const maxRequestedEdge = Math.max(options.auditWidth, options.auditHeight);
+  if (maxReturnedEdge > maxRequestedEdge * 1.05) {
+    throw new ImageDerivativeError(`Derivative endpoint returned ${width}x${height}, above requested max edge ${maxRequestedEdge}.`, 'unresized');
+  }
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
@@ -320,8 +444,33 @@ async function readImageOnce(url: string, timeoutMs: number): Promise<Buffer> {
   }
 }
 
-async function readImage(url: string, timeoutMs: number): Promise<Buffer> {
-  const attempts = 3;
+async function readImageRange(url: string, timeoutMs: number, bytes: number): Promise<Buffer> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        accept: 'image/*',
+        range: `bytes=0-${Math.max(0, bytes - 1)}`,
+      },
+    });
+    if (!response.ok && response.status !== 206) throw new ImageFetchError(`HTTP ${response.status}`, 'http', response.status);
+    return Buffer.from(await response.arrayBuffer());
+  } catch (error) {
+    if (error instanceof ImageFetchError) throw error;
+    const message = error instanceof Error ? error.message : String(error);
+    const timeoutLike = error instanceof DOMException && error.name === 'AbortError'
+      || message.includes('aborted')
+      || message.includes('AbortError')
+      || message.includes('timeout');
+    throw new ImageFetchError(message, timeoutLike ? 'timeout' : 'network');
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function readImage(url: string, timeoutMs: number, attempts: number): Promise<Buffer> {
   let lastError: unknown;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     try {
@@ -333,6 +482,29 @@ async function readImage(url: string, timeoutMs: number): Promise<Buffer> {
     }
   }
   throw lastError;
+}
+
+async function readAuditImage(image: { url: string; localPath?: string }, timeoutMs: number, attempts: number): Promise<Buffer> {
+  if (image.localPath) return fs.readFileSync(image.localPath);
+  return readImage(image.url, timeoutMs, attempts);
+}
+
+async function readMetadata(buffer: Buffer): Promise<sharp.Metadata> {
+  return sharp(buffer, { failOn: 'none' }).metadata();
+}
+
+async function readOriginalMetadata(originalUrl: string, auditMetadata: sharp.Metadata, options: AuditOptions): Promise<sharp.Metadata | null> {
+  if (options.metadataMode === 'skip') return null;
+  if (options.metadataMode === 'audit' || options.auditImageMode === 'original') return auditMetadata;
+  try {
+    if (options.metadataMode === 'full') {
+      return await readMetadata(await readImage(originalUrl, options.timeoutMs, options.fetchAttempts));
+    }
+    const header = await readImageRange(originalUrl, options.timeoutMs, options.metadataRangeBytes);
+    return await readMetadata(header);
+  } catch {
+    return null;
+  }
 }
 
 async function runWithConcurrency<T, R>(items: T[], concurrency: number, worker: (item: T, index: number) => Promise<R>): Promise<R[]> {
@@ -373,12 +545,14 @@ function sampleRecords(records: ArchiveRecord[], limit: number, candidateIdSet: 
   const byId = new Map(records.map((record) => [metadataId(record), record]));
   const selected = new Map<string, ArchiveRecord>();
   const add = (id: string) => {
+    if (selected.size >= limit) return;
     const record = byId.get(id);
     if (record) selected.set(id, record);
   };
   for (const id of candidateIdSet) add(id);
   for (const id of collectionIdSet) add(id);
   for (const record of records) {
+    if (selected.size >= limit) break;
     if (record.vlm_error || record.vlm_metadata_error) selected.set(metadataId(record), record);
     if (selected.size >= Math.floor(limit * 0.55)) break;
   }
@@ -405,13 +579,14 @@ function sampleRecords(records: ArchiveRecord[], limit: number, candidateIdSet: 
   return [...selected.values()].filter((record) => metadataId(record));
 }
 
-async function auditRecord(record: ArchiveRecord, publicDomain: string, timeoutMs: number): Promise<QualityLabel> {
-  const resolved = imageUrl(record, publicDomain);
+async function auditRecord(record: ArchiveRecord, options: AuditOptions): Promise<QualityLabel> {
+  const resolved = imageUrl(record, options.publicDomain);
   const base: QualityLabel = {
     id: metadataId(record),
     title: title(record),
     date: dateValue(record),
     imageUrl: resolved?.url ?? '',
+    originalImageUrl: resolved?.url ?? '',
     imagePath: imagePath(record),
     source: resolved?.source ?? 'r2',
     audited: false,
@@ -424,12 +599,17 @@ async function auditRecord(record: ArchiveRecord, publicDomain: string, timeoutM
   };
   if (!resolved) return { ...base, labels: ['missing_image_url'], severity: 'high', recommendedAction: 'exclude_until_fixed', confidence: 1, error: 'No image URL' };
 
+  let auditImage: { url: string; source: QualityLabel['auditImageSource']; localPath?: string } = { url: resolved.url, source: 'original' };
   try {
-    const buffer = await readImage(resolved.url, timeoutMs);
-    const metadata = await sharp(buffer, { failOn: 'none' }).metadata();
-    const sourceWidth = metadata.width ?? 0;
-    const sourceHeight = metadata.height ?? 0;
-    const orientationRotation = rotationFromExif(metadata.orientation);
+    auditImage = resolveAuditImage(resolved.url, base.id, options);
+    const buffer = await readAuditImage(auditImage, options.timeoutMs, options.fetchAttempts);
+    const auditMetadata = await readMetadata(buffer);
+    assertDerivativeResized(auditMetadata, options);
+    const originalMetadata = await readOriginalMetadata(resolved.url, auditMetadata, options);
+    const sourceWidth = originalMetadata?.width ?? auditMetadata.width ?? 0;
+    const sourceHeight = originalMetadata?.height ?? auditMetadata.height ?? 0;
+    const orientationMetadata = originalMetadata ?? auditMetadata;
+    const orientationRotation = rotationFromExif(orientationMetadata.orientation);
     const downsized = await sharp(buffer, { failOn: 'none' })
       .grayscale()
       .resize({ width: 512, height: 512, fit: 'inside', withoutEnlargement: true })
@@ -461,6 +641,10 @@ async function auditRecord(record: ArchiveRecord, publicDomain: string, timeoutM
     const notes: string[] = [];
     let severityScore = 0;
     let action: QualityLabel['recommendedAction'] = 'none';
+
+    if (auditImage.source !== 'original') {
+      notes.push(`Pixel audit used ${auditImage.source} derivative ${auditMetadata.width ?? '?'}x${auditMetadata.height ?? '?'}.`);
+    }
 
     if (orientationRotation != null) {
       labels.push('orientation_exif_rotation');
@@ -532,6 +716,9 @@ async function auditRecord(record: ArchiveRecord, publicDomain: string, timeoutM
     const severity: QualityLabel['severity'] = severityScore >= 5 ? 'high' : severityScore >= 3 ? 'medium' : severityScore > 0 ? 'low' : 'none';
     return {
       ...base,
+      auditImageUrl: auditImage.url,
+      auditImagePath: auditImage.localPath,
+      auditImageSource: auditImage.source,
       audited: true,
       labels,
       severity,
@@ -543,6 +730,12 @@ async function auditRecord(record: ArchiveRecord, publicDomain: string, timeoutM
         borderPx,
         headerRows,
         footerRows,
+        exifOrientation: orientationMetadata.orientation ?? null,
+        recommendedRotationDegrees: orientationRotation,
+        auditWidth: auditMetadata.width ?? w,
+        auditHeight: auditMetadata.height ?? h,
+        sourceWidth: sourceWidth || null,
+        sourceHeight: sourceHeight || null,
         meanBrightness: Number(stats.meanBrightness.toFixed(2)),
         contrastStd: Number(stats.contrastStd.toFixed(2)),
         edgeEnergy: Number(stats.edgeEnergy.toFixed(2)),
@@ -553,12 +746,28 @@ async function auditRecord(record: ArchiveRecord, publicDomain: string, timeoutM
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    if (error instanceof ImageDerivativeError) {
+      return {
+        ...base,
+        auditImageUrl: auditImage.url,
+        auditImagePath: auditImage.localPath,
+        auditImageSource: auditImage.source,
+        labels: [error.kind === 'missing' ? 'image_derivative_missing' : 'image_derivative_unresized'],
+        severity: 'high',
+        recommendedAction: 'review',
+        confidence: 1,
+        error: message,
+      };
+    }
     const fetchKind = error instanceof ImageFetchError ? error.kind : null;
     const timeoutLike = fetchKind === 'timeout' || message.includes('aborted') || message.includes('AbortError') || message.includes('timeout');
     const networkLike = fetchKind === 'network' || message.includes('fetch failed');
     const transientLike = timeoutLike || networkLike;
     return {
       ...base,
+      auditImageUrl: auditImage.url,
+      auditImagePath: auditImage.localPath,
+      auditImageSource: auditImage.source,
       labels: [timeoutLike ? 'image_fetch_timeout' : networkLike ? 'image_fetch_network_failure' : 'image_fetch_or_decode_failure'],
       severity: transientLike ? 'medium' : 'high',
       recommendedAction: transientLike ? 'review' : 'exclude_until_fixed',
@@ -617,6 +826,66 @@ function writeJsonl(filePath: string, rows: unknown[]): void {
   fs.writeFileSync(filePath, rows.map((row) => JSON.stringify(row)).join('\n') + (rows.length ? '\n' : ''));
 }
 
+function appendJsonl(filePath: string, row: unknown): void {
+  fs.appendFileSync(filePath, `${JSON.stringify(row)}\n`);
+}
+
+function writeJsonAtomic(filePath: string, value: unknown): void {
+  const tempPath = `${filePath}.tmp`;
+  fs.writeFileSync(tempPath, JSON.stringify(value, null, 2));
+  fs.renameSync(tempPath, filePath);
+}
+
+function boolValue(value: boolean | string | undefined): boolean {
+  if (typeof value === 'boolean') return value;
+  if (typeof value !== 'string') return false;
+  return ['1', 'true', 'yes', 'on'].includes(value.toLowerCase());
+}
+
+function failureRows(labels: QualityLabel[]) {
+  return labels
+    .filter((row) => !row.audited || Boolean(row.error))
+    .map((row) => ({
+      id: row.id,
+      title: row.title,
+      imageUrl: row.imageUrl,
+      originalImageUrl: row.originalImageUrl ?? row.imageUrl,
+      auditImageUrl: row.auditImageUrl ?? row.imageUrl,
+      auditImagePath: row.auditImagePath ?? null,
+      auditImageSource: row.auditImageSource ?? 'original',
+      imagePath: row.imagePath,
+      labels: row.labels,
+      severity: row.severity,
+      recommendedAction: row.recommendedAction,
+      error: row.error ?? null,
+    }));
+}
+
+function isRetriableFailure(row: QualityLabel): boolean {
+  return !row.audited
+    || Boolean(row.error)
+    || row.labels.some((label) => label.includes('fetch') || label.includes('decode'));
+}
+
+function dedupeLabels(labels: QualityLabel[]): QualityLabel[] {
+  return Array.from(new Map(labels.map((row) => [row.id, row])).values());
+}
+
+function summarizeLabels(labels: QualityLabel[]) {
+  const flagged = labels.filter((row) => row.labels.length > 0);
+  const high = labels.filter((row) => row.severity === 'high');
+  const medium = labels.filter((row) => row.severity === 'medium');
+  const low = labels.filter((row) => row.severity === 'low');
+  return {
+    audited: labels.filter((row) => row.audited).length,
+    flagged: flagged.length,
+    high_severity: high.length,
+    medium_severity: medium.length,
+    low_severity: low.length,
+    fetch_or_decode_failures: labels.filter((row) => !row.audited || row.labels.some((label) => label.includes('fetch') || label.includes('decode'))).length,
+  };
+}
+
 async function main(): Promise<void> {
   const { values } = parseArgs({
     args: process.argv.slice(2),
@@ -628,6 +897,22 @@ async function main(): Promise<void> {
       limit: { type: 'string', default: '700' },
       concurrency: { type: 'string', default: '2' },
       'fetch-timeout-ms': { type: 'string', default: '30000' },
+      'fetch-attempts': { type: 'string', default: '3' },
+      'progress-interval': { type: 'string', default: '250' },
+      resume: { type: 'boolean', default: false },
+      'retry-failures': { type: 'boolean', default: false },
+      'audit-image-mode': { type: 'string', default: 'original' },
+      'thumb-api-origin': { type: 'string', default: process.env.API_ORIGIN || process.env.NEXT_PUBLIC_API_ORIGIN || 'https://mtl-archives-worker.wiel.workers.dev' },
+      'image-transform-zone': { type: 'string', default: process.env.IMAGE_TRANSFORM_ZONE || '' },
+      'audit-width': { type: 'string', default: '1024' },
+      'audit-height': { type: 'string', default: '1024' },
+      'audit-fit': { type: 'string', default: 'scale-down' },
+      'audit-quality': { type: 'string', default: '82' },
+      'audit-format': { type: 'string', default: 'jpeg' },
+      'metadata-mode': { type: 'string', default: 'range' },
+      'metadata-range-bytes': { type: 'string', default: '262144' },
+      'require-derivative-resize': { type: 'boolean', default: false },
+      'audit-derivatives-manifest': { type: 'string', default: '' },
       'public-domain': { type: 'string', default: process.env.CLOUDFLARE_R2_PUBLIC_DOMAIN || process.env.NEXT_PUBLIC_R2_PUBLIC_DOMAIN || '' },
     },
   });
@@ -639,21 +924,136 @@ async function main(): Promise<void> {
   const limit = Number.parseInt(values.limit!, 10);
   const concurrency = Number.parseInt(values.concurrency!, 10);
   const timeoutMs = Number.parseInt(values['fetch-timeout-ms']!, 10);
+  const fetchAttempts = Number.parseInt(values['fetch-attempts']!, 10);
+  const progressInterval = Number.parseInt(values['progress-interval']!, 10);
+  const resume = boolValue(values.resume);
+  const retryFailures = boolValue(values['retry-failures']);
   const publicDomain = cleanText(values['public-domain']);
+  const auditImageMode = parseAllowedValue(values['audit-image-mode'], ['original', 'thumb-api', 'cloudflare-transform', 'local-derivative'] as const, 'original');
+  const thumbApiOrigin = cleanText(values['thumb-api-origin']);
+  const imageTransformZone = cleanText(values['image-transform-zone']);
+  const auditWidth = clampNumber(Number.parseInt(values['audit-width']!, 10), 1, 4096);
+  const auditHeight = clampNumber(Number.parseInt(values['audit-height']!, 10), 1, 4096);
+  const auditFit = parseAllowedValue(values['audit-fit'], ['cover', 'contain', 'scale-down'] as const, 'scale-down');
+  const auditQuality = clampNumber(Number.parseInt(values['audit-quality']!, 10), 1, 100);
+  const auditFormat = parseAllowedValue(values['audit-format'], ['auto', 'webp', 'avif', 'jpeg', 'png'] as const, 'jpeg');
+  const metadataMode = parseAllowedValue(values['metadata-mode'], ['audit', 'range', 'full', 'skip'] as const, auditImageMode === 'original' ? 'audit' : 'range');
+  const metadataRangeBytes = clampNumber(Number.parseInt(values['metadata-range-bytes']!, 10), 4096, 10485760);
+  const requireDerivativeResize = boolValue(values['require-derivative-resize']);
+  const auditDerivativesManifest = cleanText(values['audit-derivatives-manifest']);
+  const auditDerivativesManifestPath = auditDerivativesManifest ? resolveRepoPath(auditDerivativesManifest) : '';
+  const derivativeRows = auditDerivativesManifestPath ? readJsonl<DerivativeReference>(auditDerivativesManifestPath) : [];
+  const derivativeById = new Map(derivativeRows.map((row) => [row.id, row]));
+  const auditOptions: AuditOptions = {
+    publicDomain,
+    timeoutMs,
+    fetchAttempts,
+    auditImageMode,
+    thumbApiOrigin,
+    imageTransformZone,
+    auditWidth,
+    auditHeight,
+    auditFit,
+    auditQuality,
+    auditFormat,
+    metadataMode,
+    metadataRangeBytes,
+    requireDerivativeResize,
+    derivativeById,
+  };
 
   if (!fs.existsSync(inputPath)) throw new Error(`Missing input: ${inputPath}`);
   if (!publicDomain) throw new Error('Missing R2 public domain.');
   fs.mkdirSync(outputDir, { recursive: true });
+  const labelsPath = path.join(outputDir, 'quality_labels.jsonl');
+  const downstreamPath = path.join(outputDir, 'quality_issues_downstream.jsonl');
+  const failuresPath = path.join(outputDir, 'quality_failures.jsonl');
+  const progressPath = path.join(outputDir, 'quality_progress.json');
+  const reportPath = path.join(outputDir, 'quality_report.json');
+  const markdownPath = path.join(outputDir, 'quality_report.md');
 
-  const records = readJsonl(inputPath);
+  if (!resume) {
+    for (const filePath of [labelsPath, downstreamPath, failuresPath, progressPath, reportPath, markdownPath]) {
+      if (fs.existsSync(filePath)) fs.rmSync(filePath);
+    }
+  }
+
+  const records = readJsonl<ArchiveRecord>(inputPath);
   const candidateReport = readJson<CandidateReport>(candidatesPath);
   const collectionReport = readJson<CollectionReport>(collectionsPath);
   const sample = sampleRecords(records, limit, candidateIds(candidateReport), collectionIds(collectionReport));
-  const labels = await runWithConcurrency(sample, concurrency, (record) => auditRecord(record, publicDomain, timeoutMs));
+  const sampleIds = new Set(sample.map(metadataId));
+  const sampleOrder = new Map(sample.map((record, index) => [metadataId(record), index]));
+  const existingLabels = resume
+    ? dedupeLabels(readJsonl<QualityLabel>(labelsPath)
+      .filter((row) => sampleIds.has(row.id))
+      .filter((row) => !retryFailures || !isRetriableFailure(row)))
+    : [];
+  const existingById = new Map(existingLabels.map((row) => [row.id, row]));
+  const pending = sample.filter((record) => !existingById.has(metadataId(record)));
+  const runStartedAt = new Date().toISOString();
+  const newLabels: QualityLabel[] = [];
+  let completed = 0;
+
+  const mergedLabels = () => {
+    const byId = new Map<string, QualityLabel>();
+    for (const row of existingLabels) byId.set(row.id, row);
+    for (const row of newLabels) byId.set(row.id, row);
+    return Array.from(byId.values())
+      .filter((row) => sampleIds.has(row.id))
+      .sort((a, b) => (sampleOrder.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (sampleOrder.get(b.id) ?? Number.MAX_SAFE_INTEGER));
+  };
+
+  const writeProgress = (status: 'running' | 'completed') => {
+    const labels = mergedLabels();
+    const summary = summarizeLabels(labels);
+    writeJsonAtomic(progressPath, {
+      status,
+      started_at: runStartedAt,
+      updated_at: new Date().toISOString(),
+      output_dir: outputDir,
+      input_rows: records.length,
+      sample_rows: sample.length,
+      existing_rows_reused: existingLabels.length,
+      pending_rows_at_start: pending.length,
+      completed_this_run: completed,
+      completed_total: labels.length,
+      remaining: Math.max(0, sample.length - labels.length),
+      summary,
+      artifacts: {
+        labels: 'quality_labels.jsonl',
+        failures: 'quality_failures.jsonl',
+        progress: 'quality_progress.json',
+        report: 'quality_report.json',
+        markdown: 'quality_report.md',
+        downstream: 'quality_issues_downstream.jsonl',
+      },
+    });
+  };
+
+  if (resume && existingLabels.length) {
+    console.log(`[autoresearch:image-quality] resume=true existing=${existingLabels.length} pending=${pending.length}`);
+  }
+  writeProgress('running');
+
+  await runWithConcurrency(pending, concurrency, async (record) => {
+    const label = await auditRecord(record, auditOptions);
+    appendJsonl(labelsPath, label);
+    if (!label.audited || label.error) {
+      appendJsonl(failuresPath, failureRows([label])[0]);
+    }
+    newLabels.push(label);
+    completed += 1;
+    const completedTotal = existingLabels.length + completed;
+    if (completed % progressInterval === 0 || completed === pending.length) {
+      writeProgress('running');
+      console.log(`[autoresearch:image-quality] progress=${completedTotal}/${sample.length} this_run=${completed}/${pending.length}`);
+    }
+    return label;
+  });
+  const labels = mergedLabels();
   const flagged = labels.filter((row) => row.labels.length > 0);
-  const high = labels.filter((row) => row.severity === 'high');
-  const medium = labels.filter((row) => row.severity === 'medium');
-  const low = labels.filter((row) => row.severity === 'low');
+  const summary = summarizeLabels(labels);
 
   const report = {
     generated_at: new Date().toISOString(),
@@ -662,15 +1062,34 @@ async function main(): Promise<void> {
       candidates: fs.existsSync(candidatesPath) ? path.relative(MONOREPO_ROOT, candidatesPath) : null,
       collections: fs.existsSync(collectionsPath) ? path.relative(MONOREPO_ROOT, collectionsPath) : null,
     },
-    params: { limit, concurrency, timeoutMs, publicDomain },
+    params: {
+      limit,
+      concurrency,
+      timeoutMs,
+      fetchAttempts,
+      progressInterval,
+      resume,
+      retryFailures,
+      publicDomain,
+      auditImageMode,
+      thumbApiOrigin: auditImageMode === 'thumb-api' ? thumbApiOrigin : null,
+      imageTransformZone: auditImageMode === 'cloudflare-transform' ? imageTransformZone : null,
+      auditWidth,
+      auditHeight,
+      auditFit,
+      auditQuality,
+      auditFormat,
+      metadataMode,
+      metadataRangeBytes,
+      requireDerivativeResize,
+      auditDerivativesManifest: auditDerivativesManifestPath ? path.relative(MONOREPO_ROOT, auditDerivativesManifestPath) : null,
+    },
     summary: {
       input_rows: records.length,
       sample_rows: sample.length,
-      audited: labels.filter((row) => row.audited).length,
-      flagged: flagged.length,
-      high_severity: high.length,
-      medium_severity: medium.length,
-      low_severity: low.length,
+      existing_rows_reused: existingLabels.length,
+      completed_this_run: completed,
+      ...summary,
     },
     label_counts: countBy(labels, (row) => row.labels),
     severity_counts: countBy(labels, (row) => row.severity),
@@ -686,13 +1105,17 @@ async function main(): Promise<void> {
       markdown: 'quality_report.md',
       labels: 'quality_labels.jsonl',
       downstream: 'quality_issues_downstream.jsonl',
+      failures: 'quality_failures.jsonl',
+      progress: 'quality_progress.json',
     },
   };
 
-  fs.writeFileSync(path.join(outputDir, 'quality_report.json'), JSON.stringify(report, null, 2));
-  fs.writeFileSync(path.join(outputDir, 'quality_report.md'), renderMarkdown(report));
-  writeJsonl(path.join(outputDir, 'quality_labels.jsonl'), labels);
-  writeJsonl(path.join(outputDir, 'quality_issues_downstream.jsonl'), flagged);
+  fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
+  fs.writeFileSync(markdownPath, renderMarkdown(report));
+  writeJsonl(labelsPath, labels);
+  writeJsonl(downstreamPath, flagged);
+  writeJsonl(failuresPath, failureRows(labels));
+  writeProgress('completed');
 
   console.log(`[autoresearch:image-quality] output=${outputDir}`);
   console.log(`[autoresearch:image-quality] summary=${JSON.stringify(report.summary)}`);

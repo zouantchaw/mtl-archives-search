@@ -1,0 +1,1 @@
+{"generated_at":"2026-07-09T00:00:00.000Z","summary":{"input_rows":8,"sample_rows":8,"audited":7,"flagged":6,"high_severity":1,"medium_severity":3,"low_severity":2},"params":{"fixture":true},"artifacts":{"labels":"quality-labels.jsonl"}}

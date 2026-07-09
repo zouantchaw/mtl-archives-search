@@ -1,0 +1,239 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://mtlarchives.com/schemas/gpu-experiment-registry-v0.json",
+  "title": "MTL Archives GPU Experiment Registry v0",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "run_id",
+    "issue",
+    "status",
+    "execution_surface",
+    "workload_type",
+    "started_at",
+    "ended_at",
+    "budget",
+    "inputs",
+    "outputs",
+    "metrics",
+    "safety",
+    "decision"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "mtl_gpu_experiment_registry_v0"
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "issue": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "planned",
+        "blocked",
+        "running",
+        "completed",
+        "failed",
+        "cancelled"
+      ]
+    },
+    "execution_surface": {
+      "enum": [
+        "local_cpu",
+        "lambda_gpu",
+        "huggingface_jobs_cpu",
+        "huggingface_jobs_gpu",
+        "other"
+      ]
+    },
+    "workload_type": {
+      "enum": [
+        "no_op",
+        "dataset_validation",
+        "feature_extraction",
+        "benchmark",
+        "training",
+        "batch_inference"
+      ]
+    },
+    "started_at": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "ended_at": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "budget": {
+      "type": "object",
+      "required": [
+        "approved",
+        "max_runtime_minutes",
+        "max_cost_usd",
+        "instance_type",
+        "region",
+        "hourly_cost_usd"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "approved": {
+          "type": "boolean"
+        },
+        "max_runtime_minutes": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "max_cost_usd": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "instance_type": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "region": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "hourly_cost_usd": {
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      }
+    },
+    "inputs": {
+      "type": "object",
+      "required": [
+        "datasets",
+        "code_ref",
+        "model_refs"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "datasets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "code_ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "model_refs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "outputs": {
+      "type": "object",
+      "required": [
+        "artifact_paths",
+        "hub_repos",
+        "copied_back"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "artifact_paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "hub_repos": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "copied_back": {
+          "type": "boolean"
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "safety": {
+      "type": "object",
+      "required": [
+        "no_secrets_recorded",
+        "lambda_instances_before",
+        "lambda_instances_after",
+        "termination_verified",
+        "hf_results_persisted"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "no_secrets_recorded": {
+          "type": "boolean"
+        },
+        "lambda_instances_before": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "lambda_instances_after": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "termination_verified": {
+          "type": "boolean"
+        },
+        "hf_results_persisted": {
+          "type": "boolean"
+        }
+      }
+    },
+    "decision": {
+      "type": "object",
+      "required": [
+        "advance",
+        "reason",
+        "next_action"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "advance": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "next_action": {
+          "type": "string"
+        }
+      }
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}

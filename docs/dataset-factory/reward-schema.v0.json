@@ -1,0 +1,215 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://mtlarchives.com/schemas/reward-signal-v0.json",
+  "title": "MTL Archives Reward Signal v0",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "signal_id",
+    "signal_type",
+    "source_type",
+    "captured_at",
+    "surface",
+    "reward_target",
+    "reward_value",
+    "confidence",
+    "ground_truth_boundary",
+    "record_ids",
+    "context"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "mtl_reward_signal_v0"
+    },
+    "signal_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "signal_type": {
+      "enum": [
+        "pairwise_preference",
+        "pointwise_rating",
+        "product_behavior",
+        "social_performance",
+        "stakeholder_decision",
+        "codex_review"
+      ]
+    },
+    "source_type": {
+      "enum": [
+        "codex",
+        "human",
+        "product_analytics",
+        "social_platform",
+        "stakeholder",
+        "model"
+      ]
+    },
+    "source_event_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "source_url": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "captured_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "surface": {
+      "enum": [
+        "search",
+        "dataset_factory",
+        "social",
+        "print",
+        "partner",
+        "newsletter",
+        "game",
+        "unknown"
+      ]
+    },
+    "reward_target": {
+      "enum": [
+        "search_relevance",
+        "story_value",
+        "print_value",
+        "social_engagement",
+        "partner_fit",
+        "trust_provenance",
+        "quality_repair"
+      ]
+    },
+    "reward_value": {
+      "type": "number",
+      "minimum": -1,
+      "maximum": 1
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "ground_truth_boundary": {
+      "enum": [
+        "reward_not_fact",
+        "factual_label",
+        "mixed",
+        "unknown"
+      ]
+    },
+    "record_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "preferred_record_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "other_record_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "query": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "task_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "split": {
+      "enum": [
+        "train",
+        "validation",
+        "test",
+        null
+      ]
+    },
+    "label": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "evidence_refs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "context": {
+      "type": "object",
+      "required": [
+        "benchmark_id",
+        "label_version",
+        "ranking_version",
+        "image_family",
+        "audience",
+        "platform",
+        "notes"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "benchmark_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "label_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ranking_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "image_family": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "audience": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "platform": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
