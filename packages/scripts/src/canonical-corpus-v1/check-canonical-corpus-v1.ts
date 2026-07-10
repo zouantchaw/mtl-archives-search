@@ -6,6 +6,7 @@ import type { ErrorObject, ValidateFunction } from 'ajv';
 import Ajv2020Import from 'ajv/dist/2020.js';
 import addFormatsImport from 'ajv-formats';
 import {
+  ALIAS_BASIS,
   CORPUS_VERSION,
   PRIMARY_STATES,
   RIGHTS_LICENSE_ID,
@@ -24,6 +25,13 @@ import {
   type R2SampleRow,
 } from './model.js';
 import type { ReconciliationRow } from './build-canonical-corpus-v1.js';
+import {
+  deriveRawProvenance,
+  type RawAliasRelation,
+  type RawD1Row,
+  type RawProvenanceModel,
+  type RawRecordProvenance,
+} from './raw-provenance.js';
 import {
   GENERATED_OUTPUT_FILES,
   assertRelativeLocator,
@@ -48,7 +56,7 @@ function resolveCliPath(value: string): string {
 }
 
 type VectorRow = { id: string; normalized_identity: string | null; valid_identity: boolean };
-type D1Row = { metadata_filename: string; image_filename: string; resolved_image_filename?: string | null } & Record<string, unknown>;
+type D1Row = RawD1Row;
 type IndexSnapshot = Record<string, unknown> & {
   started_at?: string;
   completed_at?: string;
@@ -80,9 +88,14 @@ type ArtifactManifest = {
   artifacts: Array<{ path: string; sha256: string; byte_count: number; row_count?: number; schema_version: string }>;
 };
 type AliasRow = {
+  schema_version: string;
   alias_identity: string;
   canonical_identity: string;
   source_identity: string;
+  basis: typeof ALIAS_BASIS;
+  group_id: string;
+  reason: string;
+  group_members: string[];
   payload_etag_match: boolean | null;
   alias_systems: ReconciliationRow['systems'];
   canonical_systems: ReconciliationRow['systems'];
@@ -331,29 +344,59 @@ function deriveExpectedSummary(args: {
   };
 }
 
-function expectedState(
-  row: ReconciliationRow,
-  aliasTarget: string | null,
+function expectedRecordState(
+  provenance: RawRecordProvenance,
+  alias: RawAliasRelation | null,
   ambiguousAlias: boolean,
-): ReconciliationRow['primary_state'] {
-  if (row.entity_kind === 'r2_non_corpus') {
-    return row.secondary_flags.includes('malformed_archive_key') ? 'unresolved_blocker' : 'excluded_with_reason';
+): { state: ReconciliationRow['primary_state']; reason: string } {
+  if (alias) {
+    return {
+      state: 'duplicate_or_alias',
+      reason: `Exact source identity aliases production-backed record ${alias.canonical_identity}.`,
+    };
   }
-  if (row.entity_kind === 'invalid_identity') return 'vector_only_or_stale';
-  if (aliasTarget) return 'duplicate_or_alias';
-  if (ambiguousAlias) return 'unresolved_blocker';
-  if (row.image.observed_r2_keys.length > 1) return 'unresolved_blocker';
-  if (row.image.expected_key && row.image.observed_r2_keys.length === 1
-    && row.image.observed_r2_keys[0] !== row.image.expected_key) return 'unresolved_blocker';
-  if (!row.systems.local && !row.systems.d1) return row.systems.r2 ? 'orphan_r2_object' : 'vector_only_or_stale';
-  if (row.systems.local && !row.systems.d1) return 'local_only_candidate';
-  if (!row.systems.local && row.systems.d1) return 'production_only_candidate';
-  if (!row.rights.complete || !row.source_identity) return 'unresolved_blocker';
-  if (row.media_type === 'document') return 'canonical_document';
-  if (!row.systems.r2) return 'missing_r2_object';
-  if (!row.systems.text_vector) return 'text_vector_missing';
-  if (!row.systems.clip_vector) return 'clip_vector_missing';
-  return 'canonical_active';
+  if (ambiguousAlias) {
+    return {
+      state: 'unresolved_blocker',
+      reason: 'Duplicate source identity has zero or multiple production D1 members; no primary is inferred from numeric order.',
+    };
+  }
+  if (provenance.observed_r2_keys.length > 1) {
+    return { state: 'unresolved_blocker', reason: 'Multiple archive-image R2 keys map to one metadata identity.' };
+  }
+  if (provenance.observed_r2_keys.length === 1 && provenance.observed_r2_keys[0] !== provenance.expected_key) {
+    return { state: 'unresolved_blocker', reason: 'Manifest image identity and observed R2 archive key disagree.' };
+  }
+  if (!provenance.systems.local && !provenance.systems.d1) {
+    return provenance.systems.r2
+      ? { state: 'orphan_r2_object', reason: 'Archive-image R2 object has no local or production D1 metadata row.' }
+      : { state: 'vector_only_or_stale', reason: 'Vector identity has no local manifest, production D1, or archive-image R2 record.' };
+  }
+  if (provenance.systems.local && !provenance.systems.d1) {
+    return { state: 'local_only_candidate', reason: 'Local manifest identity is absent from production D1.' };
+  }
+  if (!provenance.systems.local && provenance.systems.d1) {
+    return { state: 'production_only_candidate', reason: 'Production D1 identity is absent from the local manifest snapshot.' };
+  }
+  if (!provenance.rights.complete || !provenance.source_identity) {
+    return { state: 'unresolved_blocker', reason: 'Source or rights attribution required for canonical status is incomplete.' };
+  }
+  if (provenance.media_type === 'document') {
+    return { state: 'canonical_document', reason: 'Source URL or sampled object magic identifies a document; retained as an explicit non-photo corpus record.' };
+  }
+  if (!provenance.systems.r2) {
+    return { state: 'missing_r2_object', reason: 'Local and D1 metadata agree, but the expected archive-image object is absent from exact R2 enumeration.' };
+  }
+  if (!provenance.systems.text_vector) {
+    return { state: 'text_vector_missing', reason: 'Canonical record is absent from the exact text Vectorize inventory.' };
+  }
+  if (!provenance.systems.clip_vector) {
+    return { state: 'clip_vector_missing', reason: 'Canonical record is absent from the exact CLIP Vectorize inventory.' };
+  }
+  return {
+    state: 'canonical_active',
+    reason: 'Identity is present in local, D1, R2, text Vectorize, and CLIP Vectorize with complete source/rights evidence.',
+  };
 }
 
 function assertRowConsistency(args: {
@@ -364,106 +407,79 @@ function assertRowConsistency(args: {
   r2Samples: R2SampleRow[];
   text: VectorRow[];
   clip: VectorRow[];
-}): void {
-  const localById = new Map(args.local.map((row) => [row.identity, row]));
-  const d1ById = new Map(
-    args.d1.map((row) => [parseMetadataIdentity(row.metadata_filename)?.identity, row] as const)
-      .filter((entry): entry is [string, D1Row] => Boolean(entry[0])),
-  );
-  const r2ById = new Map<string, R2InventoryRow[]>();
-  for (const object of args.r2) {
-    if (!object.normalized_identity) continue;
-    const group = r2ById.get(object.normalized_identity) ?? [];
-    group.push(object);
-    r2ById.set(object.normalized_identity, group);
-  }
-  const textIds = new Set(args.text.filter((row) => row.valid_identity).map((row) => row.normalized_identity!));
-  const clipIds = new Set(args.clip.filter((row) => row.valid_identity).map((row) => row.normalized_identity!));
-  const sampleByKey = new Map(args.r2Samples.map((row) => [row.key, row]));
-  const byId = new Map(args.reconciliation.map((row) => [row.observed_identity, row]));
-
-  const sourceGroups = new Map<string, ReconciliationRow[]>();
-  for (const row of args.reconciliation) {
-    if (row.entity_kind !== 'record' || !row.source_identity) continue;
-    const group = sourceGroups.get(row.source_identity) ?? [];
-    group.push(row);
-    sourceGroups.set(row.source_identity, group);
-  }
-  const aliasTargets = new Map<string, string>();
-  const ambiguousAliases = new Set<string>();
-  for (const group of sourceGroups.values()) {
-    if (group.length < 2) continue;
-    const d1Members = group.filter((row) => row.systems.d1);
-    if (d1Members.length === 1) {
-      for (const row of group) if (row !== d1Members[0]) aliasTargets.set(row.observed_identity, d1Members[0].observed_identity);
-    } else {
-      for (const row of group) ambiguousAliases.add(row.observed_identity);
-    }
-  }
+}): RawProvenanceModel {
+  const raw = deriveRawProvenance(args);
+  const nonCorpusR2 = new Map(args.r2.filter((row) => !row.normalized_identity).map((row) => [row.key, row]));
+  const invalidText = new Set(args.text.filter((row) => !row.valid_identity).map((row) => row.id));
+  const invalidClip = new Set(args.clip.filter((row) => !row.valid_identity).map((row) => row.id));
 
   for (const row of args.reconciliation) {
     if (row.entity_kind === 'record') {
-      const local = localById.get(row.observed_identity);
-      const d1 = d1ById.get(row.observed_identity);
-      const r2Objects = (r2ById.get(row.observed_identity) ?? []).sort((a, b) => a.key.localeCompare(b.key));
-      const expectedSystems = {
-        local: Boolean(local),
-        d1: Boolean(d1),
-        r2: r2Objects.length > 0,
-        text_vector: textIds.has(row.observed_identity),
-        clip_vector: clipIds.has(row.observed_identity),
-      };
-      assert(stableJson(row.systems) === stableJson(expectedSystems), `${row.observed_identity}: systems disagree with verified snapshots`);
-      const expectedKey = local?.resolved_image_filename || local?.image_filename
-        || cleanText(d1?.resolved_image_filename) || cleanText(d1?.image_filename)
-        || `mtl_archives_image_${row.numeric_id}.jpg`;
-      assert(row.image.expected_key === expectedKey, `${row.observed_identity}: expected R2 key drifted`);
-      assert(stableJson(row.image.observed_r2_keys) === stableJson(r2Objects.map((object) => object.key)),
-        `${row.observed_identity}: observed R2 keys disagree with verified inventory`);
-      const samples = r2Objects.map((object) => sampleByKey.get(object.key)).filter((sample): sample is R2SampleRow => Boolean(sample));
-      const primarySample = samples.find((sample) => sample.magic_kind === 'pdf') ?? samples[0];
-      const expectedMedia = row.source_urls.some((url) => /\.pdf(?:$|[?#])/i.test(url)) || primarySample?.magic_kind === 'pdf'
-        ? 'document'
-        : 'archive_image';
-      assert(row.media_type === expectedMedia, `${row.observed_identity}: media type disagrees with source/magic evidence`);
-      assert(row.rights.complete === (row.source_urls.length > 0 && row.rights.attribution.length > 0),
-        `${row.observed_identity}: rights completeness is inconsistent`);
+      const provenance = raw.records.get(row.observed_identity);
+      assert(provenance, `${row.observed_identity}: record is absent from verified raw provenance`);
+      assert(row.numeric_id === provenance.numeric_id, `${row.observed_identity}: numeric identity drifted from raw provenance`);
+      assert(row.source_identity === provenance.source_identity, `${row.observed_identity}: source identity drifted from raw provenance`);
+      assert(stableJson(row.source_urls) === stableJson(provenance.source_urls), `${row.observed_identity}: source URLs drifted from raw provenance`);
+      assert(stableJson(row.source_record_ids) === stableJson(provenance.source_record_ids), `${row.observed_identity}: source record IDs drifted from raw provenance`);
+      assert(stableJson(row.source_datasets) === stableJson(provenance.source_datasets), `${row.observed_identity}: source datasets drifted from raw provenance`);
+      assert(row.name === provenance.name, `${row.observed_identity}: name drifted from raw provenance`);
+      assert(row.description === provenance.description, `${row.observed_identity}: description drifted from raw provenance`);
+      assert(row.cote === provenance.cote, `${row.observed_identity}: cote drifted from raw provenance`);
+      assert(stableJson(row.rights) === stableJson(provenance.rights), `${row.observed_identity}: rights drifted from raw provenance`);
+      assert(stableJson(row.systems) === stableJson(provenance.systems), `${row.observed_identity}: systems disagree with verified raw sets`);
+      assert(stableJson(row.image) === stableJson({
+        expected_key: provenance.expected_key,
+        observed_r2_keys: provenance.observed_r2_keys,
+        sampled_content_type: provenance.sampled_content_type,
+        sampled_magic_kind: provenance.sampled_magic_kind,
+        sampled_etag: provenance.sampled_etag,
+        sampled_size_bytes: provenance.sampled_size_bytes,
+      }), `${row.observed_identity}: image evidence drifted from verified raw sets`);
+      assert(row.media_type === provenance.media_type, `${row.observed_identity}: media type drifted from raw provenance`);
+      assert(stableJson(row.d1_lineage) === stableJson(provenance.systems.d1 ? { created_at: provenance.d1_created_at } : null),
+        `${row.observed_identity}: D1 lineage drifted from raw provenance`);
 
-      const aliasTarget = aliasTargets.get(row.observed_identity) ?? null;
-      const ambiguousAlias = ambiguousAliases.has(row.observed_identity);
-      const imageKeyMismatch = Boolean(expectedKey && r2Objects.length === 1 && r2Objects[0].key !== expectedKey);
+      const alias = raw.aliases.get(row.observed_identity) ?? null;
+      const ambiguousAlias = raw.ambiguous_identities.has(row.observed_identity);
+      const imageKeyMismatch = provenance.observed_r2_keys.length === 1
+        && provenance.observed_r2_keys[0] !== provenance.expected_key;
       const expectedFlags = sortedUnique([
-        ...(!row.systems.local ? ['local_missing'] : []),
-        ...(!row.systems.d1 ? ['d1_missing'] : []),
-        ...(!row.systems.r2 ? ['r2_missing'] : []),
-        ...(!row.systems.text_vector ? ['text_vector_missing'] : []),
-        ...(!row.systems.clip_vector ? ['clip_vector_missing'] : []),
-        ...(!row.source_identity ? ['source_identity_missing'] : []),
-        ...(!row.rights.complete ? ['rights_incomplete'] : []),
-        ...(r2Objects.length > 1 ? ['multiple_r2_objects'] : []),
+        ...(!provenance.systems.local ? ['local_missing'] : []),
+        ...(!provenance.systems.d1 ? ['d1_missing'] : []),
+        ...(!provenance.systems.r2 ? ['r2_missing'] : []),
+        ...(!provenance.systems.text_vector ? ['text_vector_missing'] : []),
+        ...(!provenance.systems.clip_vector ? ['clip_vector_missing'] : []),
+        ...(!provenance.source_identity ? ['source_identity_missing'] : []),
+        ...(!provenance.rights.complete ? ['rights_incomplete'] : []),
+        ...(provenance.observed_r2_keys.length > 1 ? ['multiple_r2_objects'] : []),
         ...(imageKeyMismatch ? ['image_key_mismatch'] : []),
-        ...(primarySample?.content_type?.startsWith('image/') && primarySample.magic_kind === 'pdf'
+        ...(provenance.sampled_content_type?.startsWith('image/') && provenance.sampled_magic_kind === 'pdf'
           ? ['sampled_content_type_magic_mismatch'] : []),
-        ...(expectedMedia === 'document' ? ['document_payload'] : []),
-        ...(aliasTarget ? ['alias_identity'] : []),
+        ...(provenance.media_type === 'document' ? ['document_payload'] : []),
+        ...(alias ? ['alias_identity'] : []),
         ...(ambiguousAlias ? ['ambiguous_alias_group'] : []),
       ]);
       assert(stableJson(row.secondary_flags) === stableJson(expectedFlags),
-        `${row.observed_identity}: secondary flags disagree with systems/state evidence`);
-      assert(row.primary_state === expectedState(row, aliasTarget, ambiguousAlias),
-        `${row.observed_identity}: primary state conflicts with systems and secondary evidence`);
-      assert(Boolean(row.alias) === Boolean(aliasTarget), `${row.observed_identity}: alias object presence drifted`);
-      if (aliasTarget) {
-        assert(row.alias?.canonical_identity === aliasTarget, `${row.observed_identity}: alias target drifted`);
-        assert(row.alias?.source_identity === row.source_identity, `${row.observed_identity}: alias source identity drifted`);
-        assert(byId.has(aliasTarget), `${row.observed_identity}: alias target is absent`);
-      }
+        `${row.observed_identity}: secondary flags disagree with raw provenance`);
+      const expectedState = expectedRecordState(provenance, alias, ambiguousAlias);
+      assert(row.primary_state === expectedState.state, `${row.observed_identity}: primary state conflicts with raw provenance`);
+      assert(row.state_reason === expectedState.reason, `${row.observed_identity}: state reason conflicts with raw provenance`);
+      const expectedAlias = alias ? {
+        canonical_identity: alias.canonical_identity,
+        basis: ALIAS_BASIS,
+        source_identity: alias.source_identity,
+        group_id: alias.group_id,
+        reason: alias.reason,
+        group_members: alias.group_members,
+        payload_etag_match: alias.payload_etag_match,
+      } : null;
+      assert(stableJson(row.alias) === stableJson(expectedAlias), `${row.observed_identity}: nested alias drifted from raw provenance`);
       continue;
     }
 
     if (row.entity_kind === 'r2_non_corpus') {
       const key = row.observed_identity.replace(/^r2:/, '');
-      const object = args.r2.find((candidate) => candidate.key === key && candidate.normalized_identity === null);
+      const object = nonCorpusR2.get(key);
       assert(object, `${row.observed_identity}: non-corpus R2 object is absent from inventory`);
       assert(stableJson(row.systems) === stableJson({ local: false, d1: false, r2: true, text_vector: false, clip_vector: false }),
         `${row.observed_identity}: non-corpus systems are incoherent`);
@@ -472,7 +488,8 @@ function assertRowConsistency(args: {
         ...(/^mtl_archives_image_/i.test(key) ? ['malformed_archive_key'] : []),
       ]);
       assert(stableJson(row.secondary_flags) === stableJson(expectedFlags), `${row.observed_identity}: non-corpus flags drifted`);
-      assert(row.primary_state === expectedState(row, null, false), `${row.observed_identity}: non-corpus state drifted`);
+      assert(row.primary_state === (/^mtl_archives_image_/i.test(key) ? 'unresolved_blocker' : 'excluded_with_reason'),
+        `${row.observed_identity}: non-corpus state drifted`);
       assert(row.alias === null && row.image.expected_key === null, `${row.observed_identity}: non-corpus identity carries record linkage`);
       continue;
     }
@@ -483,8 +500,8 @@ function assertRowConsistency(args: {
       local: false,
       d1: false,
       r2: false,
-      text_vector: args.text.some((vector) => vector.id === invalidId && !vector.valid_identity),
-      clip_vector: args.clip.some((vector) => vector.id === invalidId && !vector.valid_identity),
+      text_vector: invalidText.has(invalidId),
+      clip_vector: invalidClip.has(invalidId),
     };
     assert(expectedSystems.text_vector || expectedSystems.clip_vector, `${row.observed_identity}: invalid identity is not an invalid vector record`);
     assert(stableJson(row.systems) === stableJson(expectedSystems), `${row.observed_identity}: invalid vector systems drifted`);
@@ -493,6 +510,7 @@ function assertRowConsistency(args: {
     assert(row.media_type === 'unknown' && row.alias === null && row.image.expected_key === null,
       `${row.observed_identity}: invalid vector carries record payload`);
   }
+  return raw;
 }
 
 export type CheckCanonicalCorpusOptions = {
@@ -550,9 +568,10 @@ export function checkCanonicalCorpus(
   const reconciliationIds = reconciliation.map((row) => row.observed_identity);
   assertUnique(reconciliationIds, 'reconciliation observed identities');
   assertSorted(reconciliationIds, 'reconciliation observed identities');
+  const reconciliationIdSet = new Set(reconciliationIds);
   const universe = buildObservedUniverse(local, d1, r2, text, clip);
   assert(universe.size === reconciliation.length, `observed universe ${universe.size} != reconciliation rows ${reconciliation.length}`);
-  for (const identity of universe) assert(reconciliationIds.includes(identity), `observed identity is not reconciled: ${identity}`);
+  for (const identity of universe) assert(reconciliationIdSet.has(identity), `observed identity is not reconciled: ${identity}`);
   for (const row of reconciliation) assert(universe.has(row.observed_identity), `reconciliation row was not observed: ${row.observed_identity}`);
 
   for (const row of reconciliation) {
@@ -573,11 +592,11 @@ export function checkCanonicalCorpus(
       assert(row.image.observed_r2_keys.length === 0, `${row.observed_identity}: R2 absence has an object key`);
     }
   }
-  assertRowConsistency({ reconciliation, local, d1, r2, r2Samples, text, clip });
+  const rawProvenance = assertRowConsistency({ reconciliation, local, d1, r2, r2Samples, text, clip });
 
-  const corpusIds = corpus.map((row) => row.observed_identity);
-  const expectedCorpusIds = reconciliation.filter((row) => row.entity_kind === 'record').map((row) => row.observed_identity);
-  assert(stableJson(corpusIds) === stableJson(expectedCorpusIds), 'corpus manifest must exactly equal record-kind reconciliation rows');
+  const expectedCorpus = reconciliation.filter((row) => row.entity_kind === 'record');
+  assert(stableJson(corpus) === stableJson(expectedCorpus),
+    'corpus manifest rows must exactly equal full record-kind reconciliation rows');
   assertUnique(local.map((row) => row.metadata_filename), 'local metadata IDs');
   assertUnique(local.map((row) => row.image_filename), 'local image filenames');
   assertUnique(local.map((row) => row.resolved_image_filename), 'local resolved image filenames');
@@ -651,6 +670,23 @@ export function checkCanonicalCorpus(
     assert(snapshot.pagination?.unique_count === rows.length, `${label} Vectorize unique count drifted`);
   }
 
+  const expectedAliases: AliasRow[] = [...rawProvenance.aliases.values()]
+    .map<AliasRow>((relation) => ({
+      schema_version: SCHEMA_VERSION,
+      alias_identity: relation.alias_identity,
+      canonical_identity: relation.canonical_identity,
+      source_identity: relation.source_identity,
+      basis: ALIAS_BASIS,
+      group_id: relation.group_id,
+      reason: relation.reason,
+      group_members: relation.group_members,
+      alias_systems: rawProvenance.records.get(relation.alias_identity)!.systems,
+      canonical_systems: rawProvenance.records.get(relation.canonical_identity)!.systems,
+      payload_etag_match: relation.payload_etag_match,
+    }))
+    .sort((a, b) => a.alias_identity.localeCompare(b.alias_identity));
+  assert(stableJson(aliases) === stableJson(expectedAliases),
+    'alias map must exactly equal the independently derived raw source-identity relation');
   assertUnique(aliases.map((row) => row.alias_identity), 'alias identities');
   const byId = new Map(reconciliation.map((row) => [row.observed_identity, row]));
   for (const alias of aliases) {
@@ -662,6 +698,10 @@ export function checkCanonicalCorpus(
     assert(canonical.primary_state !== 'duplicate_or_alias', `${alias.alias_identity}: alias target cannot be an alias`);
     assert(alternate.source_identity === canonical.source_identity && canonical.source_identity === alias.source_identity,
       `${alias.alias_identity}: alias source identity mismatch`);
+    assert(canonical.systems.d1, `${alias.alias_identity}: canonical alias target is not production-backed`);
+    assert(alias.group_members.includes(alias.alias_identity) && alias.group_members.includes(alias.canonical_identity),
+      `${alias.alias_identity}: alias group members are incomplete`);
+    assertSorted(alias.group_members, `${alias.alias_identity} alias group members`);
     assert(stableJson(alias.alias_systems) === stableJson(alternate.systems), `${alias.alias_identity}: alias systems drifted`);
     assert(stableJson(alias.canonical_systems) === stableJson(canonical.systems), `${alias.alias_identity}: canonical alias systems drifted`);
     assert(alternate.alias?.canonical_identity === alias.canonical_identity, `${alias.alias_identity}: alias-map target drifted`);
@@ -737,6 +777,14 @@ export function checkCanonicalCorpus(
     unresolved: unresolved.length,
     states: stateCounts,
     artifact_count: artifactManifest.artifacts.length,
+    raw_provenance: {
+      source_groups: rawProvenance.source_group_count,
+      aliases: rawProvenance.alias_count,
+      ambiguous_groups: rawProvenance.ambiguous_group_count,
+      record_mismatches: 0,
+      alias_mismatches: 0,
+      corpus_mismatches: 0,
+    },
   };
 }
 

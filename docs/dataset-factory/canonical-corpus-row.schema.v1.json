@@ -7,7 +7,7 @@
   "required": [
     "schema_version", "corpus_version", "observed_identity", "entity_kind", "numeric_id",
     "primary_state", "state_reason", "secondary_flags", "media_type", "source_identity",
-    "source_datasets", "source_urls", "source_record_ids", "name", "cote", "rights", "systems",
+    "source_datasets", "source_urls", "source_record_ids", "name", "description", "cote", "rights", "systems",
     "image", "d1_enrichment", "d1_lineage", "alias"
   ],
   "properties": {
@@ -31,6 +31,7 @@
     "source_urls": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
     "source_record_ids": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
     "name": { "type": "string" },
+    "description": { "type": "string" },
     "cote": { "type": "string" },
     "rights": {
       "type": "object", "additionalProperties": false,
@@ -90,11 +91,17 @@
         { "type": "null" },
         {
           "type": "object", "additionalProperties": false,
-          "required": ["canonical_identity", "basis", "source_identity", "payload_etag_match"],
+          "required": ["canonical_identity", "basis", "source_identity", "group_id", "reason", "group_members", "payload_etag_match"],
           "properties": {
             "canonical_identity": { "type": "string", "minLength": 1 },
             "basis": { "const": "exact_source_identity_single_d1_member" },
             "source_identity": { "type": "string", "minLength": 1 },
+            "group_id": { "type": "string", "pattern": "^source-group:[a-f0-9]{64}$" },
+            "reason": { "type": "string", "minLength": 1 },
+            "group_members": {
+              "type": "array", "minItems": 2, "uniqueItems": true,
+              "items": { "type": "string", "pattern": "^mtl_archives_metadata_[0-9]+\\.json$" }
+            },
             "payload_etag_match": { "type": ["boolean", "null"] }
           }
         }

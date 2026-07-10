@@ -4,11 +4,22 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildCanonicalCorpus } from './build-canonical-corpus-v1.js';
 import { checkCanonicalCorpus } from './check-canonical-corpus-v1.js';
-import { readJson, readJsonl, stableJson, writeJson, writeJsonl } from './model.js';
+import {
+  ALIAS_BASIS,
+  ALIAS_GROUP_REASON,
+  readJson,
+  readJsonl,
+  sha256,
+  stableJson,
+  writeJson,
+  writeJsonl,
+} from './model.js';
 import {
   FIXTURE_INPUT_MANIFEST_PATH,
   RAW_INPUT_SPECS,
+  canonicalSourceSnapshotId,
   resolveContainedFile,
+  type SourceInputEvidence,
   type SourceInputManifest,
 } from './snapshot-contract.js';
 
@@ -55,12 +66,69 @@ function manifestCopy(root: string, mutate: (manifest: SourceInputManifest) => v
   return target;
 }
 
+function currentInputManifest(input: string, root: string): string {
+  const inputs: SourceInputEvidence[] = RAW_INPUT_SPECS.map((spec) => {
+    const bytes = fs.readFileSync(path.join(input, spec.path));
+    return {
+      path: spec.path,
+      kind: spec.kind,
+      sha256: sha256(bytes),
+      byte_count: bytes.byteLength,
+      ...(spec.kind === 'jsonl' ? { row_count: bytes.toString('utf8').split('\n').filter(Boolean).length } : {}),
+    };
+  });
+  const manifest: SourceInputManifest = {
+    schema_version: 'canonical_corpus_input_manifest_v1',
+    mode: 'fixture',
+    source_snapshot_id: canonicalSourceSnapshotId(inputs),
+    inputs,
+  };
+  const target = path.join(root, 'current-input-manifest.json');
+  writeJson(target, manifest);
+  return target;
+}
+
+function refreshGeneratedEvidence(input: string): void {
+  const manifestPath = path.join(input, 'artifact-manifest-v1.json');
+  const manifest = readJson<JsonObject>(manifestPath);
+  for (const artifact of manifest.artifacts as JsonObject[]) {
+    const filePath = path.join(input, String(artifact.path));
+    const bytes = fs.readFileSync(filePath);
+    artifact.sha256 = sha256(bytes);
+    artifact.byte_count = bytes.byteLength;
+    if ('row_count' in artifact) artifact.row_count = bytes.toString('utf8').split('\n').filter(Boolean).length;
+  }
+  writeJson(manifestPath, manifest);
+}
+
+function mirrorCorpusFromReconciliation(input: string, reconciliation: JsonObject[]): void {
+  writeJsonl(
+    path.join(input, 'corpus-manifest-v1.jsonl'),
+    reconciliation.filter((row) => row.entity_kind === 'record'),
+  );
+}
+
+function mutateReconciliationRecord(
+  input: string,
+  identity: string,
+  mutate: (row: JsonObject) => void,
+): JsonObject[] {
+  const reconciliation = readJsonl<JsonObject>(path.join(input, 'reconciliation-v1.jsonl'));
+  const row = reconciliation.find((candidate) => candidate.observed_identity === identity);
+  if (!row) throw new Error(`Missing fixture reconciliation row: ${identity}`);
+  mutate(row);
+  writeJsonl(path.join(input, 'reconciliation-v1.jsonl'), reconciliation);
+  mirrorCorpusFromReconciliation(input, reconciliation);
+  return reconciliation;
+}
+
 function runFailureCase(
   root: string,
   name: string,
   action: (input: string, caseRoot: string) => void,
   results: TestResult[],
   built = true,
+  expectedError?: RegExp,
 ): void {
   const caseRoot = path.join(root, `case-${String(results.length).padStart(2, '0')}`);
   fs.mkdirSync(caseRoot, { recursive: true });
@@ -68,7 +136,11 @@ function runFailureCase(
   try {
     action(input, caseRoot);
   } catch (error) {
-    results.push({ name, error: error instanceof Error ? error.message : String(error) });
+    const message = error instanceof Error ? error.message : String(error);
+    if (expectedError && !expectedError.test(message)) {
+      throw new Error(`${name}: failed for unexpected reason: ${message}`);
+    }
+    results.push({ name, error: message });
     return;
   }
   throw new Error(`${name}: expected failure`);
@@ -304,7 +376,203 @@ function main(): void {
       checkCanonicalCorpus(input, { mode: 'fixture' });
     }, results);
 
-    assert(results.length === 54, `expected 54 negative self-tests, got ${results.length}`);
+    runFailureCase(root, 'coordinated forged alias source URL with mirrored corpus and refreshed hashes', (input) => {
+      const forgedSource = 'https://forged.example/reviewer-source';
+      const forgedGroupId = `source-group:${sha256(forgedSource)}`;
+      const reconciliation = readJsonl<JsonObject>(path.join(input, 'reconciliation-v1.jsonl'));
+      for (const identity of ['mtl_archives_metadata_3.json', 'mtl_archives_metadata_4.json']) {
+        const row = reconciliation.find((candidate) => candidate.observed_identity === identity)!;
+        row.source_identity = forgedSource;
+        row.source_urls = [forgedSource];
+        if (row.alias) {
+          (row.alias as JsonObject).source_identity = forgedSource;
+          (row.alias as JsonObject).group_id = forgedGroupId;
+        }
+      }
+      writeJsonl(path.join(input, 'reconciliation-v1.jsonl'), reconciliation);
+      mirrorCorpusFromReconciliation(input, reconciliation);
+      const aliases = readJsonl<JsonObject>(path.join(input, 'alias-map-v1.jsonl'));
+      aliases[0].source_identity = forgedSource;
+      aliases[0].group_id = forgedGroupId;
+      writeJsonl(path.join(input, 'alias-map-v1.jsonl'), aliases);
+      refreshGeneratedEvidence(input);
+      checkCanonicalCorpus(input, { mode: 'fixture' });
+    }, results, true, /source identity drifted from raw provenance/);
+
+    const forgedFields: Array<{ name: string; mutate: (row: JsonObject) => void; expected: RegExp }> = [
+      { name: 'forged source record ID', mutate: (row) => { row.source_record_ids = ['forged:record']; }, expected: /source record IDs drifted/ },
+      { name: 'forged source dataset', mutate: (row) => { row.source_datasets = ['forged_dataset']; }, expected: /source datasets drifted/ },
+      { name: 'forged record name', mutate: (row) => { row.name = 'Forged name'; }, expected: /name drifted/ },
+      { name: 'forged record description', mutate: (row) => { row.description = 'Forged description'; }, expected: /description drifted/ },
+      { name: 'forged record cote', mutate: (row) => { row.cote = 'FORGED'; }, expected: /cote drifted/ },
+      {
+        name: 'forged rights evidence',
+        mutate: (row) => {
+          row.rights = { license_id: 'forged', attribution: 'Forged', notes: 'Forged rights.', complete: true };
+        },
+        expected: /rights drifted/,
+      },
+    ];
+    for (const test of forgedFields) {
+      runFailureCase(root, test.name, (input) => {
+        mutateReconciliationRecord(input, 'mtl_archives_metadata_0.json', test.mutate);
+        refreshGeneratedEvidence(input);
+        checkCanonicalCorpus(input, { mode: 'fixture' });
+      }, results, true, test.expected);
+    }
+
+    runFailureCase(root, 'alias target swap with refreshed hash', (input) => {
+      const aliases = readJsonl<JsonObject>(path.join(input, 'alias-map-v1.jsonl'));
+      aliases[0].canonical_identity = 'mtl_archives_metadata_0.json';
+      writeJsonl(path.join(input, 'alias-map-v1.jsonl'), aliases);
+      refreshGeneratedEvidence(input);
+      checkCanonicalCorpus(input, { mode: 'fixture' });
+    }, results, true, /alias map must exactly equal/);
+    runFailureCase(root, 'alias member removed from reversible group', (input) => {
+      const reconciliation = mutateReconciliationRecord(input, 'mtl_archives_metadata_4.json', (row) => {
+        (row.alias as JsonObject).group_members = ['mtl_archives_metadata_4.json'];
+      });
+      const aliases = readJsonl<JsonObject>(path.join(input, 'alias-map-v1.jsonl'));
+      aliases[0].group_members = ['mtl_archives_metadata_4.json'];
+      writeJsonl(path.join(input, 'alias-map-v1.jsonl'), aliases);
+      mirrorCorpusFromReconciliation(input, reconciliation);
+      refreshGeneratedEvidence(input);
+      checkCanonicalCorpus(input, { mode: 'fixture' });
+    }, results, true, /row schema failed|nested alias drifted/);
+    runFailureCase(root, 'extra member injected into reversible alias group', (input) => {
+      const members = ['mtl_archives_metadata_0.json', 'mtl_archives_metadata_3.json', 'mtl_archives_metadata_4.json'];
+      const reconciliation = mutateReconciliationRecord(input, 'mtl_archives_metadata_4.json', (row) => {
+        (row.alias as JsonObject).group_members = members;
+      });
+      const aliases = readJsonl<JsonObject>(path.join(input, 'alias-map-v1.jsonl'));
+      aliases[0].group_members = members;
+      writeJsonl(path.join(input, 'alias-map-v1.jsonl'), aliases);
+      mirrorCorpusFromReconciliation(input, reconciliation);
+      refreshGeneratedEvidence(input);
+      checkCanonicalCorpus(input, { mode: 'fixture' });
+    }, results, true, /nested alias drifted/);
+    runFailureCase(root, 'duplicate alias pair with refreshed row count', (input) => {
+      const aliases = readJsonl<JsonObject>(path.join(input, 'alias-map-v1.jsonl'));
+      aliases.push(clone(aliases[0]));
+      writeJsonl(path.join(input, 'alias-map-v1.jsonl'), aliases);
+      refreshGeneratedEvidence(input);
+      checkCanonicalCorpus(input, { mode: 'fixture' });
+    }, results, true, /alias map must exactly equal/);
+    runFailureCase(root, 'nested alias and alias-map reason mismatch', (input) => {
+      mutateReconciliationRecord(input, 'mtl_archives_metadata_4.json', (row) => {
+        (row.alias as JsonObject).reason = 'Forged nested reason.';
+      });
+      refreshGeneratedEvidence(input);
+      checkCanonicalCorpus(input, { mode: 'fixture' });
+    }, results, true, /nested alias drifted/);
+    runFailureCase(root, 'canonical target changed to non-D1 record', (input) => {
+      const reconciliation = mutateReconciliationRecord(input, 'mtl_archives_metadata_4.json', (row) => {
+        (row.alias as JsonObject).canonical_identity = 'mtl_archives_metadata_1.json';
+      });
+      const aliases = readJsonl<JsonObject>(path.join(input, 'alias-map-v1.jsonl'));
+      aliases[0].canonical_identity = 'mtl_archives_metadata_1.json';
+      aliases[0].group_members = ['mtl_archives_metadata_1.json', 'mtl_archives_metadata_4.json'];
+      writeJsonl(path.join(input, 'alias-map-v1.jsonl'), aliases);
+      mirrorCorpusFromReconciliation(input, reconciliation);
+      refreshGeneratedEvidence(input);
+      checkCanonicalCorpus(input, { mode: 'fixture' });
+    }, results, true, /nested alias drifted/);
+    runFailureCase(root, 'canonical target changed to wrong-source D1 record', (input) => {
+      const reconciliation = mutateReconciliationRecord(input, 'mtl_archives_metadata_4.json', (row) => {
+        (row.alias as JsonObject).canonical_identity = 'mtl_archives_metadata_0.json';
+      });
+      const aliases = readJsonl<JsonObject>(path.join(input, 'alias-map-v1.jsonl'));
+      aliases[0].canonical_identity = 'mtl_archives_metadata_0.json';
+      writeJsonl(path.join(input, 'alias-map-v1.jsonl'), aliases);
+      mirrorCorpusFromReconciliation(input, reconciliation);
+      refreshGeneratedEvidence(input);
+      checkCanonicalCorpus(input, { mode: 'fixture' });
+    }, results, true, /nested alias drifted/);
+    runFailureCase(root, 'coordinated five-system forgery with mirrored corpus and refreshed hashes', (input) => {
+      mutateReconciliationRecord(input, 'mtl_archives_metadata_0.json', (row) => {
+        const systems = row.systems as JsonObject;
+        for (const key of ['local', 'd1', 'r2', 'text_vector', 'clip_vector']) systems[key] = !systems[key];
+        (row.image as JsonObject).observed_r2_keys = [];
+      });
+      refreshGeneratedEvidence(input);
+      checkCanonicalCorpus(input, { mode: 'fixture' });
+    }, results, true, /systems disagree with verified raw sets/);
+
+    runFailureCase(root, 'zero-D1 ambiguous raw group cannot mint an alias', (input, caseRoot) => {
+      const local = readJsonl<JsonObject>(path.join(input, 'local-manifest.jsonl'));
+      for (const identity of ['mtl_archives_metadata_1.json', 'mtl_archives_metadata_4.json']) {
+        const row = local.find((candidate) => candidate.identity === identity)!;
+        row.primary_source_url = 'https://example.test/zero-d1-group';
+        row.source_urls = ['https://example.test/zero-d1-group'];
+      }
+      writeJsonl(path.join(input, 'local-manifest.jsonl'), local);
+      const sourceManifest = currentInputManifest(input, caseRoot);
+      buildCanonicalCorpus(input, input, undefined, { mode: 'fixture', inputManifestPath: sourceManifest });
+      const reconciliation = readJsonl<JsonObject>(path.join(input, 'reconciliation-v1.jsonl'));
+      const alternate = reconciliation.find((row) => row.observed_identity === 'mtl_archives_metadata_4.json')!;
+      const target = reconciliation.find((row) => row.observed_identity === 'mtl_archives_metadata_1.json')!;
+      const source = 'https://example.test/zero-d1-group';
+      const aliases = readJsonl<JsonObject>(path.join(input, 'alias-map-v1.jsonl'));
+      aliases.push({
+        schema_version: 'canonical_corpus_v1.0.0', alias_identity: alternate.observed_identity,
+        canonical_identity: target.observed_identity, source_identity: source, basis: ALIAS_BASIS,
+        group_id: `source-group:${sha256(source)}`, reason: ALIAS_GROUP_REASON,
+        group_members: [target.observed_identity, alternate.observed_identity].sort(),
+        alias_systems: alternate.systems, canonical_systems: target.systems, payload_etag_match: null,
+      });
+      aliases.sort((a, b) => String(a.alias_identity).localeCompare(String(b.alias_identity)));
+      writeJsonl(path.join(input, 'alias-map-v1.jsonl'), aliases);
+      refreshGeneratedEvidence(input);
+      checkCanonicalCorpus(input, { mode: 'fixture', inputManifestPath: sourceManifest });
+    }, results, false, /alias map must exactly equal/);
+
+    runFailureCase(root, 'two-D1 ambiguous raw group cannot select a target', (input, caseRoot) => {
+      const source = 'https://example.test/two-d1-group';
+      const local = readJsonl<JsonObject>(path.join(input, 'local-manifest.jsonl'));
+      for (const identity of ['mtl_archives_metadata_0.json', 'mtl_archives_metadata_2.json']) {
+        const row = local.find((candidate) => candidate.identity === identity)!;
+        row.primary_source_url = source;
+        row.source_urls = [source];
+      }
+      writeJsonl(path.join(input, 'local-manifest.jsonl'), local);
+      const d1 = readJsonl<JsonObject>(path.join(input, 'd1-manifest.jsonl'));
+      for (const identity of ['mtl_archives_metadata_0.json', 'mtl_archives_metadata_2.json']) {
+        d1.find((candidate) => candidate.metadata_filename === identity)!.external_url = source;
+      }
+      writeJsonl(path.join(input, 'd1-manifest.jsonl'), d1);
+      const sourceManifest = currentInputManifest(input, caseRoot);
+      buildCanonicalCorpus(input, input, undefined, { mode: 'fixture', inputManifestPath: sourceManifest });
+      const reconciliation = readJsonl<JsonObject>(path.join(input, 'reconciliation-v1.jsonl'));
+      const alternate = reconciliation.find((row) => row.observed_identity === 'mtl_archives_metadata_2.json')!;
+      const target = reconciliation.find((row) => row.observed_identity === 'mtl_archives_metadata_0.json')!;
+      const aliases = readJsonl<JsonObject>(path.join(input, 'alias-map-v1.jsonl'));
+      aliases.push({
+        schema_version: 'canonical_corpus_v1.0.0', alias_identity: alternate.observed_identity,
+        canonical_identity: target.observed_identity, source_identity: source, basis: ALIAS_BASIS,
+        group_id: `source-group:${sha256(source)}`, reason: ALIAS_GROUP_REASON,
+        group_members: [target.observed_identity, alternate.observed_identity].sort(),
+        alias_systems: alternate.systems, canonical_systems: target.systems, payload_etag_match: false,
+      });
+      aliases.sort((a, b) => String(a.alias_identity).localeCompare(String(b.alias_identity)));
+      writeJsonl(path.join(input, 'alias-map-v1.jsonl'), aliases);
+      refreshGeneratedEvidence(input);
+      checkCanonicalCorpus(input, { mode: 'fixture', inputManifestPath: sourceManifest });
+    }, results, false, /alias map must exactly equal/);
+
+    runFailureCase(root, 'local primary source boundary rejects D1 source substitution', (input, caseRoot) => {
+      const d1 = readJsonl<JsonObject>(path.join(input, 'd1-manifest.jsonl'));
+      d1.find((row) => row.metadata_filename === 'mtl_archives_metadata_0.json')!.external_url = 'https://example.test/d1-disagreement';
+      writeJsonl(path.join(input, 'd1-manifest.jsonl'), d1);
+      const sourceManifest = currentInputManifest(input, caseRoot);
+      buildCanonicalCorpus(input, input, undefined, { mode: 'fixture', inputManifestPath: sourceManifest });
+      mutateReconciliationRecord(input, 'mtl_archives_metadata_0.json', (row) => {
+        row.source_identity = 'https://example.test/d1-disagreement';
+      });
+      refreshGeneratedEvidence(input);
+      checkCanonicalCorpus(input, { mode: 'fixture', inputManifestPath: sourceManifest });
+    }, results, false, /source identity drifted from raw provenance/);
+
+    assert(results.length === 72, `expected 72 negative self-tests, got ${results.length}`);
     console.log(stableJson({
       status: 'ok',
       negative_self_tests: results.length,

@@ -4,6 +4,8 @@ import { parseArgs } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import {
   CORPUS_VERSION,
+  ALIAS_BASIS,
+  ALIAS_GROUP_REASON,
   PRIMARY_STATES,
   RIGHTS_LICENSE_ID,
   RIGHTS_NOTES,
@@ -106,6 +108,7 @@ export type ReconciliationRow = {
   source_urls: string[];
   source_record_ids: string[];
   name: string;
+  description: string;
   cote: string;
   rights: {
     license_id: string;
@@ -134,6 +137,9 @@ export type ReconciliationRow = {
     canonical_identity: string;
     basis: string;
     source_identity: string;
+    group_id: string;
+    reason: string;
+    group_members: string[];
     payload_etag_match: boolean | null;
   } | null;
 };
@@ -143,7 +149,10 @@ type AliasRow = {
   alias_identity: string;
   canonical_identity: string;
   source_identity: string;
-  basis: 'exact_source_identity_single_d1_member';
+  basis: typeof ALIAS_BASIS;
+  group_id: string;
+  reason: string;
+  group_members: string[];
   alias_systems: ReconciliationRow['systems'];
   canonical_systems: ReconciliationRow['systems'];
   payload_etag_match: boolean | null;
@@ -379,13 +388,27 @@ export function buildCanonicalCorpus(
     group.add(identity);
     sourceGroups.set(source, group);
   }
-  const aliasTargets = new Map<string, { canonical: string; source: string }>();
+  const aliasTargets = new Map<string, {
+    canonical: string;
+    source: string;
+    groupId: string;
+    reason: string;
+    members: string[];
+  }>();
   const ambiguousAliasIds = new Set<string>();
   for (const [source, ids] of sourceGroups) {
     if (ids.size < 2) continue;
     const d1Members = [...ids].filter((id) => d1ById.has(id));
     if (d1Members.length === 1) {
-      for (const id of ids) if (id !== d1Members[0]) aliasTargets.set(id, { canonical: d1Members[0], source });
+      const members = [...ids].sort((a, b) => a.localeCompare(b));
+      const group = {
+        canonical: d1Members[0],
+        source,
+        groupId: `source-group:${sha256(source)}`,
+        reason: ALIAS_GROUP_REASON,
+        members,
+      };
+      for (const id of ids) if (id !== d1Members[0]) aliasTargets.set(id, group);
     } else {
       for (const id of ids) ambiguousAliasIds.add(id);
     }
@@ -399,12 +422,14 @@ export function buildCanonicalCorpus(
     const d1 = d1ById.get(identity);
     const r2Objects = (r2ById.get(identity) ?? []).sort((a, b) => a.key.localeCompare(b.key));
     const systems = systemsFor(identity, localById, d1ById, r2ById, textIds, clipIds);
-    const sourceUrls = sortedUnique([...(local?.source_urls ?? []), cleanText(d1?.external_url)]);
+    const sourceUrls = sortedUnique(
+      [...(local?.source_urls ?? []), local?.primary_source_url, cleanText(d1?.external_url)].map(normalizeSourceUrl),
+    );
     const sourceIdentity = normalizeSourceUrl(local?.primary_source_url || d1?.external_url);
     const sourceDatasets = local?.source_datasets.length
-      ? local.source_datasets
+      ? sortedUnique(local.source_datasets)
       : sortedUnique(d1 ? d1SourceDatasets(d1) : []);
-    const sourceRecordIds = local?.source_record_ids ?? [];
+    const sourceRecordIds = sortedUnique(local?.source_record_ids ?? []);
     const attribution = cleanText(local?.attribution) || cleanText(d1?.credits);
     const rightsComplete = sourceUrls.length > 0 && attribution.length > 0;
     const expectedKey = expectedImageKey(identity, local, d1);
@@ -466,6 +491,7 @@ export function buildCanonicalCorpus(
       source_urls: sourceUrls,
       source_record_ids: sourceRecordIds,
       name: cleanText(local?.name) || cleanText(d1?.name),
+      description: cleanText(local?.description) || cleanText(d1?.description),
       cote: cleanText(local?.cote) || cleanText(d1?.cote),
       rights: { license_id: RIGHTS_LICENSE_ID, attribution, notes: RIGHTS_NOTES, complete: rightsComplete },
       systems,
@@ -481,8 +507,11 @@ export function buildCanonicalCorpus(
       d1_lineage: d1 ? { created_at: cleanText(d1.created_at) || null } : null,
       alias: aliasTarget ? {
         canonical_identity: aliasTarget.canonical,
-        basis: 'exact_source_identity_single_d1_member',
+        basis: ALIAS_BASIS,
         source_identity: aliasTarget.source,
+        group_id: aliasTarget.groupId,
+        reason: aliasTarget.reason,
+        group_members: aliasTarget.members,
         payload_etag_match: etagMatch,
       } : null,
     });
@@ -504,7 +533,7 @@ export function buildCanonicalCorpus(
       entity_kind: 'r2_non_corpus', numeric_id: null, primary_state: result.state, state_reason: result.reason,
       secondary_flags: sortedUnique(['outside_archive_identity_namespace', ...(malformed ? ['malformed_archive_key'] : [])]),
       media_type: object.object_class === 'social_content' ? 'social_content' : object.object_class === 'content_asset' ? 'content_asset' : 'other',
-      source_identity: null, source_datasets: [], source_urls: [], source_record_ids: [], name: '', cote: '',
+      source_identity: null, source_datasets: [], source_urls: [], source_record_ids: [], name: '', description: '', cote: '',
       rights: { license_id: 'not_applicable', attribution: '', notes: 'Non-corpus R2 object.', complete: false },
       systems,
       image: { expected_key: null, observed_r2_keys: [object.key], sampled_content_type: sample?.content_type ?? null,
@@ -532,7 +561,7 @@ export function buildCanonicalCorpus(
       schema_version: SCHEMA_VERSION, corpus_version: CORPUS_VERSION, observed_identity: identity,
       entity_kind: 'invalid_identity', numeric_id: null, primary_state: result.state, state_reason: result.reason,
       secondary_flags: ['invalid_identity_format'], media_type: 'unknown', source_identity: null,
-      source_datasets: [], source_urls: [], source_record_ids: [], name: '', cote: '',
+      source_datasets: [], source_urls: [], source_record_ids: [], name: '', description: '', cote: '',
       rights: { license_id: 'unknown', attribution: '', notes: 'Identity cannot be joined to archive source evidence.', complete: false },
       systems, image: { expected_key: null, observed_r2_keys: [], sampled_content_type: null,
         sampled_magic_kind: null, sampled_etag: null, sampled_size_bytes: null },
@@ -549,7 +578,10 @@ export function buildCanonicalCorpus(
       alias_identity: row.observed_identity,
       canonical_identity: row.alias!.canonical_identity,
       source_identity: row.alias!.source_identity,
-      basis: 'exact_source_identity_single_d1_member' as const,
+      basis: ALIAS_BASIS,
+      group_id: row.alias!.group_id,
+      reason: row.alias!.reason,
+      group_members: row.alias!.group_members,
       alias_systems: row.systems,
       canonical_systems: canonical.systems,
       payload_etag_match: row.alias!.payload_etag_match,

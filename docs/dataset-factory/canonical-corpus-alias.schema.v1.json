@@ -4,13 +4,19 @@
   "title": "Canonical Corpus v1 alias row",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "alias_identity", "canonical_identity", "source_identity", "basis", "alias_systems", "canonical_systems", "payload_etag_match"],
+  "required": ["schema_version", "alias_identity", "canonical_identity", "source_identity", "basis", "group_id", "reason", "group_members", "alias_systems", "canonical_systems", "payload_etag_match"],
   "properties": {
     "schema_version": { "const": "canonical_corpus_v1.0.0" },
     "alias_identity": { "type": "string", "pattern": "^mtl_archives_metadata_[0-9]+\\.json$" },
     "canonical_identity": { "type": "string", "pattern": "^mtl_archives_metadata_[0-9]+\\.json$" },
     "source_identity": { "type": "string", "minLength": 1 },
     "basis": { "const": "exact_source_identity_single_d1_member" },
+    "group_id": { "type": "string", "pattern": "^source-group:[a-f0-9]{64}$" },
+    "reason": { "type": "string", "minLength": 1 },
+    "group_members": {
+      "type": "array", "minItems": 2, "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^mtl_archives_metadata_[0-9]+\\.json$" }
+    },
     "alias_systems": { "$ref": "#/$defs/systems" },
     "canonical_systems": { "$ref": "#/$defs/systems" },
     "payload_etag_match": { "type": ["boolean", "null"] }

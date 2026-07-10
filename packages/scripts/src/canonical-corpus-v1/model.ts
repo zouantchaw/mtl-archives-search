@@ -9,6 +9,9 @@ export const SCHEMA_VERSION = 'canonical_corpus_v1.0.0';
 export const RIGHTS_LICENSE_ID = 'cc-by-4.0-derived';
 export const RIGHTS_NOTES =
   'Derived archive metadata; preserve Archives de la Ville de Montreal attribution and source links.';
+export const ALIAS_BASIS = 'exact_source_identity_single_d1_member';
+export const ALIAS_GROUP_REASON =
+  'Exact normalized source identity has exactly one production D1 member; all other members are reversible aliases.';
 
 export const PRIMARY_STATES = [
   'canonical_active',
