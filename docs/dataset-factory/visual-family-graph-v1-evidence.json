@@ -1,0 +1,284 @@
+{
+  "schema_version": "visual_family_graph_v1_evidence_1.0.0",
+  "issue": 67,
+  "base_commit": "98033727336d2cea98d6d51d54a378e87f76d271",
+  "commands": [
+    "npm run canonical-corpus-v1:collect -- --source local --local-input data/mtl_archives/manifest_clean.jsonl.gz --output data/mtl_archives/reports/visual_family_graph_v1/canonical_local",
+    "npm run dataset-factory:visual-family-input-v1",
+    "npm run dataset-factory:visual-family-input-v1 -- --reuse-public-snapshot",
+    "npm run dataset-factory:visual-family-phash-v1 -- --concurrency 8",
+    "npm run dataset-factory:visual-family-phash-v1 -- --concurrency 16",
+    "npm run dataset-factory:visual-family-phash-v1 -- --concurrency 8 --retry-failures",
+    "DATASET_FACTORY_FIXED_NOW=2026-07-10T20:00:00.000Z npm run dataset-factory:visual-family-phash-v1 -- --adopt-legacy-checkpoint",
+    "DATASET_FACTORY_FIXED_NOW=2026-07-10T20:10:00.000Z npm run dataset-factory:visual-family-graph-v1",
+    "npm run dataset-factory:visual-family-review-v1",
+    "DATASET_FACTORY_FIXED_NOW=2026-07-10T20:20:00.000Z npm run dataset-factory:visual-family-search-eval-v1",
+    "npm run dataset-factory:visual-family-check-v1",
+    "npm run dataset-factory:visual-family-self-test-v1",
+    "DATASET_FACTORY_FIXED_NOW=2026-07-10T20:10:00.000Z npm run dataset-factory:visual-family-graph-v1 -- --output data/mtl_archives/reports/visual_family_graph_v1/graph-repeat"
+  ],
+  "acquisition": {
+    "snapshot_id": "9235eb841d379f55973aa52f5558b264857bf35800871c85515a84bb227cb154",
+    "canonical_corpus_reference_snapshot_id": "d9239bffc50ad0b3c81e3f667ed4334a886bbcc62bfc70648a435ac4feeaeaa9",
+    "byte_equivalent_to_canonical_reference": false,
+    "corpus_input_sha256": "0f9971c70ac242c44ee80835b4c71e9f771e742d8c80603cf39bc1163cc951cc",
+    "local_inventory_sha256": "904c042227af8698a214ad98805281fde9f7aea2256cb39a63be3c4f4ff66140",
+    "sitemap_sha256": "65bec41907145ab2f1391b1cee53c99c9f97503dfbd060f3cce848db9470869e",
+    "production_details_sha256": "2c6f1eff84635e1d01cd49eeb13d103d11e97cf63360aa3a61c039a84ceec837",
+    "counts": {
+      "corpus_records": 18462,
+      "local_records": 14822,
+      "d1_records": 13499,
+      "production_only_records": 3640,
+      "aliases": 4963,
+      "source_groups": 13499,
+      "rights_complete": 18462,
+      "collection_failures": 0
+    },
+    "runtime_ms": {
+      "initial_public_acquisition": 40552,
+      "frozen_replay": 514
+    }
+  },
+  "phash": {
+    "feature_sha256": "9210a6459275ce8ec571577eeab97abc50a6468c73cca988edaa7ccd554a732a",
+    "failure_record_id_stream_sha256": "62f266e28e26fe97d03c5bc17169e319f70a2ab07f7d87c4a5eaeb0bea4f046b",
+    "feature_rows": 18462,
+    "successful": 18253,
+    "failures": 209,
+    "success_rate_percent": 98.867945,
+    "failure_codes": {
+      "thumbnail_source_unavailable": 209
+    },
+    "transform": {
+      "derivative_contract_id": "derivative-contract:870f1b571e0ecf6ea5e289dd63561c4fdc04a8c1a273ea87b684e14ba6070999",
+      "source": "public_read_only_thumb_api",
+      "width": 256,
+      "height": 256,
+      "fit": "scale-down",
+      "format": "jpeg",
+      "quality": 80,
+      "max_response_bytes": 1048576,
+      "normalized_pixels": "auto-oriented, white-flattened, contain-fit RGB 256x256"
+    },
+    "runtime_storage_cost": {
+      "initial_pass_elapsed_ms": 541052,
+      "failure_retry_elapsed_ms": 285978,
+      "frozen_replay_elapsed_ms": 231,
+      "identity_binding_adoption_elapsed_ms": 301,
+      "identity_binding_adopted_rows": 18462,
+      "identity_binding_fetches": 0,
+      "aggregate_record_elapsed_ms": 12349614,
+      "derivative_response_bytes_all_successes": 251127785,
+      "feature_bytes": 15758544,
+      "failure_bytes": 119112,
+      "attempts_recorded": 18895,
+      "original_object_transfer_avoided": true,
+      "paid_compute": false,
+      "cost_usd": 0
+    }
+  },
+  "graph": {
+    "nodes": 18462,
+    "edges": 345870,
+    "edge_sha256": "cc46d519252ebb4609d2a291f175a655bfbcb8f2779b581bf4e2c98f9aac0932",
+    "edges_by_type": {
+      "exact_payload": 1547,
+      "same_source_asset": 4963,
+      "near_duplicate_phash": 307113,
+      "visual_neighbor_clip": 1491,
+      "visual_neighbor_dino": 0,
+      "sequence_precedes": 12582,
+      "same_reportage": 10,
+      "same_aerial_run": 17409,
+      "alternate_crop": 690,
+      "same_subject_unverified": 65
+    },
+    "authority": {
+      "grouping_authoritative": 36491,
+      "review_required": 96614,
+      "uncertain": 212765,
+      "grouping_eligible": 36491,
+      "pHash_grouping_eligible": 0
+    },
+    "exact_payload_contract": {
+      "scope": "normalized_derivative_rgb_256x256_v1",
+      "source_object_bytes_claimed_equal": false,
+      "r2_etag_size_used_as_byte_proof": false
+    },
+    "same_source_asset_contract": {
+      "scope": "exact normalized archive source URL and source-row identity",
+      "current_normalized_derivative_equal": 1532,
+      "current_normalized_derivative_different": 3328,
+      "current_normalized_derivative_unavailable": 103,
+      "current_derivative_identity_claimed": false
+    },
+    "authoritative_aerial_runs": {
+      "runs": 317,
+      "records": 17726,
+      "linear_edge_contract": "n-1 same_aerial_run star edges per parsed run; every run occupies one component and one split",
+      "above_250": [
+        { "run_key": "aerial:VM97-S3-D08", "member_count": 880, "split": "train", "component_id": "leakage-component:01168d5e0c09490c4f8448fc1db1fe1ebbe4c0675e99c86b24b527393aebc091" },
+        { "run_key": "aerial:VM97-S3-D05", "member_count": 540, "split": "train", "component_id": "leakage-component:7d14fcd9227779157d78b817dcd51f93685a62f6307a77658764a05c1909279e" },
+        { "run_key": "aerial:VM97-S3-D04", "member_count": 472, "split": "train", "component_id": "leakage-component:0a110b48dcb3d606be54363427c4832b82df67cfb9baf1864b5b308df937224a" },
+        { "run_key": "aerial:VM97-S3-D15", "member_count": 337, "split": "train", "component_id": "leakage-component:5bd94395a16ebfa5f6552af46822f76c6cba9310964a8b8c6b586ee527fb9885" },
+        { "run_key": "aerial:VM97-S3-D13", "member_count": 269, "split": "train", "component_id": "leakage-component:57cac61d61ff5cace67480b9cfbb019793afc1f1b345b9a7f2126a4ae91a49" },
+        { "run_key": "aerial:VM94-B164", "member_count": 265, "split": "train", "component_id": "leakage-component:c0b6337713bf7ab60cff872ffdd261df920926ed6103e26a2674a8f57e8f9d17" },
+        { "run_key": "aerial:VM94-B162", "member_count": 256, "split": "train", "component_id": "leakage-component:0cc195ccda3caa4e041bd047a4e1fc1a56397d2e9aad4d99c83923a5ea325a6d" }
+      ]
+    },
+    "components": {
+      "total": 920,
+      "grouped": 450,
+      "grouped_records": 17992,
+      "singletons": 470,
+      "largest": 880,
+      "component_sha256": "e61641194922bf9253150368fe7f7d9bae077b7ea46babe1bc17703365389ae0",
+      "record_map_sha256": "b003b7033912e646abb70b6dd9771809061a8d2cc10720b5188aeb134140cbf4"
+    },
+    "splits": {
+      "records": {
+        "train": 15154,
+        "validation": 1408,
+        "test": 1900
+      },
+      "components": {
+        "train": 731,
+        "validation": 87,
+        "test": 102
+      },
+      "component_crossings": 0,
+      "split_sha256": "961d9e9ee1573a5178816ca8b36f6ecf150efba38386719d04f76c2035402f37"
+    },
+    "recommendations": {
+      "rows": 450,
+      "sha256": "5c3b7a3de6f2d8e203d22d60361c6f75e220c5f9a6e53789673b9f3b4d3cf023",
+      "deletion_instructions": 0,
+      "alternates_remain_addressable": true,
+      "component_wide_support_fields": true,
+      "confidence_counts": { "0.60": 139, "0.65": 2, "0.68": 258, "0.72": 17, "0.90": 4, "0.99": 30 },
+      "source_disagreement_capped": 141,
+      "sequence_only_capped": 266,
+      "canonical_tie_capped": 62,
+      "review_cited_234_member_pattern_confidence": 0.6,
+      "review_cited_222_member_pattern_confidence": 0.6
+    },
+    "runtime_storage_cost": {
+      "elapsed_ms": 232399,
+      "registered_bundle_bytes": 213466897,
+      "paid_compute": false,
+      "cost_usd": 0
+    }
+  },
+  "review": {
+    "packet_pairs": 120,
+    "inspected_pairs": 116,
+    "unreviewed_abstentions": 4,
+    "positive": 84,
+    "negative": 32,
+    "abstain": 4,
+    "adjudication_sha256": "1a57357ed94a5aa2a84013ae3657e4733b13aa68ef4c4ba2c39336ad4de6394d",
+    "packet_sha256": "80a64f25a6bcc240fb56ffdad5f346b64dd126b73a796829640675973b45619e",
+    "precision_sha256": "f925369e94896e3d72cc525e03d0af731ad386a0bf8d52de6b6ed0533bf2d379",
+    "key_precision": {
+      "exact_payload": "12/12; Wilson95 0.757506-1.0",
+      "same_source_asset_current_visual_agreement": "6/12; Wilson95 0.253782-0.746218",
+      "near_duplicate_phash_0": "19/20; Wilson95 0.763869-0.991119; non-grouping after one false match",
+      "sequence_precedes": "12/12; Wilson95 0.757506-1.0",
+      "same_aerial_run": "24/24 decided, 2 unreviewed abstentions; Wilson95 0.862024-1.0"
+    },
+    "reviewer_independent_of_implementation": true,
+    "independent_review_pairs": 120,
+    "independent_review_disagreements": 0,
+    "remediation_review_status": "passed",
+    "remediation_reviewed_head": "ca9d835949f208444f036a851cc8c1e8546c1c7b",
+    "remediation_review_id": "PRR_kwDOQFNJR88AAAABFqJIlg",
+    "remediation_review_url": "https://github.com/zouantchaw/mtl-archives-search/pull/76#pullrequestreview-4674701462",
+    "remediation_remaining_findings": 0,
+    "remediation_resolved_threads": 5,
+    "remediation_unresolved_threads": 0,
+    "threshold_leakage_gate": "passed"
+  },
+  "models": {
+    "clip": {
+      "model_id": "Xenova/clip-vit-base-patch32",
+      "query_records": 500,
+      "production_index_members": 18382,
+      "source_sha256": "6102eb61b0fbf40fd02f8b58d02b18f515e28eed118236f97cfcac5c05ea0ee8",
+      "similarity_is_historical_identity": false
+    },
+    "dino": {
+      "status": "not_run_no_approved_paid_compute_gate",
+      "edges": 0,
+      "cost_usd": 0
+    }
+  },
+  "search_duplicate_rate_at_10": {
+    "candidate_rows": 1756,
+    "tasks": 75,
+    "task_mode_rows": 223,
+    "unmapped_candidate_records": 0,
+    "semantic": 0.006757,
+    "smart": 0.076333,
+    "visual": 0.177772,
+    "candidate_sha256": "8e9bbfedfc6cc29869aa6b5afac83f610df31e28b8ae11d94de2fef196d2b619",
+    "metrics_sha256": "1bc959c8cf280d3f0744c114a36c91d5dcc82385ecbeb7f24f6c4f211354b92a",
+    "mutable_search_claim": false
+  },
+  "determinism": {
+    "full_graph_repeated": true,
+    "byte_identical_files": 8,
+    "repeat_elapsed_ms": 201761
+  },
+  "artifact_registry": {
+    "entries": 87,
+    "input_bundle_sha256": "e45cc038cfe3d9bffdbe51eac230511a81e51198c14e390e0b38279a09e1a79e",
+    "phash_bundle_sha256": "237a425800e706ea922e420099344579d4d51f8ca17b9ca39be0553539d04931",
+    "review_sha256": "1a57357ed94a5aa2a84013ae3657e4733b13aa68ef4c4ba2c39336ad4de6394d",
+    "graph_bundle_sha256": "a4f66eee3b39573977ab3694cfde5fbe4db62be4f09c77120316d2d7b56aa8cc",
+    "search_bundle_sha256": "744b1b2e9c68889e934b921db9361cfb43098efa0ebfd2c4851bb183bbe8e00e"
+  },
+  "verification": {
+    "scripts_typecheck": "pass",
+    "repository_tests": { "passed": 23, "failed": 0 },
+    "visual_family_self_test": { "fixture_records": 259, "large_aerial_run_records": 251, "adversarial_cases": 18, "status": "pass" },
+    "visual_family_live_checker": "pass",
+    "canonical_corpus_fixture_smoke": "pass",
+    "canonical_corpus_negative_tests": 72,
+    "canonical_corpus_r2_bound_self_test": "pass",
+    "artifact_registry_adversarial_tests": 14,
+    "artifact_registry_required_bundles_verified": 5,
+    "structured_parse": { "files": 44, "parsed_values": 861626, "status": "pass" },
+    "tracked_files_only_reproduction": "pass",
+    "independent_arithmetic_recalculation": "pass",
+    "diff_secret_signed_url_mutation_scope_size_audits": "pass",
+    "full_workspace_typecheck": {
+      "status": "three pre-existing unrelated errors",
+      "errors": 3,
+      "paths": [
+        "apps/next-app/components/ClerkLocalized.tsx",
+        "apps/next-app/components/ClerkScopedProvider.tsx"
+      ],
+      "changed_by_issue_67": false
+    }
+  },
+  "safety": {
+    "production_writes": 0,
+    "deployments": 0,
+    "ranking_changes": 0,
+    "deletion_instructions": 0,
+    "paid_compute_launched": false,
+    "credentials_moved_or_persisted": false
+  },
+  "residual_limitations": [
+    "The public API acquisition is a new content-addressed snapshot and is not proven byte-equivalent to issue #66's removed ignored inputs.",
+    "209 records have individually enumerated stable thumbnail-source failures and therefore no pHash or normalized-pixel feature.",
+    "Exact payload means exact versioned normalized 256x256 RGB derivative pixels, not original R2 object bytes.",
+    "Exact source-reference aliases show substantial current derivative disagreement; grouping is conservative provenance isolation, not a current-pixel identity claim.",
+    "All pHash edges are non-grouping after a reviewed distance-0 false match.",
+    "CLIP neighbor evidence covers 500 frozen queries rather than full-corpus neighbor retrieval; production index membership is reported separately.",
+    "DINO was not run because no approved no-cost compute gate was available.",
+    "Independent clean re-review passed at exact head ca9d835949f208444f036a851cc8c1e8546c1c7b with no remaining P0-P3 findings; all five prior review threads are resolved and the threshold/leakage gate passed.",
+    "Search duplicate rates describe a frozen candidate artifact, not later mutable production ranking or index state."
+  ]
+}

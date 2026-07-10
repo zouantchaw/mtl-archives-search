@@ -247,7 +247,7 @@ Ignored reports in data/mtl_archives/reports/
 ```
 
 - Dataset Factory v0 is an offline durability layer for search-quality evaluation and future training data. It does not deploy, mutate Cloudflare resources, publish social content, or require credentials for its tracked fixture smoke.
-- The real generated artifacts are intentionally gitignored because they include large report trees. Their reproducibility contract is tracked as an 82-entry acyclic phase graph in `docs/dataset-factory/artifact-registry.v0.jsonl`: 76 Dataset Factory v0 entries plus six Canonical Corpus v1 bundles. Explicit human decision files are graph inputs rather than outputs falsely attributed to automation, and external snapshots disclose mutable acquisition boundaries.
+- The real generated artifacts are intentionally gitignored because they include large report trees. Their reproducibility contract is tracked as an 87-entry acyclic phase graph in `docs/dataset-factory/artifact-registry.v0.jsonl`: 76 Dataset Factory v0 entries, six Canonical Corpus v1 bundles, and five Visual Family Graph v1 bundles. Explicit human decision files are graph inputs rather than outputs falsely attributed to automation, and external snapshots disclose mutable acquisition boundaries.
 - `npm run dataset-factory:artifacts:check` validates the published Draft 2020-12 schema, graph semantics, locator containment, and root command wiring. `npm run dataset-factory:artifacts:self-test` proves 14 control/adversarial cases, including cycle, overlap, and leaf/parent symlink rejection. `--verify-files --artifact-root /absolute/path/to/populated/repo` additionally verifies real-path containment and every registered ignored artifact by kind, SHA-256, file count, byte count, and row count where meaningful.
 - `npm run dataset-factory:clock:self-test` verifies strict RFC 3339 fixed timestamps under both UTC and America/Toronto; date-only and timezone-less inputs fail.
 - `docs/dataset-factory/fixtures/v0-smoke/` contains small tracked fixtures that mirror the contracts needed by the v0 workflows. `npm run dataset-factory:smoke-v0` runs the v0 scripts against those fixtures and a local mock search API with a fixed clock, exact count/content assertions, and a committed tree hash, proving that a clean checkout can exercise the workflow deterministically without copying generated report trees.
@@ -270,6 +270,29 @@ CLIP Vectorize IDs ────┘
 - The Draft 2020-12 summary schema and checker recompute every summary family plus row systems, flags, aliases, media evidence, and primary states. Generated artifact locators use the same realpath containment boundary as source lineage.
 - Full generated artifacts remain ignored. The tracked generated summary and six registry bundles carry current counts, hashes, lineage, and the explicit `9696` decision.
 - Future production convergence is not part of this workflow. `docs/dataset-factory/canonical-corpus-v1-convergence-plan.md` requires reviewed transactions, backups, shadow indexes, rollback, and stop conditions before any separately approved mutation.
+
+### 10. Visual Family Graph v1 (Typed Leakage Evidence)
+
+```text
+tracked local normalization ─┐
+bounded public API snapshot ─┼─▶ 18,462 identity/provenance rows
+bounded 256px thumbnails ────┴─▶ DCT-pHash + exact normalized pixels
+                                      │
+source aliases + sequence keys + frozen CLIP-500 evidence
+                                      │
+                                      ▼
+typed edges ─▶ grouping-authoritative components ─▶ split map + canonical/alternate recommendations
+     │                    │
+     └─ review/uncertain ─┴─▶ stratified image packet + per-type/threshold precision
+```
+
+- `packages/scripts/src/visual-family-graph-v1/` owns the public acquisition, resumable pHash extraction, typed graph build, review rendering, search duplicate evaluation, checker, and adversarial self-test.
+- The public API acquisition is content-addressed independently. It references Canonical Corpus v1 snapshot `d9239...` as an identity/count contract but explicitly does not claim byte equivalence to the removed issue-66 ignored inputs.
+- The pHash transform is bounded to 256px, a 1 MiB streaming response cap with cancellation, decoded resize enforcement, and no original-object staging. Resume rows are identity-bound to record/image, acquisition/input, feature version, and derivative contract. Exact payload evidence means exact normalized derivative pixels, not equality of original R2 bytes.
+- V1 preserves every parsed authoritative aerial run with linear `n-1` run edges and no size cap. Grouping eligibility is equivalent to grouping-authoritative status, and canonical confidence reports component-wide support, derivative disagreement, sequence-only membership, and selection ambiguity.
+- Only `grouping_eligible=true` edges can form leakage components. CLIP/DINO similarity, reportage, crop candidates, and `same_subject_unverified` remain review-only or uncertain. Similarity never establishes historical identity.
+- Benchmark splits hash complete connected components and the checker reconstructs the graph independently, requiring all 18,462 records to be covered and zero train/validation/test component crossings.
+- DINO remains behind the paid-compute gate. V1 launches no GPU, deploy, production write, reindex, ranking change, image deletion, or external send.
 
 ## D1 Schema
 
@@ -323,6 +346,7 @@ mtl-archives-search/
 │       └── src/
 │           ├── db/               # D1 seed generation
 │           ├── dataset-factory/  # Offline evaluation/training-data workflows
+│           ├── visual-family-graph-v1/ # Typed duplicate/sequence/leakage graph
 │           └── vectorize/        # Embedding ingestion
 ├── pipelines/
 │   ├── etl/                      # Python: clean, export, audit
