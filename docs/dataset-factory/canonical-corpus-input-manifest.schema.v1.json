@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mtlarchives.com/schemas/canonical-corpus-input-manifest.v1.json",
+  "title": "Canonical Corpus v1 verified source input manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "mode", "source_snapshot_id", "inputs"],
+  "properties": {
+    "schema_version": { "const": "canonical_corpus_input_manifest_v1" },
+    "mode": { "enum": ["live", "fixture"] },
+    "source_snapshot_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "inputs": {
+      "type": "array",
+      "minItems": 12,
+      "maxItems": 12,
+      "items": { "$ref": "#/$defs/input" }
+    }
+  },
+  "$defs": {
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "kind", "sha256", "byte_count"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["json", "jsonl"] },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "byte_count": { "type": "integer", "minimum": 0 },
+        "row_count": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

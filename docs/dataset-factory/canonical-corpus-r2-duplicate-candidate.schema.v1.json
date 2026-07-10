@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mtlarchives.com/schemas/canonical-corpus-r2-duplicate-candidate.v1.json",
+  "title": "Canonical Corpus v1 R2 duplicate candidate row",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "candidate_group_id", "basis", "etag", "etag_kind", "size_bytes", "object_classes", "keys", "payload_equality_claimed"],
+  "properties": {
+    "schema_version": { "const": "canonical_corpus_v1.0.0" },
+    "candidate_group_id": { "type": "string", "pattern": "^r2-etag-size:[a-f0-9]{64}$" },
+    "basis": { "const": "same_etag_and_size_candidate_only" },
+    "etag": { "type": "string", "minLength": 1 },
+    "etag_kind": { "enum": ["single_part_or_opaque", "multipart"] },
+    "size_bytes": { "type": "integer", "minimum": 0 },
+    "object_classes": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "enum": ["archive_image", "social_content", "content_asset", "other"] }
+    },
+    "keys": { "type": "array", "minItems": 2, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+    "payload_equality_claimed": { "const": false }
+  }
+}

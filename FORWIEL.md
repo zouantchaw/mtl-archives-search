@@ -17,14 +17,17 @@ The key engineering idea is separation of durable code from bulky generated evid
 
 Dataset Factory is the offline layer for making search quality measurable. It builds review packets, calibration labels, benchmark tasks, active-learning queues, quality-repair queues, visual-family graphs, research-enrichment packets, search judgments, and reward-data rows.
 
-Issue #65 made this durable:
+Issues #65 and #66 made this durable and identity-explicit:
 
-- `docs/dataset-factory/artifact-registry.v0.jsonl` records every required ignored artifact as a 76-entry acyclic phase graph with stable ID, schema version, SHA-256, file/row counts, lineage, storage/path class, generation method/command, dependencies, rights boundary, and timestamp. Human-authored review decisions are explicit immutable inputs; remote/live snapshots state that their commands acquire new state instead of reconstructing archived bytes.
+- `docs/dataset-factory/artifact-registry.v0.jsonl` records the original 76 Dataset Factory artifacts plus six Canonical Corpus source/build bundles as an 82-entry acyclic graph with stable IDs, SHA-256, counts, lineage, commands, dependencies, rights boundaries, and timestamps.
 - `docs/dataset-factory/fixtures/v0-smoke/` has tiny tracked fixture rows that let the workflow run in a clean checkout.
 - `npm run dataset-factory:smoke-v0` runs the v0 chain against those fixtures and a local mock search API. It fixes the fixture clock, asserts exact rows/content, and checks a committed output hash; it proves deterministic contract wiring, not live search quality.
 - `npm run dataset-factory:artifacts:self-test` exercises 14 contract/adversarial cases, including a valid in-root file, path-component symlinks, and overlapping members.
 - `npm run dataset-factory:clock:self-test` proves strict timezone-qualified fixed-clock parsing under UTC and America/Toronto.
 - `npm run dataset-factory:artifacts:check -- --verify-files --artifact-root /path/to/populated/repo` proves the registry still matches the real ignored artifacts.
+- `npm run canonical-corpus-v1:fixture-smoke` exercises all 12 reconciliation states twice, checks exact hashes, and uses no credentials or network.
+- `npm run canonical-corpus-v1:self-test` proves 72 negative lineage, path, summary, raw-provenance, alias, state, and flag cases, including coordinated refreshed-hash forgeries. `npm run canonical-corpus-v1:r2-sample:self-test` proves strict bounds and the expected 4-key fixture/54-key frozen-live plans without credentials or network.
+- `npm run canonical-corpus-v1:collect -- --source all --env-file "$MTL_ARCHIVES_ENV_FILE"` captures local/D1/R2/both-Vectorize identity evidence without production writes. `canonical-corpus-v1:build` and `:check` produce and validate the ignored full reconciliation. Exact current counts and hashes live in the generated `docs/dataset-factory/canonical-corpus-v1-snapshot-summary.json`.
 
 The lesson: if an important workflow depends on ignored files, either track the files, track a registry that proves what the files are, or track small fixtures that prove the code can still run. Here we do the last two.
 
@@ -45,6 +48,11 @@ npm run dataset-factory:artifacts:self-test
 npm run dataset-factory:clock:self-test
 npm run dataset-factory:artifacts:check -- --verify-files --artifact-root /absolute/path/to/populated/repo
 npm run dataset-factory:smoke-v0
+npm run canonical-corpus-v1:fixture-smoke
+npm run canonical-corpus-v1:self-test
+npm run canonical-corpus-v1:r2-sample:self-test
+npm run canonical-corpus-v1:build
+npm run canonical-corpus-v1:check
 ```
 
 ## Pitfalls To Avoid

@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mtlarchives.com/schemas/canonical-corpus-row.v1.json",
+  "title": "Canonical Corpus v1 reconciliation row",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "corpus_version", "observed_identity", "entity_kind", "numeric_id",
+    "primary_state", "state_reason", "secondary_flags", "media_type", "source_identity",
+    "source_datasets", "source_urls", "source_record_ids", "name", "description", "cote", "rights", "systems",
+    "image", "d1_enrichment", "d1_lineage", "alias"
+  ],
+  "properties": {
+    "schema_version": { "const": "canonical_corpus_v1.0.0" },
+    "corpus_version": { "const": "canonical_corpus_v1" },
+    "observed_identity": { "type": "string", "minLength": 1 },
+    "entity_kind": { "enum": ["record", "r2_non_corpus", "invalid_identity"] },
+    "numeric_id": { "type": ["integer", "null"], "minimum": 0 },
+    "primary_state": {
+      "enum": [
+        "canonical_active", "canonical_document", "local_only_candidate", "production_only_candidate",
+        "missing_r2_object", "orphan_r2_object", "text_vector_missing", "clip_vector_missing",
+        "vector_only_or_stale", "duplicate_or_alias", "excluded_with_reason", "unresolved_blocker"
+      ]
+    },
+    "state_reason": { "type": "string", "minLength": 1 },
+    "secondary_flags": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+    "media_type": { "enum": ["archive_image", "document", "social_content", "content_asset", "other", "unknown"] },
+    "source_identity": { "type": ["string", "null"] },
+    "source_datasets": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "source_urls": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "source_record_ids": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "name": { "type": "string" },
+    "description": { "type": "string" },
+    "cote": { "type": "string" },
+    "rights": {
+      "type": "object", "additionalProperties": false,
+      "required": ["license_id", "attribution", "notes", "complete"],
+      "properties": {
+        "license_id": { "type": "string", "minLength": 1 },
+        "attribution": { "type": "string" },
+        "notes": { "type": "string", "minLength": 1 },
+        "complete": { "type": "boolean" }
+      }
+    },
+    "systems": {
+      "type": "object", "additionalProperties": false,
+      "required": ["local", "d1", "r2", "text_vector", "clip_vector"],
+      "properties": {
+        "local": { "type": "boolean" }, "d1": { "type": "boolean" }, "r2": { "type": "boolean" },
+        "text_vector": { "type": "boolean" }, "clip_vector": { "type": "boolean" }
+      }
+    },
+    "image": {
+      "type": "object", "additionalProperties": false,
+      "required": ["expected_key", "observed_r2_keys", "sampled_content_type", "sampled_magic_kind", "sampled_etag", "sampled_size_bytes"],
+      "properties": {
+        "expected_key": { "type": ["string", "null"] },
+        "observed_r2_keys": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "sampled_content_type": { "type": ["string", "null"] },
+        "sampled_magic_kind": { "type": ["string", "null"] },
+        "sampled_etag": { "type": ["string", "null"] },
+        "sampled_size_bytes": { "type": ["integer", "null"], "minimum": 0 }
+      }
+    },
+    "d1_enrichment": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["rotation", "vlm_caption", "ocr_text", "geocode", "trust_score", "taxonomy", "image_quality"],
+          "properties": {
+            "rotation": { "type": "boolean" }, "vlm_caption": { "type": "boolean" }, "ocr_text": { "type": "boolean" },
+            "geocode": { "type": "boolean" }, "trust_score": { "type": "boolean" }, "taxonomy": { "type": "boolean" },
+            "image_quality": { "type": "boolean" }
+          }
+        }
+      ]
+    },
+    "d1_lineage": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object", "additionalProperties": false, "required": ["created_at"],
+          "properties": { "created_at": { "type": ["string", "null"] } }
+        }
+      ]
+    },
+    "alias": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["canonical_identity", "basis", "source_identity", "group_id", "reason", "group_members", "payload_etag_match"],
+          "properties": {
+            "canonical_identity": { "type": "string", "minLength": 1 },
+            "basis": { "const": "exact_source_identity_single_d1_member" },
+            "source_identity": { "type": "string", "minLength": 1 },
+            "group_id": { "type": "string", "pattern": "^source-group:[a-f0-9]{64}$" },
+            "reason": { "type": "string", "minLength": 1 },
+            "group_members": {
+              "type": "array", "minItems": 2, "uniqueItems": true,
+              "items": { "type": "string", "pattern": "^mtl_archives_metadata_[0-9]+\\.json$" }
+            },
+            "payload_etag_match": { "type": ["boolean", "null"] }
+          }
+        }
+      ]
+    }
+  }
+}

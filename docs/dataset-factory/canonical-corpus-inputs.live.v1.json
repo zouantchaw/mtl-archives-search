@@ -1,0 +1,19 @@
+{
+  "schema_version": "canonical_corpus_input_manifest_v1",
+  "mode": "live",
+  "source_snapshot_id": "d9239bffc50ad0b3c81e3f667ed4334a886bbcc62bfc70648a435ac4feeaeaa9",
+  "inputs": [
+    { "path": "local-manifest.jsonl", "kind": "jsonl", "sha256": "904c042227af8698a214ad98805281fde9f7aea2256cb39a63be3c4f4ff66140", "byte_count": 17154920, "row_count": 14822 },
+    { "path": "local-snapshot.json", "kind": "json", "sha256": "c5a157db80ad7b8c15f4078d2f80418754ff9fc267fed06b3d2922945fd40bec", "byte_count": 643 },
+    { "path": "d1-manifest.jsonl", "kind": "jsonl", "sha256": "1670952cea84c3705fcf6f144ce527b88523b7311666de4af819a7c0d3675fdf", "byte_count": 13325052, "row_count": 13499 },
+    { "path": "d1-query-manifest.json", "kind": "json", "sha256": "5db626c3425d3262ed5410c22facc3d43f4f32b7564fdd8c1665434b493075b7", "byte_count": 1496 },
+    { "path": "d1-snapshot.json", "kind": "json", "sha256": "3ed0810067a27c23b262fc4716eb1b64b9c432dc3d421ed2a4430529792cbcca", "byte_count": 6020 },
+    { "path": "r2-objects.jsonl", "kind": "jsonl", "sha256": "a5bc82219315f64183c08d94013d868aa481706d6c065a49a4e50009105b2c47", "byte_count": 6809359, "row_count": 18600 },
+    { "path": "r2-samples.jsonl", "kind": "jsonl", "sha256": "10ec5ff636e48c3f94a9e5ef70193cb44f662fb01e81a1dce64064b15578bd83", "byte_count": 20959, "row_count": 54 },
+    { "path": "r2-snapshot.json", "kind": "json", "sha256": "706d49a789bdcbaa1089653b019463a0abf49e0ced8e7b4ba103738f06d8e262", "byte_count": 1471 },
+    { "path": "text-vector-ids.jsonl", "kind": "jsonl", "sha256": "037da147334fcf32c7b49de7bd27e5e42bfd915edb9daeecbc790e639986bbc1", "byte_count": 3006170, "row_count": 18464 },
+    { "path": "text-vector-index.json", "kind": "json", "sha256": "7c0cea4f37dd1bcb641685f3de6609be65af47c3ece969e80d665b9868cf9c1e", "byte_count": 1065 },
+    { "path": "clip-vector-ids.jsonl", "kind": "jsonl", "sha256": "acb23830f1318bdee39cbf449c812bd5fdf49f77ef89c0fc28c4202cd60c777c", "byte_count": 2992980, "row_count": 18382 },
+    { "path": "clip-vector-index.json", "kind": "json", "sha256": "72f27b79c39c63a513e297ce6efdb7c664a725a8df932aad30b4bc44cca47d3b", "byte_count": 1058 }
+  ]
+}

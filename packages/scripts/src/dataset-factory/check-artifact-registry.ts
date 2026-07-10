@@ -66,6 +66,7 @@ type ArtifactStats = {
 type ValidationOptions = {
   artifactRoot: string;
   verifyFiles: boolean;
+  verifyIds: Set<string> | null;
   rootScripts: Set<string>;
 };
 
@@ -376,8 +377,11 @@ function validateRegistry(entries: RegistryEntry[], options: ValidationOptions):
   const byId = validateDependencyGraph(entries);
   validateGenerationCommands(entries, options.rootScripts);
   if (options.verifyFiles) {
-    entries.forEach((entry) => verifyArtifact(entry, options.artifactRoot));
-    validateArtifactMembershipUniqueness(entries, options.artifactRoot);
+    const entriesToVerify = options.verifyIds?.size
+      ? entries.filter((entry) => options.verifyIds!.has(entry.stable_id))
+      : entries;
+    entriesToVerify.forEach((entry) => verifyArtifact(entry, options.artifactRoot));
+    validateArtifactMembershipUniqueness(entriesToVerify, options.artifactRoot);
   }
   return byId;
 }
@@ -538,6 +542,7 @@ function main(): void {
       registry: { type: 'string', default: DEFAULT_REGISTRY },
       'artifact-root': { type: 'string', default: MONOREPO_ROOT },
       'verify-files': { type: 'boolean', default: false },
+      'verify-required-only': { type: 'boolean', default: false },
       'self-test': { type: 'boolean', default: false },
       require: { type: 'string', default: '' },
     },
@@ -545,13 +550,17 @@ function main(): void {
   const registryPath = path.resolve(values.registry!);
   const artifactRoot = path.resolve(values['artifact-root']!);
   const entries = parseRegistry(registryPath);
+  const requiredIds = values.require!.split(',').map((value) => value.trim()).filter(Boolean);
+  if (values['verify-required-only'] && requiredIds.length === 0) {
+    throw new Error('--verify-required-only requires at least one --require artifact ID');
+  }
   const options = {
     artifactRoot,
     verifyFiles: values['verify-files']!,
+    verifyIds: values['verify-required-only'] ? new Set(requiredIds) : null,
     rootScripts: loadRootScripts(),
   };
   const byId = validateRegistry(entries, options);
-  const requiredIds = values.require!.split(',').map((value) => value.trim()).filter(Boolean);
   for (const id of requiredIds) {
     if (!byId.has(id)) throw new Error(`Required artifact is not registered: ${id}`);
   }
@@ -561,6 +570,7 @@ function main(): void {
     registry: path.relative(MONOREPO_ROOT, registryPath),
     entries: entries.length,
     verified_files: values['verify-files'],
+    verified_ids: values['verify-files'] && values['verify-required-only'] ? requiredIds : null,
     artifact_root: values['verify-files'] ? artifactRoot : null,
     self_tests: selfTests,
   }));

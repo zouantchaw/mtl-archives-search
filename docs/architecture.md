@@ -247,11 +247,29 @@ Ignored reports in data/mtl_archives/reports/
 ```
 
 - Dataset Factory v0 is an offline durability layer for search-quality evaluation and future training data. It does not deploy, mutate Cloudflare resources, publish social content, or require credentials for its tracked fixture smoke.
-- The real generated artifacts are intentionally gitignored because they include large report trees. Their reproducibility contract is tracked as a 76-entry acyclic phase graph in `docs/dataset-factory/artifact-registry.v0.jsonl`; explicit human decision files are graph inputs rather than outputs falsely attributed to automation, and external snapshots disclose mutable acquisition boundaries. Search judgments use 3 entries for 12 files; quality repair uses 25 entries for 636 files.
+- The real generated artifacts are intentionally gitignored because they include large report trees. Their reproducibility contract is tracked as an 82-entry acyclic phase graph in `docs/dataset-factory/artifact-registry.v0.jsonl`: 76 Dataset Factory v0 entries plus six Canonical Corpus v1 bundles. Explicit human decision files are graph inputs rather than outputs falsely attributed to automation, and external snapshots disclose mutable acquisition boundaries.
 - `npm run dataset-factory:artifacts:check` validates the published Draft 2020-12 schema, graph semantics, locator containment, and root command wiring. `npm run dataset-factory:artifacts:self-test` proves 14 control/adversarial cases, including cycle, overlap, and leaf/parent symlink rejection. `--verify-files --artifact-root /absolute/path/to/populated/repo` additionally verifies real-path containment and every registered ignored artifact by kind, SHA-256, file count, byte count, and row count where meaningful.
 - `npm run dataset-factory:clock:self-test` verifies strict RFC 3339 fixed timestamps under both UTC and America/Toronto; date-only and timezone-less inputs fail.
 - `docs/dataset-factory/fixtures/v0-smoke/` contains small tracked fixtures that mirror the contracts needed by the v0 workflows. `npm run dataset-factory:smoke-v0` runs the v0 scripts against those fixtures and a local mock search API with a fixed clock, exact count/content assertions, and a committed tree hash, proving that a clean checkout can exercise the workflow deterministically without copying generated report trees.
 - Missing required artifacts should fail loudly through the Dataset Factory artifact helpers rather than silently producing empty downstream reports.
+
+### 9. Canonical Corpus v1 (Read-Only Reconciliation)
+
+```text
+tracked local manifest ─┐
+production D1 SELECTs ─┤
+exact R2 list + sample ├─▶ canonical-corpus-v1 build ─▶ manifest / reconciliation / aliases / unresolved / summary / hashes
+text Vectorize IDs ────┤
+CLIP Vectorize IDs ────┘
+```
+
+- `packages/scripts/src/canonical-corpus-v1/` normalizes identities, captures read-only snapshots, assigns one primary state per observed identity, and checks the observed universe independently. Mode-specific tracked manifests pin exactly 12 raw inputs by kind/path/hash/bytes/rows; build and check reject missing, extra, symlinked, or escaping inputs before reading them.
+- Metadata and archive-image IDs join by the captured decimal token, but canonical precedence never uses numeric order. Exact normalized source identity plus exactly one production D1 member is the only automatic alias-primary rule; ambiguous groups remain unresolved.
+- Record provenance is independently reconstructed from verified local and D1 inputs before generated rows are trusted. For shared identities, normalized local primary source, local datasets/record IDs, descriptive fields, and attribution are authoritative; normalized D1 source is retained as an alternate URL and supplies only missing fields. Alias-map groups carry a source hash ID, rule reason, and every reversible member, and must have exactly one raw D1 target.
+- R2 is separated into archive images, social content, content assets, and other objects. Key/size/ETag/last-modified coverage is exact; HEAD/content-type and 32-byte magic evidence is a deterministic bounded sample with a maximum of four selections per stratum, 64 selected keys, and 128 HEAD/ranged-GET requests.
+- The Draft 2020-12 summary schema and checker recompute every summary family plus row systems, flags, aliases, media evidence, and primary states. Generated artifact locators use the same realpath containment boundary as source lineage.
+- Full generated artifacts remain ignored. The tracked generated summary and six registry bundles carry current counts, hashes, lineage, and the explicit `9696` decision.
+- Future production convergence is not part of this workflow. `docs/dataset-factory/canonical-corpus-v1-convergence-plan.md` requires reviewed transactions, backups, shadow indexes, rollback, and stop conditions before any separately approved mutation.
 
 ## D1 Schema
 

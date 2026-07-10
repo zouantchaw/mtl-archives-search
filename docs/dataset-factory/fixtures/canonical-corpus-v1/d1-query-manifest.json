@@ -1,0 +1,1 @@
+{"binding":"DB","database":"fixture","mutation_guard":"Fixture mirrors SELECT-only output; no command is executed.","schema_version":"canonical_corpus_v1.0.0","statements":[{"purpose":"fixture","sql":"SELECT * FROM manifest ORDER BY metadata_filename"}]}

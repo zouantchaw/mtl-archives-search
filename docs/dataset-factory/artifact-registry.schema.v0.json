@@ -23,7 +23,7 @@
   "properties": {
     "stable_id": {
       "type": "string",
-      "pattern": "^dfv0_[a-z0-9_]+$"
+      "pattern": "^(dfv0|ccv1)_[a-z0-9_]+$"
     },
     "schema_version": {
       "const": "dataset_factory_artifact_registry_v0"
@@ -68,7 +68,7 @@
         "description": { "type": "string", "minLength": 1 },
         "source_artifact_ids": {
           "type": "array",
-          "items": { "type": "string", "pattern": "^dfv0_[a-z0-9_]+$" },
+          "items": { "type": "string", "pattern": "^(dfv0|ccv1)_[a-z0-9_]+$" },
           "uniqueItems": true
         },
         "source_urls": {
@@ -125,7 +125,7 @@
         "acquisition_boundary": { "type": "string", "minLength": 1 },
         "human_input_ids": {
           "type": "array",
-          "items": { "type": "string", "pattern": "^dfv0_[a-z0-9_]+$" },
+          "items": { "type": "string", "pattern": "^(dfv0|ccv1)_[a-z0-9_]+$" },
           "uniqueItems": true
         }
       },
@@ -156,7 +156,7 @@
     },
     "dependency_ids": {
       "type": "array",
-      "items": { "type": "string", "pattern": "^dfv0_[a-z0-9_]+$" },
+      "items": { "type": "string", "pattern": "^(dfv0|ccv1)_[a-z0-9_]+$" },
       "uniqueItems": true
     },
     "required_by": {
