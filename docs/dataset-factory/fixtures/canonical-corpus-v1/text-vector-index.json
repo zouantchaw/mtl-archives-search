@@ -1,0 +1,1 @@
+{"collection_mode":"tracked_fixture_no_network","corpus_version":"canonical_corpus_v1","index":{"config":{"dimensions":1024,"metric":"cosine"},"name":"mtl-archives-fixture"},"model_contract":"@cf/baai/bge-m3","pagination":{"count_agreement":true,"enumerated_count":8,"reported_total_count":8,"unique_count":8},"schema_version":"canonical_corpus_v1.0.0"}
