@@ -81,6 +81,8 @@
     "canonical-corpus-v1:build": "tsx src/canonical-corpus-v1/build-canonical-corpus-v1.ts",
     "canonical-corpus-v1:check": "tsx src/canonical-corpus-v1/check-canonical-corpus-v1.ts",
     "canonical-corpus-v1:fixture-smoke": "tsx src/canonical-corpus-v1/smoke-canonical-corpus-v1.ts",
+    "canonical-corpus-v1:self-test": "tsx src/canonical-corpus-v1/self-test-canonical-corpus-v1.ts",
+    "canonical-corpus-v1:r2-sample:self-test": "tsx src/canonical-corpus-v1/self-test-r2-sample-plan.ts",
     "image-orientation:audit": "tsx src/analysis/image-orientation-audit.ts",
     "image-artifacts:audit": "tsx src/analysis/image-artifact-audit.ts",
     "image-dedupe:audit": "tsx src/analysis/image-dedupe-audit.ts",

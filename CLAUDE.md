@@ -52,6 +52,8 @@ npm run dataset-factory:clock:self-test
 npm run dataset-factory:artifacts:check -- --verify-files --artifact-root /absolute/path/to/populated/repo
 npm run dataset-factory:smoke-v0 # Fixture contract smoke; no Cloudflare/social mutation
 npm run canonical-corpus-v1:fixture-smoke # All 12 states; no credentials/network
+npm run canonical-corpus-v1:self-test # 54 negative lineage/path/summary/row cases
+npm run canonical-corpus-v1:r2-sample:self-test # Bounded planner; no credentials/network
 npm run canonical-corpus-v1:build
 npm run canonical-corpus-v1:check
 ```
@@ -174,6 +176,7 @@ Next app runtime env:
 - Use `npm run dataset-factory:smoke-v0` for clean-checkout contract coverage. It uses tracked fixtures, a fixed clock, exact content assertions, a committed tree hash, and a local mock `/api/search`; it is not a live API quality proof.
 - Use `npm run dataset-factory:artifacts:check -- --verify-files --artifact-root /absolute/path/to/populated/repo` before trusting full ignored artifact coverage.
 - Canonical Corpus v1 lives under `packages/scripts/src/canonical-corpus-v1/` and `docs/dataset-factory/canonical-corpus-v1.md`. Live collection is production-read-only: D1 SELECT only, exact Vectorize list/get only, and R2 ListObjectsV2/HeadObject/bounded GetObject range only. Never add write commands, deploys, reindexing, metadata-index creation, or credentials to its artifacts.
+- Build/check must verify the mode-specific tracked 12-input manifest before reading raw data. Do not replace the pinned live lineage with a directory scan or refresh it to accommodate drift. R2 sampling accepts only decimal integers 1-4 and must stay within 64 selected keys and 128 sample requests.
 - Keep the full Canonical Corpus inventories/manifests ignored under `data/mtl_archives/reports/canonical_corpus_v1/`. Refresh the tracked compact summary only through `canonical-corpus-v1:build -- --compact-summary docs/dataset-factory/canonical-corpus-v1-snapshot-summary.json` after a reviewed live capture.
 
 ## Skills

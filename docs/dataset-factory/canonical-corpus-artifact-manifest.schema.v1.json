@@ -15,7 +15,15 @@
       "required": ["description", "inputs", "build_command", "code_ref"],
       "properties": {
         "description": { "type": "string", "minLength": 1 },
-        "inputs": { "type": "array", "items": { "$ref": "#/$defs/file" }, "minItems": 1 },
+        "inputs": {
+          "type": "array", "minItems": 12, "maxItems": 12,
+          "items": {
+            "allOf": [
+              { "$ref": "#/$defs/file" },
+              { "type": "object", "required": ["kind"], "properties": { "kind": { "enum": ["json", "jsonl"] } } }
+            ]
+          }
+        },
         "build_command": { "type": "string", "minLength": 1 },
         "code_ref": { "type": "string", "minLength": 1 }
       }
@@ -53,6 +61,7 @@
         "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
         "byte_count": { "type": "integer", "minimum": 0 },
         "row_count": { "type": "integer", "minimum": 0 },
+        "kind": { "enum": ["json", "jsonl"] },
         "schema_version": { "type": "string", "minLength": 1 }
       }
     }

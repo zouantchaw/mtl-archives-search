@@ -26,6 +26,12 @@ import {
   type R2InventoryRow,
   type R2SampleRow,
 } from './model.js';
+import {
+  assertGeneratedOutputDirectory,
+  assertExistingGeneratedOutputsSafe,
+  verifySourceSnapshot,
+  type CorpusMode,
+} from './snapshot-contract.js';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const MONOREPO_ROOT = path.resolve(SCRIPT_DIR, '../../../..');
@@ -303,10 +309,24 @@ function percentage(numerator: number, denominator: number): number {
   return denominator === 0 ? 0 : Number(((numerator / denominator) * 100).toFixed(6));
 }
 
-export function buildCanonicalCorpus(inputDir: string, outputDir: string, compactSummaryPath?: string): {
+export type BuildCanonicalCorpusOptions = {
+  mode?: CorpusMode;
+  inputManifestPath?: string;
+};
+
+export function buildCanonicalCorpus(
+  inputDir: string,
+  outputDir: string,
+  compactSummaryPath?: string,
+  options: BuildCanonicalCorpusOptions = {},
+): {
   rows: ReconciliationRow[];
   summary: Record<string, unknown>;
 } {
+  const mode = options.mode ?? 'live';
+  const verifiedSource = verifySourceSnapshot(inputDir, mode, options.inputManifestPath);
+  if (path.resolve(inputDir) !== path.resolve(outputDir)) assertGeneratedOutputDirectory(outputDir);
+  assertExistingGeneratedOutputsSafe(outputDir);
   const localRows = readJsonl<LocalInventoryRow>(path.join(inputDir, 'local-manifest.jsonl'));
   const localSnapshot = readJson<Record<string, unknown>>(path.join(inputDir, 'local-snapshot.json'));
   const d1Rows = readJsonl<D1Row>(path.join(inputDir, 'd1-manifest.jsonl'));
@@ -326,6 +346,9 @@ export function buildCanonicalCorpus(inputDir: string, outputDir: string, compac
     const parsed = parseMetadataIdentity(row.metadata_filename);
     if (!parsed) invalidD1Ids.push(cleanText(row.metadata_filename));
     else d1ById.set(parsed.identity, row);
+  }
+  if (invalidD1Ids.length > 0) {
+    throw new Error(`D1 snapshot contains invalid metadata identities: ${invalidD1Ids.slice(0, 3).join(', ')}`);
   }
   const r2ById = new Map<string, R2InventoryRow[]>();
   const nonCorpusR2 = r2Rows.filter((row) => !row.normalized_identity);
@@ -591,6 +614,7 @@ export function buildCanonicalCorpus(inputDir: string, outputDir: string, compac
   const row9247 = rows.find((row) => row.observed_identity === 'mtl_archives_metadata_9247.json');
   const summary: Record<string, unknown> = {
     schema_version: SCHEMA_VERSION,
+    summary_version: 'canonical_corpus_summary_v1',
     corpus_version: CORPUS_VERSION,
     identity_rule: {
       canonical_metadata: '^mtl_archives_metadata_(\\d+)\\.json$',
@@ -698,17 +722,12 @@ export function buildCanonicalCorpus(inputDir: string, outputDir: string, compac
   const summaryPath = path.join(outputDir, 'summary-v1.json');
   writeJson(summaryPath, summary);
 
-  const inputNames = [
-    'local-manifest.jsonl', 'local-snapshot.json', 'd1-manifest.jsonl', 'd1-query-manifest.json', 'd1-snapshot.json',
-    'r2-objects.jsonl', 'r2-samples.jsonl', 'r2-snapshot.json', 'text-vector-ids.jsonl', 'text-vector-index.json',
-    'clip-vector-ids.jsonl', 'clip-vector-index.json',
-  ];
   const outputFiles = [
     [corpusPath, corpusRows.length], [reconciliationPath, rows.length], [aliasPath, aliases.length],
     [unresolvedPath, unresolved.length], [r2DuplicatesPath, r2DuplicateCandidates.length], [summaryPath, undefined],
   ] as Array<[string, number | undefined]>;
-  const inputs = inputNames.map((name) => artifactEntry(path.join(inputDir, name), inputDir, /\.jsonl$/.test(name) ? readJsonl(path.join(inputDir, name)).length : undefined));
-  const sourceSnapshotId = sha256(`${inputs.map((entry) => `${entry.path}\t${entry.sha256}`).join('\n')}\n`);
+  const inputs = verifiedSource.inputs;
+  const sourceSnapshotId = verifiedSource.source_snapshot_id;
   const artifactManifest = {
     schema_version: SCHEMA_VERSION,
     corpus_version: CORPUS_VERSION,
@@ -766,12 +785,19 @@ function main(): void {
       input: { type: 'string', default: DEFAULT_INPUT },
       output: { type: 'string', default: DEFAULT_OUTPUT },
       'compact-summary': { type: 'string' },
+      mode: { type: 'string', default: 'live' },
+      'input-manifest': { type: 'string' },
     },
   });
+  if (values.mode !== 'live' && values.mode !== 'fixture') throw new Error(`Invalid canonical corpus mode: ${values.mode}`);
   const result = buildCanonicalCorpus(
     resolveCliPath(values.input!),
     resolveCliPath(values.output!),
     values['compact-summary'] ? resolveCliPath(values['compact-summary']) : undefined,
+    {
+      mode: values.mode as CorpusMode,
+      inputManifestPath: values['input-manifest'] ? resolveCliPath(values['input-manifest']) : undefined,
+    },
   );
   console.log(stableJson({
     status: 'ok',

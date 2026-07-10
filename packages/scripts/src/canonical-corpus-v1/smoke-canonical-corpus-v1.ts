@@ -46,10 +46,10 @@ function main(): void {
     const second = path.join(tempRoot, 'second');
     runFixtureCollection(first);
     runFixtureCollection(second);
-    buildCanonicalCorpus(first, first);
-    buildCanonicalCorpus(second, second);
-    const firstCheck = checkCanonicalCorpus(first);
-    const secondCheck = checkCanonicalCorpus(second);
+    buildCanonicalCorpus(first, first, undefined, { mode: 'fixture' });
+    buildCanonicalCorpus(second, second, undefined, { mode: 'fixture' });
+    const firstCheck = checkCanonicalCorpus(first, { mode: 'fixture' });
+    const secondCheck = checkCanonicalCorpus(second, { mode: 'fixture' });
     const firstSummary = readJson<{ states: Record<string, number> }>(path.join(first, 'summary-v1.json'));
     for (const state of PRIMARY_STATES) assert(firstSummary.states[state] === 1, `Fixture must exercise ${state} exactly once`);
     for (const name of OUTPUT_NAMES) {

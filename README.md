@@ -339,6 +339,8 @@ npm run dataset-factory:smoke-v0
 
 # Canonical Corpus v1 (fixture is offline; live collection is read-only)
 npm run canonical-corpus-v1:fixture-smoke
+npm run canonical-corpus-v1:self-test
+npm run canonical-corpus-v1:r2-sample:self-test
 npm run canonical-corpus-v1:collect -- --source all --env-file "$MTL_ARCHIVES_ENV_FILE" --r2-sample-per-stratum 2
 npm run canonical-corpus-v1:build
 npm run canonical-corpus-v1:check
@@ -357,7 +359,7 @@ Dataset Factory v0 notes:
 - `npm run dataset-factory:clock:self-test` proves that fixed timestamps require RFC 3339 `Z` or an explicit offset and normalize independently of the host timezone.
 - `docs/dataset-factory/fixtures/v0-smoke/` contains small tracked contract fixtures. `npm run dataset-factory:smoke-v0` uses those fixtures plus a local mock `/api/search` server to exercise packets, labels/adjudication, benchmark, active learning, search/reranker evaluation, quality repair, visual family graph, research enrichment, search judgments, and reward data without D1/R2/Vectorize/network mutation. It fixes fixture timestamps, asserts exact counts and representative content, and enforces the committed output-tree SHA-256.
 - Large generated reports remain ignored under `data/mtl_archives/reports/`. Use `dataset-factory:artifacts:check -- --verify-files` against a populated artifact root when you need to prove the registry still matches the real ignored artifacts.
-- Canonical Corpus v1 is documented in `docs/dataset-factory/canonical-corpus-v1.md`. Its tracked fixture exercises all 12 primary states without credentials/network; its live collector is production-read-only; and `docs/dataset-factory/canonical-corpus-v1-snapshot-summary.json` is generated from the ignored hashed artifacts rather than maintained by hand.
+- Canonical Corpus v1 is documented in `docs/dataset-factory/canonical-corpus-v1.md`. Tracked live/fixture input manifests pin the exact 12-file lineage; the checker validates path containment, source hashes/bytes/rows, every summary family, row state/flag consistency, and generated artifact hashes. The tracked fixture and 54-case adversarial self-test require no credentials or network.
 
 Vectorize reliability notes:
 - `vectorize:text` and `vectorize:clip` now support resumable checkpoints by default.

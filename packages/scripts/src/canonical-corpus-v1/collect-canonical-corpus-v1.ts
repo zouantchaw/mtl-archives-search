@@ -21,7 +21,6 @@ import {
   deriveSourceDataset,
   detectMagic,
   fileEvidence,
-  idRange,
   parseArchiveImageKey,
   parseMetadataIdentity,
   readJsonlStream,
@@ -34,13 +33,21 @@ import {
   type R2InventoryRow,
   type R2SampleRow,
 } from './model.js';
+import {
+  REQUIRED_R2_EVIDENCE,
+  R2_SAMPLE_MAX_REQUESTS,
+  R2_SAMPLE_MAX_SELECTED_KEYS,
+  R2_SAMPLE_PER_STRATUM_DEFAULT,
+  parseR2SamplePerStratum,
+  planR2Samples,
+  r2SampleStratum,
+} from './r2-sample-plan.js';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const MONOREPO_ROOT = path.resolve(SCRIPT_DIR, '../../../..');
 const DEFAULT_OUTPUT = path.join(MONOREPO_ROOT, 'data/mtl_archives/reports/canonical_corpus_v1/live');
 const DEFAULT_LOCAL_INPUT = path.join(MONOREPO_ROOT, 'data/mtl_archives/manifest_clean.jsonl.gz');
 const DEFAULT_FIXTURE = path.join(MONOREPO_ROOT, 'docs/dataset-factory/fixtures/canonical-corpus-v1');
-const REQUIRED_R2_EVIDENCE = ['mtl_archives_image_9247.jpg', 'mtl_archives_image_9696.jpg'];
 
 function resolveCliPath(value: string): string {
   return path.isAbsolute(value) ? value : path.resolve(MONOREPO_ROOT, value);
@@ -356,32 +363,6 @@ function r2Row(object: _Object): R2InventoryRow {
   };
 }
 
-function sampleStratum(row: R2InventoryRow): string {
-  if (row.object_class === 'archive_image') return `archive_image:${idRange(row.numeric_id)}`;
-  const parts = row.key.split('/').filter(Boolean);
-  const prefix = parts.slice(0, Math.min(2, parts.length)).join('/') || '<root>';
-  return `${row.object_class}:${prefix}`;
-}
-
-function chooseSampleKeys(rows: R2InventoryRow[], perStratum: number, seed: string): Set<string> {
-  const groups = new Map<string, R2InventoryRow[]>();
-  for (const row of rows) {
-    const stratum = sampleStratum(row);
-    const group = groups.get(stratum) ?? [];
-    group.push(row);
-    groups.set(stratum, group);
-  }
-  const selected = new Set<string>();
-  for (const group of groups.values()) {
-    group.sort((a, b) => sha256(`${seed}\0${a.key}`).localeCompare(sha256(`${seed}\0${b.key}`)) || a.key.localeCompare(b.key));
-    for (const row of group.slice(0, perStratum)) selected.add(row.key);
-  }
-  for (const key of REQUIRED_R2_EVIDENCE) {
-    if (rows.some((row) => row.key === key)) selected.add(key);
-  }
-  return selected;
-}
-
 async function bodyBytes(body: unknown): Promise<Uint8Array> {
   if (body && typeof body === 'object' && 'transformToByteArray' in body) {
     return (body as { transformToByteArray: () => Promise<Uint8Array> }).transformToByteArray();
@@ -429,10 +410,10 @@ async function collectR2(outputDir: string, envFile: string, samplePerStratum: n
   }
   rows.sort((a, b) => a.key.localeCompare(b.key));
   if (new Set(rows.map((row) => row.key)).size !== rows.length) throw new Error('R2 listing contained duplicate keys');
-  const selectedKeys = chooseSampleKeys(rows, samplePerStratum, CORPUS_VERSION);
+  const samplePlan = planR2Samples(rows, samplePerStratum, CORPUS_VERSION);
   const byKey = new Map(rows.map((row) => [row.key, row]));
   const samples: R2SampleRow[] = [];
-  for (const key of [...selectedKeys].sort()) {
+  for (const key of samplePlan.selected_keys) {
     const inventory = byKey.get(key)!;
     let headOk = false;
     let rangeGetOk = false;
@@ -462,8 +443,8 @@ async function collectR2(outputDir: string, envFile: string, samplePerStratum: n
       schema_version: SCHEMA_VERSION,
       key,
       object_class: inventory.object_class,
-      stratum: sampleStratum(inventory),
-      required_evidence: REQUIRED_R2_EVIDENCE.includes(key),
+      stratum: r2SampleStratum(inventory),
+      required_evidence: REQUIRED_R2_EVIDENCE.some((required) => required === key),
       head_ok: headOk,
       range_get_ok: rangeGetOk,
       content_type: contentType,
@@ -509,6 +490,11 @@ async function collectR2(outputDir: string, envFile: string, samplePerStratum: n
       per_stratum: samplePerStratum,
       first_byte_range: '0-31',
       required_keys: REQUIRED_R2_EVIDENCE,
+      selected_key_count: samplePlan.selected_key_count,
+      selected_key_cap: R2_SAMPLE_MAX_SELECTED_KEYS,
+      requests_per_key: samplePlan.requests_per_key,
+      planned_request_count: samplePlan.planned_request_count,
+      total_request_cap: R2_SAMPLE_MAX_REQUESTS,
       inference_boundary: 'Content type and magic-byte findings apply only to sampled keys.',
     },
     outputs: [
@@ -622,12 +608,13 @@ async function main(): Promise<void> {
       'local-input': { type: 'string', default: DEFAULT_LOCAL_INPUT },
       'env-file': { type: 'string' },
       'd1-page-size': { type: 'string', default: '1000' },
-      'r2-sample-per-stratum': { type: 'string', default: '2' },
+      'r2-sample-per-stratum': { type: 'string', default: String(R2_SAMPLE_PER_STRATUM_DEFAULT) },
       fixture: { type: 'boolean', default: false },
       'fixture-dir': { type: 'string', default: DEFAULT_FIXTURE },
     },
   });
   const outputDir = resolveCliPath(values.output!);
+  const r2SamplePerStratum = parseR2SamplePerStratum(values['r2-sample-per-stratum']!);
   if (values.fixture) {
     collectFixture(resolveCliPath(values['fixture-dir']!), outputDir);
     console.log(stableJson({ status: 'ok', mode: 'fixture', output: outputDir }));
@@ -640,7 +627,7 @@ async function main(): Promise<void> {
   fs.mkdirSync(outputDir, { recursive: true });
   if (source === 'all' || source === 'local') await collectLocal(resolveCliPath(values['local-input']!), outputDir);
   if (source === 'all' || source === 'd1') await collectD1(outputDir, envFile, Number(values['d1-page-size']));
-  if (source === 'all' || source === 'r2') await collectR2(outputDir, envFile, Number(values['r2-sample-per-stratum']));
+  if (source === 'all' || source === 'r2') await collectR2(outputDir, envFile, r2SamplePerStratum);
   if (source === 'all' || source === 'vectorize') await collectVectorize(outputDir, envFile);
   console.log(stableJson({ status: 'ok', mode: 'live_read_only', source, output: outputDir }));
 }

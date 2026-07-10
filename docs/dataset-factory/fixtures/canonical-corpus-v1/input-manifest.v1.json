@@ -1,0 +1,19 @@
+{
+  "schema_version": "canonical_corpus_input_manifest_v1",
+  "mode": "fixture",
+  "source_snapshot_id": "42172bd9b3575534d84c3516a4da7397224aab58cf46baf8f9d573ec2424d060",
+  "inputs": [
+    { "path": "local-manifest.jsonl", "kind": "jsonl", "sha256": "f4d68f1bc86773dca0a750d60694d0703e444e3d4f2de899e9ea0cc16a9a3c51", "byte_count": 6413, "row_count": 7 },
+    { "path": "local-snapshot.json", "kind": "json", "sha256": "50cac8f78832375bdca9a8a0a77bfb12e2bf4878942acbb8f5fd1a0fc2855e33", "byte_count": 254 },
+    { "path": "d1-manifest.jsonl", "kind": "jsonl", "sha256": "0d945e5becb8daaa67c7fe2b4776b5798dfea70f9850afcb61b301046d730bd6", "byte_count": 5333, "row_count": 6 },
+    { "path": "d1-query-manifest.json", "kind": "json", "sha256": "797a1a4857990f1d3f9e930530061fd403d173eeac8a01ba610d3b7788692fd8", "byte_count": 255 },
+    { "path": "d1-snapshot.json", "kind": "json", "sha256": "9e9da5bc51db529364d8beb6a28ffee4140625ff9372e07d06cb632da7312485", "byte_count": 772 },
+    { "path": "r2-objects.jsonl", "kind": "jsonl", "sha256": "7d9b5d95d5cf028a8a417b2c32205b21f735f0118aac0ff10d244a59b98bc1d7", "byte_count": 3234, "row_count": 10 },
+    { "path": "r2-samples.jsonl", "kind": "jsonl", "sha256": "7229c9f13e8d63033fb72df1f6dd25e12a3c239e3d3fd2171199765fa3ab3c8f", "byte_count": 1044, "row_count": 3 },
+    { "path": "r2-snapshot.json", "kind": "json", "sha256": "c731d91f72ef65e87e2f8af9632ade77ef2f2a8622ebe41e2a306e84f50c31a6", "byte_count": 399 },
+    { "path": "text-vector-ids.jsonl", "kind": "jsonl", "sha256": "cc787efa605c3da842bbaa6d49371909182e9126811fee02791bcdbe58f27e89", "byte_count": 1250, "row_count": 8 },
+    { "path": "text-vector-index.json", "kind": "json", "sha256": "30f4b1e374964045a839dc6c28e9fef8ff547d3f4dbfeea820fc72d96df1d071", "byte_count": 354 },
+    { "path": "clip-vector-ids.jsonl", "kind": "jsonl", "sha256": "c5487707bc85ee16bbfd58112462cc3db839edc5d20b6695149547ade757d1e7", "byte_count": 1250, "row_count": 8 },
+    { "path": "clip-vector-index.json", "kind": "json", "sha256": "9df19e2bf93139ff13fd3c3ab1848ef7b13af28f85ac877d1b7ed70b2b2d6836", "byte_count": 371 }
+  ]
+}

@@ -93,6 +93,8 @@
     "canonical-corpus-v1:build": "npm run canonical-corpus-v1:build --workspace=@mtl-archives/scripts --",
     "canonical-corpus-v1:check": "npm run canonical-corpus-v1:check --workspace=@mtl-archives/scripts --",
     "canonical-corpus-v1:fixture-smoke": "npm run canonical-corpus-v1:fixture-smoke --workspace=@mtl-archives/scripts --",
+    "canonical-corpus-v1:self-test": "npm run canonical-corpus-v1:self-test --workspace=@mtl-archives/scripts --",
+    "canonical-corpus-v1:r2-sample:self-test": "npm run canonical-corpus-v1:r2-sample:self-test --workspace=@mtl-archives/scripts --",
     "image-artifacts:audit": "npm run image-artifacts:audit --workspace=@mtl-archives/scripts",
     "image-orientation:audit": "npm run image-orientation:audit --workspace=@mtl-archives/scripts --",
     "image-dedupe:audit": "npm run image-dedupe:audit --workspace=@mtl-archives/scripts",

@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mtlarchives.com/schemas/canonical-corpus-summary.v1.json",
+  "title": "Canonical Corpus v1 summary",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "summary_version", "corpus_version", "identity_rule", "counts", "states",
+    "by_media_type", "by_id_range", "by_source_dataset", "system_presence_matrix", "secondary_flags",
+    "rights_and_attribution", "d1", "vector_coverage", "r2", "source_snapshots", "samples", "decision_9696"
+  ],
+  "properties": {
+    "schema_version": { "const": "canonical_corpus_v1.0.0" },
+    "summary_version": { "const": "canonical_corpus_summary_v1" },
+    "corpus_version": { "const": "canonical_corpus_v1" },
+    "identity_rule": { "$ref": "#/$defs/nonemptyObject" },
+    "counts": { "$ref": "#/$defs/countMap" },
+    "states": { "$ref": "#/$defs/countMap" },
+    "by_media_type": { "$ref": "#/$defs/countMap" },
+    "by_id_range": { "$ref": "#/$defs/countMap" },
+    "by_source_dataset": { "$ref": "#/$defs/countMap" },
+    "system_presence_matrix": { "$ref": "#/$defs/countMap" },
+    "secondary_flags": { "$ref": "#/$defs/countMap" },
+    "rights_and_attribution": {
+      "type": "object", "additionalProperties": false,
+      "required": ["eligible_records", "complete", "incomplete", "complete_rate_percent", "license_id"],
+      "properties": {
+        "eligible_records": { "$ref": "#/$defs/count" },
+        "complete": { "$ref": "#/$defs/count" },
+        "incomplete": { "$ref": "#/$defs/count" },
+        "complete_rate_percent": { "$ref": "#/$defs/rate" },
+        "license_id": { "type": "string", "minLength": 1 }
+      }
+    },
+    "d1": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_columns", "schema_existence", "populated_row_coverage", "aggregate"],
+      "properties": {
+        "schema_columns": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "schema_existence": { "$ref": "#/$defs/booleanMap" },
+        "populated_row_coverage": { "$ref": "#/$defs/countMap" },
+        "aggregate": { "type": "object" }
+      }
+    },
+    "vector_coverage": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "denominator", "eligible_records", "text_missing", "text_missing_rate_percent", "clip_missing",
+        "clip_missing_rate_percent", "text_vector_only_or_stale", "text_stale_rate_percent",
+        "clip_vector_only_or_stale", "clip_stale_rate_percent", "text_index", "clip_index"
+      ],
+      "properties": {
+        "denominator": { "type": "string", "minLength": 1 },
+        "eligible_records": { "$ref": "#/$defs/count" },
+        "text_missing": { "$ref": "#/$defs/count" },
+        "text_missing_rate_percent": { "$ref": "#/$defs/rate" },
+        "clip_missing": { "$ref": "#/$defs/count" },
+        "clip_missing_rate_percent": { "$ref": "#/$defs/rate" },
+        "text_vector_only_or_stale": { "$ref": "#/$defs/count" },
+        "text_stale_rate_percent": { "$ref": "#/$defs/rate" },
+        "clip_vector_only_or_stale": { "$ref": "#/$defs/count" },
+        "clip_stale_rate_percent": { "$ref": "#/$defs/rate" },
+        "text_index": { "type": "object" },
+        "clip_index": { "type": "object" }
+      }
+    },
+    "r2": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "exact_inventory", "sample_design", "sampled_magic", "sampled_content_type_magic_mismatches",
+        "duplicate_etag_size_candidates", "inference_boundary"
+      ],
+      "properties": {
+        "exact_inventory": { "type": "object" },
+        "sample_design": { "type": "object" },
+        "sampled_magic": { "$ref": "#/$defs/countMap" },
+        "sampled_content_type_magic_mismatches": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "duplicate_etag_size_candidates": { "$ref": "#/$defs/nonemptyObject" },
+        "inference_boundary": { "type": "string", "minLength": 1 }
+      }
+    },
+    "source_snapshots": { "$ref": "#/$defs/nonemptyObject" },
+    "samples": {
+      "type": "object", "additionalProperties": false,
+      "required": ["by_primary_state", "by_secondary_flag"],
+      "properties": {
+        "by_primary_state": { "$ref": "#/$defs/sampleMap" },
+        "by_secondary_flag": { "$ref": "#/$defs/sampleMap" }
+      }
+    },
+    "decision_9696": {
+      "type": "object", "additionalProperties": false,
+      "required": ["decision", "canonical_identity", "evidence", "rationale"],
+      "properties": {
+        "decision": { "type": "string", "minLength": 1 },
+        "canonical_identity": { "type": ["string", "null"] },
+        "evidence": { "type": "object" },
+        "rationale": { "type": "string", "minLength": 1 }
+      }
+    }
+  },
+  "$defs": {
+    "count": { "type": "integer", "minimum": 0 },
+    "rate": { "type": "number", "minimum": 0, "maximum": 100 },
+    "countMap": { "type": "object", "additionalProperties": { "$ref": "#/$defs/count" } },
+    "booleanMap": { "type": "object", "additionalProperties": { "type": "boolean" } },
+    "sampleMap": {
+      "type": "object",
+      "additionalProperties": { "type": "array", "items": { "type": "string" }, "minItems": 1, "maxItems": 3, "uniqueItems": true }
+    },
+    "nonemptyObject": { "type": "object", "minProperties": 1 }
+  }
+}

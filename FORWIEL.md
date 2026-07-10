@@ -26,6 +26,7 @@ Issues #65 and #66 made this durable and identity-explicit:
 - `npm run dataset-factory:clock:self-test` proves strict timezone-qualified fixed-clock parsing under UTC and America/Toronto.
 - `npm run dataset-factory:artifacts:check -- --verify-files --artifact-root /path/to/populated/repo` proves the registry still matches the real ignored artifacts.
 - `npm run canonical-corpus-v1:fixture-smoke` exercises all 12 reconciliation states twice, checks exact hashes, and uses no credentials or network.
+- `npm run canonical-corpus-v1:self-test` proves 54 negative lineage, path, summary, alias, state, and flag cases. `npm run canonical-corpus-v1:r2-sample:self-test` proves strict bounds and the expected 4-key fixture/54-key frozen-live plans without credentials or network.
 - `npm run canonical-corpus-v1:collect -- --source all --env-file "$MTL_ARCHIVES_ENV_FILE"` captures local/D1/R2/both-Vectorize identity evidence without production writes. `canonical-corpus-v1:build` and `:check` produce and validate the ignored full reconciliation. Exact current counts and hashes live in the generated `docs/dataset-factory/canonical-corpus-v1-snapshot-summary.json`.
 
 The lesson: if an important workflow depends on ignored files, either track the files, track a registry that proves what the files are, or track small fixtures that prove the code can still run. Here we do the last two.
@@ -48,6 +49,8 @@ npm run dataset-factory:clock:self-test
 npm run dataset-factory:artifacts:check -- --verify-files --artifact-root /absolute/path/to/populated/repo
 npm run dataset-factory:smoke-v0
 npm run canonical-corpus-v1:fixture-smoke
+npm run canonical-corpus-v1:self-test
+npm run canonical-corpus-v1:r2-sample:self-test
 npm run canonical-corpus-v1:build
 npm run canonical-corpus-v1:check
 ```
