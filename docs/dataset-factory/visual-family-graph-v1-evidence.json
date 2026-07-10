@@ -190,7 +190,14 @@
     "reviewer_independent_of_implementation": true,
     "independent_review_pairs": 120,
     "independent_review_disagreements": 0,
-    "remediation_review_pending": true
+    "remediation_review_status": "passed",
+    "remediation_reviewed_head": "ca9d835949f208444f036a851cc8c1e8546c1c7b",
+    "remediation_review_id": "PRR_kwDOQFNJR88AAAABFqJIlg",
+    "remediation_review_url": "https://github.com/zouantchaw/mtl-archives-search/pull/76#pullrequestreview-4674701462",
+    "remediation_remaining_findings": 0,
+    "remediation_resolved_threads": 5,
+    "remediation_unresolved_threads": 0,
+    "threshold_leakage_gate": "passed"
   },
   "models": {
     "clip": {
@@ -271,7 +278,7 @@
     "All pHash edges are non-grouping after a reviewed distance-0 false match.",
     "CLIP neighbor evidence covers 500 frozen queries rather than full-corpus neighbor retrieval; production index membership is reported separately.",
     "DINO was not run because no approved no-cost compute gate was available.",
-    "The independent reviewer inspected all 120 preserved decisions with zero disagreements; independent review of this remediation head remains pending.",
+    "Independent clean re-review passed at exact head ca9d835949f208444f036a851cc8c1e8546c1c7b with no remaining P0-P3 findings; all five prior review threads are resolved and the threshold/leakage gate passed.",
     "Search duplicate rates describe a frozen candidate artifact, not later mutable production ranking or index state."
   ]
 }
