@@ -19,7 +19,7 @@ Dataset Factory is the offline layer for making search quality measurable. It bu
 
 Issues #65 and #66 made this durable and identity-explicit:
 
-- `docs/dataset-factory/artifact-registry.v0.jsonl` records the original 76 Dataset Factory artifacts plus six Canonical Corpus source/build bundles as an 82-entry acyclic graph with stable IDs, SHA-256, counts, lineage, commands, dependencies, rights boundaries, and timestamps.
+- `docs/dataset-factory/artifact-registry.v0.jsonl` records the original 76 Dataset Factory artifacts, six Canonical Corpus source/build bundles, and five Visual Family Graph v1 bundles as an 87-entry acyclic graph with stable IDs, SHA-256, counts, lineage, commands, dependencies, rights boundaries, and timestamps.
 - `docs/dataset-factory/fixtures/v0-smoke/` has tiny tracked fixture rows that let the workflow run in a clean checkout.
 - `npm run dataset-factory:smoke-v0` runs the v0 chain against those fixtures and a local mock search API. It fixes the fixture clock, asserts exact rows/content, and checks a committed output hash; it proves deterministic contract wiring, not live search quality.
 - `npm run dataset-factory:artifacts:self-test` exercises 14 contract/adversarial cases, including a valid in-root file, path-component symlinks, and overlapping members.
@@ -28,6 +28,7 @@ Issues #65 and #66 made this durable and identity-explicit:
 - `npm run canonical-corpus-v1:fixture-smoke` exercises all 12 reconciliation states twice, checks exact hashes, and uses no credentials or network.
 - `npm run canonical-corpus-v1:self-test` proves 72 negative lineage, path, summary, raw-provenance, alias, state, and flag cases, including coordinated refreshed-hash forgeries. `npm run canonical-corpus-v1:r2-sample:self-test` proves strict bounds and the expected 4-key fixture/54-key frozen-live plans without credentials or network.
 - `npm run canonical-corpus-v1:collect -- --source all --env-file "$MTL_ARCHIVES_ENV_FILE"` captures local/D1/R2/both-Vectorize identity evidence without production writes. `canonical-corpus-v1:build` and `:check` produce and validate the ignored full reconciliation. Exact current counts and hashes live in the generated `docs/dataset-factory/canonical-corpus-v1-snapshot-summary.json`.
+- `npm run dataset-factory:visual-family-self-test-v1` proves the v1 typed-edge, pHash, leakage-component, split, and mutable-snapshot contracts without network access. The full workflow uses bounded public thumbnails rather than transferring 169 GB of originals, gives every one of the 18,462 identities a group or explicit singleton status, and keeps similarity evidence separate from historical identity.
 
 The lesson: if an important workflow depends on ignored files, either track the files, track a registry that proves what the files are, or track small fixtures that prove the code can still run. Here we do the last two.
 
@@ -53,6 +54,8 @@ npm run canonical-corpus-v1:self-test
 npm run canonical-corpus-v1:r2-sample:self-test
 npm run canonical-corpus-v1:build
 npm run canonical-corpus-v1:check
+npm run dataset-factory:visual-family-self-test-v1
+npm run dataset-factory:visual-family-check-v1
 ```
 
 ## Pitfalls To Avoid
@@ -61,3 +64,4 @@ npm run canonical-corpus-v1:check
 - A fixture smoke is not a benchmark. It protects contracts and clean-checkout reproducibility; it does not replace human-reviewed gold labels or live API evaluation.
 - A registry without hashes is just a list. The SHA-256/count fields are what make the artifact contract auditable.
 - A clean clone should not need a previous worker's generated report folder to run the focused smoke.
+- Count equality is not snapshot equality. Visual Family Graph v1 gives its mutable public API acquisition a new content-derived ID and retains the issue-66 snapshot only as an explicit reference.

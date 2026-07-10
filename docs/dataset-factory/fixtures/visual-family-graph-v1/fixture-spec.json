@@ -1,0 +1,22 @@
+{
+  "schema_version": "visual_family_graph_fixture_v1",
+  "records": [
+    { "id": 0, "state": "canonical", "local": true, "d1": true, "source": "https://example.test/source/a", "name": "Rue Alpha", "date": "1940", "image": "0.jpg", "phash": "0123456789abcdef", "pixel": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+    { "id": 1, "state": "alias", "local": true, "d1": false, "source": "https://example.test/source/a", "name": "Rue Alpha alternate", "date": "1940", "image": "1.jpg", "phash": "0123456789abcdef", "pixel": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "canonical": 0 },
+    { "id": 2, "state": "canonical", "local": true, "d1": true, "source": "https://example.test/source/b", "name": "Building exact frame", "date": "1950", "image": "2.jpg", "phash": "8000000000000000", "pixel": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" },
+    { "id": 3, "state": "production_only", "local": false, "d1": true, "source": "https://example.test/source/c", "name": "Building exact frame copy", "date": "1950", "image": "3.jpg", "phash": "8000000000000000", "pixel": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" },
+    { "id": 4, "state": "canonical", "local": true, "d1": true, "source": "https://example.test/aerial/VM94-B100-001.tif", "name": "VM94-B100-001.tif", "date": "1960", "image": "4.jpg", "phash": "aaaaaaaaaaaaaaaa", "pixel": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "dataset": "aerial_obliques_1960_1992" },
+    { "id": 5, "state": "canonical", "local": true, "d1": true, "source": "https://example.test/aerial/VM94-B100-002.tif", "name": "VM94-B100-002.tif", "date": "1960", "image": "5.jpg", "phash": "aaaaaaaaaaaaaaab", "pixel": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", "dataset": "aerial_obliques_1960_1992" },
+    { "id": 6, "state": "canonical", "local": true, "d1": true, "source": "https://example.test/source/f", "name": "Rue Beta au coin de Gamma", "date": "1970", "image": "6.jpg", "phash": "0000000000000000", "pixel": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" },
+    { "id": 7, "state": "canonical", "local": true, "d1": true, "source": "https://example.test/source/g", "name": "Rue Beta au coin de Gamma", "date": "1970", "image": "7.jpg", "failure": "fixture_decode_failure" }
+  ],
+  "clip_neighbors": [
+    { "type": "nearest_neighbors", "id": "mtl_archives_metadata_6.json", "nearest": [{ "id": "mtl_archives_metadata_7.json", "score": 0.9 }] }
+  ],
+  "expected": {
+    "records": 8,
+    "feature_failures": 1,
+    "same_subject_grouping_edges": 0,
+    "split_crossings": 0
+  }
+}

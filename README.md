@@ -344,6 +344,15 @@ npm run canonical-corpus-v1:r2-sample:self-test
 npm run canonical-corpus-v1:collect -- --source all --env-file "$MTL_ARCHIVES_ENV_FILE" --r2-sample-per-stratum 2
 npm run canonical-corpus-v1:build
 npm run canonical-corpus-v1:check
+
+# Visual Family Graph v1 (public reads are bounded; generated artifacts stay ignored)
+npm run dataset-factory:visual-family-input-v1
+npm run dataset-factory:visual-family-phash-v1
+npm run dataset-factory:visual-family-graph-v1
+npm run dataset-factory:visual-family-review-v1
+npm run dataset-factory:visual-family-search-eval-v1 -- --candidates /absolute/path/to/search_candidates.jsonl
+npm run dataset-factory:visual-family-check-v1
+npm run dataset-factory:visual-family-self-test-v1
 ```
 
 Autoresearch notes:
@@ -354,12 +363,14 @@ Autoresearch notes:
 
 Dataset Factory v0 notes:
 - The reproducibility plan and schemas live under `docs/dataset-factory/`.
-- `docs/dataset-factory/artifact-registry.v0.jsonl` is the machine-readable registry for ignored artifacts. Its 82 entries form an acyclic phase graph: the original 76 Dataset Factory v0 entries plus six Canonical Corpus v1 source/build bundles. Broad batch/benchmark/search/quality trees are split into exact non-overlapping file sets, human-authored review decisions are immutable inputs, and live snapshots carry explicit acquisition boundaries rather than false reconstruction claims. Each entry records a stable ID, schema version, SHA-256 digest, file/row counts where meaningful, lineage, storage/path class, generation method/command, dependency IDs, rights boundary, and created timestamp. It must not contain secrets or signed URLs.
+- `docs/dataset-factory/artifact-registry.v0.jsonl` is the machine-readable registry for ignored artifacts. Its 87 entries form an acyclic phase graph: the original 76 Dataset Factory v0 entries, six Canonical Corpus v1 source/build bundles, and five Visual Family Graph v1 bundles. Broad batch/benchmark/search/quality trees are split into exact non-overlapping file sets, human-authored review decisions are immutable inputs, and live snapshots carry explicit acquisition boundaries rather than false reconstruction claims. Each entry records a stable ID, schema version, SHA-256 digest, file/row counts where meaningful, lineage, storage/path class, generation method/command, dependency IDs, rights boundary, and created timestamp. It must not contain secrets or signed URLs.
 - `npm run dataset-factory:artifacts:self-test` proves 14 contract and adversarial cases, including a normal in-root file plus schema enforcement, dependency cycles, external-snapshot boundaries, file overlap, and leaf/parent-directory symlink rejection. `--verify-files` additionally checks artifact kind, real-path containment, unique membership, and registered bytes against a populated artifact root.
 - `npm run dataset-factory:clock:self-test` proves that fixed timestamps require RFC 3339 `Z` or an explicit offset and normalize independently of the host timezone.
 - `docs/dataset-factory/fixtures/v0-smoke/` contains small tracked contract fixtures. `npm run dataset-factory:smoke-v0` uses those fixtures plus a local mock `/api/search` server to exercise packets, labels/adjudication, benchmark, active learning, search/reranker evaluation, quality repair, visual family graph, research enrichment, search judgments, and reward data without D1/R2/Vectorize/network mutation. It fixes fixture timestamps, asserts exact counts and representative content, and enforces the committed output-tree SHA-256.
 - Large generated reports remain ignored under `data/mtl_archives/reports/`. Use `dataset-factory:artifacts:check -- --verify-files` against a populated artifact root when you need to prove the registry still matches the real ignored artifacts.
 - Canonical Corpus v1 is documented in `docs/dataset-factory/canonical-corpus-v1.md`. Tracked live/fixture input manifests pin the exact 12-file lineage; the checker independently derives record provenance and all alias groups from verified local/D1 rows, then validates full corpus/reconciliation equality, summary arithmetic, path containment, and hashes. The tracked fixture and 72-case adversarial self-test require no credentials or network.
+- Visual Family Graph v1 is documented in `docs/dataset-factory/visual-family-graph-v1.md`. It covers the 18,462-record Canonical Corpus identity universe with typed evidence, bounded 256px DCT-pHash features, explicit CLIP/DINO coverage contracts, grouping-authoritative versus review-only edges, component-safe benchmark splits, canonical/alternate recommendations, review precision, and frozen search duplicate-rate evaluation. Its public API recapture has its own content-derived acquisition snapshot ID and references, but never impersonates, the issue-66 bytes.
+- The compact full-corpus counts, hashes, runtime/cost profile, review power, deterministic rerun evidence, and residual limitations are tracked in `docs/dataset-factory/visual-family-graph-v1-evidence.json`; all large graph and feature bundles remain ignored.
 
 Vectorize reliability notes:
 - `vectorize:text` and `vectorize:clip` now support resumable checkpoints by default.
