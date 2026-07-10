@@ -57,13 +57,15 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "schema_version", "feature_version", "record_id", "image_key", "status", "derivative_contract_id",
+        "schema_version", "feature_version", "corpus_snapshot_id", "corpus_input_sha256", "record_id", "image_key", "status", "derivative_contract_id",
         "derivative_sha256", "normalized_pixel_sha256", "phash64", "derivative_width", "derivative_height",
         "derivative_bytes", "elapsed_ms", "attempts", "failure_code", "failure_detail"
       ],
       "properties": {
         "schema_version": { "const": "visual_family_graph_v1.0.0" },
         "feature_version": { "const": "phash_dct64_normalized_derivative_v1" },
+        "corpus_snapshot_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "corpus_input_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
         "record_id": { "$ref": "#/$defs/record_id" },
         "image_key": { "type": "string", "minLength": 1 },
         "status": { "enum": ["success", "failure"] },
@@ -163,7 +165,7 @@
     "recommendation": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["schema_version", "component_id", "canonical_record_id", "alternate_record_ids", "member_count", "confidence", "reasons", "preserved_provenance", "deletion_instruction"],
+      "required": ["schema_version", "component_id", "canonical_record_id", "alternate_record_ids", "member_count", "confidence", "support", "canonical_selection", "reasons", "preserved_provenance", "deletion_instruction"],
       "properties": {
         "schema_version": { "const": "visual_family_graph_v1.0.0" },
         "component_id": { "type": "string", "pattern": "^leakage-component:[a-f0-9]{64}$" },
@@ -171,6 +173,67 @@
         "alternate_record_ids": { "type": "array", "items": { "$ref": "#/$defs/record_id" }, "uniqueItems": true, "minItems": 1 },
         "member_count": { "type": "integer", "minimum": 2 },
         "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "support": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["grouping_edges_total", "grouping_edges_by_type", "exact_payload_edges", "exact_payload_members", "exact_payload_member_rate", "source_asset_edges", "source_derivative_equal", "source_derivative_disagreement", "source_derivative_unavailable", "source_derivative_disagreement_rate", "sequence_or_aerial_only_members", "sequence_or_aerial_only_member_rate", "base_confidence", "applied_confidence_caps"],
+          "properties": {
+            "grouping_edges_total": { "type": "integer", "minimum": 1 },
+            "grouping_edges_by_type": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["exact_payload", "same_source_asset", "near_duplicate_phash", "visual_neighbor_clip", "visual_neighbor_dino", "sequence_precedes", "same_reportage", "same_aerial_run", "alternate_crop", "same_subject_unverified"],
+              "properties": {
+                "exact_payload": { "type": "integer", "minimum": 0 },
+                "same_source_asset": { "type": "integer", "minimum": 0 },
+                "near_duplicate_phash": { "type": "integer", "minimum": 0 },
+                "visual_neighbor_clip": { "type": "integer", "minimum": 0 },
+                "visual_neighbor_dino": { "type": "integer", "minimum": 0 },
+                "sequence_precedes": { "type": "integer", "minimum": 0 },
+                "same_reportage": { "type": "integer", "minimum": 0 },
+                "same_aerial_run": { "type": "integer", "minimum": 0 },
+                "alternate_crop": { "type": "integer", "minimum": 0 },
+                "same_subject_unverified": { "type": "integer", "minimum": 0 }
+              }
+            },
+            "exact_payload_edges": { "type": "integer", "minimum": 0 },
+            "exact_payload_members": { "type": "integer", "minimum": 0 },
+            "exact_payload_member_rate": { "type": "number", "minimum": 0, "maximum": 1 },
+            "source_asset_edges": { "type": "integer", "minimum": 0 },
+            "source_derivative_equal": { "type": "integer", "minimum": 0 },
+            "source_derivative_disagreement": { "type": "integer", "minimum": 0 },
+            "source_derivative_unavailable": { "type": "integer", "minimum": 0 },
+            "source_derivative_disagreement_rate": { "type": "number", "minimum": 0, "maximum": 1 },
+            "sequence_or_aerial_only_members": { "type": "integer", "minimum": 0 },
+            "sequence_or_aerial_only_member_rate": { "type": "number", "minimum": 0, "maximum": 1 },
+            "base_confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+            "applied_confidence_caps": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true }
+          }
+        },
+        "canonical_selection": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["canonical_score", "runner_up_score", "score_margin", "top_score_tie_count", "ranking_factors", "deterministic_tie_breaker"],
+          "properties": {
+            "canonical_score": { "type": "integer", "minimum": 0 },
+            "runner_up_score": { "type": "integer", "minimum": 0 },
+            "score_margin": { "type": "integer", "minimum": 0 },
+            "top_score_tie_count": { "type": "integer", "minimum": 1 },
+            "ranking_factors": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["production_d1", "not_source_alias", "visual_feature_available", "descriptive_title", "rights_complete"],
+              "properties": {
+                "production_d1": { "type": "integer", "minimum": 0 },
+                "not_source_alias": { "type": "integer", "minimum": 0 },
+                "visual_feature_available": { "type": "integer", "minimum": 0 },
+                "descriptive_title": { "type": "integer", "minimum": 0 },
+                "rights_complete": { "type": "integer", "minimum": 0 }
+              }
+            },
+            "deterministic_tie_breaker": { "const": "record_id_ascending" }
+          }
+        },
         "reasons": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true, "minItems": 1 },
         "preserved_provenance": { "const": true },
         "deletion_instruction": { "const": false }

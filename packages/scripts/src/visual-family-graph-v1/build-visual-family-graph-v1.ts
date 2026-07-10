@@ -6,6 +6,7 @@ import { datasetFactoryNowIso } from '../dataset-factory/clock.js';
 import {
   CANONICAL_COUNTS,
   EDGE_TYPES,
+  PHASH_FEATURE_VERSION,
   VFG_SCHEMA_VERSION,
   UnionFind,
   clean,
@@ -13,8 +14,10 @@ import {
   deterministicSplit,
   fileEvidence,
   normalizeRecordId,
+  recommendationAssessment,
   readJson,
   readJsonl,
+  sequenceEvidence,
   sha256,
   stableId,
   unique,
@@ -136,26 +139,6 @@ function normalizeText(value: unknown): string {
 function titleGeneric(value: string): boolean {
   const normalized = normalizeText(value);
   return !normalized || /^mtl archives metadata/.test(normalized) || /^vm\d/.test(normalized) || normalized.length < 8;
-}
-
-function sequenceEvidence(row: CorpusInputRow): { runKey: string; sequence: number; kind: 'aerial' | 'reportage' } | null {
-  const candidates = [row.source_identity, row.name, row.cote].map((value) => decodeURIComponent(clean(value)).toUpperCase());
-  const aerial = row.source_datasets.some((value) => value.startsWith('aerial_')) || candidates.some((value) => /VUES-AERIENNES|VM97|VM94-B/.test(value));
-  const patterns = [
-    /(VM\d+[-_,]B\d+)[-_,](\d{1,4})(?:\.[A-Z0-9]+)?$/,
-    /(VM\d+[-_,]S\d+[-_,]D\d+[-_,]P\d+)[-_](\d{1,4})(?:\.[A-Z0-9]+)?$/,
-    /(VM\d+[-_,]S\d+[-_,]D\d+)[-_,]P(\d{1,4})(?:\.[A-Z0-9]+)?$/,
-    /(VM97-3_\d+P\d+)[-_](\d{1,4})(?:\.[A-Z0-9]+)?$/,
-    /(VM\d+[-_,]Z\d+)[-_](\d{1,4})(?:\.[A-Z0-9]+)?$/,
-  ];
-  for (const candidate of candidates) {
-    const withoutQuery = candidate.split(/[?#]/)[0];
-    for (const pattern of patterns) {
-      const match = pattern.exec(withoutQuery);
-      if (match) return { runKey: `${aerial ? 'aerial' : 'reportage'}:${match[1].replace(/[,]+/g, '-')}`, sequence: Number(match[2]), kind: aerial ? 'aerial' : 'reportage' };
-    }
-  }
-  return null;
 }
 
 function edgeKey(edge: GraphEdge): string {
@@ -310,11 +293,30 @@ async function main(): Promise<void> {
   const referenceIds = unique(corpus.map((row) => row.canonical_corpus_reference_snapshot_id));
   if (referenceIds.length !== 1 || referenceIds[0] !== corpusSummary.canonical_corpus_reference_snapshot_id) throw new Error('Canonical Corpus reference snapshot mismatch');
   if (corpusSummary.byte_equivalent_to_canonical_reference !== false) throw new Error('Mutable public API acquisition must not claim byte equivalence to the #66 snapshot');
+  const corpusInputSha256 = fileEvidence(corpusPath, corpus.length).sha256;
+  const featureContractId = String(featureReport.transform_contract?.derivative_contract_id ?? '');
+  if (!featureContractId) throw new Error('Feature report derivative contract is missing');
+  for (const [index, feature] of features.entries()) {
+    const record = corpus[index];
+    if (feature.feature_version !== PHASH_FEATURE_VERSION
+      || feature.record_id !== record.record_id
+      || feature.image_key !== record.image_key
+      || feature.corpus_snapshot_id !== acquisitionIds[0]
+      || feature.corpus_input_sha256 !== corpusInputSha256
+      || feature.derivative_contract_id !== featureContractId) {
+      throw new Error(`${feature.record_id}: stale or mixed pHash feature contract`);
+    }
+  }
+  if (featureReport.source_snapshot?.acquisition_snapshot_id !== acquisitionIds[0]
+    || featureReport.source_snapshot?.corpus_input_sha256 !== corpusInputSha256) throw new Error('Feature report source snapshot mismatch');
   const corpusById = new Map(corpus.map((row) => [row.record_id, row]));
   const featureById = new Map(features.map((row) => [row.record_id, row]));
   const edgesByKey = new Map<string, GraphEdge>();
   const reviewCandidates: ReviewCandidate[] = [];
   function addEdge(input: Omit<GraphEdge, 'schema_version' | 'edge_id'>): GraphEdge {
+    if (input.grouping_eligible !== (input.authority === 'grouping_authoritative')) {
+      throw new Error(`${input.edge_type}: grouping eligibility and authority must be equivalent in v1`);
+    }
     const [source, target] = input.directed ? [input.source_record_id, input.target_record_id] : pair(input.source_record_id, input.target_record_id);
     if (source === target) throw new Error(`Self-edge for ${source}`);
     const edge: GraphEdge = {
@@ -424,7 +426,8 @@ async function main(): Promise<void> {
   }
   for (const [runKey, rawMembers] of runGroups) {
     const members = rawMembers.sort((a, b) => a.sequence - b.sequence || a.row.record_id.localeCompare(b.row.record_id));
-    if (members.length < 2 || members.length > 250) continue;
+    if (members.length < 2) continue;
+    if (new Set(members.map((member) => member.kind)).size !== 1) throw new Error(`${runKey}: mixed run kinds`);
     const kind = members[0].kind;
     const edgeType: EdgeType = kind === 'aerial' ? 'same_aerial_run' : 'same_reportage';
     for (let index = 1; index < members.length; index += 1) {
@@ -513,6 +516,15 @@ async function main(): Promise<void> {
       grouping_edge_types: edgeTypesByComponent.get(component.id) ?? [],
     };
   }).sort((a, b) => a.record_id.localeCompare(b.record_id));
+  const authoritativeAerialRuns = [...runGroups.entries()]
+    .filter(([, members]) => members.length >= 2 && members[0].kind === 'aerial')
+    .map(([runKey, members]) => {
+      const componentIds = unique(members.map((member) => componentByRecord.get(member.row.record_id)!.id));
+      const splits = unique(members.map((member) => deterministicSplit(componentByRecord.get(member.row.record_id)!.id)));
+      if (componentIds.length !== 1 || splits.length !== 1) throw new Error(`${runKey}: authoritative aerial run was not preserved in one component and split`);
+      return { run_key: runKey, member_count: members.length, component_id: componentIds[0], split: splits[0] };
+    })
+    .sort((a, b) => a.run_key.localeCompare(b.run_key));
 
   const nodes = corpus.map((row) => ({
     schema_version: VFG_SCHEMA_VERSION,
@@ -546,32 +558,47 @@ async function main(): Promise<void> {
     const ranked = component.members.map((recordId) => {
       const row = corpusById.get(recordId)!;
       const feature = featureById.get(recordId)!;
-      const score = (row.systems.d1 ? 100 : 0) + (row.corpus_state !== 'alias' ? 20 : 0) + (feature.status === 'success' ? 5 : 0) + (titleGeneric(row.name) ? 0 : 3) + (row.rights.complete ? 2 : 0);
-      return { row, feature, score };
+      const factors = {
+        production_d1: row.systems.d1 ? 100 : 0,
+        not_source_alias: row.corpus_state !== 'alias' ? 20 : 0,
+        visual_feature_available: feature.status === 'success' ? 5 : 0,
+        descriptive_title: titleGeneric(row.name) ? 0 : 3,
+        rights_complete: row.rights.complete ? 2 : 0,
+      };
+      const score = Object.values(factors).reduce((sum, value) => sum + value, 0);
+      return { row, feature, score, factors };
     }).sort((a, b) => b.score - a.score || a.row.record_id.localeCompare(b.row.record_id));
     const canonical = ranked[0];
     const authority = groupingEdgesByComponent.get(component.component_id) ?? [];
     const sourceEdges = authority.filter((edge) => edge.edge_type === 'same_source_asset');
     const sourceDerivativeDisagreement = sourceEdges.some((edge) => edge.evidence.current_normalized_derivative_equal === false);
-    const confidence = authority.some((edge) => edge.edge_type === 'exact_payload')
-      ? 0.99
-      : sourceDerivativeDisagreement
-        ? 0.65
-        : sourceEdges.length
-          ? 0.9
-          : 0.84;
+    const runnerUpScore = ranked[1]?.score ?? canonical.score;
+    const selection = {
+      canonical_score: canonical.score,
+      runner_up_score: runnerUpScore,
+      score_margin: canonical.score - runnerUpScore,
+      top_score_tie_count: ranked.filter((candidate) => candidate.score === canonical.score).length,
+    };
+    const assessment = recommendationAssessment(component.members, authority, selection);
     return {
       schema_version: VFG_SCHEMA_VERSION,
       component_id: component.component_id,
       canonical_record_id: canonical.row.record_id,
       alternate_record_ids: ranked.slice(1).map((candidate) => candidate.row.record_id),
       member_count: ranked.length,
-      confidence,
+      confidence: assessment.confidence,
+      support: assessment.support,
+      canonical_selection: {
+        ...selection,
+        ranking_factors: canonical.factors,
+        deterministic_tie_breaker: 'record_id_ascending',
+      },
       reasons: [
         canonical.row.systems.d1 ? 'production_d1_member' : 'not_in_production_d1',
         canonical.row.corpus_state !== 'alias' ? 'not_source_alias' : 'source_alias',
         canonical.feature.status === 'success' ? 'visual_feature_available' : 'visual_feature_failure',
         ...(sourceDerivativeDisagreement ? ['source_reference_current_derivative_disagreement'] : []),
+        ...assessment.reasons,
         'alternates_remain_addressable',
         'recommendation_only_no_deletion_instruction',
       ],
@@ -605,6 +632,7 @@ async function main(): Promise<void> {
     });
   }
   const packet: Array<Record<string, unknown>> = [];
+  const decisionById = new Map(decisions.map((decision) => [decision.review_id, decision]));
   const byStratum = new Map<string, ReviewCandidate[]>();
   for (const candidate of reviewCandidates) {
     const stratum = byStratum.get(candidate.stratum) ?? [];
@@ -614,7 +642,12 @@ async function main(): Promise<void> {
   for (const [stratum, candidates] of [...byStratum.entries()].sort(([a], [b]) => a.localeCompare(b))) {
     const stratumTarget = Math.max(reviewPerStratum, EXPANDED_REVIEW_TARGETS[stratum] ?? 0);
     const selected = [...new Map(candidates.map((candidate) => [`${candidate.edge_type}:${candidate.source_record_id}:${candidate.target_record_id}:${candidate.threshold}`, candidate])).values()]
-      .sort((a, b) => sha256(`${stratum}\0${a.source_record_id}\0${a.target_record_id}`).localeCompare(sha256(`${stratum}\0${b.source_record_id}\0${b.target_record_id}`)))
+      .sort((a, b) => {
+        const aId = stableId('review', [stratum, a.edge_type, a.source_record_id, a.target_record_id, a.threshold ?? '']);
+        const bId = stableId('review', [stratum, b.edge_type, b.source_record_id, b.target_record_id, b.threshold ?? '']);
+        const reviewedOrder = Number(decisionById.has(bId)) - Number(decisionById.has(aId));
+        return reviewedOrder || sha256(`${stratum}\0${a.source_record_id}\0${a.target_record_id}`).localeCompare(sha256(`${stratum}\0${b.source_record_id}\0${b.target_record_id}`));
+      })
       .slice(0, stratumTarget);
     for (const candidate of selected) {
       const source = corpusById.get(candidate.source_record_id)!;
@@ -639,7 +672,9 @@ async function main(): Promise<void> {
     }
   }
   packet.sort((a, b) => String(a.review_id).localeCompare(String(b.review_id)));
-  const decisionById = new Map(decisions.map((decision) => [decision.review_id, decision]));
+  const packetIds = new Set(packet.map((row) => String(row.review_id)));
+  const missingDecisions = decisions.filter((decision) => !packetIds.has(decision.review_id));
+  if (missingDecisions.length) throw new Error(`${missingDecisions.length} preserved review decisions are absent from the rebuilt packet`);
   for (const row of packet) {
     const decision = decisionById.get(String(row.review_id));
     row.adjudication = decision?.decision ?? 'pending';
@@ -716,6 +751,12 @@ async function main(): Promise<void> {
       recommendations: recommendations.length,
       deletion_instructions: 0,
     },
+    authoritative_aerial_runs: {
+      runs: authoritativeAerialRuns.length,
+      records: authoritativeAerialRuns.reduce((sum, run) => sum + run.member_count, 0),
+      above_250: authoritativeAerialRuns.filter((run) => run.member_count > 250),
+      preservation_contract: 'Every parsed aerial run with at least two members has n-1 same_aerial_run star edges and occupies exactly one leakage component and benchmark split.',
+    },
     splits: {
       records: countBy(leakageMap, (row) => row.benchmark_split),
       components: countBy(components, (component) => deterministicSplit(component.component_id)),
@@ -731,6 +772,13 @@ async function main(): Promise<void> {
       decision_counts: countBy(decisions, (row) => row.decision),
       precision_rows: precision.length,
       abstentions_preserved: decisions.filter((row) => row.decision === 'abstain').length,
+    },
+    recommendation_support: {
+      confidence_counts: countBy(recommendations, (row) => row.confidence.toFixed(2)),
+      source_disagreement_capped: recommendations.filter((row) => row.support.applied_confidence_caps.some((cap: string) => cap.startsWith('source_derivative_disagreement_confidence_cap'))).length,
+      sequence_only_capped: recommendations.filter((row) => row.support.applied_confidence_caps.some((cap: string) => cap.includes('sequence_only_membership_confidence_cap'))).length,
+      canonical_tie_capped: recommendations.filter((row) => row.support.applied_confidence_caps.some((cap: string) => cap.startsWith('canonical_selection_tie_confidence_cap'))).length,
+      exact_payload_full_member_coverage: recommendations.filter((row) => row.support.exact_payload_member_rate === 1).length,
     },
     models: {
       phash: { model: 'DCT-pHash64', feature_version: features[0]?.feature_version ?? null, transform_contract: featureReport.transform_contract ?? null },

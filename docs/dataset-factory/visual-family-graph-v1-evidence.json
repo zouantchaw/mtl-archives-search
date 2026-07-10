@@ -9,12 +9,13 @@
     "npm run dataset-factory:visual-family-phash-v1 -- --concurrency 8",
     "npm run dataset-factory:visual-family-phash-v1 -- --concurrency 16",
     "npm run dataset-factory:visual-family-phash-v1 -- --concurrency 8 --retry-failures",
-    "DATASET_FACTORY_FIXED_NOW=2026-07-10T16:10:00.000Z npm run dataset-factory:visual-family-graph-v1",
+    "DATASET_FACTORY_FIXED_NOW=2026-07-10T20:00:00.000Z npm run dataset-factory:visual-family-phash-v1 -- --adopt-legacy-checkpoint",
+    "DATASET_FACTORY_FIXED_NOW=2026-07-10T20:10:00.000Z npm run dataset-factory:visual-family-graph-v1",
     "npm run dataset-factory:visual-family-review-v1",
-    "DATASET_FACTORY_FIXED_NOW=2026-07-10T16:20:00.000Z npm run dataset-factory:visual-family-search-eval-v1",
+    "DATASET_FACTORY_FIXED_NOW=2026-07-10T20:20:00.000Z npm run dataset-factory:visual-family-search-eval-v1",
     "npm run dataset-factory:visual-family-check-v1",
     "npm run dataset-factory:visual-family-self-test-v1",
-    "DATASET_FACTORY_FIXED_NOW=2026-07-10T16:10:00.000Z npm run dataset-factory:visual-family-graph-v1 -- --output data/mtl_archives/reports/visual_family_graph_v1/graph-repeat"
+    "DATASET_FACTORY_FIXED_NOW=2026-07-10T20:10:00.000Z npm run dataset-factory:visual-family-graph-v1 -- --output data/mtl_archives/reports/visual_family_graph_v1/graph-repeat"
   ],
   "acquisition": {
     "snapshot_id": "9235eb841d379f55973aa52f5558b264857bf35800871c85515a84bb227cb154",
@@ -40,7 +41,7 @@
     }
   },
   "phash": {
-    "feature_sha256": "1a90a86e34bca9eec9c25fbe937d83d5feb639f36a0e3b728f0d16e8eb6a7f68",
+    "feature_sha256": "9210a6459275ce8ec571577eeab97abc50a6468c73cca988edaa7ccd554a732a",
     "failure_record_id_stream_sha256": "62f266e28e26fe97d03c5bc17169e319f70a2ab07f7d87c4a5eaeb0bea4f046b",
     "feature_rows": 18462,
     "successful": 18253,
@@ -50,7 +51,7 @@
       "thumbnail_source_unavailable": 209
     },
     "transform": {
-      "derivative_contract_id": "derivative-contract:e194004d625d05e63629e921908ca9cebc570e7f729f05f8853d099371f6e7d1",
+      "derivative_contract_id": "derivative-contract:870f1b571e0ecf6ea5e289dd63561c4fdc04a8c1a273ea87b684e14ba6070999",
       "source": "public_read_only_thumb_api",
       "width": 256,
       "height": 256,
@@ -64,9 +65,12 @@
       "initial_pass_elapsed_ms": 541052,
       "failure_retry_elapsed_ms": 285978,
       "frozen_replay_elapsed_ms": 231,
+      "identity_binding_adoption_elapsed_ms": 301,
+      "identity_binding_adopted_rows": 18462,
+      "identity_binding_fetches": 0,
       "aggregate_record_elapsed_ms": 12349614,
       "derivative_response_bytes_all_successes": 251127785,
-      "feature_bytes": 12490770,
+      "feature_bytes": 15758544,
       "failure_bytes": 119112,
       "attempts_recorded": 18895,
       "original_object_transfer_avoided": true,
@@ -76,25 +80,25 @@
   },
   "graph": {
     "nodes": 18462,
-    "edges": 340792,
-    "edge_sha256": "14b28bf47141f42c8110624d2b46c090f5d28724aa816b2851ce7f83680e1fd9",
+    "edges": 345870,
+    "edge_sha256": "cc46d519252ebb4609d2a291f175a655bfbcb8f2779b581bf4e2c98f9aac0932",
     "edges_by_type": {
       "exact_payload": 1547,
       "same_source_asset": 4963,
       "near_duplicate_phash": 307113,
       "visual_neighbor_clip": 1491,
       "visual_neighbor_dino": 0,
-      "sequence_precedes": 10516,
+      "sequence_precedes": 12582,
       "same_reportage": 10,
-      "same_aerial_run": 14397,
+      "same_aerial_run": 17409,
       "alternate_crop": 690,
       "same_subject_unverified": 65
     },
     "authority": {
-      "grouping_authoritative": 31413,
+      "grouping_authoritative": 36491,
       "review_required": 96614,
       "uncertain": 212765,
-      "grouping_eligible": 31413,
+      "grouping_eligible": 36491,
       "pHash_grouping_eligible": 0
     },
     "exact_payload_contract": {
@@ -109,38 +113,59 @@
       "current_normalized_derivative_unavailable": 103,
       "current_derivative_identity_claimed": false
     },
+    "authoritative_aerial_runs": {
+      "runs": 317,
+      "records": 17726,
+      "linear_edge_contract": "n-1 same_aerial_run star edges per parsed run; every run occupies one component and one split",
+      "above_250": [
+        { "run_key": "aerial:VM97-S3-D08", "member_count": 880, "split": "train", "component_id": "leakage-component:01168d5e0c09490c4f8448fc1db1fe1ebbe4c0675e99c86b24b527393aebc091" },
+        { "run_key": "aerial:VM97-S3-D05", "member_count": 540, "split": "train", "component_id": "leakage-component:7d14fcd9227779157d78b817dcd51f93685a62f6307a77658764a05c1909279e" },
+        { "run_key": "aerial:VM97-S3-D04", "member_count": 472, "split": "train", "component_id": "leakage-component:0a110b48dcb3d606be54363427c4832b82df67cfb9baf1864b5b308df937224a" },
+        { "run_key": "aerial:VM97-S3-D15", "member_count": 337, "split": "train", "component_id": "leakage-component:5bd94395a16ebfa5f6552af46822f76c6cba9310964a8b8c6b586ee527fb9885" },
+        { "run_key": "aerial:VM97-S3-D13", "member_count": 269, "split": "train", "component_id": "leakage-component:57cac61d61ff5cace67480b9cfbb019793afc1f1b345b9a7f2126a4ae91a49" },
+        { "run_key": "aerial:VM94-B164", "member_count": 265, "split": "train", "component_id": "leakage-component:c0b6337713bf7ab60cff872ffdd261df920926ed6103e26a2674a8f57e8f9d17" },
+        { "run_key": "aerial:VM94-B162", "member_count": 256, "split": "train", "component_id": "leakage-component:0cc195ccda3caa4e041bd047a4e1fc1a56397d2e9aad4d99c83923a5ea325a6d" }
+      ]
+    },
     "components": {
-      "total": 2986,
-      "grouped": 1389,
-      "grouped_records": 16865,
-      "singletons": 1597,
-      "largest": 250,
-      "component_sha256": "e3a3f18ff700125e74c531b4c4eb77b9fd7ae6c91d532d0c93a980135e627474",
-      "record_map_sha256": "0cc7360a574aa1e9da9ce88976e0d1164e7bc0816471ab6c0b5d1a925ec558b0"
+      "total": 920,
+      "grouped": 450,
+      "grouped_records": 17992,
+      "singletons": 470,
+      "largest": 880,
+      "component_sha256": "e61641194922bf9253150368fe7f7d9bae077b7ea46babe1bc17703365389ae0",
+      "record_map_sha256": "b003b7033912e646abb70b6dd9771809061a8d2cc10720b5188aeb134140cbf4"
     },
     "splits": {
       "records": {
-        "train": 14513,
-        "validation": 1749,
-        "test": 2200
+        "train": 15154,
+        "validation": 1408,
+        "test": 1900
       },
       "components": {
-        "train": 2351,
-        "validation": 329,
-        "test": 306
+        "train": 731,
+        "validation": 87,
+        "test": 102
       },
       "component_crossings": 0,
-      "split_sha256": "c9b2d22c9c40b3a2e72117026f42550dedf7002444ca9908040dceb9399238fe"
+      "split_sha256": "961d9e9ee1573a5178816ca8b36f6ecf150efba38386719d04f76c2035402f37"
     },
     "recommendations": {
-      "rows": 1389,
-      "sha256": "cad597465e0c87b5880ada22d1372d4ab2291f6d3fadc3050400c7e1bf42a4d5",
+      "rows": 450,
+      "sha256": "5c3b7a3de6f2d8e203d22d60361c6f75e220c5f9a6e53789673b9f3b4d3cf023",
       "deletion_instructions": 0,
-      "alternates_remain_addressable": true
+      "alternates_remain_addressable": true,
+      "component_wide_support_fields": true,
+      "confidence_counts": { "0.60": 139, "0.65": 2, "0.68": 258, "0.72": 17, "0.90": 4, "0.99": 30 },
+      "source_disagreement_capped": 141,
+      "sequence_only_capped": 266,
+      "canonical_tie_capped": 62,
+      "review_cited_234_member_pattern_confidence": 0.6,
+      "review_cited_222_member_pattern_confidence": 0.6
     },
     "runtime_storage_cost": {
-      "elapsed_ms": 155487,
-      "registered_bundle_bytes": 211169302,
+      "elapsed_ms": 232399,
+      "registered_bundle_bytes": 213466897,
       "paid_compute": false,
       "cost_usd": 0
     }
@@ -154,7 +179,7 @@
     "abstain": 4,
     "adjudication_sha256": "1a57357ed94a5aa2a84013ae3657e4733b13aa68ef4c4ba2c39336ad4de6394d",
     "packet_sha256": "80a64f25a6bcc240fb56ffdad5f346b64dd126b73a796829640675973b45619e",
-    "precision_sha256": "ea8a332908e797e3cc1ca26f1a22c54685207678c22e88f1268a752be4e4a7f3",
+    "precision_sha256": "f925369e94896e3d72cc525e03d0af731ad386a0bf8d52de6b6ed0533bf2d379",
     "key_precision": {
       "exact_payload": "12/12; Wilson95 0.757506-1.0",
       "same_source_asset_current_visual_agreement": "6/12; Wilson95 0.253782-0.746218",
@@ -162,7 +187,10 @@
       "sequence_precedes": "12/12; Wilson95 0.757506-1.0",
       "same_aerial_run": "24/24 decided, 2 unreviewed abstentions; Wilson95 0.862024-1.0"
     },
-    "reviewer_independent_of_implementation": false
+    "reviewer_independent_of_implementation": true,
+    "independent_review_pairs": 120,
+    "independent_review_disagreements": 0,
+    "remediation_review_pending": true
   },
   "models": {
     "clip": {
@@ -193,15 +221,39 @@
   "determinism": {
     "full_graph_repeated": true,
     "byte_identical_files": 8,
-    "repeat_elapsed_ms": 176833
+    "repeat_elapsed_ms": 201761
   },
   "artifact_registry": {
     "entries": 87,
     "input_bundle_sha256": "e45cc038cfe3d9bffdbe51eac230511a81e51198c14e390e0b38279a09e1a79e",
-    "phash_bundle_sha256": "e56a9f27b3e87ed55a2796fa20b10f237e2a6fd441b65514253b22664516eb7b",
+    "phash_bundle_sha256": "237a425800e706ea922e420099344579d4d51f8ca17b9ca39be0553539d04931",
     "review_sha256": "1a57357ed94a5aa2a84013ae3657e4733b13aa68ef4c4ba2c39336ad4de6394d",
-    "graph_bundle_sha256": "1eb5456a8c9100a55516024ad3639acd622333dc7bcf120253933a23ad06de56",
-    "search_bundle_sha256": "f81c843b705670558d56f4004e89de027d5197b859a2d35e9f870a7bdfd139d2"
+    "graph_bundle_sha256": "a4f66eee3b39573977ab3694cfde5fbe4db62be4f09c77120316d2d7b56aa8cc",
+    "search_bundle_sha256": "744b1b2e9c68889e934b921db9361cfb43098efa0ebfd2c4851bb183bbe8e00e"
+  },
+  "verification": {
+    "scripts_typecheck": "pass",
+    "repository_tests": { "passed": 23, "failed": 0 },
+    "visual_family_self_test": { "fixture_records": 259, "large_aerial_run_records": 251, "adversarial_cases": 18, "status": "pass" },
+    "visual_family_live_checker": "pass",
+    "canonical_corpus_fixture_smoke": "pass",
+    "canonical_corpus_negative_tests": 72,
+    "canonical_corpus_r2_bound_self_test": "pass",
+    "artifact_registry_adversarial_tests": 14,
+    "artifact_registry_required_bundles_verified": 5,
+    "structured_parse": { "files": 44, "parsed_values": 861626, "status": "pass" },
+    "tracked_files_only_reproduction": "pass",
+    "independent_arithmetic_recalculation": "pass",
+    "diff_secret_signed_url_mutation_scope_size_audits": "pass",
+    "full_workspace_typecheck": {
+      "status": "three pre-existing unrelated errors",
+      "errors": 3,
+      "paths": [
+        "apps/next-app/components/ClerkLocalized.tsx",
+        "apps/next-app/components/ClerkScopedProvider.tsx"
+      ],
+      "changed_by_issue_67": false
+    }
   },
   "safety": {
     "production_writes": 0,
@@ -219,7 +271,7 @@
     "All pHash edges are non-grouping after a reviewed distance-0 false match.",
     "CLIP neighbor evidence covers 500 frozen queries rather than full-corpus neighbor retrieval; production index membership is reported separately.",
     "DINO was not run because no approved no-cost compute gate was available.",
-    "The visual review was performed by the implementation author; independent reviewer confirmation remains pending.",
+    "The independent reviewer inspected all 120 preserved decisions with zero disagreements; independent review of this remediation head remains pending.",
     "Search duplicate rates describe a frozen candidate artifact, not later mutable production ranking or index state."
   ]
 }

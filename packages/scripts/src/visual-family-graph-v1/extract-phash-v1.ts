@@ -6,6 +6,7 @@ import sharp from 'sharp';
 import { datasetFactoryNowIso } from '../dataset-factory/clock.js';
 import {
   CANONICAL_COUNTS,
+  PHASH_FEATURE_VERSION,
   VFG_SCHEMA_VERSION,
   clean,
   countBy,
@@ -13,6 +14,7 @@ import {
   readJsonl,
   sha256,
   stableId,
+  stableJson,
   writeJson,
   writeJsonl,
   type CorpusInputRow,
@@ -23,7 +25,6 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../.
 const DEFAULT_CORPUS = path.join(ROOT, 'data/mtl_archives/reports/visual_family_graph_v1/input/corpus-input-v1.jsonl');
 const DEFAULT_OUTPUT = path.join(ROOT, 'data/mtl_archives/reports/visual_family_graph_v1/phash');
 const DEFAULT_THUMB_API = 'https://mtl-archives-worker.wiel.workers.dev';
-const FEATURE_VERSION = 'phash_dct64_normalized_derivative_v1' as const;
 const PHASH_SIZE = 32;
 const COSINE = Array.from({ length: 8 }, (_, frequency) =>
   Array.from({ length: PHASH_SIZE }, (_, coordinate) => Math.cos(((2 * coordinate + 1) * frequency * Math.PI) / (2 * PHASH_SIZE))),
@@ -134,10 +135,7 @@ async function fetchDerivative(row: CorpusInputRow, options: ExtractOptions): Pr
     try {
       const response = await fetch(thumbUrl(row, options), { signal: controller.signal, headers: { accept: 'image/*' } });
       if (!response.ok) throw new Error(`http_${response.status}`);
-      const declared = Number(response.headers.get('content-length') ?? 0);
-      if (declared > options.maxResponseBytes) throw new Error(`response_too_large_declared_${declared}`);
-      const buffer = Buffer.from(await response.arrayBuffer());
-      if (buffer.byteLength > options.maxResponseBytes) throw new Error(`response_too_large_actual_${buffer.byteLength}`);
+      const buffer = await readBoundedResponse(response, options.maxResponseBytes, () => controller.abort());
       return { buffer, attempts: attempt };
     } catch (error) {
       last = error instanceof Error ? error.message : String(error);
@@ -147,6 +145,59 @@ async function fetchDerivative(row: CorpusInputRow, options: ExtractOptions): Pr
     }
   }
   throw new Error(last);
+}
+
+export async function readBoundedResponse(response: Response, maxResponseBytes: number, abort?: () => void): Promise<Buffer> {
+  const declaredHeader = response.headers.get('content-length');
+  const declared = declaredHeader === null ? null : Number(declaredHeader);
+  if (declared !== null && Number.isFinite(declared) && declared > maxResponseBytes) {
+    abort?.();
+    await response.body?.cancel().catch(() => undefined);
+    throw new Error(`response_too_large_declared_${declared}`);
+  }
+  if (!response.body) return Buffer.alloc(0);
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      total += value.byteLength;
+      if (total > maxResponseBytes) {
+        abort?.();
+        await reader.cancel(`response exceeded ${maxResponseBytes} bytes`);
+        throw new Error(`response_too_large_actual_${total}`);
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  return Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)), total);
+}
+
+type ResumeIdentity = {
+  acquisitionSnapshotId: string;
+  corpusInputSha256: string;
+  derivativeContractId: string;
+};
+
+export function validateResumeRows(existing: PhashFeatureRow[], corpus: CorpusInputRow[], identity: ResumeIdentity): void {
+  if (new Set(existing.map((row) => row.record_id)).size !== existing.length) throw new Error('Resume checkpoint has duplicate record IDs');
+  const corpusById = new Map(corpus.map((row) => [row.record_id, row]));
+  for (const row of existing) {
+    const record = corpusById.get(row.record_id);
+    if (!record) throw new Error(`${row.record_id}: resume checkpoint record is outside current corpus`);
+    const mismatch = row.image_key !== record.image_key ? 'image_key'
+      : row.corpus_snapshot_id !== identity.acquisitionSnapshotId ? 'corpus_snapshot_id'
+        : row.corpus_input_sha256 !== identity.corpusInputSha256 ? 'corpus_input_sha256'
+          : row.feature_version !== PHASH_FEATURE_VERSION ? 'feature_version'
+            : row.derivative_contract_id !== identity.derivativeContractId ? 'derivative_contract_id'
+              : null;
+    if (mismatch) throw new Error(`${row.record_id}: stale resume checkpoint ${mismatch} mismatch`);
+  }
 }
 
 function failureCode(message: string): string {
@@ -187,6 +238,7 @@ async function main(): Promise<void> {
       'fetch-attempts': { type: 'string', default: '3' },
       'max-response-bytes': { type: 'string', default: '1048576' },
       'retry-failures': { type: 'boolean', default: false },
+      'adopt-legacy-checkpoint': { type: 'boolean', default: false },
       mode: { type: 'string', default: 'live' },
     },
   });
@@ -227,14 +279,39 @@ async function main(): Promise<void> {
   };
   const options: ExtractOptions = {
     thumbApiOrigin: values['thumb-api-origin']!, width, height, quality, format, fit, timeoutMs, fetchAttempts, maxResponseBytes,
-    derivativeContractId: stableId('derivative-contract', [JSON.stringify(transformContract)]),
+    derivativeContractId: stableId('derivative-contract', [stableJson(transformContract)]),
   };
 
   const corpus = readJsonl<CorpusInputRow>(corpusPath);
   if (new Set(corpus.map((row) => row.record_id)).size !== corpus.length) throw new Error('Corpus has duplicate record IDs');
   if (values.mode === 'live' && corpus.length !== CANONICAL_COUNTS.corpus) throw new Error(`Corpus count drift: ${corpus.length}`);
+  const acquisitionIds = [...new Set(corpus.map((row) => row.corpus_snapshot_id))];
+  if (acquisitionIds.length !== 1) throw new Error(`Corpus has ${acquisitionIds.length} acquisition snapshot IDs`);
+  const corpusInputSha256 = String(fileEvidence(corpusPath, corpus.length).sha256);
+  const resumeIdentity: ResumeIdentity = { acquisitionSnapshotId: acquisitionIds[0], corpusInputSha256, derivativeContractId: options.derivativeContractId };
   fs.mkdirSync(outputDir, { recursive: true });
-  const existing = fs.existsSync(featurePath) ? readJsonl<PhashFeatureRow>(featurePath) : [];
+  let existing = fs.existsSync(featurePath) ? readJsonl<PhashFeatureRow>(featurePath) : [];
+  let adoptedLegacyRows = 0;
+  if (values['adopt-legacy-checkpoint']) {
+    const reportPath = path.join(outputDir, 'phash-report-v1.json');
+    if (!existing.length || !fs.existsSync(reportPath)) throw new Error('Legacy checkpoint adoption requires existing features and report');
+    if (existing.some((row) => row.corpus_snapshot_id !== undefined || row.corpus_input_sha256 !== undefined)) throw new Error('Legacy checkpoint adoption only accepts wholly unbound legacy rows');
+    const legacyReport = JSON.parse(fs.readFileSync(reportPath, 'utf8')) as Record<string, any>;
+    const { derivative_contract_id: legacyContractId, ...legacyTransformContract } = legacyReport.transform_contract ?? {};
+    if (legacyReport.feature_version !== PHASH_FEATURE_VERSION
+      || stableJson(legacyTransformContract) !== stableJson(transformContract)
+      || legacyReport.lineage?.corpus?.sha256 !== corpusInputSha256
+      || legacyReport.lineage?.features?.sha256 !== fileEvidence(featurePath, existing.length).sha256
+      || existing.some((row) => row.derivative_contract_id !== legacyContractId || row.feature_version !== PHASH_FEATURE_VERSION)) {
+      throw new Error('Legacy checkpoint lineage or transform contract cannot be adopted');
+    }
+    const corpusById = new Map(corpus.map((row) => [row.record_id, row]));
+    if (existing.some((row) => corpusById.get(row.record_id)?.image_key !== row.image_key)) throw new Error('Legacy checkpoint image identity drift');
+    existing = existing.map((row) => ({ ...row, corpus_snapshot_id: acquisitionIds[0], corpus_input_sha256: corpusInputSha256, derivative_contract_id: options.derivativeContractId }));
+    adoptedLegacyRows = existing.length;
+    writeJsonl(featurePath, existing);
+  }
+  validateResumeRows(existing, corpus, resumeIdentity);
   const byId = new Map(existing.map((row) => [row.record_id, row]));
   const pending = corpus.filter((row) => !byId.has(row.record_id) || (values['retry-failures'] && byId.get(row.record_id)?.status === 'failure'));
   let completed = 0;
@@ -249,7 +326,9 @@ async function main(): Promise<void> {
       if (maxReturned > Math.max(width, height) * 1.05) throw new Error(`unbounded_derivative_${feature.derivativeWidth}x${feature.derivativeHeight}`);
       byId.set(row.record_id, {
         schema_version: VFG_SCHEMA_VERSION,
-        feature_version: FEATURE_VERSION,
+        feature_version: PHASH_FEATURE_VERSION,
+        corpus_snapshot_id: acquisitionIds[0],
+        corpus_input_sha256: corpusInputSha256,
         record_id: row.record_id,
         image_key: row.image_key,
         status: 'success',
@@ -269,7 +348,9 @@ async function main(): Promise<void> {
       const message = error instanceof Error ? error.message : String(error);
       byId.set(row.record_id, {
         schema_version: VFG_SCHEMA_VERSION,
-        feature_version: FEATURE_VERSION,
+        feature_version: PHASH_FEATURE_VERSION,
+        corpus_snapshot_id: acquisitionIds[0],
+        corpus_input_sha256: corpusInputSha256,
         record_id: row.record_id,
         image_key: row.image_key,
         status: 'failure',
@@ -303,7 +384,7 @@ async function main(): Promise<void> {
   const completedAt = datasetFactoryNowIso();
   const report = {
     schema_version: VFG_SCHEMA_VERSION,
-    feature_version: FEATURE_VERSION,
+    feature_version: PHASH_FEATURE_VERSION,
     generated_at: completedAt,
     transform_contract: { ...transformContract, derivative_contract_id: options.derivativeContractId },
     coverage: {
@@ -320,6 +401,7 @@ async function main(): Promise<void> {
       completed_at: completedAt,
       elapsed_ms: Date.now() - startedMs,
       fetched_this_run: pending.length,
+      adopted_legacy_checkpoint_rows: adoptedLegacyRows,
       derivative_response_bytes_this_run: responseBytes,
       derivative_response_bytes_all_successes: successes.reduce((sum, row) => sum + row.derivative_bytes, 0),
       aggregate_record_elapsed_ms: features.reduce((sum, row) => sum + row.elapsed_ms, 0),
@@ -329,6 +411,7 @@ async function main(): Promise<void> {
       paid_compute: false,
       original_object_transfer_avoided: true,
     },
+    source_snapshot: { acquisition_snapshot_id: acquisitionIds[0], corpus_input_sha256: corpusInputSha256 },
     lineage: { corpus: repoEvidence(corpusPath, corpus.length), features: repoEvidence(featurePath, features.length) },
   };
   writeJson(path.join(outputDir, 'phash-report-v1.json'), report);

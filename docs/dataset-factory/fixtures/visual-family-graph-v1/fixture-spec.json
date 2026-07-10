@@ -13,6 +13,11 @@
   "clip_neighbors": [
     { "type": "nearest_neighbors", "id": "mtl_archives_metadata_6.json", "nearest": [{ "id": "mtl_archives_metadata_7.json", "score": 0.9 }] }
   ],
+  "adversarial_large_aerial_run": {
+    "records": 251,
+    "first_id": 1000,
+    "run_key": "aerial:VM97-S9-D99"
+  },
   "expected": {
     "records": 8,
     "feature_failures": 1,

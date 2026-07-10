@@ -9,13 +9,17 @@ import {
   CANONICAL_CORPUS_SNAPSHOT_ID,
   CANONICAL_COUNTS,
   EDGE_TYPES,
+  PHASH_FEATURE_VERSION,
   VFG_SCHEMA_VERSION,
   UnionFind,
+  clean,
   deterministicSplit,
   fileEvidence,
   hamming64,
   readJson,
   readJsonl,
+  recommendationAssessment,
+  sequenceEvidence,
   sha256,
   stableId,
   stableJson,
@@ -26,6 +30,7 @@ import {
   type GraphEdge,
   type LeakageMapRow,
   type PhashFeatureRow,
+  type RecommendationSupport,
   type ReviewDecision,
 } from './model.js';
 
@@ -35,7 +40,24 @@ const DEFAULT_REVIEW = path.join(ROOT, 'docs/dataset-factory/fixtures/visual-fam
 const DEFAULT_CLIP = path.join(ROOT, 'data/mtl_archives/reports/autoresearch_embedding_eval_gpu_500/embedding_eval_model_clip.jsonl');
 
 type ComponentRow = { schema_version: string; component_id: string; member_count: number; members: string[]; grouping_edge_types: EdgeType[] };
-type Recommendation = { component_id: string; canonical_record_id: string; alternate_record_ids: string[]; confidence: number; reasons: string[]; deletion_instruction: boolean; preserved_provenance: boolean };
+type Recommendation = {
+  component_id: string;
+  canonical_record_id: string;
+  alternate_record_ids: string[];
+  confidence: number;
+  reasons: string[];
+  deletion_instruction: boolean;
+  preserved_provenance: boolean;
+  support: RecommendationSupport;
+  canonical_selection: {
+    canonical_score: number;
+    runner_up_score: number;
+    score_margin: number;
+    top_score_tie_count: number;
+    ranking_factors: Record<string, number>;
+    deterministic_tie_breaker: string;
+  };
+};
 type SearchCandidate = { task_id: string; query?: string; slice?: string; candidate_record_id: string; duplicate_key?: string; ranks?: Partial<Record<'semantic' | 'smart' | 'visual', number>> };
 type AjvLike = { addSchema(schema: Record<string, unknown>): void; compile(schema: Record<string, unknown>): ValidateFunction; errorsText(errors?: ValidateFunction['errors']): string };
 const Ajv2020 = Ajv2020Import as unknown as new (options: Record<string, unknown>) => AjvLike;
@@ -55,6 +77,17 @@ function sameJson(a: unknown, b: unknown): boolean {
 
 function mean(values: number[]): number {
   return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
+}
+
+function titleGeneric(value: string): boolean {
+  const normalized = clean(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return !normalized || /^mtl archives metadata/.test(normalized) || /^vm\d/.test(normalized) || normalized.length < 8;
 }
 
 async function main(): Promise<void> {
@@ -78,6 +111,7 @@ async function main(): Promise<void> {
   const localPath = path.join(base, 'canonical_local/local-manifest.jsonl');
   const featurePath = path.join(phashDir, 'phash-features-v1.jsonl');
   const failuresPath = path.join(phashDir, 'phash-failures-v1.jsonl');
+  const featureReportPath = path.join(phashDir, 'phash-report-v1.json');
   const nodesPath = path.join(graphDir, 'nodes-v1.jsonl');
   const edgesPath = path.join(graphDir, 'typed-edges-v1.jsonl');
   const componentsPath = path.join(graphDir, 'leakage-components-v1.jsonl');
@@ -93,7 +127,7 @@ async function main(): Promise<void> {
   const reportPath = path.join(graphDir, 'graph-report-v1.json');
   const manifestPath = path.join(graphDir, 'artifact-manifest-v1.json');
   const reviewPath = resolvePath(values.review!);
-  for (const required of [corpusPath, summaryPath, sitemapPath, detailPath, localPath, featurePath, failuresPath, nodesPath, edgesPath, componentsPath, mapPath, splitPath, recommendationPath, packetPath, precisionPath, reportPath, manifestPath]) {
+  for (const required of [corpusPath, summaryPath, sitemapPath, detailPath, localPath, featurePath, failuresPath, featureReportPath, nodesPath, edgesPath, componentsPath, mapPath, splitPath, recommendationPath, packetPath, precisionPath, reportPath, manifestPath]) {
     assert(fs.existsSync(required), `Missing required artifact: ${required}`);
   }
   if (values.mode === 'live') assert(fs.existsSync(reviewPath), `Missing required reviewed adjudications: ${reviewPath}`);
@@ -104,6 +138,7 @@ async function main(): Promise<void> {
   const summary = readJson<Record<string, any>>(summaryPath);
   const features = readJsonl<PhashFeatureRow>(featurePath);
   const failures = readJsonl<PhashFeatureRow>(failuresPath);
+  const featureReport = readJson<Record<string, any>>(featureReportPath);
   const nodes = readJsonl<Record<string, any>>(nodesPath);
   const edges = readJsonl<GraphEdge>(edgesPath);
   const components = readJsonl<ComponentRow>(componentsPath);
@@ -168,6 +203,26 @@ async function main(): Promise<void> {
 
   assert(features.length === corpus.length, 'Feature row count does not cover corpus');
   assert(features.every((row, index) => row.record_id === corpus[index].record_id), 'Feature rows are not one-to-one and sorted with corpus');
+  const corpusInputSha256 = fileEvidence(corpusPath, corpus.length).sha256;
+  const { derivative_contract_id: derivativeContractId, ...transformContract } = featureReport.transform_contract ?? {};
+  assert(typeof derivativeContractId === 'string' && derivativeContractId === stableId('derivative-contract', [stableJson(transformContract)]), 'pHash derivative contract ID/content mismatch');
+  assert(featureReport.feature_version === PHASH_FEATURE_VERSION, 'pHash feature report version mismatch');
+  assert(featureReport.source_snapshot?.acquisition_snapshot_id === independentlyDerivedAcquisitionId, 'pHash report acquisition snapshot mismatch');
+  assert(featureReport.source_snapshot?.corpus_input_sha256 === corpusInputSha256, 'pHash report corpus input identity mismatch');
+  assert(featureReport.lineage?.corpus?.sha256 === corpusInputSha256, 'pHash report corpus lineage mismatch');
+  assert(featureReport.lineage?.features?.sha256 === fileEvidence(featurePath, features.length).sha256, 'pHash report feature lineage mismatch');
+  for (const [index, feature] of features.entries()) {
+    const record = corpus[index];
+    assert(feature.image_key === record.image_key, `${feature.record_id}: pHash image key drift`);
+    assert(feature.feature_version === PHASH_FEATURE_VERSION, `${feature.record_id}: pHash feature version drift`);
+    assert(feature.corpus_snapshot_id === independentlyDerivedAcquisitionId, `${feature.record_id}: pHash acquisition snapshot drift`);
+    assert(feature.corpus_input_sha256 === corpusInputSha256, `${feature.record_id}: pHash corpus input drift`);
+    assert(feature.derivative_contract_id === derivativeContractId, `${feature.record_id}: pHash derivative contract drift`);
+    if (feature.status === 'success') {
+      assert((feature.derivative_width ?? Number.POSITIVE_INFINITY) <= Number(transformContract.width) * 1.05
+        && (feature.derivative_height ?? Number.POSITIVE_INFINITY) <= Number(transformContract.height) * 1.05, `${feature.record_id}: pHash derivative dimensions exceed contract`);
+    }
+  }
   const expectedFailures = features.filter((row) => row.status === 'failure');
   assert(sameJson(failures, expectedFailures), 'pHash failure file is not the exact individually enumerated feature-failure subset');
   assert(features.filter((row) => row.status === 'success').every((row) => /^[a-f0-9]{16}$/.test(row.phash64 ?? '') && /^[a-f0-9]{64}$/.test(row.normalized_pixel_sha256 ?? '')), 'Successful pHash rows have malformed features');
@@ -180,6 +235,7 @@ async function main(): Promise<void> {
     assert(corpusSet.has(edge.source_record_id) && corpusSet.has(edge.target_record_id), `${edge.edge_id}: endpoint outside corpus`);
     assert(edge.source_record_id !== edge.target_record_id, `${edge.edge_id}: self edge`);
     if (!edge.directed) assert(edge.source_record_id.localeCompare(edge.target_record_id) < 0, `${edge.edge_id}: undirected edge endpoints are not canonicalized`);
+    assert(edge.grouping_eligible === (edge.authority === 'grouping_authoritative'), `${edge.edge_id}: grouping eligibility/authority contract mismatch`);
     if (['visual_neighbor_clip', 'visual_neighbor_dino', 'alternate_crop', 'same_reportage', 'same_subject_unverified'].includes(edge.edge_type)) {
       assert(!edge.grouping_eligible, `${edge.edge_id}: review/uncertain evidence forced grouping`);
     }
@@ -252,6 +308,30 @@ async function main(): Promise<void> {
   }
   const splitCrossings = components.filter((component) => new Set(component.members.map((id) => leakageMap.find((row) => row.record_id === id)!.benchmark_split)).size > 1);
   assert(splitCrossings.length === 0, `${splitCrossings.length} connected components cross splits`);
+  const parsedAerialRuns = new Map<string, string[]>();
+  for (const record of corpus) {
+    const parsed = sequenceEvidence(record);
+    if (!parsed || parsed.kind !== 'aerial') continue;
+    parsedAerialRuns.set(parsed.runKey, [...(parsedAerialRuns.get(parsed.runKey) ?? []), record.record_id]);
+  }
+  const expectedAerialRuns = [...parsedAerialRuns.entries()]
+    .filter(([, members]) => members.length >= 2)
+    .map(([runKey, members]) => {
+      const componentIds = unique(members.map((member) => componentByRecord.get(member)!.component_id));
+      const runSplits = unique(members.map((member) => leakageMap.find((row) => row.record_id === member)!.benchmark_split));
+      assert(componentIds.length === 1, `${runKey}: parsed authoritative aerial run spans ${componentIds.length} components`);
+      assert(runSplits.length === 1, `${runKey}: parsed authoritative aerial run spans ${runSplits.length} splits`);
+      const runEdges = edges.filter((edge) => edge.edge_type === 'same_aerial_run' && edge.evidence.run_key === runKey);
+      const sequenceEdges = edges.filter((edge) => edge.edge_type === 'sequence_precedes' && edge.evidence.run_key === runKey);
+      assert(runEdges.length === members.length - 1, `${runKey}: expected ${members.length - 1} linear same_aerial_run edges, found ${runEdges.length}`);
+      assert(sequenceEdges.length <= members.length - 1, `${runKey}: sequence edge count is not linear`);
+      assert(runEdges.every((edge) => edge.grouping_eligible && edge.authority === 'grouping_authoritative'), `${runKey}: aerial run edge is not grouping-authoritative`);
+      return { run_key: runKey, member_count: members.length, component_id: componentIds[0], split: runSplits[0] };
+    })
+    .sort((a, b) => a.run_key.localeCompare(b.run_key));
+  assert(report.authoritative_aerial_runs?.runs === expectedAerialRuns.length, 'Report authoritative aerial run count mismatch');
+  assert(report.authoritative_aerial_runs?.records === expectedAerialRuns.reduce((sum, run) => sum + run.member_count, 0), 'Report authoritative aerial record count mismatch');
+  assert(sameJson(report.authoritative_aerial_runs?.above_250, expectedAerialRuns.filter((run) => run.member_count > 250)), 'Report >250 aerial run census mismatch');
 
   const groupedComponents = components.filter((row) => row.member_count > 1);
   const componentByRecordId = new Map<string, string>();
@@ -269,10 +349,32 @@ async function main(): Promise<void> {
     assert(sameJson(unique([recommendation.canonical_record_id, ...recommendation.alternate_record_ids]), component.members), `${recommendation.component_id}: alternates are not exactly preserved`);
     assert(recommendation.deletion_instruction === false && recommendation.preserved_provenance === true, `${recommendation.component_id}: unsafe recommendation contract`);
     const authority = groupingEdgesByComponent.get(recommendation.component_id) ?? [];
+    const ranked = component.members.map((recordId) => {
+      const record = corpusById.get(recordId)!;
+      const feature = featureById.get(recordId)!;
+      const factors = {
+        production_d1: record.systems.d1 ? 100 : 0,
+        not_source_alias: record.corpus_state !== 'alias' ? 20 : 0,
+        visual_feature_available: feature.status === 'success' ? 5 : 0,
+        descriptive_title: titleGeneric(record.name) ? 0 : 3,
+        rights_complete: record.rights.complete ? 2 : 0,
+      };
+      return { recordId, factors, score: Object.values(factors).reduce((sum, value) => sum + value, 0) };
+    }).sort((a, b) => b.score - a.score || a.recordId.localeCompare(b.recordId));
+    const expectedSelection = {
+      canonical_score: ranked[0].score,
+      runner_up_score: ranked[1]?.score ?? ranked[0].score,
+      score_margin: ranked[0].score - (ranked[1]?.score ?? ranked[0].score),
+      top_score_tie_count: ranked.filter((candidate) => candidate.score === ranked[0].score).length,
+    };
+    assert(recommendation.canonical_record_id === ranked[0].recordId, `${recommendation.component_id}: canonical ranking mismatch`);
+    assert(sameJson(recommendation.canonical_selection, { ...expectedSelection, ranking_factors: ranked[0].factors, deterministic_tie_breaker: 'record_id_ascending' }), `${recommendation.component_id}: canonical selection evidence mismatch`);
+    const assessment = recommendationAssessment(component.members, authority, expectedSelection);
     const sourceEdges = authority.filter((edge) => edge.edge_type === 'same_source_asset');
     const sourceDerivativeDisagreement = sourceEdges.some((edge) => edge.evidence.current_normalized_derivative_equal === false);
-    const expectedConfidence = authority.some((edge) => edge.edge_type === 'exact_payload') ? 0.99 : sourceDerivativeDisagreement ? 0.65 : sourceEdges.length ? 0.9 : 0.84;
-    assert(recommendation.confidence === expectedConfidence, `${recommendation.component_id}: recommendation confidence mismatch`);
+    assert(recommendation.confidence === assessment.confidence, `${recommendation.component_id}: recommendation confidence mismatch`);
+    assert(sameJson(recommendation.support, assessment.support), `${recommendation.component_id}: recommendation component support mismatch`);
+    for (const reason of assessment.reasons) assert(recommendation.reasons.includes(reason), `${recommendation.component_id}: recommendation confidence reason missing: ${reason}`);
     assert(recommendation.reasons.includes('alternates_remain_addressable') && recommendation.reasons.includes('recommendation_only_no_deletion_instruction'), `${recommendation.component_id}: recommendation reasons omit preservation boundary`);
     assert(recommendation.reasons.includes('source_reference_current_derivative_disagreement') === sourceDerivativeDisagreement, `${recommendation.component_id}: source derivative disagreement reason mismatch`);
   }
@@ -336,6 +438,11 @@ async function main(): Promise<void> {
   assert(report.components.grouped_records === components.filter((row) => row.member_count > 1).reduce((sum, row) => sum + row.member_count, 0), 'Report grouped record mismatch');
   assert(report.components.singletons === components.filter((row) => row.member_count === 1).length, 'Report singleton mismatch');
   assert(report.components.largest === Math.max(...components.map((row) => row.member_count)), 'Report largest component mismatch');
+  assert(sameJson(report.recommendation_support?.confidence_counts, Object.fromEntries(unique(recommendations.map((row) => row.confidence.toFixed(2))).map((confidence) => [confidence, recommendations.filter((row) => row.confidence.toFixed(2) === confidence).length]))), 'Report recommendation confidence distribution mismatch');
+  assert(report.recommendation_support?.source_disagreement_capped === recommendations.filter((row) => row.support.applied_confidence_caps.some((cap) => cap.startsWith('source_derivative_disagreement_confidence_cap'))).length, 'Report source-disagreement cap count mismatch');
+  assert(report.recommendation_support?.sequence_only_capped === recommendations.filter((row) => row.support.applied_confidence_caps.some((cap) => cap.includes('sequence_only_membership_confidence_cap'))).length, 'Report sequence-only cap count mismatch');
+  assert(report.recommendation_support?.canonical_tie_capped === recommendations.filter((row) => row.support.applied_confidence_caps.some((cap) => cap.startsWith('canonical_selection_tie_confidence_cap'))).length, 'Report canonical tie cap count mismatch');
+  assert(report.recommendation_support?.exact_payload_full_member_coverage === recommendations.filter((row) => row.support.exact_payload_member_rate === 1).length, 'Report exact-payload full-coverage count mismatch');
   assert(report.splits.component_crossings === 0, 'Report split crossing mismatch');
   assert(report.review.packet_pairs === packet.length && report.review.decisions === decisions.length, 'Report review arithmetic mismatch');
   assert(report.review.abstentions_preserved === decisions.filter((row) => row.decision === 'abstain').length, 'Report review abstention mismatch');
