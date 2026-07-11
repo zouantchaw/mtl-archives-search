@@ -106,6 +106,7 @@
     "dataset-factory:gold-label-adjudicate-002": "npm run dataset-factory:gold-label-adjudicate-002 --workspace=@mtl-archives/scripts --",
     "dataset-factory:search-silver-adjudicate-002": "npm run dataset-factory:search-silver-adjudicate-002 --workspace=@mtl-archives/scripts --",
     "dataset-factory:gold-label-self-test-002": "npm run dataset-factory:gold-label-self-test-002 --workspace=@mtl-archives/scripts --",
+    "dataset-factory:gold-label-seal-pass-002": "npm run dataset-factory:gold-label-seal-pass-002 --workspace=@mtl-archives/scripts --",
     "dataset-factory:gold-label-bundle-002": "npm run dataset-factory:gold-label-bundle-002 --workspace=@mtl-archives/scripts --",
     "dataset-factory:production-apply-gate-v0": "npm run dataset-factory:production-apply-gate-v0 --workspace=@mtl-archives/scripts --",
     "dataset-factory:production-scoped-apply-v0": "npm run dataset-factory:production-scoped-apply-v0 --workspace=@mtl-archives/scripts --",

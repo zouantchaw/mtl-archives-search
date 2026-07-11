@@ -1,0 +1,15 @@
+{
+  "$schema":"http://json-schema.org/draft-07/schema#","$id":"https://mtlarchives.com/schemas/gold-label-pixel-label-v1.json","type":"object","additionalProperties":false,
+  "required":["human_legible","needs_human_review","story_value","print_value","search_value","partner_fit","image_mode","scene_text_presence","storefront_presence","billboard_presence","brand_presence","landmark_presence","street_sign_presence","aerial_land_use","georeference_candidate","quality_failure","repaired_evidence"],
+  "properties":{
+    "human_legible":{"$ref":"#/$defs/binary"},"needs_human_review":{"$ref":"#/$defs/binary"},"partner_fit":{"$ref":"#/$defs/binary"},"scene_text_presence":{"$ref":"#/$defs/binary"},"storefront_presence":{"$ref":"#/$defs/binary"},"billboard_presence":{"$ref":"#/$defs/binary"},"brand_presence":{"$ref":"#/$defs/binary"},"landmark_presence":{"$ref":"#/$defs/binary"},"street_sign_presence":{"$ref":"#/$defs/binary"},"georeference_candidate":{"$ref":"#/$defs/binary"},"quality_failure":{"$ref":"#/$defs/binary"},"repaired_evidence":{"$ref":"#/$defs/binary"},
+    "story_value":{"$ref":"#/$defs/value"},"print_value":{"$ref":"#/$defs/value"},"search_value":{"$ref":"#/$defs/value"},"image_mode":{"$ref":"#/$defs/mode"},"aerial_land_use":{"$ref":"#/$defs/landUse"}
+  },
+  "$defs":{
+    "base":{"type":"object","additionalProperties":false,"required":["status","value","confidence","notes"],"properties":{"status":{"enum":["observed","not_visible","uncertain"]},"value":{},"confidence":{"type":["number","null"],"minimum":0,"maximum":1},"notes":{"type":["string","null"]}}},
+    "binary":{"allOf":[{"$ref":"#/$defs/base"},{"properties":{"value":{"enum":["yes","no",null]}}}]},
+    "value":{"allOf":[{"$ref":"#/$defs/base"},{"properties":{"value":{"enum":["high","medium","low","none",null]}}}]},
+    "mode":{"allOf":[{"$ref":"#/$defs/base"},{"properties":{"value":{"enum":["ground_street","ground_interior","ground_object","document_map","aerial_vertical","aerial_oblique","low_information",null]}}}]},
+    "landUse":{"allOf":[{"$ref":"#/$defs/base"},{"properties":{"value":{"enum":["residential","industrial","commercial","institutional","transport","waterfront","park_green_space","mixed_urban","rural","low_information","not_aerial",null]}}}]}
+  }
+}

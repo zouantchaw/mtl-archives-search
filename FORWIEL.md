@@ -67,4 +67,4 @@ npm run dataset-factory:visual-family-check-v1
 - Count equality is not snapshot equality. Visual Family Graph v1 gives its mutable public API acquisition a new content-derived ID and retains the issue-66 snapshot only as an explicit reference.
 # Gold Label Batch 002
 
-Issue #68 phase 1 is an unlabeled freeze: exactly 300 candidates, 12 packets of 25, and 300 directly inspectable bounded review images. Primary and blind label work must use different reviewer IDs and isolated output paths. Start from `docs/dataset-factory/gold-label-batch-002-phase-1.md`; do not expose `batch/` or `inputs/` to blind workers.
+Issue #68 corrected phase 1 is an unlabeled freeze: exactly 300 candidates, 12 stratified packets of 25, and four orientation views per neutral row. Primary and blind work must use different reviewer IDs, neutral pixel-label rows, isolated output paths, and sealed pass sidecars. Start from `docs/dataset-factory/gold-label-batch-002-phase-1.md`; do not expose `batch/`, `inputs/`, hidden lineage, or another pass to workers.
