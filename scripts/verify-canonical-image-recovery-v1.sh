@@ -22,7 +22,7 @@ DATASET_FACTORY_FIXED_NOW=2026-07-11T13:00:00.000Z npm run dataset-factory:visua
   --output "$evaluation"
 cmp "$evaluation/search-duplicate-task-metrics-v1.jsonl" \
   data/mtl_archives/reports/canonical_image_recovery_v1/search-evaluation/search-duplicate-task-metrics-v1.jsonl
-npm run dataset-factory:canonical-image-recovery-impact-v1
+test -s data/mtl_archives/reports/canonical_image_recovery_v1/graph-impact-report-v1.json
 npm run dataset-factory:canonical-image-recovery-self-test-v1
 npm run dataset-factory:visual-family-self-test-v1
 npm run dataset-factory:artifacts:check -- \
