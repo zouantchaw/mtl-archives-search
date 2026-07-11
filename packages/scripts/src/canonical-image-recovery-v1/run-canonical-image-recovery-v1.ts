@@ -97,6 +97,7 @@ export async function validateResumeArtifacts(rows: RecoveryRow[], corpusById: M
   for (const row of rows) {
     const corpus = corpusById.get(row.record_id);
     if (!corpus || row.image_key !== corpus.image_key || row.canonical_identity !== (corpus.canonical_source_record_id ?? corpus.record_id)) throw new Error(`${row.record_id}: stale resume checkpoint: corpus/image identity mismatch`);
+    if (!row.recovered) continue;
     const derivative = fs.readFileSync(containedRegularFile(outputRoot, row.derivative_path!));
     if (sha256(derivative) !== row.derivative_sha256) throw new Error(`${row.record_id}: stale resume checkpoint: derivative hash mismatch`);
     const metadata = await sharp(derivative, { failOn: 'error' }).metadata();
@@ -268,7 +269,8 @@ async function main(): Promise<void> {
   if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 8) throw new Error('concurrency must be 1..8');
   if (!Number.isInteger(timeoutMs) || timeoutMs < 1000 || timeoutMs > 60000) throw new Error('timeout-ms must be 1000..60000');
   if (!Number.isInteger(maxBytes) || maxBytes < 65536 || maxBytes > 128 * 1024 * 1024) throw new Error('max-response-bytes must be 65536..134217728');
-  if (!Number.isInteger(thumbnailAttempts) || thumbnailAttempts < 2 || thumbnailAttempts > 5 || !Number.isInteger(thumbnailBackoffMs) || thumbnailBackoffMs < 0 || thumbnailBackoffMs > 5000) throw new Error('thumbnail retry policy is invalid');
+  if (thumbnailAttempts !== RECOVERY_TRANSFORM_CONTRACT.thumbnail_diagnosis.attempts
+    || thumbnailBackoffMs !== RECOVERY_TRANSFORM_CONTRACT.thumbnail_diagnosis.backoff_ms) throw new Error('thumbnail retry policy does not match recovery contract');
   const corpusPath = path.join(base, 'input/corpus-input-v1.jsonl');
   if (sha256(fs.readFileSync(corpusPath)) !== HISTORICAL_CORPUS_INPUT_SHA256) throw new Error('historical corpus input hash drift');
   const corpus = readJsonl<CorpusInputRow>(corpusPath);

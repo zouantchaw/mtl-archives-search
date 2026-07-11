@@ -6,7 +6,8 @@ import type { PhashFeatureRow } from '../visual-family-graph-v1/model.js';
 export const RECOVERY_SCHEMA_VERSION = 'canonical_image_recovery_v1.0.0' as const;
 export const RECOVERY_TRANSFORM_CONTRACT = {
   version: 'canonical_image_recovery_transform_v1',
-  accepted_sources: ['public_thumbnail', 'direct_public_r2', 'known_alias', 'registered_quality_derivative'],
+  accepted_sources: ['public_thumbnail', 'direct_public_r2', 'known_alias', 'authoritative_source', 'registered_quality_derivative'],
+  thumbnail_diagnosis: { attempts: 3, backoff_ms: 300, backoff: 'linear' },
   authoritative_source_transport: 'https_only_with_vetted_depot_upgrade',
   inspection_derivative: 'auto-oriented white-flattened contain-fit 256x256 JPEG q88 4:4:4',
   normalized_pixels: 'auto-oriented, white-flattened, contain-fit RGB 256x256',
@@ -154,11 +155,23 @@ export function validateResumeRows(rows: RecoveryRow[], expectedIds: string[], c
     if (row.recovery_contract_id !== RECOVERY_CONTRACT_ID) throw new Error(`${row.record_id}: stale resume checkpoint: contract mismatch`);
     if (row.baseline_failure_stream_sha256 !== HISTORICAL_FAILURE_STREAM_SHA256) throw new Error(`${row.record_id}: stale resume checkpoint: baseline mismatch`);
     if (row.corpus_input_sha256 !== corpusInputSha256) throw new Error(`${row.record_id}: stale resume checkpoint: corpus mismatch`);
-    if (row.recovered !== true || !row.recovered_lane || !row.recovered_payload_sha256 || !row.derivative_path
-      || !row.derivative_sha256 || !row.normalized_pixel_sha256 || !row.phash64) throw new Error(`${row.record_id}: stale resume checkpoint: inconsistent recovered row`);
-    if (row.disposition === 'indeterminate' || row.disposition === 'held_over_contract' || row.disposition === 'reviewed_unavailable') throw new Error(`${row.record_id}: stale resume checkpoint: recovered disposition mismatch`);
-    if (!/^[a-f0-9]{64}$/.test(row.recovered_payload_sha256) || !/^[a-f0-9]{64}$/.test(row.derivative_sha256)
-      || !/^[a-f0-9]{64}$/.test(row.normalized_pixel_sha256) || !/^[a-f0-9]{16}$/.test(row.phash64)) throw new Error(`${row.record_id}: stale resume checkpoint: malformed hashes`);
+    const thumbnailAttempts = row.attempted_lanes.filter((attempt) => attempt.lane === 'public_thumbnail');
+    const successIndex = thumbnailAttempts.findIndex((attempt) => attempt.outcome === 'success');
+    const expectedAttemptCount = successIndex >= 0 ? successIndex + 1 : RECOVERY_TRANSFORM_CONTRACT.thumbnail_diagnosis.attempts;
+    if (thumbnailAttempts.length !== expectedAttemptCount || thumbnailAttempts.some((attempt, index) => attempt.attempt !== index + 1)
+      || thumbnailAttempts.slice(0, -1).some((attempt) => attempt.outcome === 'success')) throw new Error(`${row.record_id}: stale resume checkpoint: incomplete thumbnail attempts`);
+    const recoveredDisposition = row.disposition === 'recovered_public_r2' || row.disposition === 'recovered_alias' || row.disposition === 'recovered_authoritative_source';
+    const residualDisposition = row.disposition === 'reviewed_unavailable' || row.disposition === 'indeterminate' || row.disposition === 'held_over_contract';
+    if (row.recovered) {
+      if (!recoveredDisposition || !row.recovered_lane || !row.recovered_payload_sha256 || !row.derivative_path
+        || !row.derivative_sha256 || !row.normalized_pixel_sha256 || !row.phash64) throw new Error(`${row.record_id}: stale resume checkpoint: inconsistent recovered row`);
+      if (!/^[a-f0-9]{64}$/.test(row.recovered_payload_sha256) || !/^[a-f0-9]{64}$/.test(row.derivative_sha256)
+        || !/^[a-f0-9]{64}$/.test(row.normalized_pixel_sha256) || !/^[a-f0-9]{16}$/.test(row.phash64)) throw new Error(`${row.record_id}: stale resume checkpoint: malformed hashes`);
+    } else if (!residualDisposition || row.recovered_lane !== null || row.recovered_payload_sha256 !== null
+      || row.recovery_payload_reuse_group_id !== null || row.recovery_payload_hash_verified !== false
+      || row.derivative_path !== null || row.derivative_sha256 !== null || row.normalized_pixel_sha256 !== null || row.phash64 !== null) {
+      throw new Error(`${row.record_id}: stale resume checkpoint: inconsistent unrecovered row`);
+    }
   }
 }
 

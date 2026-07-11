@@ -26,15 +26,17 @@ import {
   type RecoveryRow,
 } from './model.js';
 
-function evidence(lane: LaneEvidence['lane'], outcome: LaneEvidence['outcome'], status: number | null = null): LaneEvidence {
-  return { attempt: 1, lane, outcome, url_class: lane, http_status: status, content_type: null, bytes: null, width: null, height: null, evidence_code: `${outcome}${status ?? ''}` };
+function evidence(lane: LaneEvidence['lane'], outcome: LaneEvidence['outcome'], status: number | null = null, attempt = 1): LaneEvidence {
+  return { attempt, lane, outcome, url_class: lane, http_status: status, content_type: null, bytes: null, width: null, height: null, evidence_code: `${outcome}${status ?? ''}` };
 }
+
+const failedThumbnailAttempts = () => [1, 2, 3].map((attempt) => evidence('public_thumbnail', 'http_error', 502, attempt));
 
 function row(id: string): RecoveryRow {
   return { schema_version: RECOVERY_SCHEMA_VERSION, recovery_contract_id: RECOVERY_CONTRACT_ID,
     baseline_failure_stream_sha256: HISTORICAL_FAILURE_STREAM_SHA256, corpus_input_sha256: HISTORICAL_CORPUS_INPUT_SHA256,
     record_id: id, image_key: `${id}.jpg`, canonical_identity: id, source_datasets: [], source_record_ids: [],
-    attempted_lanes: [evidence('public_thumbnail', 'http_error', 502)], root_cause: 'indeterminate', root_cause_evidence: 'explicit bounded evidence',
+    attempted_lanes: failedThumbnailAttempts(), root_cause: 'indeterminate', root_cause_evidence: 'explicit bounded evidence',
     disposition: 'recovered_public_r2', recovered: true, recovered_lane: 'direct_public_r2', recovered_payload_sha256: 'a'.repeat(64), recovery_payload_reuse_group_id: null, recovery_payload_hash_verified: false, derivative_path: 'derivatives/a.jpg',
     derivative_sha256: 'b'.repeat(64), normalized_pixel_sha256: 'c'.repeat(64), phash64: 'd'.repeat(16), source_payload_equality_claimed: false, negative_visual_label: false };
 }
@@ -47,6 +49,14 @@ async function main(): Promise<void> {
   assert.throws(() => validateResumeRows([resume[0], resume[0]], ['a'], HISTORICAL_CORPUS_INPUT_SHA256), /duplicate/);
   assert.throws(() => validateResumeRows([{ ...resume[0], recovery_contract_id: 'stale' }], ['a'], HISTORICAL_CORPUS_INPUT_SHA256), /contract mismatch/);
   assert.throws(() => validateResumeRows([{ ...resume[0], derivative_sha256: null }], ['a'], HISTORICAL_CORPUS_INPUT_SHA256), /inconsistent recovered row/);
+  const unavailable: RecoveryRow = { ...row('a'), recovered: false, disposition: 'held_over_contract', recovered_lane: null,
+    recovered_payload_sha256: null, recovery_payload_reuse_group_id: null, recovery_payload_hash_verified: false,
+    derivative_path: null, derivative_sha256: null, normalized_pixel_sha256: null, phash64: null,
+    root_cause: 'bounded_response_size_failure', root_cause_evidence: 'explicit cap evidence' };
+  validateResumeRows([unavailable], ['a'], HISTORICAL_CORPUS_INPUT_SHA256);
+  assertCompleteLedger([unavailable], ['a']);
+  assert.throws(() => validateResumeRows([{ ...unavailable, derivative_path: 'derivatives/stale.jpg' }], ['a'], HISTORICAL_CORPUS_INPUT_SHA256), /inconsistent unrecovered row/);
+  assert.throws(() => validateResumeRows([{ ...unavailable, attempted_lanes: failedThumbnailAttempts().slice(0, 2) }], ['a'], HISTORICAL_CORPUS_INPUT_SHA256), /incomplete thumbnail attempts/);
   assert.throws(() => assertCompleteLedger([row('a')], ['a', 'b']), /omitted/);
 
   assert.equal(classify([evidence('public_thumbnail', 'success', 200)], 'public_thumbnail').root, 'transient_thumbnail_api_failure');
@@ -123,10 +133,13 @@ async function main(): Promise<void> {
   validateTrustedMixedContracts(mixedRows, mixedReport, 'f'.repeat(64));
   assert.throws(() => validateTrustedMixedContracts([{ ...mixedRows[0], derivative_contract_id: 'derivative-contract:'.concat('0'.repeat(64)) }, ...mixedRows.slice(1)] as any, mixedReport, 'f'.repeat(64)), /distribution mismatch/);
   assert.throws(() => validateTrustedMixedContracts(mixedRows, { ...mixedReport, recovery_lineage: { ...mixedReport.recovery_lineage, recovery_contract_id: 'forged' } }, 'f'.repeat(64)), /lineage mismatch/);
+  assert(RECOVERY_TRANSFORM_CONTRACT.accepted_sources.includes('authoritative_source'));
+  assert.throws(() => validateTrustedMixedContracts(mixedRows, { ...mixedReport, recovery_lineage: { ...mixedReport.recovery_lineage,
+    recovery_transform_contract: { ...RECOVERY_TRANSFORM_CONTRACT, accepted_sources: RECOVERY_TRANSFORM_CONTRACT.accepted_sources.filter((lane) => lane !== 'authoritative_source') } } }, 'f'.repeat(64)), /lineage mismatch/);
 
   const baselineContractProbe = sha256(`${Array.from({ length: 209 }, (_, index) => `record-${index}`).sort().join('\n')}\n`);
   assert.equal(baselineContractProbe.length, 64);
-  console.log(JSON.stringify({ status: 'ok', cases: 36, contracts: ['exact_identity_hash', 'baseline_member_hashes', 'baseline_failure_subset', 'baseline_transform', 'registered_derivative_tree', 'registered_derivative_byte_tamper', 'transient_then_success', 'persistent_failure', 'direct_success', 'missing_object', 'alias', 'pdf', 'decode', 'size_cap', 'timeout', 'unsafe_url', 'https_upgrade', 'resume_content', 'resume_traversal', 'mixed_contract_lineage', 'mixed_contract_distribution', 'duplicate_omission', 'indeterminate', 'graph_successor_feature_input'] }));
+  console.log(JSON.stringify({ status: 'ok', cases: 41, contracts: ['exact_identity_hash', 'baseline_member_hashes', 'baseline_failure_subset', 'baseline_transform', 'registered_derivative_tree', 'registered_derivative_byte_tamper', 'transient_then_success', 'persistent_failure', 'direct_success', 'missing_object', 'alias', 'pdf', 'decode', 'size_cap', 'timeout', 'unsafe_url', 'https_upgrade', 'resume_content', 'resume_traversal', 'resume_unrecovered', 'resume_unrecovered_tamper', 'resume_incomplete_attempts', 'authoritative_contract', 'authoritative_contract_tamper', 'mixed_contract_lineage', 'mixed_contract_distribution', 'duplicate_omission', 'indeterminate', 'graph_successor_feature_input'] }));
 }
 
 main().catch((error) => { console.error(error); process.exitCode = 1; });

@@ -94,6 +94,8 @@
     "dataset-factory:canonical-image-recovery-self-test-v1": "npm run dataset-factory:canonical-image-recovery-self-test-v1 --workspace=@mtl-archives/scripts --",
     "dataset-factory:canonical-image-recovery-impact-v1": "npm run dataset-factory:canonical-image-recovery-impact-v1 --workspace=@mtl-archives/scripts --",
     "dataset-factory:canonical-image-recovery-derivative-manifest-v1": "npm run dataset-factory:canonical-image-recovery-derivative-manifest-v1 --workspace=@mtl-archives/scripts --",
+    "dataset-factory:canonical-image-recovery-bundle-v1": "npm run dataset-factory:canonical-image-recovery-bundle-v1 --workspace=@mtl-archives/scripts --",
+    "dataset-factory:canonical-image-recovery-reproduce-v1": "bash scripts/verify-canonical-image-recovery-v1.sh",
     "dataset-factory:foundation-model-benchmark-v0": "npm run dataset-factory:foundation-model-benchmark-v0 --workspace=@mtl-archives/scripts --",
     "dataset-factory:research-enrichment-v0": "npm run dataset-factory:research-enrichment-v0 --workspace=@mtl-archives/scripts --",
     "dataset-factory:search-judgments-v0": "npm run dataset-factory:search-judgments-v0 --workspace=@mtl-archives/scripts --",
