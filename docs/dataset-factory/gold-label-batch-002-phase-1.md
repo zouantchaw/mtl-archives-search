@@ -14,7 +14,7 @@ Selection is deterministically stratified across 12 packets. Every packet has 25
 
 Worker packet rows expose only `schema_version`, neutral ID, packet ID, original pixel-evidence hash, detail limitation, and four local inspection views with hashes/dimensions. Views are deterministic 0/90/180/270 rotations and are never upscaled. No worker row contains record ID, filename, source, license, metadata, component, split, acquisition score, VLM, taxonomy, or hidden lineage.
 
-Primary and blind review rows use `gold_label_review_pass_v1.0.0`, not `dataset_factory_label_v0`. Every target is `observed`, `not_visible`, or `uncertain`; observed values require direct pixel evidence and abstentions require explicit reasons. No inferred, metadata, or externally verified claims are allowed in a review pass.
+Primary and blind review rows use `gold_label_review_pass_v1.0.0`, not `dataset_factory_label_v0`. Every target is `observed`, `not_visible`, or `uncertain`; observed values require direct pixel evidence and abstentions require explicit reasons. No inferred, metadata, or externally verified claims are allowed in a review pass. Sealed pass sidecars carry sorted reviewer rosters: every row keeps its actual agent reviewer ID, every roster member must own rows, and primary/blind reviewer sets must be disjoint.
 
 Each packet includes nonempty validating primary/blind templates and an example. Actual pass files remain empty with `not_started` seals bound to the packet-manifest and review-schema hashes. Reviewers must have independent IDs. Only trusted adjudication, after both passes are sealed, may read `batch/trusted-neutral-map-v1.jsonl` to map neutral IDs to records/source/rights.
 
@@ -36,7 +36,7 @@ The phase-1 validator currently passes. Completion intentionally fails with `pri
 DATASET_FACTORY_FIXED_NOW=2026-07-11T20:00:00.000Z npm run dataset-factory:gold-label-batch-002 -- --canonical-root /Users/wiel/Development/mtl-archives-search
 DATASET_FACTORY_FIXED_NOW=2026-07-11T20:00:00.000Z npm run dataset-factory:gold-label-packets-002 -- --concurrency 8
 npm run dataset-factory:gold-label-self-test-002
-npm run dataset-factory:gold-label-seal-pass-002 -- --pass primary --reviewer-id REVIEWER --labels /path/to/completed.jsonl --sealed-at 2026-07-12T00:00:00.000Z
+npm run dataset-factory:gold-label-seal-pass-002 -- --pass primary --labels /path/to/completed.jsonl --sealed-at 2026-07-12T00:00:00.000Z
 npm run dataset-factory:gold-label-validate-002 # expected to fail before labels
 ```
 
