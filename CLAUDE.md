@@ -56,6 +56,9 @@ npm run canonical-corpus-v1:self-test # 72 negative lineage/path/summary/raw-pro
 npm run canonical-corpus-v1:r2-sample:self-test # Bounded planner; no credentials/network
 npm run canonical-corpus-v1:build
 npm run canonical-corpus-v1:check
+npm run dataset-factory:canonical-image-recovery-self-test-v1
+npm run dataset-factory:canonical-image-recovery-impact-v1
+npm run dataset-factory:canonical-image-recovery-reproduce-v1 -- /path/to/content-addressed-bundle.tar.gz
 ```
 
 ## Architecture

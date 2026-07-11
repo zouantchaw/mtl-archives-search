@@ -33,6 +33,9 @@ import {
   type RecommendationSupport,
   type ReviewDecision,
 } from './model.js';
+import { BASELINE_DERIVATIVE_CONTRACT_ID, RECOVERY_CONTRACT_ID, assertCompleteLedger, sha256 as recoverySha256,
+  validateTrustedMixedContracts, type RecoveryRow } from '../canonical-image-recovery-v1/model.js';
+import { verifyDerivativeManifest } from '../canonical-image-recovery-v1/run-canonical-image-recovery-v1.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../');
 const DEFAULT_ROOT = path.join(ROOT, 'data/mtl_archives/reports/visual_family_graph_v1');
@@ -98,20 +101,22 @@ async function main(): Promise<void> {
       mode: { type: 'string', default: 'live' },
       schema: { type: 'string', default: path.join(ROOT, 'docs/dataset-factory/visual-family-graph.schema.v1.json') },
       review: { type: 'string', default: DEFAULT_REVIEW },
+      'recovery-root': { type: 'string' },
     },
   });
   const base = resolvePath(values.root!);
+  const recoveryRoot = values['recovery-root'] ? resolvePath(values['recovery-root']) : null;
   const inputDir = path.join(base, 'input');
-  const phashDir = path.join(base, 'phash');
-  const graphDir = path.join(base, 'graph');
+  const phashDir = recoveryRoot ?? path.join(base, 'phash');
+  const graphDir = recoveryRoot ? path.join(recoveryRoot, 'graph-after') : path.join(base, 'graph');
   const corpusPath = path.join(inputDir, 'corpus-input-v1.jsonl');
   const summaryPath = path.join(inputDir, 'corpus-input-summary-v1.json');
   const sitemapPath = path.join(inputDir, 'd1-sitemap.json');
   const detailPath = path.join(inputDir, 'd1-production-only-details.jsonl');
   const localPath = path.join(base, 'canonical_local/local-manifest.jsonl');
-  const featurePath = path.join(phashDir, 'phash-features-v1.jsonl');
-  const failuresPath = path.join(phashDir, 'phash-failures-v1.jsonl');
-  const featureReportPath = path.join(phashDir, 'phash-report-v1.json');
+  const featurePath = path.join(phashDir, recoveryRoot ? 'successor-phash-features-v1.jsonl' : 'phash-features-v1.jsonl');
+  const failuresPath = path.join(phashDir, recoveryRoot ? 'successor-phash-failures-v1.jsonl' : 'phash-failures-v1.jsonl');
+  const featureReportPath = path.join(phashDir, recoveryRoot ? 'successor-phash-report-v1.json' : 'phash-report-v1.json');
   const nodesPath = path.join(graphDir, 'nodes-v1.jsonl');
   const edgesPath = path.join(graphDir, 'typed-edges-v1.jsonl');
   const componentsPath = path.join(graphDir, 'leakage-components-v1.jsonl');
@@ -120,7 +125,7 @@ async function main(): Promise<void> {
   const recommendationPath = path.join(graphDir, 'canonical-recommendations-v1.jsonl');
   const packetPath = path.join(graphDir, 'review-packet-v1.jsonl');
   const precisionPath = path.join(graphDir, 'review-precision-v1.jsonl');
-  const searchDir = path.join(base, 'search-evaluation');
+  const searchDir = recoveryRoot ? path.join(recoveryRoot, 'search-evaluation') : path.join(base, 'search-evaluation');
   const searchMetricsPath = path.join(searchDir, 'search-duplicate-task-metrics-v1.jsonl');
   const searchReportPath = path.join(searchDir, 'search-duplicate-report-v1.json');
   const searchCandidatesPath = path.join(ROOT, 'data/mtl_archives/reports/search_judgments_v0/search_reranker_v0_expanded/search_candidates.jsonl');
@@ -206,18 +211,37 @@ async function main(): Promise<void> {
   const corpusInputSha256 = fileEvidence(corpusPath, corpus.length).sha256;
   const { derivative_contract_id: derivativeContractId, ...transformContract } = featureReport.transform_contract ?? {};
   assert(typeof derivativeContractId === 'string' && derivativeContractId === stableId('derivative-contract', [stableJson(transformContract)]), 'pHash derivative contract ID/content mismatch');
-  assert(featureReport.feature_version === PHASH_FEATURE_VERSION, 'pHash feature report version mismatch');
+  assert(featureReport.feature_version === PHASH_FEATURE_VERSION || recoveryRoot !== null, 'pHash feature report version mismatch');
   assert(featureReport.source_snapshot?.acquisition_snapshot_id === independentlyDerivedAcquisitionId, 'pHash report acquisition snapshot mismatch');
   assert(featureReport.source_snapshot?.corpus_input_sha256 === corpusInputSha256, 'pHash report corpus input identity mismatch');
   assert(featureReport.lineage?.corpus?.sha256 === corpusInputSha256, 'pHash report corpus lineage mismatch');
   assert(featureReport.lineage?.features?.sha256 === fileEvidence(featurePath, features.length).sha256, 'pHash report feature lineage mismatch');
+  const recoveryLedger = recoveryRoot ? readJsonl<RecoveryRow>(path.join(recoveryRoot, 'recovery-ledger-v1.jsonl')) : [];
+  const recoveryById = new Map(recoveryLedger.map((row) => [row.record_id, row]));
+  if (recoveryRoot) {
+    const ledgerPath = path.join(recoveryRoot, 'recovery-ledger-v1.jsonl');
+    validateTrustedMixedContracts(features, featureReport, String(fileEvidence(featurePath, features.length).sha256), recoveryLedger, recoverySha256(fs.readFileSync(ledgerPath)));
+    assertCompleteLedger(recoveryLedger, recoveryLedger.map((row) => row.record_id));
+    const inspection = await verifyDerivativeManifest(path.join(recoveryRoot, 'derivatives'));
+    assert(inspection.size === recoveryLedger.filter((row) => row.recovered).length, 'Recovery derivative manifest coverage mismatch');
+    for (const row of recoveryLedger) {
+      const manifestRow = inspection.get(row.record_id);
+      if (row.recovered) assert(manifestRow?.sha256 === row.derivative_sha256, `${row.record_id}: recovery derivative hash mismatch`);
+      else assert(!manifestRow, `${row.record_id}: unrecovered row has a derivative manifest entry`);
+    }
+  }
   for (const [index, feature] of features.entries()) {
     const record = corpus[index];
     assert(feature.image_key === record.image_key, `${feature.record_id}: pHash image key drift`);
     assert(feature.feature_version === PHASH_FEATURE_VERSION, `${feature.record_id}: pHash feature version drift`);
     assert(feature.corpus_snapshot_id === independentlyDerivedAcquisitionId, `${feature.record_id}: pHash acquisition snapshot drift`);
     assert(feature.corpus_input_sha256 === corpusInputSha256, `${feature.record_id}: pHash corpus input drift`);
-    assert(feature.derivative_contract_id === derivativeContractId, `${feature.record_id}: pHash derivative contract drift`);
+    const recovery = recoveryById.get(feature.record_id);
+    assert(feature.derivative_contract_id === (recovery?.recovered ? RECOVERY_CONTRACT_ID : derivativeContractId), `${feature.record_id}: pHash derivative contract drift`);
+    if (recovery?.recovered) assert(feature.status === 'success' && feature.derivative_sha256 === recovery.derivative_sha256
+      && feature.normalized_pixel_sha256 === recovery.normalized_pixel_sha256 && feature.phash64 === recovery.phash64, `${feature.record_id}: recovery ledger/feature mismatch`);
+    if (recovery && !recovery.recovered) assert(feature.status === 'failure' && feature.derivative_sha256 === null
+      && feature.normalized_pixel_sha256 === null && feature.phash64 === null, `${feature.record_id}: residual recovery feature mismatch`);
     if (feature.status === 'success') {
       assert((feature.derivative_width ?? Number.POSITIVE_INFINITY) <= Number(transformContract.width) * 1.05
         && (feature.derivative_height ?? Number.POSITIVE_INFINITY) <= Number(transformContract.height) * 1.05, `${feature.record_id}: pHash derivative dimensions exceed contract`);
@@ -226,6 +250,12 @@ async function main(): Promise<void> {
   const expectedFailures = features.filter((row) => row.status === 'failure');
   assert(sameJson(failures, expectedFailures), 'pHash failure file is not the exact individually enumerated feature-failure subset');
   assert(features.filter((row) => row.status === 'success').every((row) => /^[a-f0-9]{16}$/.test(row.phash64 ?? '') && /^[a-f0-9]{64}$/.test(row.normalized_pixel_sha256 ?? '')), 'Successful pHash rows have malformed features');
+  if (recoveryRoot) {
+    const recoveredCount = recoveryLedger.filter((row) => row.recovered).length;
+    assert(features.filter((row) => row.derivative_contract_id === BASELINE_DERIVATIVE_CONTRACT_ID && row.status === 'success').length === 18_253, 'Baseline success contract row count mismatch');
+    assert(features.filter((row) => row.derivative_contract_id === BASELINE_DERIVATIVE_CONTRACT_ID && row.status === 'failure').length === 209 - recoveredCount, 'Residual baseline failure count mismatch');
+    assert(features.filter((row) => row.derivative_contract_id === RECOVERY_CONTRACT_ID && row.status === 'success').length === recoveredCount, 'Recovery success contract row count mismatch');
+  }
 
   assert(nodes.length === corpus.length && nodes.every((row, index) => row.record_id === corpus[index].record_id), 'Node coverage/order mismatch');
   assert(new Set(edges.map((edge) => edge.edge_id)).size === edges.length, 'Duplicate edge IDs');

@@ -31,6 +31,8 @@ import {
   type PhashFeatureRow,
   type ReviewDecision,
 } from './model.js';
+import { BASELINE_DERIVATIVE_CONTRACT_ID, RECOVERY_CONTRACT_ID, readJsonl as readRecoveryJsonl, sha256 as recoverySha256,
+  validateTrustedMixedContracts, type RecoveryRow } from '../canonical-image-recovery-v1/model.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../');
 const DEFAULT_CORPUS = path.join(ROOT, 'data/mtl_archives/reports/visual_family_graph_v1/input/corpus-input-v1.jsonl');
@@ -296,6 +298,13 @@ async function main(): Promise<void> {
   const corpusInputSha256 = fileEvidence(corpusPath, corpus.length).sha256;
   const featureContractId = String(featureReport.transform_contract?.derivative_contract_id ?? '');
   if (!featureContractId) throw new Error('Feature report derivative contract is missing');
+  const recoveryLineage = featureReport.recovery_lineage;
+  const acceptedFeatureContractIds = recoveryLineage ? [BASELINE_DERIVATIVE_CONTRACT_ID, RECOVERY_CONTRACT_ID] : [featureContractId];
+  if (recoveryLineage) {
+    const ledgerPath = path.join(path.dirname(featuresPath), 'recovery-ledger-v1.jsonl');
+    const recoveryRows = readRecoveryJsonl<RecoveryRow>(ledgerPath);
+    validateTrustedMixedContracts(features, featureReport, String(fileEvidence(featuresPath, features.length).sha256), recoveryRows, recoverySha256(fs.readFileSync(ledgerPath)));
+  }
   for (const [index, feature] of features.entries()) {
     const record = corpus[index];
     if (feature.feature_version !== PHASH_FEATURE_VERSION
@@ -303,7 +312,7 @@ async function main(): Promise<void> {
       || feature.image_key !== record.image_key
       || feature.corpus_snapshot_id !== acquisitionIds[0]
       || feature.corpus_input_sha256 !== corpusInputSha256
-      || feature.derivative_contract_id !== featureContractId) {
+      || !acceptedFeatureContractIds.includes(feature.derivative_contract_id)) {
       throw new Error(`${feature.record_id}: stale or mixed pHash feature contract`);
     }
   }
