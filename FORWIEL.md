@@ -65,3 +65,6 @@ npm run dataset-factory:visual-family-check-v1
 - A registry without hashes is just a list. The SHA-256/count fields are what make the artifact contract auditable.
 - A clean clone should not need a previous worker's generated report folder to run the focused smoke.
 - Count equality is not snapshot equality. Visual Family Graph v1 gives its mutable public API acquisition a new content-derived ID and retains the issue-66 snapshot only as an explicit reference.
+# Gold Label Batch 002
+
+Issue #68 phase 1 is an unlabeled freeze: exactly 300 candidates, 12 packets of 25, and 300 directly inspectable bounded review images. Primary and blind label work must use different reviewer IDs and isolated output paths. Start from `docs/dataset-factory/gold-label-batch-002-phase-1.md`; do not expose `batch/` or `inputs/` to blind workers.

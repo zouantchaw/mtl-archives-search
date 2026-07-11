@@ -180,3 +180,9 @@ New archive source is `archivesdemontreal.ica-atom.org`; ingest safely before fu
 Top referrers: Facebook 155, Instagram 57, Google 8. ~40% direct/unknown.
 Search CTR: 111/135 (82%). Game completion: 49/107 (46%). Game share: 1/107 (0.9%).
 Geography: Montreal 57%, rest of QC 24%, US 14%, International 5%.
+# Gold Label Batch 002 (#68)
+
+- Phase 1 tooling and 12 sealed unlabeled packets are frozen locally.
+- Next: run 300 primary visual labels and 300 independent blind labels with disjoint reviewer IDs.
+- Then: adjudicate all 300 records and all 49 silver search tasks; validate class support, agreement, changes, and promotion policy.
+- Do not call the batch complete or upload a final evidence bundle before those gates pass.

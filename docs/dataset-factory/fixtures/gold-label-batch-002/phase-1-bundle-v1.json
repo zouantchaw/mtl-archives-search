@@ -1,0 +1,1838 @@
+{
+  "schema_version": "gold_label_batch_002_phase_1_bundle_v1.0.0",
+  "artifact_contract": "frozen_unlabeled_phase_1_only",
+  "complete_labels": false,
+  "upload_status": "not_uploaded",
+  "cache_key": null,
+  "bundle": {
+    "sha256": "cb317f4b3cb54cf706c2f08ef5e69317d49d65da53c46efd035ee0b8f1ebf6bd",
+    "bytes": 62208848
+  },
+  "tree_sha256": "1052d0d17d2ba7cea6174c25eecae5c40229a57677b75a3c143787ba91956548",
+  "counts": {
+    "files": 364,
+    "bytes": 64237815
+  },
+  "members": [
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/adjudication/adjudications-v1.jsonl",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/batch/selection-v1.jsonl",
+      "bytes": 335310,
+      "sha256": "e75e7a59340a93d5b32367d6a6ce523105cd2ba48f9a0ca4151a02db5ee58c23"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/batch/selector-contract-v1.json",
+      "bytes": 4217,
+      "sha256": "ae9663b42652ff1297a82fb0fb3ec133fcbbd9b44c975ef02c073512dc41c9ed"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/inputs/active-learning-v0-300.jsonl",
+      "bytes": 1461719,
+      "sha256": "0d36b420e460a011cb5cf96f631d9fa7f33fed2b7c847541ffeb63aa39a8483b"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/inputs/input-manifest-v1.json",
+      "bytes": 2020,
+      "sha256": "2606c99fa26986b4ab3720bbf3bb43323cf99167e61ea5312fcd55484c6d487a"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/inputs/quality-model-review-001-gold-20.jsonl",
+      "bytes": 92240,
+      "sha256": "a3afbb5347890e1470bb49acb44e32be032c1e10ff31d256628c9d2b1065cea7"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/inputs/search-judgments-v0-75.jsonl",
+      "bytes": 61434,
+      "sha256": "fc2e12e27918b73d5ed5b466e84a3a40381d36ec60ed59ea2c913f8d84ddbf7e"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/inputs/search-silver-v0-49.jsonl",
+      "bytes": 42355,
+      "sha256": "9862fb8fe82c4bdb63580a4a13553ddc997b23001b193ddfbf579f0ae29bdd51"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p01/blind-labels.template.jsonl",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p01/instructions.json",
+      "bytes": 939,
+      "sha256": "80c9ab6d1caa09612d874924318ab2fd5bb4de9ddfce5eab10b7eaa96699b3d0"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p01/primary-labels.template.jsonl",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p01/rows.jsonl",
+      "bytes": 7278,
+      "sha256": "3233c0942604398a5fc6c8dbe1bf13c511f75c779d60728b9473256508dedec9"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p02/blind-labels.template.jsonl",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p02/instructions.json",
+      "bytes": 939,
+      "sha256": "61c07c0d1caa19284e326563bab4441ae93cc55ba53301bb3e4511d76e3867bc"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p02/primary-labels.template.jsonl",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p02/rows.jsonl",
+      "bytes": 7276,
+      "sha256": "f72d966b88836d227dbc74c0145c07777d56a1718264f705346536787e7e97cf"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p03/blind-labels.template.jsonl",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p03/instructions.json",
+      "bytes": 939,
+      "sha256": "54a29de45856c6af96b473c6085db76125977671c6afe25f896f3fdc56b72cab"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p03/primary-labels.template.jsonl",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p03/rows.jsonl",
+      "bytes": 7281,
+      "sha256": "833915f91e1ece61bf06ab3bf241343b29e9a0438c2af1ea5345c334a0ede096"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p04/blind-labels.template.jsonl",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p04/instructions.json",
+      "bytes": 939,
+      "sha256": "5ddb688642f7b1bf9c3dc042192c719bde937ac06fa7ff4fcaed512d2e9ae7d5"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p04/primary-labels.template.jsonl",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p04/rows.jsonl",
+      "bytes": 7280,
+      "sha256": "961591d0fc0f5527fb00656ee724b90f4421657a05ab7b81907d7ebdba030157"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p05/blind-labels.template.jsonl",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p05/instructions.json",
+      "bytes": 939,
+      "sha256": "24b93e608d6b3b1066a68c919c229b5c07fa84652381c743fc640c37e8c6bfdc"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p05/primary-labels.template.jsonl",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p05/rows.jsonl",
+      "bytes": 7278,
+      "sha256": "98f63df3091935548687e98927992a8735bbe16337720f2aab3c013c766f41d3"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p06/blind-labels.template.jsonl",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p06/instructions.json",
+      "bytes": 939,
+      "sha256": "1b3701be95ba48e2317361b02d5fcbf9c28c1086d6d0618eba593065d4d786b1"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p06/primary-labels.template.jsonl",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p06/rows.jsonl",
+      "bytes": 7272,
+      "sha256": "a321431997e3819ab5b1e0eb5ffe3b61226454c6e5f875fcd6b24ef2b4150f14"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p07/blind-labels.template.jsonl",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p07/instructions.json",
+      "bytes": 939,
+      "sha256": "1de53f5db1d1a09945bc2a2ad09143833aa7addbdf0572ec40a382de508ae967"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p07/primary-labels.template.jsonl",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p07/rows.jsonl",
+      "bytes": 7274,
+      "sha256": "f7ef1be2132238d4fa652596806377b263a420dbcbd41ee04f1664d55428f0ec"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p08/blind-labels.template.jsonl",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p08/instructions.json",
+      "bytes": 939,
+      "sha256": "f3d4387a305e4f7dded4c4de55a2177f96069d273abf683c661080dd956594ca"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p08/primary-labels.template.jsonl",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p08/rows.jsonl",
+      "bytes": 7282,
+      "sha256": "5710392fd976f5a725c727bf98cab747e298e318629ccd1d882ca3eff53f1ca8"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p09/blind-labels.template.jsonl",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p09/instructions.json",
+      "bytes": 939,
+      "sha256": "fc233731b83d3651187208e1345558eba64f5378b95ed4b2ff0ddfd15f3e50bb"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p09/primary-labels.template.jsonl",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p09/rows.jsonl",
+      "bytes": 7282,
+      "sha256": "ffd74f9842b4bdefa626ca2d7ae08e69a914d76a4f116c352c9777f082b20ae0"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p10/blind-labels.template.jsonl",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p10/instructions.json",
+      "bytes": 939,
+      "sha256": "5d865501018a87a27aa468cf0ca0dbc8ce053149b41af68ce5271175c45717ee"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p10/primary-labels.template.jsonl",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p10/rows.jsonl",
+      "bytes": 7291,
+      "sha256": "778677f1b032cea043f823d21ecdeeee362bf4f117d9639ca4e245af29411f47"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p11/blind-labels.template.jsonl",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p11/instructions.json",
+      "bytes": 939,
+      "sha256": "1a39030e64c85a56c93beca6b94812ce6513a203fc80cea3fb129cbbccc8ef81"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p11/primary-labels.template.jsonl",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p11/rows.jsonl",
+      "bytes": 7286,
+      "sha256": "f6edc56fa4142a1130ae936eb4da0e1e717b15aafefaad4e8cae62d9769f966f"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p12/blind-labels.template.jsonl",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p12/instructions.json",
+      "bytes": 939,
+      "sha256": "c7d5433a23dcda9111b72b1d7ace99cb14159e7de9edcb5149a121d6dc71a43f"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p12/primary-labels.template.jsonl",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p12/rows.jsonl",
+      "bytes": 7287,
+      "sha256": "d7009c2fad23a5dfab851661bb6aaa0b991586105e7ef08c5a5676f35c3a4b2c"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/image-lineage-v1.jsonl",
+      "bytes": 128122,
+      "sha256": "d3e014ec8d88db61fe963cb9359d4e5736f05f7a0b8ba705f395233e7f08a5d0"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0001.jpg",
+      "bytes": 117585,
+      "sha256": "6c76c5ace604c957064f29ed6b0bc54490abe978f2d9aad3f885f105d97b689f"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0002.jpg",
+      "bytes": 235210,
+      "sha256": "f9a35054c04d7598310ce1e7573208bfd568f9736ec0356006eed1eeeaa7542c"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0003.jpg",
+      "bytes": 127079,
+      "sha256": "b9de682dd97f1aa81c18ba889f2baafb5ed42436f4a157b6372a6d27f31a9109"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0004.jpg",
+      "bytes": 232943,
+      "sha256": "8d0361b480e5e251e012b558f1b579c96a69f6bf70fe316676fffd0d6578674b"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0005.jpg",
+      "bytes": 343138,
+      "sha256": "a7a308bff528560d7ca07ea94d64bdc574a715a85609f744e0a149b0420dd4ff"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0006.jpg",
+      "bytes": 175409,
+      "sha256": "28c8f2a2d0f408ab7bf2875cc0a0ddd8afe68bc8211d4927acace6d0e2d25fd7"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0007.jpg",
+      "bytes": 212982,
+      "sha256": "d845f7cd54578b636c529453e36585785e4bc20127fce4e3417bc50008daf765"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0008.jpg",
+      "bytes": 88778,
+      "sha256": "6f9e53a28bffc6b6eee912dcf3b23f7aef6e9b1dae4df6a1b146ee8f7c49acdf"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0009.jpg",
+      "bytes": 243610,
+      "sha256": "8465799cad089107cdf70fef47ec421dc1958279838bf8495d4f4920b6669a6a"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0010.jpg",
+      "bytes": 10841,
+      "sha256": "7caad6d62ca0547d3877cb95a15d97d543cd9fca390975bf62d6f4fbf248f472"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0011.jpg",
+      "bytes": 10888,
+      "sha256": "466be518251c5f5bbf7a4bbe41972cb0cfd2af4c8dfef994973c2a4b2a6ba16d"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0012.jpg",
+      "bytes": 128674,
+      "sha256": "37a4d790187cb26f01d3ea6a39eb82e0990051f4ab4f41b55386f1d3f74ed0a8"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0013.jpg",
+      "bytes": 180935,
+      "sha256": "9c708bda667236a68e1487f173976ed404f323cc1a921555b73d3b59d29931f2"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0014.jpg",
+      "bytes": 272550,
+      "sha256": "ed033b526e2352e600a2dd8f501eb4247d4ddfb34ff9b24668a2fa0f476811f7"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0015.jpg",
+      "bytes": 260336,
+      "sha256": "26090a2892922c1f6cb0a1e44c88785222ccc053e0bd65c8d833ddb3bfe3bfd0"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0016.jpg",
+      "bytes": 263069,
+      "sha256": "f59f451b952cf9ccd5275c187e43112cc2584ab9f3306f3030ad424e2f97ce4d"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0017.jpg",
+      "bytes": 273632,
+      "sha256": "a0e912af01e084a3155aa4e82a77dad045ff51502d89acb270c0ddb2eab89ca7"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0018.jpg",
+      "bytes": 191279,
+      "sha256": "e2a62768e649ac63d00f14c0a74a3fcfb15d8dfd9dfdf25b72652ca9c005c7f6"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0019.jpg",
+      "bytes": 156736,
+      "sha256": "73f549361bd8a876495a29571a6caf98ec8d2ecc777ba8604246ba917cfba914"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0020.jpg",
+      "bytes": 216330,
+      "sha256": "c0f36f11d377a33075aaead37e6832c821be8cbaa30626ddf5d70b517eed48e2"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0021.jpg",
+      "bytes": 150976,
+      "sha256": "358fbfe02e1bf790b0e58ebf2bb52fbdb53ee71136f0fd756b820672201e64f8"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0022.jpg",
+      "bytes": 196360,
+      "sha256": "150e64abf1d6a7401072d39162c61be68ff6304fb18b078f195ed5c99b97935d"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0023.jpg",
+      "bytes": 99873,
+      "sha256": "92371813befee1791e982213793b2b43e619b01975b84a7efe98799961805769"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0024.jpg",
+      "bytes": 262064,
+      "sha256": "845699c460ab58e4bdb29f3def93534696f6ea761b0c644f7fcbec44c8f26810"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0025.jpg",
+      "bytes": 84512,
+      "sha256": "fb22148968696cf53ee7b46f29d5811a62e4247cb23162d4baad66eb9c147fce"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0026.jpg",
+      "bytes": 252894,
+      "sha256": "0a7e92657e1fdcea09574948b133eebb99a632f8ddf6846c588220fc431b54a5"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0027.jpg",
+      "bytes": 247726,
+      "sha256": "06111f363a1921ba6b685cef2db7091bcd769c7a685fca4e5948cedaa2dbf728"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0028.jpg",
+      "bytes": 230038,
+      "sha256": "a5b568106b233231fdf1dcb7b9c76d982b2b4a7c21974230dd2de793fdb395c5"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0029.jpg",
+      "bytes": 242904,
+      "sha256": "9614b9b10ca9db425471e065c11fa7c232633f5a61fa916890a6538a7160ea9a"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0030.jpg",
+      "bytes": 13740,
+      "sha256": "e5e9510ca86b60c4bb38a8548f0ee89a62b8ea278a2225429e06ed309a315330"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0031.jpg",
+      "bytes": 12859,
+      "sha256": "85d5700ef2c1f060d67d9ba6f05860dd708d9630641b119840d5a579dda35119"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0032.jpg",
+      "bytes": 10634,
+      "sha256": "e731fc22b4dbcc5a0b44ff5c795c869eddd8f3bbf2374405b9ca6fe574312ab3"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0033.jpg",
+      "bytes": 381633,
+      "sha256": "bbd8aa3552e8951286c18be0905050132e5310e4277afd9234de7e26e629b9eb"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0034.jpg",
+      "bytes": 266121,
+      "sha256": "95963d12ee6d5361b5aa1c83d0a4037ec095ab7cbfb668d1423846b78372ec40"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0035.jpg",
+      "bytes": 296914,
+      "sha256": "2bebfbee34fb6a8a1a7fa818ea7a436c825c2acc99b7de87f811d8e97af8c2c8"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0036.jpg",
+      "bytes": 345062,
+      "sha256": "13d15dacf06753aedeed2f18f7651e6120cc2e30458d7e6edb701ba166d9349b"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0037.jpg",
+      "bytes": 202635,
+      "sha256": "8c1f0420fdfadaf40047c5cb9048855be8c4ebb254d4a65108a968dd4fa9ccef"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0038.jpg",
+      "bytes": 237751,
+      "sha256": "0a6f28756357ad0795645bd085cb505cae78f29932d3e66c04d9aaa8fed59c8a"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0039.jpg",
+      "bytes": 246208,
+      "sha256": "248ff633301d5b404578b72e112418b8a966fa058ddd5ae8cba239c6460fbd9d"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0040.jpg",
+      "bytes": 15066,
+      "sha256": "ea582c6f919b0280da13e6a996778aa1c7214d3a6cf41284aecbdf704e8a6e7f"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0041.jpg",
+      "bytes": 109896,
+      "sha256": "e57bd2158d216b3c76e40e9e46142d449ef7869ac1c46a4874e2886d21568161"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0042.jpg",
+      "bytes": 193708,
+      "sha256": "e51593d682d6d93b358e325ec2d901ea2df99d8489b20a1467db1bf43182e3dc"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0043.jpg",
+      "bytes": 209228,
+      "sha256": "6f3877091eb438093f5d986e9c229d7f78d5149b60a3bfb1bc5fad957c3f0418"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0044.jpg",
+      "bytes": 230130,
+      "sha256": "d917d8407865e8fdad0c8ff173b449cb3e27055c4805aab4998ff4823d410cf3"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0045.jpg",
+      "bytes": 192306,
+      "sha256": "6715df8100df58be67e53e20d100f211279c6f8dccb2571a65f9b8e188c382f1"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0046.jpg",
+      "bytes": 239962,
+      "sha256": "1f0ed37adcb107db1f21d620f07ea4329c56d3156b62b78346c7efdff67a22c7"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0047.jpg",
+      "bytes": 362478,
+      "sha256": "fcb71397b306359956ea6935dc6f1d192978b47b272a35ed27c9c10de61c4847"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0048.jpg",
+      "bytes": 108409,
+      "sha256": "a6c09bed7a74e61b5e89da0b8863dcdf4b0fcbbfd2a1530a68c8078c137cdb4d"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0049.jpg",
+      "bytes": 310761,
+      "sha256": "d85a395b46765bf0ae61ba9fbbd0c775f851ba68537d5d2b31fd7fad093734b0"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0050.jpg",
+      "bytes": 166659,
+      "sha256": "ac14610003e85290677d6dbcd758060d86a75829fbe397078c14a714eff7f489"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0051.jpg",
+      "bytes": 153684,
+      "sha256": "8a94701a8b7ed0aa5b0c48c6871d4c601c49b7fbf1d0492f06e5045ec952dbd7"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0052.jpg",
+      "bytes": 298765,
+      "sha256": "46cce152978ba452a0bf7a8d7d6a709b4c7e118cc543afbf4cb728221523613c"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0053.jpg",
+      "bytes": 322556,
+      "sha256": "b30ad8447dd731773ed1c0c2ef70ec5b937c307d69eee24e159f6135f8078a01"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0054.jpg",
+      "bytes": 174859,
+      "sha256": "87f7f357bad191ed8dacd8e563cae7c4435d583cc2a0c8860a403719e6f5de4d"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0055.jpg",
+      "bytes": 320357,
+      "sha256": "81be158d3d3a12454cff564dbc8e0b2f2a1351676743520f7627f22a6d39292f"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0056.jpg",
+      "bytes": 208986,
+      "sha256": "5f651bba59bd8b470008ff6e6ef8e226c3435e2c065a0eb5a996535e79c1fc09"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0057.jpg",
+      "bytes": 265444,
+      "sha256": "37ff3d8bc0501512a433218604e58906ee6fd5dc2dcb234488744c1e4889e96e"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0058.jpg",
+      "bytes": 301885,
+      "sha256": "895be7a0ce44ecb27ef8b10f610c3a7f808716a69767a5b7db2016b47810e005"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0059.jpg",
+      "bytes": 271844,
+      "sha256": "2960c39cf77a136d4245ab7965316d98c42fed5ac11951f2a06292688c98d980"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0060.jpg",
+      "bytes": 163119,
+      "sha256": "a6b777a6e43ef33aa0d4fba120fe7b8ea8fca7be3c3fd3545611499976273d9a"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0061.jpg",
+      "bytes": 9921,
+      "sha256": "74ee52ed25937dcb1290fa9146a319af2272c3de08924df58f2d7a6202f0efe6"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0062.jpg",
+      "bytes": 199652,
+      "sha256": "de9f0421f8bac82b7c5ade8fb11619eac9a8cf8f5cb97e495c325ec0f7015412"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0063.jpg",
+      "bytes": 117762,
+      "sha256": "dcfd1fdd6e51c2d4f90f03772ecbcce49aab072233cb1bdb543972a266c34772"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0064.jpg",
+      "bytes": 217880,
+      "sha256": "fc6cccf40eafe6a383f44e51174d707b3eee910ea261e33219b64ebdd68c8aee"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0065.jpg",
+      "bytes": 331569,
+      "sha256": "4d3d71382a566468c6e36059ac4b43ceae8bae22f32c985549ef0c2dc31098b5"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0066.jpg",
+      "bytes": 20247,
+      "sha256": "0615eadecefef20d1f853ee090520e9eb9ed9730b6f6e6200ecb1914d23689a0"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0067.jpg",
+      "bytes": 15717,
+      "sha256": "028594e6b7d397d8ca02217599ac95f6c7e350835716fb3bdbdd689b5c406c6b"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0068.jpg",
+      "bytes": 141941,
+      "sha256": "1e5ebc1308a905798c97eafc9a99b70e2ae09338319b9afa0c62ad5408d9b919"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0069.jpg",
+      "bytes": 179286,
+      "sha256": "fc08c541dc92a30d6bc240ce7e611101a2a8abe500b7b5a9e29b5c91f93e7ea4"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0070.jpg",
+      "bytes": 239745,
+      "sha256": "88c4f214d50e50b2af4b3f4919bde9ad74d454ca88a1971e20297697488a8d41"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0071.jpg",
+      "bytes": 289963,
+      "sha256": "653d6025b868c65587ed9abd5161228ab972c0c95443a836ef12483cc06af1fd"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0072.jpg",
+      "bytes": 276681,
+      "sha256": "485863dde7654bb51b6618077de4a163ae4689d7b270e95edc25db4ee535ff0f"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0073.jpg",
+      "bytes": 128223,
+      "sha256": "83512e8c9b05432bd0023ed1e873785e023b179287e0bf35a94b1b8949639004"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0074.jpg",
+      "bytes": 383464,
+      "sha256": "f8906814661b482dbb8b0c2d51d58065eb2f380a362adfcfa595c7a3d6bd0bf8"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0075.jpg",
+      "bytes": 192216,
+      "sha256": "02b9d1ab69adea1c9fd3cf868f931c0071235acecfd1070bb6d073cf49790885"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0076.jpg",
+      "bytes": 281523,
+      "sha256": "b626f727b80b2b0f7cbcbf7a152efb5ddec839ba40bfe5ad94e73648fed4f048"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0077.jpg",
+      "bytes": 147361,
+      "sha256": "97cb2da3ee05abb4668dfe3692fe7c20210c3a5d26988baf17eceb8dba55119a"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0078.jpg",
+      "bytes": 262105,
+      "sha256": "b5ca39709ec028e17fde1028494b6ac731014e00e4dad1a5fe1a0ded83bd9d9e"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0079.jpg",
+      "bytes": 333169,
+      "sha256": "e6f6d21cfefbb55aea336ad3426739f2f80e4d9e5a9c68beb171d1725bf185d3"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0080.jpg",
+      "bytes": 400781,
+      "sha256": "360bfba6f1db9b75e2fc045308478802093d36129910c4259450c21fa5d0db71"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0081.jpg",
+      "bytes": 319532,
+      "sha256": "efa7146b8453cf711f94349fd2f9b6d72ec6ebb690e1391d070bd99ff83972d6"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0082.jpg",
+      "bytes": 247346,
+      "sha256": "d5f3576fdd0324520f0067e5b44d0beb92b746ed02dc5f15cf112962fda6808a"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0083.jpg",
+      "bytes": 175131,
+      "sha256": "719a318a41eaa87b825c03beef8cb8c84894e5d316bae656fae8e93d5cf28e36"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0084.jpg",
+      "bytes": 96621,
+      "sha256": "1a917d65ca401909ccb3c9c09aa90abab7771752dbddb37a63f76a7da1f28e0d"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0085.jpg",
+      "bytes": 146824,
+      "sha256": "df0a281c363124d1df8e8bcf5a51df4108962488194101364f7a9cc2cffbc7f0"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0086.jpg",
+      "bytes": 293545,
+      "sha256": "f9b25bed753f00d063d2d42594ef5e0be8b33355bfa8ee91f819691f6d0706be"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0087.jpg",
+      "bytes": 248410,
+      "sha256": "5c41b8e296ebd69c6c1b8f2c740e263da6db81658bcb636ac71a2de2463d9676"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0088.jpg",
+      "bytes": 315590,
+      "sha256": "947bcc41409be688ce50a0aa3a5e0c6ac6e0a93085f080eac3c864b0d0b77dad"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0089.jpg",
+      "bytes": 295497,
+      "sha256": "c7fb1e97f965e1a76ec03c3072fd235ad749231035c950b2db77d17123c0be9a"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0090.jpg",
+      "bytes": 217583,
+      "sha256": "1d555a012a2f6ae272d82a71ce4cdedcd58855415df675298f6fa622a1cce8c8"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0091.jpg",
+      "bytes": 271139,
+      "sha256": "30e12adcb2635cf73a5f30bfeb0b173b7ae606fcc583f202694f2d1ea7f89c65"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0092.jpg",
+      "bytes": 172328,
+      "sha256": "ba5d1394d5b173a8b8bc443ebad5730494293d023aeb90261eb456a85846167b"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0093.jpg",
+      "bytes": 184948,
+      "sha256": "9028a2587343f8011a794c1f232a1ddc95590768148e90f3085805a892d79768"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0094.jpg",
+      "bytes": 208631,
+      "sha256": "1a436df009b459dab9aa1b0bf4f46abc5a80d1171a722ad90200667f16aadac7"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0095.jpg",
+      "bytes": 259131,
+      "sha256": "104c7adff4ff81130e371d92cc59a61eda8b599e16200c77eeec13f91995e8a1"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0096.jpg",
+      "bytes": 349306,
+      "sha256": "8fdaad524c2afaee64ac195282d3d19a4b0331252a0ce53298cd7918cb6259b8"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0097.jpg",
+      "bytes": 127679,
+      "sha256": "69b9eaa6cf43855c81d98098604f4994f169174a422aefc5b69d5570bfb6f098"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0098.jpg",
+      "bytes": 380892,
+      "sha256": "87d440e76f56d1246bc83ec747d5f1ea14159b53ea89ac487ab75c19b3473e49"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0099.jpg",
+      "bytes": 153069,
+      "sha256": "da28aae7a6ea28c890a13c0404583db7cb2bd44d439c7cde023b4bbcd0b5647a"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0100.jpg",
+      "bytes": 160919,
+      "sha256": "0e0f956cba206e18b250de8223426c7ca6ba518a26ce10268131731a10b7eece"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0101.jpg",
+      "bytes": 249990,
+      "sha256": "fd47687a115e2f2f5810571b03eed521cf42b934a5ea18f8f394af3aa4b5d7ba"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0102.jpg",
+      "bytes": 264113,
+      "sha256": "156699225a9aca89e5e2b76cf4427b072ed6df14e4d2387711f0ff4b50d77cc1"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0103.jpg",
+      "bytes": 327030,
+      "sha256": "aacf6503b219507577ec1ebe8416f9c14cb556d9335897245c7f42939d11aa3e"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0104.jpg",
+      "bytes": 184860,
+      "sha256": "2d5da74cedeb5e76504fd32280b8dfe2b6b02f307484565d644004a44b253259"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0105.jpg",
+      "bytes": 345140,
+      "sha256": "a0d2d6cd516148a99868461406654360eb8afcf3cc1cd1045b8c9ec8230d6a45"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0106.jpg",
+      "bytes": 14009,
+      "sha256": "a8464f3eb6a3531b432a07de69f4cd60c2da9bb14599928e231a901cba9c829f"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0107.jpg",
+      "bytes": 276892,
+      "sha256": "a1273bef864c5f3bc3d3ad24da72e84d959d7c6aff49e6b4c1b62c62db6bcc18"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0108.jpg",
+      "bytes": 349903,
+      "sha256": "7203b6d0ee17208142323da47c22e87096d2d92b67fbe69aa5f3b29fb50a357e"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0109.jpg",
+      "bytes": 227982,
+      "sha256": "3899d4144dda20dd39df217cd132cd123d0bb99c37d1abeb4ad02d3a77276b0e"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0110.jpg",
+      "bytes": 333864,
+      "sha256": "e44da7e4122bf50a6928eab61cd07eb6cd6599615c0e3728cda4ce45f6357834"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0111.jpg",
+      "bytes": 300873,
+      "sha256": "b3114e31914594bc830ddeacd9ac64279b5873e8e2852f9cbbd668d21c0838a3"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0112.jpg",
+      "bytes": 253820,
+      "sha256": "779d0df6e0ed465f7d38c6e5df8e844330d394c947202c1db8e013a6f9443230"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0113.jpg",
+      "bytes": 264643,
+      "sha256": "d7f7758d578bbafaca39f036e2dae45867958b686afa87d3d219b3c93d1f8c30"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0114.jpg",
+      "bytes": 235150,
+      "sha256": "3dd1d173f179613fd18020d93a8383f8db1a6397a2094261e30a03dccb69f123"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0115.jpg",
+      "bytes": 260520,
+      "sha256": "24c509fc7817612fa6fffe6896aa43cc1c329058820455512a702efe52092072"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0116.jpg",
+      "bytes": 11910,
+      "sha256": "d208e43e5bdc9dba1b772fa0f55b7b9d670f793e0b83e038026933e675f6bad5"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0117.jpg",
+      "bytes": 14421,
+      "sha256": "24140d4f64721d22fe855c59a17fff9f6e4609f386f27ec922485e4f15c411d4"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0118.jpg",
+      "bytes": 301964,
+      "sha256": "6eb12e8ea49fafef53c7d4df908bc4305b36e59afb9efabe5a3bec8988b4c465"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0119.jpg",
+      "bytes": 312030,
+      "sha256": "37f0a48b0f78e668a75959aa183a86bdfa1dd1a7549c3b10b1a0482f91b6f249"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0120.jpg",
+      "bytes": 253423,
+      "sha256": "e8ac64f69bf014e6237f89eae859fe27d38aff00788a5b52267c65f8f1487de9"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0121.jpg",
+      "bytes": 361532,
+      "sha256": "c7eba34adb95a99bb66fcfa4c4f6f36c680ae1b99cee9933b5edebe3b4c033ab"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0122.jpg",
+      "bytes": 212013,
+      "sha256": "27158d5395ecf1426ccf90d29c517872e80e8c5b633d49c2f6e898890439c6c7"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0123.jpg",
+      "bytes": 174607,
+      "sha256": "4612e4204179977b78a405ec57aa9d99a77f4c5a58561ad16b873c69def4e10c"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0124.jpg",
+      "bytes": 68706,
+      "sha256": "38bd712b9f99d0d4f3814ac9b0ca32ba6378065422b87b0896189069df044cac"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0125.jpg",
+      "bytes": 90657,
+      "sha256": "a98c915745188831ff95aebd8a60af8af4c069ed43e7c8dba931cf6219203f5d"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0126.jpg",
+      "bytes": 207116,
+      "sha256": "b233617cd7456ae82aa9b39829846e96664604951c91efb3072cd161e5624b6a"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0127.jpg",
+      "bytes": 283022,
+      "sha256": "cb7797f4427ca00d7194659fed4ef761d50db5c81bd3de712daf32728028d87a"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0128.jpg",
+      "bytes": 100944,
+      "sha256": "29b319fffb3b27a539f5a6da9db54e30368521c3862711e905e3481ec4f910fe"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0129.jpg",
+      "bytes": 94891,
+      "sha256": "8a89face65a2397dccc0d413677578086e8ef0f7777d915d49ce4434a6082289"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0130.jpg",
+      "bytes": 123762,
+      "sha256": "0bba80c1dcf92664fc6610c72463724023cf26dc01bcdf6097078c8fe53cca8a"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0131.jpg",
+      "bytes": 274077,
+      "sha256": "b0a215284f124f610adfc5ba1946d0586b5de02265f0a6221c5c02c70238245f"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0132.jpg",
+      "bytes": 98646,
+      "sha256": "43a195867ff68a3aec4359c007c242a869d16010f05217941ccc0fd50913371f"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0133.jpg",
+      "bytes": 96846,
+      "sha256": "75c70abf3af4eb646f8f526081134a468637e2147d0822778e16ca0c470b9ca9"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0134.jpg",
+      "bytes": 123797,
+      "sha256": "8a8055d240b5d4ee65fd4fc39b100bdf6719956c7a7dd18a3144d55ed5133b0f"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0135.jpg",
+      "bytes": 126102,
+      "sha256": "6273cb0b0715e38ea1134d62feeb8013cc1f9f71d2e16e29275b5bcde2b95dc3"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0136.jpg",
+      "bytes": 121003,
+      "sha256": "d7e992f857caf5f296d7e1c0d912f0288854b3ed87e175157d92155bc2e6d8d6"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0137.jpg",
+      "bytes": 142876,
+      "sha256": "a0fa801644443dfea6adfbcc6ea43fbf183e1b1071ec138c3f513babee79e802"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0138.jpg",
+      "bytes": 104249,
+      "sha256": "fd5729dcf0d0f127a185618b71c3b0cc5db3efb080cbaf0c5bc9be15012bb502"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0139.jpg",
+      "bytes": 117659,
+      "sha256": "55c5ab5d76a1f215434e8474284c4fd604577f91313a17495751ad16a7400121"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0140.jpg",
+      "bytes": 114420,
+      "sha256": "7861e25264587635c4ee2cb6423a154f3825353f1cae7b03fb23fff6f6f5d4b4"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0141.jpg",
+      "bytes": 112340,
+      "sha256": "d4a37eaca4bc88f2d2c477fa16fa20e867579826d864669536f97f48f3d801f7"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0142.jpg",
+      "bytes": 13591,
+      "sha256": "cf09663a8fbf4f8c27bb7e7855f847fdbf9c1a950e12c1e67c3d4907a04d9c8f"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0143.jpg",
+      "bytes": 128723,
+      "sha256": "ffba7cdc2bbd3de2af31911ff8bb1c7c925032c9cf592ff937edb564c5214181"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0144.jpg",
+      "bytes": 146104,
+      "sha256": "e0fecf8bcab0919993da0bfa5087a9995ec803cd2196f5071f55175bc2b96d20"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0145.jpg",
+      "bytes": 137081,
+      "sha256": "7aaabb163895c01f3cf94564350d95fdb84e1cb9cdc5786e87571915c04584e6"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0146.jpg",
+      "bytes": 171406,
+      "sha256": "77d50c4395a8522d3dee47943116464aa4fd2b10a72f570d6e204b1a19c73e7a"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0147.jpg",
+      "bytes": 134464,
+      "sha256": "54560299892c5d3d4e10df583c854a51d9d740dc7a7d929b2283b5431c6ee244"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0148.jpg",
+      "bytes": 126452,
+      "sha256": "09a343287aed7e2edf364349924dca72ca0059faa3c88c39316ee2ce7aba113b"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0149.jpg",
+      "bytes": 113900,
+      "sha256": "2cb78ab9703f0df9f03343637c63d995a15ca41564fe13070ac0449dd31d1b42"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0150.jpg",
+      "bytes": 122454,
+      "sha256": "bbbd5a3760a36c5ee5ed34d0f4664d7e36d4cd5d0eaf0c620b9e7db7a2b0f487"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0151.jpg",
+      "bytes": 117272,
+      "sha256": "8187e777067d34f3d73062ea0605cf9e08539266eb77cb4fa33238bc1f8e1d66"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0152.jpg",
+      "bytes": 198921,
+      "sha256": "5c4f091576ccd0800d3cf9835e15ad208a35f5ee3b47cc24cf1d870efc5f84df"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0153.jpg",
+      "bytes": 136307,
+      "sha256": "c7aed0e05d7d1f1f327e84e2ba994a9013a811b6b3a3e8a86292d282f1cff087"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0154.jpg",
+      "bytes": 125168,
+      "sha256": "74205044440af356579258fb0ca08fe52f8abbc1ab697b37104ae0a90b2e1878"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0155.jpg",
+      "bytes": 102434,
+      "sha256": "bb664a5909894877c106dd0929d574e68d1fff6f6cb79b67290a8dd40fec0111"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0156.jpg",
+      "bytes": 118049,
+      "sha256": "675dc3b90be4d5638cd1cab77a6e2639d529786e78c402f445c2fb08156b66cb"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0157.jpg",
+      "bytes": 197376,
+      "sha256": "e2f6a7e9c8aad645658f03c55d8811f5755f403522b327ebb3388153fe367a42"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0158.jpg",
+      "bytes": 172157,
+      "sha256": "e6f6c2c77683622bd3224977f670fb5ab761ee3af51422027986424ac32d7af0"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0159.jpg",
+      "bytes": 141470,
+      "sha256": "bd546637cf5f2441d375a72d64db065bd87d9c37907dc17e52c61722a16f45fe"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0160.jpg",
+      "bytes": 147872,
+      "sha256": "cceae4e211956f8e677262b4d36c739135e93030b25440e66cfbcbb2e8207df0"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0161.jpg",
+      "bytes": 114612,
+      "sha256": "75580198163d53add255982071e55193feaa8cd014b1c2457967090cc3e6dadf"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0162.jpg",
+      "bytes": 118519,
+      "sha256": "108c4a583e4fed763bf55b9d91d6305c93b6d32fc7977e0c10cefc8a46fb5ef6"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0163.jpg",
+      "bytes": 135276,
+      "sha256": "82e494d74b5f71a2e4fc59636dc4b65747e98f727c2962c21a38ff13946424fc"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0164.jpg",
+      "bytes": 203392,
+      "sha256": "ee2aace3e4b4ddfb228a44acc67096a2b643f549522a074454a962d52ea01fc4"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0165.jpg",
+      "bytes": 84160,
+      "sha256": "a612d4f06563b5265d90ec671a24611fc329e2d47a43b4c029ec17fec87cb264"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0166.jpg",
+      "bytes": 151301,
+      "sha256": "1dff8ec1109f0aaae4d048c50ec32a0fe82e7f79d0caadfcd72571f1ee4d6e48"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0167.jpg",
+      "bytes": 121522,
+      "sha256": "c61163f25f86ed5bef2367d77633d65a6ca6be4ef88672f80e59145dc04c8a91"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0168.jpg",
+      "bytes": 127961,
+      "sha256": "2dec2b7acaefbf0c4bb1d833b32eb9b7902a3bf64bb553844593d06e9f4143da"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0169.jpg",
+      "bytes": 139065,
+      "sha256": "9b41ece7c7029a91730c0d95f4de8a463657f4e4acc19792bf3e03f2fa07b447"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0170.jpg",
+      "bytes": 113568,
+      "sha256": "47a588388a90af3c71d01350c050519e3988e520e4f8b647143b3739fc8b3e49"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0171.jpg",
+      "bytes": 160137,
+      "sha256": "c5eba061f6c8a37b21dcbb74dd725d9f8a485c4c0a8332176884c1d28a659a8e"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0172.jpg",
+      "bytes": 289345,
+      "sha256": "e6ae801bbbe7615cba9530b83199865ff24fc164fefefcf50f21f74dc431195b"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0173.jpg",
+      "bytes": 145415,
+      "sha256": "40311f7283b3500629e56ac832b0a8b77329e1304e06a983fb4492b9c4a65b7a"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0174.jpg",
+      "bytes": 242855,
+      "sha256": "5fe3f2223c050d9c052bd7a278f9b0d12825685e8fd55191ec3738050b82449d"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0175.jpg",
+      "bytes": 118329,
+      "sha256": "4b8f7a982ecd461c93146368054ef844fbeb5dc86f2efaff9ffb5e33f2a8768a"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0176.jpg",
+      "bytes": 252852,
+      "sha256": "bf8c7a1128810d9bb4e146350afc7051dcc33e80d03c5642de36bc0e6ede24ee"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0177.jpg",
+      "bytes": 153194,
+      "sha256": "d7e7f179089185a6db2f78bd424070693ce1326e6881268c01f68b832fa1a007"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0178.jpg",
+      "bytes": 118053,
+      "sha256": "236bf246a1bd1c78c6395272631f1cdba8d0bf6761e9bfa3b1ff65c22724630e"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0179.jpg",
+      "bytes": 217580,
+      "sha256": "7a2c15960b96a3aebe17b52b642c1a9c8b75715031b7c53a0e8c67bc9bdeadd6"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0180.jpg",
+      "bytes": 221932,
+      "sha256": "db70e19577a9caa0139c3b65e2537e68ac5de259188d07f316c455b55df29df1"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0181.jpg",
+      "bytes": 183200,
+      "sha256": "1365bb0b0f59913b51eb680bc5d62b38ce5d9ae820c35245902b778e90dc9257"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0182.jpg",
+      "bytes": 295669,
+      "sha256": "e1fe514ec95e4fb2f9491d3691a8425c8004a872c6ccf113c4191d91906d87b0"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0183.jpg",
+      "bytes": 165497,
+      "sha256": "48264f9b79e781fd0a18e1a2ffb96122d880b41fbd029853aee69e0dd07027e7"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0184.jpg",
+      "bytes": 271020,
+      "sha256": "8e57ecfbe2e817c4808446ac1e9e535382bbdf860b2c19a0d3c878849d945796"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0185.jpg",
+      "bytes": 191494,
+      "sha256": "8bb91586b57f7d1894fa37c3400a0fb9ead257640df99da6a05186f6102e8f88"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0186.jpg",
+      "bytes": 18418,
+      "sha256": "62366608b4684bb2da829977c8034e80dde80c6cd5f8f9cdf725777fba59c0c0"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0187.jpg",
+      "bytes": 239756,
+      "sha256": "6b4c4f5a60e8ae43871b3ab1cd65318fde41f419acb66db0c1e4d57d865203a5"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0188.jpg",
+      "bytes": 190764,
+      "sha256": "e90dfd041adc7f4a96f43237ef4fa9fb706c2e9aad2fcee55e004e7ca929292a"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0189.jpg",
+      "bytes": 175033,
+      "sha256": "3d92e65894c69f4f5d330dee309f32fa5b69341f04b1b0fd0e6bd354bc800e10"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0190.jpg",
+      "bytes": 276076,
+      "sha256": "b57486942c4d547312ba691d6cc3093bc50e7d668af14d4d2eb76c00b92f72a1"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0191.jpg",
+      "bytes": 221148,
+      "sha256": "02d36b09ba9539d1246cae30a49caf1ddb32090233301ea7690704ba9064457d"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0192.jpg",
+      "bytes": 165081,
+      "sha256": "207fde952803a7234ab35f9d9459e33ce9cc23dfc0524ae592f24f4bca7b4c7c"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0193.jpg",
+      "bytes": 163058,
+      "sha256": "14f7d6006555fb572be671e22bbc25520dfb21dec4332e5ec867fe58097b1631"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0194.jpg",
+      "bytes": 325314,
+      "sha256": "cb44c43fced9528d6654e7ba1f7f5872ef82fba29d1f1e6eba5e6b49cbef6332"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0195.jpg",
+      "bytes": 293370,
+      "sha256": "0af483f7b689124c7307a4f287feb7ed515ae3e8797949d22098845eff685636"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0196.jpg",
+      "bytes": 180686,
+      "sha256": "13066b947fa4d3c085d1f1202f4380a981599f234d24ab034287de595de73f3e"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0197.jpg",
+      "bytes": 264614,
+      "sha256": "080b5f572774a2989a26277abf91c12945ba842ae6814c2e2177ba49770864ce"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0198.jpg",
+      "bytes": 280577,
+      "sha256": "78c3996a0f34c3d7c7eb3bd30bbca9d244d03c6103a7a04fd6207285edd47ffe"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0199.jpg",
+      "bytes": 292602,
+      "sha256": "d504f4426b3052ae421bd5a127acf746bdb6ff6b9d2fa6e344c974a8045ce37a"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0200.jpg",
+      "bytes": 184206,
+      "sha256": "710197ba61b89ca0d44aa269e72acc16c61d3cd6c45f0b010786daf1a50324c9"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0201.jpg",
+      "bytes": 125040,
+      "sha256": "b9aad5f467ef1837dcfe8c204a6c73a7c14075c287412bc1abfc9e53c21370fd"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0202.jpg",
+      "bytes": 147421,
+      "sha256": "a08d401ccae5b26f82b2545cb06081f30f6735066a2f999418bd3e434ad67cff"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0203.jpg",
+      "bytes": 218798,
+      "sha256": "a563fb07b598bd791d3162672d5ef1bd9b7a25ccbacdc268d0bf68aac2a2c12e"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0204.jpg",
+      "bytes": 219452,
+      "sha256": "220e9552fb870c5845c6ee65fa937b3d4aca8a931552f466f5c58154944661dd"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0205.jpg",
+      "bytes": 234145,
+      "sha256": "cbd3deba58d3ad8657647f978cbbba35b6be0c2b7656753d9ba875d917b480ea"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0206.jpg",
+      "bytes": 188969,
+      "sha256": "d677894aa60d1fbcc1adccb2313de3457caf702d1acece09580277e7e7645de3"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0207.jpg",
+      "bytes": 282874,
+      "sha256": "31fe6c33fc3396637c1abc5756918b5adaf991e0acac3d01ef03dd236c818e7a"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0208.jpg",
+      "bytes": 189150,
+      "sha256": "f57cd33177fb8634370698a23aa2847266b9b2b852976ad09ccfe900d0d51cd0"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0209.jpg",
+      "bytes": 293657,
+      "sha256": "55d945b433d58d35f381a9dce60bf9ee907fd2f1e8f3b58e8600c3b131c63f3b"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0210.jpg",
+      "bytes": 160345,
+      "sha256": "e1a15faec9f3dac02d0218c05092cdb85e05032b5ba3e4e7f552db15049fb708"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0211.jpg",
+      "bytes": 143736,
+      "sha256": "294007b4e945b0c3868222c72cf95725e5661b6b248bcde3e011dd574bb406ff"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0212.jpg",
+      "bytes": 119637,
+      "sha256": "eec099de4ee7a8060ddf4073ed7af7ed26742cb254d1d9d8d21974e5dd57474d"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0213.jpg",
+      "bytes": 7912,
+      "sha256": "32b387a02de6575d73c7db545894b34726e4d1c0907041e323f85ed768a3db86"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0214.jpg",
+      "bytes": 228658,
+      "sha256": "6d1e9795f70f2e1a830fa3aceeceab1149c0034bdfbb159db9ab6f107c2aed9c"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0215.jpg",
+      "bytes": 253401,
+      "sha256": "4a7c73f3bf18cbffc8f61adcacda12155ee6f7bd27a8feddade6a31881e71636"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0216.jpg",
+      "bytes": 180730,
+      "sha256": "03a71abf96e45c6fd2d2d4f2187d98b524d5d3a7ea6d3d6b6a40017fc03c2cd7"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0217.jpg",
+      "bytes": 307754,
+      "sha256": "d71aa686dd03c3208b7eacc9c568fa580a35c219a4cbefe8546860ff5347bbc1"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0218.jpg",
+      "bytes": 237559,
+      "sha256": "347118dcd9f0a27f2eaeecf86f60979f03d44fac412f5fae67f5caf6c9d586ea"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0219.jpg",
+      "bytes": 223683,
+      "sha256": "b31cb22565115ddfaee6da29ccda2d21dd6687a5af098067181a14f965f30af0"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0220.jpg",
+      "bytes": 269751,
+      "sha256": "8d4bc1579e0a59cd345d4ac2f2ce30bbc2edf3cc5ea0cffb29a2a316f737224d"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0221.jpg",
+      "bytes": 152782,
+      "sha256": "faba0e2d401b815181b0ccca3c2c50c3ffcd1ef422a2ac0ea9f896e77e9ea945"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0222.jpg",
+      "bytes": 278583,
+      "sha256": "98126b20df7b741fb3035b28643a294b4f69ff2e8bf70deab6166909f0508547"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0223.jpg",
+      "bytes": 280315,
+      "sha256": "b6b8822c192469bf0c42a6cad542da51f74e4a256964bf601a72aaa655260e13"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0224.jpg",
+      "bytes": 292544,
+      "sha256": "a949ff9ffa1e0d81f8df7f2873bbc9c0c8db777a8d42aea532ba3c827a911d33"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0225.jpg",
+      "bytes": 136223,
+      "sha256": "341f758ed9df0d8cf5a6a38a74f95aafc5747bb00aaa67e73e86f1f6a29611e3"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0226.jpg",
+      "bytes": 205453,
+      "sha256": "e9c09fb78dcfcb0e5ec36a0eda6360de1d5f0951d5e10dc05a5b7f6d2e3e1e85"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0227.jpg",
+      "bytes": 210310,
+      "sha256": "caed1230f05c3d2a128151ef806aafcc0d1cb089ca3eedb66f6d16d2b1f02d88"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0228.jpg",
+      "bytes": 147620,
+      "sha256": "ea9e37c307c4c07ee404afcb1674949044d1c3657f69faddba114c0d877ffc22"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0229.jpg",
+      "bytes": 203168,
+      "sha256": "0e36bcee7df6552b4dcff915299ed10f0342fc19c9fbd46eb66b48fc6818b30c"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0230.jpg",
+      "bytes": 331269,
+      "sha256": "c29c62a66f7b4d8a2044b9f4017634c6c834963176f6c223ef588ea1db6ef642"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0231.jpg",
+      "bytes": 204609,
+      "sha256": "14edf2e27637c71af7f2a3da3dac6275d47a8075583973e0b0a3143d4f8725c1"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0232.jpg",
+      "bytes": 206617,
+      "sha256": "10e3060f5bdd77b6d3bb72d45d247b7ae8aa693851ff979874924883b114957c"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0233.jpg",
+      "bytes": 142352,
+      "sha256": "ec0a97840d168681969dac0c7b166cdc412dd3f7a1ce6c3151b1a62bacca08b4"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0234.jpg",
+      "bytes": 325276,
+      "sha256": "1d202e3760e8ba93db3d2a482eeaa85d2c237944873591709e766a6ec87e9950"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0235.jpg",
+      "bytes": 199793,
+      "sha256": "a9aad829da644ed6b776055ef4d0bf90eb2734e109b5e8561744dbf89b19af48"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0236.jpg",
+      "bytes": 305943,
+      "sha256": "54d78bce7ce55fbde071d1a0d3a987df3431c7f1005274419aa0c1b3d879adb6"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0237.jpg",
+      "bytes": 151089,
+      "sha256": "5bb4589489f56ed8c74272fb3711ad8f17f3f8d15b29fecfad0e3c6e76421a90"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0238.jpg",
+      "bytes": 211415,
+      "sha256": "334506cbe936f979384bf78bfcf2f4bf609e10c887b425473c246b1d14a9d553"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0239.jpg",
+      "bytes": 118721,
+      "sha256": "719d733952c4fa433ccac5569f811f86102cb6e6d1d44fd6cfdc721a178d101e"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0240.jpg",
+      "bytes": 277019,
+      "sha256": "91820f061f2ff966d06d8cd199cd0fc7e9c92a5593982619542192ecd23563e9"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0241.jpg",
+      "bytes": 244835,
+      "sha256": "0a4d79887c3109bc62b0e1ad4301b8231807def6d21391966fa3c65c170c74b7"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0242.jpg",
+      "bytes": 297403,
+      "sha256": "dd7f152386cd1202b03fa6846c899592a98c816ff009e0cfe067f90a136e58ed"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0243.jpg",
+      "bytes": 291544,
+      "sha256": "d02e6ee8831288c668077b3ef32d26317b8e63a11e1b9992a03784e0540a9882"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0244.jpg",
+      "bytes": 283323,
+      "sha256": "9c4f71483bfffca8c34bc8fa23523f85178789280a475061cb1855b809639815"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0245.jpg",
+      "bytes": 170561,
+      "sha256": "054b07659d0b387ed7960aaab8c13988bfbd6e28f3c1b2c68bdaa2048c7c04f9"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0246.jpg",
+      "bytes": 222012,
+      "sha256": "d3c8cc106f226d913e631ca6d51f9b738229298ca318ffc83e0583357d41c9c9"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0247.jpg",
+      "bytes": 240862,
+      "sha256": "30fda92fc6a113e0e6d0f5b8168c3ae80b294e75c4b1fe9954ee9a2029893154"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0248.jpg",
+      "bytes": 194285,
+      "sha256": "5a888319ec47bcb1469b8a18555000debaa851dedefc8d3f25f772baf904a4fb"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0249.jpg",
+      "bytes": 288434,
+      "sha256": "3457144dc89e32bf09c076461e0a77ad01b3998697e3052f048f7822d01c1414"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0250.jpg",
+      "bytes": 252817,
+      "sha256": "93c86fe0dae7b99396dfe5b49f73a9bf255c71cdf68caa6e5eed31cb56258eea"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0251.jpg",
+      "bytes": 289761,
+      "sha256": "8fe649c1453a6eb2f0ee2008c1c4ac0d14745ba0c46953fa9394db867b54376e"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0252.jpg",
+      "bytes": 164931,
+      "sha256": "2250a8fabf3893cefa4789b27ae1848014a9d9b62c695c290ac983f292d72a36"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0253.jpg",
+      "bytes": 214066,
+      "sha256": "e4341ed31afdd7b93b9676f1ad313ac9ed469f55f5c0576dd4dbeffe4c41a8bd"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0254.jpg",
+      "bytes": 204817,
+      "sha256": "31d9371bb4dc18a3016e48fc3b2a5165612ed1e71f2aa3058523e94c4dbf9dc3"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0255.jpg",
+      "bytes": 271931,
+      "sha256": "79096900dfee60f37ecefe2388b2ef7deef31ee0dc97d42c4946701e33b38348"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0256.jpg",
+      "bytes": 237022,
+      "sha256": "08cfdeb069fc9d43ca12f75af336a79d19f7f150bcb2a15183f184d82331d18b"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0257.jpg",
+      "bytes": 234871,
+      "sha256": "f4e9554d649007b32ad16856681c2422bc7aba426ddcee9294d06c77d5aa7825"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0258.jpg",
+      "bytes": 267857,
+      "sha256": "011bff164f172de213cc2f3562db1a980bca11df0cf58e82d8d6bc866236f84a"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0259.jpg",
+      "bytes": 305993,
+      "sha256": "d796d25285f351b3dea743fa2e6c397fbd892704ce0602063db622695b72a1bb"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0260.jpg",
+      "bytes": 260010,
+      "sha256": "9138ba51f5f576f72869594d5bb004c655901eff408dad60908435892ca3bc34"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0261.jpg",
+      "bytes": 307395,
+      "sha256": "7edd1fe5405ac31801446ab48b7a92dcb81c4a3be12abc486cb66d41fb513b79"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0262.jpg",
+      "bytes": 249835,
+      "sha256": "47b4acfb9f1726fb2e065ca256dcf9d6bc161e06458cbcc29e169e86737bb3bf"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0263.jpg",
+      "bytes": 250005,
+      "sha256": "3c6d84d44afc277d8a82f83cff4fad0b2af0daa11b322b6a1c5117437df54f87"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0264.jpg",
+      "bytes": 277678,
+      "sha256": "e2d61117464fa443f430014edd04fe2650585d1c9d68a0a31d35b10b218060cf"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0265.jpg",
+      "bytes": 280799,
+      "sha256": "766bea2622521029d2a6c59b746caec5edc274f8d6b26033d94e5422f197f7fd"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0266.jpg",
+      "bytes": 269286,
+      "sha256": "33874b4389d076f5886154aa92eb5e74cd1d048ece0d0dbbdbfc60f87dc027ae"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0267.jpg",
+      "bytes": 211406,
+      "sha256": "26fdc57bba6d28081aa524ef04e0c5f72b47cd1c9aa0dca33ffc077cf22d146c"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0268.jpg",
+      "bytes": 132102,
+      "sha256": "484189251819257de0be9222a04003afbd60d26cfbf963bfc45a8fe358e2b52a"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0269.jpg",
+      "bytes": 152462,
+      "sha256": "62fd6e1cb4f5a4a745d797ca407636e52f2c7c977d3a55ff5ac1b3fe8c58f292"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0270.jpg",
+      "bytes": 161454,
+      "sha256": "fb802a87a5e8f3eb7e0964a03b495311a8047879d8854df1ee89973c5e41c8f3"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0271.jpg",
+      "bytes": 293243,
+      "sha256": "01065365acddb2d6241ebb99509af6c688dca5834dc4946ca98e64f6474f5b59"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0272.jpg",
+      "bytes": 286103,
+      "sha256": "39cfed4472cc744811fb13453f08da419bf47a0093e5cb583c0df8d080e7a228"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0273.jpg",
+      "bytes": 328996,
+      "sha256": "a3a282ba41b05417c8674af78f43802ff6b7d12f1fe1d39183f079ab6384da7f"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0274.jpg",
+      "bytes": 158674,
+      "sha256": "4218cb86b929f982bc4e737f34d20c7600ebe53ceaa99b9f0a2dd29392310e06"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0275.jpg",
+      "bytes": 276370,
+      "sha256": "4bbfa7795c82486a2231266cd159eac98ebcc6ad5d751181b1a49b24865fa827"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0276.jpg",
+      "bytes": 194152,
+      "sha256": "fbfb9d3d0aaf751fbaa6e89e1feca60145f2f57c6f063bc611a50f3a98e5ab9d"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0277.jpg",
+      "bytes": 241512,
+      "sha256": "df8afc64b7187403a76757add1bcbb21d1999b60a0c5f07cbc094095b4aae02e"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0278.jpg",
+      "bytes": 207243,
+      "sha256": "9c77b19d38c85d066146c2def887667fcaa8aa03652a05754694f03f742a688c"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0279.jpg",
+      "bytes": 210196,
+      "sha256": "d1c3e771db02ac54929ed404078f9b25d530f76b6e7953c351327377c448de97"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0280.jpg",
+      "bytes": 302871,
+      "sha256": "f820550a2944834ec6c3fc0a604ca848e6dcaedde91f7b1228a91c27d79f3aee"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0281.jpg",
+      "bytes": 200780,
+      "sha256": "9f1a1d4e90e0cf5a682e7d02785efa3e4cf775db0fd7ea8d09ceae6bdf58c96a"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0282.jpg",
+      "bytes": 242930,
+      "sha256": "4c626f0a3791c9b4c1a7307b612f01dee306a59c8e169e0612f7def8827f44bd"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0283.jpg",
+      "bytes": 236479,
+      "sha256": "dd332aad1ab53327d3a201fa2fbadbd40795ed4b9be2fee036a86543afe84dab"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0284.jpg",
+      "bytes": 238253,
+      "sha256": "381ea6468c288a416cbbac042ced6195a2941f7e5c63732c6ee06614070b5b33"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0285.jpg",
+      "bytes": 282201,
+      "sha256": "53f0836ef8962637667579706d35f48e65327ede4c14cabc3a5cfa233a862e45"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0286.jpg",
+      "bytes": 212354,
+      "sha256": "2bc5fde5f39c6d31df53e1c0656bb9436588f80633a76db125bb6c455e451985"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0287.jpg",
+      "bytes": 246403,
+      "sha256": "a8ee856abb94c7f0b7d8a0eb46d6da21ba2139bd8e2868315d2e5f5e07ec3ef4"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0288.jpg",
+      "bytes": 289479,
+      "sha256": "75b89e07a30d353a21c681b97717065a8805d728da34cfa3eea0521d9f86b055"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0289.jpg",
+      "bytes": 240931,
+      "sha256": "0d630b310377dab527ae6189304f170180d101ed4f2568234046ce8a91322924"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0290.jpg",
+      "bytes": 273087,
+      "sha256": "cd9051c8b247b07f01a402abf3249adfdbcf69445016d86ff56cf6b20a182d31"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0291.jpg",
+      "bytes": 230266,
+      "sha256": "d60cda8c7da037a522ed23473329b4eb130d31b79ac1c6a8aa223d17e1835da4"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0292.jpg",
+      "bytes": 238041,
+      "sha256": "c07f233c90b6905816c45d674f4a744886ae4fbebc0d2c762c3bb470fc64849e"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0293.jpg",
+      "bytes": 300760,
+      "sha256": "f92298eb176ee842b55822a515d195ca4ab0dffb23cffb15ad2fbdce63d418b7"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0294.jpg",
+      "bytes": 223121,
+      "sha256": "31ea5ecfaa1947364128e5ddf6b206e7c575f7536641bbd4e5e241b864f05f75"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0295.jpg",
+      "bytes": 332393,
+      "sha256": "6e4f58cecc2b33d6bab8823cbfe9de420610370d681793b5ba44458ce51edaa6"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0296.jpg",
+      "bytes": 194248,
+      "sha256": "41c7bebddcf10073367de35fe0ea6e414cbef87ff8048a9801655e36eab70ea1"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0297.jpg",
+      "bytes": 13709,
+      "sha256": "93f71fb9d3ee7f8d2662d53a65af70e805a321af6018a16f295b4f5d00093900"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0298.jpg",
+      "bytes": 308914,
+      "sha256": "00da70185e79c67c699711792edaaaaa2bb02b0eac2bea18c8dbfa8f38cc676d"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0299.jpg",
+      "bytes": 320953,
+      "sha256": "366dee1db354d6667b71c3259f5dda05f1e7f13245be8bfd7de44e86f33f09a8"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/images/glb002-0300.jpg",
+      "bytes": 196319,
+      "sha256": "bfe35f93619dda3461cb3a531a7272131ed0b18eb4b220707d3985f3da5a87ed"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/packets/sealed-packet-manifest-v1.json",
+      "bytes": 4176,
+      "sha256": "470a47f34f508403fa50f89f0f7a153dd03f4d3941a5057c8b777a91c3947090"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/reviews/blind/labels.jsonl",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/reviews/blind/reviewer.json",
+      "bytes": 193,
+      "sha256": "54362cd527762fed3c01268fba2689729d6b391fdeed33f705b40197eb7e504b"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/reviews/primary/labels.jsonl",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/reviews/primary/reviewer.json",
+      "bytes": 142,
+      "sha256": "fce1cb9fa78ee14bdfb86b5ccc292fa9929fedc59f470a0a596b6c87709a7bfe"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/search/search-silver-authority-v1.jsonl",
+      "bytes": 16750,
+      "sha256": "e873685c24946ebf42f3e468c3fa105fc07b4bad7c0c58ede1fc68d2fe7b7edc"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/search/search-silver-dispositions-v1.jsonl",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}

@@ -209,3 +209,6 @@ Explain the technical architecture, the structure of the codebase and how the va
 It should be very engaging to read; don't make it sound like boring technical documentation/textbook. Where appropriate, use analogies and anecdotes to make it more understandable and memorable."
 
 Make sure to keep it updated as the project evolves
+# Gold Label Batch 002 Worker Rule
+
+For issue #68 visual labeling, read only the assigned sealed packet, its instruction file, and referenced direct images. Do not inspect hidden batch inputs, metadata, acquisition scores, prior labels, VLM/taxonomy fields, leakage components/splits, search tasks, or another reviewer's output. Do not fabricate visual facts or exact identities/locations. Preserve observed, metadata, inferred, verified, and abstention boundaries in `dataset_factory_label_v0`.

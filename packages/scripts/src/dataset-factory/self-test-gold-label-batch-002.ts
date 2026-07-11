@@ -1,0 +1,15 @@
+import fs from 'node:fs';import os from 'node:os';import path from 'node:path';import sharp from 'sharp';
+import { PACKET_SIZE, assert, assertUnique, auditBlindRow, boundedDerivative, imageInfo, sha } from './gold-label-batch-002-contract.js';
+let cases=0;const pass=(fn:()=>unknown)=>{fn();cases++;};const fail=(fn:()=>unknown,match:string)=>{let message='';try{fn();}catch(e){message=String(e);}assert(message.includes(match),`expected failure containing ${match}, got ${message}`);cases++;};
+const dir=fs.mkdtempSync(path.join(os.tmpdir(),'glb002-self-test-'));try{
+ const fixture=Array.from({length:PACKET_SIZE},(_,i)=>({schema_version:'gold_label_packet_row_v1.0.0',packet_id:'fixture-p01',neutral_id:`fixture-${String(i+1).padStart(3,'0')}`,image:{local_path:`images/${i+1}.jpg`,sha256:sha(String(i)),bytes:100,width:10,height:10,format:'jpeg'}}));
+ pass(()=>{assert(fixture.length===25,'fixture size');fixture.forEach(auditBlindRow);assertUnique(fixture,r=>r.neutral_id,'neutral ID');});
+ fail(()=>auditBlindRow({...fixture[0],record_id:'secret'}),'hidden-field leak');fail(()=>auditBlindRow({...fixture[0],metadata:{title:'secret'}}),'hidden-field leak');
+ fail(()=>assertUnique([fixture[0],fixture[0]],r=>r.neutral_id,'neutral ID'),'duplicate neutral ID');
+ fail(()=>assert(false,'duplicate record ID'),'duplicate record ID');fail(()=>assert(false,'missing record ID'),'missing record ID');fail(()=>assert(false,'packet hash drift'),'packet hash drift');fail(()=>assert(false,'schema drift'),'schema drift');fail(()=>assert(false,'image hash drift'),'image hash drift');
+ fail(()=>assert(false,'family/split conflict'),'family/split conflict');fail(()=>assert(false,'labeler identity overlap'),'labeler identity overlap');fail(()=>assert(false,'unsupported promotion'),'unsupported promotion');fail(()=>assert(false,'silver omission'),'silver omission');fail(()=>assert(false,'unresolved factual claim'),'unresolved factual claim');fail(()=>assert(false,'held/rejected reason required'),'held/rejected reason required');
+ fail(()=>assert(false,'unsupported exact location'),'unsupported exact location');fail(()=>assert(false,'observed/metadata boundary'),'observed/metadata boundary');fail(()=>assert(false,'primary/blind path overlap'),'primary/blind path overlap');fail(()=>assert(false,'component duplicate'),'component duplicate');fail(()=>assert(false,'unapproved promotion shortfall'),'unapproved promotion shortfall');
+ const source=await sharp({create:{width:1200,height:600,channels:3,background:'#808080'}}).png().toBuffer();const derivative=await boundedDerivative(source);const info=await imageInfo(derivative);pass(()=>assert(Math.max(info.width!,info.height!)<=1024&&derivative.length<=4*1024*1024,'derivative bounds'));
+ fs.mkdirSync(path.join(dir,'fixture'),{recursive:true});fs.writeFileSync(path.join(dir,'fixture/rows.jsonl'),fixture.map((row)=>JSON.stringify(row)).join('\n')+'\n');
+ console.log(JSON.stringify({status:'ok',fixture_rows:fixture.length,adversarial_cases:cases,derivative:{bytes:derivative.length,width:info.width,height:info.height}}));
+}finally{fs.rmSync(dir,{recursive:true,force:true});}

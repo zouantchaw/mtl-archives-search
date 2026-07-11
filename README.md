@@ -24,6 +24,8 @@ Built on Cloudflare's edge infrastructure: Workers, D1, Vectorize, R2, and Worke
 
 Dataset Factory's Canonical Image Recovery v1 restores visual features for the exact 209 issue-67 failures under bounded read-only contracts. See [docs/dataset-factory/canonical-image-recovery-v1.md](docs/dataset-factory/canonical-image-recovery-v1.md).
 
+Gold Label Batch 002 phase 1 freezes 300 unlabeled candidates into 12 sealed visual-only packets using the #77 successor leakage authority. See [docs/dataset-factory/gold-label-batch-002-phase-1.md](docs/dataset-factory/gold-label-batch-002-phase-1.md). It does not claim labeling or adjudication complete.
+
 ## Live API
 
 ```bash
