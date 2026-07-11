@@ -6,7 +6,7 @@
   "required": ["schema_version", "recovery_contract_id", "baseline_failure_stream_sha256", "corpus_input_sha256", "record_id", "attempted_lanes", "root_cause", "root_cause_evidence", "disposition", "recovered", "negative_visual_label"],
   "properties": {
     "schema_version": { "const": "canonical_image_recovery_v1.0.0" },
-    "recovery_contract_id": { "type": "string", "pattern": "^canonical-image-recovery-contract:[a-f0-9]{64}$" },
+    "recovery_contract_id": { "type": "string", "pattern": "^derivative-contract:[a-f0-9]{64}$" },
     "baseline_failure_stream_sha256": { "const": "62f266e28e26fe97d03c5bc17169e319f70a2ab07f7d87c4a5eaeb0bea4f046b" },
     "corpus_input_sha256": { "const": "0f9971c70ac242c44ee80835b4c71e9f771e742d8c80603cf39bc1163cc951cc" },
     "record_id": { "type": "string", "pattern": "^mtl_archives_metadata_[0-9]+\\.json$" },

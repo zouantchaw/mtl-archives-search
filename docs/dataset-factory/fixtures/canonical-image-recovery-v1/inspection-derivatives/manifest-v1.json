@@ -1,0 +1,2096 @@
+{
+  "rows": [
+    {
+      "bytes": 14091,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_0.jpg",
+      "record_id": "mtl_archives_metadata_0.json",
+      "sha256": "085dcaef18e50c5f92427499ec14c27db2ac909cba3fff3d4cd75b1b5e32ee11",
+      "width": 256
+    },
+    {
+      "bytes": 11602,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_1.jpg",
+      "record_id": "mtl_archives_metadata_1.json",
+      "sha256": "5a6a9e4c55b6ef874875ff59bf4660f6680ebda410703d9976f3c9a35cad81e5",
+      "width": 256
+    },
+    {
+      "bytes": 13290,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_10.jpg",
+      "record_id": "mtl_archives_metadata_10.json",
+      "sha256": "afc278c61e33fc93ca9772e48f1e3b9fc537b8bb7d6017e4e9745d5b583f1f97",
+      "width": 256
+    },
+    {
+      "bytes": 16726,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_100.jpg",
+      "record_id": "mtl_archives_metadata_100.json",
+      "sha256": "23f361a9663e481692c8dfca2e1452d54140e65f4c0d6ce4e4d77a8894e2c08f",
+      "width": 256
+    },
+    {
+      "bytes": 10239,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_10000.jpg",
+      "record_id": "mtl_archives_metadata_10000.json",
+      "sha256": "366fc8a15f5431a038f2a517a756dd9792db52d6080e1dc44c667c6b6d68aea9",
+      "width": 256
+    },
+    {
+      "bytes": 18562,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_10001.jpg",
+      "record_id": "mtl_archives_metadata_10001.json",
+      "sha256": "11d2da40374757c0eea00fd1692cbf1a694550e64735f37c7051c5112e2da2c9",
+      "width": 256
+    },
+    {
+      "bytes": 13102,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_10002.jpg",
+      "record_id": "mtl_archives_metadata_10002.json",
+      "sha256": "5949c5841cc29fc4c0a0ea0943d7209ffd6b0552ebd8a0e3f90a025b23815991",
+      "width": 256
+    },
+    {
+      "bytes": 10669,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_10003.jpg",
+      "record_id": "mtl_archives_metadata_10003.json",
+      "sha256": "dc6c64c8899168b2ddda5d7233b76bb041b06882c33c9b295e88b7dc7d0094be",
+      "width": 256
+    },
+    {
+      "bytes": 20162,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_10004.jpg",
+      "record_id": "mtl_archives_metadata_10004.json",
+      "sha256": "73f924e65f213d104a97fc719429e9dd62166c11bfcdff722e95148f9053b497",
+      "width": 256
+    },
+    {
+      "bytes": 12081,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_101.jpg",
+      "record_id": "mtl_archives_metadata_101.json",
+      "sha256": "9025b7e4417169df9083a076f536159811287bd94ab23d7528694498133f1753",
+      "width": 256
+    },
+    {
+      "bytes": 17016,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_10145.jpg",
+      "record_id": "mtl_archives_metadata_10145.json",
+      "sha256": "3418699a3dd1d010f9df01bc0e3d6d3c05bbdccdc33e9e394392bec3840de1ff",
+      "width": 256
+    },
+    {
+      "bytes": 18574,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_102.jpg",
+      "record_id": "mtl_archives_metadata_102.json",
+      "sha256": "2f4deb1693336e4fc08809f43635855f96c0636cb323e0081854472e5b6c96e5",
+      "width": 256
+    },
+    {
+      "bytes": 15652,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_103.jpg",
+      "record_id": "mtl_archives_metadata_103.json",
+      "sha256": "f06a16212cedf853085695118b7f9626987c5d950100ed5fa096e9593270d3c9",
+      "width": 256
+    },
+    {
+      "bytes": 12769,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_104.jpg",
+      "record_id": "mtl_archives_metadata_104.json",
+      "sha256": "3f93677177f04cdf322c5ff0c91a416f0accc9aa4863180ac9ca350e5ab6da70",
+      "width": 256
+    },
+    {
+      "bytes": 26461,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_1049.jpg",
+      "record_id": "mtl_archives_metadata_1049.json",
+      "sha256": "eca631397fe5cbf434bdeb59d494a431f80e17d6de68907218752782bb94279e",
+      "width": 256
+    },
+    {
+      "bytes": 12903,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_105.jpg",
+      "record_id": "mtl_archives_metadata_105.json",
+      "sha256": "331886342d0ed5c71b06286bb2e45710ae4de79d15dd755d23ff7cbae10dce7f",
+      "width": 256
+    },
+    {
+      "bytes": 19818,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_10595.jpg",
+      "record_id": "mtl_archives_metadata_10595.json",
+      "sha256": "168fa7258c5c4123e8734c7a725a92015a6000d8e40b4821c7e1ecbf2abc065c",
+      "width": 256
+    },
+    {
+      "bytes": 19205,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_106.jpg",
+      "record_id": "mtl_archives_metadata_106.json",
+      "sha256": "f203d9e45fca010b78ce9dfa91bf9d80de0920e15f3ea65496467d0a3e5ceefa",
+      "width": 256
+    },
+    {
+      "bytes": 13960,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_107.jpg",
+      "record_id": "mtl_archives_metadata_107.json",
+      "sha256": "33d256087694168c88ab9099aa197091db81e965b0460e4263412c99718aff9c",
+      "width": 256
+    },
+    {
+      "bytes": 16729,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_11.jpg",
+      "record_id": "mtl_archives_metadata_11.json",
+      "sha256": "da37e095f618b01307597e5351539a2682b716feace556ef5394bf89279a9b80",
+      "width": 256
+    },
+    {
+      "bytes": 18683,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_11045.jpg",
+      "record_id": "mtl_archives_metadata_11045.json",
+      "sha256": "8a292ff1f73f6083b66ab211f716276be58065de6577fb3e3d8ada546e72ebf6",
+      "width": 256
+    },
+    {
+      "bytes": 23051,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_111.jpg",
+      "record_id": "mtl_archives_metadata_111.json",
+      "sha256": "4d2da0b61a22cfb3283ccac8941c6f9249d5070a03c355ff7f3eab6df22c498b",
+      "width": 256
+    },
+    {
+      "bytes": 9324,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_11118.jpg",
+      "record_id": "mtl_archives_metadata_11118.json",
+      "sha256": "ecbedbbb7b2d5f7cf2aec55ad43dbba3cbd8ca8f712fe8e838fbbc998dd90778",
+      "width": 256
+    },
+    {
+      "bytes": 29523,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_1112.jpg",
+      "record_id": "mtl_archives_metadata_1112.json",
+      "sha256": "86939723887d54ae9202ea257b50353bb4aa430b650220118fa27c42082aff48",
+      "width": 256
+    },
+    {
+      "bytes": 25791,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_1118.jpg",
+      "record_id": "mtl_archives_metadata_1118.json",
+      "sha256": "627b57260ea80889029a346a8182ad3e6a05b08810b0fc66d725503e807510e8",
+      "width": 256
+    },
+    {
+      "bytes": 22677,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_112.jpg",
+      "record_id": "mtl_archives_metadata_112.json",
+      "sha256": "f481bade0077729fe390c273966a85499c7496d67db8a85f559b97950716e321",
+      "width": 256
+    },
+    {
+      "bytes": 20557,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_11206.jpg",
+      "record_id": "mtl_archives_metadata_11206.json",
+      "sha256": "39bb93cf5fc89fa3b92be50b8b979eef3d28ac0110ea804051f940692e43e05d",
+      "width": 256
+    },
+    {
+      "bytes": 25566,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_1121.jpg",
+      "record_id": "mtl_archives_metadata_1121.json",
+      "sha256": "f7affbecdf1313906ee1ea9a23c24098bffa386627fc52635eb2923393400b11",
+      "width": 256
+    },
+    {
+      "bytes": 27616,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_1122.jpg",
+      "record_id": "mtl_archives_metadata_1122.json",
+      "sha256": "98d1cbffe13b455deb9955c5bd95fa2ab66c8dc02dbc900770daf7bc2fef8fc9",
+      "width": 256
+    },
+    {
+      "bytes": 28028,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_1123.jpg",
+      "record_id": "mtl_archives_metadata_1123.json",
+      "sha256": "2880157f6a231cca0a49f1fe3595cc1f8f3a7a28a60a8ef510b3a6811e51d170",
+      "width": 256
+    },
+    {
+      "bytes": 26134,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_1124.jpg",
+      "record_id": "mtl_archives_metadata_1124.json",
+      "sha256": "8dcc418f9f35f727e2e3fa9518ba8a9ed6a270e9db546a003b9aa703f86317f5",
+      "width": 256
+    },
+    {
+      "bytes": 10949,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_11240.jpg",
+      "record_id": "mtl_archives_metadata_11240.json",
+      "sha256": "85ae7f859f1d0f224f05f905be64c66ebdca1264d51f624bcd774316e6cb9723",
+      "width": 256
+    },
+    {
+      "bytes": 11535,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_11241.jpg",
+      "record_id": "mtl_archives_metadata_11241.json",
+      "sha256": "f194153eb42cb5bc6692a0972f22d48fbb6422a8bb6a96135cd086af3fbe2683",
+      "width": 256
+    },
+    {
+      "bytes": 23734,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_1125.jpg",
+      "record_id": "mtl_archives_metadata_1125.json",
+      "sha256": "4de0ab14c858557d73962788cdd9405f0b83caffdb428b59afc48d189afa8184",
+      "width": 256
+    },
+    {
+      "bytes": 23183,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_1126.jpg",
+      "record_id": "mtl_archives_metadata_1126.json",
+      "sha256": "3b4004aac00e419114f336fd75d1ee026dace50ba679933a43dd2ae1bb7511b1",
+      "width": 256
+    },
+    {
+      "bytes": 11440,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_11265.jpg",
+      "record_id": "mtl_archives_metadata_11265.json",
+      "sha256": "7ddec0c0755b4fb225d9b430c082b0848ef311c37f29477f978e5c64752b4d6a",
+      "width": 256
+    },
+    {
+      "bytes": 21665,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8132.jpg",
+      "record_id": "mtl_archives_metadata_8132.json",
+      "sha256": "93d1f69b1db7e655a6d959fa0db331b2725bcd20ad58123766dc63b999d8b964",
+      "width": 256
+    },
+    {
+      "bytes": 25642,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8133.jpg",
+      "record_id": "mtl_archives_metadata_8133.json",
+      "sha256": "dc6ac10db53d4641f496cf486f2f7f46c418fff54fb07e302ae1f0444e362f54",
+      "width": 256
+    },
+    {
+      "bytes": 23345,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8134.jpg",
+      "record_id": "mtl_archives_metadata_8134.json",
+      "sha256": "4c45c0e3308e53266c2c6aa6d2973da1029e75e115d284c4bd65e3e75c681985",
+      "width": 256
+    },
+    {
+      "bytes": 25642,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8135.jpg",
+      "record_id": "mtl_archives_metadata_8135.json",
+      "sha256": "bf9f132e9f7a2eacd2f5925d21a5b4d7674a3f70031e52d55cf1597d4c7f5f1b",
+      "width": 256
+    },
+    {
+      "bytes": 22696,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8136.jpg",
+      "record_id": "mtl_archives_metadata_8136.json",
+      "sha256": "6b97a5fd177af222f3b404ed6a0b61db20413aea5f7cb8d1325039c733ca2bd1",
+      "width": 256
+    },
+    {
+      "bytes": 23742,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8137.jpg",
+      "record_id": "mtl_archives_metadata_8137.json",
+      "sha256": "8685f4ff9e0600a8c5049034ff56d4a541fae8acd6b385d54f678e4c91254c85",
+      "width": 256
+    },
+    {
+      "bytes": 23540,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8138.jpg",
+      "record_id": "mtl_archives_metadata_8138.json",
+      "sha256": "0e65cb67f363576d7896f7a3067a382d95fdde49ab782176efc0f54f9b033d89",
+      "width": 256
+    },
+    {
+      "bytes": 25095,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8139.jpg",
+      "record_id": "mtl_archives_metadata_8139.json",
+      "sha256": "9f50515c738b93ee12fe04c7c6223698ea2b91bddab0b770f3c049c976824430",
+      "width": 256
+    },
+    {
+      "bytes": 27674,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8140.jpg",
+      "record_id": "mtl_archives_metadata_8140.json",
+      "sha256": "0161840ea66472ca7dca222b0bf125dde540e01bd352ffbea15e3fd56059e728",
+      "width": 256
+    },
+    {
+      "bytes": 25891,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8141.jpg",
+      "record_id": "mtl_archives_metadata_8141.json",
+      "sha256": "c2fbf81660f8f7f3905c55a414ed5e1a96e79061b4da8bf322db6989824263fc",
+      "width": 256
+    },
+    {
+      "bytes": 26585,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8142.jpg",
+      "record_id": "mtl_archives_metadata_8142.json",
+      "sha256": "b305053991d6a478aea02b07eb80bd662af526a36431b55fc40c9d292ccbdb56",
+      "width": 256
+    },
+    {
+      "bytes": 28376,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8143.jpg",
+      "record_id": "mtl_archives_metadata_8143.json",
+      "sha256": "5ff34282c5f08971e37ad81ef1bbe62ed3f2f6353d6e1fea5af7d290149e61b2",
+      "width": 256
+    },
+    {
+      "bytes": 25945,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8144.jpg",
+      "record_id": "mtl_archives_metadata_8144.json",
+      "sha256": "f2e769f6b99f5330a39ac28608001856585716213fa39f67f88e43a982f61d74",
+      "width": 256
+    },
+    {
+      "bytes": 28903,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8145.jpg",
+      "record_id": "mtl_archives_metadata_8145.json",
+      "sha256": "98f9ade058987728410b4733d91546fdcd8d4cbae09c106a3cb95871ee3e7c6e",
+      "width": 256
+    },
+    {
+      "bytes": 26981,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8146.jpg",
+      "record_id": "mtl_archives_metadata_8146.json",
+      "sha256": "1d2227ae336a827a079d90d3a94c51383fdd5522d839133912da72fa591bee74",
+      "width": 256
+    },
+    {
+      "bytes": 25627,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8147.jpg",
+      "record_id": "mtl_archives_metadata_8147.json",
+      "sha256": "1d729fa4236234194675e91424811cc2231ee570ecd6af255896f489d25dca2d",
+      "width": 256
+    },
+    {
+      "bytes": 25530,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8148.jpg",
+      "record_id": "mtl_archives_metadata_8148.json",
+      "sha256": "67fcb3d439f6a01c3e6d0f76dd6b6ec6546d18cb4b309906b0561fa787af90de",
+      "width": 256
+    },
+    {
+      "bytes": 29383,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8149.jpg",
+      "record_id": "mtl_archives_metadata_8149.json",
+      "sha256": "46f65216491dfe955752113b58a979eecd3a88b81dfd33ce35c6edeed0a98a3f",
+      "width": 256
+    },
+    {
+      "bytes": 27165,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8150.jpg",
+      "record_id": "mtl_archives_metadata_8150.json",
+      "sha256": "b3ea24a698ca0d7fe9f20d9a3243147a790bcb362f83d41803a05e4f7d84af53",
+      "width": 256
+    },
+    {
+      "bytes": 26949,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8151.jpg",
+      "record_id": "mtl_archives_metadata_8151.json",
+      "sha256": "d355e5e4149355c54645d42e7a5d492f2e33c7d1cacd2d4a453caead84c1c2ed",
+      "width": 256
+    },
+    {
+      "bytes": 22631,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8152.jpg",
+      "record_id": "mtl_archives_metadata_8152.json",
+      "sha256": "cbd2047a7d1686bbf492b72367354f2d5d367afb2bc4ca14e1eb3a7339067948",
+      "width": 256
+    },
+    {
+      "bytes": 21285,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8153.jpg",
+      "record_id": "mtl_archives_metadata_8153.json",
+      "sha256": "df5c961dd6ddb894bcb0cbbb0c40f5ec2dad214f8a1221b701e0ac8b220c689d",
+      "width": 256
+    },
+    {
+      "bytes": 20893,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8154.jpg",
+      "record_id": "mtl_archives_metadata_8154.json",
+      "sha256": "3e8afa7d68831dedd6d0f39c4b6448dfed660700291e66ff7fc30a94d228899d",
+      "width": 256
+    },
+    {
+      "bytes": 23719,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8155.jpg",
+      "record_id": "mtl_archives_metadata_8155.json",
+      "sha256": "d0111e89ba8aeea13727536631162b9d15c1be5054abbe67ac76eddaeea0f5e4",
+      "width": 256
+    },
+    {
+      "bytes": 28691,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8156.jpg",
+      "record_id": "mtl_archives_metadata_8156.json",
+      "sha256": "2c6538b086a4bb864e51b464fbc754d19d8c011a51be58c9af72f90279530e35",
+      "width": 256
+    },
+    {
+      "bytes": 30017,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8157.jpg",
+      "record_id": "mtl_archives_metadata_8157.json",
+      "sha256": "eabdc408c55934675da5c94c52f46613e5f769b0a352b94c4307c6c17f7a85f2",
+      "width": 256
+    },
+    {
+      "bytes": 30883,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8158.jpg",
+      "record_id": "mtl_archives_metadata_8158.json",
+      "sha256": "2d9c40a4e94566bd73bd1fee59dd91994fc38f0abda84938d8612dc277d0e67f",
+      "width": 256
+    },
+    {
+      "bytes": 29649,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8159.jpg",
+      "record_id": "mtl_archives_metadata_8159.json",
+      "sha256": "f95762aab4cefa9c5d78f4e5d5adea4bf7d498fe1f3827fcdb131fe647967c32",
+      "width": 256
+    },
+    {
+      "bytes": 31153,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8160.jpg",
+      "record_id": "mtl_archives_metadata_8160.json",
+      "sha256": "638ddfd70f8c2dc44463f83bc7be2ee836f29daecbc07dd65da1ce312509114a",
+      "width": 256
+    },
+    {
+      "bytes": 30079,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8161.jpg",
+      "record_id": "mtl_archives_metadata_8161.json",
+      "sha256": "33148f7245dfe5cf601b8ec58ae00469d58e8c9788ae15139ba2c3eb0fbb6899",
+      "width": 256
+    },
+    {
+      "bytes": 26921,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8162.jpg",
+      "record_id": "mtl_archives_metadata_8162.json",
+      "sha256": "b83237fc64158555e0c00a4c6fbad468c8c3612fe8db78ee70362558ba19f377",
+      "width": 256
+    },
+    {
+      "bytes": 25159,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8163.jpg",
+      "record_id": "mtl_archives_metadata_8163.json",
+      "sha256": "a71654f02ae2f8835297f3349760bf52efa21aa53422218c92e666cc58b0620b",
+      "width": 256
+    },
+    {
+      "bytes": 25139,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8164.jpg",
+      "record_id": "mtl_archives_metadata_8164.json",
+      "sha256": "c122003289e38b222e8a50758402eded268fefe13e1ddf4807ca2cf6abe9b39b",
+      "width": 256
+    },
+    {
+      "bytes": 24588,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8165.jpg",
+      "record_id": "mtl_archives_metadata_8165.json",
+      "sha256": "8e8eb9e5537db8bf8788338c7b65c5741c0d1742209f6434b285f63caa31bc48",
+      "width": 256
+    },
+    {
+      "bytes": 23110,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8166.jpg",
+      "record_id": "mtl_archives_metadata_8166.json",
+      "sha256": "350c3b76ae26e1e69cd4539a39ef1f597db9477f31c38ed1e0917b64fece3102",
+      "width": 256
+    },
+    {
+      "bytes": 27628,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8167.jpg",
+      "record_id": "mtl_archives_metadata_8167.json",
+      "sha256": "238942d30cf404edbebb5c995672da533696eaac7d73ff8dfb58cdd769d94828",
+      "width": 256
+    },
+    {
+      "bytes": 29326,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8168.jpg",
+      "record_id": "mtl_archives_metadata_8168.json",
+      "sha256": "ca2492eb8eb82eaeba0d55c0b34fa25b5300a43180698f9aa4d67e39636ee800",
+      "width": 256
+    },
+    {
+      "bytes": 31118,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8169.jpg",
+      "record_id": "mtl_archives_metadata_8169.json",
+      "sha256": "e703da803c4b852311e5315bc09ce3031a7057ad9936a991b4b4a288ea8bde23",
+      "width": 256
+    },
+    {
+      "bytes": 29047,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8170.jpg",
+      "record_id": "mtl_archives_metadata_8170.json",
+      "sha256": "dcd12f4746121fc2060a7d38804c3e1557a25c0f0784bf81a169675cc44ffa40",
+      "width": 256
+    },
+    {
+      "bytes": 28290,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8171.jpg",
+      "record_id": "mtl_archives_metadata_8171.json",
+      "sha256": "e14c766e6920487d7c6143ffbdee0359d42831bcb911fffcaa6440e97681b30f",
+      "width": 256
+    },
+    {
+      "bytes": 25463,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8172.jpg",
+      "record_id": "mtl_archives_metadata_8172.json",
+      "sha256": "b143114e1dee238c3134b091f12cc443fb6e00b69d11041c42bc31b8274aa6ec",
+      "width": 256
+    },
+    {
+      "bytes": 21295,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8173.jpg",
+      "record_id": "mtl_archives_metadata_8173.json",
+      "sha256": "d7d6e217a1d32d38a7dc1be7c665cbc9662d3456301495b25210783dce83a927",
+      "width": 256
+    },
+    {
+      "bytes": 17021,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8174.jpg",
+      "record_id": "mtl_archives_metadata_8174.json",
+      "sha256": "1c52899cfc0c766592eaf4b6ed9f59bb5912d56b10298b09a8331ea160d6965f",
+      "width": 256
+    },
+    {
+      "bytes": 24669,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8175.jpg",
+      "record_id": "mtl_archives_metadata_8175.json",
+      "sha256": "6346b8ad9ab28a7a5f760936cf65e230fc32c5fe81ffd3a60a4ed67070e67f69",
+      "width": 256
+    },
+    {
+      "bytes": 28291,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8176.jpg",
+      "record_id": "mtl_archives_metadata_8176.json",
+      "sha256": "c8f13a29bc9b22685e5cf2425a0bacc6b23e61be6a1733593fb575bade2e0111",
+      "width": 256
+    },
+    {
+      "bytes": 25705,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8177.jpg",
+      "record_id": "mtl_archives_metadata_8177.json",
+      "sha256": "a06693e4942abb1a85b9436bc35c8669e20dbb9a8ab3c9dab583d17b994a8fc4",
+      "width": 256
+    },
+    {
+      "bytes": 23609,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8178.jpg",
+      "record_id": "mtl_archives_metadata_8178.json",
+      "sha256": "1bc7e9a4df4cc9fda4e5c06276d000b9bcfc8325664d1362721f1731e68074df",
+      "width": 256
+    },
+    {
+      "bytes": 21825,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8180.jpg",
+      "record_id": "mtl_archives_metadata_8180.json",
+      "sha256": "fa102cab2d0f5b1955318b677cdd591b00050611e94ab482e91d5b02f3371765",
+      "width": 256
+    },
+    {
+      "bytes": 25723,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8181.jpg",
+      "record_id": "mtl_archives_metadata_8181.json",
+      "sha256": "684a00f8bd2e195fa4e9f07a69e18c3e07844a67f6ef540adb3252534f1a94ea",
+      "width": 256
+    },
+    {
+      "bytes": 23439,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8182.jpg",
+      "record_id": "mtl_archives_metadata_8182.json",
+      "sha256": "1a1bf6dc42bd4812b98ae5bf9ff0e164c9e398bac7c861bf39b718d02daf69a2",
+      "width": 256
+    },
+    {
+      "bytes": 25713,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8183.jpg",
+      "record_id": "mtl_archives_metadata_8183.json",
+      "sha256": "6320a1caab5ddd16deba82691c68008d4d861b8e4285dfe92fb86461620f4cb6",
+      "width": 256
+    },
+    {
+      "bytes": 22790,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8184.jpg",
+      "record_id": "mtl_archives_metadata_8184.json",
+      "sha256": "ff49737ed67003fbbbd3c3a828454c2152dcd0dc6764a4ebe2a002bca786558d",
+      "width": 256
+    },
+    {
+      "bytes": 23844,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8185.jpg",
+      "record_id": "mtl_archives_metadata_8185.json",
+      "sha256": "63b099d005f667bbea7bb344ec5d1f2165d7bf0cb0325f9fb26760ae890ff652",
+      "width": 256
+    },
+    {
+      "bytes": 23504,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8186.jpg",
+      "record_id": "mtl_archives_metadata_8186.json",
+      "sha256": "6d9693ff21d8103221ed6b9766f20da75ba5915cf5daf494cbc090b49abf1fb5",
+      "width": 256
+    },
+    {
+      "bytes": 25187,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8187.jpg",
+      "record_id": "mtl_archives_metadata_8187.json",
+      "sha256": "8fa9c25bc7a343fcb5e03500eda9ffb233b05b574154a7d48b51f75caafc3e44",
+      "width": 256
+    },
+    {
+      "bytes": 27734,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8188.jpg",
+      "record_id": "mtl_archives_metadata_8188.json",
+      "sha256": "21b39cc76376120fb2ebc35b031ea53d8161230edc1859158ae80ab17fbaf41a",
+      "width": 256
+    },
+    {
+      "bytes": 25905,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8189.jpg",
+      "record_id": "mtl_archives_metadata_8189.json",
+      "sha256": "35b30c73547d9321a169d5ec4b1ba6ebceff67b4341056215b46726e1f84381e",
+      "width": 256
+    },
+    {
+      "bytes": 26783,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8190.jpg",
+      "record_id": "mtl_archives_metadata_8190.json",
+      "sha256": "b89e1b596d7980a15ae198b0f7575a7b55708e604771a659e33912f7dc1b1167",
+      "width": 256
+    },
+    {
+      "bytes": 28423,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8191.jpg",
+      "record_id": "mtl_archives_metadata_8191.json",
+      "sha256": "d9b3537d2b3f4482523f2db7a9fb4b7aea965aba13a7ce5b3c0b3ee7eac9ba30",
+      "width": 256
+    },
+    {
+      "bytes": 25877,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8192.jpg",
+      "record_id": "mtl_archives_metadata_8192.json",
+      "sha256": "c4bd0d1ea852641fb9128c47368246745b46bf15f6ef9b6c6244b869977b92e0",
+      "width": 256
+    },
+    {
+      "bytes": 28909,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8193.jpg",
+      "record_id": "mtl_archives_metadata_8193.json",
+      "sha256": "a79749df2b834355433c6c39efb05187f4091a31b5890e61cdd0b9764daf34c3",
+      "width": 256
+    },
+    {
+      "bytes": 27022,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8194.jpg",
+      "record_id": "mtl_archives_metadata_8194.json",
+      "sha256": "69111a259e9b1e8316fa2c54e0782195769543660186849ac8c6d6fdbffb1f90",
+      "width": 256
+    },
+    {
+      "bytes": 25736,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8195.jpg",
+      "record_id": "mtl_archives_metadata_8195.json",
+      "sha256": "0fd1a900570c1b980b6b7b1c5fb41117164a9add5cc7a0ee1d2f457724462d1a",
+      "width": 256
+    },
+    {
+      "bytes": 25621,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8196.jpg",
+      "record_id": "mtl_archives_metadata_8196.json",
+      "sha256": "6dde5a9de93272b0867fc4eda260ed1b41e41ff10e288b4e98ca840ccb11fe01",
+      "width": 256
+    },
+    {
+      "bytes": 29462,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8197.jpg",
+      "record_id": "mtl_archives_metadata_8197.json",
+      "sha256": "37694e7c53915531638eb395a2451135228845e39da219515698c268ec36ee6a",
+      "width": 256
+    },
+    {
+      "bytes": 27219,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8198.jpg",
+      "record_id": "mtl_archives_metadata_8198.json",
+      "sha256": "b535d33f177615e0c07e0dc4314460cc140bea4b2cedb58d24bdd6f38e4add8b",
+      "width": 256
+    },
+    {
+      "bytes": 26991,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8199.jpg",
+      "record_id": "mtl_archives_metadata_8199.json",
+      "sha256": "8a74d6a3b8eb29f644911bb57c857d0c3a9c3f0f186895c814b3b80734091ad7",
+      "width": 256
+    },
+    {
+      "bytes": 22851,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8200.jpg",
+      "record_id": "mtl_archives_metadata_8200.json",
+      "sha256": "02353bc3284025b2a14d6fbfd9a8e23c33c85f21c203323af2a237182fab09c2",
+      "width": 256
+    },
+    {
+      "bytes": 21479,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8201.jpg",
+      "record_id": "mtl_archives_metadata_8201.json",
+      "sha256": "05943fe1ceedbe512e80001150e54d145fb75990cda8f7edba097a7be145abcc",
+      "width": 256
+    },
+    {
+      "bytes": 20984,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8202.jpg",
+      "record_id": "mtl_archives_metadata_8202.json",
+      "sha256": "b59981b0cd73c56fdb114a9a859f97f23eacea32d1c8301c7262b5d282e8cf75",
+      "width": 256
+    },
+    {
+      "bytes": 23985,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8203.jpg",
+      "record_id": "mtl_archives_metadata_8203.json",
+      "sha256": "cc01a89a11608a3d3053e83eccf1e524fb1fedc1dea7cca90e04cf34721cfeb7",
+      "width": 256
+    },
+    {
+      "bytes": 28691,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8204.jpg",
+      "record_id": "mtl_archives_metadata_8204.json",
+      "sha256": "2c6538b086a4bb864e51b464fbc754d19d8c011a51be58c9af72f90279530e35",
+      "width": 256
+    },
+    {
+      "bytes": 30017,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8205.jpg",
+      "record_id": "mtl_archives_metadata_8205.json",
+      "sha256": "eabdc408c55934675da5c94c52f46613e5f769b0a352b94c4307c6c17f7a85f2",
+      "width": 256
+    },
+    {
+      "bytes": 30883,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8206.jpg",
+      "record_id": "mtl_archives_metadata_8206.json",
+      "sha256": "2d9c40a4e94566bd73bd1fee59dd91994fc38f0abda84938d8612dc277d0e67f",
+      "width": 256
+    },
+    {
+      "bytes": 29649,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8207.jpg",
+      "record_id": "mtl_archives_metadata_8207.json",
+      "sha256": "f95762aab4cefa9c5d78f4e5d5adea4bf7d498fe1f3827fcdb131fe647967c32",
+      "width": 256
+    },
+    {
+      "bytes": 31153,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8208.jpg",
+      "record_id": "mtl_archives_metadata_8208.json",
+      "sha256": "638ddfd70f8c2dc44463f83bc7be2ee836f29daecbc07dd65da1ce312509114a",
+      "width": 256
+    },
+    {
+      "bytes": 30079,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8209.jpg",
+      "record_id": "mtl_archives_metadata_8209.json",
+      "sha256": "33148f7245dfe5cf601b8ec58ae00469d58e8c9788ae15139ba2c3eb0fbb6899",
+      "width": 256
+    },
+    {
+      "bytes": 26921,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8210.jpg",
+      "record_id": "mtl_archives_metadata_8210.json",
+      "sha256": "b83237fc64158555e0c00a4c6fbad468c8c3612fe8db78ee70362558ba19f377",
+      "width": 256
+    },
+    {
+      "bytes": 25159,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8211.jpg",
+      "record_id": "mtl_archives_metadata_8211.json",
+      "sha256": "a71654f02ae2f8835297f3349760bf52efa21aa53422218c92e666cc58b0620b",
+      "width": 256
+    },
+    {
+      "bytes": 25139,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8212.jpg",
+      "record_id": "mtl_archives_metadata_8212.json",
+      "sha256": "c122003289e38b222e8a50758402eded268fefe13e1ddf4807ca2cf6abe9b39b",
+      "width": 256
+    },
+    {
+      "bytes": 24588,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8213.jpg",
+      "record_id": "mtl_archives_metadata_8213.json",
+      "sha256": "8e8eb9e5537db8bf8788338c7b65c5741c0d1742209f6434b285f63caa31bc48",
+      "width": 256
+    },
+    {
+      "bytes": 23110,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8214.jpg",
+      "record_id": "mtl_archives_metadata_8214.json",
+      "sha256": "350c3b76ae26e1e69cd4539a39ef1f597db9477f31c38ed1e0917b64fece3102",
+      "width": 256
+    },
+    {
+      "bytes": 27628,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8215.jpg",
+      "record_id": "mtl_archives_metadata_8215.json",
+      "sha256": "238942d30cf404edbebb5c995672da533696eaac7d73ff8dfb58cdd769d94828",
+      "width": 256
+    },
+    {
+      "bytes": 29326,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8216.jpg",
+      "record_id": "mtl_archives_metadata_8216.json",
+      "sha256": "ca2492eb8eb82eaeba0d55c0b34fa25b5300a43180698f9aa4d67e39636ee800",
+      "width": 256
+    },
+    {
+      "bytes": 31118,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8217.jpg",
+      "record_id": "mtl_archives_metadata_8217.json",
+      "sha256": "e703da803c4b852311e5315bc09ce3031a7057ad9936a991b4b4a288ea8bde23",
+      "width": 256
+    },
+    {
+      "bytes": 29047,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8218.jpg",
+      "record_id": "mtl_archives_metadata_8218.json",
+      "sha256": "dcd12f4746121fc2060a7d38804c3e1557a25c0f0784bf81a169675cc44ffa40",
+      "width": 256
+    },
+    {
+      "bytes": 28290,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8219.jpg",
+      "record_id": "mtl_archives_metadata_8219.json",
+      "sha256": "e14c766e6920487d7c6143ffbdee0359d42831bcb911fffcaa6440e97681b30f",
+      "width": 256
+    },
+    {
+      "bytes": 25463,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8220.jpg",
+      "record_id": "mtl_archives_metadata_8220.json",
+      "sha256": "b143114e1dee238c3134b091f12cc443fb6e00b69d11041c42bc31b8274aa6ec",
+      "width": 256
+    },
+    {
+      "bytes": 21295,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8221.jpg",
+      "record_id": "mtl_archives_metadata_8221.json",
+      "sha256": "d7d6e217a1d32d38a7dc1be7c665cbc9662d3456301495b25210783dce83a927",
+      "width": 256
+    },
+    {
+      "bytes": 17021,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8222.jpg",
+      "record_id": "mtl_archives_metadata_8222.json",
+      "sha256": "1c52899cfc0c766592eaf4b6ed9f59bb5912d56b10298b09a8331ea160d6965f",
+      "width": 256
+    },
+    {
+      "bytes": 24669,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8223.jpg",
+      "record_id": "mtl_archives_metadata_8223.json",
+      "sha256": "6346b8ad9ab28a7a5f760936cf65e230fc32c5fe81ffd3a60a4ed67070e67f69",
+      "width": 256
+    },
+    {
+      "bytes": 28291,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8224.jpg",
+      "record_id": "mtl_archives_metadata_8224.json",
+      "sha256": "c8f13a29bc9b22685e5cf2425a0bacc6b23e61be6a1733593fb575bade2e0111",
+      "width": 256
+    },
+    {
+      "bytes": 25705,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8225.jpg",
+      "record_id": "mtl_archives_metadata_8225.json",
+      "sha256": "a06693e4942abb1a85b9436bc35c8669e20dbb9a8ab3c9dab583d17b994a8fc4",
+      "width": 256
+    },
+    {
+      "bytes": 23609,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8226.jpg",
+      "record_id": "mtl_archives_metadata_8226.json",
+      "sha256": "1bc7e9a4df4cc9fda4e5c06276d000b9bcfc8325664d1362721f1731e68074df",
+      "width": 256
+    },
+    {
+      "bytes": 10232,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8936.jpg",
+      "record_id": "mtl_archives_metadata_8936.json",
+      "sha256": "c337093e66da712d4179b598c005e8f54569aa1080e118ae1b8734f4f1ebaa41",
+      "width": 256
+    },
+    {
+      "bytes": 12365,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8937.jpg",
+      "record_id": "mtl_archives_metadata_8937.json",
+      "sha256": "95c7955ceae64a203f323c2987349231bc221b3f84abeabc02e805ba33dc1dae",
+      "width": 256
+    },
+    {
+      "bytes": 10875,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8938.jpg",
+      "record_id": "mtl_archives_metadata_8938.json",
+      "sha256": "415c2ee3138faaa5899d6b42bc71e4720f7acadb60be3ce2a5b11fb61b331f55",
+      "width": 256
+    },
+    {
+      "bytes": 11277,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8939.jpg",
+      "record_id": "mtl_archives_metadata_8939.json",
+      "sha256": "400dd9baadb1dc50c5a41a1afb923ca41de78666a153b1229ced8673413322dd",
+      "width": 256
+    },
+    {
+      "bytes": 11053,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8940.jpg",
+      "record_id": "mtl_archives_metadata_8940.json",
+      "sha256": "5b527c1310f49d7576e13846e1a9616cd11628c62faee07fc65230089699db65",
+      "width": 256
+    },
+    {
+      "bytes": 11303,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8941.jpg",
+      "record_id": "mtl_archives_metadata_8941.json",
+      "sha256": "d0e1a9f909f4b5dfb0becc679b2e754eeab913b2dc2df0f101c5616f0d502cd2",
+      "width": 256
+    },
+    {
+      "bytes": 11273,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8942.jpg",
+      "record_id": "mtl_archives_metadata_8942.json",
+      "sha256": "895ef271371d6154e38a6aa49aeec30a91fa8a3fbc01e251e1d26f46cd055e77",
+      "width": 256
+    },
+    {
+      "bytes": 11253,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8943.jpg",
+      "record_id": "mtl_archives_metadata_8943.json",
+      "sha256": "68a6918e55672785f2f4073d965f05fd7ae2e6765e56b7e35d82c16959cfef55",
+      "width": 256
+    },
+    {
+      "bytes": 11234,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8944.jpg",
+      "record_id": "mtl_archives_metadata_8944.json",
+      "sha256": "41a6ae974266d472b48b3bc9be052b05742b0d6262bdd2df116069cd771d03da",
+      "width": 256
+    },
+    {
+      "bytes": 10442,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8945.jpg",
+      "record_id": "mtl_archives_metadata_8945.json",
+      "sha256": "04726d6f5c0c27c8e631f87043c75b990ef85fcebc07f7494476df7cc6b2df38",
+      "width": 256
+    },
+    {
+      "bytes": 11453,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8946.jpg",
+      "record_id": "mtl_archives_metadata_8946.json",
+      "sha256": "b5a2c469cf94d1dde31b60aff335556a3f158ee85bd1b6a1aece58d3a1baf81e",
+      "width": 256
+    },
+    {
+      "bytes": 13562,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8947.jpg",
+      "record_id": "mtl_archives_metadata_8947.json",
+      "sha256": "46a6103cdd438f59a0ae05ebb7a3d546e8ce28b417ebe4f67aa22f5d36a8079e",
+      "width": 256
+    },
+    {
+      "bytes": 12194,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8948.jpg",
+      "record_id": "mtl_archives_metadata_8948.json",
+      "sha256": "b038b40c02a85b88f9a871c42fe5ad569f6d7161f5656e7827b7466e1ba1c0c9",
+      "width": 256
+    },
+    {
+      "bytes": 12786,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8949.jpg",
+      "record_id": "mtl_archives_metadata_8949.json",
+      "sha256": "2d3cb5e47da9b101e0d0f21904ae98e45e2dbe956c8a097e4e6625aab2432114",
+      "width": 256
+    },
+    {
+      "bytes": 12193,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8950.jpg",
+      "record_id": "mtl_archives_metadata_8950.json",
+      "sha256": "37ff53fd5f7d19b41cac686a0340cbe35b6fc636e2ae41cf3a0a4f8207ef28f8",
+      "width": 256
+    },
+    {
+      "bytes": 14291,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8951.jpg",
+      "record_id": "mtl_archives_metadata_8951.json",
+      "sha256": "ad39417c40f9d6e0604c192e34638fdfb7aa6bbe43ee8487659871837f79b5d9",
+      "width": 256
+    },
+    {
+      "bytes": 12115,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8952.jpg",
+      "record_id": "mtl_archives_metadata_8952.json",
+      "sha256": "8da5626c7cad7df6da04f64ac8c433ae1221415bbf00353a5fc8a1784c94e9a7",
+      "width": 256
+    },
+    {
+      "bytes": 16700,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8953.jpg",
+      "record_id": "mtl_archives_metadata_8953.json",
+      "sha256": "d2f3101dab0cd4c1efef4285de4b50400ac13f0aed9a63cd8e700f7367aa8d3f",
+      "width": 256
+    },
+    {
+      "bytes": 12725,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8954.jpg",
+      "record_id": "mtl_archives_metadata_8954.json",
+      "sha256": "5ea1fb59288d724452ee2145f93fa5917d466a7f5821ed5a1f37dff3eb0dc6ca",
+      "width": 256
+    },
+    {
+      "bytes": 12178,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8955.jpg",
+      "record_id": "mtl_archives_metadata_8955.json",
+      "sha256": "363ce7ed28ee1df8cc07cc2af70a4560a3e466d2c1f839280799501467c4607e",
+      "width": 256
+    },
+    {
+      "bytes": 12667,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8956.jpg",
+      "record_id": "mtl_archives_metadata_8956.json",
+      "sha256": "0ac8c6899c34ff48fd8eeddc814413f25c762f12702dd2d0226df1058f00d3e3",
+      "width": 256
+    },
+    {
+      "bytes": 14735,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8957.jpg",
+      "record_id": "mtl_archives_metadata_8957.json",
+      "sha256": "8aa289455c47238dcfa7779e396cd2450c5383d460ce4bddd0b461dc12cfe752",
+      "width": 256
+    },
+    {
+      "bytes": 12609,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8958.jpg",
+      "record_id": "mtl_archives_metadata_8958.json",
+      "sha256": "e10c35aa366d8ad74dcaa7dda3c2287a55dcc1801e58ed911984d7cbcba1d876",
+      "width": 256
+    },
+    {
+      "bytes": 13073,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8959.jpg",
+      "record_id": "mtl_archives_metadata_8959.json",
+      "sha256": "8ce9487b52b3f24a8db31cbfcadbd985c1a31ba2a99064bb728327f32e898e70",
+      "width": 256
+    },
+    {
+      "bytes": 13151,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8960.jpg",
+      "record_id": "mtl_archives_metadata_8960.json",
+      "sha256": "0539229e16d45efc65b1b02ca5d0fe08133d0605eea5950a6f7954eff82097d6",
+      "width": 256
+    },
+    {
+      "bytes": 13046,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8961.jpg",
+      "record_id": "mtl_archives_metadata_8961.json",
+      "sha256": "8c20d5e461d45588b69169cc263bb63a20a44409a0b8d8701c42b20987249723",
+      "width": 256
+    },
+    {
+      "bytes": 15947,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8962.jpg",
+      "record_id": "mtl_archives_metadata_8962.json",
+      "sha256": "aedbc8fa2bfb90623f08b08db21e62d13a6c6f2ab669c94173747dd93fae376b",
+      "width": 256
+    },
+    {
+      "bytes": 19131,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8963.jpg",
+      "record_id": "mtl_archives_metadata_8963.json",
+      "sha256": "33ab740e06ea5a0574ce9873f40594516bdb9a672784f570bde4107b9c2c58b1",
+      "width": 256
+    },
+    {
+      "bytes": 16424,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8964.jpg",
+      "record_id": "mtl_archives_metadata_8964.json",
+      "sha256": "9bece217a3ab30b63e4836fb4020e65cc082935f357503a718a8bc2a41588b76",
+      "width": 256
+    },
+    {
+      "bytes": 14429,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8965.jpg",
+      "record_id": "mtl_archives_metadata_8965.json",
+      "sha256": "e8a349e5eba6a0a13d573c5a1bc9d109ae1d9bbc6f82d580b796c8289d473ab9",
+      "width": 256
+    },
+    {
+      "bytes": 10316,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8966.jpg",
+      "record_id": "mtl_archives_metadata_8966.json",
+      "sha256": "765fe697369b494bd8098f3de58024eab5ccd1bbac696e958eed32b28ecac515",
+      "width": 256
+    },
+    {
+      "bytes": 11871,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8967.jpg",
+      "record_id": "mtl_archives_metadata_8967.json",
+      "sha256": "7f4b3bbf19a509b2336d483c97de2c6c3ea89e13dfcf32545e68e25979337d7d",
+      "width": 256
+    },
+    {
+      "bytes": 12853,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8968.jpg",
+      "record_id": "mtl_archives_metadata_8968.json",
+      "sha256": "659a465b5e8c9f98a717252ef919fc364b48808cd03823299986e207b95f8853",
+      "width": 256
+    },
+    {
+      "bytes": 13352,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8969.jpg",
+      "record_id": "mtl_archives_metadata_8969.json",
+      "sha256": "93fc8f2126b6298839131a29864f8c74ac287bf49c86fad806a435188b64b047",
+      "width": 256
+    },
+    {
+      "bytes": 14998,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8970.jpg",
+      "record_id": "mtl_archives_metadata_8970.json",
+      "sha256": "2c6302084818ac7e448663927b9cdf83287f759594768baa10ab6c84e1f70ea5",
+      "width": 256
+    },
+    {
+      "bytes": 15738,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8971.jpg",
+      "record_id": "mtl_archives_metadata_8971.json",
+      "sha256": "524abb0cc68eab221643d1bf83e48a1cb2d71b69bde0b4eaf486f2e382498250",
+      "width": 256
+    },
+    {
+      "bytes": 13808,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8972.jpg",
+      "record_id": "mtl_archives_metadata_8972.json",
+      "sha256": "dce196fba536e3dd196949eac84ee029210047b54240a7dcfeee3245fcb98eff",
+      "width": 256
+    },
+    {
+      "bytes": 15318,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8973.jpg",
+      "record_id": "mtl_archives_metadata_8973.json",
+      "sha256": "c530e3d9323c33f60881fdf8fa978e4f96e940182488e3306c3141d8872b0b7e",
+      "width": 256
+    },
+    {
+      "bytes": 14586,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_8974.jpg",
+      "record_id": "mtl_archives_metadata_8974.json",
+      "sha256": "80b1750f682dd3c040cbac67031561773742a616f39ee0a9a37346a61a100965",
+      "width": 256
+    },
+    {
+      "bytes": 10232,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_9208.jpg",
+      "record_id": "mtl_archives_metadata_9208.json",
+      "sha256": "c337093e66da712d4179b598c005e8f54569aa1080e118ae1b8734f4f1ebaa41",
+      "width": 256
+    },
+    {
+      "bytes": 12365,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_9209.jpg",
+      "record_id": "mtl_archives_metadata_9209.json",
+      "sha256": "95c7955ceae64a203f323c2987349231bc221b3f84abeabc02e805ba33dc1dae",
+      "width": 256
+    },
+    {
+      "bytes": 10875,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_9210.jpg",
+      "record_id": "mtl_archives_metadata_9210.json",
+      "sha256": "415c2ee3138faaa5899d6b42bc71e4720f7acadb60be3ce2a5b11fb61b331f55",
+      "width": 256
+    },
+    {
+      "bytes": 11277,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_9211.jpg",
+      "record_id": "mtl_archives_metadata_9211.json",
+      "sha256": "400dd9baadb1dc50c5a41a1afb923ca41de78666a153b1229ced8673413322dd",
+      "width": 256
+    },
+    {
+      "bytes": 11053,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_9212.jpg",
+      "record_id": "mtl_archives_metadata_9212.json",
+      "sha256": "5b527c1310f49d7576e13846e1a9616cd11628c62faee07fc65230089699db65",
+      "width": 256
+    },
+    {
+      "bytes": 11303,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_9213.jpg",
+      "record_id": "mtl_archives_metadata_9213.json",
+      "sha256": "d0e1a9f909f4b5dfb0becc679b2e754eeab913b2dc2df0f101c5616f0d502cd2",
+      "width": 256
+    },
+    {
+      "bytes": 11273,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_9214.jpg",
+      "record_id": "mtl_archives_metadata_9214.json",
+      "sha256": "895ef271371d6154e38a6aa49aeec30a91fa8a3fbc01e251e1d26f46cd055e77",
+      "width": 256
+    },
+    {
+      "bytes": 11253,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_9215.jpg",
+      "record_id": "mtl_archives_metadata_9215.json",
+      "sha256": "68a6918e55672785f2f4073d965f05fd7ae2e6765e56b7e35d82c16959cfef55",
+      "width": 256
+    },
+    {
+      "bytes": 11234,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_9216.jpg",
+      "record_id": "mtl_archives_metadata_9216.json",
+      "sha256": "41a6ae974266d472b48b3bc9be052b05742b0d6262bdd2df116069cd771d03da",
+      "width": 256
+    },
+    {
+      "bytes": 10442,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_9217.jpg",
+      "record_id": "mtl_archives_metadata_9217.json",
+      "sha256": "04726d6f5c0c27c8e631f87043c75b990ef85fcebc07f7494476df7cc6b2df38",
+      "width": 256
+    },
+    {
+      "bytes": 11453,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_9218.jpg",
+      "record_id": "mtl_archives_metadata_9218.json",
+      "sha256": "b5a2c469cf94d1dde31b60aff335556a3f158ee85bd1b6a1aece58d3a1baf81e",
+      "width": 256
+    },
+    {
+      "bytes": 13562,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_9219.jpg",
+      "record_id": "mtl_archives_metadata_9219.json",
+      "sha256": "46a6103cdd438f59a0ae05ebb7a3d546e8ce28b417ebe4f67aa22f5d36a8079e",
+      "width": 256
+    },
+    {
+      "bytes": 12194,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_9220.jpg",
+      "record_id": "mtl_archives_metadata_9220.json",
+      "sha256": "b038b40c02a85b88f9a871c42fe5ad569f6d7161f5656e7827b7466e1ba1c0c9",
+      "width": 256
+    },
+    {
+      "bytes": 12786,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_9221.jpg",
+      "record_id": "mtl_archives_metadata_9221.json",
+      "sha256": "2d3cb5e47da9b101e0d0f21904ae98e45e2dbe956c8a097e4e6625aab2432114",
+      "width": 256
+    },
+    {
+      "bytes": 12193,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_9222.jpg",
+      "record_id": "mtl_archives_metadata_9222.json",
+      "sha256": "37ff53fd5f7d19b41cac686a0340cbe35b6fc636e2ae41cf3a0a4f8207ef28f8",
+      "width": 256
+    },
+    {
+      "bytes": 14291,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_9223.jpg",
+      "record_id": "mtl_archives_metadata_9223.json",
+      "sha256": "ad39417c40f9d6e0604c192e34638fdfb7aa6bbe43ee8487659871837f79b5d9",
+      "width": 256
+    },
+    {
+      "bytes": 12115,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_9224.jpg",
+      "record_id": "mtl_archives_metadata_9224.json",
+      "sha256": "8da5626c7cad7df6da04f64ac8c433ae1221415bbf00353a5fc8a1784c94e9a7",
+      "width": 256
+    },
+    {
+      "bytes": 16700,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_9225.jpg",
+      "record_id": "mtl_archives_metadata_9225.json",
+      "sha256": "d2f3101dab0cd4c1efef4285de4b50400ac13f0aed9a63cd8e700f7367aa8d3f",
+      "width": 256
+    },
+    {
+      "bytes": 12725,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_9226.jpg",
+      "record_id": "mtl_archives_metadata_9226.json",
+      "sha256": "5ea1fb59288d724452ee2145f93fa5917d466a7f5821ed5a1f37dff3eb0dc6ca",
+      "width": 256
+    },
+    {
+      "bytes": 12178,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_9227.jpg",
+      "record_id": "mtl_archives_metadata_9227.json",
+      "sha256": "363ce7ed28ee1df8cc07cc2af70a4560a3e466d2c1f839280799501467c4607e",
+      "width": 256
+    },
+    {
+      "bytes": 12667,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_9228.jpg",
+      "record_id": "mtl_archives_metadata_9228.json",
+      "sha256": "0ac8c6899c34ff48fd8eeddc814413f25c762f12702dd2d0226df1058f00d3e3",
+      "width": 256
+    },
+    {
+      "bytes": 14735,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_9229.jpg",
+      "record_id": "mtl_archives_metadata_9229.json",
+      "sha256": "8aa289455c47238dcfa7779e396cd2450c5383d460ce4bddd0b461dc12cfe752",
+      "width": 256
+    },
+    {
+      "bytes": 12609,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_9230.jpg",
+      "record_id": "mtl_archives_metadata_9230.json",
+      "sha256": "e10c35aa366d8ad74dcaa7dda3c2287a55dcc1801e58ed911984d7cbcba1d876",
+      "width": 256
+    },
+    {
+      "bytes": 13073,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_9231.jpg",
+      "record_id": "mtl_archives_metadata_9231.json",
+      "sha256": "8ce9487b52b3f24a8db31cbfcadbd985c1a31ba2a99064bb728327f32e898e70",
+      "width": 256
+    },
+    {
+      "bytes": 13151,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_9232.jpg",
+      "record_id": "mtl_archives_metadata_9232.json",
+      "sha256": "0539229e16d45efc65b1b02ca5d0fe08133d0605eea5950a6f7954eff82097d6",
+      "width": 256
+    },
+    {
+      "bytes": 13046,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_9233.jpg",
+      "record_id": "mtl_archives_metadata_9233.json",
+      "sha256": "8c20d5e461d45588b69169cc263bb63a20a44409a0b8d8701c42b20987249723",
+      "width": 256
+    },
+    {
+      "bytes": 15947,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_9234.jpg",
+      "record_id": "mtl_archives_metadata_9234.json",
+      "sha256": "aedbc8fa2bfb90623f08b08db21e62d13a6c6f2ab669c94173747dd93fae376b",
+      "width": 256
+    },
+    {
+      "bytes": 19131,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_9235.jpg",
+      "record_id": "mtl_archives_metadata_9235.json",
+      "sha256": "33ab740e06ea5a0574ce9873f40594516bdb9a672784f570bde4107b9c2c58b1",
+      "width": 256
+    },
+    {
+      "bytes": 16424,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_9236.jpg",
+      "record_id": "mtl_archives_metadata_9236.json",
+      "sha256": "9bece217a3ab30b63e4836fb4020e65cc082935f357503a718a8bc2a41588b76",
+      "width": 256
+    },
+    {
+      "bytes": 14429,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_9237.jpg",
+      "record_id": "mtl_archives_metadata_9237.json",
+      "sha256": "e8a349e5eba6a0a13d573c5a1bc9d109ae1d9bbc6f82d580b796c8289d473ab9",
+      "width": 256
+    },
+    {
+      "bytes": 10316,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_9238.jpg",
+      "record_id": "mtl_archives_metadata_9238.json",
+      "sha256": "765fe697369b494bd8098f3de58024eab5ccd1bbac696e958eed32b28ecac515",
+      "width": 256
+    },
+    {
+      "bytes": 11871,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_9239.jpg",
+      "record_id": "mtl_archives_metadata_9239.json",
+      "sha256": "7f4b3bbf19a509b2336d483c97de2c6c3ea89e13dfcf32545e68e25979337d7d",
+      "width": 256
+    },
+    {
+      "bytes": 12853,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_9240.jpg",
+      "record_id": "mtl_archives_metadata_9240.json",
+      "sha256": "659a465b5e8c9f98a717252ef919fc364b48808cd03823299986e207b95f8853",
+      "width": 256
+    },
+    {
+      "bytes": 13352,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_9241.jpg",
+      "record_id": "mtl_archives_metadata_9241.json",
+      "sha256": "93fc8f2126b6298839131a29864f8c74ac287bf49c86fad806a435188b64b047",
+      "width": 256
+    },
+    {
+      "bytes": 14998,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_9242.jpg",
+      "record_id": "mtl_archives_metadata_9242.json",
+      "sha256": "2c6302084818ac7e448663927b9cdf83287f759594768baa10ab6c84e1f70ea5",
+      "width": 256
+    },
+    {
+      "bytes": 15738,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_9243.jpg",
+      "record_id": "mtl_archives_metadata_9243.json",
+      "sha256": "524abb0cc68eab221643d1bf83e48a1cb2d71b69bde0b4eaf486f2e382498250",
+      "width": 256
+    },
+    {
+      "bytes": 13808,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_9244.jpg",
+      "record_id": "mtl_archives_metadata_9244.json",
+      "sha256": "dce196fba536e3dd196949eac84ee029210047b54240a7dcfeee3245fcb98eff",
+      "width": 256
+    },
+    {
+      "bytes": 15318,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_9245.jpg",
+      "record_id": "mtl_archives_metadata_9245.json",
+      "sha256": "c530e3d9323c33f60881fdf8fa978e4f96e940182488e3306c3141d8872b0b7e",
+      "width": 256
+    },
+    {
+      "bytes": 14586,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_9246.jpg",
+      "record_id": "mtl_archives_metadata_9246.json",
+      "sha256": "80b1750f682dd3c040cbac67031561773742a616f39ee0a9a37346a61a100965",
+      "width": 256
+    },
+    {
+      "bytes": 9606,
+      "format": "jpeg",
+      "height": 256,
+      "magic": "ffd8",
+      "path": "mtl_archives_metadata_9696.jpg",
+      "record_id": "mtl_archives_metadata_9696.json",
+      "sha256": "5b5558045a047f6d587e03d1ff20be0d518a8789d137ad82a5a1c8d59f807cc2",
+      "width": 256
+    }
+  ],
+  "schema_version": "canonical_image_recovery_derivative_manifest_v1.0.0",
+  "tree_sha256": "d57120b7048ba36873c41081d396256c14ecaf3883d4b43e3a2926cdb05e54e5"
+}

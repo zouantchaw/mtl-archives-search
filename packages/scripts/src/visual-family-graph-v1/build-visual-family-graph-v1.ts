@@ -31,6 +31,7 @@ import {
   type PhashFeatureRow,
   type ReviewDecision,
 } from './model.js';
+import { BASELINE_DERIVATIVE_CONTRACT_ID, RECOVERY_CONTRACT_ID, validateTrustedMixedContracts } from '../canonical-image-recovery-v1/model.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../');
 const DEFAULT_CORPUS = path.join(ROOT, 'data/mtl_archives/reports/visual_family_graph_v1/input/corpus-input-v1.jsonl');
@@ -296,12 +297,9 @@ async function main(): Promise<void> {
   const corpusInputSha256 = fileEvidence(corpusPath, corpus.length).sha256;
   const featureContractId = String(featureReport.transform_contract?.derivative_contract_id ?? '');
   if (!featureContractId) throw new Error('Feature report derivative contract is missing');
-  const acceptedFeatureContractIds = Array.isArray(featureReport.recovery_lineage?.accepted_derivative_contract_ids)
-    ? featureReport.recovery_lineage.accepted_derivative_contract_ids as string[]
-    : [featureContractId];
-  if (!acceptedFeatureContractIds.includes(featureContractId) || new Set(acceptedFeatureContractIds).size !== acceptedFeatureContractIds.length) {
-    throw new Error('Feature report recovery contract allowlist is invalid');
-  }
+  const recoveryLineage = featureReport.recovery_lineage;
+  const acceptedFeatureContractIds = recoveryLineage ? [BASELINE_DERIVATIVE_CONTRACT_ID, RECOVERY_CONTRACT_ID] : [featureContractId];
+  if (recoveryLineage) validateTrustedMixedContracts(features, featureReport, String(fileEvidence(featuresPath, features.length).sha256));
   for (const [index, feature] of features.entries()) {
     const record = corpus[index];
     if (feature.feature_version !== PHASH_FEATURE_VERSION

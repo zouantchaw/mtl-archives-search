@@ -81,6 +81,7 @@
     "dataset-factory:canonical-image-recovery-v1": "tsx src/canonical-image-recovery-v1/run-canonical-image-recovery-v1.ts",
     "dataset-factory:canonical-image-recovery-self-test-v1": "tsx src/canonical-image-recovery-v1/self-test-canonical-image-recovery-v1.ts",
     "dataset-factory:canonical-image-recovery-impact-v1": "tsx src/canonical-image-recovery-v1/build-recovery-impact-v1.ts",
+    "dataset-factory:canonical-image-recovery-derivative-manifest-v1": "tsx src/canonical-image-recovery-v1/build-derivative-manifest-v1.ts",
     "dataset-factory:foundation-model-benchmark-v0": "tsx src/dataset-factory/build-foundation-model-benchmark-v0.ts",
     "dataset-factory:research-enrichment-v0": "tsx src/dataset-factory/build-research-enrichment-v0.ts",
     "dataset-factory:search-judgments-v0": "tsx src/dataset-factory/build-search-judgments-v0.ts",

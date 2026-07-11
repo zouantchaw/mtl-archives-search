@@ -6,6 +6,7 @@ import { readJsonl, sha256, writeJson } from './model.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../');
 const DEFAULT_ROOT = path.join(ROOT, 'data/mtl_archives/reports/canonical_image_recovery_v1');
+const FROZEN_SEARCH_CANDIDATES_SHA256 = '8e9bbfedfc6cc29869aa6b5afac83f610df31e28b8ae11d94de2fef196d2b619';
 
 function file(pathname: string): { sha256: string; bytes: number } {
   const bytes = fs.readFileSync(pathname); return { sha256: sha256(bytes), bytes: bytes.length };
@@ -35,6 +36,13 @@ function main(): void {
   const beforeMap = readJsonl<Record<string, any>>(path.join(before, 'record-leakage-map-v1.jsonl'));
   const searchProjection = (rows: Array<Record<string, any>>) => rows.map((row) => `${row.record_id}\0${row.component_id}\0${row.benchmark_split}\n`).join('');
   const searchProjectionBefore = sha256(searchProjection(beforeMap)); const searchProjectionAfter = sha256(searchProjection(afterMap));
+  const searchReportPath = path.join(root, 'search-evaluation/search-duplicate-report-v1.json');
+  const searchMetricsPath = path.join(root, 'search-evaluation/search-duplicate-task-metrics-v1.jsonl');
+  const searchReport = JSON.parse(fs.readFileSync(searchReportPath, 'utf8'));
+  if (searchReport.lineage?.candidates?.sha256 !== FROZEN_SEARCH_CANDIDATES_SHA256
+    || searchReport.lineage?.leakage_map?.sha256 !== file(path.join(after, 'record-leakage-map-v1.jsonl')).sha256
+    || searchReport.lineage?.task_metrics?.sha256 !== file(searchMetricsPath).sha256
+    || searchReport.counts?.unmapped_candidate_records !== 0) throw new Error('Frozen successor search evaluation lineage mismatch');
   const splitByComponent = new Map<string, Set<string>>();
   for (const row of afterMap) { const splits = splitByComponent.get(row.component_id) ?? new Set(); splits.add(row.benchmark_split); splitByComponent.set(row.component_id, splits); }
   const crossings = [...splitByComponent.values()].filter((splits) => splits.size > 1).length;
@@ -48,10 +56,11 @@ function main(): void {
       grouping_authoritative: afterReport.edges.by_authority.grouping_authoritative - beforeReport.edges.by_authority.grouping_authoritative },
     components: { before: beforeReport.components, after: afterReport.components, split_crossings: crossings },
     comparisons,
-    search_duplicate_metrics: { impact: searchProjectionBefore === searchProjectionAfter ? 'unchanged' : 'requires_frozen_candidate_recalculation',
+    search_duplicate_metrics: { impact: searchProjectionBefore === searchProjectionAfter ? 'unchanged' : 'changed',
       projection_before_sha256: searchProjectionBefore, projection_after_sha256: searchProjectionAfter,
-      frozen_rates: { semantic: 0.006757, smart: 0.076333, visual: 0.177772 },
-      rationale: 'Frozen search duplicate metrics depend on candidate IDs and record-to-component membership; support-only leakage-map fields are excluded.' },
+      frozen_candidates_sha256: searchReport.lineage.candidates.sha256, task_metrics_sha256: searchReport.lineage.task_metrics.sha256,
+      rates: Object.fromEntries(Object.entries(searchReport.by_mode).map(([mode, value]: [string, any]) => [mode, value.mean_component_duplicate_rate_at_k])),
+      rationale: 'Rates were recomputed by evaluate-search-duplicates-v1 from the frozen candidates and successor leakage map.' },
     downstream_contract: { graph_manifest_sha256: file(path.join(after, 'artifact-manifest-v1.json')).sha256, irrecoverable_exclusions: 0, recovered_rows: 209 },
   });
   if (crossings !== 0) throw new Error(`successor graph has ${crossings} split crossings`);

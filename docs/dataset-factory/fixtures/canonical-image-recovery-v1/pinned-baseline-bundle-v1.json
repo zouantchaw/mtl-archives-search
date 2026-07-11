@@ -1,0 +1,16 @@
+{
+  "schema_version": "canonical_image_recovery_pinned_baseline_v1.0.0",
+  "description": "Complete immutable member contract for the public replay adopted by issue 77. This is not the lost byte-identical issue-67 feature bundle.",
+  "historical_issue_67_feature_sha256": "9210a6459275ce8ec571577eeab97abc50a6468c73cca988edaa7ccd554a732a",
+  "historical_bundle_available": false,
+  "acquisition_snapshot_id": "9235eb841d379f55973aa52f5558b264857bf35800871c85515a84bb227cb154",
+  "corpus_input_sha256": "0f9971c70ac242c44ee80835b4c71e9f771e742d8c80603cf39bc1163cc951cc",
+  "members": {
+    "phash-features-v1.jsonl": { "sha256": "a50b8800b4cef7c57bc85169b152ab835687a7e9fe7dba2cc1664c3320718460", "rows": 18462 },
+    "phash-failures-v1.jsonl": { "sha256": "283d8e519ef7a97d08976c3781cce26adeadc17f0369d24b3cab2cb46e276822", "rows": 209 },
+    "phash-report-v1.json": { "sha256": "4646f74487bdec7a3a4b47494dc8eb88fe45111cc6111fe402e1770541d2757c" }
+  },
+  "transform_contract_id": "derivative-contract:870f1b571e0ecf6ea5e289dd63561c4fdc04a8c1a273ea87b684e14ba6070999",
+  "failure_record_id_stream_sha256": "62f266e28e26fe97d03c5bc17169e319f70a2ab07f7d87c4a5eaeb0bea4f046b",
+  "counts": { "successes": 18253, "failures": 209 }
+}
