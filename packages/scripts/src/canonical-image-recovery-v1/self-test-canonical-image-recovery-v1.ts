@@ -2,9 +2,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 import { computeVisualFeature } from '../visual-family-graph-v1/extract-phash-v1.js';
-import { classify, fetchLane, fetchThumbnailAttempts, upgradeAuthoritativeUrl, validateResumeArtifacts, verifyDerivativeManifest, verifyPinnedBaseline } from './run-canonical-image-recovery-v1.js';
+import { classify, fetchLane, fetchThumbnailAttempts, promoteThumbnailRetry, upgradeAuthoritativeUrl, validateResumeArtifacts, verifyDerivativeManifest, verifyPinnedBaseline } from './run-canonical-image-recovery-v1.js';
 import {
   HISTORICAL_CORPUS_INPUT_SHA256,
   HISTORICAL_FAILURE_COUNT,
@@ -14,9 +15,11 @@ import {
   BASELINE_DERIVATIVE_CONTRACT_ID,
   RECOVERY_SCHEMA_VERSION,
   assertCompleteLedger,
+  readJsonl,
   sha256,
   stableId,
   stableJson,
+  terminalFailureDetail,
   validateResumeRows,
   validateTrustedMixedContracts,
   verifyHistoricalBaseline,
@@ -25,6 +28,8 @@ import {
   type LaneEvidence,
   type RecoveryRow,
 } from './model.js';
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../');
 
 function evidence(lane: LaneEvidence['lane'], outcome: LaneEvidence['outcome'], status: number | null = null, attempt = 1): LaneEvidence {
   return { attempt, lane, outcome, url_class: lane, http_status: status, content_type: null, bytes: null, width: null, height: null, evidence_code: `${outcome}${status ?? ''}` };
@@ -106,6 +111,11 @@ async function main(): Promise<void> {
   await assert.rejects(() => validateResumeArtifacts([{ ...validResume, derivative_path: '../../unbound.jpg' }], corpus, temp), /escapes root|unsafe derivative path/);
   await assert.rejects(() => validateResumeArtifacts([{ ...validResume, derivative_sha256: 'e'.repeat(64) }], corpus, temp), /derivative hash mismatch/);
   await assert.rejects(() => validateResumeArtifacts([{ ...validResume, image_key: 'wrong.jpg' }], corpus, temp), /identity mismatch/);
+  const promoted = promoteThumbnailRetry(unavailable, [evidence('public_thumbnail', 'success', 200)], sha256(image), 'derivatives/a.jpg',
+    sha256(derivative), feature.normalizedPixelSha256, feature.phash64);
+  validateResumeRows([promoted], ['a'], HISTORICAL_CORPUS_INPUT_SHA256);
+  await validateResumeArtifacts([promoted], corpus, temp);
+  assert.equal(promoted.recovered, true); assert.equal(promoted.disposition, 'recovered_public_r2'); assert.equal(promoted.recovery_payload_reuse_group_id, null);
 
   const baseline = path.join(temp, 'baseline', 'phash'); fs.mkdirSync(baseline, { recursive: true });
   const transform = { source: 'fixture', width: 256 }; const contract = stableId('derivative-contract', [stableJson(transform)]);
@@ -128,18 +138,40 @@ async function main(): Promise<void> {
   await verifyDerivativeManifest(manifestRoot); fs.writeFileSync(path.join(manifestRoot, 'a.jpg'), Buffer.from('tampered'));
   await assert.rejects(() => verifyDerivativeManifest(manifestRoot), /byte mismatch/);
 
-  const mixedRows = [...Array.from({ length: 18_253 }, () => ({ derivative_contract_id: BASELINE_DERIVATIVE_CONTRACT_ID })), ...Array.from({ length: 209 }, () => ({ derivative_contract_id: RECOVERY_CONTRACT_ID }))] as any;
-  const mixedReport = { transform_contract: { derivative_contract_id: BASELINE_DERIVATIVE_CONTRACT_ID }, lineage: { features: { sha256: 'f'.repeat(64) } }, recovery_lineage: { baseline_failure_record_id_stream_sha256: HISTORICAL_FAILURE_STREAM_SHA256, recovery_contract_id: RECOVERY_CONTRACT_ID, recovery_transform_contract: RECOVERY_TRANSFORM_CONTRACT, recovered_rows: 209 } };
-  validateTrustedMixedContracts(mixedRows, mixedReport, 'f'.repeat(64));
-  assert.throws(() => validateTrustedMixedContracts([{ ...mixedRows[0], derivative_contract_id: 'derivative-contract:'.concat('0'.repeat(64)) }, ...mixedRows.slice(1)] as any, mixedReport, 'f'.repeat(64)), /distribution mismatch/);
-  assert.throws(() => validateTrustedMixedContracts(mixedRows, { ...mixedReport, recovery_lineage: { ...mixedReport.recovery_lineage, recovery_contract_id: 'forged' } }, 'f'.repeat(64)), /lineage mismatch/);
+  const historicalFailures = readJsonl<any>(path.join(ROOT, 'data/mtl_archives/reports/visual_family_graph_v1/phash/phash-failures-v1.jsonl'));
+  const terminalRows = historicalFailures.map((failure) => row(failure.record_id));
+  const ledgerPath = path.join(temp, 'mixed-ledger.jsonl'); writeJsonl(ledgerPath, terminalRows); const ledgerSha = sha256(fs.readFileSync(ledgerPath));
+  const baselineSuccessRows = Array.from({ length: 18_253 }, (_, index) => ({ record_id: `baseline-${index}`, status: 'success', derivative_contract_id: BASELINE_DERIVATIVE_CONTRACT_ID }));
+  const recoveryFeature = (terminal: RecoveryRow) => ({ record_id: terminal.record_id, status: 'success', derivative_contract_id: RECOVERY_CONTRACT_ID,
+    derivative_sha256: terminal.derivative_sha256, normalized_pixel_sha256: terminal.normalized_pixel_sha256, phash64: terminal.phash64, failure_code: null, failure_detail: null });
+  const mixedRows = [...baselineSuccessRows, ...terminalRows.map(recoveryFeature)] as any;
+  const mixedReport = { transform_contract: { derivative_contract_id: BASELINE_DERIVATIVE_CONTRACT_ID }, lineage: { features: { sha256: 'f'.repeat(64) } }, recovery_lineage: {
+    baseline_failure_record_id_stream_sha256: HISTORICAL_FAILURE_STREAM_SHA256, recovery_contract_id: RECOVERY_CONTRACT_ID,
+    recovery_transform_contract: RECOVERY_TRANSFORM_CONTRACT, terminal_rows: 209, recovered_rows: 209, unrecovered_rows: 0,
+    terminal_ledger: { row_count: 209, sha256: ledgerSha } } };
+  validateTrustedMixedContracts(mixedRows, mixedReport, 'f'.repeat(64), terminalRows, ledgerSha);
+  assert.throws(() => validateTrustedMixedContracts([{ ...mixedRows[0], derivative_contract_id: 'derivative-contract:'.concat('0'.repeat(64)) }, ...mixedRows.slice(1)] as any, mixedReport, 'f'.repeat(64), terminalRows, ledgerSha), /distribution mismatch/);
+  assert.throws(() => validateTrustedMixedContracts(mixedRows, { ...mixedReport, recovery_lineage: { ...mixedReport.recovery_lineage, recovery_contract_id: 'forged' } }, 'f'.repeat(64), terminalRows, ledgerSha), /lineage mismatch/);
+  const partialRows = terminalRows.map((terminal, index) => index === terminalRows.length - 1 ? { ...unavailable, record_id: terminal.record_id } : terminal);
+  writeJsonl(ledgerPath, partialRows); const partialLedgerSha = sha256(fs.readFileSync(ledgerPath));
+  const partialFeatures = [...baselineSuccessRows, ...partialRows.map((terminal) => terminal.recovered ? recoveryFeature(terminal) : ({
+    record_id: terminal.record_id, status: 'failure', derivative_contract_id: BASELINE_DERIVATIVE_CONTRACT_ID, derivative_sha256: null,
+    normalized_pixel_sha256: null, phash64: null, derivative_width: null, derivative_height: null, derivative_bytes: 0,
+    failure_code: 'canonical_image_recovery_terminal', failure_detail: terminalFailureDetail(terminal) }))] as any;
+  const partialReport = { ...mixedReport, recovery_lineage: { ...mixedReport.recovery_lineage, recovered_rows: 208, unrecovered_rows: 1,
+    terminal_ledger: { row_count: 209, sha256: partialLedgerSha } } };
+  validateTrustedMixedContracts(partialFeatures, partialReport, 'f'.repeat(64), partialRows, partialLedgerSha);
+  assert.throws(() => validateTrustedMixedContracts(partialFeatures, partialReport, 'f'.repeat(64), partialRows, ledgerSha), /lineage mismatch/);
+  assert.throws(() => validateTrustedMixedContracts([...partialFeatures.slice(0, -1), { ...partialFeatures.at(-1), phash64: '0'.repeat(16) }] as any,
+    partialReport, 'f'.repeat(64), partialRows, partialLedgerSha), /residual terminal feature mismatch/);
   assert(RECOVERY_TRANSFORM_CONTRACT.accepted_sources.includes('authoritative_source'));
   assert.throws(() => validateTrustedMixedContracts(mixedRows, { ...mixedReport, recovery_lineage: { ...mixedReport.recovery_lineage,
-    recovery_transform_contract: { ...RECOVERY_TRANSFORM_CONTRACT, accepted_sources: RECOVERY_TRANSFORM_CONTRACT.accepted_sources.filter((lane) => lane !== 'authoritative_source') } } }, 'f'.repeat(64)), /lineage mismatch/);
+    recovery_transform_contract: { ...RECOVERY_TRANSFORM_CONTRACT, accepted_sources: RECOVERY_TRANSFORM_CONTRACT.accepted_sources.filter((lane) => lane !== 'authoritative_source') } } },
+    'f'.repeat(64), terminalRows, ledgerSha), /lineage mismatch/);
 
   const baselineContractProbe = sha256(`${Array.from({ length: 209 }, (_, index) => `record-${index}`).sort().join('\n')}\n`);
   assert.equal(baselineContractProbe.length, 64);
-  console.log(JSON.stringify({ status: 'ok', cases: 41, contracts: ['exact_identity_hash', 'baseline_member_hashes', 'baseline_failure_subset', 'baseline_transform', 'registered_derivative_tree', 'registered_derivative_byte_tamper', 'transient_then_success', 'persistent_failure', 'direct_success', 'missing_object', 'alias', 'pdf', 'decode', 'size_cap', 'timeout', 'unsafe_url', 'https_upgrade', 'resume_content', 'resume_traversal', 'resume_unrecovered', 'resume_unrecovered_tamper', 'resume_incomplete_attempts', 'authoritative_contract', 'authoritative_contract_tamper', 'mixed_contract_lineage', 'mixed_contract_distribution', 'duplicate_omission', 'indeterminate', 'graph_successor_feature_input'] }));
+  console.log(JSON.stringify({ status: 'ok', cases: 48, contracts: ['exact_identity_hash', 'baseline_member_hashes', 'baseline_failure_subset', 'baseline_transform', 'registered_derivative_tree', 'registered_derivative_byte_tamper', 'transient_then_success', 'persistent_failure', 'direct_success', 'missing_object', 'alias', 'pdf', 'decode', 'size_cap', 'timeout', 'unsafe_url', 'https_upgrade', 'resume_content', 'resume_traversal', 'resume_unrecovered', 'resume_unrecovered_tamper', 'resume_incomplete_attempts', 'retry_residual_promotion', 'authoritative_contract', 'authoritative_contract_tamper', 'mixed_contract_lineage', 'mixed_contract_distribution', 'partial_208_terminal', 'partial_ledger_tamper', 'partial_visual_hash_tamper', 'duplicate_omission', 'indeterminate', 'graph_successor_feature_input'] }));
 }
 
 main().catch((error) => { console.error(error); process.exitCode = 1; });

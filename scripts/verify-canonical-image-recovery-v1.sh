@@ -26,6 +26,6 @@ test -s data/mtl_archives/reports/canonical_image_recovery_v1/graph-impact-repor
 npm run dataset-factory:canonical-image-recovery-self-test-v1
 npm run dataset-factory:visual-family-self-test-v1
 npm run dataset-factory:artifacts:check -- \
-  --require ccv1_recovery_reproducibility_bundle_20260711,ccv1_visual_family_graph_recovery_20260711
+  --require ccv1_recovery_reproducibility_bundle_terminal_20260711,ccv1_visual_family_graph_recovery_terminal_20260711
 
 echo "canonical image recovery v1 clean-checkout reproduction: ok"

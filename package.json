@@ -92,6 +92,7 @@
     "dataset-factory:visual-family-self-test-v1": "npm run dataset-factory:visual-family-self-test-v1 --workspace=@mtl-archives/scripts --",
     "dataset-factory:canonical-image-recovery-v1": "npm run dataset-factory:canonical-image-recovery-v1 --workspace=@mtl-archives/scripts --",
     "dataset-factory:canonical-image-recovery-self-test-v1": "npm run dataset-factory:canonical-image-recovery-self-test-v1 --workspace=@mtl-archives/scripts --",
+    "dataset-factory:canonical-image-recovery-partial-self-test-v1": "npm run dataset-factory:canonical-image-recovery-partial-self-test-v1 --workspace=@mtl-archives/scripts --",
     "dataset-factory:canonical-image-recovery-impact-v1": "npm run dataset-factory:canonical-image-recovery-impact-v1 --workspace=@mtl-archives/scripts --",
     "dataset-factory:canonical-image-recovery-derivative-manifest-v1": "npm run dataset-factory:canonical-image-recovery-derivative-manifest-v1 --workspace=@mtl-archives/scripts --",
     "dataset-factory:canonical-image-recovery-bundle-v1": "npm run dataset-factory:canonical-image-recovery-bundle-v1 --workspace=@mtl-archives/scripts --",

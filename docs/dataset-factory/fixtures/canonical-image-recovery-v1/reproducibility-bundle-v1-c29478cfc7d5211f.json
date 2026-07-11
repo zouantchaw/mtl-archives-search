@@ -1,15 +1,15 @@
 {
   "schema_version": "canonical_image_recovery_reproducibility_bundle_v1.0.0",
   "artifact_contract": "canonical_image_recovery_reproducibility_bundle_v1",
-  "cache_key": "bundles/issue-77/canonical-image-recovery-v1-dab076491097ac1fa4c9b1295317d067e29442b12831ede65731941894a859a6.tar.gz",
+  "cache_key": "bundles/issue-77/canonical-image-recovery-v1-c29478cfc7d5211fe18ba9492a7da15234f68bb3a93bf831df34995dd7d8758a.tar.gz",
   "bundle": {
-    "sha256": "dab076491097ac1fa4c9b1295317d067e29442b12831ede65731941894a859a6",
-    "bytes": 33679975
+    "sha256": "c29478cfc7d5211fe18ba9492a7da15234f68bb3a93bf831df34995dd7d8758a",
+    "bytes": 33670587
   },
-  "tree_sha256": "38927e0e1fc4c205b2e7ae12f0522f64bcaec21dad31c27e045536515eebb47b",
+  "tree_sha256": "fe31a176c46bc8e6b11f67875a4f3db311b9310693ac9b0898983c685fb75c69",
   "counts": {
-    "files": 267,
-    "bytes": 306337452
+    "files": 266,
+    "bytes": 306272577
   },
   "members": [
     {
@@ -21,11 +21,6 @@
       "path": "data/mtl_archives/reports/autoresearch_embedding_eval_gpu_500/embedding_eval_model_clip.jsonl",
       "bytes": 586006,
       "sha256": "6102eb61b0fbf40fd02f8b58d02b18f515e28eed118236f97cfcac5c05ea0ee8"
-    },
-    {
-      "path": "data/mtl_archives/reports/canonical_image_recovery_v1/derivatives/manifest-v1.json",
-      "bytes": 64535,
-      "sha256": "be840314e48969e8652f7a175a6d5f7305b8f26c1dadcac92e0a8a96c933689f"
     },
     {
       "path": "data/mtl_archives/reports/canonical_image_recovery_v1/derivatives/mtl_archives_metadata_0.jpg",
@@ -1075,7 +1070,7 @@
     {
       "path": "data/mtl_archives/reports/canonical_image_recovery_v1/graph-after/artifact-manifest-v1.json",
       "bytes": 2664,
-      "sha256": "a5a30c22a3b0c58f1cb1bd82a476fc4f1144e87e30a35757db4a7e70b77418fb"
+      "sha256": "fcf2c8d870340a9e7782974218190bc202db6e1265f4602d1a250670cce500e2"
     },
     {
       "path": "data/mtl_archives/reports/canonical_image_recovery_v1/graph-after/benchmark-splits-v1.jsonl",
@@ -1090,7 +1085,7 @@
     {
       "path": "data/mtl_archives/reports/canonical_image_recovery_v1/graph-after/graph-report-v1.json",
       "bytes": 8749,
-      "sha256": "c2cb3dd8d2d5717d8ccfb61ad7d9dd1660db1206faa1e036057996abb33fb475"
+      "sha256": "2b70ee49237bbbbdb7748b42d0ccdd6f50038f4dd23a69809397e7198ea85f47"
     },
     {
       "path": "data/mtl_archives/reports/canonical_image_recovery_v1/graph-after/graph-report-v1.md",
@@ -1130,7 +1125,7 @@
     {
       "path": "data/mtl_archives/reports/canonical_image_recovery_v1/graph-impact-report-v1.json",
       "bytes": 48574,
-      "sha256": "5992e6c866a957d1e49542be8b44eaf4754676a61a45ff506ed0a904b4c90594"
+      "sha256": "3eb42570bd303185de9564f0266b8e4008fe140d08b2f6ccf24df8f32b8393b6"
     },
     {
       "path": "data/mtl_archives/reports/canonical_image_recovery_v1/r2-remediation-plan-no-apply-v1.jsonl",
@@ -1179,8 +1174,8 @@
     },
     {
       "path": "data/mtl_archives/reports/canonical_image_recovery_v1/successor-phash-report-v1.json",
-      "bytes": 3974,
-      "sha256": "d96111eb738bfb77ee16350047fc5bb8cf3432ede3b612198de4c42d4001a6c8"
+      "bytes": 3634,
+      "sha256": "4fe829c3fc6a49ae1d6fce155e319931a5d0ccce555f2110cadfdb36ece8f6c7"
     },
     {
       "path": "data/mtl_archives/reports/search_judgments_v0/search_reranker_v0_expanded/search_candidates.jsonl",

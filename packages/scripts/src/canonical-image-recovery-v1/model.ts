@@ -108,17 +108,46 @@ export function verifyHistoricalBaseline(ids: string[]): string {
   return digest;
 }
 
-export function validateTrustedMixedContracts(features: PhashFeatureRow[], report: Record<string, any>, actualFeatureSha256: string): void {
+export function terminalFailureDetail(row: RecoveryRow): string {
+  return stableJson({ disposition: row.disposition, root_cause: row.root_cause, root_cause_evidence: row.root_cause_evidence, attempted_lanes: row.attempted_lanes });
+}
+
+export function validateTrustedMixedContracts(features: PhashFeatureRow[], report: Record<string, any>, actualFeatureSha256: string,
+  recoveryRows: RecoveryRow[], actualLedgerSha256: string): void {
   const lineage = report.recovery_lineage;
+  assertCompleteLedger(recoveryRows, recoveryRows.map((row) => row.record_id));
+  verifyHistoricalBaseline(recoveryRows.map((row) => row.record_id));
+  const recovered = recoveryRows.filter((row) => row.recovered);
+  const residual = recoveryRows.filter((row) => !row.recovered);
   if (!lineage || report.transform_contract?.derivative_contract_id !== BASELINE_DERIVATIVE_CONTRACT_ID
     || lineage.baseline_failure_record_id_stream_sha256 !== HISTORICAL_FAILURE_STREAM_SHA256
     || lineage.recovery_contract_id !== RECOVERY_CONTRACT_ID
     || stableJson(lineage.recovery_transform_contract) !== stableJson(RECOVERY_TRANSFORM_CONTRACT)
-    || lineage.recovered_rows !== HISTORICAL_FAILURE_COUNT
+    || lineage.terminal_rows !== HISTORICAL_FAILURE_COUNT || lineage.recovered_rows !== recovered.length || lineage.unrecovered_rows !== residual.length
+    || lineage.terminal_ledger?.sha256 !== actualLedgerSha256 || lineage.terminal_ledger?.row_count !== HISTORICAL_FAILURE_COUNT
     || report.lineage?.features?.sha256 !== actualFeatureSha256) throw new Error('trusted mixed-contract lineage mismatch');
-  const baseline = features.filter((row) => row.derivative_contract_id === BASELINE_DERIVATIVE_CONTRACT_ID).length;
-  const recovery = features.filter((row) => row.derivative_contract_id === RECOVERY_CONTRACT_ID).length;
-  if (baseline !== 18_253 || recovery !== HISTORICAL_FAILURE_COUNT || baseline + recovery !== features.length) throw new Error('trusted mixed-contract distribution mismatch');
+  const featureById = new Map(features.map((row) => [row.record_id, row]));
+  for (const row of recoveryRows) {
+    const feature = featureById.get(row.record_id);
+    if (!feature) throw new Error(`${row.record_id}: terminal ledger feature missing`);
+    if (row.recovered) {
+      if (feature.status !== 'success' || feature.derivative_contract_id !== RECOVERY_CONTRACT_ID || feature.derivative_sha256 !== row.derivative_sha256
+        || feature.normalized_pixel_sha256 !== row.normalized_pixel_sha256 || feature.phash64 !== row.phash64 || feature.failure_code !== null || feature.failure_detail !== null) {
+        throw new Error(`${row.record_id}: recovered terminal feature mismatch`);
+      }
+    } else if (feature.status !== 'failure' || feature.derivative_contract_id !== BASELINE_DERIVATIVE_CONTRACT_ID
+      || feature.derivative_sha256 !== null || feature.normalized_pixel_sha256 !== null || feature.phash64 !== null
+      || feature.derivative_width !== null || feature.derivative_height !== null || feature.derivative_bytes !== 0
+      || feature.failure_code !== 'canonical_image_recovery_terminal' || feature.failure_detail !== terminalFailureDetail(row)) {
+      throw new Error(`${row.record_id}: residual terminal feature mismatch`);
+    }
+  }
+  const baselineSuccesses = features.filter((row) => row.derivative_contract_id === BASELINE_DERIVATIVE_CONTRACT_ID && row.status === 'success').length;
+  const baselineFailures = features.filter((row) => row.derivative_contract_id === BASELINE_DERIVATIVE_CONTRACT_ID && row.status === 'failure').length;
+  const recoverySuccesses = features.filter((row) => row.derivative_contract_id === RECOVERY_CONTRACT_ID && row.status === 'success').length;
+  const recoveryFailures = features.filter((row) => row.derivative_contract_id === RECOVERY_CONTRACT_ID && row.status === 'failure').length;
+  if (baselineSuccesses !== 18_253 || baselineFailures !== residual.length || recoverySuccesses !== recovered.length || recoveryFailures !== 0
+    || baselineSuccesses + baselineFailures + recoverySuccesses !== features.length) throw new Error('trusted mixed-contract distribution mismatch');
 }
 
 export function stable(value: unknown): unknown {

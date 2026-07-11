@@ -21,6 +21,7 @@ import {
   sha256,
   stableId,
   stableJson,
+  terminalFailureDetail,
   validateResumeRows,
   verifyHistoricalBaseline,
   writeJson,
@@ -41,6 +42,29 @@ const ALLOWED_SOURCE_HOSTS = new Set(['depot.ville.montreal.qc.ca', 'archivesdem
 
 type FetchResult = { evidence: LaneEvidence; buffer: Buffer | null };
 type DerivativeManifest = { schema_version: string; tree_sha256: string; rows: Array<{ record_id: string; path: string; sha256: string; bytes: number; width: number; height: number; format: string; magic: string }> };
+
+export function promoteThumbnailRetry(row: RecoveryRow, attemptedLanes: LaneEvidence[], payloadSha256: string, derivativePath: string,
+  derivativeSha256: string, normalizedPixelSha256: string, phash64: string): RecoveryRow {
+  return { ...row, recovery_contract_id: RECOVERY_CONTRACT_ID, attempted_lanes: attemptedLanes,
+    root_cause: 'transient_thumbnail_api_failure', root_cause_evidence: 'historical thumbnail failure succeeded under the identical bounded transform contract',
+    disposition: 'recovered_public_r2', recovered: true, recovered_lane: 'public_thumbnail', recovered_payload_sha256: payloadSha256,
+    recovery_payload_reuse_group_id: null, recovery_payload_hash_verified: false, derivative_path: derivativePath,
+    derivative_sha256: derivativeSha256, normalized_pixel_sha256: normalizedPixelSha256, phash64 };
+}
+
+async function writeRecoveryDerivativeManifest(output: string, rows: RecoveryRow[]): Promise<DerivativeManifest> {
+  const manifestRows: DerivativeManifest['rows'] = [];
+  for (const row of rows.filter((candidate) => candidate.recovered).sort((a, b) => a.record_id.localeCompare(b.record_id))) {
+    const relative = path.relative(path.join(output, 'derivatives'), path.join(output, row.derivative_path!));
+    const filePath = containedRegularFile(path.join(output, 'derivatives'), relative); const bytes = fs.readFileSync(filePath);
+    const metadata = await sharp(bytes, { failOn: 'error' }).metadata();
+    if (sha256(bytes) !== row.derivative_sha256 || metadata.width !== 256 || metadata.height !== 256 || metadata.format !== 'jpeg') throw new Error(`${row.record_id}: recovery derivative manifest binding mismatch`);
+    manifestRows.push({ record_id: row.record_id, path: relative, sha256: row.derivative_sha256!, bytes: bytes.length, width: 256, height: 256, format: 'jpeg', magic: 'ffd8' });
+  }
+  const treeRows = manifestRows.map((row) => `${row.path}\t${row.sha256}\t${row.bytes}\t${row.width}x${row.height}\t${row.format}\t${row.magic}`);
+  const manifest = { schema_version: 'canonical_image_recovery_derivative_manifest_v1.0.0', tree_sha256: sha256(`${treeRows.join('\n')}\n`), rows: manifestRows };
+  writeJson(path.join(output, 'derivatives/manifest-v1.json'), manifest); return manifest;
+}
 
 function containedRegularFile(root: string, relativePath: string): string {
   if (!relativePath || path.isAbsolute(relativePath)) throw new Error(`unsafe derivative path: ${relativePath}`);
@@ -300,15 +324,15 @@ async function main(): Promise<void> {
         const thumbnail = await fetchThumbnailAttempts(corpusRow.image_url, { timeoutMs, maxBytes: Math.min(maxBytes, 1024 * 1024), attempts: thumbnailAttempts, backoffMs: thumbnailBackoffMs });
         const attemptedLanes = [...thumbnail.evidence, ...row.attempted_lanes.filter((lane) => lane.lane !== 'public_thumbnail')];
         const classified = classify(attemptedLanes, thumbnail.buffer ? 'public_thumbnail' : row.recovered_lane);
-        let replacement: Partial<RecoveryRow> = {};
+        let replacement: RecoveryRow | null = null;
         if (thumbnail.buffer) {
           const derivative = await sharp(thumbnail.buffer, { failOn: 'error' }).rotate().flatten({ background: '#ffffff' }).resize(256, 256, { fit: 'contain', background: '#ffffff' }).jpeg({ quality: 88, chromaSubsampling: '4:4:4' }).toBuffer();
           const feature = await computeVisualFeature(derivative); const derivativePath = `derivatives/${row.record_id.replace(/\.json$/, '')}.jpg`;
           fs.writeFileSync(path.join(output, derivativePath), derivative);
-          replacement = { recovered_payload_sha256: sha256(thumbnail.buffer), derivative_path: derivativePath, derivative_sha256: sha256(derivative), normalized_pixel_sha256: feature.normalizedPixelSha256, phash64: feature.phash64 };
+          replacement = promoteThumbnailRetry(row, attemptedLanes, sha256(thumbnail.buffer), derivativePath, sha256(derivative), feature.normalizedPixelSha256, feature.phash64);
         }
-        rowsById.set(row.record_id, { ...row, ...replacement, attempted_lanes: attemptedLanes, root_cause: classified.root, root_cause_evidence: classified.reason,
-          disposition: classified.disposition, recovered_lane: thumbnail.buffer ? 'public_thumbnail' : row.recovered_lane });
+        rowsById.set(row.record_id, replacement ?? { ...row, attempted_lanes: attemptedLanes, root_cause: classified.root,
+          root_cause_evidence: classified.reason, disposition: classified.disposition });
       }
     }));
   }
@@ -401,10 +425,14 @@ async function main(): Promise<void> {
     ? { ...row, disposition: 'held_over_contract', root_cause_evidence: 'declared candidate size exceeds the active bounded decode contract; this is not evidence of source unavailability' }
     : row).sort((a, b) => a.record_id.localeCompare(b.record_id));
   assertCompleteLedger(rows, ids); writeJsonl(ledgerPath, rows);
+  const derivativeManifest = await writeRecoveryDerivativeManifest(output, rows);
   const baselineFeatures = pinnedBaseline.features;
   const recoveryById = new Map(rows.map((row) => [row.record_id, row]));
   const successorFeatures = baselineFeatures.map((feature): PhashFeatureRow => {
-    const recovery = recoveryById.get(feature.record_id); if (!recovery?.recovered) return feature;
+    const recovery = recoveryById.get(feature.record_id); if (!recovery) return feature;
+    if (!recovery.recovered) return { ...feature, status: 'failure', derivative_contract_id: BASELINE_DERIVATIVE_CONTRACT_ID,
+      derivative_sha256: null, normalized_pixel_sha256: null, phash64: null, derivative_width: null, derivative_height: null, derivative_bytes: 0,
+      elapsed_ms: 0, attempts: Math.min(5, recovery.attempted_lanes.length), failure_code: 'canonical_image_recovery_terminal', failure_detail: terminalFailureDetail(recovery) };
     const derivative = fs.readFileSync(path.join(output, recovery.derivative_path!));
     return { ...feature, status: 'success', derivative_contract_id: RECOVERY_CONTRACT_ID, derivative_sha256: recovery.derivative_sha256,
       normalized_pixel_sha256: recovery.normalized_pixel_sha256, phash64: recovery.phash64, derivative_width: 256, derivative_height: 256,
@@ -425,7 +453,9 @@ async function main(): Promise<void> {
     lineage: { ...baselineFeatureReport.lineage, features: { path: 'data/mtl_archives/reports/canonical_image_recovery_v1/successor-phash-features-v1.jsonl', row_count: successorFeatures.length, byte_count: fs.statSync(path.join(output, 'successor-phash-features-v1.jsonl')).size, sha256: sha256(fs.readFileSync(path.join(output, 'successor-phash-features-v1.jsonl'))) } },
     recovery_lineage: { baseline_failure_record_id_stream_sha256: HISTORICAL_FAILURE_STREAM_SHA256, recovery_contract_id: RECOVERY_CONTRACT_ID,
       recovery_transform_contract: RECOVERY_TRANSFORM_CONTRACT,
-      recovered_rows: rows.filter((row) => row.recovered).length },
+      terminal_rows: rows.length, recovered_rows: rows.filter((row) => row.recovered).length, unrecovered_rows: rows.filter((row) => !row.recovered).length,
+      terminal_ledger: { row_count: rows.length, sha256: sha256(fs.readFileSync(ledgerPath)) },
+      derivative_manifest: { row_count: derivativeManifest.rows.length, tree_sha256: derivativeManifest.tree_sha256 } },
   });
   const noApply = rows.filter((row) => row.recovered && row.recovered_lane !== 'public_thumbnail' && row.recovered_lane !== 'direct_public_r2').map((row) => ({
     schema_version: RECOVERY_SCHEMA_VERSION, action: 'review_object_key_or_backfill', apply: false, record_id: row.record_id, target_image_key: row.image_key,

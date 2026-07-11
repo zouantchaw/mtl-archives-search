@@ -80,6 +80,7 @@
     "dataset-factory:visual-family-self-test-v1": "tsx src/visual-family-graph-v1/self-test-visual-family-graph-v1.ts",
     "dataset-factory:canonical-image-recovery-v1": "tsx src/canonical-image-recovery-v1/run-canonical-image-recovery-v1.ts",
     "dataset-factory:canonical-image-recovery-self-test-v1": "tsx src/canonical-image-recovery-v1/self-test-canonical-image-recovery-v1.ts",
+    "dataset-factory:canonical-image-recovery-partial-self-test-v1": "tsx src/canonical-image-recovery-v1/self-test-partial-recovery-v1.ts",
     "dataset-factory:canonical-image-recovery-impact-v1": "tsx src/canonical-image-recovery-v1/build-recovery-impact-v1.ts",
     "dataset-factory:canonical-image-recovery-derivative-manifest-v1": "tsx src/canonical-image-recovery-v1/build-derivative-manifest-v1.ts",
     "dataset-factory:canonical-image-recovery-bundle-v1": "tsx src/canonical-image-recovery-v1/reproducibility-bundle-v1.ts",
