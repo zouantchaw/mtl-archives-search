@@ -22,6 +22,8 @@ Built on Cloudflare's edge infrastructure: Workers, D1, Vectorize, R2, and Worke
 - **Signed URLs** — Secure, time-limited access to R2-hosted images
 - **Edge Performance** — Sub-50ms response times globally via Cloudflare's network
 
+Dataset Factory's Canonical Image Recovery v1 restores visual features for the exact 209 issue-67 failures under bounded read-only contracts. See [docs/dataset-factory/canonical-image-recovery-v1.md](docs/dataset-factory/canonical-image-recovery-v1.md).
+
 ## Live API
 
 ```bash

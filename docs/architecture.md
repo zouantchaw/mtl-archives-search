@@ -64,6 +64,8 @@
 
 ### 1. ETL Pipeline (Offline)
 
+Canonical Image Recovery v1 is a read-only Dataset Factory successor to Visual Family Graph v1. It binds recovered derivatives to public-R2, canonical-alias, or registered-quality-derivative provenance and emits only a no-apply R2 remediation plan. It never writes D1, R2, Vectorize, or live ranking.
+
 ```
 External Sources                    Processing                      Storage
 ─────────────────                   ──────────────                  ─────────

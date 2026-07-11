@@ -296,6 +296,12 @@ async function main(): Promise<void> {
   const corpusInputSha256 = fileEvidence(corpusPath, corpus.length).sha256;
   const featureContractId = String(featureReport.transform_contract?.derivative_contract_id ?? '');
   if (!featureContractId) throw new Error('Feature report derivative contract is missing');
+  const acceptedFeatureContractIds = Array.isArray(featureReport.recovery_lineage?.accepted_derivative_contract_ids)
+    ? featureReport.recovery_lineage.accepted_derivative_contract_ids as string[]
+    : [featureContractId];
+  if (!acceptedFeatureContractIds.includes(featureContractId) || new Set(acceptedFeatureContractIds).size !== acceptedFeatureContractIds.length) {
+    throw new Error('Feature report recovery contract allowlist is invalid');
+  }
   for (const [index, feature] of features.entries()) {
     const record = corpus[index];
     if (feature.feature_version !== PHASH_FEATURE_VERSION
@@ -303,7 +309,7 @@ async function main(): Promise<void> {
       || feature.image_key !== record.image_key
       || feature.corpus_snapshot_id !== acquisitionIds[0]
       || feature.corpus_input_sha256 !== corpusInputSha256
-      || feature.derivative_contract_id !== featureContractId) {
+      || !acceptedFeatureContractIds.includes(feature.derivative_contract_id)) {
       throw new Error(`${feature.record_id}: stale or mixed pHash feature contract`);
     }
   }
