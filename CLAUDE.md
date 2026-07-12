@@ -111,7 +111,7 @@ pipelines/
 5. Newsletter: explicit signup from `/` or `/game` → Worker → D1 (`newsletter_*` tables) → Resend, with Vercel cron calling the Worker admin endpoint for daily sends
 6. Social fallback: local machine → `pipelines/daily-reel/main.py` → Worker API + Gemini → IG carousel + FB reel package under `~/Desktop/mtl-social-fallback/YYYY-MM-DD`
 7. Story promotion: `story_seed.json` from a strong social package → `pipelines/daily-reel/story_pages.py` → `apps/next-app/content/stories/*.json` → `/stories/[slug]`
-8. Dataset Factory v0: ignored report artifacts → tracked registry + schemas + fixture smoke → packets, labels/adjudication, benchmark, active learning, repair, family graph, enrichment, judgments, and reward-data outputs
+8. Dataset Factory v0: ignored report artifacts → tracked registry + schemas + fixture smoke → packets, labels/adjudication, benchmark, active learning, repair, family graph, enrichment, judgments, reward-data outputs, and Gold Label Batch 002 reviewed evidence
 
 ## Environment
 
@@ -173,7 +173,8 @@ Next app runtime env:
 - Post operations should use `pipelines/daily-reel/post_publish.py` against the persisted Meta token state. The repo supports daily-package publishing for Instagram carousel posts and Facebook Page reels, with idempotency through `data/social/publish-registry.jsonl`.
 - Do not imply feature parity with manual Story posting. Server-side Story publishing does not support link, poll, or location stickers. If the creative depends on a clickable `DEFI DU JOUR` link to `/game`, that is a manual/mobile step, not something the repo can silently fake.
 - Dataset Factory v0 lives under `docs/dataset-factory/` and `packages/scripts/src/dataset-factory/`. Keep large generated output under ignored `data/mtl_archives/reports/`; do not commit generated report trees.
-- The artifact registry is `docs/dataset-factory/artifact-registry.v0.jsonl`. Its 87 entries include 76 Dataset Factory v0 entries, six Canonical Corpus v1 bundles, and five Visual Family Graph v1 bundles; they must stay a schema-valid acyclic graph with stable IDs, SHA-256 digests, exact non-overlapping membership, lineage, explicit human decision/external acquisition boundaries, generation methods/commands, dependency IDs, rights boundaries, and created timestamps. Never put secrets, `.env` values, private keys, cursors, or expiring signed URLs in it.
+- The artifact registry is `docs/dataset-factory/artifact-registry.v0.jsonl`. Its 97 entries include the ignored Gold Label Batch 002 local evidence tree and the durable Gold Label Batch 002 R2 archive; they must stay a schema-valid acyclic graph with stable IDs, SHA-256 digests, exact non-overlapping membership, lineage, explicit human decision/external acquisition boundaries, generation methods/commands, dependency IDs, rights boundaries, and created timestamps. Never put secrets, `.env` values, private keys, cursors, or expiring signed URLs in it.
+- Gold Label Batch 002 for issue #68 is complete, reviewed, validated, and durably published. Keep the ignored evidence tree (`data/mtl_archives/reports/gold_label_batch_002`) distinct from the hash-bound R2 final archive (`r2://wiel-codex-worker-cache/artifacts/mtl-archives/gold-label-batch-002/11c4577c5fa2b0393d2c83a9c9a75effcf7c97252febc646fa8ceca4e6789fcd.tar.gz`). Completion reports must derive adjudication-change rates from the existing per-target change counts divided by the explicit 300-row denominator; do not invent counts or expose temporary URLs.
 - Run `npm run dataset-factory:artifacts:self-test` after registry/checker changes; its 14 cases must accept the regular in-root control and reject schema, containment, symlink, overlap, identity, dependency, cycle, boundary, and missing-command violations.
 - Run `npm run dataset-factory:clock:self-test` after clock changes; timezone-less fixed timestamps must remain invalid.
 - Use `npm run dataset-factory:smoke-v0` for clean-checkout contract coverage. It uses tracked fixtures, a fixed clock, exact content assertions, a committed tree hash, and a local mock `/api/search`; it is not a live API quality proof.
@@ -209,3 +210,6 @@ Explain the technical architecture, the structure of the codebase and how the va
 It should be very engaging to read; don't make it sound like boring technical documentation/textbook. Where appropriate, use analogies and anecdotes to make it more understandable and memorable."
 
 Make sure to keep it updated as the project evolves
+# Gold Label Batch 002 Worker Rule
+
+For issue #68 pixel review, read only the assigned sealed packet, instruction file, neutral templates, and referenced orientation views. Do not inspect hidden inputs, record/source/licensing fields, metadata, acquisition scores, prior labels, VLM/taxonomy, components/splits, search tasks, lineage, or another pass. Use `gold_label_review_pass_v1.0.0`; record directly observed pixels or explicit abstention only. Never add inferred, metadata, verified, identity, date, or location claims.

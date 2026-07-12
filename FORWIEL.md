@@ -65,3 +65,6 @@ npm run dataset-factory:visual-family-check-v1
 - A registry without hashes is just a list. The SHA-256/count fields are what make the artifact contract auditable.
 - A clean clone should not need a previous worker's generated report folder to run the focused smoke.
 - Count equality is not snapshot equality. Visual Family Graph v1 gives its mutable public API acquisition a new content-derived ID and retains the issue-66 snapshot only as an explicit reference.
+# Gold Label Batch 002
+
+Issue #68 Gold Label Batch 002 is complete, reviewed, validated, and durably published. The ignored local evidence tree is `data/mtl_archives/reports/gold_label_batch_002`; the durable final tarball is the separate Cloudflare R2 object `r2://wiel-codex-worker-cache/artifacts/mtl-archives/gold-label-batch-002/11c4577c5fa2b0393d2c83a9c9a75effcf7c97252febc646fa8ceca4e6789fcd.tar.gz` with SHA-256 `11c4577c5fa2b0393d2c83a9c9a75effcf7c97252febc646fa8ceca4e6789fcd`. The original phase-1 packet boundary still matters for provenance: worker review used exactly 300 candidates, 12 stratified packets of 25, four orientation views per neutral row, disjoint primary/blind reviewer IDs, isolated paths, sealed pass sidecars, and trusted post-review identity mapping. Do not expose `batch/`, `inputs/`, hidden lineage, or another pass to workers.

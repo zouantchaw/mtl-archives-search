@@ -1,0 +1,19 @@
+import crypto from 'node:crypto';import fs from 'node:fs';import os from 'node:os';import path from 'node:path';import { OUTPUT,abs } from './gold-label-batch-002-contract.js';import { validateSearchReviewPackets } from './validate-search-review-packets-002.js';
+const root=abs(OUTPUT),source=path.join(root,'search/review-packets'),temp=fs.mkdtempSync(path.join(os.tmpdir(),'glb002-search-packets-')),review=path.join(temp,'review-packets');let cases=0;
+const read=(p:string)=>fs.readFileSync(p,'utf8').trim().split('\n').filter(Boolean).map(line=>JSON.parse(line)),write=(p:string,rows:any[])=>fs.writeFileSync(p,rows.map(r=>JSON.stringify(r)).join('\n')+'\n');
+const taskFile=()=>path.join(review,'glb002-search-p01/tasks.jsonl'),manifest=()=>path.join(review,'manifest-v1.json');
+async function reject(name:string,mutate:()=>void,pattern:RegExp){fs.rmSync(review,{recursive:true,force:true});fs.cpSync(source,review,{recursive:true});mutate();try{await validateSearchReviewPackets(root,review);throw new Error(`${name}: validator accepted mutation`);}catch(e){if(!pattern.test(String(e)))throw e;}cases++;}
+try{fs.cpSync(source,review,{recursive:true});await validateSearchReviewPackets(root,review);cases++;
+  await reject('missing row',()=>{const r=read(taskFile());r.pop();write(taskFile(),r);},/row\/hash drift/);
+  await reject('invented task',()=>{const r=read(taskFile());r[0].task_id='invented';write(taskFile(),r);const m=JSON.parse(fs.readFileSync(manifest(),'utf8'));m.packets[0].tasks_sha256=requireHash(taskFile());fs.writeFileSync(manifest(),JSON.stringify(m));},/invented search task/);
+  await reject('invented positive',()=>{const r=read(taskFile());r[0].proposed_positive_evidence[0].record_id='invented';write(taskFile(),r);rebind();},/invented proposed positive/);
+  await reject('authority drift',()=>{const r=read(taskFile());r[0].authority.query+=' drift';write(taskFile(),r);rebind();},/authority mismatch/);
+  await reject('boundary drift',()=>{const r=read(taskFile());r[0].source_evidence.boundary=r[0].source_evidence.boundary==='inferred'?'metadata':'inferred';write(taskFile(),r);rebind();},/source boundary mismatch/);
+  await reject('image hash',()=>{const r=read(taskFile()),v=r.find((x:any)=>x.proposed_positive_evidence[0].views.length).proposed_positive_evidence[0].views[0];v.sha256='0'.repeat(64);write(taskFile(),r);rebind();},/image hash drift/);
+  await reject('missing fallback',()=>{const files=fs.readdirSync(review).filter(x=>x.startsWith('glb002-search-p'));for(const d of files){const f=path.join(review,d,'tasks.jsonl'),r=read(f),x=r.find((v:any)=>v.proposed_positive_evidence[0].image_status==='unavailable');if(x){x.proposed_positive_evidence[0].required_fallback='none';write(f,r);const m=JSON.parse(fs.readFileSync(manifest(),'utf8')),p=m.packets.find((v:any)=>v.packet_id===d);p.tasks_sha256=requireHash(f);fs.writeFileSync(manifest(),JSON.stringify(m));return;}}},/unavailable image policy missing/);
+  await reject('decision leak',()=>{const f=path.join(review,'glb002-search-p01/reviewer-dispositions.template.jsonl'),r=read(f);r[0].disposition='reviewed_gold';write(f,r);},/schema error|decision leakage/);
+  await reject('independence policy',()=>{const m=JSON.parse(fs.readFileSync(manifest(),'utf8'));m.independence_policy='same reviewer allowed';fs.writeFileSync(manifest(),JSON.stringify(m));},/independence policy drift/);
+  console.log(JSON.stringify({status:'ok',validator_cases:cases,temp_root_removed:true}));
+}finally{fs.rmSync(temp,{recursive:true,force:true});}
+function requireHash(file:string){return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');}
+function rebind(){const m=JSON.parse(fs.readFileSync(manifest(),'utf8'));m.packets[0].tasks_sha256=requireHash(taskFile());fs.writeFileSync(manifest(),JSON.stringify(m));}

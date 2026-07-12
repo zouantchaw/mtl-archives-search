@@ -1,0 +1,18 @@
+{
+  "$schema":"http://json-schema.org/draft-07/schema#",
+  "$id":"https://mtlarchives.com/schemas/gold-label-audit-candidate-v1.json",
+  "type":"object",
+  "additionalProperties":false,
+  "required":["schema_version","audit_candidate_id","neutral_id","priority","targets","high_risk_claim_ids","risk_reasons","excluded_reviewer_ids","adjudicator_id"],
+  "properties":{
+    "schema_version":{"const":"gold_label_audit_candidate_v1.0.0"},
+    "audit_candidate_id":{"pattern":"^glb002-audit-[0-9]{3}$"},
+    "neutral_id":{"pattern":"^glb002-[0-9]{4}$"},
+    "priority":{"type":"integer","minimum":1},
+    "targets":{"type":"array","minItems":1,"uniqueItems":true,"items":{"type":"string"}},
+    "high_risk_claim_ids":{"type":"array","uniqueItems":true,"items":{"type":"string"}},
+    "risk_reasons":{"type":"array","minItems":1,"uniqueItems":true,"items":{"enum":["promoted_high_risk_claim","primary_blind_disagreement","adjudication_change","class_balance_risk","blocking_disposition","target_coverage"]}},
+    "excluded_reviewer_ids":{"type":"array","minItems":3,"uniqueItems":true,"items":{"type":"string","minLength":3}},
+    "adjudicator_id":{"type":"string","minLength":3}
+  }
+}

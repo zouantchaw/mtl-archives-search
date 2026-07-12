@@ -1,0 +1,89 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://mtlarchives.com/schemas/gold-label-completion-report-v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "counts",
+    "agreement",
+    "abstention",
+    "adjudication_changes",
+    "class_support",
+    "trainability",
+    "audit",
+    "search",
+    "blocking_issues"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "gold_label_batch_002_completion_report_v1.0.0"
+    },
+    "counts": {
+      "type": "object"
+    },
+    "agreement": {
+      "type": "object"
+    },
+    "abstention": {
+      "type": "object"
+    },
+    "adjudication_changes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "from_primary",
+          "from_blind",
+          "denominator",
+          "from_primary_rate",
+          "from_blind_rate"
+        ],
+        "properties": {
+          "from_primary": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 300
+          },
+          "from_blind": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 300
+          },
+          "denominator": {
+            "const": 300
+          },
+          "from_primary_rate": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "from_blind_rate": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      }
+    },
+    "class_support": {
+      "type": "object"
+    },
+    "trainability": {
+      "type": "object"
+    },
+    "audit": {
+      "type": "object"
+    },
+    "search": {
+      "type": "object"
+    },
+    "blocking_issues": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}
