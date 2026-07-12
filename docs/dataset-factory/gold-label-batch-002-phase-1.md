@@ -1,6 +1,6 @@
 # Gold Label Batch 002: Corrected Phase 1
 
-Issue: #68. Parent: #64. Status: primary and blind passes are sealed with 300 rows each from disjoint 12-reviewer rosters, and 300 independent adjudications are frozen; audit decisions and search dispositions do not yet exist.
+Issue: #68. Parent: #64. Status: primary and blind passes are sealed with 300 rows each from disjoint 12-reviewer rosters, and 300 audit-corrected adjudications are frozen. Two completed audit outputs remain unaggregated; search dispositions do not yet exist.
 
 ## Frozen acquisition
 
@@ -28,7 +28,9 @@ For selected #77 recovery rows, rendering retries bounded public R2 and authorit
 
 Binary targets are trainable only with at least 100 promoted observed rows and 30 minority examples. Multiclass targets report support and abstention and remain non-trainable when support is insufficient. Fewer than 200 promotions requires a schema-valid, independent continuation approval with a concrete acquisition plan; file presence alone is not a bypass.
 
-Phase validation accepts both sealed review passes and exact adjudication coverage. A separate neutral audit candidate plan covers at least 50 neutral IDs, every target, disagreement/change risk, class-balance risk, blocking outcomes, and every promoted high-risk claim. It contains no audit decision or auditor identity and does not satisfy the audit gate. Completion intentionally advances to `at least 50 independent audits required`.
+Phase validation accepts both sealed review passes and exact adjudication coverage. A separate neutral audit candidate plan covers at least 50 neutral IDs, every target, disagreement/change risk, class-balance risk, blocking outcomes, and every promoted high-risk claim. It contains no audit decision or auditor identity and does not satisfy the audit gate.
+
+Audit findings are applied through owning adjudicators. Completed audit rows remain bound to `audit-candidate-plan-pre-findings-v1.jsonl`; their candidate IDs must not be reinterpreted against the regenerated post-findings plan ordering. `audit-authority-compatibility-v1.json` records the exact pre-findings plan/adjudication hashes, corrected adjudication hash, decision counts, and all applied finding rows. Audit decisions remain unaggregated, so completion intentionally advances to `at least 50 independent audits required`.
 
 ## Commands
 

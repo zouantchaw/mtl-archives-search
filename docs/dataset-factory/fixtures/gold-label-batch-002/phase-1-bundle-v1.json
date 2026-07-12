@@ -5,29 +5,54 @@
   "upload_status": "not_uploaded",
   "cache_key": null,
   "bundle": {
-    "sha256": "a5af883aa3643a25f92df481df97930b46152ea3cb2c72d983ea64d7d12ffe0f",
-    "bytes": 244616216
+    "sha256": "5279011c5f233e591d8974dcdd00821cb64dbffdd8a4e88759f4111e7318f7ad",
+    "bytes": 244621793
   },
-  "tree_sha256": "b36f70a49d6148ba2e55fa6b058321e46f6fb11c96fd95f84b923d7728cbd81f",
+  "tree_sha256": "88d94c1e897c7b146d49039f53210fdb4c2f27b40498c1b520984c962f0deb01",
   "counts": {
-    "files": 1321,
-    "bytes": 269093458
+    "files": 1326,
+    "bytes": 269156095
   },
   "members": [
     {
       "path": "data/mtl_archives/reports/gold_label_batch_002/adjudication/adjudications-v1.jsonl",
-      "bytes": 1307557,
-      "sha256": "6836fa4257f828c95c36a5c72d41caee26fced618f7cef4f1d2dbf85f2aa403c"
+      "bytes": 1309129,
+      "sha256": "7e45308fac0c15d0bba1c3f6cd121be8e1a27f278df6b197c50b52df3fd3fd8a"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/adjudication/audit-authority-compatibility-v1.json",
+      "bytes": 1125,
+      "sha256": "bac4761445524c2d7af1e00978610d9063d089d44ca131a967494b117ff7dbf7"
     },
     {
       "path": "data/mtl_archives/reports/gold_label_batch_002/adjudication/audit-candidate-plan-manifest-v1.json",
+      "bytes": 1252,
+      "sha256": "e9be5575b7568c27f3cb0e53a6c7fd39a83058ae9fcff588b31c49d8fa5c561f"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/adjudication/audit-candidate-plan-pre-findings-manifest-v1.json",
       "bytes": 1254,
       "sha256": "c899ab50054449a2decb542f34c46641a60ec0f7726258369c925ae5dbb11f88"
     },
     {
-      "path": "data/mtl_archives/reports/gold_label_batch_002/adjudication/audit-candidate-plan-v1.jsonl",
+      "path": "data/mtl_archives/reports/gold_label_batch_002/adjudication/audit-candidate-plan-pre-findings-v1.jsonl",
       "bytes": 26435,
       "sha256": "1b4482efcc5d6e9a6a9d5af806cecd59c5cc474e895a4fdd4a30e3bc11f6f4a2"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/adjudication/audit-candidate-plan-v1.jsonl",
+      "bytes": 26078,
+      "sha256": "40f0a859d31202e8a296b799a6add3a42a1a77923c27a6f0483210efc9e2733d"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/adjudication/audits-part-01.completed.jsonl",
+      "bytes": 17145,
+      "sha256": "c9a14657426d8c9696a987870f1d6d8e9c41bbdff52879fbc4bd611934f4c44e"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/adjudication/audits-part-02.completed.jsonl",
+      "bytes": 13893,
+      "sha256": "2791663fd5a255427874dfcfec78ec3d9686160b08d54807ba88f4c58cc92848"
     },
     {
       "path": "data/mtl_archives/reports/gold_label_batch_002/adjudication/audits-v1.jsonl",
@@ -101,8 +126,8 @@
     },
     {
       "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p01/adjudications.completed.jsonl",
-      "bytes": 115637,
-      "sha256": "74f37c82efaf8c81927a203f99ecd438eaeda84ce9f5648b597516c84b2e07c9"
+      "bytes": 115898,
+      "sha256": "22bca2e26c6691004a6a95a4684d01744eeadd3772bc4367efb76e6b5e5f726a"
     },
     {
       "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p01/blind-labels.completed.jsonl",
@@ -141,8 +166,8 @@
     },
     {
       "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p02/adjudications.completed.jsonl",
-      "bytes": 85915,
-      "sha256": "d94cb9bd6856644637c43b96ad30c1916a0b89f678e9f0e0b9b91ed218c0d04e"
+      "bytes": 86234,
+      "sha256": "38875b56d1ca2d74a69becd54c72a43354c8a34829a0d863a110b903aa8ce92c"
     },
     {
       "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p02/blind-labels.completed.jsonl",
@@ -181,8 +206,8 @@
     },
     {
       "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p03/adjudications.completed.jsonl",
-      "bytes": 142608,
-      "sha256": "a14c666075d81268a82d64257e691497f600ada7b51f0fcde4a3befacc859147"
+      "bytes": 142710,
+      "sha256": "88795a36b3a307a5df3f17c21474b9697ee21abf96560b15bb25eecefccf4b3d"
     },
     {
       "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p03/blind-labels.completed.jsonl",
@@ -261,8 +286,8 @@
     },
     {
       "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p05/adjudications.completed.jsonl",
-      "bytes": 113495,
-      "sha256": "0414582e2e6928de9adfa6da0d65e88ea0455bc8e80d0c325257fe0ae661a03c"
+      "bytes": 113471,
+      "sha256": "670bd6ce2b9b6b07d4e636b36c2c516b9595f01702d1d5cd85e7f5dc84f1e2c9"
     },
     {
       "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p05/blind-labels.completed.jsonl",
@@ -341,8 +366,8 @@
     },
     {
       "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p07/adjudications.completed.jsonl",
-      "bytes": 120422,
-      "sha256": "0d2bf48aa6c4402b9d2229f9d0f3f69751b6e36be5d4b1d9bab402b435b7e0d5"
+      "bytes": 121072,
+      "sha256": "4a148d6e42af804aa7e365f3f14ec20c4104fc9d858974cea595894818c787b4"
     },
     {
       "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p07/blind-labels.completed.jsonl",
@@ -381,8 +406,8 @@
     },
     {
       "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p08/adjudications.completed.jsonl",
-      "bytes": 144363,
-      "sha256": "5b6beaa7855e1aa50a29805b814c596920af5280da42b623a25980e862586126"
+      "bytes": 144823,
+      "sha256": "59b504e1b98783175597c69e95eaf6af70928a9545484e719371337bc74d40f8"
     },
     {
       "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p08/blind-labels.completed.jsonl",
@@ -461,8 +486,8 @@
     },
     {
       "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p10/adjudications.completed.jsonl",
-      "bytes": 104770,
-      "sha256": "d7d161497ab8bf431e8568997cb01ae7ab273d6d2813bb1a4eff69ff9668c6c1"
+      "bytes": 104790,
+      "sha256": "47264aeeb414ae7a4827e4f53a571e305b6f203a62203fcdd1f0dc2d7dcfdec6"
     },
     {
       "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p10/blind-labels.completed.jsonl",
@@ -501,8 +526,8 @@
     },
     {
       "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p11/adjudications.completed.jsonl",
-      "bytes": 106132,
-      "sha256": "2dfd4088dfcc82f35de7b8297653e216a803f7f2cf1bace55537c0e3c2e90160"
+      "bytes": 105916,
+      "sha256": "50bc0de86029de39c3f02f34749d893ec26f3dd0abcf8ed393cad6ebb48e3e80"
     },
     {
       "path": "data/mtl_archives/reports/gold_label_batch_002/packets/glb002-p11/blind-labels.completed.jsonl",
