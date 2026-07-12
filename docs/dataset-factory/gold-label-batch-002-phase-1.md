@@ -1,6 +1,6 @@
 # Gold Label Batch 002: Corrected Phase 1
 
-Issue: #68. Parent: #64. Status: frozen neutral pixel-review packets; no labels, adjudications, audits, or search dispositions exist.
+Issue: #68. Parent: #64. Status: primary pass sealed with 300 rows from 12 packet reviewers; blind labels, adjudications, audits, and search dispositions do not yet exist.
 
 ## Frozen acquisition
 
@@ -28,7 +28,7 @@ For selected #77 recovery rows, rendering retries bounded public R2 and authorit
 
 Binary targets are trainable only with at least 100 promoted observed rows and 30 minority examples. Multiclass targets report support and abstention and remain non-trainable when support is insufficient. Fewer than 200 promotions requires a schema-valid, independent continuation approval with a concrete acquisition plan; file presence alone is not a bypass.
 
-The phase-1 validator currently passes. Completion intentionally fails with `primary pass is absent or unsealed`.
+The phase-1 validator currently passes. Completion intentionally advances to `blind pass is absent or unsealed`.
 
 ## Commands
 
