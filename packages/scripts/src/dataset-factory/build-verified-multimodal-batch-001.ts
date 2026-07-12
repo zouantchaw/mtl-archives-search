@@ -10,6 +10,7 @@ import {
   rejectedClaims,
   syntheticPackets,
   unresolvedClaims,
+  validateBenchmarkTasks,
   validatePacket,
   writeJsonl,
 } from './verified-multimodal-batch-001-contract.js';
@@ -21,6 +22,7 @@ const packets = syntheticPackets();
 for (const packet of packets) validatePacket(packet);
 
 const benchmarkTasks = deriveBenchmarkTasks(packets);
+validateBenchmarkTasks(benchmarkTasks);
 const unresolved = unresolvedClaims(packets);
 const rejected = rejectedClaims(packets);
 

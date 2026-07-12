@@ -19,7 +19,7 @@ Dataset Factory is the offline layer for making search quality measurable. It bu
 
 Issues #65 and #66 made this durable and identity-explicit:
 
-- `docs/dataset-factory/artifact-registry.v0.jsonl` records the original 76 Dataset Factory artifacts, six Canonical Corpus source/build bundles, and five Visual Family Graph v1 bundles as an 87-entry acyclic graph with stable IDs, SHA-256, counts, lineage, commands, dependencies, rights boundaries, and timestamps.
+- `docs/dataset-factory/artifact-registry.v0.jsonl` currently records 98 artifacts as an acyclic graph with stable IDs, SHA-256, counts, lineage, commands, dependencies, rights boundaries, and timestamps, including later canonical recovery, Gold Label Batch 002, and Verified Multimodal foundation entries beyond the original Dataset Factory, Canonical Corpus, and Visual Family Graph bundles.
 - `docs/dataset-factory/fixtures/v0-smoke/` has tiny tracked fixture rows that let the workflow run in a clean checkout.
 - `npm run dataset-factory:smoke-v0` runs the v0 chain against those fixtures and a local mock search API. It fixes the fixture clock, asserts exact rows/content, and checks a committed output hash; it proves deterministic contract wiring, not live search quality.
 - `npm run dataset-factory:artifacts:self-test` exercises 14 contract/adversarial cases, including a valid in-root file, path-component symlinks, and overlapping members.
@@ -34,9 +34,9 @@ The lesson: if an important workflow depends on ignored files, either track the 
 
 ## Verified Multimodal Intelligence Foundation
 
-Issue #69 is the next, more ambitious archive-intelligence workflow: look at image regions, separate visible facts from metadata and inference, verify high-value claims against external sources, and derive benchmark/search tasks only from accepted evidence. The current repo has the first foundation slice for that workflow, not the final batch.
+Issue #69 is the next, more ambitious archive-intelligence workflow: look at image regions, separate visible facts from metadata and inference, verify high-value claims against external sources, and derive benchmark/search tasks only from accepted evidence. The current repo has only a synthetic contract foundation, not verified historical output or the final batch.
 
-The foundation is synthetic and hermetic. Four tracked records exercise the two required lanes: ground OCR/entity/place and aerial land-use/georeference. The validator fails closed if a visual claim has no region, an external claim has no URL/note, rights are incomplete, exact location lacks georeference evidence, area/distance is asserted without scale, reviewers overlap, or a benchmark task leaks from unresolved/rejected evidence. Run it with:
+The foundation is synthetic and hermetic. Four tracked mock records exercise the two required lanes: ground OCR/entity/place and aerial land-use/georeference. They have no fictional archive URLs, no externally verified claims, and no benchmark tasks. The validator fails closed on boundary/collection mismatches, incomplete evidence or rights, exact geospatial claims without accepted structured external evidence, reviewer identity failures, and family/component split leakage. Run it with:
 
 ```bash
 npm run dataset-factory:verified-multimodal-001

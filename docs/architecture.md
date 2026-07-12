@@ -249,7 +249,7 @@ Ignored reports in data/mtl_archives/reports/
 ```
 
 - Dataset Factory v0 is an offline durability layer for search-quality evaluation and future training data. It does not deploy, mutate Cloudflare resources, publish social content, or require credentials for its tracked fixture smoke.
-- The real generated artifacts are intentionally gitignored because they include large report trees. Their reproducibility contract is tracked as an 87-entry acyclic phase graph in `docs/dataset-factory/artifact-registry.v0.jsonl`: 76 Dataset Factory v0 entries, six Canonical Corpus v1 bundles, and five Visual Family Graph v1 bundles. Explicit human decision files are graph inputs rather than outputs falsely attributed to automation, and external snapshots disclose mutable acquisition boundaries.
+- The real generated artifacts are intentionally gitignored because they include large report trees. Their reproducibility contract is currently tracked as a 98-entry acyclic phase graph in `docs/dataset-factory/artifact-registry.v0.jsonl`, including later canonical recovery, Gold Label Batch 002, and Verified Multimodal foundation entries beyond the original Dataset Factory v0, Canonical Corpus v1, and Visual Family Graph v1 bundles. Explicit human decision files are graph inputs rather than outputs falsely attributed to automation, and external snapshots disclose mutable acquisition boundaries.
 - `npm run dataset-factory:artifacts:check` validates the published Draft 2020-12 schema, graph semantics, locator containment, and root command wiring. `npm run dataset-factory:artifacts:self-test` proves 14 control/adversarial cases, including cycle, overlap, and leaf/parent symlink rejection. `--verify-files --artifact-root /absolute/path/to/populated/repo` additionally verifies real-path containment and every registered ignored artifact by kind, SHA-256, file count, byte count, and row count where meaningful.
 - `npm run dataset-factory:clock:self-test` verifies strict RFC 3339 fixed timestamps under both UTC and America/Toronto; date-only and timezone-less inputs fail.
 - `docs/dataset-factory/fixtures/v0-smoke/` contains small tracked fixtures that mirror the contracts needed by the v0 workflows. `npm run dataset-factory:smoke-v0` runs the v0 scripts against those fixtures and a local mock search API with a fixed clock, exact count/content assertions, and a committed tree hash, proving that a clean checkout can exercise the workflow deterministically without copying generated report trees.
@@ -258,7 +258,7 @@ Ignored reports in data/mtl_archives/reports/
 #### Verified Multimodal Intelligence Batch 001 Foundation
 
 ```
-Synthetic packets ──▶ fail-closed validator ──▶ accepted verified claims ──▶ benchmark tasks
+Synthetic mock packets ──▶ fail-closed validator ──▶ zero verified claims / zero benchmark tasks
         │                       │                         │
         │                       ├─▶ unresolved queue       └─▶ exact run report
         └─▶ rejected queue      └─▶ adversarial self-tests
@@ -267,7 +267,12 @@ Synthetic packets ──▶ fail-closed validator ──▶ accepted verified cl
 - Issue #69 now has a tracked foundation pilot under `docs/dataset-factory/fixtures/verified-multimodal-batch-001/` with schemas in `docs/dataset-factory/schemas/verified-multimodal-batch-001/`.
 - The contract separates visual observations, source metadata, inference, externally verified claims, rejected hypotheses, rights/attribution, regions, confidence, alternatives, review state, and abstentions.
 - It covers both required lanes: ground OCR/entity/place and aerial land-use/georeference.
-- It fails closed for missing visual regions, missing external source URL/note, incomplete rights, invalid verification status, unsupported exact locations, area/distance without scale/georeference, reviewer overlap, and benchmark derivation from anything other than accepted external evidence.
+- Synthetic records use explicit mock provenance and no archive-record URL; they can never be externally verified or benchmark eligible.
+- It fails closed for collection-boundary mismatches, invalid metadata/evidence relations or enums, incomplete rights, unsupported exact locations, area/distance without accepted structured external georeference/scale evidence, reviewer identity failures, and benchmark family/component split leakage.
+- Benchmark derivation revalidates complete packets before promotion, and both runtime and JSON Schema reject unstable HTTPS URLs containing query strings or fragments.
+- The canonical packet schema runs before semantic validation, supports explicit synthetic and canonical-real variants, uses fixed-order unique reviewer-ID tuples, and represents bounding boxes as bounded endpoint coordinates with semantic ordering checks.
+- Canonical-real benchmark generation requires pilot-reviewed packets, unique input packet and task IDs, unique record/claim identities, schema-valid tasks, and at least three distinct control points for exact-location georeferencing. It reuses Visual Family Graph v1's authoritative component-based 80/10/10 split helper; distinct claims from one dossier may produce multiple tasks.
+- Synthetic run-report derivation revalidates every packet and benchmark task itself, rejects malformed or canonical-real packet inputs, requires an empty synthetic benchmark, and only then recomputes counts and passed gates.
 - This is a synthetic/hermetic pilot only. It does not mutate D1, R2, Vectorize, search indexes, deployments, or production data, and it does not satisfy the 60-record issue #69 acceptance target.
 
 ### 9. Canonical Corpus v1 (Read-Only Reconciliation)
