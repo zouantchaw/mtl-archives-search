@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mtlarchives.com/schemas/real-pilot-candidate-selection-v1/exclusion.v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "record_id", "reasons"],
+  "properties": {
+    "schema_version": { "const": "verified_multimodal_real_pilot_candidate_exclusion_v1.0.0" },
+    "record_id": { "type": "string", "pattern": "^mtl_archives_metadata_[0-9]+\\.json$" },
+    "reasons": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "enum": ["not_canonical_real_state", "incomplete_canonical_rights_or_attribution", "derivative_unavailable", "decode_or_visual_feature_failure", "recovery_not_available", "missing_authoritative_component", "authoritative_split_mismatch", "missing_source_identity", "unsafe_or_missing_source_url", "semantic_join_mismatch", "duplicate_component_identity", "duplicate_source_identity", "duplicate_image_or_payload_identity"] } }
+  }
+}

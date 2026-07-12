@@ -249,7 +249,7 @@ Ignored reports in data/mtl_archives/reports/
 ```
 
 - Dataset Factory v0 is an offline durability layer for search-quality evaluation and future training data. It does not deploy, mutate Cloudflare resources, publish social content, or require credentials for its tracked fixture smoke.
-- The real generated artifacts are intentionally gitignored because they include large report trees. Their reproducibility contract is currently tracked as a 98-entry acyclic phase graph in `docs/dataset-factory/artifact-registry.v0.jsonl`, including later canonical recovery, Gold Label Batch 002, and Verified Multimodal foundation entries beyond the original Dataset Factory v0, Canonical Corpus v1, and Visual Family Graph v1 bundles. Explicit human decision files are graph inputs rather than outputs falsely attributed to automation, and external snapshots disclose mutable acquisition boundaries.
+- The real generated artifacts are intentionally gitignored because they include large report trees. Their reproducibility contract is currently tracked as a 99-entry acyclic phase graph in `docs/dataset-factory/artifact-registry.v0.jsonl`, including later canonical recovery, Gold Label Batch 002, the Verified Multimodal foundation, and the Issue 69 real-pilot selection descriptor beyond the original Dataset Factory v0, Canonical Corpus v1, and Visual Family Graph v1 bundles. Explicit human decision files are graph inputs rather than outputs falsely attributed to automation, and external snapshots disclose mutable acquisition boundaries.
 - `npm run dataset-factory:artifacts:check` validates the published Draft 2020-12 schema, graph semantics, locator containment, and root command wiring. `npm run dataset-factory:artifacts:self-test` proves 14 control/adversarial cases, including cycle, overlap, and leaf/parent symlink rejection. `--verify-files --artifact-root /absolute/path/to/populated/repo` additionally verifies real-path containment and every registered ignored artifact by kind, SHA-256, file count, byte count, and row count where meaningful.
 - `npm run dataset-factory:clock:self-test` verifies strict RFC 3339 fixed timestamps under both UTC and America/Toronto; date-only and timezone-less inputs fail.
 - `docs/dataset-factory/fixtures/v0-smoke/` contains small tracked fixtures that mirror the contracts needed by the v0 workflows. `npm run dataset-factory:smoke-v0` runs the v0 scripts against those fixtures and a local mock search API with a fixed clock, exact count/content assertions, and a committed tree hash, proving that a clean checkout can exercise the workflow deterministically without copying generated report trees.
@@ -274,6 +274,18 @@ Synthetic mock packets ──▶ fail-closed validator ──▶ zero verified c
 - Canonical-real benchmark generation requires pilot-reviewed packets, unique input packet and task IDs, unique record/claim identities, schema-valid tasks, and at least three distinct control points for exact-location georeferencing. It reuses Visual Family Graph v1's authoritative component-based 80/10/10 split helper; distinct claims from one dossier may produce multiple tasks.
 - Synthetic run-report derivation revalidates every packet and benchmark task itself, rejects malformed or canonical-real packet inputs, requires an empty synthetic benchmark, and only then recomputes counts and passed gates.
 - This is a synthetic/hermetic pilot only. It does not mutate D1, R2, Vectorize, search indexes, deployments, or production data, and it does not satisfy the 60-record issue #69 acceptance target.
+
+The bounded canonical-real stage follows the synthetic contract foundation:
+
+```text
+approved recovery + successor graph bytes -> full derivative decode + canonical joins -> 26 eligible candidates
+                                                                                       -> 16 ranked visual-review pool
+                                                                                       -> 10 reserves
+```
+
+- `npm run dataset-factory:real-pilot-candidates-v1` verifies approved descriptor, recovery, corpus, graph, node, map, split, and local-manifest bytes before selection; validates manifest-declared members; fully decodes all 209 derivative JPEGs; and applies canonical rights, attribution, source, normalized URL, component, split, image, and payload gates.
+- `npm run dataset-factory:real-pilot-candidates-verify-v1` verifies exact recursive membership and hashes for the ignored selection report, candidate/exclusion JSONL, HTML index, and contact sheet against `docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-selection-v1.json`. `npm run dataset-factory:real-pilot-candidates-integration-test-v1` exercises deterministic rebuild and tamper boundaries.
+- The 16 ranked rows and 10 reserves are visual-review acquisition candidates, not labels. Metadata/aerial markers are ranking proxies only. The stage has zero verified claims, dossiers, benchmark tasks, and final selections. Direct visual promotion review is the next gate; issue #69 acceptance remains open.
 
 ### 9. Canonical Corpus v1 (Read-Only Reconciliation)
 

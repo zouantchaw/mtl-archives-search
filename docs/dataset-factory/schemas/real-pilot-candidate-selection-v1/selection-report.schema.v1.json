@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mtlarchives.com/schemas/real-pilot-candidate-selection-v1/selection-report.v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "scope", "deterministic", "proxy_boundary", "anchor_policy", "ranked_pool_policy", "counts", "source_pins", "derivative_tree_sha256", "graph_source_snapshot", "graph_arithmetic", "outputs", "successor_graph_contract", "generated_artifacts"],
+  "properties": {
+    "schema_version": { "const": "verified_multimodal_real_pilot_selection_report_v1.0.0" },
+    "scope": { "const": "candidate_pool_only_no_historical_claims_or_dossiers" },
+    "deterministic": { "const": true },
+    "proxy_boundary": { "type": "string", "minLength": 1 },
+    "anchor_policy": { "type": "string", "minLength": 1 },
+    "ranked_pool_policy": { "type": "string", "minLength": 1 },
+    "counts": { "type": "object", "additionalProperties": false, "required": ["derivative_rows", "eligible_candidates", "exclusions", "verified_claims", "ground_ocr_entity_place", "aerial_land_use_georeference"], "properties": { "derivative_rows": { "type": "integer", "minimum": 1 }, "eligible_candidates": { "type": "integer", "minimum": 1 }, "exclusions": { "type": "integer", "minimum": 0 }, "verified_claims": { "const": 0 }, "ground_ocr_entity_place": { "$ref": "#/$defs/laneCounts" }, "aerial_land_use_georeference": { "$ref": "#/$defs/laneCounts" } } },
+    "source_pins": { "type": "object", "minProperties": 8, "additionalProperties": { "$ref": "#/$defs/evidence" } },
+    "derivative_tree_sha256": { "$ref": "#/$defs/sha" },
+    "graph_source_snapshot": { "type": "object" },
+    "graph_arithmetic": { "type": "object" },
+    "outputs": { "type": "object", "additionalProperties": false, "required": ["eligible_candidates", "exclusions"], "properties": { "eligible_candidates": { "$ref": "#/$defs/evidence" }, "exclusions": { "$ref": "#/$defs/evidence" } } },
+    "successor_graph_contract": { "type": "object", "additionalProperties": false, "required": ["recovery_bundle_sha256", "successor_contract_sha256"], "properties": { "recovery_bundle_sha256": { "const": "dab076491097ac1fa4c9b1295317d067e29442b12831ede65731941894a859a6" }, "successor_contract_sha256": { "const": "b3b26b45e9508c5838f5045f6565b77201d19d14fba99c98f20c5ea147e113bf" } } },
+    "generated_artifacts": { "type": "array", "minItems": 4, "items": { "$ref": "#/$defs/evidence" } }
+  },
+  "$defs": {
+    "sha": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "laneCounts": { "type": "object", "additionalProperties": false, "required": ["total", "ranked_pool"], "properties": { "total": { "type": "integer", "minimum": 0 }, "ranked_pool": { "type": "integer", "minimum": 0 } } },
+    "evidence": { "type": "object", "additionalProperties": false, "required": ["path", "sha256", "bytes"], "properties": { "path": { "type": "string", "minLength": 1 }, "sha256": { "$ref": "#/$defs/sha" }, "bytes": { "type": "integer", "minimum": 0 }, "rows": { "type": "integer", "minimum": 0 } } }
+  }
+}
