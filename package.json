@@ -116,6 +116,8 @@
     "dataset-factory:gold-label-seal-pass-002": "npm run dataset-factory:gold-label-seal-pass-002 --workspace=@mtl-archives/scripts --",
     "dataset-factory:gold-label-audit-plan-002": "npm run dataset-factory:gold-label-audit-plan-002 --workspace=@mtl-archives/scripts --",
     "dataset-factory:gold-label-bundle-002": "npm run dataset-factory:gold-label-bundle-002 --workspace=@mtl-archives/scripts --",
+    "dataset-factory:verified-multimodal-001": "npm run dataset-factory:verified-multimodal-001 --workspace=@mtl-archives/scripts --",
+    "dataset-factory:verified-multimodal-self-test-001": "npm run dataset-factory:verified-multimodal-self-test-001 --workspace=@mtl-archives/scripts --",
     "dataset-factory:production-apply-gate-v0": "npm run dataset-factory:production-apply-gate-v0 --workspace=@mtl-archives/scripts --",
     "dataset-factory:production-scoped-apply-v0": "npm run dataset-factory:production-scoped-apply-v0 --workspace=@mtl-archives/scripts --",
     "dataset-factory:production-rollback-pack-v0": "npm run dataset-factory:production-rollback-pack-v0 --workspace=@mtl-archives/scripts --",

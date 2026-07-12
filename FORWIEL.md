@@ -32,6 +32,19 @@ Issues #65 and #66 made this durable and identity-explicit:
 
 The lesson: if an important workflow depends on ignored files, either track the files, track a registry that proves what the files are, or track small fixtures that prove the code can still run. Here we do the last two.
 
+## Verified Multimodal Intelligence Foundation
+
+Issue #69 is the next, more ambitious archive-intelligence workflow: look at image regions, separate visible facts from metadata and inference, verify high-value claims against external sources, and derive benchmark/search tasks only from accepted evidence. The current repo has the first foundation slice for that workflow, not the final batch.
+
+The foundation is synthetic and hermetic. Four tracked records exercise the two required lanes: ground OCR/entity/place and aerial land-use/georeference. The validator fails closed if a visual claim has no region, an external claim has no URL/note, rights are incomplete, exact location lacks georeference evidence, area/distance is asserted without scale, reviewers overlap, or a benchmark task leaks from unresolved/rejected evidence. Run it with:
+
+```bash
+npm run dataset-factory:verified-multimodal-001
+npm run dataset-factory:verified-multimodal-self-test-001
+```
+
+The important habit here is not to confuse a schema pilot with historical truth. This slice proves the shape of the evidence packet and the guardrails. The real issue #69 work still needs at least 60 canonical records, independent review, metrics, overlays, and source-backed dossiers.
+
 ## Important Boundaries
 
 - No generated report tree should be committed just because a script produced it.

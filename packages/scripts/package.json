@@ -103,6 +103,8 @@
     "dataset-factory:gold-label-seal-pass-002": "tsx src/dataset-factory/seal-gold-label-pass-002.ts",
     "dataset-factory:gold-label-audit-plan-002": "tsx src/dataset-factory/build-gold-label-audit-plan-002.ts",
     "dataset-factory:gold-label-bundle-002": "tsx src/dataset-factory/gold-label-batch-002-bundle.ts",
+    "dataset-factory:verified-multimodal-001": "tsx src/dataset-factory/build-verified-multimodal-batch-001.ts",
+    "dataset-factory:verified-multimodal-self-test-001": "tsx src/dataset-factory/self-test-verified-multimodal-batch-001.ts",
     "dataset-factory:production-apply-gate-v0": "tsx src/dataset-factory/build-production-apply-gate-v0.ts",
     "dataset-factory:production-scoped-apply-v0": "tsx src/dataset-factory/build-production-scoped-apply-v0.ts",
     "dataset-factory:production-rollback-pack-v0": "tsx src/dataset-factory/build-production-rollback-pack-v0.ts",

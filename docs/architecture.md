@@ -255,6 +255,21 @@ Ignored reports in data/mtl_archives/reports/
 - `docs/dataset-factory/fixtures/v0-smoke/` contains small tracked fixtures that mirror the contracts needed by the v0 workflows. `npm run dataset-factory:smoke-v0` runs the v0 scripts against those fixtures and a local mock search API with a fixed clock, exact count/content assertions, and a committed tree hash, proving that a clean checkout can exercise the workflow deterministically without copying generated report trees.
 - Missing required artifacts should fail loudly through the Dataset Factory artifact helpers rather than silently producing empty downstream reports.
 
+#### Verified Multimodal Intelligence Batch 001 Foundation
+
+```
+Synthetic packets ──▶ fail-closed validator ──▶ accepted verified claims ──▶ benchmark tasks
+        │                       │                         │
+        │                       ├─▶ unresolved queue       └─▶ exact run report
+        └─▶ rejected queue      └─▶ adversarial self-tests
+```
+
+- Issue #69 now has a tracked foundation pilot under `docs/dataset-factory/fixtures/verified-multimodal-batch-001/` with schemas in `docs/dataset-factory/schemas/verified-multimodal-batch-001/`.
+- The contract separates visual observations, source metadata, inference, externally verified claims, rejected hypotheses, rights/attribution, regions, confidence, alternatives, review state, and abstentions.
+- It covers both required lanes: ground OCR/entity/place and aerial land-use/georeference.
+- It fails closed for missing visual regions, missing external source URL/note, incomplete rights, invalid verification status, unsupported exact locations, area/distance without scale/georeference, reviewer overlap, and benchmark derivation from anything other than accepted external evidence.
+- This is a synthetic/hermetic pilot only. It does not mutate D1, R2, Vectorize, search indexes, deployments, or production data, and it does not satisfy the 60-record issue #69 acceptance target.
+
 ### 9. Canonical Corpus v1 (Read-Only Reconciliation)
 
 ```text

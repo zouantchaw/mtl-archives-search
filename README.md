@@ -26,6 +26,8 @@ Dataset Factory's Canonical Image Recovery v1 restores visual features for the e
 
 Gold Label Batch 002 is complete for issue #68: 300 candidates were reviewed through sealed primary/blind passes, trusted adjudication, post-fix audit, search disposition review, and completion validation. The ignored local evidence remains under `data/mtl_archives/reports/gold_label_batch_002`; the durable sealed archive is recorded separately in Cloudflare R2 bucket `wiel-codex-worker-cache` at object key `artifacts/mtl-archives/gold-label-batch-002/11c4577c5fa2b0393d2c83a9c9a75effcf7c97252febc646fa8ceca4e6789fcd.tar.gz` with SHA-256 `11c4577c5fa2b0393d2c83a9c9a75effcf7c97252febc646fa8ceca4e6789fcd`. See [docs/dataset-factory/gold-label-batch-002-phase-1.md](docs/dataset-factory/gold-label-batch-002-phase-1.md).
 
+Verified Multimodal Intelligence Batch 001 now has a tracked synthetic foundation pilot for issue #69. It defines versioned packets/run reports, fail-closed validators, both ground OCR/entity/place and aerial land-use/georeference lanes, accepted-evidence-only benchmark derivation, unresolved/rejected queues, and adversarial self-tests. This is not the completed 60-record batch. See [docs/dataset-factory/verified-multimodal-batch-001.md](docs/dataset-factory/verified-multimodal-batch-001.md).
+
 ## Live API
 
 ```bash
