@@ -108,6 +108,8 @@
     "dataset-factory:search-review-packets-002": "npm run dataset-factory:search-review-packets-002 --workspace=@mtl-archives/scripts --",
     "dataset-factory:search-review-packets-validate-002": "npm run dataset-factory:search-review-packets-validate-002 --workspace=@mtl-archives/scripts --",
     "dataset-factory:search-review-packets-self-test-002": "npm run dataset-factory:search-review-packets-self-test-002 --workspace=@mtl-archives/scripts --",
+    "dataset-factory:search-reviewer-seal-002": "npm run dataset-factory:search-reviewer-seal-002 --workspace=@mtl-archives/scripts --",
+    "dataset-factory:search-reviewer-self-test-002": "npm run dataset-factory:search-reviewer-self-test-002 --workspace=@mtl-archives/scripts --",
     "dataset-factory:gold-label-self-test-002": "npm run dataset-factory:gold-label-self-test-002 --workspace=@mtl-archives/scripts --",
     "dataset-factory:gold-label-seal-pass-002": "npm run dataset-factory:gold-label-seal-pass-002 --workspace=@mtl-archives/scripts --",
     "dataset-factory:gold-label-audit-plan-002": "npm run dataset-factory:gold-label-audit-plan-002 --workspace=@mtl-archives/scripts --",

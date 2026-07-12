@@ -1,6 +1,6 @@
 # Gold Label Batch 002: Corrected Phase 1
 
-Issue: #68. Parent: #64. Status: primary and blind passes are sealed with 300 rows each from disjoint 12-reviewer rosters, 300 audit-corrected adjudications are frozen, and 50 post-fix independent audits are aggregated. Seven sealed search-review packets cover all 49 pinned silver tasks; search decisions do not yet exist.
+Issue: #68. Parent: #64. Status: primary and blind passes are sealed with 300 rows each from disjoint 12-reviewer rosters, 300 audit-corrected adjudications are frozen, and 50 post-fix independent audits are aggregated. The 49-row search reviewer pass is sealed from seven independent packet reviewers; search adjudicator and final disposition outputs do not yet exist.
 
 ## Frozen acquisition
 
@@ -38,6 +38,8 @@ Audit findings are applied through owning adjudicators. Completed audit rows rem
 
 Reviewer and adjudicator templates are separate, blank, schema-valid files. Reviewers and adjudicators must use distinct IDs, and adjudicators may see reviewer output only after that reviewer pass is sealed. Reviewer-visible rows contain no live URLs, secrets, or prior decisions.
 
+The canonical reviewer-only artifact is `search/reviewer-pass/labels.jsonl`, bound by `search/reviewer-pass/seal.json` to the packet manifest and completed-result schema. It is not a final search disposition artifact. The seal command rejects incomplete coverage, unsupported positives, inconsistent dispositions, inferred reviewed-gold claims, missing-image policy violations, duplicate reviewer IDs, and any adjudicator-completed output created before the reviewer seal.
+
 ## Commands
 
 ```bash
@@ -49,6 +51,8 @@ npm run dataset-factory:gold-label-audit-plan-002
 npm run dataset-factory:search-review-packets-002
 npm run dataset-factory:search-review-packets-validate-002
 npm run dataset-factory:search-review-packets-self-test-002
+npm run dataset-factory:search-reviewer-seal-002 -- --sealed-at 2026-07-12T12:30:01Z
+npm run dataset-factory:search-reviewer-self-test-002
 npm run dataset-factory:gold-label-validate-002 # expected to fail before labels
 ```
 
