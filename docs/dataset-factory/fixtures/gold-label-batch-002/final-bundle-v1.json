@@ -3,14 +3,15 @@
   "artifact_contract": "complete_reviewed_gold_label_batch_002",
   "complete_labels": true,
   "upload_status": "uploaded_to_r2_hash_bound",
-  "cache_key": "artifacts/mtl-archives/gold-label-batch-002/9a36710f1b658f48e6afef1a05ebd29419320903734f5febab75d08b0f5c1f43.tar.gz",
+  "cache_key": "artifacts/mtl-archives/gold-label-batch-002/11c4577c5fa2b0393d2c83a9c9a75effcf7c97252febc646fa8ceca4e6789fcd.tar.gz",
   "durable_archive": {
     "storage_class": "object_store",
     "provider": "cloudflare_r2",
     "bucket": "wiel-codex-worker-cache",
-    "object_key": "artifacts/mtl-archives/gold-label-batch-002/9a36710f1b658f48e6afef1a05ebd29419320903734f5febab75d08b0f5c1f43.tar.gz",
-    "sha256": "9a36710f1b658f48e6afef1a05ebd29419320903734f5febab75d08b0f5c1f43",
-    "locator": "r2://wiel-codex-worker-cache/artifacts/mtl-archives/gold-label-batch-002/9a36710f1b658f48e6afef1a05ebd29419320903734f5febab75d08b0f5c1f43.tar.gz"
+    "object_key": "artifacts/mtl-archives/gold-label-batch-002/11c4577c5fa2b0393d2c83a9c9a75effcf7c97252febc646fa8ceca4e6789fcd.tar.gz",
+    "sha256": "11c4577c5fa2b0393d2c83a9c9a75effcf7c97252febc646fa8ceca4e6789fcd",
+    "bytes": 273387318,
+    "locator": "r2://wiel-codex-worker-cache/artifacts/mtl-archives/gold-label-batch-002/11c4577c5fa2b0393d2c83a9c9a75effcf7c97252febc646fa8ceca4e6789fcd.tar.gz"
   },
   "local_evidence": {
     "storage_class": "local_filesystem",
@@ -18,13 +19,13 @@
     "locator": "data/mtl_archives/reports/gold_label_batch_002"
   },
   "bundle": {
-    "sha256": "9a36710f1b658f48e6afef1a05ebd29419320903734f5febab75d08b0f5c1f43",
-    "bytes": 273387461
+    "sha256": "11c4577c5fa2b0393d2c83a9c9a75effcf7c97252febc646fa8ceca4e6789fcd",
+    "bytes": 273387318
   },
-  "tree_sha256": "9f48fb9085f25d64e8965a226d07b5d2041212532d2d232481397908a01b1a31",
+  "tree_sha256": "bbe746e0564012ea61e872219af7dd7140bd320d49a8c6521589bc549a79cf57",
   "counts": {
     "files": 1548,
-    "bytes": 298217674
+    "bytes": 298219538
   },
   "members": [
     {
@@ -74,8 +75,8 @@
     },
     {
       "path": "data/mtl_archives/reports/gold_label_batch_002/adjudication/completion-report-v1.json",
-      "bytes": 9266,
-      "sha256": "bf19669bff2272f7d838ca435bf71700ab8955765bda01e86943a8df32e8a6c1"
+      "bytes": 11130,
+      "sha256": "24ade6b6928cc93d898d6f55744dbc4023a50aa0d9cc7da359cb37a50d9ff959"
     },
     {
       "path": "data/mtl_archives/reports/gold_label_batch_002/batch/proxy-coverage-v1.json",
@@ -630,7 +631,7 @@
     {
       "path": "data/mtl_archives/reports/gold_label_batch_002/packets/sealed-packet-manifest-v1.json",
       "bytes": 9064,
-      "sha256": "c271c512dcea2934cd8290d6ead0b2882b85376ffdc1c0360296bb7538f64da9"
+      "sha256": "5d9469c3c56ae444f2438f546911693819f0cf71bdb732830bada676ea1c64e4"
     },
     {
       "path": "data/mtl_archives/reports/gold_label_batch_002/packets/views/glb002-0001-0.jpg",
@@ -6640,7 +6641,7 @@
     {
       "path": "data/mtl_archives/reports/gold_label_batch_002/reviews/blind/seal.json",
       "bytes": 815,
-      "sha256": "52de582caf2e5ff6943f6e0f926daf20788c1fb7d1c5cc7931b6fcd3fba498b8"
+      "sha256": "a1b0d07be1b9e2bc5051c6dcbf705fb994dde11cd40de21cda4733572ccba4e0"
     },
     {
       "path": "data/mtl_archives/reports/gold_label_batch_002/reviews/primary/labels.jsonl",
@@ -6650,7 +6651,7 @@
     {
       "path": "data/mtl_archives/reports/gold_label_batch_002/reviews/primary/seal.json",
       "bytes": 842,
-      "sha256": "59bdfb1f71c2a10758a85937082bde2cd20e2a7d54faaa38cc5e69976d7c2de3"
+      "sha256": "5e53ec9351910f8275ae1eb3e2b909f68755a59527cb862c7efbac66497bc6d3"
     },
     {
       "path": "data/mtl_archives/reports/gold_label_batch_002/search/review-packets/glb002-search-p01/adjudicator-dispositions.completed.jsonl",
@@ -7768,6 +7769,5 @@
       "sha256": "de89a06bd8bc833fcf83de852365c008c5f4902a56523a575763bc2d70fd92bd"
     }
   ],
-  "previous_attempted_cache_key": "bundles/issue-68/gold-label-batch-002-final-v1-9a36710f1b658f48e6afef1a05ebd29419320903734f5febab75d08b0f5c1f43.tar.gz",
-  "durable_publication": "Coordinator uploaded the sealed final tarball to Cloudflare R2 bucket wiel-codex-worker-cache at object key artifacts/mtl-archives/gold-label-batch-002/9a36710f1b658f48e6afef1a05ebd29419320903734f5febab75d08b0f5c1f43.tar.gz. The object key is hash-bound to the bundle SHA-256. No temporary or signed URL is recorded."
+  "durable_publication": "Coordinator uploaded the successor sealed final tarball to Cloudflare R2 bucket wiel-codex-worker-cache at object key artifacts/mtl-archives/gold-label-batch-002/11c4577c5fa2b0393d2c83a9c9a75effcf7c97252febc646fa8ceca4e6789fcd.tar.gz. The object key is hash-bound to the bundle SHA-256. No temporary or signed URL is recorded."
 }
