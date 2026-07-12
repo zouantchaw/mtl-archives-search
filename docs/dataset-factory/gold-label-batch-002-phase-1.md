@@ -1,6 +1,6 @@
 # Gold Label Batch 002: Corrected Phase 1
 
-Issue: #68. Parent: #64. Status: primary and blind passes are sealed with 300 rows each from disjoint 12-reviewer rosters, 300 audit-corrected adjudications are frozen, and 50 post-fix independent audits are aggregated. Search dispositions do not yet exist.
+Issue: #68. Parent: #64. Status: primary and blind passes are sealed with 300 rows each from disjoint 12-reviewer rosters, 300 audit-corrected adjudications are frozen, and 50 post-fix independent audits are aggregated. Seven sealed search-review packets cover all 49 pinned silver tasks; search decisions do not yet exist.
 
 ## Frozen acquisition
 
@@ -32,6 +32,12 @@ Phase validation accepts both sealed review passes and exact adjudication covera
 
 Audit findings are applied through owning adjudicators. Completed audit rows remain bound to `audit-candidate-plan-pre-findings-v1.jsonl`; their candidate IDs must not be reinterpreted against the regenerated post-findings plan ordering. `audit-authority-compatibility-v1.json` records the exact pre-findings plan/adjudication hashes, corrected adjudication hash, post-fix audit hashes, and all applied finding rows. The canonical `audits-v1.jsonl` contains 50 independent post-fix affirmations. Completion intentionally advances to `search requires exact 49 source/authority/disposition rows`.
 
+## Search review packets
+
+`search/review-packets/glb002-search-p01` through `glb002-search-p07` contain seven tasks each. Task rows reproduce the exact pinned authority fields and separate metadata/source excerpts from visual evidence. Forty-four proposed positives use four copied, decoded, hash-bound issue-68 views. Five tasks (`ret-silver-0005`, `ret-silver-0032`, `ret-silver-0045`, `ret-silver-0046`, and `ret-silver-0047`) explicitly lack a verified bounded local derivative and require `stress_only` or `rejected_with_reason` unless an independently supported revised task is complete.
+
+Reviewer and adjudicator templates are separate, blank, schema-valid files. Reviewers and adjudicators must use distinct IDs, and adjudicators may see reviewer output only after that reviewer pass is sealed. Reviewer-visible rows contain no live URLs, secrets, or prior decisions.
+
 ## Commands
 
 ```bash
@@ -40,6 +46,9 @@ DATASET_FACTORY_FIXED_NOW=2026-07-11T20:00:00.000Z npm run dataset-factory:gold-
 npm run dataset-factory:gold-label-self-test-002
 npm run dataset-factory:gold-label-seal-pass-002 -- --pass primary --labels /path/to/completed.jsonl --sealed-at 2026-07-12T00:00:00.000Z
 npm run dataset-factory:gold-label-audit-plan-002
+npm run dataset-factory:search-review-packets-002
+npm run dataset-factory:search-review-packets-validate-002
+npm run dataset-factory:search-review-packets-self-test-002
 npm run dataset-factory:gold-label-validate-002 # expected to fail before labels
 ```
 
