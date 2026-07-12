@@ -1,0 +1,62 @@
+{
+  "schema_version": "verified_multimodal_real_pilot_source_acquisition_descriptor_v1.1.0",
+  "candidate_descriptor_sha256": "7c3729108057b374f2a108d0e3f556abcbec402d071b89268269c71340f9b96f",
+  "promotion_descriptor_sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+  "independent_review_descriptor_sha256": "e614092da109c9fc90802dafae1b62741669aa748323bb43b98c2ad6235513e7",
+  "selected_ids": [
+    0,
+    10,
+    100,
+    101,
+    102,
+    105,
+    8132,
+    8134,
+    8139,
+    8143,
+    10145,
+    11118
+  ],
+  "output_root": "docs/dataset-factory/fixtures/real-pilot-source-acquisition-v1",
+  "tree_sha256": "3e174d267452c4f74298b02ff031d29257aebf6d429cae8a43dad64db342806d",
+  "manifest_sha256": "691699d693e438909b901c2221a427abcce084c5b0fee4950d2a8b6b986b527b",
+  "counts": {
+    "files": 23,
+    "bytes": 311798,
+    "expected_sources": 17,
+    "captured_sources": 17,
+    "image_samples": 12,
+    "selected_ground_rows": 6,
+    "unresolved": 0,
+    "rejected": 0,
+    "historical_verified_claims": 0
+  },
+  "status": "verified_source_acquisition_snapshot",
+  "run_files": {
+    "acquisition_run": "acquisition-run-v1.json",
+    "ledger": "source-ledger-v1.json",
+    "queue": "unresolved-rejected-v1.json",
+    "verification_run": "verification-run-v1.json",
+    "selected_ground_rows": "selected-ground-rows-v1.json",
+    "ground_csv": "snapshot/ground_csv.csv",
+    "promotion_bindings": "promotion-bindings-v1.json"
+  },
+  "run_hashes": {
+    "acquisition_run": "886f0309e050e0e528b5e4c43703f176ebbfce58610c8492cfc77209e959acb6",
+    "ledger": "9b2f921cd157b3d93575e18d3549b65918d2a75c37fd632f98e9a39f3d403faa",
+    "queue": "b06e296cfe6548422a65e908d73b5410ffc81dae4529790314ec777d337d8ea8",
+    "verification_run": "95af3dba989a9b66ec6735c0c14de0672329b6eb57c8ca128911d697a8ac28b4",
+    "selected_ground_rows": "3b3a7ffcdfcd916d977094e3e013c82d31b1dee8ed86614c7d12e94e4d3ac53e",
+    "ground_csv": "553e0d21a730f34982188c4918488174803c6fc3ee4cb69420500574165b8c2f",
+    "promotion_bindings": "89e29292cf9aea86b5257070dc455e1718756424c8056e4d5bcf38693734d1c8"
+  },
+  "aerial_boundary_verified": true,
+  "secret_scan_passed": true,
+  "rights_boundary": {
+    "verified": true,
+    "license": "CC BY 4.0",
+    "attribution_required": true,
+    "attribution": "Ville de Montreal",
+    "limitation": "Source acquisition and exact CSV row provenance are verified. No historical claim, selected-image content, aerial geolocation or land use, ground building or brand identity, or full large-image payload is verified."
+  }
+}

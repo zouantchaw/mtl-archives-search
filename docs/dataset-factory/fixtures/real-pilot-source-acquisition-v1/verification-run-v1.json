@@ -1,0 +1,44 @@
+{
+  "schema_version": "verified_multimodal_real_pilot_source_acquisition_v1.0.0",
+  "mode": "offline_snapshot_verification",
+  "review_descriptor_sha256": "e614092da109c9fc90802dafae1b62741669aa748323bb43b98c2ad6235513e7",
+  "selected_ids": [
+    0,
+    10,
+    100,
+    101,
+    102,
+    105,
+    8132,
+    8134,
+    8139,
+    8143,
+    10145,
+    11118
+  ],
+  "status": "verified_source_acquisition_snapshot",
+  "counts": {
+    "captured_sources": 17,
+    "selected_ground_rows": 6,
+    "selected_image_samples": 12,
+    "unresolved": 0,
+    "rejected": 0
+  },
+  "rights": {
+    "status": "official_pages_captured",
+    "license": "CC BY 4.0",
+    "attribution_required": true,
+    "attribution": "Ville de Montreal",
+    "boundary": "Rights verification is limited to statements directly present in the captured official license/dataset pages; it does not verify historical, identity, geolocation, land-use, or source-image-content claims."
+  },
+  "aerial_boundary": {
+    "verified": true,
+    "boundary": "The official page supports an aerial collection distributed as TIFF with index material and non-georeferenced or approximate coverage. It does not verify any selected image location, land use, scale, date, or content."
+  },
+  "secret_scan": {
+    "passed": true,
+    "files_scanned": 22,
+    "forbidden_matches": []
+  },
+  "snapshot_tree_sha256": "80542d0abf6c3e550237d5bf02270b3c025bb6734f836cae5017e989a47a8494"
+}
