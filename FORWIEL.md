@@ -19,7 +19,7 @@ Dataset Factory is the offline layer for making search quality measurable. It bu
 
 Issues #65 and #66 made this durable and identity-explicit:
 
-- `docs/dataset-factory/artifact-registry.v0.jsonl` currently records 98 artifacts as an acyclic graph with stable IDs, SHA-256, counts, lineage, commands, dependencies, rights boundaries, and timestamps, including later canonical recovery, Gold Label Batch 002, and Verified Multimodal foundation entries beyond the original Dataset Factory, Canonical Corpus, and Visual Family Graph bundles.
+- `docs/dataset-factory/artifact-registry.v0.jsonl` currently records 99 artifacts as an acyclic graph with stable IDs, SHA-256, counts, lineage, commands, dependencies, rights boundaries, and timestamps, including later canonical recovery, Gold Label Batch 002, the Verified Multimodal foundation, and the tracked Issue 69 real-pilot selection descriptor.
 - `docs/dataset-factory/fixtures/v0-smoke/` has tiny tracked fixture rows that let the workflow run in a clean checkout.
 - `npm run dataset-factory:smoke-v0` runs the v0 chain against those fixtures and a local mock search API. It fixes the fixture clock, asserts exact rows/content, and checks a committed output hash; it proves deterministic contract wiring, not live search quality.
 - `npm run dataset-factory:artifacts:self-test` exercises 14 contract/adversarial cases, including a valid in-root file, path-component symlinks, and overlapping members.
@@ -34,16 +34,19 @@ The lesson: if an important workflow depends on ignored files, either track the 
 
 ## Verified Multimodal Intelligence Foundation
 
-Issue #69 is the next, more ambitious archive-intelligence workflow: look at image regions, separate visible facts from metadata and inference, verify high-value claims against external sources, and derive benchmark/search tasks only from accepted evidence. The current repo has only a synthetic contract foundation, not verified historical output or the final batch.
+Issue #69 is the next, more ambitious archive-intelligence workflow: look at image regions, separate visible facts from metadata and inference, verify high-value claims against external sources, and derive benchmark/search tasks only from accepted evidence. The repo has a synthetic contract foundation plus a bounded canonical-real candidate-selection stage, but no verified historical output or final batch.
 
 The foundation is synthetic and hermetic. Four tracked mock records exercise the two required lanes: ground OCR/entity/place and aerial land-use/georeference. They have no fictional archive URLs, no externally verified claims, and no benchmark tasks. The validator fails closed on boundary/collection mismatches, incomplete evidence or rights, exact geospatial claims without accepted structured external evidence, reviewer identity failures, and family/component split leakage. Run it with:
 
 ```bash
 npm run dataset-factory:verified-multimodal-001
 npm run dataset-factory:verified-multimodal-self-test-001
+npm run dataset-factory:real-pilot-candidates-v1
+npm run dataset-factory:real-pilot-candidates-verify-v1
+npm run dataset-factory:real-pilot-candidates-integration-test-v1
 ```
 
-The important habit here is not to confuse a schema pilot with historical truth. This slice proves the shape of the evidence packet and the guardrails. The real issue #69 work still needs at least 60 canonical records, independent review, metrics, overlays, and source-backed dossiers.
+The real-pilot selector pins the approved Issue 77 recovery and successor-graph bytes, fully decodes all 209 derivatives, and enforces canonical source, rights, attribution, component, split, payload, and normalized-URL gates. It currently yields 26 mechanically eligible records: 16 in the ranked visual-review pool and 10 reserves. The ignored output, index, and contact sheet are bound by a tracked descriptor. These are acquisition candidates only: metadata/aerial markers are proxies, and the output contains zero verified claims or final selections. The next gate is direct visual promotion review before any dossier, external verification, or benchmark derivation; issue #69 still needs the broader canonical batch, independent review, metrics, overlays, and source-backed dossiers.
 
 ## Important Boundaries
 
