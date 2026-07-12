@@ -1,6 +1,6 @@
 # Gold Label Batch 002: Corrected Phase 1
 
-Issue: #68. Parent: #64. Status: primary and blind passes are sealed with 300 rows each from disjoint 12-reviewer rosters, 300 audit-corrected adjudications are frozen, and 50 post-fix independent audits are aggregated. The 49-row search reviewer pass is sealed from seven independent packet reviewers; search adjudicator and final disposition outputs do not yet exist.
+Issue: #68. Parent: #64. Status: complete local evidence checkpoint. Primary and blind passes, 300 adjudications, 50 post-fix audits, and 49 independently reviewed/adjudicated search dispositions pass the full completion validator with zero blocking issues.
 
 ## Frozen acquisition
 
@@ -38,7 +38,7 @@ Audit findings are applied through owning adjudicators. Completed audit rows rem
 
 Reviewer and adjudicator templates are separate, blank, schema-valid files. Reviewers and adjudicators must use distinct IDs, and adjudicators may see reviewer output only after that reviewer pass is sealed. Reviewer-visible rows contain no live URLs, secrets, or prior decisions.
 
-The canonical reviewer-only artifact is `search/reviewer-pass/labels.jsonl`, bound by `search/reviewer-pass/seal.json` to the packet manifest and completed-result schema. It is not a final search disposition artifact. The seal command rejects incomplete coverage, unsupported positives, inconsistent dispositions, inferred reviewed-gold claims, missing-image policy violations, duplicate reviewer IDs, and any adjudicator-completed output created before the reviewer seal.
+The canonical reviewer-only artifact is `search/reviewer-pass/labels.jsonl`, bound by `search/reviewer-pass/seal.json` to the packet manifest and completed-result schema. It is not a final search disposition artifact. The seal command rejects incomplete coverage, unsupported positives, inconsistent dispositions, inferred reviewed-gold claims, missing-image policy violations, duplicate reviewer IDs, and any adjudicator-completed output created before the reviewer seal. Final reviewer/adjudicator pairs are validated and combined into `search/search-silver-dispositions-v1.jsonl`; reviewer and adjudicator IDs remain row-specific and disjoint.
 
 ## Commands
 
@@ -53,7 +53,9 @@ npm run dataset-factory:search-review-packets-validate-002
 npm run dataset-factory:search-review-packets-self-test-002
 npm run dataset-factory:search-reviewer-seal-002 -- --sealed-at 2026-07-12T12:30:01Z
 npm run dataset-factory:search-reviewer-self-test-002
-npm run dataset-factory:gold-label-validate-002 # expected to fail before labels
+npm run dataset-factory:search-finalize-002
+npm run dataset-factory:search-finalize-self-test-002
+npm run dataset-factory:gold-label-validate-002
 ```
 
-Large artifacts remain ignored at `data/mtl_archives/reports/gold_label_batch_002`. The tracked descriptor is `docs/dataset-factory/fixtures/gold-label-batch-002/phase-1-bundle-v1.json`; its incomplete archive is not uploaded.
+Large artifacts remain ignored at `data/mtl_archives/reports/gold_label_batch_002`. The final tracked descriptor is `docs/dataset-factory/fixtures/gold-label-batch-002/final-bundle-v1.json`. The verified final archive is complete locally. Its approved non-production cache upload stalled with no completed remote object and was interrupted after one bounded diagnosis; publication remains pending without affecting completion validation.

@@ -97,6 +97,8 @@
     "dataset-factory:search-review-packets-self-test-002": "tsx src/dataset-factory/self-test-search-review-packets-002.ts",
     "dataset-factory:search-reviewer-seal-002": "tsx src/dataset-factory/seal-search-reviewer-pass-002.ts",
     "dataset-factory:search-reviewer-self-test-002": "tsx src/dataset-factory/self-test-search-reviewer-pass-002.ts",
+    "dataset-factory:search-finalize-002": "tsx src/dataset-factory/finalize-search-dispositions-002.ts",
+    "dataset-factory:search-finalize-self-test-002": "tsx src/dataset-factory/self-test-search-finalize-002.ts",
     "dataset-factory:gold-label-self-test-002": "tsx src/dataset-factory/self-test-gold-label-batch-002.ts",
     "dataset-factory:gold-label-seal-pass-002": "tsx src/dataset-factory/seal-gold-label-pass-002.ts",
     "dataset-factory:gold-label-audit-plan-002": "tsx src/dataset-factory/build-gold-label-audit-plan-002.ts",
