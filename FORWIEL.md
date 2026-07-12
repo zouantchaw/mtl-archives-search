@@ -19,7 +19,7 @@ Dataset Factory is the offline layer for making search quality measurable. It bu
 
 Issues #65 and #66 made this durable and identity-explicit:
 
-- `docs/dataset-factory/artifact-registry.v0.jsonl` currently records 99 artifacts as an acyclic graph with stable IDs, SHA-256, counts, lineage, commands, dependencies, rights boundaries, and timestamps, including later canonical recovery, Gold Label Batch 002, the Verified Multimodal foundation, and the tracked Issue 69 real-pilot selection descriptor.
+- `docs/dataset-factory/artifact-registry.v0.jsonl` currently records 101 artifacts as an acyclic graph, including the tracked Issue 69 candidate, primary visual-promotion, and independent visual-review descriptors.
 - `docs/dataset-factory/fixtures/v0-smoke/` has tiny tracked fixture rows that let the workflow run in a clean checkout.
 - `npm run dataset-factory:smoke-v0` runs the v0 chain against those fixtures and a local mock search API. It fixes the fixture clock, asserts exact rows/content, and checks a committed output hash; it proves deterministic contract wiring, not live search quality.
 - `npm run dataset-factory:artifacts:self-test` exercises 14 contract/adversarial cases, including a valid in-root file, path-component symlinks, and overlapping members.
@@ -44,9 +44,17 @@ npm run dataset-factory:verified-multimodal-self-test-001
 npm run dataset-factory:real-pilot-candidates-v1
 npm run dataset-factory:real-pilot-candidates-verify-v1
 npm run dataset-factory:real-pilot-candidates-integration-test-v1
+npm run dataset-factory:real-pilot-promotion-v1
+npm run dataset-factory:real-pilot-promotion-self-test-v1
+npm run dataset-factory:real-pilot-promotion-verify-v1
+npm run dataset-factory:real-pilot-promotion-integration-test-v1
+npm run dataset-factory:real-pilot-independent-review-v1
+npm run dataset-factory:real-pilot-independent-review-self-test-v1
+npm run dataset-factory:real-pilot-independent-review-verify-v1
+npm run dataset-factory:real-pilot-independent-review-integration-test-v1
 ```
 
-The real-pilot selector pins the approved Issue 77 recovery and successor-graph bytes, fully decodes all 209 derivatives, and enforces canonical source, rights, attribution, component, split, payload, and normalized-URL gates. It currently yields 26 mechanically eligible records: 16 in the ranked visual-review pool and 10 reserves. The ignored output, index, and contact sheet are bound by a tracked descriptor. These are acquisition candidates only: metadata/aerial markers are proxies, and the output contains zero verified claims or final selections. The next gate is direct visual promotion review before any dossier, external verification, or benchmark derivation; issue #69 still needs the broader canonical batch, independent review, metrics, overlays, and source-backed dossiers.
+The real-pilot selector yields 26 mechanically eligible candidates. A downstream hash-bound primary visual review selected 12 records (6 ground and 6 aerial/control) and retained 4 reserves from direct 256px review. A separate immutable independent review approved all 16 decisions with zero disagreements. Historical verification, completed dossiers, and derived benchmarks remain at zero.
 
 ## Important Boundaries
 

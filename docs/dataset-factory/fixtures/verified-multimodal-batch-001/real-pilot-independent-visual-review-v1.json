@@ -1,0 +1,34 @@
+{
+  "schema_version": "verified_multimodal_real_pilot_independent_visual_review_descriptor_v1.0.0",
+  "successor_contract_sha256": "b3b26b45e9508c5838f5045f6565b77201d19d14fba99c98f20c5ea147e113bf",
+  "scope": "immutable_independent_visual_review_no_external_claims",
+  "primary_promotion_descriptor_sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+  "output_root": "data/mtl_archives/reports/verified_multimodal_batch_001_real_pilot/independent-review",
+  "tree_sha256": "724990f5c92fa2c656a1a609a4381788b679a11a8980ffe12e2b48560b832214",
+  "counts": {
+    "files": 3,
+    "bytes": 23438,
+    "reviewed": 16,
+    "agreements": 16,
+    "disagreements": 0,
+    "verified_claims": 0
+  },
+  "members": [
+    {
+      "path": "independent-review-report-v1.json",
+      "sha256": "2ec3e51eb5530dd290cefd8d938a8db48ae9a613cdfae956e0ae5f339504fe8e",
+      "bytes": 1201
+    },
+    {
+      "path": "independent-review-v1.jsonl",
+      "sha256": "7530283f88beeaae3ee79220d01eefd5712a066e292ee115a6d601c786fa67a0",
+      "bytes": 20318,
+      "rows": 16
+    },
+    {
+      "path": "index.html",
+      "sha256": "82cf9b7d69a3692693895fd61e916864bb59d32c9eb2635866839951cf30e3f5",
+      "bytes": 1919
+    }
+  ]
+}

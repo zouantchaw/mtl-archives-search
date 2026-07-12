@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mtlarchives.com/schemas/real-pilot-visual-promotion-v1/row.v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version","promotion_id","record_id","numeric_id","candidate_id","component_id","source_identity_sha256","input_candidate_descriptor_sha256","identity_hashes","image_hashes","disposition","lane","visually_observed_scene_elements","lane_confirmation","evidence_opportunities","hard_control_role","explicit_uncertainties_and_abstentions","resolution_limitations","reviewer_id","reviewed_image","proxy_vs_verified_boundary","historical_verification_status","dossier_status","benchmark_status"],
+  "properties": {
+    "schema_version":{"const":"verified_multimodal_real_pilot_visual_promotion_v1.0.0"},
+    "promotion_id":{"type":"string","pattern":"^real-pilot-visual-promotion:[a-f0-9]{24}$"},
+    "record_id":{"type":"string","pattern":"^mtl_archives_metadata_[0-9]+\\.json$"},
+    "numeric_id":{"enum":[0,10,100,101,102,103,104,105,8132,8134,8139,8143,10145,10595,11045,11118]},
+    "candidate_id":{"type":"string","pattern":"^real-pilot-candidate:[a-f0-9]{24}$"},
+    "component_id":{"type":"string","minLength":1},
+    "source_identity_sha256":{"$ref":"#/$defs/hash"},
+    "input_candidate_descriptor_sha256":{"const":"7c3729108057b374f2a108d0e3f556abcbec402d071b89268269c71340f9b96f"},
+    "identity_hashes":{"type":"object","additionalProperties":false,"required":["record_identity_sha256","candidate_row_sha256","component_identity_sha256","source_identity_sha256"],"properties":{"record_identity_sha256":{"$ref":"#/$defs/hash"},"candidate_row_sha256":{"$ref":"#/$defs/hash"},"component_identity_sha256":{"$ref":"#/$defs/hash"},"source_identity_sha256":{"$ref":"#/$defs/hash"}}},
+    "image_hashes":{"type":"object","additionalProperties":false,"required":["derivative_sha256","normalized_pixel_sha256","recovered_payload_sha256"],"properties":{"derivative_sha256":{"$ref":"#/$defs/hash"},"normalized_pixel_sha256":{"anyOf":[{"$ref":"#/$defs/hash"},{"type":"null"}]},"recovered_payload_sha256":{"anyOf":[{"$ref":"#/$defs/hash"},{"type":"null"}]}}},
+    "disposition":{"enum":["selected","reserve"]},
+    "lane":{"enum":["ground_ocr_entity_place","aerial_land_use_georeference"]},
+    "visually_observed_scene_elements":{"type":"array","minItems":1,"uniqueItems":true,"items":{"type":"string","minLength":1}},
+    "lane_confirmation":{"type":"string","minLength":1},
+    "evidence_opportunities":{"type":"array","uniqueItems":true,"items":{"type":"string","minLength":1}},
+    "hard_control_role":{"type":"string","minLength":1},
+    "explicit_uncertainties_and_abstentions":{"type":"array","minItems":1,"uniqueItems":true,"items":{"type":"string","minLength":1}},
+    "resolution_limitations":{"const":"Direct review used only the bound 256x256 derivative; fine text, exact identity, date, location, scale, and georeference are not established by these pixels."},
+    "reviewer_id":{"const":"sol-high-primary-019f57f4-0222-7750-8a88-330fdf3a74cc"},
+    "reviewed_image":{"type":"object","additionalProperties":false,"required":["path","sha256","width","height"],"properties":{"path":{"type":"string","pattern":"^\\.\\./\\.\\./canonical_image_recovery_v1/derivatives/mtl_archives_metadata_[0-9]+\\.jpg$"},"sha256":{"$ref":"#/$defs/hash"},"width":{"const":256},"height":{"const":256}}},
+    "proxy_vs_verified_boundary":{"type":"object","additionalProperties":false,"required":["candidate_proxy","visual_review","historical_verification","verified_claim_count"],"properties":{"candidate_proxy":{"const":"candidate metadata and lane markers remain unverified acquisition proxies"},"visual_review":{"const":"scene elements are direct visual observations from the bound 256px derivative only"},"historical_verification":{"const":"none; external/source-backed verification has not started"},"verified_claim_count":{"const":0}}},
+    "historical_verification_status":{"const":"not_started"},"dossier_status":{"const":"not_started"},"benchmark_status":{"const":"not_derived"}
+  },
+  "allOf":[
+    {"if":{"properties":{"numeric_id":{"enum":[0,10,100,101,102,105,8132,8134,8139,8143,10145,11118]}}},"then":{"properties":{"disposition":{"const":"selected"}}}},
+    {"if":{"properties":{"numeric_id":{"enum":[103,104,10595,11045]}}},"then":{"properties":{"disposition":{"const":"reserve"}}}}
+  ],
+  "$defs":{"hash":{"type":"string","pattern":"^[a-f0-9]{64}$"}}
+}
