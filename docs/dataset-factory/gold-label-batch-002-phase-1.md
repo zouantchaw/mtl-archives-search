@@ -1,6 +1,6 @@
 # Gold Label Batch 002: Corrected Phase 1
 
-Issue: #68. Parent: #64. Status: primary and blind passes are sealed with 300 rows each from disjoint 12-reviewer rosters, and 300 audit-corrected adjudications are frozen. Two completed audit outputs remain unaggregated; search dispositions do not yet exist.
+Issue: #68. Parent: #64. Status: primary and blind passes are sealed with 300 rows each from disjoint 12-reviewer rosters, 300 audit-corrected adjudications are frozen, and 50 post-fix independent audits are aggregated. Search dispositions do not yet exist.
 
 ## Frozen acquisition
 
@@ -30,7 +30,7 @@ Binary targets are trainable only with at least 100 promoted observed rows and 3
 
 Phase validation accepts both sealed review passes and exact adjudication coverage. A separate neutral audit candidate plan covers at least 50 neutral IDs, every target, disagreement/change risk, class-balance risk, blocking outcomes, and every promoted high-risk claim. It contains no audit decision or auditor identity and does not satisfy the audit gate.
 
-Audit findings are applied through owning adjudicators. Completed audit rows remain bound to `audit-candidate-plan-pre-findings-v1.jsonl`; their candidate IDs must not be reinterpreted against the regenerated post-findings plan ordering. `audit-authority-compatibility-v1.json` records the exact pre-findings plan/adjudication hashes, corrected adjudication hash, decision counts, and all applied finding rows. Audit decisions remain unaggregated, so completion intentionally advances to `at least 50 independent audits required`.
+Audit findings are applied through owning adjudicators. Completed audit rows remain bound to `audit-candidate-plan-pre-findings-v1.jsonl`; their candidate IDs must not be reinterpreted against the regenerated post-findings plan ordering. `audit-authority-compatibility-v1.json` records the exact pre-findings plan/adjudication hashes, corrected adjudication hash, post-fix audit hashes, and all applied finding rows. The canonical `audits-v1.jsonl` contains 50 independent post-fix affirmations. Completion intentionally advances to `search requires exact 49 source/authority/disposition rows`.
 
 ## Commands
 

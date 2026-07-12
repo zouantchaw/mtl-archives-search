@@ -5,13 +5,13 @@
   "upload_status": "not_uploaded",
   "cache_key": null,
   "bundle": {
-    "sha256": "5279011c5f233e591d8974dcdd00821cb64dbffdd8a4e88759f4111e7318f7ad",
-    "bytes": 244621793
+    "sha256": "563427e453f0bcc6794b71eddd514e36c8b4d8f42feb87d7ab20fd3b4d0337f3",
+    "bytes": 244624140
   },
-  "tree_sha256": "88d94c1e897c7b146d49039f53210fdb4c2f27b40498c1b520984c962f0deb01",
+  "tree_sha256": "c497e32af1f203be67144c420da8007f75beec22183d49f116ddd8edc1fe1661",
   "counts": {
-    "files": 1326,
-    "bytes": 269156095
+    "files": 1327,
+    "bytes": 269195048
   },
   "members": [
     {
@@ -21,8 +21,8 @@
     },
     {
       "path": "data/mtl_archives/reports/gold_label_batch_002/adjudication/audit-authority-compatibility-v1.json",
-      "bytes": 1125,
-      "sha256": "bac4761445524c2d7af1e00978610d9063d089d44ca131a967494b117ff7dbf7"
+      "bytes": 1530,
+      "sha256": "96f12ed9c732d6689248f3d2e18acb1ff22f5e0e98e4c7c40135515083d00b6f"
     },
     {
       "path": "data/mtl_archives/reports/gold_label_batch_002/adjudication/audit-candidate-plan-manifest-v1.json",
@@ -46,18 +46,23 @@
     },
     {
       "path": "data/mtl_archives/reports/gold_label_batch_002/adjudication/audits-part-01.completed.jsonl",
-      "bytes": 17145,
-      "sha256": "c9a14657426d8c9696a987870f1d6d8e9c41bbdff52879fbc4bd611934f4c44e"
+      "bytes": 16650,
+      "sha256": "c7966dbcc3ca6ef4966ad026af85d10296bfc61b69873a4cf91e98bf27a0b8f5"
     },
     {
       "path": "data/mtl_archives/reports/gold_label_batch_002/adjudication/audits-part-02.completed.jsonl",
-      "bytes": 13893,
-      "sha256": "2791663fd5a255427874dfcfec78ec3d9686160b08d54807ba88f4c58cc92848"
+      "bytes": 13512,
+      "sha256": "ec8a655b26e95262db4743461847551b80dc6fa92bb8794b88f7a5142b197502"
     },
     {
       "path": "data/mtl_archives/reports/gold_label_batch_002/adjudication/audits-v1.jsonl",
-      "bytes": 0,
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      "bytes": 30162,
+      "sha256": "d10ab264e1d4ec6c825d6cc555bc9239253067eff31b968cea5c4bf7a96f4a8f"
+    },
+    {
+      "path": "data/mtl_archives/reports/gold_label_batch_002/adjudication/completion-report-v1.json",
+      "bytes": 9262,
+      "sha256": "e03ed386576731cf5d307f2688142d47affe834e772b277b48ddce6d480f9620"
     },
     {
       "path": "data/mtl_archives/reports/gold_label_batch_002/batch/proxy-coverage-v1.json",
