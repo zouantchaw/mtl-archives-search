@@ -2,8 +2,21 @@
   "schema_version": "gold_label_batch_002_final_bundle_v1.0.0",
   "artifact_contract": "complete_reviewed_gold_label_batch_002",
   "complete_labels": true,
-  "upload_status": "upload_failed_stalled_no_remote_object",
-  "cache_key": null,
+  "upload_status": "uploaded_to_r2_hash_bound",
+  "cache_key": "artifacts/mtl-archives/gold-label-batch-002/9a36710f1b658f48e6afef1a05ebd29419320903734f5febab75d08b0f5c1f43.tar.gz",
+  "durable_archive": {
+    "storage_class": "object_store",
+    "provider": "cloudflare_r2",
+    "bucket": "wiel-codex-worker-cache",
+    "object_key": "artifacts/mtl-archives/gold-label-batch-002/9a36710f1b658f48e6afef1a05ebd29419320903734f5febab75d08b0f5c1f43.tar.gz",
+    "sha256": "9a36710f1b658f48e6afef1a05ebd29419320903734f5febab75d08b0f5c1f43",
+    "locator": "r2://wiel-codex-worker-cache/artifacts/mtl-archives/gold-label-batch-002/9a36710f1b658f48e6afef1a05ebd29419320903734f5febab75d08b0f5c1f43.tar.gz"
+  },
+  "local_evidence": {
+    "storage_class": "local_filesystem",
+    "path_class": "repo_ignored_local",
+    "locator": "data/mtl_archives/reports/gold_label_batch_002"
+  },
   "bundle": {
     "sha256": "9a36710f1b658f48e6afef1a05ebd29419320903734f5febab75d08b0f5c1f43",
     "bytes": 273387461
@@ -7755,6 +7768,6 @@
       "sha256": "de89a06bd8bc833fcf83de852365c008c5f4902a56523a575763bc2d70fd92bd"
     }
   ],
-  "attempted_cache_key": "bundles/issue-68/gold-label-batch-002-final-v1-9a36710f1b658f48e6afef1a05ebd29419320903734f5febab75d08b0f5c1f43.tar.gz",
-  "upload_attempt": "Interrupted after 21 minutes with an established HTTPS socket, no completed remote object, and no readback. No signed URL was generated."
+  "previous_attempted_cache_key": "bundles/issue-68/gold-label-batch-002-final-v1-9a36710f1b658f48e6afef1a05ebd29419320903734f5febab75d08b0f5c1f43.tar.gz",
+  "durable_publication": "Coordinator uploaded the sealed final tarball to Cloudflare R2 bucket wiel-codex-worker-cache at object key artifacts/mtl-archives/gold-label-batch-002/9a36710f1b658f48e6afef1a05ebd29419320903734f5febab75d08b0f5c1f43.tar.gz. The object key is hash-bound to the bundle SHA-256. No temporary or signed URL is recorded."
 }
