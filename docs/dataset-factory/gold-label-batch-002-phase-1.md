@@ -1,6 +1,6 @@
 # Gold Label Batch 002: Corrected Phase 1
 
-Issue: #68. Parent: #64. Status: primary pass sealed with 300 rows from 12 packet reviewers; blind labels, adjudications, audits, and search dispositions do not yet exist.
+Issue: #68. Parent: #64. Status: primary and blind passes are sealed with 300 rows each from disjoint 12-reviewer rosters; adjudications, audits, and search dispositions do not yet exist.
 
 ## Frozen acquisition
 
@@ -16,7 +16,7 @@ Worker packet rows expose only `schema_version`, neutral ID, packet ID, original
 
 Primary and blind review rows use `gold_label_review_pass_v1.0.0`, not `dataset_factory_label_v0`. Every target is `observed`, `not_visible`, or `uncertain`; observed values require direct pixel evidence and abstentions require explicit reasons. No inferred, metadata, or externally verified claims are allowed in a review pass. Sealed pass sidecars carry sorted reviewer rosters: every row keeps its actual agent reviewer ID, every roster member must own rows, and primary/blind reviewer sets must be disjoint.
 
-Each packet includes nonempty validating primary/blind templates and an example. Actual pass files remain empty with `not_started` seals bound to the packet-manifest and review-schema hashes. Reviewers must have independent IDs. Only trusted adjudication, after both passes are sealed, may read `batch/trusted-neutral-map-v1.jsonl` to map neutral IDs to records/source/rights.
+Each packet includes nonempty validating primary/blind templates and an example. Both completed passes are sealed to their sorted canonical rows, packet manifest, and review schema. Reviewers have independent IDs and disjoint pass rosters. Only trusted adjudication, after both passes are sealed, may read `batch/trusted-neutral-map-v1.jsonl` to map neutral IDs to records/source/rights.
 
 ## Resolution policy
 
@@ -28,7 +28,7 @@ For selected #77 recovery rows, rendering retries bounded public R2 and authorit
 
 Binary targets are trainable only with at least 100 promoted observed rows and 30 minority examples. Multiclass targets report support and abstention and remain non-trainable when support is insufficient. Fewer than 200 promotions requires a schema-valid, independent continuation approval with a concrete acquisition plan; file presence alone is not a bypass.
 
-The phase-1 validator currently passes. Completion intentionally advances to `blind pass is absent or unsealed`.
+Phase validation accepts both sealed review passes. Completion intentionally advances to `adjudication coverage`; no visual dispute has been adjudicated by the aggregation process.
 
 ## Commands
 
