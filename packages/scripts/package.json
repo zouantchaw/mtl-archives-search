@@ -94,6 +94,7 @@
     "dataset-factory:search-silver-adjudicate-002": "tsx src/dataset-factory/adjudicate-search-silver-002.ts",
     "dataset-factory:gold-label-self-test-002": "tsx src/dataset-factory/self-test-gold-label-batch-002.ts",
     "dataset-factory:gold-label-seal-pass-002": "tsx src/dataset-factory/seal-gold-label-pass-002.ts",
+    "dataset-factory:gold-label-audit-plan-002": "tsx src/dataset-factory/build-gold-label-audit-plan-002.ts",
     "dataset-factory:gold-label-bundle-002": "tsx src/dataset-factory/gold-label-batch-002-bundle.ts",
     "dataset-factory:production-apply-gate-v0": "tsx src/dataset-factory/build-production-apply-gate-v0.ts",
     "dataset-factory:production-scoped-apply-v0": "tsx src/dataset-factory/build-production-scoped-apply-v0.ts",

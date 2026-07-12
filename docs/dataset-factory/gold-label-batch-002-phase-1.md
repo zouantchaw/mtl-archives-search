@@ -1,6 +1,6 @@
 # Gold Label Batch 002: Corrected Phase 1
 
-Issue: #68. Parent: #64. Status: primary and blind passes are sealed with 300 rows each from disjoint 12-reviewer rosters; adjudications, audits, and search dispositions do not yet exist.
+Issue: #68. Parent: #64. Status: primary and blind passes are sealed with 300 rows each from disjoint 12-reviewer rosters, and 300 independent adjudications are frozen; audit decisions and search dispositions do not yet exist.
 
 ## Frozen acquisition
 
@@ -28,7 +28,7 @@ For selected #77 recovery rows, rendering retries bounded public R2 and authorit
 
 Binary targets are trainable only with at least 100 promoted observed rows and 30 minority examples. Multiclass targets report support and abstention and remain non-trainable when support is insufficient. Fewer than 200 promotions requires a schema-valid, independent continuation approval with a concrete acquisition plan; file presence alone is not a bypass.
 
-Phase validation accepts both sealed review passes. Completion intentionally advances to `adjudication coverage`; no visual dispute has been adjudicated by the aggregation process.
+Phase validation accepts both sealed review passes and exact adjudication coverage. A separate neutral audit candidate plan covers at least 50 neutral IDs, every target, disagreement/change risk, class-balance risk, blocking outcomes, and every promoted high-risk claim. It contains no audit decision or auditor identity and does not satisfy the audit gate. Completion intentionally advances to `at least 50 independent audits required`.
 
 ## Commands
 
@@ -37,6 +37,7 @@ DATASET_FACTORY_FIXED_NOW=2026-07-11T20:00:00.000Z npm run dataset-factory:gold-
 DATASET_FACTORY_FIXED_NOW=2026-07-11T20:00:00.000Z npm run dataset-factory:gold-label-packets-002 -- --concurrency 8
 npm run dataset-factory:gold-label-self-test-002
 npm run dataset-factory:gold-label-seal-pass-002 -- --pass primary --labels /path/to/completed.jsonl --sealed-at 2026-07-12T00:00:00.000Z
+npm run dataset-factory:gold-label-audit-plan-002
 npm run dataset-factory:gold-label-validate-002 # expected to fail before labels
 ```
 
