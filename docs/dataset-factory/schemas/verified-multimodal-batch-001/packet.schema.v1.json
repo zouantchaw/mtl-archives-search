@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mtlarchives.com/schemas/verified-multimodal-packet-v1.json",
+  "title": "Verified Multimodal Intelligence Packet v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "batch_id", "pilot_scope", "record_id", "synthetic_fixture", "lane", "source_metadata", "rights_attribution", "regions", "evidence", "visual_observations", "source_metadata_claims", "inferred_hypotheses", "externally_verified_claims", "rejected_hypotheses", "abstentions", "review_state"],
+  "properties": {
+    "schema_version": { "const": "verified_multimodal_packet_v1.0.0" },
+    "batch_id": { "const": "verified_multimodal_batch_001" },
+    "pilot_scope": { "enum": ["synthetic_hermetic_foundation", "canonical_real_slice"] },
+    "record_id": { "$ref": "#/$defs/nonblank" },
+    "synthetic_fixture": { "type": "boolean" },
+    "lane": { "$ref": "#/$defs/lane" },
+    "source_metadata": {
+      "type": "object", "additionalProperties": false,
+      "required": ["source_kind", "title", "archive_record_url", "archive_identifier", "date_label", "family_id", "component_id", "source_snapshot_digest"],
+      "properties": {
+        "source_kind": { "enum": ["synthetic_mock", "canonical_real"] }, "title": { "$ref": "#/$defs/nonblank" }, "archive_record_url": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/stableHttpsUrl" }] },
+        "archive_identifier": { "$ref": "#/$defs/nonblank" }, "date_label": { "$ref": "#/$defs/nonblank" }, "family_id": { "$ref": "#/$defs/nonblank" },
+        "component_id": { "$ref": "#/$defs/nonblank" }, "source_snapshot_digest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "rights_attribution": {
+      "type": "object", "additionalProperties": false,
+      "required": ["source_license_id", "attribution", "rights_url", "commercial_use_allowed", "notes"],
+      "properties": { "source_license_id": { "$ref": "#/$defs/nonblank" }, "attribution": { "$ref": "#/$defs/nonblank" }, "rights_url": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/stableHttpsUrl" }] }, "commercial_use_allowed": { "type": "boolean" }, "notes": { "$ref": "#/$defs/nonblank" } }
+    },
+    "regions": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/region" } },
+    "evidence": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/evidence" } },
+    "visual_observations": { "type": "array", "items": { "$ref": "#/$defs/visualClaim" } },
+    "source_metadata_claims": { "type": "array", "items": { "$ref": "#/$defs/metadataClaim" } },
+    "inferred_hypotheses": { "type": "array", "items": { "$ref": "#/$defs/inferenceClaim" } },
+    "externally_verified_claims": { "type": "array", "items": { "$ref": "#/$defs/externalClaim" } },
+    "rejected_hypotheses": { "type": "array", "items": { "$ref": "#/$defs/rejectedClaim" } },
+    "abstentions": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["target", "reason", "evidence_boundary"], "properties": { "target": { "$ref": "#/$defs/nonblank" }, "reason": { "$ref": "#/$defs/nonblank" }, "evidence_boundary": { "$ref": "#/$defs/nonblank" } } } },
+    "review_state": { "type": "object", "additionalProperties": false, "required": ["reviewer_ids", "status", "reviewer_independence_checked"], "properties": { "reviewer_ids": { "type": "array", "prefixItems": [{ "$ref": "#/$defs/nonblank" }, { "$ref": "#/$defs/nonblank" }, { "$ref": "#/$defs/nonblank" }], "items": false, "minItems": 3, "maxItems": 3, "uniqueItems": true }, "status": { "enum": ["pilot_reviewed", "needs_review"] }, "reviewer_independence_checked": { "const": true } } }
+  },
+  "oneOf": [
+    { "type": "object", "properties": { "pilot_scope": { "const": "synthetic_hermetic_foundation" }, "synthetic_fixture": { "const": true }, "source_metadata": { "type": "object", "properties": { "source_kind": { "const": "synthetic_mock" }, "archive_record_url": { "type": "null" } } }, "rights_attribution": { "type": "object", "properties": { "rights_url": { "type": "null" } } }, "evidence": { "type": "array", "items": { "type": "object", "properties": { "boundary": { "enum": ["visual_observation", "source_metadata", "inference"] } } } }, "externally_verified_claims": { "type": "array", "maxItems": 0 } } },
+    { "type": "object", "properties": { "pilot_scope": { "const": "canonical_real_slice" }, "synthetic_fixture": { "const": false }, "source_metadata": { "type": "object", "properties": { "source_kind": { "const": "canonical_real" }, "archive_record_url": { "$ref": "#/$defs/stableHttpsUrl" } } }, "rights_attribution": { "type": "object", "properties": { "rights_url": { "$ref": "#/$defs/stableHttpsUrl" } } } } }
+  ],
+  "$defs": {
+    "nonblank": { "type": "string", "pattern": "\\S" },
+    "digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "lane": { "enum": ["ground_ocr_entity_place", "aerial_land_use_georeference"] },
+    "boundary": { "enum": ["visual_observation", "source_metadata", "inference", "externally_verified"] },
+    "nullableNonblank": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/nonblank" }] },
+    "point": { "type": "array", "prefixItems": [{ "type": "number", "minimum": 0, "maximum": 100 }, { "type": "number", "minimum": 0, "maximum": 100 }], "items": false, "minItems": 2, "maxItems": 2 },
+    "region": { "type": "object", "additionalProperties": false, "required": ["region_id", "kind", "label", "bbox_xyxy_pct", "polygon_pct"], "properties": { "region_id": { "$ref": "#/$defs/nonblank" }, "kind": { "enum": ["bbox", "polygon", "whole_image"] }, "label": { "$ref": "#/$defs/nonblank" }, "bbox_xyxy_pct": { "anyOf": [{ "type": "null" }, { "type": "array", "items": { "type": "number", "minimum": 0, "maximum": 100 }, "minItems": 4, "maxItems": 4 }] }, "polygon_pct": { "anyOf": [{ "type": "null" }, { "type": "array", "items": { "$ref": "#/$defs/point" }, "minItems": 3 }] } }, "allOf": [{ "if": { "properties": { "kind": { "const": "whole_image" } }, "required": ["kind"] }, "then": { "properties": { "bbox_xyxy_pct": { "type": "null" }, "polygon_pct": { "type": "null" } } } }, { "if": { "properties": { "kind": { "const": "bbox" } }, "required": ["kind"] }, "then": { "properties": { "bbox_xyxy_pct": { "type": "array" }, "polygon_pct": { "type": "null" } } } }, { "if": { "properties": { "kind": { "const": "polygon" } }, "required": ["kind"] }, "then": { "properties": { "bbox_xyxy_pct": { "type": "null" }, "polygon_pct": { "type": "array", "minItems": 3 } } } }] },
+    "basis": { "type": "object", "additionalProperties": false, "required": ["basis_type", "description", "control_point_ids"], "properties": { "basis_type": { "enum": ["georeference", "scale"] }, "description": { "$ref": "#/$defs/nonblank" }, "control_point_ids": { "type": "array", "items": { "$ref": "#/$defs/nonblank" }, "uniqueItems": true } }, "allOf": [{ "if": { "type": "object", "properties": { "basis_type": { "const": "georeference" } }, "required": ["basis_type"] }, "then": { "type": "object", "properties": { "control_point_ids": { "type": "array", "minItems": 3 } } } }] },
+    "stableHttpsUrl": { "type": "string", "format": "uri", "pattern": "^https://[^?#]+$" },
+    "evidence": {
+      "type": "object", "additionalProperties": false,
+      "required": ["evidence_id", "boundary", "region_id", "external_source_url", "external_source_note", "source_metadata_field", "georeference_or_scale_basis"],
+      "properties": { "evidence_id": { "$ref": "#/$defs/nonblank" }, "boundary": { "$ref": "#/$defs/boundary" }, "region_id": { "$ref": "#/$defs/nullableNonblank" }, "external_source_url": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/stableHttpsUrl" }] }, "external_source_note": { "$ref": "#/$defs/nullableNonblank" }, "source_metadata_field": { "$ref": "#/$defs/nullableNonblank" }, "georeference_or_scale_basis": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/basis" }] } },
+      "allOf": [
+        { "if": { "type": "object", "properties": { "boundary": { "const": "visual_observation" } }, "required": ["boundary"] }, "then": { "type": "object", "properties": { "region_id": { "$ref": "#/$defs/nonblank" }, "external_source_url": { "type": "null" }, "external_source_note": { "type": "null" }, "source_metadata_field": { "type": "null" }, "georeference_or_scale_basis": { "type": "null" } } } },
+        { "if": { "type": "object", "properties": { "boundary": { "const": "source_metadata" } }, "required": ["boundary"] }, "then": { "type": "object", "properties": { "region_id": { "type": "null" }, "external_source_url": { "type": "null" }, "external_source_note": { "type": "null" }, "source_metadata_field": { "enum": ["source_kind", "title", "archive_identifier", "date_label", "family_id", "component_id", "source_snapshot_digest"] }, "georeference_or_scale_basis": { "type": "null" } } } },
+        { "if": { "type": "object", "properties": { "boundary": { "const": "inference" } }, "required": ["boundary"] }, "then": { "type": "object", "properties": { "external_source_url": { "type": "null" }, "external_source_note": { "type": "null" }, "source_metadata_field": { "type": "null" }, "georeference_or_scale_basis": { "type": "null" } } } },
+        { "if": { "type": "object", "properties": { "boundary": { "const": "externally_verified" } }, "required": ["boundary"] }, "then": { "type": "object", "properties": { "region_id": { "type": "null" }, "external_source_url": { "$ref": "#/$defs/stableHttpsUrl" }, "external_source_note": { "$ref": "#/$defs/nonblank" }, "source_metadata_field": { "type": "null" } } } }
+      ]
+    },
+    "claim": { "type": "object", "additionalProperties": false, "required": ["claim_id", "lane", "text", "boundary", "evidence_ids", "confidence", "alternatives", "verified_status", "review_status", "review_flags", "exact_location", "asserts_area_or_distance", "benchmark_eligible"], "properties": { "claim_id": { "$ref": "#/$defs/nonblank" }, "lane": { "$ref": "#/$defs/lane" }, "text": { "$ref": "#/$defs/nonblank" }, "boundary": { "$ref": "#/$defs/boundary" }, "evidence_ids": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/nonblank" } }, "confidence": { "enum": ["low", "medium", "high"] }, "alternatives": { "type": "array", "items": { "$ref": "#/$defs/nonblank" } }, "verified_status": { "enum": ["not_verified", "externally_verified"] }, "review_status": { "enum": ["accepted", "unresolved", "rejected"] }, "review_flags": { "type": "array", "items": { "$ref": "#/$defs/nonblank" } }, "exact_location": { "type": "boolean" }, "asserts_area_or_distance": { "type": "boolean" }, "benchmark_eligible": { "type": "boolean" } } },
+    "visualClaim": { "allOf": [{ "$ref": "#/$defs/claim" }, { "type": "object", "properties": { "boundary": { "const": "visual_observation" }, "verified_status": { "const": "not_verified" }, "benchmark_eligible": { "const": false } } }] },
+    "metadataClaim": { "allOf": [{ "$ref": "#/$defs/claim" }, { "type": "object", "properties": { "boundary": { "const": "source_metadata" }, "verified_status": { "const": "not_verified" }, "benchmark_eligible": { "const": false } } }] },
+    "inferenceClaim": { "allOf": [{ "$ref": "#/$defs/claim" }, { "type": "object", "properties": { "boundary": { "const": "inference" }, "verified_status": { "const": "not_verified" }, "benchmark_eligible": { "const": false } } }] },
+    "externalClaim": { "allOf": [{ "$ref": "#/$defs/claim" }, { "type": "object", "properties": { "boundary": { "const": "externally_verified" }, "verified_status": { "const": "externally_verified" }, "review_status": { "const": "accepted" } } }] },
+    "rejectedClaim": { "allOf": [{ "$ref": "#/$defs/claim" }, { "type": "object", "properties": { "review_status": { "const": "rejected" }, "verified_status": { "const": "not_verified" }, "benchmark_eligible": { "const": false } } }] }
+  }
+}
