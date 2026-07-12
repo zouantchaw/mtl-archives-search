@@ -58,4 +58,4 @@ The current run-report schema is specifically the synthetic pilot variant. `deri
 
 ## Current Gap
 
-Issue #69 still requires at least 60 real canonical records, at least 25 deeply verified dossiers, reviewed OCR/entity/place/aerial/abstention metrics, overlays/contact sheets, and independent reviewer inspection of every fully verified dossier. This foundation only proves the versioned contract and fail-closed mechanics on four synthetic records.
+The canonical-real path now has 12 primary visual selections and 4 reserves from direct 256px review. A separate immutable independent review approved all 16 decisions with zero disagreements. Historical verification, completed dossiers, and derived benchmarks are all zero. Issue #69 still requires at least 60 real canonical records, at least 25 deeply verified dossiers, reviewed metrics, and independent reviewer inspection of every fully verified dossier.

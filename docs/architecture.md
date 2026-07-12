@@ -285,7 +285,7 @@ approved recovery + successor graph bytes -> full derivative decode + canonical 
 
 - `npm run dataset-factory:real-pilot-candidates-v1` verifies approved descriptor, recovery, corpus, graph, node, map, split, and local-manifest bytes before selection; validates manifest-declared members; fully decodes all 209 derivative JPEGs; and applies canonical rights, attribution, source, normalized URL, component, split, image, and payload gates.
 - `npm run dataset-factory:real-pilot-candidates-verify-v1` verifies exact recursive membership and hashes for the ignored selection report, candidate/exclusion JSONL, HTML index, and contact sheet against `docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-selection-v1.json`. `npm run dataset-factory:real-pilot-candidates-integration-test-v1` exercises deterministic rebuild and tamper boundaries.
-- The 16 ranked rows and 10 reserves are visual-review acquisition candidates, not labels. Metadata/aerial markers are ranking proxies only. The stage has zero verified claims, dossiers, benchmark tasks, and final selections. Direct visual promotion review is the next gate; issue #69 acceptance remains open.
+- The downstream visual-promotion stage consumes the exact tracked candidate descriptor and binds 12 primary selections plus 4 reserves to candidate, component, source, payload, image, and reviewer identities. A separate immutable independent-review stage binds the exact promotion descriptor, rows, and images and records 16 agreements with zero disagreements. Historical verification, dossiers, and benchmarks remain zero.
 
 ### 9. Canonical Corpus v1 (Read-Only Reconciliation)
 

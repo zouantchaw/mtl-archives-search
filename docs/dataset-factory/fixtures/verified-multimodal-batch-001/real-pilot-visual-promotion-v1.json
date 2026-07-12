@@ -1,0 +1,39 @@
+{
+  "schema_version": "verified_multimodal_real_pilot_visual_promotion_descriptor_v1.0.0",
+  "successor_contract_sha256": "b3b26b45e9508c5838f5045f6565b77201d19d14fba99c98f20c5ea147e113bf",
+  "scope": "primary_visual_selection_only_no_historical_verification",
+  "input_candidate_descriptor_sha256": "7c3729108057b374f2a108d0e3f556abcbec402d071b89268269c71340f9b96f",
+  "output_root": "data/mtl_archives/reports/verified_multimodal_batch_001_real_pilot/promotion",
+  "tree_sha256": "366bc2e66b9ca863c117a249197cccef8627b04017da065f21960f34f84c2c87",
+  "counts": {
+    "files": 4,
+    "bytes": 370674,
+    "reviewed": 16,
+    "selected": 12,
+    "reserves": 4,
+    "verified_claims": 0
+  },
+  "members": [
+    {
+      "path": "contact-sheets/selected-and-reserves-01.jpg",
+      "sha256": "d8130bb0303f2ce1fb7b5cbfc639bc0a461f273f03c478ebf1bb31fc7b4f7c7e",
+      "bytes": 321194
+    },
+    {
+      "path": "index.html",
+      "sha256": "528d02101fe60db6b89df227d66bdbdf2b869f9e618a5f6b440f16ad261dd6eb",
+      "bytes": 5094
+    },
+    {
+      "path": "promotion-report-v1.json",
+      "sha256": "aef3866f05ff400264879e5747d12cf7f58299920d0a22fe764aeb2623432a05",
+      "bytes": 1180
+    },
+    {
+      "path": "promotions-v1.jsonl",
+      "sha256": "a5bb7a11953f4c2e8b7dfd20c121b3456e208253c27bb5dfaf20343179fead6c",
+      "bytes": 43206,
+      "rows": 16
+    }
+  ]
+}
