@@ -1,0 +1,20 @@
+{
+  "schema_version": "real_pilot_source_acquisition_promotion_bindings_v1.0.0",
+  "candidate_descriptor_sha256": "7c3729108057b374f2a108d0e3f556abcbec402d071b89268269c71340f9b96f",
+  "promotion_descriptor_sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+  "independent_review_descriptor_sha256": "e614092da109c9fc90802dafae1b62741669aa748323bb43b98c2ad6235513e7",
+  "records": [
+    {"numeric_id":0,"record_id":"mtl_archives_metadata_0.json","candidate_id":"real-pilot-candidate:d5840e50396f5124e8b1be6a","promotion_id":"real-pilot-visual-promotion:264a19dfb5f4d24056783065","source_identity_sha256":"27244163cdf2f07157cdb9a11dcfdd0d885d8a316ca2efe689ff3d6aedc5ead8"},
+    {"numeric_id":10,"record_id":"mtl_archives_metadata_10.json","candidate_id":"real-pilot-candidate:e7d702545f2cb29ce3b44c74","promotion_id":"real-pilot-visual-promotion:d1152808045b123573d4c427","source_identity_sha256":"af204fe44c25b98f18f04c45937abbcea04a1ac8c40ba1040c97eb6f08d006d9"},
+    {"numeric_id":100,"record_id":"mtl_archives_metadata_100.json","candidate_id":"real-pilot-candidate:98f0cfb8fe9efa0671192295","promotion_id":"real-pilot-visual-promotion:876789e477fd1ec3c324a944","source_identity_sha256":"2fb69c810b30986142b42c25820ad5b5994c582c1501340e04ad5c836e731776"},
+    {"numeric_id":101,"record_id":"mtl_archives_metadata_101.json","candidate_id":"real-pilot-candidate:378285605a3a245234fa4095","promotion_id":"real-pilot-visual-promotion:da9a854b03a99d1d5e31b400","source_identity_sha256":"c6eb7155895d325c9157a59d2ee1cc5cdf4f3b237195e24c965e9724076a1d37"},
+    {"numeric_id":102,"record_id":"mtl_archives_metadata_102.json","candidate_id":"real-pilot-candidate:78363c5144c7310435c5d219","promotion_id":"real-pilot-visual-promotion:44f62e0e7be157e63bb14055","source_identity_sha256":"44ff5a7cbdde5fb01bcd958a1c5030bb917555395d5f39c177e7500df8149ca0"},
+    {"numeric_id":105,"record_id":"mtl_archives_metadata_105.json","candidate_id":"real-pilot-candidate:5fb88775d033287f3fce1e83","promotion_id":"real-pilot-visual-promotion:341994723a456461d9a28fdf","source_identity_sha256":"56387c9a45905f439257e436695d45b5359d9c0ae0e2390cc80ac817987c46f9"},
+    {"numeric_id":8132,"record_id":"mtl_archives_metadata_8132.json","candidate_id":"real-pilot-candidate:8fc6dda3f55b62be192c21be","promotion_id":"real-pilot-visual-promotion:c46a9700d345005545f3449b","source_identity_sha256":"0dda40dbcf7c4b6041672703129b3c1aeb9eaf35c5c510a62cd34fdbe20f4754"},
+    {"numeric_id":8134,"record_id":"mtl_archives_metadata_8134.json","candidate_id":"real-pilot-candidate:406ae53425523dc4b59daf0e","promotion_id":"real-pilot-visual-promotion:6def01c1c5c867ef81537481","source_identity_sha256":"f8bc34fef51963feec46bda8c4bc97e624ff6b0bd1b97d89f75f6e04c9d5899b"},
+    {"numeric_id":8139,"record_id":"mtl_archives_metadata_8139.json","candidate_id":"real-pilot-candidate:b14e1b66dfbd5b5de1bbb4b9","promotion_id":"real-pilot-visual-promotion:51364ccc0b05306bb35307d0","source_identity_sha256":"b77b966e8f6e6cd2da09e690aabca46580177450e36a4fee5d4915493dbc3569"},
+    {"numeric_id":8143,"record_id":"mtl_archives_metadata_8143.json","candidate_id":"real-pilot-candidate:df51d1ea6da13c46247da168","promotion_id":"real-pilot-visual-promotion:4b10287ae491eb7b1357805c","source_identity_sha256":"9eacc370a149755e3e4f4673a73776f405a96f01176e0ec298fd219fafbc7c5c"},
+    {"numeric_id":10145,"record_id":"mtl_archives_metadata_10145.json","candidate_id":"real-pilot-candidate:81b7cbd21b0f03b0aa268960","promotion_id":"real-pilot-visual-promotion:2f01b958da6bd9d12a550034","source_identity_sha256":"833b4254cf3a3998c39a14afd5ee2901e2621d3e269e056973d94697710cfcc4"},
+    {"numeric_id":11118,"record_id":"mtl_archives_metadata_11118.json","candidate_id":"real-pilot-candidate:d60a43114595eba0f0aced71","promotion_id":"real-pilot-visual-promotion:de13a81e7e714370ca199001","source_identity_sha256":"ba75f603e5b61d09d32f3c4022c210edcf4fb10edb7b33c2a7da3b06f4c0a13b"}
+  ]
+}

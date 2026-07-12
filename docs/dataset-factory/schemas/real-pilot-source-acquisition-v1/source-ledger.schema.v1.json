@@ -1,0 +1,237 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "review_descriptor_sha256",
+    "selected_ids",
+    "sources"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "verified_multimodal_real_pilot_source_acquisition_v1.0.0"
+    },
+    "review_descriptor_sha256": {
+      "const": "e614092da109c9fc90802dafae1b62741669aa748323bb43b98c2ad6235513e7"
+    },
+    "selected_ids": {
+      "const": [0, 10, 100, 101, 102, 105, 8132, 8134, 8139, 8143, 10145, 11118]
+    },
+    "sources": {
+      "type": "array",
+      "maxItems": 17,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "key",
+          "kind",
+          "requested_url",
+          "final_url",
+          "redirects",
+          "status",
+          "acquired_at",
+          "verified"
+        ],
+        "properties": {
+          "key": { "type": "string", "minLength": 1 },
+          "kind": { "enum": ["csv", "official_page", "image_sample"] },
+          "numeric_id": {
+            "enum": [
+              0, 10, 100, 101, 102, 105, 8132, 8134, 8139, 8143, 10145, 11118
+            ]
+          },
+          "requested_url": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https://[^?#]+$"
+          },
+          "final_url": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https://[^?#]+$"
+          },
+          "redirects": {
+            "type": "array",
+            "maxItems": 5,
+            "items": {
+              "type": "string",
+              "format": "uri",
+              "pattern": "^https://[^?#]+$"
+            }
+          },
+          "status": { "type": "integer", "minimum": 100, "maximum": 599 },
+          "content_type": { "$ref": "#/$defs/nullableString" },
+          "content_length": { "$ref": "#/$defs/nullableString" },
+          "content_range": { "$ref": "#/$defs/nullableString" },
+          "etag": { "$ref": "#/$defs/nullableString" },
+          "last_modified": { "$ref": "#/$defs/nullableString" },
+          "accept_ranges": { "$ref": "#/$defs/nullableString" },
+          "bytes": { "type": "integer", "minimum": 1, "maximum": 8388608 },
+          "sha256": { "$ref": "#/$defs/hash" },
+          "snapshot_path": {
+            "type": "string",
+            "pattern": "^snapshot/[^/]+\\.(html|csv)$"
+          },
+          "signed_redirect": { "$ref": "#/$defs/signedRedirect" },
+          "head": { "$ref": "#/$defs/head" },
+          "sample": { "$ref": "#/$defs/sample" },
+          "limitation": { "type": "string", "minLength": 1 },
+          "acquired_at": { "type": "string", "format": "date-time" },
+          "verified": { "const": true }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": { "kind": { "enum": ["csv", "official_page"] } }
+            },
+            "then": {
+              "required": [
+                "content_type",
+                "content_length",
+                "content_range",
+                "etag",
+                "last_modified",
+                "accept_ranges",
+                "bytes",
+                "sha256",
+                "snapshot_path"
+              ]
+            }
+          },
+          {
+            "if": { "properties": { "kind": { "const": "image_sample" } } },
+            "then": {
+              "required": ["numeric_id", "head", "sample", "limitation"],
+              "properties": { "status": { "const": 206 } }
+            }
+          },
+          {
+            "if": { "properties": { "key": { "const": "ground_csv" } } },
+            "then": {
+              "required": ["signed_redirect", "limitation"],
+              "properties": {
+                "final_url": {
+                  "const": "https://donnees.montreal.ca/fr/dataset/cc3fbf3d-f93c-479d-a807-9ae042721aba/resource/41f0cec9-2110-452e-a93d-8f29190ee2ae/download/photothequearchives.csv"
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "nullableString": { "type": ["string", "null"] },
+    "hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "signedRedirect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "redirect_host",
+        "redirect_path",
+        "query_parameter_names",
+        "signed_transport_redacted"
+      ],
+      "properties": {
+        "redirect_host": { "const": "montreal-prod.storage.googleapis.com" },
+        "redirect_path": {
+          "type": "string",
+            "pattern": "^/resources/41f0cec9-2110-452e-a93d-8f29190ee2ae/photothequearchives\\.csv$"
+        },
+          "query_parameter_names": {
+            "const": [
+              "X-Goog-Algorithm",
+              "X-Goog-Credential",
+              "X-Goog-Date",
+              "X-Goog-Expires",
+              "X-Goog-Signature",
+              "X-Goog-SignedHeaders"
+            ]
+          },
+        "signed_transport_redacted": { "const": true }
+      }
+    },
+    "head": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "final_url",
+        "redirects",
+        "content_type",
+        "content_length",
+        "content_range",
+        "etag",
+        "last_modified",
+        "accept_ranges"
+      ],
+      "properties": {
+        "status": { "const": 200 },
+        "final_url": { "type": "string", "format": "uri" },
+        "redirects": {
+          "type": "array",
+          "maxItems": 5,
+          "items": { "type": "string", "format": "uri" }
+        },
+        "content_type": { "$ref": "#/$defs/nullableString" },
+        "content_length": { "type": "string", "pattern": "^[1-9][0-9]*$" },
+        "content_range": { "const": null },
+        "etag": { "$ref": "#/$defs/nullableString" },
+        "last_modified": { "$ref": "#/$defs/nullableString" },
+        "accept_ranges": { "$ref": "#/$defs/nullableString" }
+      },
+      "anyOf": [
+        { "properties": { "etag": { "type": "string", "minLength": 1 } } },
+        {
+          "properties": {
+            "last_modified": { "type": "string", "minLength": 1 }
+          }
+        }
+      ]
+    },
+    "sample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "content_type",
+        "content_length",
+        "content_range",
+        "etag",
+        "last_modified",
+        "accept_ranges",
+        "bytes",
+        "sha256",
+        "magic",
+        "snapshot_path"
+      ],
+      "properties": {
+        "content_type": { "$ref": "#/$defs/nullableString" },
+        "content_length": { "const": "4096" },
+        "content_range": {
+          "type": "string",
+          "pattern": "^bytes 0-4095/[1-9][0-9]+$"
+        },
+        "etag": { "$ref": "#/$defs/nullableString" },
+        "last_modified": { "$ref": "#/$defs/nullableString" },
+        "accept_ranges": { "$ref": "#/$defs/nullableString" },
+        "bytes": { "const": 4096 },
+        "sha256": { "$ref": "#/$defs/hash" },
+        "magic": { "enum": ["jpeg", "tiff", "png"] },
+        "snapshot_path": {
+          "type": "string",
+          "pattern": "^snapshot/image-samples/[0-9]+\\.bin$"
+        }
+      },
+      "anyOf": [
+        { "properties": { "etag": { "type": "string", "minLength": 1 } } },
+        {
+          "properties": {
+            "last_modified": { "type": "string", "minLength": 1 }
+          }
+        }
+      ]
+    }
+  }
+}

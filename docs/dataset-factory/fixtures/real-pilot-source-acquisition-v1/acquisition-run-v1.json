@@ -1,0 +1,28 @@
+{
+  "schema_version": "verified_multimodal_real_pilot_source_acquisition_v1.0.0",
+  "mode": "network_acquisition",
+  "selected_ids": [
+    0,
+    10,
+    100,
+    101,
+    102,
+    105,
+    8132,
+    8134,
+    8139,
+    8143,
+    10145,
+    11118
+  ],
+  "counts": {
+    "expected_sources": 17,
+    "captured": 17,
+    "unresolved": 0
+  },
+  "status": "captured_pending_offline_verification",
+  "limitations": [
+    "Network availability and image samples do not verify source image content or historical claims.",
+    "No aerial geolocation/land use or ground building/brand identity is promoted."
+  ]
+}

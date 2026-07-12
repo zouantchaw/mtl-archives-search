@@ -1,0 +1,95 @@
+{
+  "schema_version": "verified_multimodal_real_pilot_source_acquisition_v1.0.0",
+  "rows": [
+    {
+      "numeric_id": 0,
+      "cote": "VM94,SY,SS1,SSS17,D1",
+      "source_url": "https://depot.ville.montreal.qc.ca/phototheque-archives/jpeg/VM94-Z2.jpg",
+      "csv_row_sha256": "18852ea1f39be30b76ffb02ef19c8410e6cdd5455e94bd1e6624d4f46d0f5535",
+      "official_row": {
+        "Titre": "Rue Saint-Antoine",
+        "Description": "En direction Est, à l'angle de la rue Saint-David (aujourd'hui disparue). On y aperçoit l'Édifice de The Gazette Printing Co ainsi que des panneaux-réclames de Magic Baking Powder et JJ Joubert Limitée.",
+        "Date": "Décennie 1920",
+        "Cote": "VM94,SY,SS1,SSS17,D1",
+        "Fichier tif - 300 dpi": "http://depot.ville.montreal.qc.ca/phototheque-archives/tiff/VM94-Z2.tif",
+        "Fichier jpg - 200 dpi": "http://depot.ville.montreal.qc.ca/phototheque-archives/jpeg/VM94-Z2.jpg",
+        "Mention de crédits": "Archives de la Ville de Montréal"
+      }
+    },
+    {
+      "numeric_id": 10,
+      "cote": "VM94,SY,SS1,SSS17,D12",
+      "source_url": "https://depot.ville.montreal.qc.ca/phototheque-archives/jpeg/VM94-Z13-1.jpg",
+      "csv_row_sha256": "c1ef72ef45c3067d3a0fa0720e615e32415e3fed5a04a78e60c6c3b7ee12e526",
+      "official_row": {
+        "Titre": "Boulevard Saint-Laurent coin avenue des Pins",
+        "Description": "En direction Nord, à partir de la rue de l'Hôtel-Dieu (aujourd'hui avenue des Pins)  On y aperçoit l'édifice abritant le magasin d'alimentation Melachrino et l'Institut Sténographique Perreault au second étage; le salon de barbier Rex, plusieurs autres commerces et un lampadaire à arc.",
+        "Date": "1932",
+        "Cote": "VM94,SY,SS1,SSS17,D12",
+        "Fichier tif - 300 dpi": "http://depot.ville.montreal.qc.ca/phototheque-archives/tiff/VM94-Z13-1.tif",
+        "Fichier jpg - 200 dpi": "http://depot.ville.montreal.qc.ca/phototheque-archives/jpeg/VM94-Z13-1.jpg",
+        "Mention de crédits": "Archives de la Ville de Montréal"
+      }
+    },
+    {
+      "numeric_id": 100,
+      "cote": "VM94,SY,SS1,SSS17,D180,P3",
+      "source_url": "https://depot.ville.montreal.qc.ca/phototheque-archives/jpeg/VM94-Z181-3.jpg",
+      "csv_row_sha256": "1e262377b0fcf5328d6611736b8ff66a164bf89bc7f4f23afc320c9425f050fd",
+      "official_row": {
+        "Titre": "Construction de l’Hôtel Laurentien (angle des rues Peel et Dorchester  - aujourd'hui boulevard René-Lévesque)",
+        "Description": "S/O",
+        "Date": "25-avr.-47",
+        "Cote": "VM94,SY,SS1,SSS17,D180,P3",
+        "Fichier tif - 300 dpi": "http://depot.ville.montreal.qc.ca/phototheque-archives/tiff/VM94-Z181-3.tif",
+        "Fichier jpg - 200 dpi": "http://depot.ville.montreal.qc.ca/phototheque-archives/jpeg/VM94-Z181-3.jpg",
+        "Mention de crédits": "Archives de la Ville de Montréal"
+      }
+    },
+    {
+      "numeric_id": 101,
+      "cote": "VM94,SY,SS1,SSS17,D180,P4",
+      "source_url": "https://depot.ville.montreal.qc.ca/phototheque-archives/jpeg/VM94-Z181-4.jpg",
+      "csv_row_sha256": "4b8840247064b69d8119db4529524a6b86c0624244d64f9fb5b262c833647d08",
+      "official_row": {
+        "Titre": "Rue Osborne (aujourd'hui de Lagauchetière)",
+        "Description": "Prise à l'angle de la rue Stanley, à partir de la gare Windsor. On y voit la maison de chambres Majestic Rooms, l'épicerie Osborne et le Laphkas Bowling Academy.",
+        "Date": "25-avr.-47",
+        "Cote": "VM94,SY,SS1,SSS17,D180,P4",
+        "Fichier tif - 300 dpi": "http://depot.ville.montreal.qc.ca/phototheque-archives/tiff/VM94-Z181-4.tif",
+        "Fichier jpg - 200 dpi": "http://depot.ville.montreal.qc.ca/phototheque-archives/jpeg/VM94-Z181-4.jpg",
+        "Mention de crédits": "Archives de la Ville de Montréal"
+      }
+    },
+    {
+      "numeric_id": 102,
+      "cote": "VM94,SY,SS1,SSS17,D180,P5",
+      "source_url": "https://depot.ville.montreal.qc.ca/phototheque-archives/jpeg/VM94-Z181-5.jpg",
+      "csv_row_sha256": "475bb9f783f36df8b6247df066051bc1cbab99680f69471961eb5e64c4a42af0",
+      "official_row": {
+        "Titre": "Église Saint-Georges (1086, rue Osborne - devenu rue de Lagauchetière)",
+        "Description": "S/O",
+        "Date": "25-avr.-47",
+        "Cote": "VM94,SY,SS1,SSS17,D180,P5",
+        "Fichier tif - 300 dpi": "http://depot.ville.montreal.qc.ca/phototheque-archives/tiff/VM94-Z181-5.tif",
+        "Fichier jpg - 200 dpi": "http://depot.ville.montreal.qc.ca/phototheque-archives/jpeg/VM94-Z181-5.jpg",
+        "Mention de crédits": "Archives de la Ville de Montréal"
+      }
+    },
+    {
+      "numeric_id": 105,
+      "cote": "VM94,SY,SS1,SSS17,D183,P14",
+      "source_url": "https://depot.ville.montreal.qc.ca/phototheque-archives/jpeg/VM94-Z184-14.jpg",
+      "csv_row_sha256": "80e415dd7265cf6826ab0183c3c122decd54b23291494009d0604acaef28787c",
+      "official_row": {
+        "Titre": "Garage Tilden Drive Yourself et Hertz Dri-Ur-Self System (situé à l'intersection des rues Dorchester Ouest – devenu boulevard René-Lévesque Ouest - et Windsor  - devenu rue Peel)",
+        "Description": "Garage spécialisé dans la location de voitures. On y voit des panneaux-réclames de White Rose Gasoline Catelli Egg Noodles fabriqués par la compagnie Claude Neon.",
+        "Date": "04-oct.-45",
+        "Cote": "VM94,SY,SS1,SSS17,D183,P14",
+        "Fichier tif - 300 dpi": "http://depot.ville.montreal.qc.ca/phototheque-archives/tiff/VM94-Z184-14.tif",
+        "Fichier jpg - 200 dpi": "http://depot.ville.montreal.qc.ca/phototheque-archives/jpeg/VM94-Z184-14.jpg",
+        "Mention de crédits": "Archives de la Ville de Montréal"
+      }
+    }
+  ]
+}
