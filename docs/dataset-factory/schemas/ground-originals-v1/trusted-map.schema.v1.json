@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "scenes", "crops"],
+  "properties": {
+    "schema_version": { "const": "ground_originals_v1.0.0" },
+    "scenes": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "neutral_id",
+          "numeric_id",
+          "record_id",
+          "review_path",
+          "review_sha256",
+          "ocr_proposal_path"
+        ],
+        "properties": {
+          "neutral_id": {
+            "type": "string",
+            "pattern": "^ground-review-0[1-6]$"
+          },
+          "numeric_id": { "enum": [0, 10, 100, 101, 102, 105] },
+          "record_id": {
+            "type": "string",
+            "pattern": "^mtl_archives_metadata_(0|10|100|101|102|105)\\.json$"
+          },
+          "review_path": {
+            "type": "string",
+            "pattern": "^review/ground-review-0[1-6]\\.jpg$"
+          },
+          "review_sha256": { "$ref": "#/$defs/hash" },
+          "ocr_proposal_path": {
+            "type": "string",
+            "pattern": "^ocr-(0|10|100|101|102|105)\\.json$"
+          }
+        }
+      }
+    },
+    "crops": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "neutral_crop_id",
+          "parent_neutral_id",
+          "numeric_id",
+          "region_id",
+          "native_xyxy",
+          "crop_path",
+          "crop_sha256"
+        ],
+        "properties": {
+          "neutral_crop_id": { "enum": ["ground-crop-01", "ground-crop-02"] },
+          "parent_neutral_id": { "const": "ground-review-06" },
+          "numeric_id": { "const": 105 },
+          "region_id": { "enum": ["white-rose", "catelli-egg-noodles"] },
+          "native_xyxy": {
+            "type": "array",
+            "minItems": 4,
+            "maxItems": 4,
+            "items": { "type": "integer", "minimum": 0 }
+          },
+          "crop_path": {
+            "type": "string",
+            "pattern": "^crops/ground-crop-0[12]\\.jpg$"
+          },
+          "crop_sha256": { "$ref": "#/$defs/hash" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

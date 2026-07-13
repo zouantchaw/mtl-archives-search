@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "engine",
+    "engine_version",
+    "language",
+    "config",
+    "preprocessing",
+    "coordinate_frame",
+    "original_width",
+    "original_height",
+    "regions",
+    "proposals",
+    "status"
+  ],
+  "properties": {
+    "engine": { "const": "tesseract" },
+    "engine_version": {
+      "type": "string",
+      "pattern": "^tesseract [0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "language": { "const": "eng" },
+    "config": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["oem", "psm"],
+      "properties": { "oem": { "const": 1 }, "psm": { "const": 11 } }
+    },
+    "preprocessing": {
+      "const": "original JPEG; Tesseract coordinates are original-frame; no review-derivative coordinate reuse"
+    },
+    "coordinate_frame": { "const": "orientation-normalized original pixels" },
+    "original_width": { "type": "integer", "minimum": 1 },
+    "original_height": { "type": "integer", "minimum": 1 },
+    "regions": { "type": "array", "minItems": 1 },
+    "proposals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "text",
+          "confidence",
+          "polygon_native",
+          "polygon_normalized",
+          "alternatives"
+        ],
+        "properties": {
+          "text": { "type": "string", "minLength": 1 },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 100 },
+          "polygon_native": { "$ref": "#/$defs/polygon" },
+          "polygon_normalized": { "$ref": "#/$defs/normPolygon" },
+          "alternatives": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "status": { "const": "proposal_only_not_accepted_evidence" }
+  },
+  "$defs": {
+    "point": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "prefixItems": [
+        { "type": "integer", "minimum": 0 },
+        { "type": "integer", "minimum": 0 }
+      ],
+      "items": false
+    },
+    "polygon": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": { "$ref": "#/$defs/point" }
+    },
+    "normPoint": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "prefixItems": [
+        { "type": "number", "minimum": 0, "maximum": 1 },
+        { "type": "number", "minimum": 0, "maximum": 1 }
+      ],
+      "items": false
+    },
+    "normPolygon": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": { "$ref": "#/$defs/normPoint" }
+    }
+  }
+}

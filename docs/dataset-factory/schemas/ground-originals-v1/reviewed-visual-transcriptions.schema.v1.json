@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "input_sha256",
+    "decisions_sha256",
+    "decision_seal_sha256",
+    "reviewer_id",
+    "review_session_id",
+    "identity_claims",
+    "rows"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "ground_originals_reviewed_visual_transcriptions_v1.0.0"
+    },
+    "input_sha256": {
+      "const": "c263eef97d3cd1662954a50748b3f9fadab5cf65ff79ac33ba80b909969699b3"
+    },
+    "decisions_sha256": {
+      "const": "32d85f7815a2ef583e36e988ed330347198db056de04f3fa60bd4e42414c536f"
+    },
+    "decision_seal_sha256": {
+      "const": "fb3892870778ac9a683cada3187190fdd643992987436a2b7623a2b2cf4e3ff6"
+    },
+    "reviewer_id": { "const": "independent-reviewer-pixel-ocr-v1" },
+    "review_session_id": { "const": "independent-session-20260713-ground-v1" },
+    "identity_claims": { "const": 0 },
+    "rows": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "prefixItems": [
+        { "$ref": "#/$defs/first" },
+        { "$ref": "#/$defs/second" }
+      ],
+      "items": false
+    }
+  },
+  "$defs": {
+    "base": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "neutral_crop_id",
+        "parent_neutral_id",
+        "decision",
+        "literal_text",
+        "alternatives",
+        "legibility",
+        "reason",
+        "crop_sha256",
+        "source_region",
+        "evidence_scope",
+        "identity_status"
+      ],
+      "properties": {
+        "neutral_crop_id": { "type": "string" },
+        "parent_neutral_id": { "const": "ground-review-06" },
+        "decision": { "const": "correct" },
+        "literal_text": { "type": "string", "minLength": 1 },
+        "alternatives": { "type": "array", "maxItems": 0 },
+        "legibility": { "enum": ["clear", "partial"] },
+        "reason": { "type": "string", "minLength": 1 },
+        "crop_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "source_region": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "numeric_id",
+            "region_id",
+            "native_xyxy",
+            "original_sha256"
+          ],
+          "properties": {
+            "numeric_id": { "const": 105 },
+            "region_id": { "type": "string" },
+            "native_xyxy": {
+              "type": "array",
+              "minItems": 4,
+              "maxItems": 4,
+              "items": { "type": "integer" }
+            },
+            "original_sha256": {
+              "const": "6addf1dba5df3db948f9241f0162a8c6b0bab4364dbd05b6af096977b0a4c9c8"
+            }
+          }
+        },
+        "evidence_scope": {
+          "const": "literal_visual_transcription_only_not_identity"
+        },
+        "identity_status": { "const": "not_asserted" }
+      }
+    },
+    "first": {
+      "allOf": [
+        { "$ref": "#/$defs/base" },
+        {
+          "type": "object",
+          "properties": {
+            "neutral_crop_id": { "const": "ground-crop-01" },
+            "literal_text": {
+              "const": "WHITE ROSE\nGASOLINE\nTHE PICK OF THEM ALL"
+            },
+            "crop_sha256": {
+              "const": "2315a3d890263177bdc6b76dcca67a8cd79f17ac8f3287bf937f95d316a26bc0"
+            },
+            "source_region": {
+              "type": "object",
+              "properties": {
+                "region_id": { "const": "white-rose" },
+                "native_xyxy": { "const": [2085, 1112, 2871, 1429] }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "second": {
+      "allOf": [
+        { "$ref": "#/$defs/base" },
+        {
+          "type": "object",
+          "properties": {
+            "neutral_crop_id": { "const": "ground-crop-02" },
+            "literal_text": { "const": "CATELLI\nEGG NOODLES" },
+            "crop_sha256": {
+              "const": "04c8232ecdeb0f04319aa4c1344dd233b595e8cf200639a8741a0cd6674c4742"
+            },
+            "source_region": {
+              "type": "object",
+              "properties": {
+                "region_id": { "const": "catelli-egg-noodles" },
+                "native_xyxy": { "const": [316, 866, 714, 1030] }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

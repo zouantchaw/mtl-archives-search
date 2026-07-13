@@ -1,0 +1,73 @@
+{
+  "schema_version": "ground_originals_independent_review_decisions_v1.0.0",
+  "input_sha256": "c263eef97d3cd1662954a50748b3f9fadab5cf65ff79ac33ba80b909969699b3",
+  "reviewer_id": "independent-reviewer-pixel-ocr-v1",
+  "review_session_id": "independent-session-20260713-ground-v1",
+  "reviewer_role": "independent_external_reviewer",
+  "reviewer_independence_confirmed": true,
+  "primary_decisions_consulted": false,
+  "copied_from_primary_decisions": false,
+  "identity_claims": [],
+  "scenes": [
+    {
+      "neutral_id": "ground-review-01",
+      "suitability": "suitable",
+      "mode": "scene_pixel",
+      "abstained": false,
+      "reason": "The frame is sharp and well exposed across the streetscape, with stable detail in buildings, vehicles, roadway, and foreground objects."
+    },
+    {
+      "neutral_id": "ground-review-02",
+      "suitability": "suitable",
+      "mode": "scene_pixel",
+      "abstained": false,
+      "reason": "The frame has sufficient focus, contrast, and spatial detail for visual review despite a bright sky and softer detail in the far distance."
+    },
+    {
+      "neutral_id": "ground-review-03",
+      "suitability": "suitable",
+      "mode": "scene_pixel",
+      "abstained": false,
+      "reason": "The portrait frame preserves clear structural detail throughout the building and foreground, with usable tonal separation despite dark lower areas."
+    },
+    {
+      "neutral_id": "ground-review-04",
+      "suitability": "suitable",
+      "mode": "scene_pixel",
+      "abstained": false,
+      "reason": "The main streetscape is clear and detailed; deep shade beneath the foreground canopy does not prevent review of the central and right-hand scene."
+    },
+    {
+      "neutral_id": "ground-review-05",
+      "suitability": "suitable",
+      "mode": "scene_pixel",
+      "abstained": false,
+      "reason": "Architectural forms, trees, street furniture, and foreground traffic remain discernible, notwithstanding deep shadows and partial tree occlusion."
+    },
+    {
+      "neutral_id": "ground-review-06",
+      "suitability": "suitable",
+      "mode": "scene_pixel",
+      "abstained": false,
+      "reason": "The scene is in focus with adequate contrast and clearly rendered buildings, vehicles, pedestrians, overhead lines, and large sign surfaces."
+    }
+  ],
+  "crops": [
+    {
+      "neutral_crop_id": "ground-crop-01",
+      "decision": "correct",
+      "literal_text": "WHITE ROSE\nGASOLINE\nTHE PICK OF THEM ALL",
+      "alternatives": [],
+      "legibility": "partial",
+      "reason": "These three lines are independently readable from the crop, although vertical street fixtures obscure portions of several letters; the remaining strokes and spacing support a single literal reading."
+    },
+    {
+      "neutral_crop_id": "ground-crop-02",
+      "decision": "correct",
+      "literal_text": "CATELLI\nEGG NOODLES",
+      "alternatives": [],
+      "legibility": "clear",
+      "reason": "Both lines are independently and clearly readable in the crop, with no competing literal transcription visible."
+    }
+  ]
+}

@@ -1,0 +1,309 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "predecessors", "records"],
+  "properties": {
+    "schema_version": { "const": "ground_originals_v1.0.0" },
+    "predecessors": { "$ref": "#/$defs/predecessors" },
+    "records": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "cote",
+          "url",
+          "file",
+          "prefix",
+          "bytes",
+          "sha256",
+          "etag",
+          "last_modified",
+          "content_type",
+          "decode",
+          "transport",
+          "review",
+          "regions",
+          "ocr_path",
+          "neutral_id",
+          "rights"
+        ],
+        "properties": {
+          "id": { "enum": [0, 10, 100, 101, 102, 105] },
+          "cote": { "type": "string", "minLength": 1 },
+          "url": {
+            "type": "string",
+            "pattern": "^https://depot\\.ville\\.montreal\\.qc\\.ca/phototheque-archives/jpeg/[^?#]+\\.jpg$"
+          },
+          "file": {
+            "type": "string",
+            "pattern": "^(0|10|100|101|102|105)\\.jpg$"
+          },
+          "prefix": { "$ref": "#/$defs/hash" },
+          "bytes": { "type": "integer", "minimum": 4096, "maximum": 2097152 },
+          "sha256": { "$ref": "#/$defs/hash" },
+          "etag": { "type": ["string", "null"] },
+          "last_modified": { "type": ["string", "null"] },
+          "content_type": { "const": "image/jpeg" },
+          "decode": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "format",
+              "width",
+              "height",
+              "channels",
+              "orientation",
+              "normalized_width",
+              "normalized_height",
+              "normalized_channels",
+              "pixel_sha256"
+            ],
+            "properties": {
+              "format": { "const": "jpeg" },
+              "width": { "type": "integer", "minimum": 1 },
+              "height": { "type": "integer", "minimum": 1 },
+              "channels": { "type": "integer", "minimum": 1 },
+              "orientation": { "type": ["integer", "null"] },
+              "normalized_width": { "type": "integer", "minimum": 1 },
+              "normalized_height": { "type": "integer", "minimum": 1 },
+              "normalized_channels": { "const": 3 },
+              "pixel_sha256": { "$ref": "#/$defs/hash" }
+            }
+          },
+          "transport": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "head",
+              "full_get",
+              "validator_rule",
+              "object_identity_rule"
+            ],
+            "properties": {
+              "head": { "$ref": "#/$defs/response" },
+              "full_get": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "requested_url",
+                  "effective_url",
+                  "status",
+                  "content_length",
+                  "content_type",
+                  "etag",
+                  "last_modified",
+                  "validators_retained"
+                ],
+                "properties": {
+                  "requested_url": { "type": "string" },
+                  "effective_url": { "type": "string" },
+                  "status": { "const": 200 },
+                  "content_length": { "type": "integer", "minimum": 1 },
+                  "content_type": { "const": "image/jpeg" },
+                  "etag": { "const": null },
+                  "last_modified": { "const": null },
+                  "validators_retained": { "const": false }
+                }
+              },
+              "validator_rule": {
+                "const": "HEAD validators are authoritative; predecessor range GET validators equal HEAD; full GET validators were not retained and must remain null"
+              },
+              "object_identity_rule": {
+                "const": "exact effective URL + HEAD object length/validators + predecessor 4096-byte prefix + full bytes/hash"
+              }
+            }
+          },
+          "review": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "bytes", "sha256", "width", "height"],
+            "properties": {
+              "path": {
+                "type": "string",
+                "pattern": "^review/ground-review-0[1-6]\\.jpg$"
+              },
+              "bytes": { "type": "integer", "minimum": 1, "maximum": 262144 },
+              "sha256": { "$ref": "#/$defs/hash" },
+              "width": { "type": "integer", "minimum": 1, "maximum": 1600 },
+              "height": { "type": "integer", "minimum": 1, "maximum": 1600 }
+            }
+          },
+          "regions": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "$ref": "#/$defs/region" }
+          },
+          "ocr_path": {
+            "type": "string",
+            "pattern": "^ocr-(0|10|100|101|102|105)\\.json$"
+          },
+          "neutral_id": {
+            "type": "string",
+            "pattern": "^ground-review-0[1-6]$"
+          },
+          "rights": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "asset_source_url",
+              "archive_cote",
+              "attribution",
+              "license_id",
+              "license_lineage",
+              "scope"
+            ],
+            "properties": {
+              "asset_source_url": { "type": "string" },
+              "archive_cote": { "type": "string" },
+              "attribution": { "const": "Archives de la Ville de Montreal" },
+              "license_id": { "const": "cc-by-4.0" },
+              "license_lineage": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "scope": {
+                "const": "rights lineage only; no historical or visual claim"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "member": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "type": "string" },
+        "sha256": { "$ref": "#/$defs/hash" }
+      }
+    },
+    "response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requested_url",
+        "effective_url",
+        "status",
+        "etag",
+        "last_modified",
+        "content_length",
+        "content_type"
+      ],
+      "properties": {
+        "requested_url": { "type": "string" },
+        "effective_url": { "type": "string" },
+        "status": { "const": 200 },
+        "etag": { "type": "string", "minLength": 1 },
+        "last_modified": { "type": "string", "minLength": 1 },
+        "content_length": { "type": "integer", "minimum": 1 },
+        "content_type": { "const": "image/jpeg" }
+      }
+    },
+    "predecessors": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_acquisition",
+        "intelligence",
+        "selection",
+        "promotion",
+        "independent_review"
+      ],
+      "properties": {
+        "source_acquisition": { "$ref": "#/$defs/member" },
+        "intelligence": { "$ref": "#/$defs/member" },
+        "selection": { "$ref": "#/$defs/member" },
+        "promotion": { "$ref": "#/$defs/member" },
+        "independent_review": { "$ref": "#/$defs/member" }
+      }
+    },
+    "xyxy": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "prefixItems": [
+        { "type": "integer", "minimum": 0 },
+        { "type": "integer", "minimum": 0 },
+        { "type": "integer", "minimum": 0 },
+        { "type": "integer", "minimum": 0 }
+      ],
+      "items": false
+    },
+    "norm": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "prefixItems": [
+        { "type": "number", "minimum": 0, "maximum": 1 },
+        { "type": "number", "minimum": 0, "maximum": 1 },
+        { "type": "number", "minimum": 0, "maximum": 1 },
+        { "type": "number", "minimum": 0, "maximum": 1 }
+      ],
+      "items": false
+    },
+    "transform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_width",
+        "source_height",
+        "target_width",
+        "target_height",
+        "resized_width",
+        "resized_height",
+        "pad_left",
+        "pad_top",
+        "pad_right",
+        "pad_bottom"
+      ],
+      "properties": {
+        "source_width": { "type": "integer", "minimum": 1 },
+        "source_height": { "type": "integer", "minimum": 1 },
+        "target_width": { "const": 256 },
+        "target_height": { "const": 256 },
+        "resized_width": { "type": "integer", "minimum": 1, "maximum": 256 },
+        "resized_height": { "type": "integer", "minimum": 1, "maximum": 256 },
+        "pad_left": { "type": "integer", "minimum": 0 },
+        "pad_top": { "type": "integer", "minimum": 0 },
+        "pad_right": { "type": "integer", "minimum": 0 },
+        "pad_bottom": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "region": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "region_id",
+        "kind",
+        "normalized_xyxy",
+        "native_xyxy",
+        "predecessor_region_id",
+        "predecessor_derivative_xyxy_norm",
+        "predecessor_to_original_transform"
+      ],
+      "properties": {
+        "region_id": { "type": "string" },
+        "kind": { "enum": ["whole_image", "bbox"] },
+        "normalized_xyxy": {
+          "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/norm" }]
+        },
+        "native_xyxy": { "$ref": "#/$defs/xyxy" },
+        "predecessor_region_id": { "type": "string" },
+        "predecessor_derivative_xyxy_norm": {
+          "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/norm" }]
+        },
+        "predecessor_to_original_transform": { "$ref": "#/$defs/transform" }
+      }
+    }
+  }
+}
