@@ -1,0 +1,14 @@
+{
+  "schema_version": "ground_claim_adjudication_v1.0.0",
+  "artifact_id": "ground-claim-adjudication-v1",
+  "stage": "primary_review",
+  "status": "sealed",
+  "reviewer_identity": "sol-medium-implementation-author-issue69-gate-c-v1",
+  "reviewer_role": "implementation_author_and_primary_claim_reviewer",
+  "independent_adjudicator": false,
+  "sealed_at": "2026-07-13T00:00:00.000Z",
+  "sealed_inputs_sha256": "d731599996b4092ba352a6fe687efcf3241728013d8baf497de580bb1510b2f5",
+  "packet_sha256": "fcb43f6d59774e5307697e70d0a610d37b8c5a6143a99ed8bfcb3445418634a3",
+  "reviews_sha256": "522db284d671a468a2a9292e9f88fb6b998f6b859b0a73b1645d1b5bf4db2981",
+  "row_count": 7
+}

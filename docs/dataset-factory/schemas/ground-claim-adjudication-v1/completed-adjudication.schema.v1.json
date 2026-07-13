@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "stage",
+    "status",
+    "adjudicator",
+    "independence_attestation",
+    "sealed_primary_review_sha256",
+    "sealed_inputs_sha256",
+    "sealed_at",
+    "rows"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "ground_claim_adjudication_v1.0.0"
+    },
+    "artifact_id": {
+      "const": "ground-claim-adjudication-v1"
+    },
+    "stage": {
+      "const": "independent_adjudication"
+    },
+    "status": {
+      "const": "sealed"
+    },
+    "adjudicator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "identity",
+        "role",
+        "model_route",
+        "review_session_id"
+      ],
+      "properties": {
+        "identity": {
+          "type": "string",
+          "minLength": 8
+        },
+        "role": {
+          "const": "fresh_independent_claim_adjudicator"
+        },
+        "model_route": {
+          "const": "sol_high"
+        },
+        "review_session_id": {
+          "type": "string",
+          "minLength": 8
+        }
+      }
+    },
+    "independence_attestation": {
+      "const": "I independently inspected the sealed inputs and primary review; I am not the implementation author or primary reviewer."
+    },
+    "sealed_primary_review_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "sealed_inputs_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "sealed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "rows": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "claim_id",
+          "disposition",
+          "confidence",
+          "rationale",
+          "supporting_evidence_source_ids",
+          "opposing_evidence_source_ids",
+          "independent_support_family_ids",
+          "limitations",
+          "promotion_eligible",
+          "promotion_contract"
+        ],
+        "properties": {
+          "claim_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "disposition": {
+                "enum": [
+                  "held",
+                  "rejected",
+                  "abstained"
+            ]
+          },
+          "confidence": {
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "rationale": {
+            "type": "string",
+            "minLength": 1
+          },
+          "supporting_evidence_source_ids": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "opposing_evidence_source_ids": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "independent_support_family_ids": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "limitations": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "promotion_eligible": {
+            "const": false
+          },
+          "promotion_contract": {
+            "type": "null"
+          }
+        }
+      }
+    }
+  }
+}

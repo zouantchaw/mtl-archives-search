@@ -1,0 +1,164 @@
+{
+  "schema_version": "ground_claim_adjudication_v1.0.0",
+  "artifact_id": "ground-claim-adjudication-v1",
+  "stage": "independent_adjudication",
+  "status": "sealed",
+  "adjudicator": {
+    "identity": "019f5cea-fa84-7da0-be11-29d272f96521",
+    "role": "fresh_independent_claim_adjudicator",
+    "model_route": "sol_high",
+    "review_session_id": "019f5cea-fa84-7da0-be11-29d272f96521"
+  },
+  "independence_attestation": "I independently inspected the sealed inputs and primary review; I am not the implementation author or primary reviewer.",
+  "sealed_primary_review_sha256": "a80d7477c1e6bf64ed07678a2958d209ed0b76b6901cd308f3b26ea51b3ff2cf",
+  "sealed_inputs_sha256": "d731599996b4092ba352a6fe687efcf3241728013d8baf497de580bb1510b2f5",
+  "sealed_at": "2026-07-13T19:25:16.000Z",
+  "rows": [
+    {
+      "claim_id": "c0-lovell",
+      "disposition": "abstained",
+      "confidence": "low",
+      "rationale": "The sealed support is solely a researcher-authored manual transcription that remains unreviewed. It establishes neither the exact directory text independently nor any link from the two listings to record 0's photographed scene.",
+      "supporting_evidence_source_ids": [
+        "r0-lovell-1927"
+      ],
+      "opposing_evidence_source_ids": [],
+      "independent_support_family_ids": [
+        "banq-lovell-1927"
+      ],
+      "limitations": [
+        "No independently reviewed directory pixels or transcription are sealed.",
+        "No reviewed visual region establishes Gillett, Magic, or Gazette identity in record 0."
+      ],
+      "promotion_eligible": false,
+      "promotion_contract": null
+    },
+    {
+      "claim_id": "c0-rpcq",
+      "disposition": "held",
+      "confidence": "medium",
+      "rationale": "The captured RPCQ response matched the bounded record, Gazette, year, and 1000-address marker concepts, so the source observation is credible enough to retain. The opposing Lovell observation supplies an unresolved 100-address alternative but remains an unreviewed manual transcription, and neither source links the proposition to the photographed scene.",
+      "supporting_evidence_source_ids": [
+        "r0-rpcq-gazette"
+      ],
+      "opposing_evidence_source_ids": [
+        "r0-lovell-1927"
+      ],
+      "independent_support_family_ids": [
+        "rpcq-register"
+      ],
+      "limitations": [
+        "Marker co-occurrence in the bounded official page does not independently resolve the 100 versus 1000 conflict.",
+        "No sealed visual evidence establishes Gazette identity or scene linkage."
+      ],
+      "promotion_eligible": false,
+      "promotion_contract": null
+    },
+    {
+      "claim_id": "c10-spelling",
+      "disposition": "held",
+      "confidence": "medium",
+      "rationale": "The sealed packet faithfully preserves two different source-family observations, Perrault in the unreviewed Lovell transcription and Perreault in same-family City predecessor metadata. The discrepancy is material but cannot be resolved because neither reading has independent reviewed corroboration.",
+      "supporting_evidence_source_ids": [
+        "r10-lovell-1932-a",
+        "r10-city-archive-predecessor"
+      ],
+      "opposing_evidence_source_ids": [],
+      "independent_support_family_ids": [
+        "banq-lovell-1932",
+        "city-vm94-z-series"
+      ],
+      "limitations": [
+        "The Lovell spelling is a manual transcription pending review.",
+        "The City CSV row and associated archive item evidence remain one family and cannot self-corroborate."
+      ],
+      "promotion_eligible": false,
+      "promotion_contract": null
+    },
+    {
+      "claim_id": "c100-date",
+      "disposition": "held",
+      "confidence": "medium",
+      "rationale": "The sealed sources do expose the three stated date signals, but they refer to distinct concepts: construction year, dossier range, and approximate photograph date. Two signals are unreviewed manual catalogue transcriptions, and the packet does not establish enough shared event or scene identity to adjudicate the apparent incompatibility.",
+      "supporting_evidence_source_ids": [
+        "r100-rpcq-laurentien",
+        "r100-lapresse-dossier",
+        "r100-armour-landry"
+      ],
+      "opposing_evidence_source_ids": [],
+      "independent_support_family_ids": [
+        "banq-armour-landry-3232855",
+        "banq-lapresse-4159254",
+        "rpcq-document-105269"
+      ],
+      "limitations": [
+        "Construction, dossier, and photograph dates are not interchangeable metrics.",
+        "No exact photographed-scene date or identity is independently corroborated."
+      ],
+      "promotion_eligible": false,
+      "promotion_contract": null
+    },
+    {
+      "claim_id": "c101-laphkas",
+      "disposition": "rejected",
+      "confidence": "medium",
+      "rationale": "Even if the unreviewed 1927 La Presse transcription is accurate, a 1927 Caron Building/Bleury locator cannot establish the claim's negative 'not Osborne' proposition for the later photographed scene. The claim exceeds both the temporal boundary and the sealed evidence.",
+      "supporting_evidence_source_ids": [
+        "r101-lapresse-1927"
+      ],
+      "opposing_evidence_source_ids": [],
+      "independent_support_family_ids": [
+        "banq-lapresse-3095625"
+      ],
+      "limitations": [
+        "The only source is an unreviewed manual transcription.",
+        "No pinned evidence places or excludes Laphkas at Osborne in the photographed scene."
+      ],
+      "promotion_eligible": false,
+      "promotion_contract": null
+    },
+    {
+      "claim_id": "c102-date-address",
+      "disposition": "held",
+      "confidence": "medium",
+      "rationale": "The City predecessor row and two marker-complete official pages preserve the stated date and address variants across three support families. They do not resolve 1086, 1001, and 1101 into one exact address or prove that every value describes the same building state and event.",
+      "supporting_evidence_source_ids": [
+        "r102-city-record",
+        "r102-rpcq-st-george",
+        "r102-parks-st-george"
+      ],
+      "opposing_evidence_source_ids": [],
+      "independent_support_family_ids": [
+        "city-vm94-z-series",
+        "parks-register",
+        "rpcq-document-105269"
+      ],
+      "limitations": [
+        "The 1001, 1101, and 1086 Osborne variants remain unresolved.",
+        "RPCQ document 105269 is one evidentiary family across all bounded observations."
+      ],
+      "promotion_eligible": false,
+      "promotion_contract": null
+    },
+    {
+      "claim_id": "c105-tilden",
+      "disposition": "abstained",
+      "confidence": "low",
+      "rationale": "The whole reviewed scene visibly contains Tilden and HERTZ wording, while the only formal independently reviewed crop transcriptions establish WHITE ROSE and CATELLI text. Those pixels do not establish Lovell's exact address proposition, and the sole directory support is an unreviewed manual transcription; no corporate, entity, or operator join is justified.",
+      "supporting_evidence_source_ids": [
+        "r105-lovell-1944"
+      ],
+      "opposing_evidence_source_ids": [],
+      "independent_support_family_ids": [
+        "banq-lovell-1944"
+      ],
+      "limitations": [
+        "Tilden and HERTZ wording is visible only at whole-scene scope and is not a formal independently reviewed crop transcription.",
+        "The formal reviewed crops establish only WHITE ROSE and CATELLI literal text.",
+        "No sealed evidence establishes 1130 Windsor near Dorchester, a Tilden-Hertz join, an entity/operator attribution, or a scene-address link."
+      ],
+      "promotion_eligible": false,
+      "promotion_contract": null
+    }
+  ]
+}

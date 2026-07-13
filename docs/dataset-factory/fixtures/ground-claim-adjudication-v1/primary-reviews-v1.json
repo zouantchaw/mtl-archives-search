@@ -1,0 +1,188 @@
+{
+  "schema_version": "ground_claim_adjudication_v1.0.0",
+  "artifact_id": "ground-claim-adjudication-v1",
+  "stage": "primary_review",
+  "reviewer": {
+    "identity": "sol-medium-implementation-author-issue69-gate-c-v1",
+    "role": "implementation_author_and_primary_claim_reviewer",
+    "model_route": "sol_medium",
+    "independent_adjudicator": false
+  },
+  "packet_sha256": "fcb43f6d59774e5307697e70d0a610d37b8c5a6143a99ed8bfcb3445418634a3",
+  "rows": [
+    {
+      "claim_id": "c0-lovell",
+      "disposition": "abstained",
+      "confidence": "low",
+      "rationale": "The only support is an unreviewed manual directory transcription. It does not independently establish the transcription or connect either listing to the photographed scene.",
+      "supporting_evidence_source_ids": [
+        "r0-lovell-1927"
+      ],
+      "opposing_evidence_source_ids": [],
+      "independent_support_family_ids": [
+        "banq-lovell-1927"
+      ],
+      "family_independence_assessment": "Families are counted once; shared editions, registers, predecessor/item rows, duplicate URLs, and duplicate bodies cannot self-corroborate.",
+      "limitations": [
+        "No independently reviewed directory pixels are pinned.",
+        "No image region supports a Gillett, Magic, or Gazette identity."
+      ],
+      "promotion_eligible": false,
+      "promotion_blockers": [
+        "fresh_independent_adjudication_missing",
+        "promotion_contract_not_satisfied"
+      ]
+    },
+    {
+      "claim_id": "c0-rpcq",
+      "disposition": "held",
+      "confidence": "medium",
+      "rationale": "The marker-complete RPCQ observation supports the 1000 Saint-Antoine proposition as a source observation, but the unreviewed Lovell transcription supplies an unresolved 100 alternative and there is no second independent corroborating family.",
+      "supporting_evidence_source_ids": [
+        "r0-rpcq-gazette"
+      ],
+      "opposing_evidence_source_ids": [
+        "r0-lovell-1927"
+      ],
+      "independent_support_family_ids": [
+        "rpcq-register"
+      ],
+      "family_independence_assessment": "Families are counted once; shared editions, registers, predecessor/item rows, duplicate URLs, and duplicate bodies cannot self-corroborate.",
+      "limitations": [
+        "Marker matching proves bounded page content, not scene identity.",
+        "The 100 versus 1000 conflict is unresolved."
+      ],
+      "promotion_eligible": false,
+      "promotion_blockers": [
+        "fresh_independent_adjudication_missing",
+        "promotion_contract_not_satisfied"
+      ]
+    },
+    {
+      "claim_id": "c10-spelling",
+      "disposition": "held",
+      "confidence": "medium",
+      "rationale": "The claim accurately records a spelling conflict between two families, but the Lovell reading is an unreviewed manual transcription and neither spelling is independently corroborated for promotion.",
+      "supporting_evidence_source_ids": [
+        "r10-lovell-1932-a",
+        "r10-city-archive-predecessor"
+      ],
+      "opposing_evidence_source_ids": [],
+      "independent_support_family_ids": [
+        "banq-lovell-1932",
+        "city-vm94-z-series"
+      ],
+      "family_independence_assessment": "Families are counted once; shared editions, registers, predecessor/item rows, duplicate URLs, and duplicate bodies cannot self-corroborate.",
+      "limitations": [
+        "Toponymy rows do not corroborate the surname.",
+        "The City row and its item URL are one archive family."
+      ],
+      "promotion_eligible": false,
+      "promotion_blockers": [
+        "fresh_independent_adjudication_missing",
+        "promotion_contract_not_satisfied"
+      ]
+    },
+    {
+      "claim_id": "c100-date",
+      "disposition": "held",
+      "confidence": "medium",
+      "rationale": "The three named families expose incompatible date signals, but two are unreviewed manual catalogue transcriptions and the signals describe different events: construction, dossier range, and approximate photograph date.",
+      "supporting_evidence_source_ids": [
+        "r100-rpcq-laurentien",
+        "r100-lapresse-dossier",
+        "r100-armour-landry"
+      ],
+      "opposing_evidence_source_ids": [],
+      "independent_support_family_ids": [
+        "banq-armour-landry-3232855",
+        "banq-lapresse-4159254",
+        "rpcq-document-105269"
+      ],
+      "family_independence_assessment": "Families are counted once; shared editions, registers, predecessor/item rows, duplicate URLs, and duplicate bodies cannot self-corroborate.",
+      "limitations": [
+        "The date types are not interchangeable.",
+        "No exact photographed-scene date is independently corroborated."
+      ],
+      "promotion_eligible": false,
+      "promotion_blockers": [
+        "fresh_independent_adjudication_missing",
+        "promotion_contract_not_satisfied"
+      ]
+    },
+    {
+      "claim_id": "c101-laphkas",
+      "disposition": "rejected",
+      "confidence": "medium",
+      "rationale": "A 1927 locator may support Caron Building/Bleury after review, but it cannot support the negative phrase \"not Osborne\" for a 1947 scene. The claim overreaches its temporal and evidentiary boundary.",
+      "supporting_evidence_source_ids": [
+        "r101-lapresse-1927"
+      ],
+      "opposing_evidence_source_ids": [],
+      "independent_support_family_ids": [
+        "banq-lapresse-3095625"
+      ],
+      "family_independence_assessment": "Families are counted once; shared editions, registers, predecessor/item rows, duplicate URLs, and duplicate bodies cannot self-corroborate.",
+      "limitations": [
+        "The sole source is an unreviewed manual transcription.",
+        "No pinned evidence places or excludes Laphkas in the photographed scene."
+      ],
+      "promotion_eligible": false,
+      "promotion_blockers": [
+        "fresh_independent_adjudication_missing",
+        "promotion_contract_not_satisfied"
+      ]
+    },
+    {
+      "claim_id": "c102-date-address",
+      "disposition": "held",
+      "confidence": "medium",
+      "rationale": "Three authoritative families expose the stated date and address variants, but they do not independently corroborate one exact address or establish that every value describes the same building state and event.",
+      "supporting_evidence_source_ids": [
+        "r102-city-record",
+        "r102-rpcq-st-george",
+        "r102-parks-st-george"
+      ],
+      "opposing_evidence_source_ids": [],
+      "independent_support_family_ids": [
+        "city-vm94-z-series",
+        "parks-register",
+        "rpcq-document-105269"
+      ],
+      "family_independence_assessment": "Families are counted once; shared editions, registers, predecessor/item rows, duplicate URLs, and duplicate bodies cannot self-corroborate.",
+      "limitations": [
+        "1001, 1101, and 1086 Osborne remain unresolved.",
+        "RPCQ document 105269 is one family across records 100 and 102."
+      ],
+      "promotion_eligible": false,
+      "promotion_blockers": [
+        "fresh_independent_adjudication_missing",
+        "promotion_contract_not_satisfied"
+      ]
+    },
+    {
+      "claim_id": "c105-tilden",
+      "disposition": "abstained",
+      "confidence": "low",
+      "rationale": "The whole scene visibly contains Tilden and HERTZ wording, while the formal independently reviewed crop transcriptions establish only WHITE ROSE and CATELLI. Neither the visible wording nor the unreviewed manual Lovell transcription establishes Lovell's exact 1130 Windsor-near-Dorchester proposition, a Tilden-Hertz corporate join, a billboard operator, or an address; the transport-only LAC lead is not evidence.",
+      "supporting_evidence_source_ids": [
+        "r105-lovell-1944"
+      ],
+      "opposing_evidence_source_ids": [],
+      "independent_support_family_ids": [
+        "banq-lovell-1944"
+      ],
+      "family_independence_assessment": "Families are counted once; shared editions, registers, predecessor/item rows, duplicate URLs, and duplicate bodies cannot self-corroborate.",
+      "limitations": [
+        "Tilden and HERTZ wording is visible in the whole scene but is not a formal independently reviewed crop transcription.",
+        "The formal independently reviewed crops establish only WHITE ROSE and CATELLI literal text.",
+        "No pinned evidence establishes Lovell's exact 1130 Windsor-near-Dorchester directory proposition, a Tilden-Hertz corporate join, a billboard operator, or an address."
+      ],
+      "promotion_eligible": false,
+      "promotion_blockers": [
+        "fresh_independent_adjudication_missing",
+        "promotion_contract_not_satisfied"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "gate_status",
+    "promotion_policy",
+    "plain_english",
+    "counts",
+    "primary_reviewer_identity",
+    "independent_adjudicator_identity",
+    "independent_adjudicator_review_session_id",
+    "independent_adjudication_sha256",
+    "independent_adjudication_authority",
+    "promotion_authority",
+    "issue_69_open",
+    "production_mutation",
+    "final_output_files_present"
+  ],
+  "properties": {
+    "schema_version": { "const": "ground_claim_adjudication_v1.0.0" },
+    "artifact_id": { "const": "ground-claim-adjudication-v1" },
+    "gate_status": { "const": "independent_adjudication_complete_no_promotion" },
+    "promotion_policy": { "const": "gate_c_no_promotion_requires_new_pinned_reviewed_evidence_gate" },
+    "plain_english": { "type": "string", "minLength": 1 },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["accepted", "held", "rejected", "abstained", "promotion_eligible", "accepted_claim_outputs", "verified_dossiers", "benchmark_tasks", "search_tasks"],
+      "properties": {
+        "accepted": { "const": 0 },
+        "held": { "const": 4 },
+        "rejected": { "const": 1 },
+        "abstained": { "const": 2 },
+        "promotion_eligible": { "const": 0 },
+        "accepted_claim_outputs": { "const": 0 },
+        "verified_dossiers": { "const": 0 },
+        "benchmark_tasks": { "const": 0 },
+        "search_tasks": { "const": 0 }
+      }
+    },
+    "primary_reviewer_identity": { "const": "sol-medium-implementation-author-issue69-gate-c-v1" },
+    "independent_adjudicator_identity": { "const": "019f5cea-fa84-7da0-be11-29d272f96521" },
+    "independent_adjudicator_review_session_id": { "const": "019f5cea-fa84-7da0-be11-29d272f96521" },
+    "independent_adjudication_sha256": { "const": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf" },
+    "independent_adjudication_authority": { "const": true },
+    "promotion_authority": { "const": false },
+    "issue_69_open": { "const": true },
+    "production_mutation": { "const": false },
+    "final_output_files_present": { "type": "array", "maxItems": 0 }
+  }
+}

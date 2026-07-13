@@ -1,0 +1,53 @@
+{
+  "schema_version": "ground_claim_adjudication_v1.0.0",
+  "artifact_id": "ground-claim-adjudication-v1",
+  "sealed_at": "2026-07-13T00:00:00.000Z",
+  "gate_b_commit": "eead4a62e519373e736a3914cd755fc41c3ece14",
+  "pins": [
+    {
+      "path": "docs/dataset-factory/fixtures/ground-authoritative-research-v1/capture-ledger-v1.json",
+      "bytes": 85876,
+      "sha256": "1b30fd0d66ebc36d88bcfdcb2f2fb57aa49b3d2325dc7590f6fe866d60055ee9"
+    },
+    {
+      "path": "docs/dataset-factory/fixtures/ground-authoritative-research-v1/descriptor-v1.json",
+      "bytes": 772,
+      "sha256": "24b441ba8ecd25ab98f2c4c2202b4f8312945adaea6cd5b32f67d9c9ce8184f0"
+    },
+    {
+      "path": "docs/dataset-factory/fixtures/ground-authoritative-research-v1/manifest-v1.json",
+      "bytes": 1134,
+      "sha256": "06c720f18e86b2ed9cd391e631efa05a09d9486d2633627f7d99046e6f6be8d1"
+    },
+    {
+      "path": "docs/dataset-factory/fixtures/ground-authoritative-research-v1/pending-claims-v1.json",
+      "bytes": 6445,
+      "sha256": "231eae5b3d1d3ea4cf4b2baa23d2ba4028a91e65a8a98851ab9ec5760eb835d9"
+    },
+    {
+      "path": "docs/dataset-factory/fixtures/ground-authoritative-research-v1/source-graph-v1.json",
+      "bytes": 5136,
+      "sha256": "8a1a2bab56710634ab94e99ec4a5956e9ffa990ebddf6fe78a9e5c91b624c7c7"
+    },
+    {
+      "path": "docs/dataset-factory/fixtures/ground-originals-v1/descriptor-v1.json",
+      "bytes": 4288,
+      "sha256": "d7d4c2dd3b220f2a1b30bfa2f76c6ae59cbf7d924d1a5fb4e3167c604526c7dc"
+    },
+    {
+      "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+      "bytes": 1907,
+      "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372"
+    }
+  ],
+  "claim_ids": [
+    "c0-lovell",
+    "c0-rpcq",
+    "c10-spelling",
+    "c100-date",
+    "c101-laphkas",
+    "c102-date-address",
+    "c105-tilden"
+  ],
+  "source_family_graph_sha256": "8a1a2bab56710634ab94e99ec4a5956e9ffa990ebddf6fe78a9e5c91b624c7c7"
+}

@@ -1,0 +1,50 @@
+{
+  "schema_version": "ground_claim_adjudication_v1.0.0",
+  "artifact_id": "ground-claim-adjudication-v1",
+  "scope": "completed_independent_adjudication_authority_no_promotion",
+  "created_at": "2026-07-13T00:00:00.000Z",
+  "predecessor_artifact_id": "ground-authoritative-research-v1",
+  "authority_member": "independent-adjudication-v1.json",
+  "authority_sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+  "approved_adjudicator_identity": "019f5cea-fa84-7da0-be11-29d272f96521",
+  "approved_review_session_id": "019f5cea-fa84-7da0-be11-29d272f96521",
+  "manifest": [
+    {
+      "path": "claim-packets-v1.json",
+      "bytes": 18019,
+      "sha256": "fcb43f6d59774e5307697e70d0a610d37b8c5a6143a99ed8bfcb3445418634a3"
+    },
+    {
+      "path": "independent-adjudication-template-v1.json",
+      "bytes": 518,
+      "sha256": "8e96dec67cb4db7c559ee4a9271a26d2b8d3872a65a2fbabdcf4ea4e0c0a79ab"
+    },
+    {
+      "path": "independent-adjudication-v1.json",
+      "bytes": 7724,
+      "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf"
+    },
+    {
+      "path": "primary-review-seal-v1.json",
+      "bytes": 673,
+      "sha256": "a80d7477c1e6bf64ed07678a2958d209ed0b76b6901cd308f3b26ea51b3ff2cf"
+    },
+    {
+      "path": "primary-reviews-v1.json",
+      "bytes": 8645,
+      "sha256": "522db284d671a468a2a9292e9f88fb6b998f6b859b0a73b1645d1b5bf4db2981"
+    },
+    {
+      "path": "sealed-inputs-v1.json",
+      "bytes": 1998,
+      "sha256": "d731599996b4092ba352a6fe687efcf3241728013d8baf497de580bb1510b2f5"
+    },
+    {
+      "path": "status-report-v1.json",
+      "bytes": 1329,
+      "sha256": "03a578195ddf185e38e1630e99f90a551ecc461218f79dad16d51a5f62aad50c"
+    }
+  ],
+  "tree_sha256": "96c21301027b450a03974a56a1781ba6dd6ffbd35629fbb78b3a498c98532c4f",
+  "production_mutation": false
+}

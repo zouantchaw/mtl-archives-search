@@ -1,0 +1,311 @@
+{
+  "schema_version": "ground_claim_adjudication_v1.0.0",
+  "artifact_id": "ground-claim-adjudication-v1",
+  "sealed_inputs_sha256": "d731599996b4092ba352a6fe687efcf3241728013d8baf497de580bb1510b2f5",
+  "claims": [
+    {
+      "claim_id": "c0-lovell",
+      "record_id": 0,
+      "claim_text": "Lovell 1927 lists Gillett/Magic at 3 St Antoine and The Gazette at 100 St Antoine.",
+      "evidence_boundary": "Only exact authored locators and bound source observations; transport availability alone is not proposition evidence.",
+      "alternatives_and_limits": [
+        "Manual bounded transcription is unreviewed and does not identify the photographed scene or billboard."
+      ],
+      "visual_reference": {
+        "scope": "none",
+        "artifact_path": null,
+        "region_ids": [],
+        "note": "No pinned visual region is proposition support for this claim."
+      },
+      "sources": [
+        {
+          "source_id": "r0-lovell-1927",
+          "relationship": "supporting",
+          "family_id": "banq-lovell-1927",
+          "family_label": "Lovell 1927 edition",
+          "independence": "family_limited",
+          "url": "https://numerique.banq.qc.ca/patrimoine/details/52327/5290609",
+          "authority_tier": "primary_contemporary",
+          "evidence_status": "manual_unreviewed",
+          "source_note": "Researcher-authored bounded transcription awaiting separate review; transport availability does not validate the transcription.",
+          "proposition": "Lovell 1927 lists Gillett/Magic at 3 St Antoine and The Gazette at 100 St Antoine.",
+          "limitation": "Manual transcription remains pending separate review.",
+          "rights_policy": "Citation and bounded transcription only; no scan, viewer PDF, or newspaper redistribution right is asserted."
+        }
+      ]
+    },
+    {
+      "claim_id": "c0-rpcq",
+      "record_id": 0,
+      "claim_text": "RPCQ places The Gazette at 1000 Saint-Antoine in 1925.",
+      "evidence_boundary": "Only exact authored locators and bound source observations; transport availability alone is not proposition evidence.",
+      "alternatives_and_limits": [
+        "100 and 1000 remain unresolved alternatives; the Lovell transcription is manual and unreviewed."
+      ],
+      "visual_reference": {
+        "scope": "none",
+        "artifact_path": null,
+        "region_ids": [],
+        "note": "No pinned visual region is proposition support for this claim."
+      },
+      "sources": [
+        {
+          "source_id": "r0-rpcq-gazette",
+          "relationship": "supporting",
+          "family_id": "rpcq-register",
+          "family_label": "Quebec cultural heritage register",
+          "independence": "independent",
+          "url": "https://www.patrimoine-culturel.gouv.qc.ca/rpcq/detail.do?id=13105&methode=consulter&type=pge",
+          "authority_tier": "official_authority",
+          "evidence_status": "content_marker_matched_pending_review",
+          "source_note": "Transport is proposition evidence only for 2xx responses with an allowed media type and every required marker concept; separate claim review remains required.",
+          "proposition": "RPCQ places The Gazette at 1000 Saint-Antoine in 1925.",
+          "limitation": "Content identity markers matched, but claim review is still pending.",
+          "rights_policy": "Official or named public source; response bytes are hashed during bounded capture but raw bodies are not tracked and no republication license is inferred."
+        },
+        {
+          "source_id": "r0-lovell-1927",
+          "relationship": "opposing",
+          "family_id": "banq-lovell-1927",
+          "family_label": "Lovell 1927 edition",
+          "independence": "family_limited",
+          "url": "https://numerique.banq.qc.ca/patrimoine/details/52327/5290609",
+          "authority_tier": "primary_contemporary",
+          "evidence_status": "manual_unreviewed",
+          "source_note": "Researcher-authored bounded transcription awaiting separate review; transport availability does not validate the transcription.",
+          "proposition": "Lovell 1927 lists Gillett/Magic at 3 St Antoine and The Gazette at 100 St Antoine.",
+          "limitation": "Manual transcription remains pending separate review.",
+          "rights_policy": "Citation and bounded transcription only; no scan, viewer PDF, or newspaper redistribution right is asserted."
+        }
+      ]
+    },
+    {
+      "claim_id": "c10-spelling",
+      "record_id": 10,
+      "claim_text": "Lovell 1932 spells Perrault while the same-family City archive predecessor CSV row spells Perreault.",
+      "evidence_boundary": "Only exact authored locators and bound source observations; transport availability alone is not proposition evidence.",
+      "alternatives_and_limits": [
+        "Both observations remain pending review; toponymy sources do not support the surname spelling."
+      ],
+      "visual_reference": {
+        "scope": "none",
+        "artifact_path": null,
+        "region_ids": [],
+        "note": "No pinned visual region is proposition support for this claim."
+      },
+      "sources": [
+        {
+          "source_id": "r10-lovell-1932-a",
+          "relationship": "supporting",
+          "family_id": "banq-lovell-1932",
+          "family_label": "Lovell 1932 edition",
+          "independence": "family_limited",
+          "url": "https://numerique.banq.qc.ca/patrimoine/details/52327/5290689",
+          "authority_tier": "primary_contemporary",
+          "evidence_status": "manual_unreviewed",
+          "source_note": "Researcher-authored bounded transcription awaiting separate review; transport availability does not validate the transcription.",
+          "proposition": "Lovell 1932 spells Perrault at 3 Pine Avenue West.",
+          "limitation": "Manual transcription remains pending separate review.",
+          "rights_policy": "Citation and bounded transcription only; no scan, viewer PDF, or newspaper redistribution right is asserted."
+        },
+        {
+          "source_id": "r10-city-archive-predecessor",
+          "relationship": "supporting",
+          "family_id": "city-vm94-z-series",
+          "family_label": "Ville de Montreal VM94 Z-series",
+          "independence": "family_limited",
+          "url": "https://depot.ville.montreal.qc.ca/phototheque-archives/jpeg/VM94-Z13-1.jpg",
+          "authority_tier": "official_authority",
+          "evidence_status": "predecessor_metadata_unreviewed",
+          "source_note": "Exact predecessor CSV-row observation; it is same-family City archive metadata and remains pending separate review.",
+          "proposition": "The predecessor City archive CSV row spells Institut Stenographique Perreault.",
+          "limitation": "Same-family predecessor metadata remains pending separate review.",
+          "rights_policy": "Hash-bound predecessor metadata reference; no additional source bytes are copied."
+        }
+      ]
+    },
+    {
+      "claim_id": "c100-date",
+      "record_id": 100,
+      "claim_text": "The source set contains incompatible dating signals: built 1947, dossier 1946-1948, and photograph approximately 1945.",
+      "evidence_boundary": "Only exact authored locators and bound source observations; transport availability alone is not proposition evidence.",
+      "alternatives_and_limits": [
+        "The dossier and catalogue transcriptions are manual and unreviewed; City 25 April/stage metadata is same-family archive metadata."
+      ],
+      "visual_reference": {
+        "scope": "none",
+        "artifact_path": null,
+        "region_ids": [],
+        "note": "No pinned visual region is proposition support for this claim."
+      },
+      "sources": [
+        {
+          "source_id": "r100-rpcq-laurentien",
+          "relationship": "supporting",
+          "family_id": "rpcq-document-105269",
+          "family_label": "RPCQ document 105269",
+          "independence": "family_limited",
+          "url": "https://www.patrimoine-culturel.gouv.qc.ca/rpcq/detail.do?id=105269&methode=consulter&type=bien",
+          "authority_tier": "official_authority",
+          "evidence_status": "content_marker_matched_pending_review",
+          "source_note": "Transport is proposition evidence only for 2xx responses with an allowed media type and every required marker concept; separate claim review remains required.",
+          "proposition": "RPCQ states Hotel Laurentien was built in 1947.",
+          "limitation": "Content identity markers matched, but claim review is still pending.",
+          "rights_policy": "Official or named public source; response bytes are hashed during bounded capture but raw bodies are not tracked and no republication license is inferred."
+        },
+        {
+          "source_id": "r100-lapresse-dossier",
+          "relationship": "supporting",
+          "family_id": "banq-lapresse-4159254",
+          "family_label": "La Presse dossier P833,S3,D469",
+          "independence": "independent",
+          "url": "https://numerique.banq.qc.ca/patrimoine/details/52327/4159254",
+          "authority_tier": "primary_contemporary",
+          "evidence_status": "manual_unreviewed",
+          "source_note": "Researcher-authored bounded transcription awaiting separate review; transport availability does not validate the transcription.",
+          "proposition": "La Presse dossier is catalogued for 1946-1948.",
+          "limitation": "Manual transcription remains pending separate review.",
+          "rights_policy": "Citation and bounded transcription only; no scan, viewer PDF, or newspaper redistribution right is asserted."
+        },
+        {
+          "source_id": "r100-armour-landry",
+          "relationship": "supporting",
+          "family_id": "banq-armour-landry-3232855",
+          "family_label": "Armour Landry catalogue record 3232855",
+          "independence": "independent",
+          "url": "https://numerique.banq.qc.ca/patrimoine/details/52327/3232855",
+          "authority_tier": "primary_contemporary",
+          "evidence_status": "manual_unreviewed",
+          "source_note": "Researcher-authored bounded transcription awaiting separate review; transport availability does not validate the transcription.",
+          "proposition": "Armour Landry catalogue dates the photograph approximately 1945.",
+          "limitation": "Manual transcription remains pending separate review.",
+          "rights_policy": "Citation and bounded transcription only; no scan, viewer PDF, or newspaper redistribution right is asserted."
+        }
+      ]
+    },
+    {
+      "claim_id": "c101-laphkas",
+      "record_id": 101,
+      "claim_text": "A 1927 La Presse locator places Laphkas at Caron Building/Bleury, not Osborne.",
+      "evidence_boundary": "Only exact authored locators and bound source observations; transport availability alone is not proposition evidence.",
+      "alternatives_and_limits": [
+        "Manual transcription is unreviewed; no evidence places Laphkas in this scene in 1947."
+      ],
+      "visual_reference": {
+        "scope": "none",
+        "artifact_path": null,
+        "region_ids": [],
+        "note": "No pinned visual region is proposition support for this claim."
+      },
+      "sources": [
+        {
+          "source_id": "r101-lapresse-1927",
+          "relationship": "supporting",
+          "family_id": "banq-lapresse-3095625",
+          "family_label": "La Presse 1927 edition",
+          "independence": "independent",
+          "url": "https://numerique.banq.qc.ca/patrimoine/details/52327/3095625",
+          "authority_tier": "primary_contemporary",
+          "evidence_status": "manual_unreviewed",
+          "source_note": "Researcher-authored bounded transcription awaiting separate review; transport availability does not validate the transcription.",
+          "proposition": "1927 La Presse places Laphkas at the Caron Building on Bleury, not Osborne.",
+          "limitation": "Manual transcription remains pending separate review.",
+          "rights_policy": "Citation and bounded transcription only; no scan, viewer PDF, or newspaper redistribution right is asserted."
+        }
+      ]
+    },
+    {
+      "claim_id": "c102-date-address",
+      "record_id": 102,
+      "claim_text": "City metadata alone gives 25 April 1947 and 1086 Osborne; RPCQ gives annex 1947-1948 and 1001; Parks exposes 1101/1001 variants.",
+      "evidence_boundary": "Only exact authored locators and bound source observations; transport availability alone is not proposition evidence.",
+      "alternatives_and_limits": [
+        "City evidence is same-family predecessor metadata pending review; 1001/1101 remains unresolved; A17-VM-05 is excluded from annex/address support."
+      ],
+      "visual_reference": {
+        "scope": "none",
+        "artifact_path": null,
+        "region_ids": [],
+        "note": "No pinned visual region is proposition support for this claim."
+      },
+      "sources": [
+        {
+          "source_id": "r102-city-record",
+          "relationship": "supporting",
+          "family_id": "city-vm94-z-series",
+          "family_label": "Ville de Montreal VM94 Z-series",
+          "independence": "family_limited",
+          "url": "https://depot.ville.montreal.qc.ca/phototheque-archives/jpeg/VM94-Z181-5.jpg",
+          "authority_tier": "official_authority",
+          "evidence_status": "predecessor_metadata_unreviewed",
+          "source_note": "Exact predecessor CSV-row observation; it is same-family City archive metadata and remains pending separate review.",
+          "proposition": "The predecessor City archive CSV row alone gives source date 25 April 1947 and 1086 Osborne.",
+          "limitation": "Same-family predecessor metadata remains pending separate review.",
+          "rights_policy": "Hash-bound predecessor metadata reference; no additional source bytes are copied."
+        },
+        {
+          "source_id": "r102-rpcq-st-george",
+          "relationship": "supporting",
+          "family_id": "rpcq-document-105269",
+          "family_label": "RPCQ document 105269",
+          "independence": "family_limited",
+          "url": "https://www.patrimoine-culturel.gouv.qc.ca/rpcq/detail.do?id=105269&methode=consulter&type=bien",
+          "authority_tier": "official_authority",
+          "evidence_status": "content_marker_matched_pending_review",
+          "source_note": "Transport is proposition evidence only for 2xx responses with an allowed media type and every required marker concept; separate claim review remains required.",
+          "proposition": "RPCQ supports the St George annex dating 1947-1948 and address 1001.",
+          "limitation": "Content identity markers matched, but claim review is still pending.",
+          "rights_policy": "Official or named public source; response bytes are hashed during bounded capture but raw bodies are not tracked and no republication license is inferred."
+        },
+        {
+          "source_id": "r102-parks-st-george",
+          "relationship": "supporting",
+          "family_id": "parks-register",
+          "family_label": "Parks Canada historic designations",
+          "independence": "independent",
+          "url": "https://www.pc.gc.ca/apps/dfhd/page_nhs_eng.aspx?id=657",
+          "authority_tier": "official_authority",
+          "evidence_status": "content_marker_matched_pending_review",
+          "source_note": "Transport is proposition evidence only for 2xx responses with an allowed media type and every required marker concept; separate claim review remains required.",
+          "proposition": "Parks Canada exposes 1101 and 1001 address variants for St George.",
+          "limitation": "Content identity markers matched, but claim review is still pending.",
+          "rights_policy": "Official or named public source; response bytes are hashed during bounded capture but raw bodies are not tracked and no republication license is inferred."
+        }
+      ]
+    },
+    {
+      "claim_id": "c105-tilden",
+      "record_id": 105,
+      "claim_text": "Lovell 1944 lists Tilden at 1130 Windsor near Dorchester.",
+      "evidence_boundary": "Only exact authored locators and bound source observations; transport availability alone is not proposition evidence.",
+      "alternatives_and_limits": [
+        "Lovell is manual and unreviewed; LAC page 91 is retained only as an unresolved transport-only lead; no Tilden-Hertz join, Claude Neon attribution, or wording-as-operator claim."
+      ],
+      "visual_reference": {
+        "scope": "regions",
+        "artifact_path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+        "region_ids": [
+          "white-rose",
+          "catelli-egg-noodles"
+        ],
+        "note": "The whole scene visibly contains Tilden and HERTZ wording, but neither is promoted to a formal crop transcription. The only formal independently reviewed crop transcriptions establish WHITE ROSE and CATELLI literal text; none establishes the exact directory proposition, a corporate join, a billboard operator, or an address."
+      },
+      "sources": [
+        {
+          "source_id": "r105-lovell-1944",
+          "relationship": "supporting",
+          "family_id": "banq-lovell-1944",
+          "family_label": "Lovell 1944 edition",
+          "independence": "family_limited",
+          "url": "https://numerique.banq.qc.ca/patrimoine/details/52327/5291714",
+          "authority_tier": "primary_contemporary",
+          "evidence_status": "manual_unreviewed",
+          "source_note": "Researcher-authored bounded transcription awaiting separate review; transport availability does not validate the transcription.",
+          "proposition": "Lovell 1944 lists Tilden at 1130 Windsor near Dorchester.",
+          "limitation": "Manual transcription remains pending separate review.",
+          "rights_policy": "Citation and bounded transcription only; no scan, viewer PDF, or newspaper redistribution right is asserted."
+        }
+      ]
+    }
+  ]
+}
