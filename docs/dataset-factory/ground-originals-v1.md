@@ -1,5 +1,7 @@
 # Ground Originals v1
 
+`ground-authoritative-research-v1` is the bounded Gate B research successor to these exact six originals. It uses `records-v1.json` as a hash-bound predecessor, keeps literal pixel transcriptions separate from external evidence, and produces zero promoted claims, verified dossiers, benchmark/search tasks, or production mutations.
+
 This Issue #69 successor binds the exact ground IDs `0`, `10`, `100`, `101`, `102`, and `105` to their existing cotes, official JPEG URLs, sealed 4096-byte prefixes, predecessor descriptors, complete JPEG bytes, validators, Sharp decode metadata, orientation-normalized pixel hashes, and compact review material. It does not modify any predecessor fixture.
 
 ## Boundaries

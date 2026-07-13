@@ -1,5 +1,7 @@
 # CLAUDE.md
 
+For Issue #69 Gate B ground research, use the `dataset-factory:ground-authoritative-research-*-v1` scripts and `docs/dataset-factory/ground-authoritative-research-v1.md`. This artifact is evidence capture and pending claim drafting only, never a production or claim-promotion surface.
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview

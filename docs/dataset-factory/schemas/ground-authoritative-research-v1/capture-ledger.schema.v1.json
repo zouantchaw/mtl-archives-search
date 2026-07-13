@@ -1,0 +1,1177 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mtl-archives.local/capture-ledger.schema.v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "sources"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "ground_authoritative_research_v1.5.0"
+    },
+    "artifact_id": {
+      "const": "ground-authoritative-research-v1"
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/capturedSource"
+      }
+    }
+  },
+  "$defs": {
+    "markerConcept": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "concept_id",
+        "alternatives"
+      ],
+      "properties": {
+        "concept_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "alternatives": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "authored_by",
+        "exact_locator",
+        "review_status"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [
+            "manual_bounded_transcription",
+            "online_marker_required",
+            "online_transport_context",
+            "predecessor_metadata",
+            "lead_only"
+          ]
+        },
+        "authored_by": {
+          "enum": [
+            "researcher",
+            "predecessor_artifact"
+          ]
+        },
+        "exact_locator": {
+          "type": "string",
+          "minLength": 1
+        },
+        "review_status": {
+          "const": "pending_separate_review"
+        },
+        "predecessor_path": {
+          "type": "string",
+          "pattern": "^docs/"
+        },
+        "predecessor_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "predecessor_numeric_id": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "predecessor_row_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "expectedContent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policy",
+        "allowed_content_types",
+        "marker_concepts"
+      ],
+      "properties": {
+        "policy": {
+          "enum": [
+            "manual_locator_only",
+            "markers_required",
+            "transport_only_not_evidence",
+            "predecessor_hash_bound",
+            "lead_only"
+          ]
+        },
+        "allowed_content_types": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "text/html",
+              "application/pdf"
+            ]
+          }
+        },
+        "marker_concepts": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/markerConcept"
+          }
+        }
+      }
+    },
+    "observedLocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scheme",
+        "origin_sha256",
+        "hostname_label_count",
+        "path_segment_count",
+        "path_sha256",
+        "query_names",
+        "query_policy",
+        "allowlisted_for_follow"
+      ],
+      "properties": {
+        "scheme": {
+          "const": "https"
+        },
+        "origin_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "hostname_label_count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 127
+        },
+        "path_segment_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1024
+        },
+        "path_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "query_names": {
+          "type": "array",
+          "maxItems": 128,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._~-]{1,128}$"
+          }
+        },
+        "query_policy": {
+          "const": "names_only_values_redacted"
+        },
+        "allowlisted_for_follow": {
+          "const": false
+        }
+      }
+    },
+    "receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_id",
+        "source_mode",
+        "source_policy",
+        "expected_marker_count",
+        "expected_marker_digest",
+        "matched_marker_count",
+        "marker_match_state",
+        "method",
+        "status",
+        "content_type",
+        "bytes",
+        "sha256",
+        "retrieved_at",
+        "outcome",
+        "effective_url",
+        "matched_concepts"
+      ],
+      "properties": {
+        "source_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_mode": {
+          "enum": [
+            "manual_bounded_transcription",
+            "online_marker_required",
+            "online_transport_context",
+            "predecessor_metadata",
+            "lead_only"
+          ]
+        },
+        "source_policy": {
+          "enum": [
+            "manual_locator_only",
+            "markers_required",
+            "transport_only_not_evidence",
+            "predecessor_hash_bound",
+            "lead_only"
+          ]
+        },
+        "expected_marker_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1024
+        },
+        "expected_marker_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "matched_marker_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1024
+        },
+        "marker_match_state": {
+          "enum": [
+            "none",
+            "partial",
+            "complete"
+          ]
+        },
+        "method": {
+          "enum": [
+            "GET",
+            "not_requested"
+          ]
+        },
+        "status": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 100,
+          "maximum": 599
+        },
+        "content_type": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 255
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4194304
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "retrieved_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "outcome": {
+          "enum": [
+            "captured_marker_matched",
+            "marker_incomplete",
+            "captured_transport_only",
+            "manual_transport_observed",
+            "redirect_rejected",
+            "dynamic_or_hcaptcha",
+            "network_failure",
+            "http_failure",
+            "unexpected_content_type",
+            "not_requested"
+          ]
+        },
+        "effective_url": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uri"
+        },
+        "observed_location": {
+          "$ref": "#/$defs/observedLocation"
+        },
+        "matched_concepts": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          }
+        },
+        "rejection_reason": {
+          "enum": [
+            "destination_not_allowlisted",
+            "sensitive_destination",
+            "missing_location",
+            "malformed_location",
+            "non_https",
+            "credentials",
+            "fragment"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "oneOf": [
+            {
+              "properties": {
+                "source_mode": {
+                  "const": "lead_only"
+                },
+                "source_policy": {
+                  "const": "lead_only"
+                },
+                "matched_marker_count": {
+                  "const": 0
+                },
+                "marker_match_state": {
+                  "const": "none"
+                },
+                "matched_concepts": {
+                  "type": "array",
+                  "maxItems": 0
+                }
+              }
+            },
+            {
+              "properties": {
+                "source_mode": {
+                  "const": "predecessor_metadata"
+                },
+                "source_policy": {
+                  "const": "predecessor_hash_bound"
+                },
+                "expected_marker_count": {
+                  "const": 0
+                },
+                "matched_marker_count": {
+                  "const": 0
+                },
+                "marker_match_state": {
+                  "const": "none"
+                },
+                "matched_concepts": {
+                  "type": "array",
+                  "maxItems": 0
+                }
+              }
+            },
+            {
+              "properties": {
+                "source_mode": {
+                  "const": "manual_bounded_transcription"
+                },
+                "source_policy": {
+                  "const": "manual_locator_only"
+                }
+              }
+            },
+            {
+              "properties": {
+                "source_mode": {
+                  "const": "online_transport_context"
+                },
+                "source_policy": {
+                  "const": "transport_only_not_evidence"
+                },
+                "expected_marker_count": {
+                  "const": 0
+                },
+                "matched_marker_count": {
+                  "const": 0
+                },
+                "marker_match_state": {
+                  "const": "none"
+                },
+                "matched_concepts": {
+                  "type": "array",
+                  "maxItems": 0
+                }
+              }
+            },
+            {
+              "properties": {
+                "source_mode": {
+                  "const": "online_marker_required"
+                },
+                "source_policy": {
+                  "const": "markers_required"
+                },
+                "expected_marker_count": {
+                  "type": "integer",
+                  "minimum": 3,
+                  "maximum": 1024
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "oneOf": [
+        {
+          "properties": {
+            "outcome": {
+              "const": "not_requested"
+            },
+            "source_mode": {
+              "enum": [
+                "lead_only",
+                "predecessor_metadata"
+              ]
+            },
+            "method": {
+              "const": "not_requested"
+            },
+            "status": {
+              "const": null
+            },
+            "content_type": {
+              "const": null
+            },
+            "bytes": {
+              "const": 0
+            },
+            "sha256": {
+              "const": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "effective_url": {
+              "const": null
+            },
+            "matched_marker_count": {
+              "const": 0
+            },
+            "marker_match_state": {
+              "const": "none"
+            },
+            "matched_concepts": {
+              "type": "array",
+              "maxItems": 0
+            },
+            "observed_location": false,
+            "rejection_reason": false
+          }
+        },
+        {
+          "properties": {
+            "outcome": {
+              "const": "network_failure"
+            },
+            "source_mode": {
+              "enum": [
+                "manual_bounded_transcription",
+                "online_transport_context",
+                "online_marker_required"
+              ]
+            },
+            "method": {
+              "const": "GET"
+            },
+            "status": {
+              "const": null
+            },
+            "content_type": {
+              "const": null
+            },
+            "bytes": {
+              "const": 0
+            },
+            "sha256": {
+              "const": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "effective_url": {
+              "const": null
+            },
+            "matched_marker_count": {
+              "const": 0
+            },
+            "marker_match_state": {
+              "const": "none"
+            },
+            "matched_concepts": {
+              "type": "array",
+              "maxItems": 0
+            },
+            "observed_location": false,
+            "rejection_reason": false
+          }
+        },
+        {
+          "properties": {
+            "outcome": {
+              "const": "redirect_rejected"
+            },
+            "source_mode": {
+              "enum": [
+                "manual_bounded_transcription",
+                "online_transport_context",
+                "online_marker_required"
+              ]
+            },
+            "method": {
+              "const": "GET"
+            },
+            "status": {
+              "type": "integer",
+              "minimum": 300,
+              "maximum": 399
+            },
+            "content_type": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "minLength": 1,
+              "maxLength": 255
+            },
+            "bytes": {
+              "const": 0
+            },
+            "sha256": {
+              "const": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "effective_url": {
+              "const": null
+            },
+            "matched_marker_count": {
+              "const": 0
+            },
+            "marker_match_state": {
+              "const": "none"
+            },
+            "matched_concepts": {
+              "type": "array",
+              "maxItems": 0
+            },
+            "rejection_reason": {
+              "enum": [
+                "destination_not_allowlisted",
+                "sensitive_destination",
+                "missing_location",
+                "malformed_location",
+                "non_https",
+                "credentials",
+                "fragment"
+              ]
+            }
+          },
+          "required": [
+            "rejection_reason"
+          ],
+          "oneOf": [
+            {
+              "properties": {
+                "rejection_reason": {
+                  "const": "destination_not_allowlisted"
+                },
+                "observed_location": {
+                  "$ref": "#/$defs/observedLocation"
+                }
+              },
+              "required": [
+                "observed_location"
+              ]
+            },
+            {
+              "properties": {
+                "rejection_reason": {
+                  "enum": [
+                    "sensitive_destination",
+                    "missing_location",
+                    "malformed_location",
+                    "non_https",
+                    "credentials",
+                    "fragment"
+                  ]
+                },
+                "observed_location": false
+              }
+            }
+          ]
+        },
+        {
+          "properties": {
+            "outcome": {
+              "const": "http_failure"
+            },
+            "source_mode": {
+              "enum": [
+                "manual_bounded_transcription",
+                "online_transport_context",
+                "online_marker_required"
+              ]
+            },
+            "method": {
+              "const": "GET"
+            },
+            "status": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 100,
+                  "maximum": 199
+                },
+                {
+                  "type": "integer",
+                  "minimum": 400,
+                  "maximum": 599
+                }
+              ]
+            },
+            "content_type": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4194304
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "effective_url": {
+              "type": "string",
+              "format": "uri"
+            },
+            "matched_marker_count": {
+              "const": 0
+            },
+            "marker_match_state": {
+              "const": "none"
+            },
+            "matched_concepts": {
+              "type": "array",
+              "maxItems": 0
+            },
+            "observed_location": false,
+            "rejection_reason": false
+          }
+        },
+        {
+          "properties": {
+            "outcome": {
+              "const": "unexpected_content_type"
+            },
+            "source_mode": {
+              "enum": [
+                "manual_bounded_transcription",
+                "online_transport_context",
+                "online_marker_required"
+              ]
+            },
+            "method": {
+              "const": "GET"
+            },
+            "status": {
+              "type": "integer",
+              "minimum": 200,
+              "maximum": 299
+            },
+            "content_type": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4194304
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "effective_url": {
+              "type": "string",
+              "format": "uri"
+            },
+            "observed_location": false,
+            "rejection_reason": false,
+            "matched_marker_count": {
+              "const": 0
+            },
+            "marker_match_state": {
+              "const": "none"
+            },
+            "matched_concepts": {
+              "type": "array",
+              "maxItems": 0
+            }
+          }
+        },
+        {
+          "properties": {
+            "outcome": {
+              "const": "dynamic_or_hcaptcha"
+            },
+            "source_mode": {
+              "enum": [
+                "manual_bounded_transcription",
+                "online_transport_context",
+                "online_marker_required"
+              ]
+            },
+            "method": {
+              "const": "GET"
+            },
+            "status": {
+              "type": "integer",
+              "minimum": 200,
+              "maximum": 299
+            },
+            "content_type": {
+              "enum": [
+                "text/html",
+                "application/pdf"
+              ]
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4194304
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "effective_url": {
+              "type": "string",
+              "format": "uri"
+            },
+            "observed_location": false,
+            "rejection_reason": false,
+            "matched_concepts": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z0-9-]+$"
+              }
+            }
+          }
+        },
+        {
+          "properties": {
+            "outcome": {
+              "const": "manual_transport_observed"
+            },
+            "source_mode": {
+              "const": "manual_bounded_transcription"
+            },
+            "source_policy": {
+              "const": "manual_locator_only"
+            },
+            "method": {
+              "const": "GET"
+            },
+            "status": {
+              "type": "integer",
+              "minimum": 200,
+              "maximum": 299
+            },
+            "content_type": {
+              "enum": [
+                "text/html",
+                "application/pdf"
+              ]
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4194304
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "effective_url": {
+              "type": "string",
+              "format": "uri"
+            },
+            "observed_location": false,
+            "rejection_reason": false,
+            "matched_concepts": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z0-9-]+$"
+              }
+            }
+          }
+        },
+        {
+          "properties": {
+            "outcome": {
+              "const": "captured_transport_only"
+            },
+            "source_mode": {
+              "const": "online_transport_context"
+            },
+            "source_policy": {
+              "const": "transport_only_not_evidence"
+            },
+            "expected_marker_count": {
+              "const": 0
+            },
+            "method": {
+              "const": "GET"
+            },
+            "status": {
+              "type": "integer",
+              "minimum": 200,
+              "maximum": 299
+            },
+            "content_type": {
+              "enum": [
+                "text/html",
+                "application/pdf"
+              ]
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4194304
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "effective_url": {
+              "type": "string",
+              "format": "uri"
+            },
+            "observed_location": false,
+            "rejection_reason": false,
+            "matched_marker_count": {
+              "const": 0
+            },
+            "marker_match_state": {
+              "const": "none"
+            },
+            "matched_concepts": {
+              "type": "array",
+              "maxItems": 0
+            }
+          }
+        },
+        {
+          "properties": {
+            "outcome": {
+              "const": "marker_incomplete"
+            },
+            "source_mode": {
+              "const": "online_marker_required"
+            },
+            "source_policy": {
+              "const": "markers_required"
+            },
+            "expected_marker_count": {
+              "type": "integer",
+              "minimum": 3
+            },
+            "method": {
+              "const": "GET"
+            },
+            "status": {
+              "type": "integer",
+              "minimum": 200,
+              "maximum": 299
+            },
+            "content_type": {
+              "enum": [
+                "text/html",
+                "application/pdf"
+              ]
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4194304
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "effective_url": {
+              "type": "string",
+              "format": "uri"
+            },
+            "observed_location": false,
+            "rejection_reason": false,
+            "marker_match_state": {
+              "enum": [
+                "none",
+                "partial"
+              ]
+            },
+            "matched_concepts": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z0-9-]+$"
+              }
+            }
+          },
+          "oneOf": [
+            {
+              "properties": {
+                "marker_match_state": {
+                  "const": "none"
+                },
+                "matched_marker_count": {
+                  "const": 0
+                },
+                "matched_concepts": {
+                  "type": "array",
+                  "maxItems": 0
+                }
+              }
+            },
+            {
+              "properties": {
+                "marker_match_state": {
+                  "const": "partial"
+                },
+                "matched_marker_count": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "matched_concepts": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9-]+$"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "properties": {
+            "outcome": {
+              "const": "captured_marker_matched"
+            },
+            "source_mode": {
+              "const": "online_marker_required"
+            },
+            "source_policy": {
+              "const": "markers_required"
+            },
+            "expected_marker_count": {
+              "type": "integer",
+              "minimum": 3
+            },
+            "method": {
+              "const": "GET"
+            },
+            "status": {
+              "type": "integer",
+              "minimum": 200,
+              "maximum": 299
+            },
+            "content_type": {
+              "enum": [
+                "text/html",
+                "application/pdf"
+              ]
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4194304
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "effective_url": {
+              "type": "string",
+              "format": "uri"
+            },
+            "observed_location": false,
+            "rejection_reason": false,
+            "marker_match_state": {
+              "const": "complete"
+            },
+            "matched_marker_count": {
+              "type": "integer",
+              "minimum": 3
+            },
+            "matched_concepts": {
+              "type": "array",
+              "minItems": 3,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z0-9-]+$"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "promotion_eligible",
+        "limitation"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "manual_unreviewed",
+            "predecessor_metadata_unreviewed",
+            "content_marker_matched_pending_review",
+            "not_evidence"
+          ]
+        },
+        "promotion_eligible": {
+          "const": false
+        },
+        "limitation": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "capturedSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_id",
+        "records",
+        "url",
+        "publisher",
+        "institution",
+        "family_id",
+        "authority_tier",
+        "locator",
+        "proposition",
+        "note",
+        "independence",
+        "rights_policy",
+        "snapshot_policy",
+        "provenance",
+        "expected_content",
+        "retrieval",
+        "evidence"
+      ],
+      "properties": {
+        "source_id": {
+          "type": "string",
+          "pattern": "^r(0|10|100|101|102|105)-[a-z0-9-]+$"
+        },
+        "records": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              0,
+              10,
+              100,
+              101,
+              102,
+              105
+            ]
+          }
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "publisher": {
+          "type": "string",
+          "minLength": 1
+        },
+        "institution": {
+          "type": "string",
+          "minLength": 1
+        },
+        "family_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "authority_tier": {
+          "enum": [
+            "primary_contemporary",
+            "official_authority",
+            "official_context",
+            "context_only"
+          ]
+        },
+        "locator": {
+          "type": "string",
+          "minLength": 1
+        },
+        "proposition": {
+          "type": "string",
+          "minLength": 1
+        },
+        "note": {
+          "type": "string",
+          "minLength": 1
+        },
+        "independence": {
+          "enum": [
+            "independent",
+            "family_limited"
+          ]
+        },
+        "rights_policy": {
+          "type": "string",
+          "minLength": 1
+        },
+        "snapshot_policy": {
+          "enum": [
+            "bounded_transcription_only",
+            "compact_official_capture",
+            "lead_only_no_snapshot",
+            "predecessor_reference_only"
+          ]
+        },
+        "provenance": {
+          "$ref": "#/$defs/provenance"
+        },
+        "expected_content": {
+          "$ref": "#/$defs/expectedContent"
+        },
+        "retrieval": {
+          "$ref": "#/$defs/receipt"
+        },
+        "evidence": {
+          "$ref": "#/$defs/evidence"
+        }
+      }
+    }
+  }
+}

@@ -1,5 +1,7 @@
 # Architecture
 
+The Dataset Factory includes an offline-replayable `ground-authoritative-research-v1` research artifact. Its network stage is exact-URL public capture; tracked build and verification are isolated from production data and enforce zero claim promotion, dossier generation, and task generation.
+
 ## System Overview
 
 ```

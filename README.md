@@ -1,5 +1,7 @@
 # Montréal Archives Search
 
+Issue #69 Gate B authoritative ground research is documented in `docs/dataset-factory/ground-authoritative-research-v1.md`. The versioned tracked fixture covers six ground records with rights-conscious source capture and pending claim drafts only; promotions, verified dossiers, benchmark/search tasks, and production mutations are all zero.
+
 **Semantic and visual search API for the Montréal city archives photo collection (~15,000 historical images from 1870s-1990s).**
 
 Built on Cloudflare's edge infrastructure: Workers, D1, Vectorize, R2, and Workers AI.
@@ -369,7 +371,7 @@ Autoresearch notes:
 
 Dataset Factory v0 notes:
 - The reproducibility plan and schemas live under `docs/dataset-factory/`.
-- `docs/dataset-factory/artifact-registry.v0.jsonl` is the machine-readable registry for ignored artifacts and durable archives. Its 102 entries form an acyclic phase graph and include the Gold Label Batch 002 evidence, the Verified Multimodal foundation, issue #69 candidate/promotion/review descriptors, and the complete tracked public source-acquisition fixture. Broad trees remain exact, non-overlapping file sets with explicit human-decision and acquisition boundaries.
+- `docs/dataset-factory/artifact-registry.v0.jsonl` is the machine-readable registry for ignored artifacts and durable archives. It forms an acyclic phase graph covering Gold Label Batch 002, the Verified Multimodal foundation, issue #69 review/research artifacts, and tracked public source-acquisition fixtures. Use the registry checker for the current entry count. Broad trees remain exact, non-overlapping file sets with explicit human-decision and acquisition boundaries.
 - `npm run dataset-factory:artifacts:self-test` proves 14 contract and adversarial cases, including a normal in-root file plus schema enforcement, dependency cycles, external-snapshot boundaries, file overlap, and leaf/parent-directory symlink rejection. `--verify-files` additionally checks artifact kind, real-path containment, unique membership, and registered bytes against a populated artifact root.
 - `npm run dataset-factory:clock:self-test` proves that fixed timestamps require RFC 3339 `Z` or an explicit offset and normalize independently of the host timezone.
 - `docs/dataset-factory/fixtures/v0-smoke/` contains small tracked contract fixtures. `npm run dataset-factory:smoke-v0` uses those fixtures plus a local mock `/api/search` server to exercise packets, labels/adjudication, benchmark, active learning, search/reranker evaluation, quality repair, visual family graph, research enrichment, search judgments, and reward data without D1/R2/Vectorize/network mutation. It fixes fixture timestamps, asserts exact counts and representative content, and enforces the committed output-tree SHA-256.
