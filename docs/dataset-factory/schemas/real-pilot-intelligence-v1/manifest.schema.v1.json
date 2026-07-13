@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "members"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "real_pilot_intelligence_manifest_v1.0.0"
+    },
+    "members": {
+      "type": "array",
+      "minItems": 44,
+      "maxItems": 44,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "bytes",
+          "sha256"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "pattern": "^(benchmark-tasks-v1\\.jsonl|contact-sheets/(aerial|ground)\\.png|dossiers/[0-9]+\\.(html|json)|independent-review-input-v1\\.jsonl|overlays/[0-9]+\\.png|packets/packets-v1\\.jsonl|rejected-queue-v1\\.jsonl|run-report-v1\\.json|unresolved-queue-v1\\.jsonl)$"
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      },
+      "uniqueItems": true
+    }
+  }
+}
