@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "input_sha256",
+    "decisions_sha256",
+    "decision_seal_sha256",
+    "reviewer_id",
+    "review_session_id",
+    "scenes_reviewed",
+    "crops_reviewed",
+    "corrected_transcriptions",
+    "accepted_machine_transcriptions",
+    "identity_claims",
+    "external_claims",
+    "fully_verified_dossiers",
+    "tasks",
+    "raw_ocr_comparison"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "ground_originals_independent_review_metrics_v1.0.0"
+    },
+    "status": { "const": "derived_from_sealed_external_independent_decisions" },
+    "input_sha256": {
+      "const": "c263eef97d3cd1662954a50748b3f9fadab5cf65ff79ac33ba80b909969699b3"
+    },
+    "decisions_sha256": {
+      "const": "32d85f7815a2ef583e36e988ed330347198db056de04f3fa60bd4e42414c536f"
+    },
+    "decision_seal_sha256": {
+      "const": "fb3892870778ac9a683cada3187190fdd643992987436a2b7623a2b2cf4e3ff6"
+    },
+    "reviewer_id": { "const": "independent-reviewer-pixel-ocr-v1" },
+    "review_session_id": { "const": "independent-session-20260713-ground-v1" },
+    "scenes_reviewed": { "const": 6 },
+    "crops_reviewed": { "const": 2 },
+    "corrected_transcriptions": { "const": 2 },
+    "accepted_machine_transcriptions": { "const": 0 },
+    "identity_claims": { "const": 0 },
+    "external_claims": { "const": 0 },
+    "fully_verified_dossiers": { "const": 0 },
+    "tasks": { "const": 0 },
+    "raw_ocr_comparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "reason"],
+      "properties": {
+        "value": { "const": null },
+        "reason": {
+          "const": "No original-frame machine OCR proposals intersect either reviewed crop."
+        }
+      }
+    }
+  }
+}

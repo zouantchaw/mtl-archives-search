@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "external_claims", "rows"],
+  "properties": {
+    "schema_version": { "const": "ground_originals_v1.0.0" },
+    "external_claims": { "const": 0 },
+    "rows": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "numeric_id",
+          "query_seeds",
+          "authority_classes",
+          "rejected_hypotheses",
+          "status",
+          "candidate_urls",
+          "claims"
+        ],
+        "properties": {
+          "numeric_id": { "enum": [0, 10, 100, 101, 102, 105] },
+          "query_seeds": {
+            "type": "array",
+            "minItems": 4,
+            "uniqueItems": true,
+            "items": { "$ref": "#/$defs/trigger" }
+          },
+          "authority_classes": {
+            "type": "array",
+            "minItems": 3,
+            "uniqueItems": true,
+            "items": {
+              "enum": [
+                "municipal_archive_catalogue",
+                "municipal_street_history",
+                "official_building_or_institution_history",
+                "official_business_or_institution_history",
+                "library_archive_catalogue",
+                "contemporary_directory_or_newspaper_archive"
+              ]
+            }
+          },
+          "rejected_hypotheses": {
+            "type": "array",
+            "maxItems": 1,
+            "items": { "$ref": "#/$defs/rejected" }
+          },
+          "status": { "const": "pending" },
+          "candidate_urls": { "const": null },
+          "claims": { "type": "array", "maxItems": 0 }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "trigger": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["literal", "source_kind", "source_locator"],
+      "properties": {
+        "literal": { "type": "string", "minLength": 2 },
+        "source_kind": {
+          "enum": [
+            "official_cote",
+            "archive_metadata_report",
+            "full_resolution_visible_text"
+          ]
+        },
+        "source_locator": {
+          "type": "string",
+          "pattern": "^(records-v1\\.json|real-pilot-intelligence-v1/dossiers/(0|10|100|101|102|105)\\.json|originals/105\\.jpg)[^?#]*(#.*)?$"
+        }
+      }
+    },
+    "rejected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "literal",
+        "status",
+        "source_kind",
+        "source_locator",
+        "reason"
+      ],
+      "properties": {
+        "literal": { "const": "CASTROL" },
+        "status": { "const": "rejected_false_precision_hypothesis" },
+        "source_kind": { "const": "prior_256px_visual_reading" },
+        "source_locator": {
+          "const": "real-pilot-intelligence-v1/dossiers/105.json#region=ocr-2"
+        },
+        "reason": {
+          "type": "string",
+          "pattern": "not an accepted transcription or identity"
+        }
+      }
+    }
+  }
+}

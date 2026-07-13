@@ -1,0 +1,157 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "input_sha256",
+    "reviewer_id",
+    "review_session_id",
+    "reviewer_role",
+    "reviewer_independence_confirmed",
+    "primary_decisions_consulted",
+    "copied_from_primary_decisions",
+    "identity_claims",
+    "scenes",
+    "crops"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "ground_originals_independent_review_decisions_v1.0.0"
+    },
+    "input_sha256": {
+      "const": "c263eef97d3cd1662954a50748b3f9fadab5cf65ff79ac33ba80b909969699b3"
+    },
+    "reviewer_id": {
+      "type": "string",
+      "pattern": "^independent-reviewer-[a-z0-9][a-z0-9._-]{5,80}$",
+      "not": {
+        "enum": [
+          "sol-high-primary-019f57f4-0222-7750-8a88-330fdf3a74cc",
+          "vmi-primary-001"
+        ]
+      }
+    },
+    "review_session_id": {
+      "type": "string",
+      "pattern": "^independent-session-[a-z0-9][a-z0-9._-]{5,80}$"
+    },
+    "reviewer_role": { "const": "independent_external_reviewer" },
+    "reviewer_independence_confirmed": { "const": true },
+    "primary_decisions_consulted": { "const": false },
+    "copied_from_primary_decisions": { "const": false },
+    "identity_claims": { "type": "array", "maxItems": 0 },
+    "scenes": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": { "$ref": "#/$defs/sceneDecision" }
+    },
+    "crops": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": { "$ref": "#/$defs/cropDecision" }
+    }
+  },
+  "$defs": {
+    "sceneDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["neutral_id", "suitability", "mode", "abstained", "reason"],
+      "properties": {
+        "neutral_id": {
+          "enum": [
+            "ground-review-01",
+            "ground-review-02",
+            "ground-review-03",
+            "ground-review-04",
+            "ground-review-05",
+            "ground-review-06"
+          ]
+        },
+        "suitability": { "enum": ["suitable", "unsuitable", "abstain"] },
+        "mode": {
+          "enum": ["scene_pixel", "scene_pixel_and_ocr_context", "abstain"]
+        },
+        "abstained": { "type": "boolean" },
+        "reason": { "type": ["string", "null"], "minLength": 1 }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "abstained": { "const": true } },
+            "required": ["abstained"]
+          },
+          "then": {
+            "properties": {
+              "suitability": { "const": "abstain" },
+              "mode": { "const": "abstain" },
+              "reason": { "type": "string", "minLength": 1 }
+            }
+          },
+          "else": {
+            "properties": {
+              "suitability": { "enum": ["suitable", "unsuitable"] },
+              "mode": { "enum": ["scene_pixel", "scene_pixel_and_ocr_context"] }
+            }
+          }
+        }
+      ]
+    },
+    "cropDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "neutral_crop_id",
+        "decision",
+        "literal_text",
+        "alternatives",
+        "legibility",
+        "reason"
+      ],
+      "properties": {
+        "neutral_crop_id": { "enum": ["ground-crop-01", "ground-crop-02"] },
+        "decision": { "enum": ["accept", "correct", "reject", "abstain"] },
+        "literal_text": { "type": ["string", "null"], "minLength": 1 },
+        "alternatives": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "legibility": {
+          "enum": ["clear", "partial", "low", "illegible", "abstain"]
+        },
+        "reason": { "type": "string", "minLength": 1 }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "decision": { "enum": ["accept", "correct"] } },
+            "required": ["decision"]
+          },
+          "then": {
+            "properties": {
+              "literal_text": { "type": "string", "minLength": 1 },
+              "legibility": { "enum": ["clear", "partial", "low"] }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "decision": { "enum": ["reject", "abstain"] } },
+            "required": ["decision"]
+          },
+          "then": { "properties": { "literal_text": { "const": null } } }
+        },
+        {
+          "if": {
+            "properties": { "decision": { "const": "abstain" } },
+            "required": ["decision"]
+          },
+          "then": { "properties": { "legibility": { "const": "abstain" } } }
+        }
+      ]
+    }
+  }
+}

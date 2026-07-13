@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "reviewer_id",
+    "review_session_id",
+    "scenes_reviewed",
+    "crops_reviewed",
+    "corrected_transcriptions",
+    "identity_claims",
+    "external_claims",
+    "fully_verified_dossiers",
+    "tasks",
+    "artifacts"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "ground_originals_independent_review_publication_manifest_v1.0.0"
+    },
+    "status": { "const": "published_verified_external_independent_review" },
+    "reviewer_id": { "const": "independent-reviewer-pixel-ocr-v1" },
+    "review_session_id": { "const": "independent-session-20260713-ground-v1" },
+    "scenes_reviewed": { "const": 6 },
+    "crops_reviewed": { "const": 2 },
+    "corrected_transcriptions": { "const": 2 },
+    "identity_claims": { "const": 0 },
+    "external_claims": { "const": 0 },
+    "fully_verified_dossiers": { "const": 0 },
+    "tasks": { "const": 0 },
+    "artifacts": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "prefixItems": [
+        { "$ref": "#/$defs/input" },
+        { "$ref": "#/$defs/decisions" },
+        { "$ref": "#/$defs/seal" },
+        { "$ref": "#/$defs/transcriptions" },
+        { "$ref": "#/$defs/metrics" },
+        { "$ref": "#/$defs/report" }
+      ],
+      "items": false
+    }
+  },
+  "$defs": {
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "bytes"],
+      "properties": {
+        "path": { "type": "string" },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "bytes": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "input": {
+      "allOf": [
+        { "$ref": "#/$defs/artifact" },
+        {
+          "type": "object",
+          "properties": {
+            "path": { "const": "independent-review-input-v1.json" },
+            "sha256": {
+              "const": "c263eef97d3cd1662954a50748b3f9fadab5cf65ff79ac33ba80b909969699b3"
+            },
+            "bytes": { "const": 2470 }
+          }
+        }
+      ]
+    },
+    "decisions": {
+      "allOf": [
+        { "$ref": "#/$defs/artifact" },
+        {
+          "type": "object",
+          "properties": {
+            "path": { "const": "independent-review-decisions-v1.json" },
+            "sha256": {
+              "const": "32d85f7815a2ef583e36e988ed330347198db056de04f3fa60bd4e42414c536f"
+            },
+            "bytes": { "const": 3074 }
+          }
+        }
+      ]
+    },
+    "seal": {
+      "allOf": [
+        { "$ref": "#/$defs/artifact" },
+        {
+          "type": "object",
+          "properties": {
+            "path": { "const": "independent-review-decisions-seal-v1.json" },
+            "sha256": {
+              "const": "fb3892870778ac9a683cada3187190fdd643992987436a2b7623a2b2cf4e3ff6"
+            },
+            "bytes": { "const": 547 }
+          }
+        }
+      ]
+    },
+    "transcriptions": {
+      "allOf": [
+        { "$ref": "#/$defs/artifact" },
+        {
+          "type": "object",
+          "properties": {
+            "path": { "const": "reviewed-visual-transcriptions-v1.json" },
+            "sha256": {
+              "const": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372"
+            },
+            "bytes": { "const": 1907 }
+          }
+        }
+      ]
+    },
+    "metrics": {
+      "allOf": [
+        { "$ref": "#/$defs/artifact" },
+        {
+          "type": "object",
+          "properties": {
+            "path": { "const": "independent-review-metrics-v1.json" },
+            "sha256": {
+              "const": "92a80a5b02b3377784544dd285443cf360fc45b858cb7857f274d636dc5f3fec"
+            },
+            "bytes": { "const": 804 }
+          }
+        }
+      ]
+    },
+    "report": {
+      "allOf": [
+        { "$ref": "#/$defs/artifact" },
+        {
+          "type": "object",
+          "properties": {
+            "path": { "const": "report-v1.json" },
+            "sha256": {
+              "const": "f8bbcac01158677a685514670fa6113c03d4e2fbb7d6b2fd657d000f16132dae"
+            },
+            "bytes": { "const": 825 }
+          }
+        }
+      ]
+    }
+  }
+}

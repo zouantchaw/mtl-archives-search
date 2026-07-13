@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "provider",
+    "bucket",
+    "object_key",
+    "sha256",
+    "bytes",
+    "readback_status",
+    "source",
+    "contains_secrets_or_links"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "ground_originals_publication_receipt_input_v1.0.0"
+    },
+    "provider": { "type": "string", "const": "cloudflare_r2" },
+    "bucket": { "type": "string", "const": "wiel-codex-worker-cache" },
+    "object_key": {
+      "type": "string",
+      "const": "artifacts/mtl-archives/ground-originals-v1/cbbce269803e46c404440b148aa5e3d49c0500661759b1057a11b308535e1992.tar.gz"
+    },
+    "sha256": {
+      "type": "string",
+      "const": "cbbce269803e46c404440b148aa5e3d49c0500661759b1057a11b308535e1992"
+    },
+    "bytes": { "type": "integer", "const": 3612303 },
+    "readback_status": {
+      "type": "string",
+      "const": "verified_sha256_and_bytes"
+    },
+    "source": {
+      "type": "string",
+      "const": "coordinator_supplied_approved_local_r2_upload_readback"
+    },
+    "contains_secrets_or_links": { "type": "boolean", "const": false }
+  }
+}

@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "scope", "status", "scenes", "crops"],
+  "properties": {
+    "schema_version": {
+      "const": "ground_originals_independent_review_input_v1.0.0"
+    },
+    "scope": { "const": "neutral pixel and OCR proposal review" },
+    "status": { "const": "pending_external_independent_review" },
+    "scenes": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": { "$ref": "#/$defs/scene" }
+    },
+    "crops": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": { "$ref": "#/$defs/crop" }
+    }
+  },
+  "$defs": {
+    "hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "scene": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "neutral_id",
+        "review_path",
+        "review_sha256",
+        "width",
+        "height",
+        "decision",
+        "reviewer_id",
+        "status"
+      ],
+      "properties": {
+        "neutral_id": { "type": "string", "pattern": "^ground-review-0[1-6]$" },
+        "review_path": {
+          "type": "string",
+          "pattern": "^review/ground-review-0[1-6]\\.jpg$"
+        },
+        "review_sha256": { "$ref": "#/$defs/hash" },
+        "width": { "type": "integer", "minimum": 1, "maximum": 1600 },
+        "height": { "type": "integer", "minimum": 1, "maximum": 1600 },
+        "decision": { "const": null },
+        "reviewer_id": { "const": null },
+        "status": { "const": "pending" }
+      }
+    },
+    "crop": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "neutral_crop_id",
+        "parent_neutral_id",
+        "crop_path",
+        "crop_sha256",
+        "width",
+        "height",
+        "machine_ocr_proposal",
+        "decision",
+        "reviewer_id",
+        "status"
+      ],
+      "properties": {
+        "neutral_crop_id": { "enum": ["ground-crop-01", "ground-crop-02"] },
+        "parent_neutral_id": {
+          "enum": [
+            "ground-review-01",
+            "ground-review-02",
+            "ground-review-03",
+            "ground-review-04",
+            "ground-review-05",
+            "ground-review-06"
+          ]
+        },
+        "crop_path": {
+          "type": "string",
+          "pattern": "^crops/ground-crop-0[12]\\.jpg$"
+        },
+        "crop_sha256": { "$ref": "#/$defs/hash" },
+        "width": { "type": "integer", "minimum": 1, "maximum": 1600 },
+        "height": { "type": "integer", "minimum": 1, "maximum": 1600 },
+        "machine_ocr_proposal": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["text", "confidence", "alternatives", "derivation"],
+          "properties": {
+            "text": { "type": ["string", "null"] },
+            "confidence": {
+              "type": ["number", "null"],
+              "minimum": 0,
+              "maximum": 100
+            },
+            "alternatives": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": { "type": "string", "minLength": 1 }
+            },
+            "derivation": {
+              "enum": [
+                "no intersecting original-frame machine OCR proposals",
+                "intersecting original-frame machine OCR proposals"
+              ]
+            }
+          }
+        },
+        "decision": { "const": null },
+        "reviewer_id": { "const": null },
+        "status": { "const": "pending" }
+      }
+    }
+  }
+}
