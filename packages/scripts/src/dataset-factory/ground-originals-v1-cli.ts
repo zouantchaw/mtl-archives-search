@@ -7,6 +7,7 @@ import {
   sealIndependentReview,
   sealPublication,
   selfTest,
+  selfTestFullPayload,
   verify,
   verifyBundle,
   verifyIndependentReview,
@@ -33,6 +34,8 @@ const result =
                     ? restore(process.argv[3], process.argv[4])
                     : cmd === "self"
                       ? await selfTest()
+                      : cmd === "self-full"
+                        ? await selfTestFullPayload()
                       : cmd === "integration"
                         ? (await verify(false),
                           await selfTest(),

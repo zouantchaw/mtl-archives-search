@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "artifact_id", "scope", "created_at", "predecessor_artifact_id", "authority_member", "authority_sha256", "approved_adjudicator_identity", "approved_review_session_id", "manifest", "tree_sha256", "production_mutation"],
+  "properties": {
+    "schema_version": { "const": "ground_claim_adjudication_v1.0.0" },
+    "artifact_id": { "const": "ground-claim-adjudication-v1" },
+    "scope": { "const": "completed_independent_adjudication_authority_no_promotion" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "predecessor_artifact_id": { "const": "ground-authoritative-research-v1" },
+    "authority_member": { "const": "independent-adjudication-v1.json" },
+    "authority_sha256": { "const": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf" },
+    "approved_adjudicator_identity": { "const": "019f5cea-fa84-7da0-be11-29d272f96521" },
+    "approved_review_session_id": { "const": "019f5cea-fa84-7da0-be11-29d272f96521" },
+    "manifest": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "bytes", "sha256"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "bytes": { "type": "integer", "minimum": 1 },
+          "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+        }
+      }
+    },
+    "tree_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "production_mutation": { "const": false }
+  }
+}

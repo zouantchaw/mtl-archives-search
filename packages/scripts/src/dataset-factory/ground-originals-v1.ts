@@ -1917,6 +1917,7 @@ export async function verify(full = false, allowPublicationReset = false) {
   for (const row of research.rows)
     for (const seed of row.query_seeds) {
       const locator = seed.source_locator.split("#")[0];
+      const isExternalOriginal = locator.startsWith("originals/");
       const target =
         locator === "records-v1.json"
           ? path.join(FIXTURE, locator)
@@ -1926,7 +1927,11 @@ export async function verify(full = false, allowPublicationReset = false) {
               ? path.join(DATA, locator)
               : null;
       assert(
-        target && fs.existsSync(target),
+        target &&
+          (!isExternalOriginal ||
+            (/^originals\/(0|10|100|101|102|105)\.jpg$/.test(locator) &&
+              (!full || fs.existsSync(target)))) &&
+          (isExternalOriginal || fs.existsSync(target)),
         `research trigger locator missing: ${seed.source_locator}`,
       );
     }
@@ -2350,6 +2355,49 @@ export async function verify(full = false, allowPublicationReset = false) {
   return d;
 }
 export async function selfTest() {
+  await verify(false);
+  const descriptorPath = path.join(FIXTURE, "descriptor-v1.json"),
+    descriptorBytes = fs.readFileSync(descriptorPath),
+    decisionsBytes = fs.readFileSync(TRACKED_REVIEW_DECISIONS);
+  const fullContractOrder: string[] = [];
+  await runFullPayloadSelfTestContract(
+    async (full) => {
+      fullContractOrder.push(`verify:${full}`);
+    },
+    async () => {
+      fullContractOrder.push("adversarial-checks");
+    },
+  );
+  assert(
+    JSON.stringify(fullContractOrder) ===
+      JSON.stringify(["verify:true", "adversarial-checks", "verify:true"]),
+    "full self-test must bracket adversarial checks with strict verification",
+  );
+  try {
+    const attacked = JSON.parse(descriptorBytes.toString("utf8"));
+    attacked.tree_sha256 = "0".repeat(64);
+    write(descriptorPath, attacked);
+    await assertRejects(() => verify(false));
+  } finally {
+    fs.writeFileSync(descriptorPath, descriptorBytes);
+  }
+  try {
+    const attacked = JSON.parse(decisionsBytes.toString("utf8"));
+    attacked.copied_from_primary_decisions = true;
+    write(TRACKED_REVIEW_DECISIONS, attacked);
+    await assertRejects(() => verify(false));
+  } finally {
+    fs.writeFileSync(TRACKED_REVIEW_DECISIONS, decisionsBytes);
+  }
+  await verify(false);
+  return {
+    self_test: "passed",
+    mode: "tracked_compact_only",
+    cases: 4,
+    ignored_full_payload_required: false,
+  };
+}
+async function runFullPayloadAdversarialChecks() {
   const bad = [
     "http://depot.ville.montreal.qc.ca/phototheque-archives/jpeg/VM94-Z2.jpg",
     "https://x:y@depot.ville.montreal.qc.ca/phototheque-archives/jpeg/VM94-Z2.jpg",
@@ -2772,6 +2820,17 @@ export async function selfTest() {
     fs.writeFileSync(descriptorPath, descriptorBytes);
   }
   await verify(false);
+}
+export async function runFullPayloadSelfTestContract(
+  verifyPayload: (full: boolean) => Promise<unknown>,
+  runAdversarialChecks: () => Promise<unknown>,
+) {
+  await verifyPayload(true);
+  await runAdversarialChecks();
+  await verifyPayload(true);
+}
+export async function selfTestFullPayload() {
+  await runFullPayloadSelfTestContract(verify, runFullPayloadAdversarialChecks);
   return true;
 }
 function assertThrows(fn: () => unknown) {

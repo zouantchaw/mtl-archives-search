@@ -1,0 +1,13 @@
+{
+  "schema_version": "ground_claim_adjudication_v1.0.0",
+  "artifact_id": "ground-claim-adjudication-v1",
+  "stage": "independent_adjudication",
+  "status": "not_started",
+  "required_route": "fresh_sol_high",
+  "adjudicator_identity": null,
+  "adjudicator_role": null,
+  "independence_attestation": null,
+  "sealed_primary_review_sha256": "a80d7477c1e6bf64ed07678a2958d209ed0b76b6901cd308f3b26ea51b3ff2cf",
+  "sealed_inputs_sha256": "d731599996b4092ba352a6fe687efcf3241728013d8baf497de580bb1510b2f5",
+  "rows": []
+}

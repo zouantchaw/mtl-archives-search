@@ -1,0 +1,27 @@
+{
+  "schema_version": "ground_claim_adjudication_v1.0.0",
+  "artifact_id": "ground-claim-adjudication-v1",
+  "gate_status": "independent_adjudication_complete_no_promotion",
+  "promotion_policy": "gate_c_no_promotion_requires_new_pinned_reviewed_evidence_gate",
+  "plain_english": "Independent adjudication is complete and authoritative for the seven listed dispositions: four held, one rejected, and two abstained. It accepts and promotes no claim. Issue #69 remains open because there are no verified claims or dossiers and the 60-record / 25-dossier target is unmet.",
+  "counts": {
+    "accepted": 0,
+    "held": 4,
+    "rejected": 1,
+    "abstained": 2,
+    "promotion_eligible": 0,
+    "accepted_claim_outputs": 0,
+    "verified_dossiers": 0,
+    "benchmark_tasks": 0,
+    "search_tasks": 0
+  },
+  "primary_reviewer_identity": "sol-medium-implementation-author-issue69-gate-c-v1",
+  "independent_adjudicator_identity": "019f5cea-fa84-7da0-be11-29d272f96521",
+  "independent_adjudicator_review_session_id": "019f5cea-fa84-7da0-be11-29d272f96521",
+  "independent_adjudication_sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+  "independent_adjudication_authority": true,
+  "promotion_authority": false,
+  "issue_69_open": true,
+  "production_mutation": false,
+  "final_output_files_present": []
+}
