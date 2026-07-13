@@ -1,5 +1,7 @@
 # Tasks
 
+- Issue #69 Gate B: `ground-authoritative-research-v1` captures and seals authoritative-source evidence plus pending claim drafts for six ground records; independent claim review and any later promotion remain separate work.
+
 Goal: Convert social audience (IG + FB + LinkedIn) into revenue. Validate both DTC print and B2B monetization paths.
 Note: Non-code growth tasks and high-level goals live in the Logseq graph (MTL Archives Operating Plan). This file is for engineering tasks only.
 

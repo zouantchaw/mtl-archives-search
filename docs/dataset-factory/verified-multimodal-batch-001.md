@@ -1,5 +1,7 @@
 # Verified Multimodal Intelligence Batch 001 Foundation
 
+Gate B ground authoritative research is tracked as `ground-authoritative-research-v1`; see `docs/dataset-factory/ground-authoritative-research-v1.md`. It binds rights-conscious public-source capture and pending claim drafts for records `0`, `10`, `100`, `101`, `102`, and `105`, with zero promotions, verified dossiers, benchmark tasks, search tasks, or production mutation.
+
 This is a synthetic, hermetic contract foundation for issue #69. It contains no verified historical claims, produces zero benchmark tasks, and does not satisfy the 60-record acceptance target.
 
 ## Scope And Surfaces

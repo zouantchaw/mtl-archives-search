@@ -1,5 +1,7 @@
 # MTL Archives Search, In Plain Language
 
+Issue #69 Gate B has a tracked, offline-replayable `ground-authoritative-research-v1` evidence-capture artifact for six ground records. It is explicitly non-promoting and does not create dossiers, tasks, or production changes.
+
 MTL Archives Search turns a large municipal photo archive into a product people can explore, play with, learn from, and eventually buy from. The public app is the visible part: search, maps, photo pages, the daily game, newsletter signup, and print ordering. Under that is a data system that cleans archive metadata, enriches records with vision/OCR signals, builds search indexes, and now keeps evaluation/training data reproducible through Dataset Factory v0.
 
 ## How The Pieces Fit
@@ -19,7 +21,7 @@ Dataset Factory is the offline layer for making search quality measurable. It bu
 
 Issues #65 and #66 made this durable and identity-explicit:
 
-- `docs/dataset-factory/artifact-registry.v0.jsonl` currently records 101 artifacts as an acyclic graph, including the tracked Issue 69 candidate, primary visual-promotion, and independent visual-review descriptors.
+- `docs/dataset-factory/artifact-registry.v0.jsonl` records the artifact graph, including the tracked Issue 69 candidate, visual-review, source-research, and ground-research descriptors. Use the registry checker for the current count instead of copying a volatile number into this guide.
 - `docs/dataset-factory/fixtures/v0-smoke/` has tiny tracked fixture rows that let the workflow run in a clean checkout.
 - `npm run dataset-factory:smoke-v0` runs the v0 chain against those fixtures and a local mock search API. It fixes the fixture clock, asserts exact rows/content, and checks a committed output hash; it proves deterministic contract wiring, not live search quality.
 - `npm run dataset-factory:artifacts:self-test` exercises 14 contract/adversarial cases, including a valid in-root file, path-component symlinks, and overlapping members.
