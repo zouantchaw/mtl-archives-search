@@ -1,0 +1,21 @@
+{"packet_id":"real-pilot-intelligence:d5840e50396f5124e8b1be6a","queue_id":"0:unresolved:1","status":"unresolved","text":"higher-resolution sign transcription"}
+{"packet_id":"real-pilot-intelligence:d5840e50396f5124e8b1be6a","queue_id":"0:unresolved:2","status":"unresolved","text":"source-backed entity and place verification"}
+{"packet_id":"real-pilot-intelligence:e7d702545f2cb29ce3b44c74","queue_id":"10:unresolved:1","status":"unresolved","text":"higher-resolution storefront transcription"}
+{"packet_id":"real-pilot-intelligence:e7d702545f2cb29ce3b44c74","queue_id":"10:unresolved:2","status":"unresolved","text":"source-backed place verification"}
+{"packet_id":"real-pilot-intelligence:98f0cfb8fe9efa0671192295","queue_id":"100:unresolved:1","status":"unresolved","text":"construction-stage comparison"}
+{"packet_id":"real-pilot-intelligence:98f0cfb8fe9efa0671192295","queue_id":"100:unresolved:2","status":"unresolved","text":"source-backed building and location verification"}
+{"packet_id":"real-pilot-intelligence:378285605a3a245234fa4095","queue_id":"101:unresolved:1","status":"unresolved","text":"storefront or streetscape comparison"}
+{"packet_id":"real-pilot-intelligence:378285605a3a245234fa4095","queue_id":"101:unresolved:2","status":"unresolved","text":"source-backed location verification"}
+{"packet_id":"real-pilot-intelligence:78363c5144c7310435c5d219","queue_id":"102:unresolved:1","status":"unresolved","text":"architectural feature review"}
+{"packet_id":"real-pilot-intelligence:78363c5144c7310435c5d219","queue_id":"102:unresolved:2","status":"unresolved","text":"source-backed building and address verification"}
+{"packet_id":"real-pilot-intelligence:5fb88775d033287f3fce1e83","queue_id":"105:unresolved:1","status":"unresolved","text":"higher-resolution sign transcription"}
+{"packet_id":"real-pilot-intelligence:5fb88775d033287f3fce1e83","queue_id":"105:unresolved:2","status":"unresolved","text":"source-backed business and location verification"}
+{"packet_id":"real-pilot-intelligence:8fc6dda3f55b62be192c21be","queue_id":"8132:unresolved:1","status":"unresolved","text":"shoreline and urban-form comparison"}
+{"packet_id":"real-pilot-intelligence:8fc6dda3f55b62be192c21be","queue_id":"8132:unresolved:2","status":"unresolved","text":"future georeference with external control points"}
+{"packet_id":"real-pilot-intelligence:406ae53425523dc4b59daf0e","queue_id":"8134:unresolved:1","status":"unresolved","text":"transport-pattern comparison"}
+{"packet_id":"real-pilot-intelligence:406ae53425523dc4b59daf0e","queue_id":"8134:unresolved:2","status":"unresolved","text":"future georeference with external control points"}
+{"packet_id":"real-pilot-intelligence:b14e1b66dfbd5b5de1bbb4b9","queue_id":"8139:unresolved:1","status":"unresolved","text":"road-network and land-cover comparison"}
+{"packet_id":"real-pilot-intelligence:b14e1b66dfbd5b5de1bbb4b9","queue_id":"8139:unresolved:2","status":"unresolved","text":"future georeference with external control points"}
+{"packet_id":"real-pilot-intelligence:df51d1ea6da13c46247da168","queue_id":"8143:unresolved:1","status":"unresolved","text":"urban-grid comparison"}
+{"packet_id":"real-pilot-intelligence:df51d1ea6da13c46247da168","queue_id":"8143:unresolved:2","status":"unresolved","text":"future georeference with external control points"}
+{"packet_id":"real-pilot-intelligence:81b7cbd21b0f03b0aa268960","queue_id":"10145:unresolved:1","status":"unresolved","text":"future map-sheet interpretation with source documentation"}

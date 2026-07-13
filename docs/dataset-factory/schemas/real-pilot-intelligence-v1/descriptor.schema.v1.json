@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "predecessors",
+    "tree_sha256",
+    "counts",
+    "members"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "real_pilot_intelligence_descriptor_v1.0.0"
+    },
+    "artifact_id": {
+      "const": "dfv0_real_pilot_intelligence_v1"
+    },
+    "predecessors": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "selection",
+        "promotion",
+        "independent_review",
+        "source_acquisition"
+      ],
+      "properties": {
+        "selection": {
+          "$ref": "#/$defs/predecessor"
+        },
+        "promotion": {
+          "$ref": "#/$defs/predecessor"
+        },
+        "independent_review": {
+          "$ref": "#/$defs/predecessor"
+        },
+        "source_acquisition": {
+          "$ref": "#/$defs/predecessor"
+        }
+      }
+    },
+    "tree_sha256": {
+      "$ref": "#/$defs/hash"
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "files",
+        "bytes",
+        "processed_records",
+        "fully_verified_dossiers",
+        "benchmark_tasks"
+      ],
+      "properties": {
+        "files": {
+          "const": 45
+        },
+        "bytes": {
+          "const": 1944373
+        },
+        "processed_records": {
+          "const": 12
+        },
+        "fully_verified_dossiers": {
+          "const": 0
+        },
+        "benchmark_tasks": {
+          "const": 0
+        }
+      }
+    },
+    "members": {
+      "type": "array",
+      "minItems": 45,
+      "items": {
+        "$ref": "#/$defs/member"
+      },
+      "uniqueItems": true,
+      "maxItems": 45
+    }
+  },
+  "$defs": {
+    "hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "predecessor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^docs/dataset-factory/fixtures/[^.].+\\.json$"
+        },
+        "sha256": {
+          "$ref": "#/$defs/hash"
+        }
+      }
+    },
+    "member": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "bytes",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^(benchmark-tasks-v1\\.jsonl|contact-sheets/(aerial|ground)\\.png|dossiers/[0-9]+\\.(html|json)|independent-review-input-v1\\.jsonl|manifest-v1\\.json|overlays/[0-9]+\\.png|packets/packets-v1\\.jsonl|rejected-queue-v1\\.jsonl|run-report-v1\\.json|unresolved-queue-v1\\.jsonl)$"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sha256": {
+          "$ref": "#/$defs/hash"
+        }
+      }
+    }
+  }
+}
