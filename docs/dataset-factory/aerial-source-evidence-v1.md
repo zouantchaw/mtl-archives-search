@@ -4,7 +4,28 @@
 
 The 22 originals total 946,387,779 bytes: 20 TIFFs and two JPEGs. `sharp` 0.33.5/libvips 8.15.3 fully decoded every image and computed pixel statistics; header-only parsing does not count as pixel verification. Exact bodies are not committed. Every sanitized transport receipt binds the raw `.meta`, `.headers`, and `.probe` sidecars by bytes and SHA-256. TIFF probes are exact media-prefix ranges with HTTP 206; the two JPEG probes are byte-identical full bodies with HTTP 200.
 
-The pending private-snapshot descriptor binds the 22 exact media members and 22 sanitized receipts, but Phase A intentionally does not define archive packing, durable readback, or publication. Cloud upload/readback and independent Gate E review remain future coordinator work; therefore the tracked authority is `candidate_held_external_review_required`, issue completion is false, and the registry row is candidate-only.
+The private-snapshot descriptor binds the 22 exact media members and 22 sanitized receipts. Phase B defines deterministic local packing plus an external upload/readback seal, but performs no cloud write. Independent Gate E review and publication remain future work; therefore the tracked authority is `candidate_held_external_review_required`, issue completion is false, and the registry row is candidate-only.
+
+## Deterministic private archive and archived candidate
+
+The archive command emits deterministic `ustar+gzip` with fixed mode `0600`, uid/gid/mtime zero, lexical member order, and exactly two terminal zero blocks. Its payload is exactly 44 regular files: 22 hash-pinned media bodies and 22 generated sanitized transport receipts. It contains no raw sidecars, signed URLs, descriptors, upload receipts, or self-referential hashes.
+
+The verifier independently decompresses and parses the archive. It rejects unsafe or non-normal paths, duplicates, links and non-regular types, metadata drift, checksum errors, nonzero padding, extras, substitutions, truncation, and any member-set/order/hash/byte mismatch.
+
+After an approved coordinator uploads and completely reads back the archive, `seal-archived` consumes an externally authored receipt conforming to `external-archive-upload-readback-receipt-v1.schema.json`. The receipt must bind the local archive hash/bytes, a non-signed `r2://bucket/key` durable locator, upload time, and byte-identical readback hash/bytes/time. Sealing creates a new directory, byte-preserves the complete candidate and original descriptor, byte-preserves the external receipt, and adds a separately derived archived-candidate descriptor. Existing outputs are refused.
+
+```bash
+mkdir -p /tmp/mtl-gate-f-private
+npm run dataset-factory:aerial-authority-v1 -- pack --candidate "$PWD/docs/dataset-factory/fixtures/aerial-source-evidence-v1" --media-root /tmp/mtl-gate-f-media --output /tmp/mtl-gate-f-private/aerial-source-evidence-v1.tar.gz
+npm run dataset-factory:aerial-authority-v1 -- verify-archive --candidate "$PWD/docs/dataset-factory/fixtures/aerial-source-evidence-v1" --archive /tmp/mtl-gate-f-private/aerial-source-evidence-v1.tar.gz
+shasum -a 256 /tmp/mtl-gate-f-private/aerial-source-evidence-v1.tar.gz
+wc -c /tmp/mtl-gate-f-private/aerial-source-evidence-v1.tar.gz
+# Upload with the coordinator's approved R2 tooling, read the complete object back, and author /absolute/UPLOAD_READBACK_RECEIPT.json outside this implementation.
+npm run dataset-factory:aerial-authority-v1 -- seal-archived --candidate "$PWD/docs/dataset-factory/fixtures/aerial-source-evidence-v1" --archive /tmp/mtl-gate-f-private/aerial-source-evidence-v1.tar.gz --receipt /absolute/UPLOAD_READBACK_RECEIPT.json --output /absolute/ARCHIVED_CANDIDATE
+npm run dataset-factory:aerial-authority-v1 -- verify-archived --archived /absolute/ARCHIVED_CANDIDATE --archive /tmp/mtl-gate-f-private/aerial-source-evidence-v1.tar.gz
+```
+
+This phase stops at `archived_candidate_external_review_required`. It does not create or validate an independent reviewer receipt and cannot publish authority.
 
 ## Official source bodies
 
