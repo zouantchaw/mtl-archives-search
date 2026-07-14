@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "artifact_id", "authority_receipt_sha256", "rows"],
+  "properties": {
+    "schema_version": { "const": "reviewed_source_evidence_v1.0.0" },
+    "artifact_id": { "const": "reviewed-source-evidence-v1" },
+    "authority_receipt_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "rows": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["claim_id", "disposition", "promotion_eligible"],
+        "properties": {
+          "claim_id": { "type": "string", "pattern": "^c[0-9]+-[a-z0-9-]+$" },
+          "disposition": { "enum": ["accepted", "held", "rejected", "abstained"] },
+          "promotion_eligible": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}

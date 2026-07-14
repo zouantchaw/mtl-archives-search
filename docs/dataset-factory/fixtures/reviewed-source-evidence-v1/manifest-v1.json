@@ -1,0 +1,62 @@
+{
+  "schema_version": "reviewed_source_evidence_v1.0.0",
+  "artifact_id": "reviewed-source-evidence-v1",
+  "members": [
+    {
+      "path": "acquisition-manifest-v1.json",
+      "bytes": 8558,
+      "sha256": "ebc635fd5cd1bdc7ddaccd60340862737a5c3f760c4ef0c11ab9002435ac0172"
+    },
+    {
+      "path": "bounded-review-representations-v1.json",
+      "bytes": 11786,
+      "sha256": "01daabcf8f3c70dd5b3650ee68aec685720f666d436efad7527c0fdfe4a7b643"
+    },
+    {
+      "path": "candidate-descriptor-v1.json",
+      "bytes": 3668,
+      "sha256": "a3bec7c396d6c78a011a133ba00ed73a766cdb007cb67fb3e59e54d80ced8613"
+    },
+    {
+      "path": "external-snapshot-descriptor-v1.json",
+      "bytes": 7083,
+      "sha256": "4b9b2e3c2f1cccc007c73fe29796220fbb842387b0c137a961df2146f3743f76"
+    },
+    {
+      "path": "independent-source-body-review-receipt-v1.json",
+      "bytes": 15435,
+      "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef"
+    },
+    {
+      "path": "independent-source-body-review-receipt.template-v1.json",
+      "bytes": 9044,
+      "sha256": "66f7ad902a5b5027c357ae5b093d695f34ca633aa1ca0fb3bad3a5a4015f164a"
+    },
+    {
+      "path": "promotion-ledger-v1.json",
+      "bytes": 1000,
+      "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9"
+    },
+    {
+      "path": "rights-blocked-queue-v1.json",
+      "bytes": 979,
+      "sha256": "2ca160bb262e837898e522d5e3b1d4c7ef6035a4e8dd47f9006c68a8c6fa5e8d"
+    },
+    {
+      "path": "source-body-review-input-v1.json",
+      "bytes": 8808,
+      "sha256": "d74ed770feec6da6b469e162bd9ee3d9ec0fda64126a68fa259abca12c8a6af1"
+    },
+    {
+      "path": "status-report-v1.json",
+      "bytes": 377,
+      "sha256": "475dcba11ebddce69609eb53ce6299f2c5eebbd0f891bdf3c7ae1852dcbc6541"
+    },
+    {
+      "path": "unresolved-queue-v1.json",
+      "bytes": 1085,
+      "sha256": "af0c6ae861dd7c88e55f221485a2cadd8a573ae9deb2bc2e2b98404e5bb74140"
+    }
+  ],
+  "tree_sha256": "f2825d8d22cfddb74f496e64efbbfc3b4059b07a4b6da72ff2ec8a18cb4c6ab4"
+}

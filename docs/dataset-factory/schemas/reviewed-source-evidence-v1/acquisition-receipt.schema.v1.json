@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["receipt_version", "capture_id", "request_url", "request_url_basis", "request_url_independently_observed", "request_url_required_to_equal_effective_url", "effective_url", "status", "media_type", "captured_at", "final_headers", "body", "raw_audit_digests", "sanitization", "credential_like_material"],
+  "properties": {
+    "receipt_version": { "const": "acquisition_transport_receipt_v1" },
+    "capture_id": { "type": "string", "pattern": "^capture-[a-z0-9-]+$" },
+    "request_url": { "type": "string", "format": "uri", "pattern": "^https://" },
+    "request_url_basis": { "const": "generator_config_not_separately_observed" },
+    "request_url_independently_observed": { "const": false },
+    "request_url_required_to_equal_effective_url": { "const": true },
+    "effective_url": { "type": "string", "format": "uri", "pattern": "^https://" },
+    "status": { "const": 200 },
+    "media_type": { "type": "string", "pattern": "^text/html(?:; charset=[a-z0-9-]+)?$" },
+    "captured_at": { "type": "string", "format": "date-time" },
+    "final_headers": {
+      "type": "object", "additionalProperties": false,
+      "required": ["final_status", "date_utc", "content_type", "content_length"],
+      "properties": {
+        "final_status": { "const": 200 },
+        "date_utc": { "type": "string", "format": "date-time" },
+        "content_type": { "type": "string", "pattern": "^text/html(?:; charset=[a-z0-9-]+)?$" },
+        "content_length": { "type": ["integer", "null"], "minimum": 0 }
+      }
+    },
+    "body": {
+      "type": "object", "additionalProperties": false, "required": ["path", "sha256", "bytes"],
+      "properties": {
+        "path": { "type": "string", "pattern": "^bodies/[a-z0-9-]+\\.html$" },
+        "sha256": { "$ref": "#/$defs/hash" },
+        "bytes": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "raw_audit_digests": {
+      "type": "object", "additionalProperties": false, "required": ["curl_meta", "headers"],
+      "properties": { "curl_meta": { "$ref": "#/$defs/audit" }, "headers": { "$ref": "#/$defs/audit" } }
+    },
+    "sanitization": {
+      "type": "object", "additionalProperties": false,
+      "required": ["allowlisted_transport_fields", "raw_headers_archived", "cookie_values_archived", "auth_material_archived", "signed_urls_archived"],
+      "properties": {
+        "allowlisted_transport_fields": { "const": ["effective_url", "status", "date", "content-type", "content-length"] },
+        "raw_headers_archived": { "const": false },
+        "cookie_values_archived": { "const": false },
+        "auth_material_archived": { "const": false },
+        "signed_urls_archived": { "const": false }
+      }
+    },
+    "credential_like_material": { "$ref": "#/$defs/classification" }
+  },
+  "$defs": {
+    "hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "audit": { "type": "object", "additionalProperties": false, "required": ["bytes", "sha256"], "properties": { "bytes": { "type": "integer", "minimum": 1 }, "sha256": { "$ref": "#/$defs/hash" } } },
+    "classification": {
+      "type": "object", "additionalProperties": false, "required": ["scan_policy", "classification", "occurrence_count", "unclassified_occurrence_count", "handling"],
+      "properties": {
+        "scan_policy": { "const": "credential_like_scan_v1" }, "classification": { "const": "none_detected" },
+        "occurrence_count": { "const": 0 }, "unclassified_occurrence_count": { "const": 0 }, "handling": { "type": "string", "minLength": 20 }
+      }
+    }
+  }
+}

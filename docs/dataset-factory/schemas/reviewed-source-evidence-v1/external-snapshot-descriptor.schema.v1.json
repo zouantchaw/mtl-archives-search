@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "artifact_id", "status", "local_locator", "external_locator", "upload_readback_receipt", "archive_bytes", "archive_sha256", "uncompressed_bytes", "credential_like_scan_policy", "credential_boundary", "members"],
+  "properties": {
+    "schema_version": { "const": "reviewed_source_evidence_v1.0.0" },
+    "artifact_id": { "const": "reviewed-source-evidence-v1" },
+    "status": { "const": "candidate_private_snapshot_archived_readback_verified" },
+    "local_locator": { "type": "string", "pattern": "^/" },
+    "external_locator": { "const": "r2://wiel-codex-worker-cache/artifacts/mtl-archives/issue89-reviewed-source-evidence/d94857447ad48178cf42c5baa17e54f7e2f430f1141e47dedfde2a24ade424c1.tar.gz" },
+    "upload_readback_receipt": { "$ref": "#/$defs/uploadReceipt" },
+    "archive_bytes": { "const": 53451 },
+    "archive_sha256": { "const": "d94857447ad48178cf42c5baa17e54f7e2f430f1141e47dedfde2a24ade424c1" },
+    "uncompressed_bytes": { "type": "integer", "minimum": 1 },
+    "credential_like_scan_policy": { "const": "credential_like_scan_v1" },
+    "credential_boundary": { "type": "string", "minLength": 80 },
+    "members": {
+      "type": "array", "minItems": 10, "maxItems": 10,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["path", "member_kind", "bytes", "sha256", "credential_like_material"],
+        "properties": {
+          "path": { "type": "string", "pattern": "^(?:bodies/[a-z0-9-]+\\.html|acquisition-receipts/[a-z0-9-]+\\.json)$" },
+          "member_kind": { "enum": ["exact_private_body", "sanitized_acquisition_receipt"] },
+          "bytes": { "type": "integer", "minimum": 1 }, "sha256": { "$ref": "#/$defs/hash" },
+          "credential_like_material": { "$ref": "#/$defs/classification" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "uploadReceipt": {
+      "type": "object", "additionalProperties": false,
+      "required": ["receipt_version", "provider", "bucket", "object_key", "durable_locator", "archive_sha256", "archive_bytes", "uploaded", "readback_status", "observed_at", "presigned_url"],
+      "properties": {
+        "receipt_version": { "const": "private_r2_upload_readback_receipt_v1" },
+        "provider": { "const": "cloudflare_r2" },
+        "bucket": { "const": "wiel-codex-worker-cache" },
+        "object_key": { "const": "artifacts/mtl-archives/issue89-reviewed-source-evidence/d94857447ad48178cf42c5baa17e54f7e2f430f1141e47dedfde2a24ade424c1.tar.gz" },
+        "durable_locator": { "const": "r2://wiel-codex-worker-cache/artifacts/mtl-archives/issue89-reviewed-source-evidence/d94857447ad48178cf42c5baa17e54f7e2f430f1141e47dedfde2a24ade424c1.tar.gz" },
+        "archive_sha256": { "const": "d94857447ad48178cf42c5baa17e54f7e2f430f1141e47dedfde2a24ade424c1" },
+        "archive_bytes": { "const": 53451 },
+        "uploaded": { "const": true },
+        "readback_status": { "const": "direct_readback_byte_identical" },
+        "observed_at": { "const": "2026-07-14T03:58:13Z" },
+        "presigned_url": { "type": "null" }
+      }
+    },
+    "classification": {
+      "type": "object", "additionalProperties": false, "required": ["scan_policy", "classification", "occurrence_count", "unclassified_occurrence_count", "handling"],
+      "properties": {
+        "scan_policy": { "const": "credential_like_scan_v1" }, "classification": { "enum": ["none_detected", "origin_public_client_token"] },
+        "occurrence_count": { "type": "integer", "minimum": 0, "maximum": 1 }, "unclassified_occurrence_count": { "const": 0 }, "handling": { "type": "string", "minLength": 20 }
+      }
+    }
+  }
+}

@@ -1,0 +1,258 @@
+{
+  "schema_version": "reviewed_source_evidence_v1.0.0",
+  "artifact_id": "reviewed-source-evidence-v1",
+  "stage": "independent_source_body_review",
+  "status": "not_started",
+  "reviewer": null,
+  "reviewed_at": null,
+  "independence_attestations": [],
+  "bindings": {
+    "acquisition_manifest_sha256": "ebc635fd5cd1bdc7ddaccd60340862737a5c3f760c4ef0c11ab9002435ac0172",
+    "representations_sha256": "01daabcf8f3c70dd5b3650ee68aec685720f666d436efad7527c0fdfe4a7b643",
+    "review_input_sha256": "d74ed770feec6da6b469e162bd9ee3d9ec0fda64126a68fa259abca12c8a6af1",
+    "external_snapshot_sha256": "d94857447ad48178cf42c5baa17e54f7e2f430f1141e47dedfde2a24ade424c1",
+    "external_snapshot_bytes": 53451,
+    "external_snapshot_storage_receipt_sha256": "947528bd68bff3612abf5bc22e4a0c8d89a7279e9e87ce69783ce9123505ab6a",
+    "candidate_descriptor_sha256": null,
+    "candidate_tree_sha256": null,
+    "claims": [
+      {
+        "claim_id": "c0-lovell",
+        "claim_text_sha256": "1d462f25aaf4576f5958ac6619da36d6a0d518cec6a614fc3ee12928b460ab07",
+        "source_representation_ids": [
+          "repr-r0-lovell-1927"
+        ],
+        "dependency_family_ids": [
+          "banq-lovell-1927"
+        ]
+      },
+      {
+        "claim_id": "c0-rpcq",
+        "claim_text_sha256": "63132d542518bbd7e50855e316d31d51ff748ebbfaf9b578d6427aee42184420",
+        "source_representation_ids": [
+          "repr-r0-rpcq-gazette",
+          "repr-r0-lovell-1927"
+        ],
+        "dependency_family_ids": [
+          "banq-lovell-1927",
+          "rpcq-register"
+        ]
+      },
+      {
+        "claim_id": "c10-spelling",
+        "claim_text_sha256": "67aa9d969ac880f1f7b84cdf172f343831547e1614a9f6848e470ff476141549",
+        "source_representation_ids": [
+          "repr-r10-lovell-1932-a",
+          "repr-r10-city-archive-predecessor"
+        ],
+        "dependency_family_ids": [
+          "banq-lovell-1932",
+          "city-vm94-z-series"
+        ]
+      },
+      {
+        "claim_id": "c100-date",
+        "claim_text_sha256": "5d36b7ac5a62c82defe58094cf1495dd0a412a5ffd35fd1664157cc7f6b8300b",
+        "source_representation_ids": [
+          "repr-r100-rpcq-laurentien",
+          "repr-r100-lapresse-dossier",
+          "repr-r100-armour-landry"
+        ],
+        "dependency_family_ids": [
+          "banq-armour-landry-3232855",
+          "banq-lapresse-4159254",
+          "rpcq-document-105269"
+        ]
+      },
+      {
+        "claim_id": "c101-laphkas",
+        "claim_text_sha256": "756f707d7be68667d866334ee6e06020de6222dafed986eed46bf024f9a1a91a",
+        "source_representation_ids": [
+          "repr-r101-lapresse-1927"
+        ],
+        "dependency_family_ids": [
+          "banq-lapresse-3095625"
+        ]
+      },
+      {
+        "claim_id": "c102-date-address",
+        "claim_text_sha256": "7b6ba0303593bc37b2a92e938af88fcfe1cb7e8b1cb642bcc66f9feb711c8789",
+        "source_representation_ids": [
+          "repr-r102-city-record",
+          "repr-r102-rpcq-st-george",
+          "repr-r102-parks-st-george"
+        ],
+        "dependency_family_ids": [
+          "city-vm94-z-series",
+          "parks-register",
+          "rpcq-document-105269"
+        ]
+      },
+      {
+        "claim_id": "c105-tilden",
+        "claim_text_sha256": "0e84eacd7e9d3c99847773405fcc51d4890fb77dcfe9d2d644166036fe02112a",
+        "source_representation_ids": [
+          "repr-r105-lovell-1944"
+        ],
+        "dependency_family_ids": [
+          "banq-lovell-1944"
+        ]
+      }
+    ],
+    "representations": [
+      {
+        "representation_id": "repr-r0-rpcq-gazette",
+        "body_sha256": "3fc93fb019fc567b6f2d62516284e1887ddcba5fd0dbb5a7f5a3443b99f10867",
+        "proposition_ids": [
+          "p-c0-rpcq-address",
+          "p-c0-rpcq-year"
+        ],
+        "rights_id": "rights-rpcq"
+      },
+      {
+        "representation_id": "repr-r100-rpcq-laurentien",
+        "body_sha256": "2879ae4925972e203e02e500af9a4e3b5c199399e4681e6776917b59fa2b8012",
+        "proposition_ids": [
+          "p-c100-rpcq-built-1947"
+        ],
+        "rights_id": "rights-rpcq"
+      },
+      {
+        "representation_id": "repr-r102-rpcq-st-george",
+        "body_sha256": "2879ae4925972e203e02e500af9a4e3b5c199399e4681e6776917b59fa2b8012",
+        "proposition_ids": [
+          "p-c102-rpcq-annex-period",
+          "p-c102-rpcq-address"
+        ],
+        "rights_id": "rights-rpcq"
+      },
+      {
+        "representation_id": "repr-r102-parks-st-george",
+        "body_sha256": "4502f5e9096715759b1b36311cca0a74f3fa363d51c0291719a038937987e586",
+        "proposition_ids": [
+          "p-c102-parks-address-1101",
+          "p-c102-parks-plaque-1001"
+        ],
+        "rights_id": "rights-parks"
+      },
+      {
+        "representation_id": "repr-r10-city-archive-predecessor",
+        "body_sha256": "3b3a7ffcdfcd916d977094e3e013c82d31b1dee8ed86614c7d12e94e4d3ac53e",
+        "proposition_ids": [
+          "p-c10-city-perreault"
+        ],
+        "rights_id": "rights-city-open-data"
+      },
+      {
+        "representation_id": "repr-r102-city-record",
+        "body_sha256": "3b3a7ffcdfcd916d977094e3e013c82d31b1dee8ed86614c7d12e94e4d3ac53e",
+        "proposition_ids": [
+          "p-c102-city-date",
+          "p-c102-city-address"
+        ],
+        "rights_id": "rights-city-open-data"
+      },
+      {
+        "representation_id": "repr-r0-lovell-1927",
+        "body_sha256": null,
+        "proposition_ids": [],
+        "rights_id": "rights-banq-citation-only"
+      },
+      {
+        "representation_id": "repr-r10-lovell-1932-a",
+        "body_sha256": null,
+        "proposition_ids": [],
+        "rights_id": "rights-banq-citation-only"
+      },
+      {
+        "representation_id": "repr-r100-lapresse-dossier",
+        "body_sha256": null,
+        "proposition_ids": [],
+        "rights_id": "rights-banq-citation-only"
+      },
+      {
+        "representation_id": "repr-r100-armour-landry",
+        "body_sha256": null,
+        "proposition_ids": [],
+        "rights_id": "rights-banq-citation-only"
+      },
+      {
+        "representation_id": "repr-r101-lapresse-1927",
+        "body_sha256": null,
+        "proposition_ids": [],
+        "rights_id": "rights-banq-citation-only"
+      },
+      {
+        "representation_id": "repr-r105-lovell-1944",
+        "body_sha256": null,
+        "proposition_ids": [],
+        "rights_id": "rights-banq-citation-only"
+      }
+    ],
+    "rights": [
+      {
+        "rights_id": "rights-rpcq",
+        "mode": "private_review_snapshot",
+        "body_sha256": "47828458c124c0897eb34547175d776a1ca42c47ba169a4bdb293cee87cefd8d"
+      },
+      {
+        "rights_id": "rights-parks",
+        "mode": "private_review_snapshot",
+        "body_sha256": "0dbfef3c3273ce723f7b9ad06cceebc6223f5d1de5374f957745106cf2d52fc2"
+      },
+      {
+        "rights_id": "rights-city-open-data",
+        "mode": "tracked_permitted_body",
+        "body_sha256": "3b3a7ffcdfcd916d977094e3e013c82d31b1dee8ed86614c7d12e94e4d3ac53e"
+      },
+      {
+        "rights_id": "rights-banq-citation-only",
+        "mode": "citation_only_not_promotion_eligible",
+        "body_sha256": null
+      }
+    ],
+    "predecessor_pins": [
+      {
+        "path": "docs/dataset-factory/fixtures/ground-authoritative-research-v1/descriptor-v1.json",
+        "bytes": 772,
+        "sha256": "24b441ba8ecd25ab98f2c4c2202b4f8312945adaea6cd5b32f67d9c9ce8184f0"
+      },
+      {
+        "path": "docs/dataset-factory/fixtures/ground-authoritative-research-v1/pending-claims-v1.json",
+        "bytes": 6445,
+        "sha256": "231eae5b3d1d3ea4cf4b2baa23d2ba4028a91e65a8a98851ab9ec5760eb835d9"
+      },
+      {
+        "path": "docs/dataset-factory/fixtures/ground-authoritative-research-v1/source-graph-v1.json",
+        "bytes": 5136,
+        "sha256": "8a1a2bab56710634ab94e99ec4a5956e9ffa990ebddf6fe78a9e5c91b624c7c7"
+      },
+      {
+        "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/descriptor-v1.json",
+        "bytes": 1851,
+        "sha256": "368919c399b2ef514d51a18f32169d980a7b8b7f1f987b349f2ef0b4acfd9b1f"
+      },
+      {
+        "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+        "bytes": 7724,
+        "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf"
+      },
+      {
+        "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/descriptor-v1.json",
+        "bytes": 4098,
+        "sha256": "1e72fb1fd74ad12b99de878ad97da9386afccdf77e7f0926811775dd416c48ce"
+      },
+      {
+        "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/reviewer-selection-receipt-v1.json",
+        "bytes": 3224,
+        "sha256": "12f5c0a6b97c04bf6acf2417bd4aac2358ef98385decd55b3b4a8d5a0fc65898"
+      },
+      {
+        "path": "docs/dataset-factory/fixtures/real-pilot-source-acquisition-v1/selected-ground-rows-v1.json",
+        "bytes": 5690,
+        "sha256": "3b3a7ffcdfcd916d977094e3e013c82d31b1dee8ed86614c7d12e94e4d3ac53e"
+      }
+    ]
+  },
+  "dispositions": []
+}
