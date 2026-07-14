@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -10,6 +11,13 @@ import sharp from "sharp";
 
 type J = any;
 type Pin = { path: string; sha256: string; bytes: number };
+const INTERNAL_AUTHORIZATION_CAPABILITY = Symbol(
+  "verified-dossiers-internal-authorization-capability",
+);
+type InternalAuthorizationCapability = {
+  readonly [INTERNAL_AUTHORIZATION_CAPABILITY]: true;
+  readonly pin: J;
+};
 const ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "../../../..",
@@ -19,6 +27,12 @@ const FIXTURE = path.join(ROOT, REL);
 const REGISTRY = path.join(
   ROOT,
   "docs/dataset-factory/artifact-registry.v0.jsonl",
+);
+const PRODUCTION_AUTHORIZATION_PIN_REL =
+  "docs/dataset-factory/authorities/verified-dossiers-v1/production-authorization-pin-v1.json";
+const PRODUCTION_AUTHORIZATION_PIN = path.join(
+  ROOT,
+  PRODUCTION_AUTHORIZATION_PIN_REL,
 );
 const PHASE = path.join(
   ROOT,
@@ -1200,14 +1214,113 @@ function strictTime(v: unknown): boolean {
     !Number.isNaN(Date.parse(v))
   );
 }
+function activeAuthorizationPin(
+  candidate: string,
+  authorizationFile: string,
+): J {
+  const authorization = load(authorizationFile);
+  return {
+    schema_version: "verified_dossiers_production_authorization_pin_v1.0.0",
+    authority_id: "gate-g-production-authorization-pin",
+    state: "active",
+    candidate_artifact_id: ID,
+    candidate_descriptor_sha256: filePin(
+      path.join(candidate, "descriptor-v1.json"),
+    ).sha256,
+    authorization_file: {
+      sha256: filePin(authorizationFile).sha256,
+      bytes: filePin(authorizationFile).bytes,
+    },
+    approved_reviewer: authorization.approved_reviewer,
+    authorizing_authority: authorization.authorizing_authority,
+    authorized_at: authorization.authorized_at,
+    scope_note:
+      "Internal test-only positive authorization capability. This object is never accepted from a CLI path and is never a production trust root.",
+  };
+}
+function internalAuthorizationCapability(
+  candidate: string,
+  authorizationFile: string,
+): InternalAuthorizationCapability {
+  return {
+    [INTERNAL_AUTHORIZATION_CAPABILITY]: true,
+    pin: activeAuthorizationPin(candidate, authorizationFile),
+  };
+}
+function loadProductionAuthorizationPin(): J {
+  const bytes = fs.readFileSync(PRODUCTION_AUTHORIZATION_PIN);
+  let committed: Buffer;
+  try {
+    committed = execFileSync(
+      "git",
+      ["show", `HEAD:${PRODUCTION_AUTHORIZATION_PIN_REL}`],
+      { cwd: ROOT, encoding: "buffer", stdio: ["ignore", "pipe", "ignore"] },
+    );
+  } catch {
+    throw new Error("production authorization pin is not committed at HEAD");
+  }
+  assert(
+    bytes.equals(committed),
+    "production authorization pin differs from committed HEAD bytes",
+  );
+  const pin = JSON.parse(bytes.toString("utf8"));
+  schema("production-authorization-pin.schema.v1.json", pin);
+  return pin;
+}
+function resolveAuthorizationPin(
+  capability?: InternalAuthorizationCapability,
+): J {
+  if (capability) {
+    assert(
+      capability[INTERNAL_AUTHORIZATION_CAPABILITY] === true,
+      "invalid internal authorization capability",
+    );
+    schema("production-authorization-pin.schema.v1.json", capability.pin);
+    return capability.pin;
+  }
+  return loadProductionAuthorizationPin();
+}
 function validateAuthorization(
   candidate: string,
   authorizationFile: string,
   receipt: J | null,
-  internalTest = false,
+  capability?: InternalAuthorizationCapability,
 ): J {
   const authorization = load(authorizationFile);
   schema("reviewer-authorization.schema.v1.json", authorization);
+  const pin = resolveAuthorizationPin(capability);
+  assert(
+    pin.state === "active",
+    "production authorization pin is unconfigured",
+  );
+  assert(
+    pin.candidate_artifact_id === ID &&
+      pin.candidate_descriptor_sha256 ===
+        filePin(path.join(candidate, "descriptor-v1.json")).sha256,
+    "authorization pin candidate binding drift",
+  );
+  same(
+    pin.authorization_file,
+    {
+      sha256: filePin(authorizationFile).sha256,
+      bytes: filePin(authorizationFile).bytes,
+    },
+    "authorization pin file binding",
+  );
+  same(
+    pin.approved_reviewer,
+    authorization.approved_reviewer,
+    "authorization pin reviewer route",
+  );
+  same(
+    pin.authorizing_authority,
+    authorization.authorizing_authority,
+    "authorization pin authority route",
+  );
+  assert(
+    pin.authorized_at === authorization.authorized_at,
+    "authorization pin timestamp drift",
+  );
   const packets = load(
     path.join(candidate, "candidate-packets-v1.json"),
   ).packets;
@@ -1261,13 +1374,6 @@ function validateAuthorization(
     principals.every((value: string) => !blocked.has(value)),
     "authorization overlaps forbidden principal",
   );
-  if (!internalTest)
-    assert(
-      principals.every(
-        (value: string) => !/(?:test|synthetic|fixture)/i.test(value),
-      ),
-      "test-only or synthetic authorization refused",
-    );
   assert(
     strictTime(authorization.authorized_at) &&
       Date.parse(authorization.authorized_at) >= Date.parse(CREATED),
@@ -1303,7 +1409,7 @@ async function validateReview(
   candidate: string,
   receiptFile: string,
   authorizationFile: string,
-  internalTest = false,
+  capability?: InternalAuthorizationCapability,
 ): Promise<J> {
   await verifyCandidate(candidate, false);
   const receipt = load(receiptFile);
@@ -1312,7 +1418,7 @@ async function validateReview(
     candidate,
     authorizationFile,
     receipt,
-    internalTest,
+    capability,
   );
   assert(
     receipt.candidate_descriptor_sha256 ===
@@ -1403,19 +1509,6 @@ async function validateReview(
   );
   return { ...counts, fully_verified: counts.accepted, reviewer: r };
 }
-function derivePublication(
-  candidate: string,
-  receiptFile: string,
-  authorizationFile: string,
-  output: string,
-): Promise<void> {
-  return derivePublicationAsync(
-    candidate,
-    receiptFile,
-    authorizationFile,
-    output,
-  );
-}
 function publishedHtml(p: J): string {
   const status = p.fully_verified
     ? "Independently reviewed and fully verified."
@@ -1435,7 +1528,131 @@ function publishedHtml(p: J): string {
 function publishedSheetLabel(p: J): string {
   return p.independent_review.disposition;
 }
-async function derivePublicationAsync(
+function derivePublishedDossiers(candidatePackets: J[], receipt: J): J {
+  const dispositions = new Map<string, J>(
+    receipt.dispositions.map((disposition: J) => [
+      disposition.dossier_id,
+      disposition,
+    ]),
+  );
+  const dossiers = candidatePackets.map((packet: J) => {
+    const disposition = dispositions.get(packet.dossier_id);
+    assert(disposition, `missing reviewed disposition: ${packet.dossier_id}`);
+    return {
+      ...packet,
+      state:
+        disposition.disposition === "accepted"
+          ? "published_independently_verified"
+          : `retained_${disposition.disposition}`,
+      fully_verified: disposition.disposition === "accepted",
+      independent_review: {
+        required: true,
+        completed: true,
+        reviewer: receipt.reviewer,
+        disposition: disposition.disposition,
+        approvals: disposition.approvals,
+        rationale: disposition.rationale,
+      },
+    };
+  });
+  return {
+    schema_version: "verified_dossiers_publication_v1.0.0",
+    source_candidate_artifact_id: ID,
+    dossiers,
+  };
+}
+function derivePublicationStatus(receipt: J): J {
+  return {
+    schema_version: "verified_dossiers_publication_status_v1.0.0",
+    state: "published",
+    counts: {
+      candidates: 36,
+      accepted: receipt.counts.accepted,
+      held: receipt.counts.held,
+      rejected: receipt.counts.rejected,
+      fully_verified: receipt.counts.accepted,
+      benchmark_tasks: 0,
+      search_tasks: 0,
+    },
+    reviewer: receipt.reviewer,
+    production_mutation: false,
+    paid_gpu: false,
+    issue_complete: receipt.counts.accepted >= MIN_ACCEPTED,
+  };
+}
+function derivePublicationDescriptor(
+  candidate: string,
+  output: string,
+  receipt: J,
+): J {
+  return {
+    schema_version: "verified_dossiers_publication_descriptor_v1.0.0",
+    source_candidate_descriptor: filePin(
+      path.join(candidate, "descriptor-v1.json"),
+      "descriptor-v1.json",
+    ),
+    review_receipt: filePin(
+      path.join(output, "independent-dossier-review-v1.json"),
+      "independent-dossier-review-v1.json",
+    ),
+    reviewer_authorization: filePin(
+      path.join(output, "reviewer-authorization-v1.json"),
+      "reviewer-authorization-v1.json",
+    ),
+    members: tree(
+      output,
+      files(output).filter(
+        (member) =>
+          ![
+            "publication-descriptor-v1.json",
+            "publication-commit-v1.json",
+          ].includes(member),
+      ),
+    ),
+    created_at: receipt.reviewer.reviewed_at,
+  };
+}
+const PUBLICATION_COMMIT_INPUTS = [
+  "reviewer-authorization-v1.json",
+  "independent-dossier-review-v1.json",
+  "published-dossiers-v1.json",
+  "publication-status-v1.json",
+  "publication-descriptor-v1.json",
+];
+function derivePublicationCommit(output: string, receipt: J): J {
+  return {
+    schema_version: "verified_dossiers_publication_commit_v1.0.0",
+    state: "committed",
+    inputs: PUBLICATION_COMMIT_INPUTS.map((member) =>
+      filePin(path.join(output, member), member),
+    ),
+    committed_at: receipt.reviewer.reviewed_at,
+  };
+}
+function expectedPublicationFiles(output: string, dossiers: J[]): string[] {
+  const descriptor = load(path.join(output, "descriptor-v1.json"));
+  const candidateFiles = [
+    ...descriptor.members.members.map((member: J) => member.path),
+    "descriptor-v1.json",
+  ];
+  return [
+    ...candidateFiles,
+    "reviewer-authorization-v1.json",
+    "independent-dossier-review-v1.json",
+    "published-dossiers-v1.json",
+    "publication-status-v1.json",
+    "publication-descriptor-v1.json",
+    "publication-commit-v1.json",
+    ...dossiers.flatMap((dossier: J) => [
+      `published-projections/json/${dossier.record.numeric_id}.json`,
+      `published-projections/html/${dossier.record.numeric_id}.html`,
+    ]),
+    ...[1, 2, 3].map(
+      (page) => `published-projections/contact-sheets/page-0${page}.jpg`,
+    ),
+  ].sort();
+}
+async function derivePublication(
   candidate: string,
   receiptFile: string,
   authorizationFile: string,
@@ -1454,25 +1671,8 @@ async function derivePublicationAsync(
   const packets = load(
     path.join(candidate, "candidate-packets-v1.json"),
   ).packets;
-  const dossiers = packets.map((p: J) => {
-    const d = review.dispositions.find((x: J) => x.dossier_id === p.dossier_id);
-    return {
-      ...p,
-      state:
-        d.disposition === "accepted"
-          ? "published_independently_verified"
-          : `retained_${d.disposition}`,
-      fully_verified: d.disposition === "accepted",
-      independent_review: {
-        required: true,
-        completed: true,
-        reviewer: review.reviewer,
-        disposition: d.disposition,
-        approvals: d.approvals,
-        rationale: d.rationale,
-      },
-    };
-  });
+  const published = derivePublishedDossiers(packets, review);
+  const dossiers = published.dossiers;
   for (const dossier of dossiers) {
     writeJson(
       path.join(
@@ -1509,68 +1709,24 @@ async function derivePublicationAsync(
         "overlays",
       ),
     );
-  writeJson(path.join(output, "published-dossiers-v1.json"), {
-    schema_version: "verified_dossiers_publication_v1.0.0",
-    source_candidate_artifact_id: ID,
-    dossiers,
-  });
-  const counts = {
-    candidates: 36,
-    accepted: dossiers.filter((d: J) => d.fully_verified).length,
-    held: dossiers.filter((d: J) => d.independent_review.disposition === "held")
-      .length,
-    rejected: dossiers.filter(
-      (d: J) => d.independent_review.disposition === "rejected",
-    ).length,
-    fully_verified: dossiers.filter((d: J) => d.fully_verified).length,
-    benchmark_tasks: 0,
-    search_tasks: 0,
-  };
-  writeJson(path.join(output, "publication-status-v1.json"), {
-    schema_version: "verified_dossiers_publication_status_v1.0.0",
-    state: "published",
-    counts,
-    reviewer: review.reviewer,
-    production_mutation: false,
-    paid_gpu: false,
-    issue_complete: counts.accepted >= 25,
-  });
-  const members = files(output);
-  writeJson(path.join(output, "publication-descriptor-v1.json"), {
-    schema_version: "verified_dossiers_publication_descriptor_v1.0.0",
-    source_candidate_descriptor: filePin(
-      path.join(candidate, "descriptor-v1.json"),
-      "descriptor-v1.json",
-    ),
-    review_receipt: filePin(
-      path.join(output, "independent-dossier-review-v1.json"),
-      "independent-dossier-review-v1.json",
-    ),
-    reviewer_authorization: filePin(
-      path.join(output, "reviewer-authorization-v1.json"),
-      "reviewer-authorization-v1.json",
-    ),
-    members: tree(output, members),
-    created_at: review.reviewer.reviewed_at,
-  });
-  const inputs = [
-    "reviewer-authorization-v1.json",
-    "independent-dossier-review-v1.json",
-    "published-dossiers-v1.json",
-    "publication-status-v1.json",
-    "publication-descriptor-v1.json",
-  ].map((m) => filePin(path.join(output, m), m));
-  writeJson(path.join(output, "publication-commit-v1.json"), {
-    schema_version: "verified_dossiers_publication_commit_v1.0.0",
-    state: "committed",
-    inputs,
-    committed_at: review.reviewer.reviewed_at,
-  });
+  writeJson(path.join(output, "published-dossiers-v1.json"), published);
+  writeJson(
+    path.join(output, "publication-status-v1.json"),
+    derivePublicationStatus(review),
+  );
+  writeJson(
+    path.join(output, "publication-descriptor-v1.json"),
+    derivePublicationDescriptor(candidate, output, review),
+  );
+  writeJson(
+    path.join(output, "publication-commit-v1.json"),
+    derivePublicationCommit(output, review),
+  );
 }
 async function verifyPublished(
   output: string,
   authorizationFile: string,
-  internalTest = false,
+  capability?: InternalAuthorizationCapability,
 ): Promise<J> {
   assert(
     fs.existsSync(path.join(output, "publication-commit-v1.json")),
@@ -1585,21 +1741,28 @@ async function verifyPublished(
     output,
     path.join(output, "independent-dossier-review-v1.json"),
     authorizationFile,
-    internalTest,
+    capability,
   );
   assert(review.accepted >= 25, "publication requires 25 acceptances");
+  const receipt = load(path.join(output, "independent-dossier-review-v1.json"));
+  const candidatePackets = load(
+    path.join(output, "candidate-packets-v1.json"),
+  ).packets;
+  const expectedPublished = derivePublishedDossiers(candidatePackets, receipt);
   const published = load(path.join(output, "published-dossiers-v1.json"));
   schema("published-dossiers.schema.v1.json", published);
-  assert(published.dossiers.length === 36, "published count drift");
-  for (const d of published.dossiers) {
-    assert(
-      !d.source_acquisition_only,
-      "source-acquisition-only packet counted",
-    );
-    assert(
-      d.fully_verified === (d.independent_review.disposition === "accepted"),
-      "fully_verified derivation drift",
-    );
+  same(published, expectedPublished, "published dossiers");
+  assert(
+    fs.readFileSync(path.join(output, "published-dossiers-v1.json"), "utf8") ===
+      pretty(expectedPublished),
+    "published dossiers bytes differ from deterministic derivation",
+  );
+  same(
+    files(output),
+    expectedPublicationFiles(output, expectedPublished.dossiers),
+    "publication file set",
+  );
+  for (const d of expectedPublished.dossiers) {
     const jsonPath = path.join(
       output,
       `published-projections/json/${d.record.numeric_id}.json`,
@@ -1629,7 +1792,7 @@ async function verifyPublished(
         .equals(
           await sheetPageBytes(
             output,
-            published.dossiers,
+            expectedPublished.dossiers,
             page,
             publishedSheetLabel,
             "overlays",
@@ -1638,53 +1801,16 @@ async function verifyPublished(
       `published contact sheet bytes ${page + 1}`,
     );
   const status = load(path.join(output, "publication-status-v1.json"));
-  same(
-    status.counts,
-    {
-      candidates: 36,
-      accepted: review.accepted,
-      held: review.held,
-      rejected: review.rejected,
-      fully_verified: review.accepted,
-      benchmark_tasks: 0,
-      search_tasks: 0,
-    },
-    "publication counts",
-  );
-  assert(
-    !status.production_mutation && !status.paid_gpu,
-    "publication operational boundary",
-  );
+  same(status, derivePublicationStatus(receipt), "publication status");
   const descriptor = load(path.join(output, "publication-descriptor-v1.json"));
   same(
-    descriptor.members,
-    tree(
-      output,
-      files(output).filter(
-        (m) =>
-          ![
-            "publication-descriptor-v1.json",
-            "publication-commit-v1.json",
-          ].includes(m),
-      ),
-    ),
+    descriptor,
+    derivePublicationDescriptor(output, output, receipt),
     "publication descriptor",
   );
-  const inputs = [
-    "reviewer-authorization-v1.json",
-    "independent-dossier-review-v1.json",
-    "published-dossiers-v1.json",
-    "publication-status-v1.json",
-    "publication-descriptor-v1.json",
-  ].map((m) => filePin(path.join(output, m), m));
   same(
     load(path.join(output, "publication-commit-v1.json")),
-    {
-      schema_version: "verified_dossiers_publication_commit_v1.0.0",
-      state: "committed",
-      inputs,
-      committed_at: review.reviewer.reviewed_at,
-    },
+    derivePublicationCommit(output, receipt),
     "publication commit",
   );
   return {
@@ -1702,7 +1828,7 @@ async function publish(
   receipt: string,
   authorization: string,
   output: string,
-  internalTest = false,
+  capability?: InternalAuthorizationCapability,
   hooks: { beforeReserve?: () => void; afterReserve?: () => void } = {},
 ): Promise<J> {
   assert(
@@ -1713,7 +1839,7 @@ async function publish(
     candidate,
     receipt,
     authorization,
-    internalTest,
+    capability,
   );
   assert(
     review.accepted >= 25,
@@ -1725,7 +1851,7 @@ async function publish(
   );
   try {
     await derivePublication(candidate, receipt, authorization, staging);
-    await verifyPublished(staging, authorization, internalTest);
+    await verifyPublished(staging, authorization, capability);
     hooks.beforeReserve?.();
     fs.mkdirSync(output);
     const owner = crypto.randomUUID();
@@ -1761,7 +1887,7 @@ async function publish(
         fs.rmSync(output, { recursive: true, force: true });
       throw error;
     }
-    return await verifyPublished(output, authorization, internalTest);
+    return await verifyPublished(output, authorization, capability);
   } catch (e) {
     fs.rmSync(staging, { recursive: true, force: true });
     throw e;
@@ -1854,6 +1980,31 @@ function syntheticReceipt(
     },
   };
 }
+function normalCliReviewRefused(
+  candidate: string,
+  receipt: string,
+  authorization: string,
+): boolean {
+  try {
+    execFileSync(
+      path.join(ROOT, "node_modules/.bin/tsx"),
+      [
+        fileURLToPath(import.meta.url),
+        "validate-review",
+        "--candidate",
+        candidate,
+        "--receipt",
+        receipt,
+        "--authorization",
+        authorization,
+      ],
+      { cwd: ROOT, stdio: "ignore" },
+    );
+    return false;
+  } catch {
+    return true;
+  }
+}
 function resealCandidate(root: string): void {
   const bundle = load(path.join(root, "candidate-packets-v1.json"));
   for (const p of bundle.packets) {
@@ -1900,6 +2051,63 @@ function resealCandidateEnvelope(root: string): void {
     ),
   );
 }
+function resealPublicationEnvelope(root: string): void {
+  const descriptorPath = path.join(root, "publication-descriptor-v1.json");
+  const descriptor = load(descriptorPath);
+  descriptor.members = tree(
+    root,
+    files(root).filter(
+      (member) =>
+        ![
+          "publication-descriptor-v1.json",
+          "publication-commit-v1.json",
+        ].includes(member),
+    ),
+  );
+  writeJson(descriptorPath, descriptor);
+  const commitPath = path.join(root, "publication-commit-v1.json");
+  const commit = load(commitPath);
+  commit.inputs = PUBLICATION_COMMIT_INPUTS.map((member) =>
+    filePin(path.join(root, member), member),
+  );
+  writeJson(commitPath, commit);
+}
+async function resealPublishedFromSupplied(root: string): Promise<void> {
+  const publishedPath = path.join(root, "published-dossiers-v1.json");
+  const published = load(publishedPath);
+  writeJson(publishedPath, published);
+  for (const dossier of published.dossiers) {
+    writeJson(
+      path.join(
+        root,
+        `published-projections/json/${dossier.record.numeric_id}.json`,
+      ),
+      dossier,
+    );
+    fs.writeFileSync(
+      path.join(
+        root,
+        `published-projections/html/${dossier.record.numeric_id}.html`,
+      ),
+      publishedHtml(dossier),
+    );
+  }
+  for (let page = 0; page < 3; page++)
+    fs.writeFileSync(
+      path.join(
+        root,
+        `published-projections/contact-sheets/page-0${page + 1}.jpg`,
+      ),
+      await sheetPageBytes(
+        root,
+        published.dossiers,
+        page,
+        publishedSheetLabel,
+        "overlays",
+      ),
+    );
+  resealPublicationEnvelope(root);
+}
 async function selfTest(): Promise<J> {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "gate-g-self-")),
     candidate = path.join(root, "candidate");
@@ -1911,10 +2119,14 @@ async function selfTest(): Promise<J> {
     cases++;
     const authorization = path.join(root, "authorization.json");
     writeJson(authorization, syntheticAuthorization(candidate));
+    const capability = internalAuthorizationCapability(
+      candidate,
+      authorization,
+    );
     const base = syntheticReceipt(candidate, authorization),
       receipt = path.join(root, "review.json");
     writeJson(receipt, base);
-    await validateReview(candidate, receipt, authorization, true);
+    await validateReview(candidate, receipt, authorization, capability);
     cases++;
     const mutations: Array<[string, (v: J) => void]> = [
       [
@@ -2124,7 +2336,7 @@ async function selfTest(): Promise<J> {
       writeJson(f, value);
       let failed = false;
       try {
-        await validateReview(candidate, f, authorization, true);
+        await validateReview(candidate, f, authorization, capability);
       } catch {
         failed = true;
       }
@@ -2193,7 +2405,12 @@ async function selfTest(): Promise<J> {
       writeJson(rf, receiptValue);
       let failed = false;
       try {
-        await validateReview(candidate, rf, f, true);
+        await validateReview(
+          candidate,
+          rf,
+          f,
+          internalAuthorizationCapability(candidate, f),
+        );
       } catch {
         failed = true;
       }
@@ -2201,15 +2418,99 @@ async function selfTest(): Promise<J> {
       cases++;
       rejected++;
     }
-    let productionSyntheticRejected = false;
+    const productionPin = load(PRODUCTION_AUTHORIZATION_PIN);
+    schema("production-authorization-pin.schema.v1.json", productionPin);
+    assert(
+      productionPin.state === "unconfigured" &&
+        productionPin.authorization_file === null &&
+        productionPin.approved_reviewer === null,
+      "tracked production authorization pin is not fail-closed",
+    );
+    cases++;
+    const unconfiguredRejected = normalCliReviewRefused(
+      candidate,
+      receipt,
+      authorization,
+    );
+    assert(
+      unconfiguredRejected,
+      "normal CLI accepted an unconfigured production pin",
+    );
+    cases++;
+    rejected++;
+    const fabricatedPin = path.join(root, "fabricated-active-pin.json");
+    writeJson(fabricatedPin, activeAuthorizationPin(candidate, authorization));
+    assert(
+      normalCliReviewRefused(candidate, receipt, authorization),
+      "normal CLI accepted a fabricated active pin outside the tracked path",
+    );
+    cases++;
+    rejected++;
+    const renamedAuthorization = path.join(root, "renamed-authorization.json");
+    const renamedAuthorizationValue = syntheticAuthorization(candidate);
+    renamedAuthorizationValue.approved_reviewer.reviewer_id =
+      "reviewer-91-independent";
+    renamedAuthorizationValue.approved_reviewer.session_id =
+      "reviewer-session-91-independent";
+    renamedAuthorizationValue.authorizing_authority.identity =
+      "gate-g-coordinator-authority";
+    renamedAuthorizationValue.authorizing_authority.session_id =
+      "gate-g-coordinator-session";
+    writeJson(renamedAuthorization, renamedAuthorizationValue);
+    const renamedReceipt = path.join(root, "renamed-receipt.json");
+    const renamedReceiptValue = structuredClone(base);
+    renamedReceiptValue.authorization_sha256 =
+      filePin(renamedAuthorization).sha256;
+    renamedReceiptValue.reviewer.reviewer_id =
+      renamedAuthorizationValue.approved_reviewer.reviewer_id;
+    renamedReceiptValue.reviewer.session_id =
+      renamedAuthorizationValue.approved_reviewer.session_id;
+    writeJson(renamedReceipt, renamedReceiptValue);
+    assert(
+      normalCliReviewRefused(candidate, renamedReceipt, renamedAuthorization),
+      "normal CLI accepted renamed synthetic authorization",
+    );
+    cases++;
+    rejected++;
+    const routeMismatchCapability: InternalAuthorizationCapability = {
+      [INTERNAL_AUTHORIZATION_CAPABILITY]: true,
+      pin: structuredClone(capability.pin),
+    };
+    routeMismatchCapability.pin.approved_reviewer.reviewer_id =
+      "different-authorized-reviewer";
+    let routeMismatchRejected = false;
     try {
-      await validateReview(candidate, receipt, authorization);
+      await validateReview(
+        candidate,
+        receipt,
+        authorization,
+        routeMismatchCapability,
+      );
     } catch {
-      productionSyntheticRejected = true;
+      routeMismatchRejected = true;
+    }
+    assert(routeMismatchRejected, "authorization pin route mismatch passed");
+    cases++;
+    rejected++;
+    const hashMismatchCapability: InternalAuthorizationCapability = {
+      [INTERNAL_AUTHORIZATION_CAPABILITY]: true,
+      pin: structuredClone(capability.pin),
+    };
+    hashMismatchCapability.pin.authorization_file.sha256 = "0".repeat(64);
+    let hashMismatchRejected = false;
+    try {
+      await validateReview(
+        candidate,
+        receipt,
+        authorization,
+        hashMismatchCapability,
+      );
+    } catch {
+      hashMismatchRejected = true;
     }
     assert(
-      productionSyntheticRejected,
-      "production CLI route accepted synthetic authorization",
+      hashMismatchRejected,
+      "authorization pin exact hash mismatch passed",
     );
     cases++;
     rejected++;
@@ -2346,7 +2647,7 @@ async function selfTest(): Promise<J> {
         short,
         authorization,
         path.join(root, "short-output"),
-        true,
+        capability,
       );
     } catch {
       failed = true;
@@ -2355,8 +2656,37 @@ async function selfTest(): Promise<J> {
     cases++;
     rejected++;
     const output = path.join(root, "published");
-    await publish(candidate, receipt, authorization, output, true);
-    await verifyPublished(output, authorization, true);
+    await publish(candidate, receipt, authorization, output, capability);
+    await verifyPublished(output, authorization, capability);
+    let productionPublishRejected = false;
+    try {
+      await publish(
+        candidate,
+        receipt,
+        authorization,
+        path.join(root, "production-pin-required-output"),
+      );
+    } catch {
+      productionPublishRejected = true;
+    }
+    assert(
+      productionPublishRejected,
+      "production publish accepted an unconfigured authorization pin",
+    );
+    cases++;
+    rejected++;
+    let productionVerifyRejected = false;
+    try {
+      await verifyPublished(output, authorization);
+    } catch {
+      productionVerifyRejected = true;
+    }
+    assert(
+      productionVerifyRejected,
+      "production verify-published accepted an unconfigured authorization pin",
+    );
+    cases++;
+    rejected++;
     const publishedStates = load(
       path.join(output, "published-dossiers-v1.json"),
     ).dossiers;
@@ -2391,7 +2721,7 @@ async function selfTest(): Promise<J> {
     cases++;
     failed = false;
     try {
-      await publish(candidate, receipt, authorization, output, true);
+      await publish(candidate, receipt, authorization, output, capability);
     } catch {
       failed = true;
     }
@@ -2417,7 +2747,7 @@ async function selfTest(): Promise<J> {
       } else fs.appendFileSync(target, " ");
       let bad = false;
       try {
-        await verifyPublished(copy, authorization, true);
+        await verifyPublished(copy, authorization, capability);
       } catch {
         bad = true;
       }
@@ -2425,10 +2755,118 @@ async function selfTest(): Promise<J> {
       cases++;
       rejected++;
     }
+    const coordinatedPublicationMutations: Array<
+      [string, (copy: string) => Promise<void>]
+    > = [
+      [
+        "accepted state drift",
+        async (copy) => {
+          const value = load(path.join(copy, "published-dossiers-v1.json"));
+          value.dossiers.find(
+            (dossier: J) =>
+              dossier.independent_review.disposition === "accepted",
+          ).state = "retained_held";
+          writeJson(path.join(copy, "published-dossiers-v1.json"), value);
+          await resealPublishedFromSupplied(copy);
+        },
+      ],
+      [
+        "archive metadata visible claim",
+        async (copy) => {
+          const value = load(path.join(copy, "published-dossiers-v1.json"));
+          value.dossiers[0].archive_metadata.name =
+            "Unsupported resealed publication claim";
+          writeJson(path.join(copy, "published-dossiers-v1.json"), value);
+          await resealPublishedFromSupplied(copy);
+        },
+      ],
+      [
+        "published rights drift",
+        async (copy) => {
+          const value = load(path.join(copy, "published-dossiers-v1.json"));
+          value.dossiers[0].rights.attribution = "Unauthorized attribution";
+          writeJson(path.join(copy, "published-dossiers-v1.json"), value);
+          await resealPublishedFromSupplied(copy);
+        },
+      ],
+      [
+        "published visual claim drift",
+        async (copy) => {
+          const value = load(path.join(copy, "published-dossiers-v1.json"));
+          const dossier = value.dossiers.find(
+            (candidate: J) => candidate.visual_claims.length,
+          );
+          dossier.visual_claims[0].statement = "Unauthorized visual claim";
+          writeJson(path.join(copy, "published-dossiers-v1.json"), value);
+          await resealPublishedFromSupplied(copy);
+        },
+      ],
+      [
+        "published uncertainty drift",
+        async (copy) => {
+          const value = load(path.join(copy, "published-dossiers-v1.json"));
+          value.dossiers[0].uncertainty.statement =
+            "Unauthorized certainty promotion";
+          writeJson(path.join(copy, "published-dossiers-v1.json"), value);
+          await resealPublishedFromSupplied(copy);
+        },
+      ],
+      [
+        "published reviewer drift",
+        async (copy) => {
+          const value = load(path.join(copy, "published-dossiers-v1.json"));
+          for (const dossier of value.dossiers)
+            dossier.independent_review.reviewer.reviewer_id =
+              "unauthorized-reviewer";
+          writeJson(path.join(copy, "published-dossiers-v1.json"), value);
+          const status = load(path.join(copy, "publication-status-v1.json"));
+          status.reviewer.reviewer_id = "unauthorized-reviewer";
+          writeJson(path.join(copy, "publication-status-v1.json"), status);
+          await resealPublishedFromSupplied(copy);
+        },
+      ],
+      [
+        "publication status drift",
+        async (copy) => {
+          const status = load(path.join(copy, "publication-status-v1.json"));
+          status.issue_complete = false;
+          writeJson(path.join(copy, "publication-status-v1.json"), status);
+          resealPublicationEnvelope(copy);
+        },
+      ],
+      [
+        "publication descriptor drift",
+        async (copy) => {
+          const descriptor = load(
+            path.join(copy, "publication-descriptor-v1.json"),
+          );
+          descriptor.source_candidate_descriptor.sha256 = "0".repeat(64);
+          writeJson(
+            path.join(copy, "publication-descriptor-v1.json"),
+            descriptor,
+          );
+          resealPublicationEnvelope(copy);
+        },
+      ],
+    ];
+    for (const [name, mutate] of coordinatedPublicationMutations) {
+      const copy = path.join(root, `coordinated-${name.replaceAll(" ", "-")}`);
+      fs.cpSync(output, copy, { recursive: true });
+      await mutate(copy);
+      let bad = false;
+      try {
+        await verifyPublished(copy, authorization, capability);
+      } catch {
+        bad = true;
+      }
+      assert(bad, `coordinated publication reseal passed: ${name}`);
+      cases++;
+      rejected++;
+    }
     const raceOutput = path.join(root, "race-output");
     let raceRejected = false;
     try {
-      await publish(candidate, receipt, authorization, raceOutput, true, {
+      await publish(candidate, receipt, authorization, raceOutput, capability, {
         beforeReserve: () => {
           fs.mkdirSync(raceOutput);
           fs.writeFileSync(
@@ -2451,11 +2889,18 @@ async function selfTest(): Promise<J> {
     const failedOutput = path.join(root, "failed-output");
     let failureRejected = false;
     try {
-      await publish(candidate, receipt, authorization, failedOutput, true, {
-        afterReserve: () => {
-          throw new Error("injected install failure");
+      await publish(
+        candidate,
+        receipt,
+        authorization,
+        failedOutput,
+        capability,
+        {
+          afterReserve: () => {
+            throw new Error("injected install failure");
+          },
         },
-      });
+      );
     } catch {
       failureRejected = true;
     }
@@ -2486,6 +2931,10 @@ async function integration(): Promise<J> {
     const review = path.join(root, "review.json");
     const authorization = path.join(root, "authorization.json");
     writeJson(authorization, syntheticAuthorization(candidate));
+    const capability = internalAuthorizationCapability(
+      candidate,
+      authorization,
+    );
     writeJson(review, syntheticReceipt(candidate, authorization));
     const output = path.join(root, "published");
     const result = await publish(
@@ -2493,14 +2942,14 @@ async function integration(): Promise<J> {
       review,
       authorization,
       output,
-      true,
+      capability,
     );
     const replay = path.join(root, "replay");
     await build(replay);
     exact(candidate, replay, "integration replay");
     let refused = false;
     try {
-      await publish(candidate, review, authorization, output, true);
+      await publish(candidate, review, authorization, output, capability);
     } catch {
       refused = true;
     }

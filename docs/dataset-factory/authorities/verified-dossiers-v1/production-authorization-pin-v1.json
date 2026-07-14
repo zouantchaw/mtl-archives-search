@@ -1,0 +1,12 @@
+{
+  "schema_version": "verified_dossiers_production_authorization_pin_v1.0.0",
+  "authority_id": "gate-g-production-authorization-pin",
+  "state": "unconfigured",
+  "candidate_artifact_id": "dfv0_verified_dossiers_v1_candidate_20260714",
+  "candidate_descriptor_sha256": null,
+  "authorization_file": null,
+  "approved_reviewer": null,
+  "authorizing_authority": null,
+  "authorized_at": null,
+  "scope_note": "Fail-closed production trust root. Activation requires a separate reviewed pin-only commit after coordinator authorization; Gate G implementation and normal CLI commands cannot activate it."
+}

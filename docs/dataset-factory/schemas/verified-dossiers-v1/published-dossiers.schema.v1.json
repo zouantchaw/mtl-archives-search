@@ -132,7 +132,77 @@
             "$ref": "candidate-packets.schema.v1.json#/$defs/packet/properties/author"
           },
           "independent_review": { "$ref": "#/$defs/publishedReview" }
-        }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "independent_review": {
+                  "properties": { "disposition": { "const": "accepted" } },
+                  "required": ["disposition"]
+                }
+              },
+              "required": ["independent_review"]
+            },
+            "then": {
+              "properties": {
+                "state": { "const": "published_independently_verified" },
+                "fully_verified": { "const": true },
+                "publication_eligible": { "const": true }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "independent_review": {
+                  "properties": { "disposition": { "const": "held" } },
+                  "required": ["disposition"]
+                }
+              },
+              "required": ["independent_review"]
+            },
+            "then": {
+              "properties": {
+                "state": { "const": "retained_held" },
+                "fully_verified": { "const": false }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "independent_review": {
+                  "properties": { "disposition": { "const": "rejected" } },
+                  "required": ["disposition"]
+                }
+              },
+              "required": ["independent_review"]
+            },
+            "then": {
+              "properties": {
+                "state": { "const": "retained_rejected" },
+                "fully_verified": { "const": false }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": { "publication_eligible": { "const": false } },
+              "required": ["publication_eligible"]
+            },
+            "then": {
+              "properties": {
+                "fully_verified": { "const": false },
+                "independent_review": {
+                  "properties": {
+                    "disposition": { "enum": ["held", "rejected"] }
+                  }
+                }
+              }
+            }
+          }
+        ]
       }
     }
   }
