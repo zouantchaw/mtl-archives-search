@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "artifact_id", "authority_status", "authority_member", "preserved_candidate_descriptor", "preserved_archived_candidate_descriptor", "members", "tree_sha256", "production_mutation"],
+  "properties": {
+    "schema_version": { "const": "aerial_source_evidence_authority_v1.0.0" },
+    "artifact_id": { "const": "aerial-source-evidence-v1" },
+    "authority_status": { "const": "published_external_source_authority" },
+    "authority_member": { "const": "independent-source-authority-receipt-v1.json" },
+    "preserved_candidate_descriptor": { "const": "candidate-descriptor-v1.json" },
+    "preserved_archived_candidate_descriptor": { "const": "archived-candidate-descriptor-v1.json" },
+    "members": { "type": "array", "minItems": 12, "maxItems": 12, "items": { "$ref": "#/$defs/binding" } },
+    "tree_sha256": { "$ref": "#/$defs/hash" },
+    "production_mutation": { "const": false }
+  },
+  "$defs": {
+    "hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "binding": { "type": "object", "additionalProperties": false, "required": ["path", "bytes", "sha256"], "properties": { "path": { "enum": ["archived-candidate-descriptor-v1.json", "candidate-descriptor-v1.json", "descriptor-v1.json", "evidence-ledger-v1.json", "external-archive-descriptor-v1.json", "external-archive-upload-readback-receipt-v1.json", "final-status-v1.json", "independent-source-authority-receipt-v1.json", "independent-source-review-receipt.template-v1.json", "review-ledger-v1.json", "source-body-evidence-v1.json", "status-report-v1.json"] }, "bytes": { "type": "integer", "minimum": 1 }, "sha256": { "$ref": "#/$defs/hash" } } }
+  }
+}

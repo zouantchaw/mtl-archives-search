@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "artifact_id", "authority_status", "created_at", "production_mutation", "authority_member", "members", "tree_sha256", "registry_authority"],
+  "properties": {
+    "schema_version": { "const": "aerial_source_evidence_v1.1.0" },
+    "artifact_id": { "const": "aerial-source-evidence-v1" },
+    "authority_status": { "const": "candidate_held_external_review_required" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "production_mutation": { "const": false },
+    "authority_member": { "type": "null" },
+    "members": { "type": "array", "minItems": 5, "maxItems": 5, "uniqueItems": true, "items": { "$ref": "#/$defs/binding" } },
+    "tree_sha256": { "$ref": "#/$defs/hash" },
+    "registry_authority": { "const": "candidate_only_not_published" }
+  },
+  "$defs": {
+    "hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "binding": { "type": "object", "additionalProperties": false, "required": ["path", "bytes", "sha256"], "properties": { "path": { "type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[^\\\\]+$" }, "bytes": { "type": "integer", "minimum": 1 }, "sha256": { "$ref": "#/$defs/hash" } } }
+  }
+}

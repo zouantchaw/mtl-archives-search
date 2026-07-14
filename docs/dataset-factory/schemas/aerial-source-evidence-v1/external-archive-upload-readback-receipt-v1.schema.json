@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "external-archive-upload-readback-receipt-v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "artifact_id", "status", "provider", "bucket", "object_key", "durable_locator", "archive_sha256", "archive_bytes", "uploaded_at", "local", "readback", "signed_url"],
+  "properties": {
+    "schema_version": { "const": "aerial_source_evidence_authority_v1.0.0" },
+    "artifact_id": { "const": "aerial-source-evidence-v1" },
+    "status": { "const": "completed" },
+    "provider": { "const": "r2" },
+    "bucket": { "type": "string", "pattern": "^[A-Za-z0-9._-]+$" },
+    "object_key": { "type": "string", "minLength": 1 },
+    "durable_locator": { "type": "string", "pattern": "^r2://" },
+    "archive_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "archive_bytes": { "type": "integer", "minimum": 1 },
+    "uploaded_at": { "type": "string", "format": "date-time" },
+    "local": { "$ref": "#/$defs/digest" },
+    "readback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "observed_at", "sha256", "bytes"],
+      "properties": {
+        "status": { "const": "byte_identical" },
+        "observed_at": { "type": "string", "format": "date-time" },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "bytes": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "signed_url": { "type": "null" }
+  },
+  "$defs": {
+    "digest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sha256", "bytes"],
+      "properties": {
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "bytes": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

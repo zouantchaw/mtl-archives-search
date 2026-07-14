@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "artifact_id", "commit_protocol", "authority_status", "authority_receipt", "final_descriptor", "authoritative_registry_row", "file_count", "issue_complete", "production_mutation"],
+  "properties": {
+    "schema_version": { "const": "aerial_source_evidence_authority_v1.0.0" },
+    "artifact_id": { "const": "aerial-source-evidence-v1" },
+    "commit_protocol": { "const": "atomic_mkdir_reservation_marker_v1" },
+    "authority_status": { "const": "published_external_source_authority" },
+    "authority_receipt": { "$ref": "#/$defs/binding" },
+    "final_descriptor": { "$ref": "#/$defs/binding" },
+    "authoritative_registry_row": { "$ref": "#/$defs/binding" },
+    "file_count": { "const": 15 },
+    "issue_complete": { "const": false },
+    "production_mutation": { "const": false }
+  },
+  "$defs": {
+    "hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "bytes", "sha256"],
+      "properties": {
+        "path": { "enum": ["independent-source-authority-receipt-v1.json", "final-descriptor-v1.json", "authoritative-registry-row-v1.json"] },
+        "bytes": { "type": "integer", "minimum": 1 },
+        "sha256": { "$ref": "#/$defs/hash" }
+      }
+    }
+  }
+}

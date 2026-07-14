@@ -1,0 +1,37 @@
+{
+  "schema_version": "aerial_source_evidence_v1.1.0",
+  "artifact_id": "aerial-source-evidence-v1",
+  "authority_status": "candidate_held_external_review_required",
+  "created_at": "2026-07-14T05:52:31.000Z",
+  "production_mutation": false,
+  "authority_member": null,
+  "members": [
+    {
+      "path": "evidence-ledger-v1.json",
+      "bytes": 134881,
+      "sha256": "ddcfa31a319ddafca533b83eb9e86c0afdc83235f8ab697f5c57db0f6fac5fd2"
+    },
+    {
+      "path": "external-archive-descriptor-v1.json",
+      "bytes": 9925,
+      "sha256": "81e486ea0978175a2ec0f8a4c7349d757a7fa90589e1a4530c51cfc5a63499b0"
+    },
+    {
+      "path": "independent-source-review-receipt.template-v1.json",
+      "bytes": 6319,
+      "sha256": "d13e0c7a8526e47318de2ca9588308e932a947f635e58e8ec9265b74389b167d"
+    },
+    {
+      "path": "source-body-evidence-v1.json",
+      "bytes": 55003,
+      "sha256": "c48f99dda2da5ee10265da73151fbb6d85649cae8122512571cb89f19e4d14eb"
+    },
+    {
+      "path": "status-report-v1.json",
+      "bytes": 1128,
+      "sha256": "ec5f686c1f9c85749b7691aa03b0a3a1c002bb4d6a3a541006cc6e8d8bb2c00d"
+    }
+  ],
+  "tree_sha256": "cc7b3d41f0fa8a2295287542bf96b816c7fa70d972653309c304b69fac805fd1",
+  "registry_authority": "candidate_only_not_published"
+}

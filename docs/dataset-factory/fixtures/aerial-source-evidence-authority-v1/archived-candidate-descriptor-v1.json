@@ -1,0 +1,55 @@
+{
+  "schema_version": "aerial_source_evidence_authority_v1.0.0",
+  "artifact_id": "aerial-source-evidence-v1",
+  "authority_status": "archived_candidate_external_review_required",
+  "archive": {
+    "sha256": "4a2629f8bdad65d4c070d3b0c20030574a810badf9851017911bd2d85b750999",
+    "bytes": 702964928,
+    "durable_locator": "r2://wiel-codex-worker-cache/artifacts/mtl-archives/issue90-aerial-source-evidence/4a2629f8bdad65d4c070d3b0c20030574a810badf9851017911bd2d85b750999.tar.gz",
+    "upload_readback_receipt_sha256": "5cd5cf45e67f85255714d00b7eabe8300f7215757675470551125674f12fb5e3"
+  },
+  "members": [
+    {
+      "path": "candidate-descriptor-v1.json",
+      "bytes": 1266,
+      "sha256": "d8f2859e64f869f259c1f513b922d33f80f13e54dc609cd19ba718d52c485f0a"
+    },
+    {
+      "path": "descriptor-v1.json",
+      "bytes": 1266,
+      "sha256": "d8f2859e64f869f259c1f513b922d33f80f13e54dc609cd19ba718d52c485f0a"
+    },
+    {
+      "path": "evidence-ledger-v1.json",
+      "bytes": 134881,
+      "sha256": "ddcfa31a319ddafca533b83eb9e86c0afdc83235f8ab697f5c57db0f6fac5fd2"
+    },
+    {
+      "path": "external-archive-descriptor-v1.json",
+      "bytes": 9925,
+      "sha256": "81e486ea0978175a2ec0f8a4c7349d757a7fa90589e1a4530c51cfc5a63499b0"
+    },
+    {
+      "path": "external-archive-upload-readback-receipt-v1.json",
+      "bytes": 1025,
+      "sha256": "5cd5cf45e67f85255714d00b7eabe8300f7215757675470551125674f12fb5e3"
+    },
+    {
+      "path": "independent-source-review-receipt.template-v1.json",
+      "bytes": 6319,
+      "sha256": "d13e0c7a8526e47318de2ca9588308e932a947f635e58e8ec9265b74389b167d"
+    },
+    {
+      "path": "source-body-evidence-v1.json",
+      "bytes": 55003,
+      "sha256": "c48f99dda2da5ee10265da73151fbb6d85649cae8122512571cb89f19e4d14eb"
+    },
+    {
+      "path": "status-report-v1.json",
+      "bytes": 1128,
+      "sha256": "ec5f686c1f9c85749b7691aa03b0a3a1c002bb4d6a3a541006cc6e8d8bb2c00d"
+    }
+  ],
+  "tree_sha256": "8c7da8081c3fab9c7af14feebf5bf692f714b51f76e4ea72b26021ded0b6c51b",
+  "production_mutation": false
+}

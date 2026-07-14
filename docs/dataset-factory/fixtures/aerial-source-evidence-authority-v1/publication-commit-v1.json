@@ -1,0 +1,24 @@
+{
+  "schema_version": "aerial_source_evidence_authority_v1.0.0",
+  "artifact_id": "aerial-source-evidence-v1",
+  "commit_protocol": "atomic_mkdir_reservation_marker_v1",
+  "authority_status": "published_external_source_authority",
+  "authority_receipt": {
+    "path": "independent-source-authority-receipt-v1.json",
+    "bytes": 46295,
+    "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383"
+  },
+  "final_descriptor": {
+    "path": "final-descriptor-v1.json",
+    "bytes": 2530,
+    "sha256": "ab0936be1728a54e36f0fe8ed9d2e308b11a8bf54e2a9d182c87ba2187952eae"
+  },
+  "authoritative_registry_row": {
+    "path": "authoritative-registry-row-v1.json",
+    "bytes": 2157,
+    "sha256": "67e0c88305c45031b3aa0aa43b89b83f8fb7080bb65e9118db44312e010ffed5"
+  },
+  "file_count": 15,
+  "issue_complete": false,
+  "production_mutation": false
+}

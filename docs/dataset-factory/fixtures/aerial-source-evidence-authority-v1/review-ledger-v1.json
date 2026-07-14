@@ -1,0 +1,477 @@
+{
+  "schema_version": "aerial_source_evidence_authority_v1.0.0",
+  "artifact_id": "aerial-source-evidence-v1",
+  "authority_receipt": {
+    "path": "independent-source-authority-receipt-v1.json",
+    "bytes": 46295,
+    "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383"
+  },
+  "reviewer": {
+    "reviewer_id": "sol-high-v7-reviewer:a2869a6c-7f23-4ec0-ab07-c031aae2bc54",
+    "session_id": "sol-high-v7-session:cfabcb92-aa8e-4440-b564-55dccbe9877c",
+    "model": "gpt-5.6-sol",
+    "reasoning_effort": "high",
+    "reviewed_at": "2026-07-14T15:40:28Z",
+    "independent_of": [
+      "implementation",
+      "acquisition",
+      "dossier_review"
+    ]
+  },
+  "dispositions": [
+    {
+      "numeric_id": 8132,
+      "evidence_disposition": "accepted",
+      "accepted_proposition_ids": [
+        "8132:record-media-identity",
+        "vertical-1958-1975:collection",
+        "vertical-1958-1975:credit",
+        "vertical-1958-1975:license"
+      ],
+      "location": "abstained",
+      "georef": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "accepted_claims": 0,
+      "verified_dossiers": 0,
+      "tasks": 0,
+      "rationale": "Accepted only the exact bound record/media identity and applicable collection, license, and credit propositions; unsupported semantic authority remains abstained."
+    },
+    {
+      "numeric_id": 8134,
+      "evidence_disposition": "accepted",
+      "accepted_proposition_ids": [
+        "8134:record-media-identity",
+        "vertical-1958-1975:collection",
+        "vertical-1958-1975:credit",
+        "vertical-1958-1975:license"
+      ],
+      "location": "abstained",
+      "georef": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "accepted_claims": 0,
+      "verified_dossiers": 0,
+      "tasks": 0,
+      "rationale": "Accepted only the exact bound record/media identity and applicable collection, license, and credit propositions; unsupported semantic authority remains abstained."
+    },
+    {
+      "numeric_id": 8139,
+      "evidence_disposition": "accepted",
+      "accepted_proposition_ids": [
+        "8139:record-media-identity",
+        "vertical-1958-1975:collection",
+        "vertical-1958-1975:credit",
+        "vertical-1958-1975:license"
+      ],
+      "location": "abstained",
+      "georef": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "accepted_claims": 0,
+      "verified_dossiers": 0,
+      "tasks": 0,
+      "rationale": "Accepted only the exact bound record/media identity and applicable collection, license, and credit propositions; unsupported semantic authority remains abstained."
+    },
+    {
+      "numeric_id": 8143,
+      "evidence_disposition": "accepted",
+      "accepted_proposition_ids": [
+        "8143:record-media-identity",
+        "vertical-1958-1975:collection",
+        "vertical-1958-1975:credit",
+        "vertical-1958-1975:license"
+      ],
+      "location": "abstained",
+      "georef": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "accepted_claims": 0,
+      "verified_dossiers": 0,
+      "tasks": 0,
+      "rationale": "Accepted only the exact bound record/media identity and applicable collection, license, and credit propositions; unsupported semantic authority remains abstained."
+    },
+    {
+      "numeric_id": 12115,
+      "evidence_disposition": "accepted",
+      "accepted_proposition_ids": [
+        "12115:record-media-identity",
+        "oblique-1960-1992:collection",
+        "oblique-1960-1992:credit",
+        "oblique-1960-1992:license"
+      ],
+      "location": "abstained",
+      "georef": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "accepted_claims": 0,
+      "verified_dossiers": 0,
+      "tasks": 0,
+      "rationale": "Accepted only the exact bound record/media identity and applicable collection, license, and credit propositions; unsupported semantic authority remains abstained."
+    },
+    {
+      "numeric_id": 11923,
+      "evidence_disposition": "accepted",
+      "accepted_proposition_ids": [
+        "11923:record-media-identity",
+        "oblique-1960-1992:collection",
+        "oblique-1960-1992:credit",
+        "oblique-1960-1992:license"
+      ],
+      "location": "abstained",
+      "georef": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "accepted_claims": 0,
+      "verified_dossiers": 0,
+      "tasks": 0,
+      "rationale": "Accepted only the exact bound record/media identity and applicable collection, license, and credit propositions; unsupported semantic authority remains abstained."
+    },
+    {
+      "numeric_id": 4501,
+      "evidence_disposition": "accepted",
+      "accepted_proposition_ids": [
+        "4501:record-media-identity",
+        "vertical-1947-1949:collection",
+        "vertical-1947-1949:credit",
+        "vertical-1947-1949:license"
+      ],
+      "location": "abstained",
+      "georef": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "accepted_claims": 0,
+      "verified_dossiers": 0,
+      "tasks": 0,
+      "rationale": "Accepted only the exact bound record/media identity and applicable collection, license, and credit propositions; unsupported semantic authority remains abstained."
+    },
+    {
+      "numeric_id": 14135,
+      "evidence_disposition": "accepted",
+      "accepted_proposition_ids": [
+        "14135:record-media-identity",
+        "oblique-1960-1992:collection",
+        "oblique-1960-1992:credit",
+        "oblique-1960-1992:license"
+      ],
+      "location": "abstained",
+      "georef": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "accepted_claims": 0,
+      "verified_dossiers": 0,
+      "tasks": 0,
+      "rationale": "Accepted only the exact bound record/media identity and applicable collection, license, and credit propositions; unsupported semantic authority remains abstained."
+    },
+    {
+      "numeric_id": 12623,
+      "evidence_disposition": "accepted",
+      "accepted_proposition_ids": [
+        "12623:record-media-identity",
+        "oblique-1960-1992:collection",
+        "oblique-1960-1992:credit",
+        "oblique-1960-1992:license"
+      ],
+      "location": "abstained",
+      "georef": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "accepted_claims": 0,
+      "verified_dossiers": 0,
+      "tasks": 0,
+      "rationale": "Accepted only the exact bound record/media identity and applicable collection, license, and credit propositions; unsupported semantic authority remains abstained."
+    },
+    {
+      "numeric_id": 7929,
+      "evidence_disposition": "accepted",
+      "accepted_proposition_ids": [
+        "7929:record-media-identity",
+        "vertical-1947-1949:collection",
+        "vertical-1947-1949:credit",
+        "vertical-1947-1949:license"
+      ],
+      "location": "abstained",
+      "georef": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "accepted_claims": 0,
+      "verified_dossiers": 0,
+      "tasks": 0,
+      "rationale": "Accepted only the exact bound record/media identity and applicable collection, license, and credit propositions; unsupported semantic authority remains abstained."
+    },
+    {
+      "numeric_id": 9844,
+      "evidence_disposition": "accepted",
+      "accepted_proposition_ids": [
+        "9844:record-media-identity",
+        "vertical-1958-1975:collection",
+        "vertical-1958-1975:credit",
+        "vertical-1958-1975:license"
+      ],
+      "location": "abstained",
+      "georef": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "accepted_claims": 0,
+      "verified_dossiers": 0,
+      "tasks": 0,
+      "rationale": "Accepted only the exact bound record/media identity and applicable collection, license, and credit propositions; unsupported semantic authority remains abstained."
+    },
+    {
+      "numeric_id": 9092,
+      "evidence_disposition": "accepted",
+      "accepted_proposition_ids": [
+        "9092:record-media-identity",
+        "vertical-1958-1975:collection",
+        "vertical-1958-1975:credit",
+        "vertical-1958-1975:license"
+      ],
+      "location": "abstained",
+      "georef": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "accepted_claims": 0,
+      "verified_dossiers": 0,
+      "tasks": 0,
+      "rationale": "Accepted only the exact bound record/media identity and applicable collection, license, and credit propositions; unsupported semantic authority remains abstained."
+    },
+    {
+      "numeric_id": 13389,
+      "evidence_disposition": "accepted",
+      "accepted_proposition_ids": [
+        "13389:record-media-identity",
+        "oblique-1960-1992:collection",
+        "oblique-1960-1992:credit",
+        "oblique-1960-1992:license"
+      ],
+      "location": "abstained",
+      "georef": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "accepted_claims": 0,
+      "verified_dossiers": 0,
+      "tasks": 0,
+      "rationale": "Accepted only the exact bound record/media identity and applicable collection, license, and credit propositions; unsupported semantic authority remains abstained."
+    },
+    {
+      "numeric_id": 14965,
+      "evidence_disposition": "accepted",
+      "accepted_proposition_ids": [
+        "14965:record-media-identity",
+        "oblique-1960-1992:collection",
+        "oblique-1960-1992:credit",
+        "oblique-1960-1992:license"
+      ],
+      "location": "abstained",
+      "georef": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "accepted_claims": 0,
+      "verified_dossiers": 0,
+      "tasks": 0,
+      "rationale": "Accepted only the exact bound record/media identity and applicable collection, license, and credit propositions; unsupported semantic authority remains abstained."
+    },
+    {
+      "numeric_id": 11836,
+      "evidence_disposition": "accepted",
+      "accepted_proposition_ids": [
+        "11836:record-media-identity",
+        "oblique-1960-1992:collection",
+        "oblique-1960-1992:credit",
+        "oblique-1960-1992:license"
+      ],
+      "location": "abstained",
+      "georef": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "accepted_claims": 0,
+      "verified_dossiers": 0,
+      "tasks": 0,
+      "rationale": "Accepted only the exact bound record/media identity and applicable collection, license, and credit propositions; unsupported semantic authority remains abstained."
+    },
+    {
+      "numeric_id": 11993,
+      "evidence_disposition": "accepted",
+      "accepted_proposition_ids": [
+        "11993:record-media-identity",
+        "oblique-1960-1992:collection",
+        "oblique-1960-1992:credit",
+        "oblique-1960-1992:license"
+      ],
+      "location": "abstained",
+      "georef": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "accepted_claims": 0,
+      "verified_dossiers": 0,
+      "tasks": 0,
+      "rationale": "Accepted only the exact bound record/media identity and applicable collection, license, and credit propositions; unsupported semantic authority remains abstained."
+    },
+    {
+      "numeric_id": 8432,
+      "evidence_disposition": "accepted",
+      "accepted_proposition_ids": [
+        "8432:record-media-identity",
+        "vertical-1958-1975:collection",
+        "vertical-1958-1975:credit",
+        "vertical-1958-1975:license"
+      ],
+      "location": "abstained",
+      "georef": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "accepted_claims": 0,
+      "verified_dossiers": 0,
+      "tasks": 0,
+      "rationale": "Accepted only the exact bound record/media identity and applicable collection, license, and credit propositions; unsupported semantic authority remains abstained."
+    },
+    {
+      "numeric_id": 13272,
+      "evidence_disposition": "accepted",
+      "accepted_proposition_ids": [
+        "13272:record-media-identity",
+        "oblique-1960-1992:collection",
+        "oblique-1960-1992:credit",
+        "oblique-1960-1992:license"
+      ],
+      "location": "abstained",
+      "georef": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "accepted_claims": 0,
+      "verified_dossiers": 0,
+      "tasks": 0,
+      "rationale": "Accepted only the exact bound record/media identity and applicable collection, license, and credit propositions; unsupported semantic authority remains abstained."
+    },
+    {
+      "numeric_id": 14813,
+      "evidence_disposition": "accepted",
+      "accepted_proposition_ids": [
+        "14813:record-media-identity",
+        "oblique-1960-1992:collection",
+        "oblique-1960-1992:credit",
+        "oblique-1960-1992:license"
+      ],
+      "location": "abstained",
+      "georef": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "accepted_claims": 0,
+      "verified_dossiers": 0,
+      "tasks": 0,
+      "rationale": "Accepted only the exact bound record/media identity and applicable collection, license, and credit propositions; unsupported semantic authority remains abstained."
+    },
+    {
+      "numeric_id": 12117,
+      "evidence_disposition": "accepted",
+      "accepted_proposition_ids": [
+        "12117:record-media-identity",
+        "oblique-1960-1992:collection",
+        "oblique-1960-1992:credit",
+        "oblique-1960-1992:license"
+      ],
+      "location": "abstained",
+      "georef": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "accepted_claims": 0,
+      "verified_dossiers": 0,
+      "tasks": 0,
+      "rationale": "Accepted only the exact bound record/media identity and applicable collection, license, and credit propositions; unsupported semantic authority remains abstained."
+    },
+    {
+      "numeric_id": 10153,
+      "evidence_disposition": "accepted",
+      "accepted_proposition_ids": [
+        "10153:record-media-identity",
+        "vertical-1958-1975:collection",
+        "vertical-1958-1975:credit",
+        "vertical-1958-1975:license"
+      ],
+      "location": "abstained",
+      "georef": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "accepted_claims": 0,
+      "verified_dossiers": 0,
+      "tasks": 0,
+      "rationale": "Accepted only the exact bound record/media identity and applicable collection, license, and credit propositions; unsupported semantic authority remains abstained."
+    },
+    {
+      "numeric_id": 9504,
+      "evidence_disposition": "accepted",
+      "accepted_proposition_ids": [
+        "9504:record-media-identity",
+        "vertical-1958-1975:collection",
+        "vertical-1958-1975:credit",
+        "vertical-1958-1975:license"
+      ],
+      "location": "abstained",
+      "georef": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "accepted_claims": 0,
+      "verified_dossiers": 0,
+      "tasks": 0,
+      "rationale": "Accepted only the exact bound record/media identity and applicable collection, license, and credit propositions; unsupported semantic authority remains abstained."
+    }
+  ],
+  "counts": {
+    "records": 22,
+    "accepted_evidence": 22,
+    "held_evidence": 0,
+    "rejected_evidence": 0,
+    "accepted_claims": 0,
+    "verified_dossiers": 0,
+    "tasks": 0,
+    "location": 0,
+    "georef": 0,
+    "scale": 0,
+    "land_use": 0,
+    "measurement": 0
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "schema_version": "aerial_source_evidence_v1.1.0",
+  "artifact_id": "aerial-source-evidence-v1",
+  "issue": 90,
+  "issue_complete": false,
+  "authority_status": "candidate_held_external_review_required",
+  "production_mutation": false,
+  "paid_gpu_launched": false,
+  "counts": {
+    "candidates": 22,
+    "components": 22,
+    "phase_d_selected": 20,
+    "reserves": 2,
+    "predecessor_held_preserved": 4,
+    "media_bytes": 946387779,
+    "exact_media_hashes": 22,
+    "header_dimensions_verified": 22,
+    "pixel_decode_verified": 22,
+    "georeference_proposals": 0,
+    "accepted_coordinates": 0,
+    "accepted_measurements": 0,
+    "accepted_claims": 0,
+    "verified_dossiers": 0,
+    "tasks": 0
+  },
+  "blockers": [
+    "durable_archive_upload_and_byte_identical_readback_receipt_required",
+    "fresh_independent_external_source_review_required"
+  ],
+  "limitations": [
+    "Acquisition does not increase verified dossier count.",
+    "Official media URLs and metadata do not establish pictured location.",
+    "No georeference proposal, coordinate, scale, land-use proposition, or measurement is accepted."
+  ]
+}

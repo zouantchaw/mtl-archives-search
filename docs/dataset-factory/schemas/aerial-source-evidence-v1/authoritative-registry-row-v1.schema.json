@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["stable_id", "schema_version", "artifact_schema_version", "artifact_kind", "content_digest", "counts", "source_lineage", "storage", "generation", "dependency_ids", "required_by", "rights_boundary", "created_at", "creation_time_basis"],
+  "properties": {
+    "stable_id": { "const": "dfv0_aerial_source_evidence_v1_authority" },
+    "schema_version": { "const": "dataset_factory_artifact_registry_v0" },
+    "artifact_schema_version": { "const": "aerial_source_evidence_authority_v1.0.0" },
+    "artifact_kind": { "const": "file_set" },
+    "content_digest": { "type": "object", "additionalProperties": false, "required": ["algorithm", "value", "scope"], "properties": { "algorithm": { "const": "sha256" }, "value": { "$ref": "#/$defs/hash" }, "scope": { "const": "sorted_tree_manifest" } } },
+    "counts": { "type": "object", "additionalProperties": false, "required": ["file_count", "byte_count"], "properties": { "file_count": { "const": 12 }, "byte_count": { "type": "integer", "minimum": 1 } } },
+    "source_lineage": { "type": "object", "additionalProperties": false, "required": ["description", "source_artifact_ids", "source_urls"], "properties": { "description": { "const": "Issue #90 externally reviewed source/media/rights/attribution evidence with semantic abstentions preserved." }, "source_artifact_ids": { "const": ["dfv0_aerial_source_evidence_v1_candidate"] }, "source_urls": { "const": ["https://github.com/zouantchaw/mtl-archives-search/issues/90"] } } },
+    "storage": { "type": "object", "additionalProperties": false, "required": ["storage_class", "path_class", "locator", "members"], "properties": { "storage_class": { "const": "object_store" }, "path_class": { "const": "external_object_store" }, "locator": { "type": "string", "minLength": 1 }, "members": { "const": ["archived-candidate-descriptor-v1.json", "candidate-descriptor-v1.json", "descriptor-v1.json", "evidence-ledger-v1.json", "external-archive-descriptor-v1.json", "external-archive-upload-readback-receipt-v1.json", "final-status-v1.json", "independent-source-authority-receipt-v1.json", "independent-source-review-receipt.template-v1.json", "review-ledger-v1.json", "source-body-evidence-v1.json", "status-report-v1.json"] } } },
+    "generation": { "type": "object", "additionalProperties": false, "required": ["method", "command", "code_ref", "human_input_ids"], "properties": { "method": { "const": "review_assisted" }, "command": { "const": "npm run dataset-factory:aerial-authority-v1 -- publish" }, "code_ref": { "const": "codex/90-aerial-source-evidence" }, "human_input_ids": { "const": [] } } },
+    "dependency_ids": { "const": ["dfv0_aerial_source_evidence_v1_candidate"] },
+    "required_by": { "const": ["issue #90 Gate F"] },
+    "rights_boundary": { "type": "object", "additionalProperties": false, "required": ["license_id", "attribution", "commercial_use_allowed", "notes"], "properties": { "license_id": { "const": "cc-by-4.0" }, "attribution": { "const": "Archives de la Ville de Montréal" }, "commercial_use_allowed": { "const": true }, "notes": { "const": "Source/media/rights/attribution authority only; location, georef, scale, land use, and measurement remain held or abstained." } } },
+    "created_at": { "type": "string", "format": "date-time" },
+    "creation_time_basis": { "const": "report_metadata" }
+  },
+  "$defs": {
+    "hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

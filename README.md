@@ -1,5 +1,7 @@
 # Montréal Archives Search
 
+Issue #90 Gate F aerial source evidence is documented in `docs/dataset-factory/aerial-source-evidence-v1.md`. The tracked publication imports the externally reviewed 15-file authority packet byte-for-byte under receipt SHA-256 `784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383`. It establishes source/media/rights/attribution authority for all 22 records while preserving held or abstained location, georef, scale, land-use, and measurement semantics. `issue_complete` and `production_mutation` remain false, with zero accepted claims, verified dossiers, or tasks.
+
 Issue #69 Gate B authoritative ground research is documented in `docs/dataset-factory/ground-authoritative-research-v1.md`. The versioned tracked fixture covers six ground records with rights-conscious source capture and pending claim drafts only; promotions, verified dossiers, benchmark/search tasks, and production mutations are all zero.
 
 Issue #69 Phase D's 60-record scale artifact is documented in `docs/dataset-factory/phase-d-scale-v1.md`. Its tracked state is published under an immutable fresh Sol High reviewer receipt after independent source restoration, selection replay, and join verification. Ordinary build cannot overwrite the receipt; verification and integration replay both candidate and authoritative states without changing tracked bytes. Verified dossiers, accepted tasks, and new external claims remain zero, so issue #69 remains open and incomplete.
