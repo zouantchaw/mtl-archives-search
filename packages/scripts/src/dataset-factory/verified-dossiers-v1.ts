@@ -1267,6 +1267,84 @@ function loadProductionAuthorizationPin(): J {
   schema("production-authorization-pin.schema.v1.json", pin);
   return pin;
 }
+function verifyCommittedProductionPinState(pin: J, candidate: string): void {
+  schema("production-authorization-pin.schema.v1.json", pin);
+  assert(
+    pin.candidate_artifact_id === ID,
+    "production authorization pin artifact binding drift",
+  );
+  if (pin.state === "unconfigured") {
+    assert(
+      pin.candidate_descriptor_sha256 === null &&
+        pin.authorization_file === null &&
+        pin.approved_reviewer === null &&
+        pin.authorizing_authority === null &&
+        pin.authorized_at === null,
+      "unconfigured production authorization pin is not fail-closed",
+    );
+    return;
+  }
+  assert(pin.state === "active", "unknown production authorization pin state");
+  assert(
+    pin.candidate_descriptor_sha256 ===
+      filePin(path.join(candidate, "descriptor-v1.json")).sha256,
+    "active production pin candidate descriptor drift",
+  );
+  same(
+    pin.authorization_file,
+    {
+      sha256: pin.authorization_file.sha256,
+      bytes: pin.authorization_file.bytes,
+    },
+    "active production pin authorization file",
+  );
+  assert(
+    /^[0-9a-f]{64}$/.test(pin.authorization_file.sha256) &&
+      Number.isInteger(pin.authorization_file.bytes) &&
+      pin.authorization_file.bytes > 0,
+    "active production pin authorization file binding invalid",
+  );
+  same(
+    pin.approved_reviewer,
+    {
+      reviewer_id: pin.approved_reviewer.reviewer_id,
+      session_id: pin.approved_reviewer.session_id,
+      model: "gpt-5.6-sol",
+      reasoning_effort: "high",
+    },
+    "active production pin reviewer route",
+  );
+  same(
+    pin.authorizing_authority,
+    {
+      identity: pin.authorizing_authority.identity,
+      session_id: pin.authorizing_authority.session_id,
+      role: "gate_g_review_authority",
+    },
+    "active production pin authority route",
+  );
+  const principals = [
+    pin.approved_reviewer.reviewer_id,
+    pin.approved_reviewer.session_id,
+    pin.authorizing_authority.identity,
+    pin.authorizing_authority.session_id,
+  ];
+  const blocked = new Set([...forbidden().identities, ...forbidden().sessions]);
+  assert(
+    principals.every(
+      (principal: string) =>
+        principal.length > 0 &&
+        principal === principal.trim() &&
+        !blocked.has(principal),
+    ) && new Set(principals).size === principals.length,
+    "active production pin principals invalid or non-independent",
+  );
+  assert(
+    strictTime(pin.authorized_at) &&
+      Date.parse(pin.authorized_at) >= Date.parse(CREATED),
+    "active production pin authorization time invalid",
+  );
+}
 function resolveAuthorizationPin(
   capability?: InternalAuthorizationCapability,
 ): J {
@@ -2418,23 +2496,21 @@ async function selfTest(): Promise<J> {
       cases++;
       rejected++;
     }
-    const productionPin = load(PRODUCTION_AUTHORIZATION_PIN);
-    schema("production-authorization-pin.schema.v1.json", productionPin);
-    assert(
-      productionPin.state === "unconfigured" &&
-        productionPin.authorization_file === null &&
-        productionPin.approved_reviewer === null,
-      "tracked production authorization pin is not fail-closed",
-    );
+    const productionPin = loadProductionAuthorizationPin();
+    verifyCommittedProductionPinState(productionPin, FIXTURE);
     cases++;
-    const unconfiguredRejected = normalCliReviewRefused(
+    verifyCommittedProductionPinState(capability.pin, candidate);
+    cases++;
+    const productionReviewRejected = normalCliReviewRefused(
       candidate,
       receipt,
       authorization,
     );
     assert(
-      unconfiguredRejected,
-      "normal CLI accepted an unconfigured production pin",
+      productionReviewRejected,
+      productionPin.state === "unconfigured"
+        ? "normal CLI accepted an unconfigured production pin"
+        : "normal CLI accepted authorization bytes not matching the active pin",
     );
     cases++;
     rejected++;
@@ -2671,7 +2747,9 @@ async function selfTest(): Promise<J> {
     }
     assert(
       productionPublishRejected,
-      "production publish accepted an unconfigured authorization pin",
+      productionPin.state === "unconfigured"
+        ? "production publish accepted an unconfigured authorization pin"
+        : "production publish bypassed the active authorization pin",
     );
     cases++;
     rejected++;
@@ -2683,7 +2761,9 @@ async function selfTest(): Promise<J> {
     }
     assert(
       productionVerifyRejected,
-      "production verify-published accepted an unconfigured authorization pin",
+      productionPin.state === "unconfigured"
+        ? "production verify-published accepted an unconfigured authorization pin"
+        : "production verify-published bypassed the active authorization pin",
     );
     cases++;
     rejected++;
