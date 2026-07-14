@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "artifact_id", "authority_status", "issue_complete", "counts", "blockers", "production_mutation"],
+  "properties": {
+    "schema_version": { "const": "aerial_source_evidence_authority_v1.0.0" },
+    "artifact_id": { "const": "aerial-source-evidence-v1" },
+    "authority_status": { "const": "published_external_source_authority" },
+    "issue_complete": { "const": false },
+    "counts": { "$ref": "#/$defs/counts" },
+    "blockers": { "const": ["location_georef_scale_land_use_measurement_authority_not_established"] },
+    "production_mutation": { "const": false }
+  },
+  "$defs": {
+    "counts": { "type": "object", "additionalProperties": false, "required": ["records", "accepted_evidence", "held_evidence", "rejected_evidence", "accepted_claims", "verified_dossiers", "tasks", "location", "georef", "scale", "land_use", "measurement"], "properties": { "records": { "const": 22 }, "accepted_evidence": { "const": 22 }, "held_evidence": { "const": 0 }, "rejected_evidence": { "const": 0 }, "accepted_claims": { "const": 0 }, "verified_dossiers": { "const": 0 }, "tasks": { "const": 0 }, "location": { "const": 0 }, "georef": { "const": 0 }, "scale": { "const": 0 }, "land_use": { "const": 0 }, "measurement": { "const": 0 } } }
+  }
+}

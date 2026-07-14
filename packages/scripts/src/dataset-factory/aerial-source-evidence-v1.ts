@@ -267,6 +267,9 @@ async function verify(root = FIXTURE, options: VerifyOptions = {}): Promise<Json
   if (options.registryPath) { const rows = fs.readFileSync(options.registryPath, 'utf8').trim().split('\n').filter(Boolean).map(line => JSON.parse(line)).filter(row => row.stable_id === REGISTRY_ID); assert(rows.length === 1 && canonical(rows[0]) === canonical(registryRow(root)), 'artifact registry row drift'); }
   return { state: 'candidate_held_external_review_required', records: 22, media_verified: Boolean(options.mediaRoot), source_bodies_verified: Boolean(options.sourceRoot), production_mutation: false };
 }
+export async function verifyAerialSourceEvidenceCandidate(root: string): Promise<Json> {
+  return verify(root, { registryPath: REGISTRY });
+}
 function resealCandidateAndRegistry(root: string, registryPath: string): void { writeJson(path.join(root, 'descriptor-v1.json'), descriptor(root)); const rows = fs.readFileSync(registryPath, 'utf8').trim().split('\n').filter(Boolean).map(line => JSON.parse(line)), target = rows.findIndex(row => row.stable_id === REGISTRY_ID); if (target >= 0) rows[target] = registryRow(root); fs.writeFileSync(registryPath, `${rows.map(row => JSON.stringify(row)).join('\n')}\n`); }
 async function selfTest(): Promise<Json> { const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'gate-f-self-')); let cases = 0; try { const baseRegistry = path.join(temp, 'registry.jsonl'); fs.copyFileSync(REGISTRY, baseRegistry); const run = async (label: string, edit: (root: string, registry: string) => void, expected: RegExp) => { const root = path.join(temp, label); fs.cpSync(FIXTURE, root, { recursive: true }); const registry = path.join(temp, `${label}.jsonl`); fs.copyFileSync(baseRegistry, registry); edit(root, registry); resealCandidateAndRegistry(root, registry); let message = ''; try { await verify(root, { registryPath: registry }); } catch (error) { message = String(error); } assert(expected.test(message), `${label}: expected rejection, got ${message}`); cases++; };
     await run('rights-null', root => { const file = path.join(root, 'evidence-ledger-v1.json'), value = readJson(file); value.records[0].rights = null; writeJson(file, value); }, /schema validation|record\/source/);
@@ -290,11 +293,15 @@ async function selfTest(): Promise<Json> { const temp = fs.mkdtempSync(path.join
 }
 async function integration(mediaRoot: string, sourceRoot: string): Promise<Json> { const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'gate-f-integration-')); try { const root = path.join(temp, 'candidate'); await writeCandidate(root, mediaRoot, sourceRoot); for (const file of [...BASE_MEMBERS, 'descriptor-v1.json']) assert(fs.readFileSync(path.join(root, file)).equals(fs.readFileSync(path.join(FIXTURE, file))), `integration byte drift ${file}`); return { status: 'passed', candidate_replay: 'byte_identical', files: 6, media_pixel_decode_verified: 22, source_bodies_verified: 10, production_mutation: false }; } finally { fs.rmSync(temp, { recursive: true, force: true }); } }
 
-const parsed = parseArgs({ allowPositionals: true, options: { 'media-root': { type: 'string' }, 'source-root': { type: 'string' }, root: { type: 'string' }, registry: { type: 'string' } } });
-const command = parsed.positionals[0] ?? 'verify', mediaRoot = parsed.values['media-root'] ? path.resolve(parsed.values['media-root']) : undefined, sourceRoot = path.resolve(parsed.values['source-root'] ?? SOURCE_ROOT_DEFAULT), fixtureRoot = path.resolve(parsed.values.root ?? FIXTURE), registryPath = path.resolve(parsed.values.registry ?? REGISTRY);
-if (command === 'build') { assert(mediaRoot, '--media-root is required'); console.log(JSON.stringify(await writeCandidate(fixtureRoot, mediaRoot, sourceRoot))); }
-else if (command === 'refresh-candidate') throw new Error('immutable candidate rebuild/overwrite refused');
-else if (command === 'verify') console.log(JSON.stringify(await verify(fixtureRoot, { mediaRoot, sourceRoot: parsed.values['source-root'] ? sourceRoot : undefined, registryPath })));
-else if (command === 'seal-registry') { sealRegistry(fixtureRoot, registryPath); console.log(JSON.stringify({ status: 'registry_row_sealed', stable_id: REGISTRY_ID })); }
-else if (command === 'self-test') console.log(JSON.stringify(await selfTest()));
-else if (command === 'integration-test') { assert(mediaRoot, '--media-root is required'); console.log(JSON.stringify(await integration(mediaRoot, sourceRoot))); }
+async function main(): Promise<void> {
+  const parsed = parseArgs({ allowPositionals: true, options: { 'media-root': { type: 'string' }, 'source-root': { type: 'string' }, root: { type: 'string' }, registry: { type: 'string' } } });
+  const command = parsed.positionals[0] ?? 'verify', mediaRoot = parsed.values['media-root'] ? path.resolve(parsed.values['media-root']) : undefined, sourceRoot = path.resolve(parsed.values['source-root'] ?? SOURCE_ROOT_DEFAULT), fixtureRoot = path.resolve(parsed.values.root ?? FIXTURE), registryPath = path.resolve(parsed.values.registry ?? REGISTRY);
+  if (command === 'build') { assert(mediaRoot, '--media-root is required'); console.log(JSON.stringify(await writeCandidate(fixtureRoot, mediaRoot, sourceRoot))); }
+  else if (command === 'refresh-candidate') throw new Error('immutable candidate rebuild/overwrite refused');
+  else if (command === 'verify') console.log(JSON.stringify(await verify(fixtureRoot, { mediaRoot, sourceRoot: parsed.values['source-root'] ? sourceRoot : undefined, registryPath })));
+  else if (command === 'seal-registry') { sealRegistry(fixtureRoot, registryPath); console.log(JSON.stringify({ status: 'registry_row_sealed', stable_id: REGISTRY_ID })); }
+  else if (command === 'self-test') console.log(JSON.stringify(await selfTest()));
+  else if (command === 'integration-test') { assert(mediaRoot, '--media-root is required'); console.log(JSON.stringify(await integration(mediaRoot, sourceRoot))); }
+}
+
+if (path.resolve(process.argv[1] ?? '') === fileURLToPath(import.meta.url)) await main();
