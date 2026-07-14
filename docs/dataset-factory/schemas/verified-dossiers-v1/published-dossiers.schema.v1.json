@@ -1,1 +1,139 @@
-{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["schema_version","source_candidate_artifact_id","dossiers"],"properties":{"schema_version":{"const":"verified_dossiers_publication_v1.0.0"},"source_candidate_artifact_id":{"const":"dfv0_verified_dossiers_v1_candidate_20260714"},"dossiers":{"type":"array","minItems":36,"maxItems":36,"items":{"type":"object","required":["dossier_id","state","fully_verified","source_acquisition_only","independent_review"],"properties":{"state":{"enum":["published_independently_verified","retained_held","retained_rejected"]},"fully_verified":{"type":"boolean"},"source_acquisition_only":{"const":false}}}}}}
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record_id",
+        "numeric_id",
+        "component_id",
+        "split",
+        "phase_d_selection_index",
+        "stratum"
+      ],
+      "properties": {
+        "record_id": { "type": "string" },
+        "numeric_id": { "type": "integer" },
+        "component_id": { "type": "string" },
+        "split": { "type": "string" },
+        "phase_d_selection_index": { "type": "integer" },
+        "stratum": { "enum": ["aerial", "ground"] }
+      }
+    },
+    "reviewer": {
+      "$ref": "completed-independent-review.schema.v1.json#/$defs/reviewer"
+    },
+    "approvals": {
+      "$ref": "completed-independent-review.schema.v1.json#/$defs/approvals"
+    },
+    "publishedReview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "required",
+        "completed",
+        "reviewer",
+        "disposition",
+        "approvals",
+        "rationale"
+      ],
+      "properties": {
+        "required": { "const": true },
+        "completed": { "const": true },
+        "reviewer": { "$ref": "#/$defs/reviewer" },
+        "disposition": { "enum": ["accepted", "held", "rejected"] },
+        "approvals": { "$ref": "#/$defs/approvals" },
+        "rationale": { "type": "string", "minLength": 1 }
+      }
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "source_candidate_artifact_id", "dossiers"],
+  "properties": {
+    "schema_version": { "const": "verified_dossiers_publication_v1.0.0" },
+    "source_candidate_artifact_id": { "type": "string" },
+    "dossiers": {
+      "type": "array",
+      "minItems": 36,
+      "maxItems": 36,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema_version",
+          "dossier_id",
+          "state",
+          "fully_verified",
+          "source_acquisition_only",
+          "publication_eligible",
+          "expected_review_disposition",
+          "record",
+          "predecessors",
+          "review_pixels",
+          "rights",
+          "archive_metadata",
+          "visual_claims",
+          "external_claims",
+          "alternatives",
+          "contradictions",
+          "uncertainty",
+          "author",
+          "independent_review"
+        ],
+        "properties": {
+          "schema_version": { "const": "verified_dossiers_v1.0.0" },
+          "dossier_id": { "type": "string" },
+          "state": {
+            "enum": [
+              "published_independently_verified",
+              "retained_held",
+              "retained_rejected"
+            ]
+          },
+          "fully_verified": { "type": "boolean" },
+          "source_acquisition_only": { "const": false },
+          "publication_eligible": { "type": "boolean" },
+          "expected_review_disposition": {
+            "enum": ["held", "independent_review_required"]
+          },
+          "record": {
+            "$ref": "candidate-packets.schema.v1.json#/$defs/packet/properties/record"
+          },
+          "predecessors": {
+            "$ref": "candidate-packets.schema.v1.json#/$defs/predecessors"
+          },
+          "review_pixels": {
+            "$ref": "candidate-packets.schema.v1.json#/$defs/packet/properties/review_pixels"
+          },
+          "rights": {
+            "$ref": "candidate-packets.schema.v1.json#/$defs/rights"
+          },
+          "archive_metadata": {
+            "$ref": "candidate-packets.schema.v1.json#/$defs/packet/properties/archive_metadata"
+          },
+          "visual_claims": {
+            "$ref": "candidate-packets.schema.v1.json#/$defs/packet/properties/visual_claims"
+          },
+          "external_claims": {
+            "$ref": "candidate-packets.schema.v1.json#/$defs/packet/properties/external_claims"
+          },
+          "alternatives": {
+            "$ref": "candidate-packets.schema.v1.json#/$defs/packet/properties/alternatives"
+          },
+          "contradictions": {
+            "$ref": "candidate-packets.schema.v1.json#/$defs/packet/properties/contradictions"
+          },
+          "uncertainty": {
+            "$ref": "candidate-packets.schema.v1.json#/$defs/packet/properties/uncertainty"
+          },
+          "author": {
+            "$ref": "candidate-packets.schema.v1.json#/$defs/packet/properties/author"
+          },
+          "independent_review": { "$ref": "#/$defs/publishedReview" }
+        }
+      }
+    }
+  }
+}

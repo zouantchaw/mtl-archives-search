@@ -1,1 +1,187 @@
-{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["schema_version","status","artifact_id","candidate_descriptor_sha256","packet_manifest","reviewer","forbidden_principals","dispositions","counts"],"properties":{"schema_version":{"const":"verified_dossiers_independent_review_template_v1.0.0"},"status":{"const":"blank_independent_review_required"},"artifact_id":{"const":"dfv0_verified_dossiers_v1_candidate_20260714"},"candidate_descriptor_sha256":{"type":"null"},"packet_manifest":{"type":"object"},"reviewer":{"type":"object"},"forbidden_principals":{"type":"object"},"dispositions":{"type":"array","minItems":36,"maxItems":36,"items":{"type":"object","required":["dossier_id","numeric_id","packet_sha256","projection_json_sha256","projection_html_sha256","overlay_sha256","review_pixel_sha256","disposition","approvals","rationale"],"properties":{"disposition":{"type":"null"}}}},"counts":{"type":"object","required":["candidates","accepted","held","rejected","fully_verified"],"properties":{"candidates":{"const":36},"accepted":{"const":0},"held":{"const":0},"rejected":{"const":0},"fully_verified":{"const":0}}}}}
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "artifact_id",
+    "candidate_descriptor_sha256",
+    "authorization_required",
+    "authorization_schema_version",
+    "packet_manifest",
+    "reviewer",
+    "forbidden_principals",
+    "dispositions",
+    "counts"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "verified_dossiers_independent_review_template_v1.0.0"
+    },
+    "status": { "const": "blank_independent_review_required" },
+    "artifact_id": { "type": "string" },
+    "candidate_descriptor_sha256": { "type": "null" },
+    "authorization_required": { "const": true },
+    "authorization_schema_version": {
+      "const": "verified_dossiers_reviewer_authorization_v1.0.0"
+    },
+    "packet_manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "bytes"],
+      "properties": {
+        "path": { "const": "packet-manifest-v1.json" },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "bytes": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "reviewer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reviewer_id",
+        "session_id",
+        "model",
+        "reasoning_effort",
+        "reviewed_at",
+        "independence_attestations"
+      ],
+      "properties": {
+        "reviewer_id": { "const": "" },
+        "session_id": { "const": "" },
+        "model": { "const": "" },
+        "reasoning_effort": { "const": "" },
+        "reviewed_at": { "const": "" },
+        "independence_attestations": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "no_author_overlap",
+            "no_gate_e_source_review_overlap",
+            "no_gate_f_source_review_overlap",
+            "no_implementation_overlap"
+          ],
+          "properties": {
+            "no_author_overlap": { "const": false },
+            "no_gate_e_source_review_overlap": { "const": false },
+            "no_gate_f_source_review_overlap": { "const": false },
+            "no_implementation_overlap": { "const": false }
+          }
+        }
+      }
+    },
+    "forbidden_principals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identities", "sessions", "excluded_roles"],
+      "properties": {
+        "identities": {
+          "type": "array",
+          "minItems": 3,
+          "uniqueItems": true,
+          "items": { "type": "string" }
+        },
+        "sessions": {
+          "type": "array",
+          "minItems": 3,
+          "uniqueItems": true,
+          "items": { "type": "string" }
+        },
+        "excluded_roles": {
+          "type": "array",
+          "minItems": 4,
+          "uniqueItems": true,
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "dispositions": {
+      "type": "array",
+      "minItems": 36,
+      "maxItems": 36,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "dossier_id",
+          "numeric_id",
+          "packet_sha256",
+          "projection_json_sha256",
+          "projection_html_sha256",
+          "overlay_sha256",
+          "review_pixel_sha256",
+          "publication_eligible",
+          "allowed_dispositions",
+          "disposition",
+          "approvals",
+          "rationale"
+        ],
+        "properties": {
+          "dossier_id": { "type": "string" },
+          "numeric_id": { "type": "integer" },
+          "packet_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "projection_json_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "projection_html_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "overlay_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "review_pixel_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "publication_eligible": { "type": "boolean" },
+          "allowed_dispositions": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 3,
+            "uniqueItems": true,
+            "items": { "enum": ["accepted", "held", "rejected"] }
+          },
+          "disposition": { "type": "null" },
+          "approvals": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "visual_evidence",
+              "metadata_labeling",
+              "rights_attribution",
+              "uncertainty",
+              "projection_fidelity"
+            ],
+            "properties": {
+              "visual_evidence": { "const": false },
+              "metadata_labeling": { "const": false },
+              "rights_attribution": { "const": false },
+              "uncertainty": { "const": false },
+              "projection_fidelity": { "const": false }
+            }
+          },
+          "rationale": { "const": "" }
+        }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidates",
+        "accepted",
+        "held",
+        "rejected",
+        "fully_verified"
+      ],
+      "properties": {
+        "candidates": { "const": 36 },
+        "accepted": { "const": 0 },
+        "held": { "const": 0 },
+        "rejected": { "const": 0 },
+        "fully_verified": { "const": 0 }
+      }
+    }
+  }
+}

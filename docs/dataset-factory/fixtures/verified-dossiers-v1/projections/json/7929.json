@@ -4,6 +4,7 @@
   "state": "candidate_independent_review_required",
   "fully_verified": false,
   "source_acquisition_only": false,
+  "publication_eligible": true,
   "expected_review_disposition": "independent_review_required",
   "record": {
     "record_id": "mtl_archives_metadata_7929.json",
@@ -43,6 +44,14 @@
         "bytes": 2530
       }
     },
+    "ground_rights": {
+      "artifact_id": "dfv0_verified_multimodal_batch_001_real_pilot_source_acquisition_v1",
+      "descriptor": {
+        "path": "docs/dataset-factory/fixtures/real-pilot-source-acquisition-v1/descriptor-v1.json",
+        "sha256": "4a091067c919c465c9c8940aa1dd5acc6f46e740f6ad6416acdfff101f63de10",
+        "bytes": 2561
+      }
+    },
     "canonical_image_recovery": {
       "artifact_id": "canonical_image_recovery_v1",
       "descriptor": {
@@ -53,7 +62,7 @@
     }
   },
   "review_pixels": {
-    "path": "docs/dataset-factory/fixtures/verified-dossiers-v1/review-pixels/7929.jpg",
+    "path": "review-pixels/7929.jpg",
     "sha256": "c995996d4929c56ce4ddb87c62cb6f2e2aa57acf3f702754f3bd0ed957620efc",
     "bytes": 237907,
     "format": "jpeg",
@@ -67,7 +76,84 @@
     "attribution": "Archives de la Ville de Montréal",
     "commercial_use_allowed": true,
     "complete": true,
-    "authority": "gate_f_accepted_source_media_rights_attribution"
+    "authority": "gate_f_independently_accepted_source_media_rights_attribution",
+    "scope_note": "Gate F authority is limited to the exact record/media identity, source family, CC BY 4.0 license, and required credit propositions. It does not establish depicted location, georeference, scale, land use, or measurement.",
+    "evidence": {
+      "authority_receipt": {
+        "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+        "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+        "bytes": 46295
+      },
+      "review_ledger": {
+        "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+        "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+        "bytes": 17017
+      },
+      "evidence_ledger": {
+        "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/evidence-ledger-v1.json",
+        "sha256": "ddcfa31a319ddafca533b83eb9e86c0afdc83235f8ab697f5c57db0f6fac5fd2",
+        "bytes": 134881
+      },
+      "source_body_evidence": {
+        "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/source-body-evidence-v1.json",
+        "sha256": "c48f99dda2da5ee10265da73151fbb6d85649cae8122512571cb89f19e4d14eb",
+        "bytes": 55003
+      },
+      "disposition_sha256": "3070d21a615a21dda470453128ef4b030ecdff8977e02c7d04457e82b492174c",
+      "disposition": {
+        "numeric_id": 7929,
+        "evidence_disposition": "accepted",
+        "accepted_proposition_ids": [
+          "7929:record-media-identity",
+          "vertical-1947-1949:collection",
+          "vertical-1947-1949:credit",
+          "vertical-1947-1949:license"
+        ],
+        "location": "abstained",
+        "georef": "abstained",
+        "scale": "abstained",
+        "land_use": "abstained",
+        "measurement": "abstained",
+        "georeference_proposal": null,
+        "accepted_claims": 0,
+        "verified_dossiers": 0,
+        "tasks": 0,
+        "rationale": "Accepted only the exact bound record/media identity and applicable collection, license, and credit propositions; unsupported semantic authority remains abstained."
+      },
+      "accepted_proposition_ids": [
+        "7929:record-media-identity",
+        "vertical-1947-1949:collection",
+        "vertical-1947-1949:credit",
+        "vertical-1947-1949:license"
+      ],
+      "source_family": {
+        "source_family_id": "archives-montreal-vertical-1947-1949",
+        "source_id": "ckan-package-446b4220-6928-42eb-8d95-da0c67f22bc8",
+        "requested_url": "https://donnees.montreal.ca/api/3/action/package_show?id=446b4220-6928-42eb-8d95-da0c67f22bc8",
+        "private_body": {
+          "path": "package-vertical-1947-1949.json",
+          "bytes": 16301,
+          "sha256": "6d3cf41d58d091e38d219b938d2167ea28b0d1369f6583fbddac569c47c145d6"
+        }
+      },
+      "record_media_identity": {
+        "proposition_id": "7929:record-media-identity",
+        "proposition_sha256": "661bd37ad4bae9baf4e1d66f2681f875e970bfc7abdea78e9b26b7c81d9afd8a",
+        "media_sha256": "14138db47ebf2868cba449d1bdd5159db2181d33e0871d7f459b765276d77e22",
+        "source_row_sha256": "b74306e2cb9389e635df68607ca3975c683bcbafbfd0a71c9e63650b1e64a5c1",
+        "resource_id": "09a0893e-3142-4950-8c54-1250540bde13"
+      },
+      "license": {
+        "proposition_id": "vertical-1947-1949:license",
+        "text_sha256": "3d12f1b51d9506f1767e0cc1e77a99f66fa8e675a9cf7bd762f0ae0c82e02991",
+        "exact_text": "cc-by|Creative Commons Attribution 4.0 International"
+      },
+      "credit": {
+        "proposition_id": "vertical-1947-1949:credit",
+        "text_sha256": "85d7fd224f388ae091e08dd8dba7ccd32d184815317e7c63055e1e3cf38ad96f",
+        "exact_text": "Archives de la Ville de Montréal"
+      }
+    }
   },
   "archive_metadata": {
     "evidence_class": "archive_metadata_report",
