@@ -1,0 +1,42 @@
+{
+  "schema_version": "reviewed_source_evidence_v1.0.0",
+  "artifact_id": "reviewed-source-evidence-v1",
+  "authority_receipt_sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+  "rows": [
+    {
+      "claim_id": "c0-lovell",
+      "disposition": "abstained",
+      "promotion_eligible": false
+    },
+    {
+      "claim_id": "c0-rpcq",
+      "disposition": "accepted",
+      "promotion_eligible": true
+    },
+    {
+      "claim_id": "c10-spelling",
+      "disposition": "held",
+      "promotion_eligible": false
+    },
+    {
+      "claim_id": "c100-date",
+      "disposition": "held",
+      "promotion_eligible": false
+    },
+    {
+      "claim_id": "c101-laphkas",
+      "disposition": "rejected",
+      "promotion_eligible": false
+    },
+    {
+      "claim_id": "c102-date-address",
+      "disposition": "held",
+      "promotion_eligible": false
+    },
+    {
+      "claim_id": "c105-tilden",
+      "disposition": "abstained",
+      "promotion_eligible": false
+    }
+  ]
+}

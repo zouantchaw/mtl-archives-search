@@ -1,0 +1,114 @@
+{
+  "schema_version": "reviewed_source_evidence_v1.0.0",
+  "artifact_id": "reviewed-source-evidence-v1",
+  "scope": "published_independent_source_body_review_authority",
+  "created_at": "2026-07-14T02:22:24.000Z",
+  "authority_member": "independent-source-body-review-receipt-v1.json",
+  "registry_authority": true,
+  "predecessor_pins": [
+    {
+      "path": "docs/dataset-factory/fixtures/ground-authoritative-research-v1/descriptor-v1.json",
+      "bytes": 772,
+      "sha256": "24b441ba8ecd25ab98f2c4c2202b4f8312945adaea6cd5b32f67d9c9ce8184f0"
+    },
+    {
+      "path": "docs/dataset-factory/fixtures/ground-authoritative-research-v1/pending-claims-v1.json",
+      "bytes": 6445,
+      "sha256": "231eae5b3d1d3ea4cf4b2baa23d2ba4028a91e65a8a98851ab9ec5760eb835d9"
+    },
+    {
+      "path": "docs/dataset-factory/fixtures/ground-authoritative-research-v1/source-graph-v1.json",
+      "bytes": 5136,
+      "sha256": "8a1a2bab56710634ab94e99ec4a5956e9ffa990ebddf6fe78a9e5c91b624c7c7"
+    },
+    {
+      "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/descriptor-v1.json",
+      "bytes": 1851,
+      "sha256": "368919c399b2ef514d51a18f32169d980a7b8b7f1f987b349f2ef0b4acfd9b1f"
+    },
+    {
+      "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+      "bytes": 7724,
+      "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf"
+    },
+    {
+      "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/descriptor-v1.json",
+      "bytes": 4098,
+      "sha256": "1e72fb1fd74ad12b99de878ad97da9386afccdf77e7f0926811775dd416c48ce"
+    },
+    {
+      "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/reviewer-selection-receipt-v1.json",
+      "bytes": 3224,
+      "sha256": "12f5c0a6b97c04bf6acf2417bd4aac2358ef98385decd55b3b4a8d5a0fc65898"
+    },
+    {
+      "path": "docs/dataset-factory/fixtures/real-pilot-source-acquisition-v1/selected-ground-rows-v1.json",
+      "bytes": 5690,
+      "sha256": "3b3a7ffcdfcd916d977094e3e013c82d31b1dee8ed86614c7d12e94e4d3ac53e"
+    }
+  ],
+  "members": [
+    {
+      "path": "acquisition-manifest-v1.json",
+      "bytes": 8558,
+      "sha256": "ebc635fd5cd1bdc7ddaccd60340862737a5c3f760c4ef0c11ab9002435ac0172"
+    },
+    {
+      "path": "bounded-review-representations-v1.json",
+      "bytes": 11786,
+      "sha256": "01daabcf8f3c70dd5b3650ee68aec685720f666d436efad7527c0fdfe4a7b643"
+    },
+    {
+      "path": "candidate-descriptor-v1.json",
+      "bytes": 3668,
+      "sha256": "a3bec7c396d6c78a011a133ba00ed73a766cdb007cb67fb3e59e54d80ced8613"
+    },
+    {
+      "path": "external-snapshot-descriptor-v1.json",
+      "bytes": 7083,
+      "sha256": "4b9b2e3c2f1cccc007c73fe29796220fbb842387b0c137a961df2146f3743f76"
+    },
+    {
+      "path": "independent-source-body-review-receipt-v1.json",
+      "bytes": 15435,
+      "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef"
+    },
+    {
+      "path": "independent-source-body-review-receipt.template-v1.json",
+      "bytes": 9044,
+      "sha256": "66f7ad902a5b5027c357ae5b093d695f34ca633aa1ca0fb3bad3a5a4015f164a"
+    },
+    {
+      "path": "manifest-v1.json",
+      "bytes": 2055,
+      "sha256": "20368abea7635bd4ca0d1f36c9dbf8d47a75b2d7163de81a86ba37b42b4c48b0"
+    },
+    {
+      "path": "promotion-ledger-v1.json",
+      "bytes": 1000,
+      "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9"
+    },
+    {
+      "path": "rights-blocked-queue-v1.json",
+      "bytes": 979,
+      "sha256": "2ca160bb262e837898e522d5e3b1d4c7ef6035a4e8dd47f9006c68a8c6fa5e8d"
+    },
+    {
+      "path": "source-body-review-input-v1.json",
+      "bytes": 8808,
+      "sha256": "d74ed770feec6da6b469e162bd9ee3d9ec0fda64126a68fa259abca12c8a6af1"
+    },
+    {
+      "path": "status-report-v1.json",
+      "bytes": 377,
+      "sha256": "475dcba11ebddce69609eb53ce6299f2c5eebbd0f891bdf3c7ae1852dcbc6541"
+    },
+    {
+      "path": "unresolved-queue-v1.json",
+      "bytes": 1085,
+      "sha256": "af0c6ae861dd7c88e55f221485a2cadd8a573ae9deb2bc2e2b98404e5bb74140"
+    }
+  ],
+  "tree_sha256": "edc17febec59a0563427aeab4378d99e9211ffc0144d48f8525ecfc550fcca8c",
+  "production_mutation": false
+}

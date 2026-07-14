@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "artifact_id", "capture_time_basis", "request_url_evidence_limitation", "credential_like_scan_policy", "captures"],
+  "properties": {
+    "schema_version": { "const": "reviewed_source_evidence_v1.0.0" },
+    "artifact_id": { "const": "reviewed-source-evidence-v1" },
+    "capture_time_basis": { "const": "sanitized_final_response_date_header_utc" },
+    "request_url_evidence_limitation": { "type": "string", "minLength": 80 },
+    "credential_like_scan_policy": { "const": "credential_like_scan_v1" },
+    "captures": {
+      "type": "array", "minItems": 5, "maxItems": 5,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["capture_id", "request_url", "request_url_basis", "request_url_independently_observed", "effective_url", "status", "media_type", "captured_at", "final_header_content_length", "body_sha256", "body_bytes", "source_family_id", "private_snapshot_member", "acquisition_receipt_member", "acquisition_receipt_sha256", "acquisition_receipt_bytes", "raw_curl_meta_sha256", "raw_curl_meta_bytes", "raw_headers_sha256", "raw_headers_bytes", "rights_mode", "rights_id", "credential_like_material"],
+        "properties": {
+          "capture_id": { "type": "string", "pattern": "^capture-[a-z0-9-]+$" },
+          "request_url": { "type": "string", "format": "uri", "pattern": "^https://" },
+          "request_url_basis": { "const": "generator_config_not_separately_observed" },
+          "request_url_independently_observed": { "const": false },
+          "effective_url": { "type": "string", "format": "uri", "pattern": "^https://" },
+          "status": { "const": 200 },
+          "media_type": { "type": "string", "pattern": "^text/html(?:; charset=[a-z0-9-]+)?$" },
+          "captured_at": { "type": "string", "format": "date-time" },
+          "final_header_content_length": { "type": ["integer", "null"], "minimum": 0 },
+          "body_sha256": { "$ref": "#/$defs/hash" }, "body_bytes": { "type": "integer", "minimum": 1 },
+          "source_family_id": { "type": "string", "minLength": 1 },
+          "private_snapshot_member": { "type": "string", "pattern": "^bodies/[a-z0-9-]+\\.html$" },
+          "acquisition_receipt_member": { "type": "string", "pattern": "^acquisition-receipts/[a-z0-9-]+\\.json$" },
+          "acquisition_receipt_sha256": { "$ref": "#/$defs/hash" }, "acquisition_receipt_bytes": { "type": "integer", "minimum": 1 },
+          "raw_curl_meta_sha256": { "$ref": "#/$defs/hash" }, "raw_curl_meta_bytes": { "type": "integer", "minimum": 1 },
+          "raw_headers_sha256": { "$ref": "#/$defs/hash" }, "raw_headers_bytes": { "type": "integer", "minimum": 1 },
+          "rights_mode": { "const": "private_review_snapshot" }, "rights_id": { "enum": ["rights-rpcq", "rights-parks"] },
+          "credential_like_material": { "$ref": "#/$defs/classification" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "classification": {
+      "type": "object", "additionalProperties": false, "required": ["scan_policy", "classification", "occurrence_count", "unclassified_occurrence_count", "handling"],
+      "properties": { "scan_policy": { "const": "credential_like_scan_v1" }, "classification": { "const": "none_detected" }, "occurrence_count": { "const": 0 }, "unclassified_occurrence_count": { "const": 0 }, "handling": { "type": "string", "minLength": 20 } }
+    }
+  }
+}

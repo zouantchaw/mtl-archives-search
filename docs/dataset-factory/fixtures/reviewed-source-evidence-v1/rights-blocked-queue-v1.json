@@ -1,0 +1,36 @@
+{
+  "schema_version": "reviewed_source_evidence_v1.0.0",
+  "artifact_id": "reviewed-source-evidence-v1",
+  "sources": [
+    {
+      "source_id": "r0-lovell-1927",
+      "rights_id": "rights-banq-citation-only",
+      "status": "not_promotion_eligible"
+    },
+    {
+      "source_id": "r10-lovell-1932-a",
+      "rights_id": "rights-banq-citation-only",
+      "status": "not_promotion_eligible"
+    },
+    {
+      "source_id": "r100-lapresse-dossier",
+      "rights_id": "rights-banq-citation-only",
+      "status": "not_promotion_eligible"
+    },
+    {
+      "source_id": "r100-armour-landry",
+      "rights_id": "rights-banq-citation-only",
+      "status": "not_promotion_eligible"
+    },
+    {
+      "source_id": "r101-lapresse-1927",
+      "rights_id": "rights-banq-citation-only",
+      "status": "not_promotion_eligible"
+    },
+    {
+      "source_id": "r105-lovell-1944",
+      "rights_id": "rights-banq-citation-only",
+      "status": "not_promotion_eligible"
+    }
+  ]
+}

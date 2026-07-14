@@ -1,0 +1,250 @@
+{
+  "schema_version": "reviewed_source_evidence_v1.0.0",
+  "artifact_id": "reviewed-source-evidence-v1",
+  "representations": [
+    {
+      "representation_id": "repr-r0-rpcq-gazette",
+      "source_id": "r0-rpcq-gazette",
+      "source_family_id": "rpcq-register",
+      "body_sha256": "3fc93fb019fc567b6f2d62516284e1887ddcba5fd0dbb5a7f5a3443b99f10867",
+      "body_bytes": 32432,
+      "rights_mode": "private_review_snapshot",
+      "rights_id": "rights-rpcq",
+      "reviewer_safe_rights_statement": "Private review only; commercial redistribution permission is not established. The repository tracks only these short factual passages.",
+      "propositions": [
+        {
+          "proposition_id": "p-c0-rpcq-address",
+          "passage": "En 1925, The Gazette s'établit au 1000, rue Saint-Antoine, à Montréal",
+          "locator": "html_text_nodes[98:98]",
+          "extraction_method": "html_text_token_sequence_v1"
+        },
+        {
+          "proposition_id": "p-c0-rpcq-year",
+          "passage": "En 1925",
+          "locator": "html_text_nodes[98:98]",
+          "extraction_method": "html_text_token_sequence_v1"
+        }
+      ]
+    },
+    {
+      "representation_id": "repr-r100-rpcq-laurentien",
+      "source_id": "r100-rpcq-laurentien",
+      "source_family_id": "rpcq-document-105269",
+      "body_sha256": "2879ae4925972e203e02e500af9a4e3b5c199399e4681e6776917b59fa2b8012",
+      "body_bytes": 77113,
+      "rights_mode": "private_review_snapshot",
+      "rights_id": "rights-rpcq",
+      "reviewer_safe_rights_statement": "Private review only; commercial redistribution permission is not established. The repository tracks only these short factual passages.",
+      "propositions": [
+        {
+          "proposition_id": "p-c100-rpcq-built-1947",
+          "passage": "En 1947, l'hôtel Laurentien est construit sur la partie nord du lot",
+          "locator": "html_text_nodes[217:217]",
+          "extraction_method": "html_text_token_sequence_v1"
+        }
+      ]
+    },
+    {
+      "representation_id": "repr-r102-rpcq-st-george",
+      "source_id": "r102-rpcq-st-george",
+      "source_family_id": "rpcq-document-105269",
+      "body_sha256": "2879ae4925972e203e02e500af9a4e3b5c199399e4681e6776917b59fa2b8012",
+      "body_bytes": 77113,
+      "rights_mode": "private_review_snapshot",
+      "rights_id": "rights-rpcq",
+      "reviewer_safe_rights_statement": "Private review only; commercial redistribution permission is not established. The repository tracks only these short factual passages.",
+      "propositions": [
+        {
+          "proposition_id": "p-c102-rpcq-annex-period",
+          "passage": "1947 – 1948 (Construction)",
+          "locator": "html_text_nodes[42:42]",
+          "extraction_method": "html_text_token_sequence_v1"
+        },
+        {
+          "proposition_id": "p-c102-rpcq-address",
+          "passage": "Adresse : 1001, avenue des Canadiens-de-Montréal",
+          "locator": "html_text_nodes[250:251]",
+          "extraction_method": "html_text_token_sequence_v1"
+        }
+      ]
+    },
+    {
+      "representation_id": "repr-r102-parks-st-george",
+      "source_id": "r102-parks-st-george",
+      "source_family_id": "parks-register",
+      "body_sha256": "4502f5e9096715759b1b36311cca0a74f3fa363d51c0291719a038937987e586",
+      "body_bytes": 24326,
+      "rights_mode": "private_review_snapshot",
+      "rights_id": "rights-parks",
+      "reviewer_safe_rights_statement": "Private review only; commercial redistribution permission is not established. The repository tracks only these short factual passages.",
+      "propositions": [
+        {
+          "proposition_id": "p-c102-parks-address-1101",
+          "passage": "Address : 1101 Avenue des Canadiens-de-Montréal, Montréal, Quebec",
+          "locator": "html_text_nodes[26:26]",
+          "extraction_method": "html_text_token_sequence_v1"
+        },
+        {
+          "proposition_id": "p-c102-parks-plaque-1001",
+          "passage": "Approved Inscription: 1001 Avenue des Canadiens-de-Montréal, Montréal, Quebec",
+          "locator": "html_text_nodes[42:42]",
+          "extraction_method": "html_text_token_sequence_v1"
+        }
+      ]
+    },
+    {
+      "representation_id": "repr-r10-city-archive-predecessor",
+      "source_id": "r10-city-archive-predecessor",
+      "source_family_id": "city-vm94-z-series",
+      "body_sha256": "3b3a7ffcdfcd916d977094e3e013c82d31b1dee8ed86614c7d12e94e4d3ac53e",
+      "body_bytes": 5690,
+      "rights_mode": "tracked_permitted_body",
+      "rights_id": "rights-city-open-data",
+      "reviewer_safe_rights_statement": "CC BY 4.0 predecessor metadata may be reviewed, but the City archive family cannot count as independent external corroboration.",
+      "propositions": [
+        {
+          "proposition_id": "p-c10-city-perreault",
+          "passage": "Institut Sténographique Perreault",
+          "locator": "selected-ground-rows-v1.json#rows[numeric_id=10].official_row.Description",
+          "extraction_method": "predecessor_structured_field_exact_v1"
+        }
+      ]
+    },
+    {
+      "representation_id": "repr-r102-city-record",
+      "source_id": "r102-city-record",
+      "source_family_id": "city-vm94-z-series",
+      "body_sha256": "3b3a7ffcdfcd916d977094e3e013c82d31b1dee8ed86614c7d12e94e4d3ac53e",
+      "body_bytes": 5690,
+      "rights_mode": "tracked_permitted_body",
+      "rights_id": "rights-city-open-data",
+      "reviewer_safe_rights_statement": "CC BY 4.0 predecessor metadata may be reviewed, but the City archive family cannot count as independent external corroboration.",
+      "propositions": [
+        {
+          "proposition_id": "p-c102-city-date",
+          "passage": "25-avr.-47",
+          "locator": "selected-ground-rows-v1.json#rows[numeric_id=102].official_row.Date",
+          "extraction_method": "predecessor_structured_field_exact_v1"
+        },
+        {
+          "proposition_id": "p-c102-city-address",
+          "passage": "1086, rue Osborne - devenu rue de Lagauchetière",
+          "locator": "selected-ground-rows-v1.json#rows[numeric_id=102].official_row.Titre",
+          "extraction_method": "predecessor_structured_field_exact_v1"
+        }
+      ]
+    },
+    {
+      "representation_id": "repr-r0-lovell-1927",
+      "source_id": "r0-lovell-1927",
+      "source_family_id": "banq-lovell-1927",
+      "body_sha256": null,
+      "body_bytes": null,
+      "rights_mode": "citation_only_not_promotion_eligible",
+      "rights_id": "rights-banq-citation-only",
+      "reviewer_safe_rights_statement": "Citation and manual transcription only. No scan or permitted hash-bound representation is available to the reviewer.",
+      "propositions": []
+    },
+    {
+      "representation_id": "repr-r10-lovell-1932-a",
+      "source_id": "r10-lovell-1932-a",
+      "source_family_id": "banq-lovell-1932",
+      "body_sha256": null,
+      "body_bytes": null,
+      "rights_mode": "citation_only_not_promotion_eligible",
+      "rights_id": "rights-banq-citation-only",
+      "reviewer_safe_rights_statement": "Citation and manual transcription only. No scan or permitted hash-bound representation is available to the reviewer.",
+      "propositions": []
+    },
+    {
+      "representation_id": "repr-r100-lapresse-dossier",
+      "source_id": "r100-lapresse-dossier",
+      "source_family_id": "banq-lapresse-4159254",
+      "body_sha256": null,
+      "body_bytes": null,
+      "rights_mode": "citation_only_not_promotion_eligible",
+      "rights_id": "rights-banq-citation-only",
+      "reviewer_safe_rights_statement": "Citation and manual transcription only. No scan or permitted hash-bound representation is available to the reviewer.",
+      "propositions": []
+    },
+    {
+      "representation_id": "repr-r100-armour-landry",
+      "source_id": "r100-armour-landry",
+      "source_family_id": "banq-armour-landry-3232855",
+      "body_sha256": null,
+      "body_bytes": null,
+      "rights_mode": "citation_only_not_promotion_eligible",
+      "rights_id": "rights-banq-citation-only",
+      "reviewer_safe_rights_statement": "Citation and manual transcription only. No scan or permitted hash-bound representation is available to the reviewer.",
+      "propositions": []
+    },
+    {
+      "representation_id": "repr-r101-lapresse-1927",
+      "source_id": "r101-lapresse-1927",
+      "source_family_id": "banq-lapresse-3095625",
+      "body_sha256": null,
+      "body_bytes": null,
+      "rights_mode": "citation_only_not_promotion_eligible",
+      "rights_id": "rights-banq-citation-only",
+      "reviewer_safe_rights_statement": "Citation and manual transcription only. No scan or permitted hash-bound representation is available to the reviewer.",
+      "propositions": []
+    },
+    {
+      "representation_id": "repr-r105-lovell-1944",
+      "source_id": "r105-lovell-1944",
+      "source_family_id": "banq-lovell-1944",
+      "body_sha256": null,
+      "body_bytes": null,
+      "rights_mode": "citation_only_not_promotion_eligible",
+      "rights_id": "rights-banq-citation-only",
+      "reviewer_safe_rights_statement": "Citation and manual transcription only. No scan or permitted hash-bound representation is available to the reviewer.",
+      "propositions": []
+    }
+  ],
+  "rights": [
+    {
+      "rights_id": "rights-rpcq",
+      "source_url": "https://www.patrimoine-culturel.gouv.qc.ca/rpcq/redirection.do?go=copyright",
+      "body_sha256": "47828458c124c0897eb34547175d776a1ca42c47ba169a4bdb293cee87cefd8d",
+      "body_bytes": 15632,
+      "mode": "private_review_snapshot",
+      "statement": "RPCQ permits specified non-commercial uses; commercial redistribution permission is not established.",
+      "passage": "La reproduction multiple de l'un quelconque de ces documents, en tout ou en partie, pour diffusion commerciale est interdite sauf avec la permission écrite",
+      "locator": "html_text_nodes[29:29]",
+      "extraction_method": "html_text_token_sequence_v1"
+    },
+    {
+      "rights_id": "rights-parks",
+      "source_url": "https://parks.canada.ca/termes-terms",
+      "body_sha256": "0dbfef3c3273ce723f7b9ad06cceebc6223f5d1de5374f957745106cf2d52fc2",
+      "body_bytes": 76899,
+      "mode": "private_review_snapshot",
+      "statement": "Parks Canada requires prior permission for commercial redistribution unless otherwise specified.",
+      "passage": "you may not reproduce materials on this site, in whole or in part, for the purposes of commercial redistribution without prior written permission",
+      "locator": "html_text_nodes[157:157]",
+      "extraction_method": "html_text_token_sequence_v1"
+    },
+    {
+      "rights_id": "rights-city-open-data",
+      "source_url": "https://donnees.montreal.ca/pages/licence-d-utilisation",
+      "body_sha256": "3b3a7ffcdfcd916d977094e3e013c82d31b1dee8ed86614c7d12e94e4d3ac53e",
+      "body_bytes": 5690,
+      "mode": "tracked_permitted_body",
+      "statement": "Existing predecessor evidence records CC BY 4.0; it remains the same City family and is not independent external corroboration.",
+      "passage": "CC BY 4.0",
+      "locator": "ground-authoritative-research-v1 predecessor rights evidence",
+      "extraction_method": "predecessor_structured_field_exact_v1"
+    },
+    {
+      "rights_id": "rights-banq-citation-only",
+      "source_url": "https://numerique.banq.qc.ca/",
+      "body_sha256": null,
+      "body_bytes": null,
+      "mode": "citation_only_not_promotion_eligible",
+      "statement": "No scans are captured. Manual transcriptions and leads cannot promote without separately inspectable permitted hash-bound evidence.",
+      "passage": "citation only; no scan captured",
+      "locator": "Gate B source rights_policy fields",
+      "extraction_method": "predecessor_structured_field_exact_v1"
+    }
+  ]
+}

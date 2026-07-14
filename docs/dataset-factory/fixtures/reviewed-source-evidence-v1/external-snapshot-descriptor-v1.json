@@ -1,0 +1,157 @@
+{
+  "schema_version": "reviewed_source_evidence_v1.0.0",
+  "artifact_id": "reviewed-source-evidence-v1",
+  "status": "candidate_private_snapshot_archived_readback_verified",
+  "local_locator": "/Users/wiel/pkm/0xPKM_Lab/04_outputs/mtl-archives/issue89-source-bodies/candidate-v1/reviewed-source-evidence-v1-private-snapshot.tar.gz",
+  "external_locator": "r2://wiel-codex-worker-cache/artifacts/mtl-archives/issue89-reviewed-source-evidence/d94857447ad48178cf42c5baa17e54f7e2f430f1141e47dedfde2a24ade424c1.tar.gz",
+  "upload_readback_receipt": {
+    "receipt_version": "private_r2_upload_readback_receipt_v1",
+    "provider": "cloudflare_r2",
+    "bucket": "wiel-codex-worker-cache",
+    "object_key": "artifacts/mtl-archives/issue89-reviewed-source-evidence/d94857447ad48178cf42c5baa17e54f7e2f430f1141e47dedfde2a24ade424c1.tar.gz",
+    "durable_locator": "r2://wiel-codex-worker-cache/artifacts/mtl-archives/issue89-reviewed-source-evidence/d94857447ad48178cf42c5baa17e54f7e2f430f1141e47dedfde2a24ade424c1.tar.gz",
+    "archive_sha256": "d94857447ad48178cf42c5baa17e54f7e2f430f1141e47dedfde2a24ade424c1",
+    "archive_bytes": 53451,
+    "uploaded": true,
+    "readback_status": "direct_readback_byte_identical",
+    "observed_at": "2026-07-14T03:58:13Z",
+    "presigned_url": null
+  },
+  "archive_bytes": 53451,
+  "archive_sha256": "d94857447ad48178cf42c5baa17e54f7e2f430f1141e47dedfde2a24ade424c1",
+  "uncompressed_bytes": 244224,
+  "credential_like_scan_policy": "credential_like_scan_v1",
+  "credential_boundary": "No operator/private credentials, cookie values, raw response headers, signed URLs, or project secrets are bundled. Five sanitized acquisition receipts retain only allowlisted transport facts and raw metadata audit digests. One origin-published Mapbox client token remains inside its exact private HTML member.",
+  "members": [
+    {
+      "path": "bodies/rpcq-13105.html",
+      "member_kind": "exact_private_body",
+      "bytes": 32432,
+      "sha256": "3fc93fb019fc567b6f2d62516284e1887ddcba5fd0dbb5a7f5a3443b99f10867",
+      "credential_like_material": {
+        "scan_policy": "credential_like_scan_v1",
+        "classification": "none_detected",
+        "occurrence_count": 0,
+        "unclassified_occurrence_count": 0,
+        "handling": "No credential-like material detected by the declared scan policy."
+      }
+    },
+    {
+      "path": "acquisition-receipts/rpcq-13105.json",
+      "member_kind": "sanitized_acquisition_receipt",
+      "bytes": 1798,
+      "sha256": "58a5afce020b4cb335a165df88fee275016698aba92d8fe94f230755875532d4",
+      "credential_like_material": {
+        "scan_policy": "credential_like_scan_v1",
+        "classification": "none_detected",
+        "occurrence_count": 0,
+        "unclassified_occurrence_count": 0,
+        "handling": "No credential-like material detected by the declared scan policy."
+      }
+    },
+    {
+      "path": "bodies/rpcq-105269.html",
+      "member_kind": "exact_private_body",
+      "bytes": 77113,
+      "sha256": "2879ae4925972e203e02e500af9a4e3b5c199399e4681e6776917b59fa2b8012",
+      "credential_like_material": {
+        "scan_policy": "credential_like_scan_v1",
+        "classification": "origin_public_client_token",
+        "occurrence_count": 1,
+        "unclassified_occurrence_count": 0,
+        "handling": "Preserved only inside the exact private HTML snapshot; it is an origin-published client token, not an operator credential or project secret."
+      }
+    },
+    {
+      "path": "acquisition-receipts/rpcq-105269.json",
+      "member_kind": "sanitized_acquisition_receipt",
+      "bytes": 1804,
+      "sha256": "19964b9c3f60df2402b49d30a6536388296fcc6b970b1b835cc79426729a8834",
+      "credential_like_material": {
+        "scan_policy": "credential_like_scan_v1",
+        "classification": "none_detected",
+        "occurrence_count": 0,
+        "unclassified_occurrence_count": 0,
+        "handling": "No credential-like material detected by the declared scan policy."
+      }
+    },
+    {
+      "path": "bodies/parks-657.html",
+      "member_kind": "exact_private_body",
+      "bytes": 24326,
+      "sha256": "4502f5e9096715759b1b36311cca0a74f3fa363d51c0291719a038937987e586",
+      "credential_like_material": {
+        "scan_policy": "credential_like_scan_v1",
+        "classification": "none_detected",
+        "occurrence_count": 0,
+        "unclassified_occurrence_count": 0,
+        "handling": "No credential-like material detected by the declared scan policy."
+      }
+    },
+    {
+      "path": "acquisition-receipts/parks-657.json",
+      "member_kind": "sanitized_acquisition_receipt",
+      "bytes": 1720,
+      "sha256": "d125d0293b72bdc2c442781cd061a4dd19a2bce1c9390d02cfe3131727ee691c",
+      "credential_like_material": {
+        "scan_policy": "credential_like_scan_v1",
+        "classification": "none_detected",
+        "occurrence_count": 0,
+        "unclassified_occurrence_count": 0,
+        "handling": "No credential-like material detected by the declared scan policy."
+      }
+    },
+    {
+      "path": "bodies/rpcq-rights.html",
+      "member_kind": "exact_private_body",
+      "bytes": 15632,
+      "sha256": "47828458c124c0897eb34547175d776a1ca42c47ba169a4bdb293cee87cefd8d",
+      "credential_like_material": {
+        "scan_policy": "credential_like_scan_v1",
+        "classification": "none_detected",
+        "occurrence_count": 0,
+        "unclassified_occurrence_count": 0,
+        "handling": "No credential-like material detected by the declared scan policy."
+      }
+    },
+    {
+      "path": "acquisition-receipts/rpcq-rights.json",
+      "member_kind": "sanitized_acquisition_receipt",
+      "bytes": 1764,
+      "sha256": "00d993565d626248b530fafed818d4bf84a85ecf84c1f2d8f69f1feee3a599f3",
+      "credential_like_material": {
+        "scan_policy": "credential_like_scan_v1",
+        "classification": "none_detected",
+        "occurrence_count": 0,
+        "unclassified_occurrence_count": 0,
+        "handling": "No credential-like material detected by the declared scan policy."
+      }
+    },
+    {
+      "path": "bodies/parks-terms.html",
+      "member_kind": "exact_private_body",
+      "bytes": 76899,
+      "sha256": "0dbfef3c3273ce723f7b9ad06cceebc6223f5d1de5374f957745106cf2d52fc2",
+      "credential_like_material": {
+        "scan_policy": "credential_like_scan_v1",
+        "classification": "none_detected",
+        "occurrence_count": 0,
+        "unclassified_occurrence_count": 0,
+        "handling": "No credential-like material detected by the declared scan policy."
+      }
+    },
+    {
+      "path": "acquisition-receipts/parks-terms.json",
+      "member_kind": "sanitized_acquisition_receipt",
+      "bytes": 1686,
+      "sha256": "5a6149ba3c23b197d2d98419e42ec9fe60d378412c0cd5d48b4c2e740b35e237",
+      "credential_like_material": {
+        "scan_policy": "credential_like_scan_v1",
+        "classification": "none_detected",
+        "occurrence_count": 0,
+        "unclassified_occurrence_count": 0,
+        "handling": "No credential-like material detected by the declared scan policy."
+      }
+    }
+  ]
+}

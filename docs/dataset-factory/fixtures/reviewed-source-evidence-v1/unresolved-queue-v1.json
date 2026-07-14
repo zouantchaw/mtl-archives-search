@@ -1,0 +1,50 @@
+{
+  "schema_version": "reviewed_source_evidence_v1.0.0",
+  "artifact_id": "reviewed-source-evidence-v1",
+  "items": [
+    {
+      "claim_id": "c0-lovell",
+      "status": "abstained_unresolved",
+      "blockers": [
+        "repr-r0-lovell-1927"
+      ]
+    },
+    {
+      "claim_id": "c0-rpcq",
+      "status": "accepted_resolved",
+      "blockers": []
+    },
+    {
+      "claim_id": "c10-spelling",
+      "status": "held_for_additional_evidence",
+      "blockers": [
+        "repr-r10-lovell-1932-a"
+      ]
+    },
+    {
+      "claim_id": "c100-date",
+      "status": "held_for_additional_evidence",
+      "blockers": [
+        "repr-r100-lapresse-dossier",
+        "repr-r100-armour-landry"
+      ]
+    },
+    {
+      "claim_id": "c101-laphkas",
+      "status": "rejected_resolved",
+      "blockers": []
+    },
+    {
+      "claim_id": "c102-date-address",
+      "status": "held_for_additional_evidence",
+      "blockers": []
+    },
+    {
+      "claim_id": "c105-tilden",
+      "status": "abstained_unresolved",
+      "blockers": [
+        "repr-r105-lovell-1944"
+      ]
+    }
+  ]
+}

@@ -4,6 +4,8 @@ Issue #69 Gate B authoritative ground research is documented in `docs/dataset-fa
 
 Issue #69 Phase D's 60-record scale artifact is documented in `docs/dataset-factory/phase-d-scale-v1.md`. Its tracked state is published under an immutable fresh Sol High reviewer receipt after independent source restoration, selection replay, and join verification. Ordinary build cannot overwrite the receipt; verification and integration replay both candidate and authoritative states without changing tracked bytes. Verified dossiers, accepted tasks, and new external claims remain zero, so issue #69 remains open and incomplete.
 
+Issue #89 Gate E reviewed source-body evidence is documented in `docs/dataset-factory/reviewed-source-evidence-v1.md`. The published tracked authority preserves the exact candidate descriptor and binds all seven ground claims to exact private RPCQ/Parks bodies, sanitized HTTP acquisition receipts, short review-safe representations, citation-only BAnQ boundaries, City predecessor pins, and a deterministic private snapshot with an exact Cloudflare R2 upload/readback receipt. Its byte-preserved Sol High receipt records 1 accepted claim (`c0-rpcq`), 3 held, 1 rejected, and 2 abstained; verified dossiers, tasks, and production mutations remain zero.
+
 **Semantic and visual search API for the Montréal city archives photo collection (~15,000 historical images from 1870s-1990s).**
 
 Built on Cloudflare's edge infrastructure: Workers, D1, Vectorize, R2, and Workers AI.

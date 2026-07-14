@@ -1,0 +1,259 @@
+{
+  "schema_version": "reviewed_source_evidence_v1.0.0",
+  "artifact_id": "reviewed-source-evidence-v1",
+  "stage": "candidate_review_input",
+  "predecessor_pins": [
+    {
+      "path": "docs/dataset-factory/fixtures/ground-authoritative-research-v1/descriptor-v1.json",
+      "bytes": 772,
+      "sha256": "24b441ba8ecd25ab98f2c4c2202b4f8312945adaea6cd5b32f67d9c9ce8184f0"
+    },
+    {
+      "path": "docs/dataset-factory/fixtures/ground-authoritative-research-v1/pending-claims-v1.json",
+      "bytes": 6445,
+      "sha256": "231eae5b3d1d3ea4cf4b2baa23d2ba4028a91e65a8a98851ab9ec5760eb835d9"
+    },
+    {
+      "path": "docs/dataset-factory/fixtures/ground-authoritative-research-v1/source-graph-v1.json",
+      "bytes": 5136,
+      "sha256": "8a1a2bab56710634ab94e99ec4a5956e9ffa990ebddf6fe78a9e5c91b624c7c7"
+    },
+    {
+      "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/descriptor-v1.json",
+      "bytes": 1851,
+      "sha256": "368919c399b2ef514d51a18f32169d980a7b8b7f1f987b349f2ef0b4acfd9b1f"
+    },
+    {
+      "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+      "bytes": 7724,
+      "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf"
+    },
+    {
+      "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/descriptor-v1.json",
+      "bytes": 4098,
+      "sha256": "1e72fb1fd74ad12b99de878ad97da9386afccdf77e7f0926811775dd416c48ce"
+    },
+    {
+      "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/reviewer-selection-receipt-v1.json",
+      "bytes": 3224,
+      "sha256": "12f5c0a6b97c04bf6acf2417bd4aac2358ef98385decd55b3b4a8d5a0fc65898"
+    },
+    {
+      "path": "docs/dataset-factory/fixtures/real-pilot-source-acquisition-v1/selected-ground-rows-v1.json",
+      "bytes": 5690,
+      "sha256": "3b3a7ffcdfcd916d977094e3e013c82d31b1dee8ed86614c7d12e94e4d3ac53e"
+    }
+  ],
+  "claims": [
+    {
+      "claim_id": "c0-lovell",
+      "record_id": 0,
+      "exact_claim_text": "Lovell 1927 lists Gillett/Magic at 3 St Antoine and The Gazette at 100 St Antoine.",
+      "supporting_source_ids": [
+        "r0-lovell-1927"
+      ],
+      "contradicting_source_ids": [],
+      "dependency_families": [
+        {
+          "family_id": "banq-lovell-1927",
+          "independence_rule": "one directory edition is one evidentiary family"
+        }
+      ],
+      "source_representations": [
+        "repr-r0-lovell-1927"
+      ],
+      "required_support_representation_ids": [
+        "repr-r0-lovell-1927"
+      ],
+      "complete_wording_review_required": true,
+      "candidate_disposition": "unreviewed"
+    },
+    {
+      "claim_id": "c0-rpcq",
+      "record_id": 0,
+      "exact_claim_text": "RPCQ places The Gazette at 1000 Saint-Antoine in 1925.",
+      "supporting_source_ids": [
+        "r0-rpcq-gazette"
+      ],
+      "contradicting_source_ids": [
+        "r0-lovell-1927"
+      ],
+      "dependency_families": [
+        {
+          "family_id": "banq-lovell-1927",
+          "independence_rule": "one directory edition is one evidentiary family"
+        },
+        {
+          "family_id": "rpcq-register",
+          "independence_rule": "different register documents may be independent"
+        }
+      ],
+      "source_representations": [
+        "repr-r0-rpcq-gazette",
+        "repr-r0-lovell-1927"
+      ],
+      "required_support_representation_ids": [
+        "repr-r0-rpcq-gazette"
+      ],
+      "complete_wording_review_required": true,
+      "candidate_disposition": "unreviewed"
+    },
+    {
+      "claim_id": "c10-spelling",
+      "record_id": 10,
+      "exact_claim_text": "Lovell 1932 spells Perrault while the same-family City archive predecessor CSV row spells Perreault.",
+      "supporting_source_ids": [
+        "r10-lovell-1932-a",
+        "r10-city-archive-predecessor"
+      ],
+      "contradicting_source_ids": [],
+      "dependency_families": [
+        {
+          "family_id": "banq-lovell-1932",
+          "independence_rule": "one directory edition is one evidentiary family"
+        },
+        {
+          "family_id": "city-vm94-z-series",
+          "independence_rule": "finding aids, CSV rows, and item pages are one archive family"
+        }
+      ],
+      "source_representations": [
+        "repr-r10-lovell-1932-a",
+        "repr-r10-city-archive-predecessor"
+      ],
+      "required_support_representation_ids": [
+        "repr-r10-lovell-1932-a",
+        "repr-r10-city-archive-predecessor"
+      ],
+      "complete_wording_review_required": true,
+      "candidate_disposition": "unreviewed"
+    },
+    {
+      "claim_id": "c100-date",
+      "record_id": 100,
+      "exact_claim_text": "The source set contains incompatible dating signals: built 1947, dossier 1946-1948, and photograph approximately 1945.",
+      "supporting_source_ids": [
+        "r100-rpcq-laurentien",
+        "r100-lapresse-dossier",
+        "r100-armour-landry"
+      ],
+      "contradicting_source_ids": [],
+      "dependency_families": [
+        {
+          "family_id": "banq-armour-landry-3232855",
+          "independence_rule": "single independently locatable catalogue record"
+        },
+        {
+          "family_id": "banq-lapresse-4159254",
+          "independence_rule": "single independently locatable catalogue dossier"
+        },
+        {
+          "family_id": "rpcq-document-105269",
+          "independence_rule": "all bounded observations of document 105269 are one evidentiary family"
+        }
+      ],
+      "source_representations": [
+        "repr-r100-rpcq-laurentien",
+        "repr-r100-lapresse-dossier",
+        "repr-r100-armour-landry"
+      ],
+      "required_support_representation_ids": [
+        "repr-r100-rpcq-laurentien",
+        "repr-r100-lapresse-dossier",
+        "repr-r100-armour-landry"
+      ],
+      "complete_wording_review_required": true,
+      "candidate_disposition": "unreviewed"
+    },
+    {
+      "claim_id": "c101-laphkas",
+      "record_id": 101,
+      "exact_claim_text": "A 1927 La Presse locator places Laphkas at Caron Building/Bleury, not Osborne.",
+      "supporting_source_ids": [
+        "r101-lapresse-1927"
+      ],
+      "contradicting_source_ids": [],
+      "dependency_families": [
+        {
+          "family_id": "banq-lapresse-3095625",
+          "independence_rule": "single newspaper edition"
+        }
+      ],
+      "source_representations": [
+        "repr-r101-lapresse-1927"
+      ],
+      "required_support_representation_ids": [
+        "repr-r101-lapresse-1927"
+      ],
+      "complete_wording_review_required": true,
+      "candidate_disposition": "unreviewed"
+    },
+    {
+      "claim_id": "c102-date-address",
+      "record_id": 102,
+      "exact_claim_text": "City metadata alone gives 25 April 1947 and 1086 Osborne; RPCQ gives annex 1947-1948 and 1001; Parks exposes 1101/1001 variants.",
+      "supporting_source_ids": [
+        "r102-city-record",
+        "r102-rpcq-st-george",
+        "r102-parks-st-george"
+      ],
+      "contradicting_source_ids": [],
+      "dependency_families": [
+        {
+          "family_id": "city-vm94-z-series",
+          "independence_rule": "finding aids, CSV rows, and item pages are one archive family"
+        },
+        {
+          "family_id": "parks-register",
+          "independence_rule": "each record is independently locatable but belongs to one register"
+        },
+        {
+          "family_id": "rpcq-document-105269",
+          "independence_rule": "all bounded observations of document 105269 are one evidentiary family"
+        }
+      ],
+      "source_representations": [
+        "repr-r102-city-record",
+        "repr-r102-rpcq-st-george",
+        "repr-r102-parks-st-george"
+      ],
+      "required_support_representation_ids": [
+        "repr-r102-city-record",
+        "repr-r102-rpcq-st-george",
+        "repr-r102-parks-st-george"
+      ],
+      "complete_wording_review_required": true,
+      "candidate_disposition": "unreviewed"
+    },
+    {
+      "claim_id": "c105-tilden",
+      "record_id": 105,
+      "exact_claim_text": "Lovell 1944 lists Tilden at 1130 Windsor near Dorchester.",
+      "supporting_source_ids": [
+        "r105-lovell-1944"
+      ],
+      "contradicting_source_ids": [],
+      "dependency_families": [
+        {
+          "family_id": "banq-lovell-1944",
+          "independence_rule": "one directory edition is one evidentiary family"
+        }
+      ],
+      "source_representations": [
+        "repr-r105-lovell-1944"
+      ],
+      "required_support_representation_ids": [
+        "repr-r105-lovell-1944"
+      ],
+      "complete_wording_review_required": true,
+      "candidate_disposition": "unreviewed"
+    }
+  ],
+  "rights_records": [
+    "rights-rpcq",
+    "rights-parks",
+    "rights-city-open-data",
+    "rights-banq-citation-only"
+  ],
+  "implementation_decisions": []
+}
