@@ -309,16 +309,22 @@ function validateDependencyGraph(entries: RegistryEntry[]): Map<string, Registry
   return byId;
 }
 
-function verifyArtifact(entry: RegistryEntry, artifactRoot: string): void {
-  if (entry.storage.path_class !== 'repo_ignored_local' && entry.storage.path_class !== 'tracked_fixture') return;
-  const artifactPath = path.resolve(artifactRoot, entry.storage.locator);
+function verifyArtifact(entry: RegistryEntry, artifactRoot: string, externalArtifactPath?: string): void {
+  if (!externalArtifactPath && entry.storage.path_class !== 'repo_ignored_local' && entry.storage.path_class !== 'tracked_fixture') return;
+  const artifactPath = externalArtifactPath ?? path.resolve(artifactRoot, entry.storage.locator);
   if (!fs.existsSync(artifactPath)) {
     throw new Error(
       `Missing required Dataset Factory artifact "${entry.stable_id}": ${artifactPath}. `
         + 'Restore it from the recorded lineage or use a tracked fixture for smoke tests.',
     );
   }
-  assertSafeExistingPath(artifactRoot, artifactPath, `${entry.stable_id} locator`);
+  if (externalArtifactPath) {
+    if (path.resolve(externalArtifactPath) !== externalArtifactPath) throw new Error(`${entry.stable_id}: external artifact path must be normalized absolute`);
+    const externalStat = fs.lstatSync(externalArtifactPath);
+    if (externalStat.isSymbolicLink()) throw new Error(`${entry.stable_id}: external artifact path symbolic link is not allowed`);
+  } else {
+    assertSafeExistingPath(artifactRoot, artifactPath, `${entry.stable_id} locator`);
+  }
 
   const stat = fs.statSync(artifactPath);
   let stats: ArtifactStats;
@@ -333,7 +339,7 @@ function verifyArtifact(entry: RegistryEntry, artifactRoot: string): void {
     for (const member of entry.storage.members ?? []) {
       const memberPath = path.resolve(artifactPath, member);
       if (!fs.existsSync(memberPath)) throw new Error(`${entry.stable_id}: registered member is missing: ${memberPath}`);
-      assertSafeExistingPath(artifactRoot, memberPath, `${entry.stable_id} member`);
+      assertSafeExistingPath(externalArtifactPath ? artifactPath : artifactRoot, memberPath, `${entry.stable_id} member`);
     }
     stats = statsForFiles(artifactPath, entry.storage.members ?? []);
   }
@@ -345,6 +351,14 @@ function verifyArtifact(entry: RegistryEntry, artifactRoot: string): void {
   if (entry.counts.row_count !== undefined && stats.rowCount !== entry.counts.row_count) {
     throw new Error(`${entry.stable_id}: row_count mismatch (expected ${entry.counts.row_count}, got ${stats.rowCount ?? 'n/a'})`);
   }
+}
+
+export function validateArtifactRegistryEntryV0(entry: unknown, externalArtifactPath?: string): void {
+  if (!validateSchema(entry)) throw new Error(schemaErrorMessage(entry, 1));
+  const canonicalEntry = entry as RegistryEntry;
+  const registry = parseRegistry(DEFAULT_REGISTRY).filter((row) => row.stable_id !== canonicalEntry.stable_id);
+  validateRegistry([...registry, canonicalEntry], { artifactRoot: MONOREPO_ROOT, verifyFiles: false, verifyIds: null, rootScripts: loadRootScripts() });
+  if (externalArtifactPath) verifyArtifact(canonicalEntry, MONOREPO_ROOT, externalArtifactPath);
 }
 
 function registeredFiles(entry: RegistryEntry, artifactRoot: string): string[] {
@@ -576,4 +590,4 @@ function main(): void {
   }));
 }
 
-main();
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();
