@@ -5,8 +5,11 @@
     "authorizationFile": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["sha256", "bytes"],
+      "required": ["path", "sha256", "bytes"],
       "properties": {
+        "path": {
+          "const": "docs/dataset-factory/authorities/verified-dossiers-v1/reviewer-authorization-v1.json"
+        },
         "sha256": { "$ref": "#/$defs/sha" },
         "bytes": { "type": "integer", "minimum": 1 }
       }

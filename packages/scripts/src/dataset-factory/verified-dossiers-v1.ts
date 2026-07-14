@@ -11,12 +11,22 @@ import sharp from "sharp";
 
 type J = any;
 type Pin = { path: string; sha256: string; bytes: number };
+type TrackedAuthorityReader = {
+  readonly readWorking: (relativePath: string) => Buffer | null;
+  readonly readCommitted: (relativePath: string) => Buffer | null;
+};
+type VerifiedAuthorizationAuthority = {
+  readonly pin: J;
+  readonly authorization: J | null;
+  readonly authorizationBytes: Buffer | null;
+};
 const INTERNAL_AUTHORIZATION_CAPABILITY = Symbol(
   "verified-dossiers-internal-authorization-capability",
 );
 type InternalAuthorizationCapability = {
   readonly [INTERNAL_AUTHORIZATION_CAPABILITY]: true;
   readonly pin: J;
+  readonly authorityReader: TrackedAuthorityReader;
 };
 const ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -34,6 +44,8 @@ const PRODUCTION_AUTHORIZATION_PIN = path.join(
   ROOT,
   PRODUCTION_AUTHORIZATION_PIN_REL,
 );
+const PRODUCTION_REVIEWER_AUTHORIZATION_REL =
+  "docs/dataset-factory/authorities/verified-dossiers-v1/reviewer-authorization-v1.json";
 const PHASE = path.join(
   ROOT,
   "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
@@ -1228,6 +1240,7 @@ function activeAuthorizationPin(
       path.join(candidate, "descriptor-v1.json"),
     ).sha256,
     authorization_file: {
+      path: PRODUCTION_REVIEWER_AUTHORIZATION_REL,
       sha256: filePin(authorizationFile).sha256,
       bytes: filePin(authorizationFile).bytes,
     },
@@ -1242,148 +1255,56 @@ function internalAuthorizationCapability(
   candidate: string,
   authorizationFile: string,
 ): InternalAuthorizationCapability {
+  const authorizationBytes = fs.readFileSync(authorizationFile);
   return {
     [INTERNAL_AUTHORIZATION_CAPABILITY]: true,
     pin: activeAuthorizationPin(candidate, authorizationFile),
+    authorityReader: memoryAuthorityReader(
+      authorizationBytes,
+      authorizationBytes,
+    ),
   };
 }
-function loadProductionAuthorizationPin(): J {
-  const bytes = fs.readFileSync(PRODUCTION_AUTHORIZATION_PIN);
-  let committed: Buffer;
+function memoryAuthorityReader(
+  working: Buffer | null,
+  committed: Buffer | null,
+): TrackedAuthorityReader {
+  return {
+    readWorking: (relativePath) =>
+      relativePath === PRODUCTION_REVIEWER_AUTHORIZATION_REL ? working : null,
+    readCommitted: (relativePath) =>
+      relativePath === PRODUCTION_REVIEWER_AUTHORIZATION_REL ? committed : null,
+  };
+}
+function committedBytes(relativePath: string): Buffer | null {
   try {
-    committed = execFileSync(
-      "git",
-      ["show", `HEAD:${PRODUCTION_AUTHORIZATION_PIN_REL}`],
-      { cwd: ROOT, encoding: "buffer", stdio: ["ignore", "pipe", "ignore"] },
-    );
+    return execFileSync("git", ["show", `HEAD:${relativePath}`], {
+      cwd: ROOT,
+      encoding: "buffer",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
   } catch {
-    throw new Error("production authorization pin is not committed at HEAD");
+    return null;
   }
-  assert(
-    bytes.equals(committed),
-    "production authorization pin differs from committed HEAD bytes",
-  );
-  const pin = JSON.parse(bytes.toString("utf8"));
-  schema("production-authorization-pin.schema.v1.json", pin);
-  return pin;
 }
-function verifyCommittedProductionPinState(pin: J, candidate: string): void {
-  schema("production-authorization-pin.schema.v1.json", pin);
-  assert(
-    pin.candidate_artifact_id === ID,
-    "production authorization pin artifact binding drift",
-  );
-  if (pin.state === "unconfigured") {
-    assert(
-      pin.candidate_descriptor_sha256 === null &&
-        pin.authorization_file === null &&
-        pin.approved_reviewer === null &&
-        pin.authorizing_authority === null &&
-        pin.authorized_at === null,
-      "unconfigured production authorization pin is not fail-closed",
-    );
-    return;
-  }
-  assert(pin.state === "active", "unknown production authorization pin state");
-  assert(
-    pin.candidate_descriptor_sha256 ===
-      filePin(path.join(candidate, "descriptor-v1.json")).sha256,
-    "active production pin candidate descriptor drift",
-  );
-  same(
-    pin.authorization_file,
-    {
-      sha256: pin.authorization_file.sha256,
-      bytes: pin.authorization_file.bytes,
-    },
-    "active production pin authorization file",
-  );
-  assert(
-    /^[0-9a-f]{64}$/.test(pin.authorization_file.sha256) &&
-      Number.isInteger(pin.authorization_file.bytes) &&
-      pin.authorization_file.bytes > 0,
-    "active production pin authorization file binding invalid",
-  );
-  same(
-    pin.approved_reviewer,
-    {
-      reviewer_id: pin.approved_reviewer.reviewer_id,
-      session_id: pin.approved_reviewer.session_id,
-      model: "gpt-5.6-sol",
-      reasoning_effort: "high",
-    },
-    "active production pin reviewer route",
-  );
-  same(
-    pin.authorizing_authority,
-    {
-      identity: pin.authorizing_authority.identity,
-      session_id: pin.authorizing_authority.session_id,
-      role: "gate_g_review_authority",
-    },
-    "active production pin authority route",
-  );
-  const principals = [
-    pin.approved_reviewer.reviewer_id,
-    pin.approved_reviewer.session_id,
-    pin.authorizing_authority.identity,
-    pin.authorizing_authority.session_id,
-  ];
-  const blocked = new Set([...forbidden().identities, ...forbidden().sessions]);
-  assert(
-    principals.every(
-      (principal: string) =>
-        principal.length > 0 &&
-        principal === principal.trim() &&
-        !blocked.has(principal),
-    ) && new Set(principals).size === principals.length,
-    "active production pin principals invalid or non-independent",
-  );
-  assert(
-    strictTime(pin.authorized_at) &&
-      Date.parse(pin.authorized_at) >= Date.parse(CREATED),
-    "active production pin authorization time invalid",
-  );
-}
-function resolveAuthorizationPin(
-  capability?: InternalAuthorizationCapability,
-): J {
-  if (capability) {
-    assert(
-      capability[INTERNAL_AUTHORIZATION_CAPABILITY] === true,
-      "invalid internal authorization capability",
-    );
-    schema("production-authorization-pin.schema.v1.json", capability.pin);
-    return capability.pin;
-  }
-  return loadProductionAuthorizationPin();
-}
-function validateAuthorization(
+const productionAuthorityReader: TrackedAuthorityReader = {
+  readWorking: (relativePath) => {
+    const absolutePath = path.join(ROOT, relativePath);
+    return fs.existsSync(absolutePath) ? fs.readFileSync(absolutePath) : null;
+  },
+  readCommitted: committedBytes,
+};
+function validateAuthorizationDocument(
   candidate: string,
-  authorizationFile: string,
-  receipt: J | null,
-  capability?: InternalAuthorizationCapability,
-): J {
-  const authorization = load(authorizationFile);
+  authorization: J,
+  pin: J,
+): void {
   schema("reviewer-authorization.schema.v1.json", authorization);
-  const pin = resolveAuthorizationPin(capability);
-  assert(
-    pin.state === "active",
-    "production authorization pin is unconfigured",
-  );
   assert(
     pin.candidate_artifact_id === ID &&
       pin.candidate_descriptor_sha256 ===
         filePin(path.join(candidate, "descriptor-v1.json")).sha256,
     "authorization pin candidate binding drift",
-  );
-  same(
-    pin.authorization_file,
-    {
-      sha256: filePin(authorizationFile).sha256,
-      bytes: filePin(authorizationFile).bytes,
-    },
-    "authorization pin file binding",
   );
   same(
     pin.approved_reviewer,
@@ -1457,9 +1378,120 @@ function validateAuthorization(
       Date.parse(authorization.authorized_at) >= Date.parse(CREATED),
     "authorization timestamp invalid",
   );
+}
+function verifyTrackedAuthorizationAuthority(
+  candidate: string,
+  pin: J,
+  reader: TrackedAuthorityReader,
+): VerifiedAuthorizationAuthority {
+  schema("production-authorization-pin.schema.v1.json", pin);
+  assert(
+    pin.candidate_artifact_id === ID,
+    "production authorization pin artifact binding drift",
+  );
+  const working = reader.readWorking(PRODUCTION_REVIEWER_AUTHORIZATION_REL);
+  const committed = reader.readCommitted(PRODUCTION_REVIEWER_AUTHORIZATION_REL);
+  if (pin.state === "unconfigured") {
+    assert(
+      pin.candidate_descriptor_sha256 === null &&
+        pin.authorization_file === null &&
+        pin.approved_reviewer === null &&
+        pin.authorizing_authority === null &&
+        pin.authorized_at === null,
+      "unconfigured production authorization pin is not fail-closed",
+    );
+    assert(
+      working === null && committed === null,
+      "unconfigured production authorization file must be absent",
+    );
+    return { pin, authorization: null, authorizationBytes: null };
+  }
+  assert(pin.state === "active", "unknown production authorization pin state");
+  assert(working, "tracked reviewer authorization file is missing");
+  assert(
+    committed,
+    "tracked reviewer authorization file is not committed at HEAD",
+  );
+  assert(
+    working.equals(committed),
+    "tracked reviewer authorization differs from committed HEAD bytes",
+  );
+  same(
+    pin.authorization_file,
+    {
+      path: PRODUCTION_REVIEWER_AUTHORIZATION_REL,
+      sha256: hash(committed),
+      bytes: committed.length,
+    },
+    "active production pin authorization file",
+  );
+  let authorization: J;
+  try {
+    authorization = JSON.parse(committed.toString("utf8"));
+  } catch {
+    throw new Error("tracked reviewer authorization is not valid JSON");
+  }
+  validateAuthorizationDocument(candidate, authorization, pin);
+  return { pin, authorization, authorizationBytes: committed };
+}
+function loadProductionAuthorizationAuthority(
+  candidate = FIXTURE,
+): VerifiedAuthorizationAuthority {
+  const bytes = fs.readFileSync(PRODUCTION_AUTHORIZATION_PIN);
+  const committed = committedBytes(PRODUCTION_AUTHORIZATION_PIN_REL);
+  assert(committed, "production authorization pin is not committed at HEAD");
+  assert(
+    bytes.equals(committed),
+    "production authorization pin differs from committed HEAD bytes",
+  );
+  const pin = JSON.parse(bytes.toString("utf8"));
+  return verifyTrackedAuthorizationAuthority(
+    candidate,
+    pin,
+    productionAuthorityReader,
+  );
+}
+function resolveAuthorizationAuthority(
+  candidate: string,
+  capability?: InternalAuthorizationCapability,
+): VerifiedAuthorizationAuthority {
+  if (capability) {
+    assert(
+      capability[INTERNAL_AUTHORIZATION_CAPABILITY] === true,
+      "invalid internal authorization capability",
+    );
+    return verifyTrackedAuthorizationAuthority(
+      candidate,
+      capability.pin,
+      capability.authorityReader,
+    );
+  }
+  return loadProductionAuthorizationAuthority(candidate);
+}
+function validateAuthorization(
+  candidate: string,
+  authorizationFile: string,
+  receipt: J | null,
+  capability?: InternalAuthorizationCapability,
+): J {
+  const suppliedBytes = fs.readFileSync(authorizationFile);
+  const authority = resolveAuthorizationAuthority(candidate, capability);
+  const pin = authority.pin;
+  assert(
+    pin.state === "active",
+    "production authorization pin is unconfigured",
+  );
+  assert(
+    authority.authorizationBytes &&
+      authority.authorization &&
+      suppliedBytes.equals(authority.authorizationBytes),
+    "supplied authorization differs from tracked committed authority bytes",
+  );
+  const authorization = authority.authorization;
+  const reviewer = authorization.approved_reviewer;
   if (receipt) {
     assert(
-      receipt.authorization_sha256 === filePin(authorizationFile).sha256,
+      receipt.authorization_sha256 === hash(suppliedBytes),
       "review authorization hash drift",
     );
     same(
@@ -2496,11 +2528,140 @@ async function selfTest(): Promise<J> {
       cases++;
       rejected++;
     }
-    const productionPin = loadProductionAuthorizationPin();
-    verifyCommittedProductionPinState(productionPin, FIXTURE);
+    const productionAuthority = loadProductionAuthorizationAuthority(FIXTURE);
+    const productionPin = productionAuthority.pin;
     cases++;
-    verifyCommittedProductionPinState(capability.pin, candidate);
+    verifyTrackedAuthorizationAuthority(
+      candidate,
+      capability.pin,
+      capability.authorityReader,
+    );
     cases++;
+    type AuthorityMutation = {
+      name: string;
+      mutatePin?: (pin: J) => void;
+      mutateAuthorization?: (authorization: J) => void;
+      committedBytes?: (working: Buffer) => Buffer;
+    };
+    const authorityMutations: AuthorityMutation[] = [
+      {
+        name: "tracked authority path",
+        mutatePin: (pin) => {
+          pin.authorization_file.path = "authorization-renamed.json";
+        },
+      },
+      {
+        name: "tracked authority hash",
+        mutatePin: (pin) => {
+          pin.authorization_file.sha256 = "0".repeat(64);
+        },
+      },
+      {
+        name: "tracked authority bytes",
+        mutatePin: (pin) => {
+          pin.authorization_file.bytes++;
+        },
+      },
+      {
+        name: "tracked authority candidate descriptor",
+        mutateAuthorization: (value) => {
+          value.candidate_descriptor_sha256 = "0".repeat(64);
+        },
+      },
+      {
+        name: "tracked authority packet manifest",
+        mutateAuthorization: (value) => {
+          value.packet_manifest_sha256 = "0".repeat(64);
+        },
+      },
+      {
+        name: "tracked authority review scope",
+        mutateAuthorization: (value) => {
+          value.review_scope.scope_id = "wrong-review-scope";
+        },
+      },
+      {
+        name: "tracked authority reviewer",
+        mutateAuthorization: (value) => {
+          value.approved_reviewer.reviewer_id = "different-reviewer";
+        },
+      },
+      {
+        name: "tracked authority authorizer",
+        mutateAuthorization: (value) => {
+          value.authorizing_authority.identity = "different-authorizer";
+        },
+      },
+      {
+        name: "tracked authority timestamp",
+        mutateAuthorization: (value) => {
+          value.authorized_at = "2026-07-14T19:00:01Z";
+        },
+      },
+      {
+        name: "tracked authority forbidden principals",
+        mutateAuthorization: (value) => {
+          value.forbidden_principals.identities[0] = "different-principal";
+          value.forbidden_principals.identities.sort();
+        },
+      },
+      {
+        name: "tracked authority uncommitted bytes",
+        committedBytes: (working) =>
+          Buffer.concat([working, Buffer.from("\n")]),
+      },
+    ];
+    for (const mutation of authorityMutations) {
+      const pin = structuredClone(capability.pin);
+      const authorizationValue = syntheticAuthorization(candidate);
+      mutation.mutateAuthorization?.(authorizationValue);
+      const working = Buffer.from(pretty(authorizationValue));
+      if (mutation.mutateAuthorization) {
+        pin.authorization_file.sha256 = hash(working);
+        pin.authorization_file.bytes = working.length;
+      }
+      mutation.mutatePin?.(pin);
+      const committed = mutation.committedBytes
+        ? mutation.committedBytes(working)
+        : working;
+      let failed = false;
+      try {
+        verifyTrackedAuthorizationAuthority(
+          candidate,
+          pin,
+          memoryAuthorityReader(working, committed),
+        );
+      } catch {
+        failed = true;
+      }
+      assert(failed, `active authority mutation accepted: ${mutation.name}`);
+      cases++;
+      rejected++;
+    }
+    const differentSuppliedAuthorization = path.join(
+      root,
+      "different-supplied-authorization.json",
+    );
+    const differentSuppliedValue = syntheticAuthorization(candidate);
+    differentSuppliedValue.artifact_id = "different-artifact-id";
+    writeJson(differentSuppliedAuthorization, differentSuppliedValue);
+    let differentSuppliedRejected = false;
+    try {
+      validateAuthorization(
+        candidate,
+        differentSuppliedAuthorization,
+        null,
+        capability,
+      );
+    } catch {
+      differentSuppliedRejected = true;
+    }
+    assert(
+      differentSuppliedRejected,
+      "authorization bytes outside tracked authority were accepted",
+    );
+    cases++;
+    rejected++;
     const productionReviewRejected = normalCliReviewRefused(
       candidate,
       receipt,
@@ -2551,6 +2712,7 @@ async function selfTest(): Promise<J> {
     const routeMismatchCapability: InternalAuthorizationCapability = {
       [INTERNAL_AUTHORIZATION_CAPABILITY]: true,
       pin: structuredClone(capability.pin),
+      authorityReader: capability.authorityReader,
     };
     routeMismatchCapability.pin.approved_reviewer.reviewer_id =
       "different-authorized-reviewer";
@@ -2571,6 +2733,7 @@ async function selfTest(): Promise<J> {
     const hashMismatchCapability: InternalAuthorizationCapability = {
       [INTERNAL_AUTHORIZATION_CAPABILITY]: true,
       pin: structuredClone(capability.pin),
+      authorityReader: capability.authorityReader,
     };
     hashMismatchCapability.pin.authorization_file.sha256 = "0".repeat(64);
     let hashMismatchRejected = false;
@@ -2994,6 +3157,11 @@ async function selfTest(): Promise<J> {
       self_test: "passed",
       cases,
       adversarial_rejections: rejected,
+      production_pin_state: productionPin.state,
+      production_authority_evidence:
+        productionPin.state === "active"
+          ? "committed_authorization_exact"
+          : "unconfigured_authorization_absent",
       synthetic_publication_only: true,
       tracked_review_authored: false,
       production_mutation: false,
