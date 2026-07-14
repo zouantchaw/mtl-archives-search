@@ -1,0 +1,209 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "archive": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "descriptor_sha256",
+        "bundle_sha256",
+        "tree_sha256",
+        "member_count",
+        "byte_count"
+      ],
+      "properties": {
+        "descriptor_sha256": {
+          "$ref": "#/$defs/hash"
+        },
+        "bundle_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "tree_sha256": {
+          "$ref": "#/$defs/hash"
+        },
+        "member_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "byte_count": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "source_archives": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "gold_label_batch_002",
+        "canonical_image_recovery_v1",
+        "real_pilot_visual_promotion_v1",
+        "real_pilot_independent_visual_review_v1",
+        "real_pilot_intelligence_v1"
+      ],
+      "properties": {
+        "gold_label_batch_002": {
+          "$ref": "#/$defs/archive"
+        },
+        "canonical_image_recovery_v1": {
+          "$ref": "#/$defs/archive"
+        },
+        "real_pilot_visual_promotion_v1": {
+          "$ref": "#/$defs/archive"
+        },
+        "real_pilot_independent_visual_review_v1": {
+          "$ref": "#/$defs/archive"
+        },
+        "real_pilot_intelligence_v1": {
+          "$ref": "#/$defs/archive"
+        }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "selected",
+        "ground",
+        "aerial",
+        "control"
+      ],
+      "properties": {
+        "selected": {
+          "const": 60
+        },
+        "ground": {
+          "const": 30
+        },
+        "aerial": {
+          "const": 20
+        },
+        "control": {
+          "const": 10
+        }
+      }
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "authority_status",
+    "bindings",
+    "reviewer",
+    "attestation",
+    "notes"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "issue69_phase_d_reviewer_selection_receipt_template_v1.0.0"
+    },
+    "artifact_id": {
+      "const": "dfv0_issue69_phase_d_scale_v1_20260713"
+    },
+    "authority_status": {
+      "const": "blank_template_not_authoritative"
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidate_selection_sha256",
+        "archive_verification_manifest_sha256",
+        "source_membership_reference_count",
+        "source_membership_references_sha256",
+        "source_archives",
+        "counts"
+      ],
+      "properties": {
+        "candidate_selection_sha256": {
+          "$ref": "#/$defs/hash"
+        },
+        "archive_verification_manifest_sha256": {
+          "$ref": "#/$defs/hash"
+        },
+        "source_membership_reference_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "source_membership_references_sha256": {
+          "$ref": "#/$defs/hash"
+        },
+        "source_archives": {
+          "$ref": "#/$defs/source_archives"
+        },
+        "counts": {
+          "$ref": "#/$defs/counts"
+        }
+      }
+    },
+    "reviewer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reviewer_id",
+        "session_id",
+        "model",
+        "reasoning_effort",
+        "reviewed_at"
+      ],
+      "properties": {
+        "reviewer_id": {
+          "type": "null"
+        },
+        "session_id": {
+          "type": "null"
+        },
+        "model": {
+          "const": "gpt-5.6-sol"
+        },
+        "reasoning_effort": {
+          "const": "high"
+        },
+        "reviewed_at": {
+          "type": "null"
+        }
+      }
+    },
+    "attestation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "archives_freshly_restored_and_every_descriptor_member_reverified",
+        "exact_selection_independently_recomputed",
+        "every_record_join_and_predicate_reverified",
+        "source_membership_references_reverified",
+        "approved_for_publication"
+      ],
+      "properties": {
+        "archives_freshly_restored_and_every_descriptor_member_reverified": {
+          "type": "null"
+        },
+        "exact_selection_independently_recomputed": {
+          "type": "null"
+        },
+        "every_record_join_and_predicate_reverified": {
+          "type": "null"
+        },
+        "source_membership_references_reverified": {
+          "type": "null"
+        },
+        "approved_for_publication": {
+          "type": "null"
+        }
+      }
+    },
+    "notes": {
+      "type": "null"
+    }
+  }
+}

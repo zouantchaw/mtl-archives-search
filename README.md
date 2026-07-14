@@ -2,6 +2,8 @@
 
 Issue #69 Gate B authoritative ground research is documented in `docs/dataset-factory/ground-authoritative-research-v1.md`. The versioned tracked fixture covers six ground records with rights-conscious source capture and pending claim drafts only; promotions, verified dossiers, benchmark/search tasks, and production mutations are all zero.
 
+Issue #69 Phase D's 60-record scale artifact is documented in `docs/dataset-factory/phase-d-scale-v1.md`. Its tracked state is published under an immutable fresh Sol High reviewer receipt after independent source restoration, selection replay, and join verification. Ordinary build cannot overwrite the receipt; verification and integration replay both candidate and authoritative states without changing tracked bytes. Verified dossiers, accepted tasks, and new external claims remain zero, so issue #69 remains open and incomplete.
+
 **Semantic and visual search API for the Montréal city archives photo collection (~15,000 historical images from 1870s-1990s).**
 
 Built on Cloudflare's edge infrastructure: Workers, D1, Vectorize, R2, and Workers AI.

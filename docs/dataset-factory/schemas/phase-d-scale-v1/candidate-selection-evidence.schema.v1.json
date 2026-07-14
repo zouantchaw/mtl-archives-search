@@ -1,0 +1,357 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "pin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "bytes",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_id",
+        "member_path",
+        "member_sha256",
+        "line"
+      ],
+      "properties": {
+        "artifact_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "member_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "member_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "row_sha256",
+        "value_json",
+        "source"
+      ],
+      "properties": {
+        "row_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "value_json": {
+          "type": "string",
+          "minLength": 2
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        }
+      }
+    },
+    "archive": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "descriptor",
+        "tree_sha256",
+        "member_count",
+        "byte_count"
+      ],
+      "properties": {
+        "descriptor": {
+          "$ref": "#/$defs/pin"
+        },
+        "bundle_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "tree_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "member_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "byte_count": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "authority_status",
+    "archive_verification_manifest",
+    "source_archives",
+    "selection_policy",
+    "selection_replay_inputs",
+    "counts",
+    "records"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "issue69_phase_d_candidate_selection_evidence_v1.2.0"
+    },
+    "artifact_id": {
+      "const": "dfv0_issue69_phase_d_scale_v1_20260713"
+    },
+    "authority_status": {
+      "const": "candidate_not_authoritative_pending_fresh_sol_high_receipt"
+    },
+    "archive_verification_manifest": {
+      "$ref": "#/$defs/pin"
+    },
+    "source_archives": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "gold_label_batch_002",
+        "canonical_image_recovery_v1",
+        "real_pilot_visual_promotion_v1",
+        "real_pilot_independent_visual_review_v1",
+        "real_pilot_intelligence_v1"
+      ],
+      "properties": {
+        "gold_label_batch_002": {
+          "$ref": "#/$defs/archive"
+        },
+        "canonical_image_recovery_v1": {
+          "$ref": "#/$defs/archive"
+        },
+        "real_pilot_visual_promotion_v1": {
+          "$ref": "#/$defs/archive"
+        },
+        "real_pilot_independent_visual_review_v1": {
+          "$ref": "#/$defs/archive"
+        },
+        "real_pilot_intelligence_v1": {
+          "$ref": "#/$defs/archive"
+        }
+      }
+    },
+    "selection_policy": {
+      "type": "object"
+    },
+    "selection_replay_inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "gold_candidates"
+      ],
+      "properties": {
+        "gold_candidates": {
+          "type": "array",
+          "minItems": 300,
+          "maxItems": 300,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "neutral_id",
+              "selection",
+              "adjudication"
+            ],
+            "properties": {
+              "neutral_id": {
+                "type": "string"
+              },
+              "selection": {
+                "$ref": "#/$defs/row"
+              },
+              "adjudication": {
+                "$ref": "#/$defs/row"
+              }
+            }
+          }
+        }
+      }
+    },
+    "counts": {
+      "type": "object"
+    },
+    "records": {
+      "type": "array",
+      "minItems": 60,
+      "maxItems": 60,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "selection_index",
+          "record_id",
+          "numeric_id",
+          "primary_stratum",
+          "selection_basis",
+          "selection_derivation",
+          "authority_class",
+          "component_id",
+          "split",
+          "canonical_evidence",
+          "pixel_evidence",
+          "review_evidence",
+          "rights",
+          "claim_boundary",
+          "aerial_measurement_boundary"
+        ],
+        "properties": {
+          "selection_index": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 60
+          },
+          "record_id": {
+            "type": "string"
+          },
+          "numeric_id": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "primary_stratum": {
+            "enum": [
+              "ground",
+              "aerial",
+              "control"
+            ]
+          },
+          "selection_basis": {
+            "type": "string"
+          },
+          "selection_derivation": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "image_mode_status",
+              "image_mode_value",
+              "observed_ground_signal_count",
+              "gold_rank",
+              "control_predicate",
+              "pilot_lane"
+            ],
+            "properties": {
+              "image_mode_status": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "image_mode_value": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "observed_ground_signal_count": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "gold_rank": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1
+              },
+              "control_predicate": {
+                "enum": [
+                  "promoted_document_map",
+                  "rejected_low_information",
+                  "pilot_non_photographic_map",
+                  "pilot_low_information_abstention",
+                  "not_control"
+                ]
+              },
+              "pilot_lane": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          },
+          "authority_class": {
+            "enum": [
+              "gold_and_pilot",
+              "pilot_independent_review_only",
+              "gold_added"
+            ]
+          },
+          "component_id": {
+            "type": "string"
+          },
+          "split": {
+            "type": "string"
+          },
+          "canonical_evidence": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "node",
+              "component",
+              "split"
+            ],
+            "properties": {
+              "node": {
+                "$ref": "#/$defs/row"
+              },
+              "component": {
+                "$ref": "#/$defs/row"
+              },
+              "split": {
+                "$ref": "#/$defs/row"
+              }
+            }
+          },
+          "pixel_evidence": {
+            "type": "object"
+          },
+          "review_evidence": {
+            "type": "object"
+          },
+          "rights": {
+            "type": "object"
+          },
+          "claim_boundary": {
+            "type": "object"
+          },
+          "aerial_measurement_boundary": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  }
+}
