@@ -3107,24 +3107,35 @@ async function selfTest(): Promise<J> {
       rejected++;
     }
     const raceOutput = path.join(root, "race-output");
+    const competitor = path.join(raceOutput, "competitor");
     let raceRejected = false;
+    let beforeReserveRan = false;
     try {
       await publish(candidate, receipt, authorization, raceOutput, capability, {
         beforeReserve: () => {
+          beforeReserveRan = true;
           fs.mkdirSync(raceOutput);
-          fs.writeFileSync(
-            path.join(raceOutput, "competitor"),
-            "owned elsewhere\n",
-          );
+          fs.writeFileSync(competitor, "owned elsewhere\n");
         },
       });
     } catch {
       raceRejected = true;
     }
     assert(
-      raceRejected &&
-        fs.readFileSync(path.join(raceOutput, "competitor"), "utf8") ===
-          "owned elsewhere\n",
+      raceRejected,
+      "publication race did not reject concurrent destination",
+    );
+    assert(beforeReserveRan, "publication race hook did not run");
+    assert(
+      fs.existsSync(raceOutput),
+      "publication race removed concurrent destination",
+    );
+    assert(
+      fs.existsSync(competitor),
+      "publication race removed competitor sentinel",
+    );
+    assert(
+      fs.readFileSync(competitor, "utf8") === "owned elsewhere\n",
       "publication race replaced concurrent destination",
     );
     cases++;
