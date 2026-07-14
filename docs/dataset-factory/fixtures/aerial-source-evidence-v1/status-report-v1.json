@@ -1,0 +1,40 @@
+{
+  "schema_version": "aerial_source_evidence_v1.0.0",
+  "artifact_id": "aerial-source-evidence-v1",
+  "issue": 90,
+  "issue_complete": false,
+  "authority_status": "candidate_held_external_review_required",
+  "production_mutation": false,
+  "paid_gpu_launched": false,
+  "counts": {
+    "candidates": 22,
+    "components": 22,
+    "phase_d_selected": 20,
+    "reserves": 2,
+    "predecessor_held_preserved": 4,
+    "media_bytes": 946387779,
+    "exact_media_hashes": 22,
+    "decoded_media": 22,
+    "georeference_proposals": 0,
+    "accepted_coordinates": 0,
+    "accepted_measurements": 0,
+    "accepted_claims": 0,
+    "verified_dossiers": 0,
+    "tasks": 0
+  },
+  "externally_blocked": [
+    {
+      "subset": "22_candidate_source_body_dispositions",
+      "reason": "Independent Gate E bounded review receipt has not been authored."
+    },
+    {
+      "subset": "946387779_bytes_private_snapshot",
+      "reason": "Durable private upload and readback receipt require coordinator handling; cloud writes were prohibited."
+    }
+  ],
+  "limitations": [
+    "Acquisition does not increase verified dossier count.",
+    "Official media URLs and metadata do not establish pictured location.",
+    "No georeference proposal, coordinate, scale, land-use proposition, or measurement is accepted."
+  ]
+}

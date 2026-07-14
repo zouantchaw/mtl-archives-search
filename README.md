@@ -1,5 +1,7 @@
 # Montréal Archives Search
 
+Issue #90 Gate F aerial source evidence is documented in `docs/dataset-factory/aerial-source-evidence-v1.md`. The candidate-only tracked contract binds 20 Phase D aerial records plus two component-distinct reserves to 946,387,779 exact official media bytes, hashes, dimensions, transport, rights, and attribution evidence. All 22 remain held with explicit location/scale/land-use/measurement abstentions; independent Gate E review and durable private archive readback remain externally blocked, and verified dossier/task/production-mutation counts remain zero.
+
 Issue #69 Gate B authoritative ground research is documented in `docs/dataset-factory/ground-authoritative-research-v1.md`. The versioned tracked fixture covers six ground records with rights-conscious source capture and pending claim drafts only; promotions, verified dossiers, benchmark/search tasks, and production mutations are all zero.
 
 Issue #69 Phase D's 60-record scale artifact is documented in `docs/dataset-factory/phase-d-scale-v1.md`. Its tracked state is published under an immutable fresh Sol High reviewer receipt after independent source restoration, selection replay, and join verification. Ordinary build cannot overwrite the receipt; verification and integration replay both candidate and authoritative states without changing tracked bytes. Verified dossiers, accepted tasks, and new external claims remain zero, so issue #69 remains open and incomplete.

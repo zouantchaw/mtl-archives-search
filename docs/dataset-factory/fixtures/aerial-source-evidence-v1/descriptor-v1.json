@@ -1,0 +1,32 @@
+{
+  "schema_version": "aerial_source_evidence_v1.0.0",
+  "artifact_id": "aerial-source-evidence-v1",
+  "authority_status": "candidate_held_external_review_required",
+  "created_at": "2026-07-14T05:52:31.000Z",
+  "production_mutation": false,
+  "authority_member": null,
+  "members": [
+    {
+      "path": "evidence-ledger-v1.json",
+      "bytes": 96567,
+      "sha256": "b54b66675663dfafb93af1634aeb7cfcde7b136cf6405c99d5feb8603bededc1"
+    },
+    {
+      "path": "external-archive-descriptor-v1.json",
+      "bytes": 7836,
+      "sha256": "b64b9a3d084ef2dc94ca32186f00463dcd563fd7b08e89e9d7fa65dc59c50906"
+    },
+    {
+      "path": "independent-source-review-receipt.template-v1.json",
+      "bytes": 6319,
+      "sha256": "d13e0c7a8526e47318de2ca9588308e932a947f635e58e8ec9265b74389b167d"
+    },
+    {
+      "path": "status-report-v1.json",
+      "bytes": 1300,
+      "sha256": "9b36e7f8fb43732783be7649cb73621422f2a59bb75d59a0596ca635234ac5f7"
+    }
+  ],
+  "tree_sha256": "ce6d592ca5a283173a44ed3443cd96111686c607652f44e296395c0b9b7bc2a4",
+  "registry_authority": "candidate_only_not_published"
+}

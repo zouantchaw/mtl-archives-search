@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "artifact_id", "authority_status", "predecessor_pins", "selection_policy", "source_bodies", "records", "counts"],
+  "properties": {
+    "schema_version": { "const": "aerial_source_evidence_v1.0.0" },
+    "artifact_id": { "const": "aerial-source-evidence-v1" },
+    "authority_status": { "const": "candidate_held_external_review_required" },
+    "predecessor_pins": { "type": "array", "minItems": 6, "items": { "$ref": "#/$defs/pin" } },
+    "selection_policy": { "type": "object" },
+    "source_bodies": {
+      "type": "array", "minItems": 3, "maxItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["source_id", "body_sha256", "body_bytes", "rights_mode", "gate_e_review_status"],
+        "properties": {
+          "body_sha256": { "$ref": "#/$defs/hash" },
+          "gate_e_review_status": { "const": "held_pending_independent_bounded_proposition_review" }
+        }
+      }
+    },
+    "records": { "type": "array", "minItems": 22, "maxItems": 22, "items": { "$ref": "#/$defs/record" } },
+    "counts": {
+      "type": "object",
+      "required": ["candidates", "components", "phase_d_selected", "reserves", "predecessor_held_preserved", "media_bytes", "exact_media_hashes", "decoded_media", "georeference_proposals", "accepted_coordinates", "accepted_measurements", "accepted_claims", "verified_dossiers", "tasks"],
+      "properties": {
+        "candidates": { "const": 22 }, "components": { "const": 22 }, "phase_d_selected": { "const": 20 }, "reserves": { "const": 2 },
+        "predecessor_held_preserved": { "const": 4 }, "media_bytes": { "const": 946387779 }, "exact_media_hashes": { "const": 22 },
+        "decoded_media": { "const": 22 }, "georeference_proposals": { "const": 0 }, "accepted_coordinates": { "const": 0 },
+        "accepted_measurements": { "const": 0 }, "accepted_claims": { "const": 0 }, "verified_dossiers": { "const": 0 }, "tasks": { "const": 0 }
+      }
+    }
+  },
+  "$defs": {
+    "hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "pin": {
+      "type": "object", "additionalProperties": false, "required": ["path", "bytes", "sha256"],
+      "properties": { "path": { "type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$" }, "bytes": { "type": "integer", "minimum": 1 }, "sha256": { "$ref": "#/$defs/hash" } }
+    },
+    "abstention": {
+      "type": "object", "additionalProperties": false, "required": ["disposition", "reason"],
+      "properties": { "disposition": { "const": "abstained" }, "reason": { "type": "string", "minLength": 1 } }
+    },
+    "record": {
+      "type": "object", "additionalProperties": true,
+      "required": ["candidate_index", "numeric_id", "record_id", "component_id", "cohort_role", "predecessor_disposition", "gate_f_disposition", "disposition_preservation", "official_metadata", "mode_evidence", "media", "rights", "attribution", "georeference_proposal", "sequence_context", "abstentions", "claim_boundary"],
+      "properties": {
+        "candidate_index": { "type": "integer", "minimum": 1, "maximum": 22 },
+        "numeric_id": { "type": "integer", "minimum": 0 },
+        "component_id": { "type": "string", "pattern": "^leakage-component:[a-f0-9]{64}$" },
+        "cohort_role": { "enum": ["phase_d_selected", "component_distinct_reserve"] },
+        "gate_f_disposition": { "const": "held" },
+        "georeference_proposal": { "type": "null" },
+        "media": {
+          "type": "object", "required": ["private_member", "sha256", "bytes", "format", "width", "height", "transport"],
+          "properties": {
+            "private_member": { "type": "string", "pattern": "^media/[0-9]+\\.(jpg|tif)$" }, "sha256": { "$ref": "#/$defs/hash" },
+            "bytes": { "type": "integer", "minimum": 1 }, "format": { "enum": ["jpeg", "tiff"] }, "width": { "type": "integer", "minimum": 1 }, "height": { "type": "integer", "minimum": 1 },
+            "transport": {
+              "type": "object", "required": ["effective_url", "status", "content_type", "probe_bytes", "retained_headers"],
+              "properties": { "effective_url": { "type": "string", "pattern": "^https://[^?#]+$" }, "status": { "enum": [200, 206] }, "content_type": { "enum": ["image/jpeg", "image/tiff"] }, "probe_bytes": { "type": "integer", "minimum": 1 }, "retained_headers": { "type": "object" } }
+            }
+          }
+        },
+        "abstentions": {
+          "type": "object", "additionalProperties": false,
+          "required": ["exact_location", "scale", "footprint", "area", "acreage", "distance", "land_use", "measurement"],
+          "properties": { "exact_location": { "$ref": "#/$defs/abstention" }, "scale": { "$ref": "#/$defs/abstention" }, "footprint": { "$ref": "#/$defs/abstention" }, "area": { "$ref": "#/$defs/abstention" }, "acreage": { "$ref": "#/$defs/abstention" }, "distance": { "$ref": "#/$defs/abstention" }, "land_use": { "$ref": "#/$defs/abstention" }, "measurement": { "$ref": "#/$defs/abstention" } }
+        }
+      }
+    }
+  }
+}
