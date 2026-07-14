@@ -1,12 +1,25 @@
 {
   "schema_version": "verified_dossiers_production_authorization_pin_v1.0.0",
   "authority_id": "gate-g-production-authorization-pin",
-  "state": "unconfigured",
+  "state": "active",
   "candidate_artifact_id": "dfv0_verified_dossiers_v1_candidate_20260714",
-  "candidate_descriptor_sha256": null,
-  "authorization_file": null,
-  "approved_reviewer": null,
-  "authorizing_authority": null,
-  "authorized_at": null,
-  "scope_note": "Fail-closed production trust root. Activation requires a separate reviewed pin-only commit after coordinator authorization; Gate G implementation and normal CLI commands cannot activate it."
+  "candidate_descriptor_sha256": "d799bbe84277fb666b78d5adbc1263d446a30d11baf8ddb408fff1170204e046",
+  "authorization_file": {
+    "path": "docs/dataset-factory/authorities/verified-dossiers-v1/reviewer-authorization-v1.json",
+    "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+    "bytes": 3179
+  },
+  "approved_reviewer": {
+    "reviewer_id": "sol-high-gate-g-dossier-reviewer:019f6216-987e-7000-95f0-9b9a054fedfa",
+    "session_id": "019f6216-987e-7000-95f0-9b9a054fedfa",
+    "model": "gpt-5.6-sol",
+    "reasoning_effort": "high"
+  },
+  "authorizing_authority": {
+    "identity": "codex-gate-g-coordinator",
+    "session_id": "codex-desktop-gate-g-coordinator-20260714",
+    "role": "gate_g_review_authority"
+  },
+  "authorized_at": "2026-07-14T19:39:19Z",
+  "scope_note": "Reviewed authority-only activation binds the exact coordinator authorization and approved independent reviewer route; it does not approve or publish any dossier."
 }
