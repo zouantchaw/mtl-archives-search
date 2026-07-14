@@ -1,5 +1,5 @@
 {
-  "schema_version": "aerial_source_evidence_v1.0.0",
+  "schema_version": "aerial_source_evidence_v1.1.0",
   "artifact_id": "aerial-source-evidence-v1",
   "issue": 90,
   "issue_complete": false,
@@ -14,7 +14,8 @@
     "predecessor_held_preserved": 4,
     "media_bytes": 946387779,
     "exact_media_hashes": 22,
-    "decoded_media": 22,
+    "header_dimensions_verified": 22,
+    "pixel_decode_verified": 22,
     "georeference_proposals": 0,
     "accepted_coordinates": 0,
     "accepted_measurements": 0,
@@ -22,15 +23,9 @@
     "verified_dossiers": 0,
     "tasks": 0
   },
-  "externally_blocked": [
-    {
-      "subset": "22_candidate_source_body_dispositions",
-      "reason": "Independent Gate E bounded review receipt has not been authored."
-    },
-    {
-      "subset": "946387779_bytes_private_snapshot",
-      "reason": "Durable private upload and readback receipt require coordinator handling; cloud writes were prohibited."
-    }
+  "blockers": [
+    "durable_archive_upload_and_byte_identical_readback_receipt_required",
+    "fresh_independent_external_source_review_required"
   ],
   "limitations": [
     "Acquisition does not increase verified dossier count.",

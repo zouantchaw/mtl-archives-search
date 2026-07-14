@@ -2,71 +2,687 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "artifact_id", "authority_status", "predecessor_pins", "selection_policy", "source_bodies", "records", "counts"],
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "authority_status",
+    "predecessor_pins",
+    "selection_policy",
+    "records",
+    "counts"
+  ],
   "properties": {
-    "schema_version": { "const": "aerial_source_evidence_v1.0.0" },
-    "artifact_id": { "const": "aerial-source-evidence-v1" },
-    "authority_status": { "const": "candidate_held_external_review_required" },
-    "predecessor_pins": { "type": "array", "minItems": 6, "items": { "$ref": "#/$defs/pin" } },
-    "selection_policy": { "type": "object" },
-    "source_bodies": {
-      "type": "array", "minItems": 3, "maxItems": 3,
+    "schema_version": {
+      "const": "aerial_source_evidence_v1.1.0"
+    },
+    "artifact_id": {
+      "const": "aerial-source-evidence-v1"
+    },
+    "authority_status": {
+      "const": "candidate_held_external_review_required"
+    },
+    "predecessor_pins": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "uniqueItems": true,
       "items": {
-        "type": "object",
-        "required": ["source_id", "body_sha256", "body_bytes", "rights_mode", "gate_e_review_status"],
-        "properties": {
-          "body_sha256": { "$ref": "#/$defs/hash" },
-          "gate_e_review_status": { "const": "held_pending_independent_bounded_proposition_review" }
+        "$ref": "#/$defs/binding"
+      }
+    },
+    "selection_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "selected",
+        "reserves"
+      ],
+      "properties": {
+        "selected": {
+          "const": "all_20_phase_d_aerial_records"
+        },
+        "reserves": {
+          "const": "next_two_gold_ranked_promoted_aerial_records_after_excluding_all_phase_d_components"
         }
       }
     },
-    "records": { "type": "array", "minItems": 22, "maxItems": 22, "items": { "$ref": "#/$defs/record" } },
-    "counts": {
-      "type": "object",
-      "required": ["candidates", "components", "phase_d_selected", "reserves", "predecessor_held_preserved", "media_bytes", "exact_media_hashes", "decoded_media", "georeference_proposals", "accepted_coordinates", "accepted_measurements", "accepted_claims", "verified_dossiers", "tasks"],
-      "properties": {
-        "candidates": { "const": 22 }, "components": { "const": 22 }, "phase_d_selected": { "const": 20 }, "reserves": { "const": 2 },
-        "predecessor_held_preserved": { "const": 4 }, "media_bytes": { "const": 946387779 }, "exact_media_hashes": { "const": 22 },
-        "decoded_media": { "const": 22 }, "georeference_proposals": { "const": 0 }, "accepted_coordinates": { "const": 0 },
-        "accepted_measurements": { "const": 0 }, "accepted_claims": { "const": 0 }, "verified_dossiers": { "const": 0 }, "tasks": { "const": 0 }
+    "records": {
+      "type": "array",
+      "minItems": 22,
+      "maxItems": 22,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/record"
       }
+    },
+    "counts": {
+      "$ref": "#/$defs/counts"
     }
   },
   "$defs": {
-    "hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
-    "pin": {
-      "type": "object", "additionalProperties": false, "required": ["path", "bytes", "sha256"],
-      "properties": { "path": { "type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$" }, "bytes": { "type": "integer", "minimum": 1 }, "sha256": { "$ref": "#/$defs/hash" } }
+    "hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "bytes",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sha256": {
+          "$ref": "#/$defs/hash"
+        }
+      }
+    },
+    "field": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "value"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "present_exact_row",
+            "present_reportage_scope",
+            "present_exact_media_url_path",
+            "missing_in_applicable_csv_row",
+            "present_package_level_exact",
+            "placeholder_not_complete_attribution"
+          ]
+        },
+        "value": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "missing_in_applicable_csv_row"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "value": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    "digest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bytes",
+        "sha256"
+      ],
+      "properties": {
+        "bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sha256": {
+          "$ref": "#/$defs/hash"
+        }
+      }
     },
     "abstention": {
-      "type": "object", "additionalProperties": false, "required": ["disposition", "reason"],
-      "properties": { "disposition": { "const": "abstained" }, "reason": { "type": "string", "minLength": 1 } }
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "disposition",
+        "reason"
+      ],
+      "properties": {
+        "disposition": {
+          "const": "abstained"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidates",
+        "components",
+        "phase_d_selected",
+        "reserves",
+        "predecessor_held_preserved",
+        "media_bytes",
+        "exact_media_hashes",
+        "header_dimensions_verified",
+        "pixel_decode_verified",
+        "georeference_proposals",
+        "accepted_coordinates",
+        "accepted_measurements",
+        "accepted_claims",
+        "verified_dossiers",
+        "tasks"
+      ],
+      "properties": {
+        "candidates": {
+          "const": 22
+        },
+        "components": {
+          "const": 22
+        },
+        "phase_d_selected": {
+          "const": 20
+        },
+        "reserves": {
+          "const": 2
+        },
+        "predecessor_held_preserved": {
+          "const": 4
+        },
+        "media_bytes": {
+          "const": 946387779
+        },
+        "exact_media_hashes": {
+          "const": 22
+        },
+        "header_dimensions_verified": {
+          "const": 22
+        },
+        "pixel_decode_verified": {
+          "const": 22
+        },
+        "georeference_proposals": {
+          "const": 0
+        },
+        "accepted_coordinates": {
+          "const": 0
+        },
+        "accepted_measurements": {
+          "const": 0
+        },
+        "accepted_claims": {
+          "const": 0
+        },
+        "verified_dossiers": {
+          "const": 0
+        },
+        "tasks": {
+          "const": 0
+        }
+      }
+    },
+    "transport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "effective_url",
+        "status",
+        "content_type",
+        "response_bytes",
+        "retained_headers",
+        "raw_audit_digests",
+        "probe_binding"
+      ],
+      "properties": {
+        "effective_url": {
+          "type": "string",
+          "pattern": "^https://[^?#]+$"
+        },
+        "status": {
+          "enum": [
+            200,
+            206
+          ]
+        },
+        "content_type": {
+          "enum": [
+            "image/jpeg",
+            "image/tiff"
+          ]
+        },
+        "response_bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "retained_headers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "propertyNames": {
+            "enum": [
+              "date",
+              "content-type",
+              "content-length",
+              "content-range",
+              "etag",
+              "last-modified",
+              "accept-ranges"
+            ]
+          }
+        },
+        "raw_audit_digests": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "meta",
+            "headers",
+            "probe"
+          ],
+          "properties": {
+            "meta": {
+              "$ref": "#/$defs/digest"
+            },
+            "headers": {
+              "$ref": "#/$defs/digest"
+            },
+            "probe": {
+              "$ref": "#/$defs/digest"
+            }
+          }
+        },
+        "probe_binding": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "mode",
+            "media_offset",
+            "bytes",
+            "sha256"
+          ],
+          "properties": {
+            "mode": {
+              "enum": [
+                "exact_media_prefix_range",
+                "exact_full_media_body"
+              ]
+            },
+            "media_offset": {
+              "const": 0
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "sha256": {
+              "$ref": "#/$defs/hash"
+            }
+          }
+        }
+      }
     },
     "record": {
-      "type": "object", "additionalProperties": true,
-      "required": ["candidate_index", "numeric_id", "record_id", "component_id", "cohort_role", "predecessor_disposition", "gate_f_disposition", "disposition_preservation", "official_metadata", "mode_evidence", "media", "rights", "attribution", "georeference_proposal", "sequence_context", "abstentions", "claim_boundary"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidate_index",
+        "numeric_id",
+        "record_id",
+        "component_id",
+        "cohort_role",
+        "phase_d_rank",
+        "reserve_evidence",
+        "predecessor_disposition",
+        "gate_f_disposition",
+        "disposition_preservation",
+        "official_metadata",
+        "mode_evidence",
+        "media",
+        "rights",
+        "attribution",
+        "georeference_proposal",
+        "sequence_context",
+        "abstentions",
+        "claim_boundary"
+      ],
       "properties": {
-        "candidate_index": { "type": "integer", "minimum": 1, "maximum": 22 },
-        "numeric_id": { "type": "integer", "minimum": 0 },
-        "component_id": { "type": "string", "pattern": "^leakage-component:[a-f0-9]{64}$" },
-        "cohort_role": { "enum": ["phase_d_selected", "component_distinct_reserve"] },
-        "gate_f_disposition": { "const": "held" },
-        "georeference_proposal": { "type": "null" },
-        "media": {
-          "type": "object", "required": ["private_member", "sha256", "bytes", "format", "width", "height", "transport"],
+        "candidate_index": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 22
+        },
+        "numeric_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "record_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "component_id": {
+          "type": "string",
+          "pattern": "^leakage-component:[a-f0-9]{64}$"
+        },
+        "cohort_role": {
+          "enum": [
+            "phase_d_selected",
+            "component_distinct_reserve"
+          ]
+        },
+        "phase_d_rank": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "reserve_evidence": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "predecessor_disposition": {
+          "enum": [
+            "held",
+            "promoted"
+          ]
+        },
+        "gate_f_disposition": {
+          "const": "held"
+        },
+        "disposition_preservation": {
+          "enum": [
+            "held_preserved",
+            "acquisition_does_not_promote"
+          ]
+        },
+        "official_metadata": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "source_record_ids",
+            "collection_ids",
+            "flight_or_index_identifier",
+            "date",
+            "source_url"
+          ],
           "properties": {
-            "private_member": { "type": "string", "pattern": "^media/[0-9]+\\.(jpg|tif)$" }, "sha256": { "$ref": "#/$defs/hash" },
-            "bytes": { "type": "integer", "minimum": 1 }, "format": { "enum": ["jpeg", "tiff"] }, "width": { "type": "integer", "minimum": 1 }, "height": { "type": "integer", "minimum": 1 },
+            "source_record_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "uniqueItems": true
+            },
+            "collection_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "uniqueItems": true
+            },
+            "flight_or_index_identifier": {
+              "$ref": "#/$defs/field"
+            },
+            "date": {
+              "$ref": "#/$defs/field"
+            },
+            "source_url": {
+              "type": "string",
+              "pattern": "^http://[^?#]+$"
+            }
+          }
+        },
+        "mode_evidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "value",
+            "authority"
+          ],
+          "properties": {
+            "value": {
+              "enum": [
+                "aerial_vertical",
+                "aerial_oblique"
+              ]
+            },
+            "authority": {
+              "const": "phase_d_bound_visual_adjudication"
+            }
+          }
+        },
+        "media": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "private_member",
+            "sha256",
+            "bytes",
+            "format",
+            "width",
+            "height",
+            "header_dimensions_verified",
+            "pixel_decode_verified",
+            "decoder",
+            "transport"
+          ],
+          "properties": {
+            "private_member": {
+              "type": "string",
+              "pattern": "^media/[0-9]+\\.(jpg|tif)$"
+            },
+            "sha256": {
+              "$ref": "#/$defs/hash"
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "format": {
+              "enum": [
+                "jpeg",
+                "tiff"
+              ]
+            },
+            "width": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "height": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "header_dimensions_verified": {
+              "const": true
+            },
+            "pixel_decode_verified": {
+              "const": true
+            },
+            "decoder": {
+              "type": "string",
+              "pattern": "^sharp-"
+            },
             "transport": {
-              "type": "object", "required": ["effective_url", "status", "content_type", "probe_bytes", "retained_headers"],
-              "properties": { "effective_url": { "type": "string", "pattern": "^https://[^?#]+$" }, "status": { "enum": [200, 206] }, "content_type": { "enum": ["image/jpeg", "image/tiff"] }, "probe_bytes": { "type": "integer", "minimum": 1 }, "retained_headers": { "type": "object" } }
+              "$ref": "#/$defs/transport"
+            }
+          }
+        },
+        "rights": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "candidate_license_id",
+            "commercial_use_candidate",
+            "exact_required_credit",
+            "source_family_id",
+            "package_source_id",
+            "resource_id",
+            "source_row_sha256",
+            "limitation"
+          ],
+          "properties": {
+            "status": {
+              "const": "held_pending_independent_bounded_proposition_review"
+            },
+            "candidate_license_id": {
+              "const": "cc-by-4.0"
+            },
+            "commercial_use_candidate": {
+              "const": true
+            },
+            "exact_required_credit": {
+              "const": "Archives de la Ville de Montréal"
+            },
+            "source_family_id": {
+              "type": "string",
+              "pattern": "^archives-montreal-"
+            },
+            "package_source_id": {
+              "type": "string",
+              "pattern": "^ckan-package-"
+            },
+            "resource_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9-]{36}$"
+            },
+            "source_row_sha256": {
+              "$ref": "#/$defs/hash"
+            },
+            "limitation": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "attribution": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "required_credit",
+            "call_number",
+            "photographer",
+            "source_record_title",
+            "csv_placeholder_is_not_attribution"
+          ],
+          "properties": {
+            "required_credit": {
+              "$ref": "#/$defs/field"
+            },
+            "call_number": {
+              "$ref": "#/$defs/field"
+            },
+            "photographer": {
+              "$ref": "#/$defs/field"
+            },
+            "source_record_title": {
+              "$ref": "#/$defs/field"
+            },
+            "csv_placeholder_is_not_attribution": {
+              "type": "boolean"
+            }
+          }
+        },
+        "georeference_proposal": {
+          "type": "null"
+        },
+        "sequence_context": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "reason"
+          ],
+          "properties": {
+            "status": {
+              "const": "proposal_not_authored"
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
             }
           }
         },
         "abstentions": {
-          "type": "object", "additionalProperties": false,
-          "required": ["exact_location", "scale", "footprint", "area", "acreage", "distance", "land_use", "measurement"],
-          "properties": { "exact_location": { "$ref": "#/$defs/abstention" }, "scale": { "$ref": "#/$defs/abstention" }, "footprint": { "$ref": "#/$defs/abstention" }, "area": { "$ref": "#/$defs/abstention" }, "acreage": { "$ref": "#/$defs/abstention" }, "distance": { "$ref": "#/$defs/abstention" }, "land_use": { "$ref": "#/$defs/abstention" }, "measurement": { "$ref": "#/$defs/abstention" } }
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "exact_location",
+            "scale",
+            "footprint",
+            "area",
+            "acreage",
+            "distance",
+            "land_use",
+            "measurement"
+          ],
+          "properties": {
+            "exact_location": {
+              "$ref": "#/$defs/abstention"
+            },
+            "scale": {
+              "$ref": "#/$defs/abstention"
+            },
+            "footprint": {
+              "$ref": "#/$defs/abstention"
+            },
+            "area": {
+              "$ref": "#/$defs/abstention"
+            },
+            "acreage": {
+              "$ref": "#/$defs/abstention"
+            },
+            "distance": {
+              "$ref": "#/$defs/abstention"
+            },
+            "land_use": {
+              "$ref": "#/$defs/abstention"
+            },
+            "measurement": {
+              "$ref": "#/$defs/abstention"
+            }
+          }
+        },
+        "claim_boundary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "accepted_claims",
+            "verified_dossier",
+            "accepted_tasks"
+          ],
+          "properties": {
+            "accepted_claims": {
+              "const": 0
+            },
+            "verified_dossier": {
+              "const": false
+            },
+            "accepted_tasks": {
+              "const": 0
+            }
+          }
         }
       }
     }

@@ -1,0 +1,354 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "exact_private_source_root",
+    "exact_bodies_tracked",
+    "oblique_published_physical_schema",
+    "oblique_logical_schema",
+    "packages",
+    "record_rows"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "aerial_source_evidence_v1.1.0"
+    },
+    "artifact_id": {
+      "const": "aerial-source-evidence-v1"
+    },
+    "exact_private_source_root": {
+      "const": "/tmp/issue90-gate-f-remediation-sources-v1"
+    },
+    "exact_bodies_tracked": {
+      "const": false
+    },
+    "packages": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/package"
+      }
+    },
+    "record_rows": {
+      "type": "array",
+      "minItems": 22,
+      "maxItems": 22,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/row"
+      }
+    },
+    "oblique_published_physical_schema": {
+      "const": [
+        "Cote (reportage)",
+        "Titre / Photographe / Dates",
+        "Description",
+        "Fichiers TIFF - 300 dpi (CLIQUEZ SUR LE LIEN)",
+        "Mention de crédits"
+      ]
+    },
+    "oblique_logical_schema": {
+      "const": [
+        "Cote",
+        "Titre",
+        "Date",
+        "Nom du photographe",
+        "Description",
+        "Hyperliens",
+        "Mention de crédits"
+      ]
+    }
+  },
+  "$defs": {
+    "hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "bytes",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]+$"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sha256": {
+          "$ref": "#/$defs/hash"
+        }
+      }
+    },
+    "field": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "value"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "present_exact_row",
+            "present_reportage_scope",
+            "present_exact_media_url_path",
+            "missing_in_applicable_csv_row",
+            "placeholder_not_complete_attribution"
+          ]
+        },
+        "value": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "missing_in_applicable_csv_row"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "value": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    "proposition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "proposition_id",
+        "exact_text",
+        "text_sha256",
+        "review_status"
+      ],
+      "properties": {
+        "proposition_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "exact_text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "text_sha256": {
+          "$ref": "#/$defs/hash"
+        },
+        "review_status": {
+          "const": "held_pending_independent_bounded_proposition_review"
+        }
+      }
+    },
+    "package": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_id",
+        "source_family_id",
+        "private_body",
+        "requested_url",
+        "rights_mode",
+        "collection",
+        "propositions"
+      ],
+      "properties": {
+        "source_id": {
+          "type": "string",
+          "pattern": "^ckan-package-"
+        },
+        "source_family_id": {
+          "type": "string",
+          "pattern": "^archives-montreal-"
+        },
+        "private_body": {
+          "$ref": "#/$defs/binding"
+        },
+        "requested_url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "rights_mode": {
+          "const": "private_exact_public_body_with_tracked_bounded_representation"
+        },
+        "collection": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "package_id",
+            "title",
+            "author",
+            "license_id",
+            "license_title",
+            "exact_required_credit",
+            "resource_ids"
+          ],
+          "properties": {
+            "package_id": {
+              "type": "string",
+              "pattern": "^[a-f0-9-]{36}$"
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1
+            },
+            "author": {
+              "const": "Service du greffe - Section des archives"
+            },
+            "license_id": {
+              "const": "cc-by"
+            },
+            "license_title": {
+              "const": "Creative Commons Attribution 4.0 International"
+            },
+            "exact_required_credit": {
+              "const": "Archives de la Ville de Montréal"
+            },
+            "resource_ids": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "pattern": "^[a-f0-9-]{36}$"
+              }
+            }
+          }
+        },
+        "propositions": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/proposition"
+          }
+        }
+      }
+    },
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "numeric_id",
+        "source_family_id",
+        "package_source_id",
+        "resource_id",
+        "private_csv_body",
+        "exact_row",
+        "exact_row_sha256",
+        "exact_row_bytes",
+        "bounded_propositions",
+        "review_status"
+      ],
+      "properties": {
+        "numeric_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "source_family_id": {
+          "type": "string",
+          "pattern": "^archives-montreal-"
+        },
+        "package_source_id": {
+          "type": "string",
+          "pattern": "^ckan-package-"
+        },
+        "resource_id": {
+          "type": "string",
+          "pattern": "^[a-f0-9-]{36}$"
+        },
+        "private_csv_body": {
+          "$ref": "#/$defs/binding"
+        },
+        "exact_row": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "cote",
+            "media_call_number",
+            "titre",
+            "date",
+            "photographer",
+            "description",
+            "media_url",
+            "csv_credit_field"
+          ],
+          "properties": {
+            "cote": {
+              "$ref": "#/$defs/field"
+            },
+            "titre": {
+              "$ref": "#/$defs/field"
+            },
+            "date": {
+              "$ref": "#/$defs/field"
+            },
+            "photographer": {
+              "$ref": "#/$defs/field"
+            },
+            "description": {
+              "$ref": "#/$defs/field"
+            },
+            "media_url": {
+              "type": "string",
+              "pattern": "^http://[^?#]+$"
+            },
+            "csv_credit_field": {
+              "$ref": "#/$defs/field"
+            },
+            "media_call_number": {
+              "$ref": "#/$defs/field"
+            }
+          }
+        },
+        "exact_row_sha256": {
+          "$ref": "#/$defs/hash"
+        },
+        "exact_row_bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "bounded_propositions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "$ref": "#/$defs/proposition"
+          }
+        },
+        "review_status": {
+          "const": "held_pending_independent_bounded_proposition_review"
+        }
+      }
+    }
+  }
+}

@@ -1,1 +1,19 @@
-{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","required":["schema_version","artifact_id","status","media_tree_sha256","media_bytes","members","archive_plan","security_boundary"],"properties":{"schema_version":{"const":"aerial_source_evidence_v1.0.0"},"artifact_id":{"const":"aerial-source-evidence-v1"},"status":{"const":"local_exact_bodies_verified_durable_archive_pending_coordinator"},"durable_locator":{"type":"null"},"archive_sha256":{"type":"null"},"archive_bytes":{"type":"null"},"media_tree_sha256":{"type":"string","pattern":"^[a-f0-9]{64}$"},"media_bytes":{"const":946387779},"members":{"type":"array","minItems":44,"maxItems":44},"archive_plan":{"type":"object"},"security_boundary":{"type":"object","properties":{"raw_headers_archived":{"const":false},"cookies_archived":{"const":false},"signed_urls_archived":{"const":false},"query_values_archived":{"const":false}}}}}
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "artifact_id", "status", "local_locator_template", "durable_locator", "archive_sha256", "archive_bytes", "media_tree_sha256", "media_bytes", "members", "archive_plan", "security_boundary"],
+  "properties": {
+    "schema_version": { "const": "aerial_source_evidence_v1.1.0" }, "artifact_id": { "const": "aerial-source-evidence-v1" },
+    "status": { "const": "local_exact_bodies_verified_durable_archive_pending_coordinator" }, "local_locator_template": { "const": "/private/path/aerial-source-evidence-v1-private-snapshot" },
+    "durable_locator": { "type": "null" }, "archive_sha256": { "type": "null" }, "archive_bytes": { "type": "null" },
+    "media_tree_sha256": { "$ref": "#/$defs/hash" }, "media_bytes": { "const": 946387779 },
+    "members": { "type": "array", "minItems": 44, "maxItems": 44, "uniqueItems": true, "items": { "$ref": "#/$defs/member" } },
+    "archive_plan": { "type": "object", "additionalProperties": false, "required": ["format", "required_members", "upload_target_class", "coordinator_actions"], "properties": { "format": { "const": "pending_phase_b_deterministic_archive_contract" }, "required_members": { "const": "22 exact official media bodies plus 22 sanitized transport receipts" }, "upload_target_class": { "const": "private_durable_object_store" }, "coordinator_actions": { "type": "array", "minItems": 1, "maxItems": 1, "items": { "const": "await Phase B archive/publication contract" } } } },
+    "security_boundary": { "type": "object", "additionalProperties": false, "required": ["raw_sidecars_archived", "cookies_archived", "signed_urls_archived", "query_values_archived", "exact_media_and_sanitized_receipts_only"], "properties": { "raw_sidecars_archived": { "const": false }, "cookies_archived": { "const": false }, "signed_urls_archived": { "const": false }, "query_values_archived": { "const": false }, "exact_media_and_sanitized_receipts_only": { "const": true } } }
+  },
+  "$defs": {
+    "hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "member": { "type": "object", "additionalProperties": false, "required": ["path", "bytes", "sha256", "member_kind"], "properties": { "path": { "type": "string", "pattern": "^(media/[0-9]+\\.(jpg|tif)|receipts/[0-9]+\\.json)$" }, "bytes": { "type": "integer", "minimum": 1 }, "sha256": { "$ref": "#/$defs/hash" }, "member_kind": { "enum": ["exact_official_media", "sanitized_transport_receipt"] } } }
+  }
+}

@@ -1,1 +1,130 @@
-{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","required":["schema_version","artifact_id","issue","issue_complete","authority_status","production_mutation","paid_gpu_launched","counts","externally_blocked","limitations"],"properties":{"schema_version":{"const":"aerial_source_evidence_v1.0.0"},"artifact_id":{"const":"aerial-source-evidence-v1"},"issue":{"const":90},"issue_complete":{"const":false},"authority_status":{"const":"candidate_held_external_review_required"},"production_mutation":{"const":false},"paid_gpu_launched":{"const":false},"counts":{"type":"object"},"externally_blocked":{"type":"array","minItems":2},"limitations":{"type":"array","minItems":3}}}
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "issue",
+    "issue_complete",
+    "authority_status",
+    "production_mutation",
+    "paid_gpu_launched",
+    "counts",
+    "blockers",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "aerial_source_evidence_v1.1.0"
+    },
+    "artifact_id": {
+      "const": "aerial-source-evidence-v1"
+    },
+    "issue": {
+      "const": 90
+    },
+    "issue_complete": {
+      "const": false
+    },
+    "authority_status": {
+      "const": "candidate_held_external_review_required"
+    },
+    "production_mutation": {
+      "const": false
+    },
+    "paid_gpu_launched": {
+      "const": false
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidates",
+        "components",
+        "phase_d_selected",
+        "reserves",
+        "predecessor_held_preserved",
+        "media_bytes",
+        "exact_media_hashes",
+        "header_dimensions_verified",
+        "pixel_decode_verified",
+        "georeference_proposals",
+        "accepted_coordinates",
+        "accepted_measurements",
+        "accepted_claims",
+        "verified_dossiers",
+        "tasks"
+      ],
+      "properties": {
+        "candidates": {
+          "const": 22
+        },
+        "components": {
+          "const": 22
+        },
+        "phase_d_selected": {
+          "const": 20
+        },
+        "reserves": {
+          "const": 2
+        },
+        "predecessor_held_preserved": {
+          "const": 4
+        },
+        "media_bytes": {
+          "const": 946387779
+        },
+        "exact_media_hashes": {
+          "const": 22
+        },
+        "header_dimensions_verified": {
+          "const": 22
+        },
+        "pixel_decode_verified": {
+          "const": 22
+        },
+        "georeference_proposals": {
+          "const": 0
+        },
+        "accepted_coordinates": {
+          "const": 0
+        },
+        "accepted_measurements": {
+          "const": 0
+        },
+        "accepted_claims": {
+          "const": 0
+        },
+        "verified_dossiers": {
+          "const": 0
+        },
+        "tasks": {
+          "const": 0
+        }
+      }
+    },
+    "blockers": {
+      "type": "array",
+      "maxItems": 2,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "durable_archive_upload_and_byte_identical_readback_receipt_required",
+          "fresh_independent_external_source_review_required"
+        ]
+      },
+      "minItems": 2
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

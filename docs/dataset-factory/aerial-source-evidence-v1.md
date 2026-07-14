@@ -2,7 +2,23 @@
 
 `aerial-source-evidence-v1` is the candidate-only Gate F evidence contract. It binds all 20 Phase D aerial records plus the deterministic next two component-distinct Gold reserves (`10153`, rank 31; `9504`, rank 32) to 22 unique Visual Family Graph components, exact official media bytes, decode dimensions, sanitized transport facts, source/rights/attribution records, and explicit high-risk abstentions.
 
-The 22 originals total 946,387,779 bytes: 20 TIFFs and two JPEGs. All decoded successfully. Exact bodies are not committed. The tracked private-snapshot descriptor binds their 22-member media tree and requires a future private deterministic archive containing those media plus 22 sanitized receipts. Cloud upload/readback and independent Gate E review remain coordinator work; therefore the tracked authority is `candidate_held_external_review_required`, issue completion is false, and the registry row is candidate-only.
+The 22 originals total 946,387,779 bytes: 20 TIFFs and two JPEGs. `sharp` 0.33.5/libvips 8.15.3 fully decoded every image and computed pixel statistics; header-only parsing does not count as pixel verification. Exact bodies are not committed. Every sanitized transport receipt binds the raw `.meta`, `.headers`, and `.probe` sidecars by bytes and SHA-256. TIFF probes are exact media-prefix ranges with HTTP 206; the two JPEG probes are byte-identical full bodies with HTTP 200.
+
+The pending private-snapshot descriptor binds the 22 exact media members and 22 sanitized receipts, but Phase A intentionally does not define archive packing, durable readback, or publication. Cloud upload/readback and independent Gate E review remain future coordinator work; therefore the tracked authority is `candidate_held_external_review_required`, issue completion is false, and the registry row is candidate-only.
+
+## Official source bodies
+
+The exact new CKAN bodies are stored outside git at `/tmp/issue90-gate-f-remediation-sources-v1`. The tracked `source-body-evidence-v1.json` contains permitted bounded representations and pins all ten private body hashes, all 22 structured row hashes, package/resource joins, source-family IDs, author, license, and required credit.
+
+| Package | Family | Exact package body SHA-256 |
+|---|---|---|
+| `57f56aa9-1284-42d0-8b1a-336e66cd6de9` | oblique 1960-1992 | `08c49423cd603de776034ddced8a7204266eb3f206a84e40a7fb566f534e25f6` |
+| `6555c320-77bf-4478-a3d2-c29733a7046c` | vertical 1958-1975 | `227f3cfc8d09946218566b21fee78472c5ca354f467cf5bcec0193d68ec9fb24` |
+| `446b4220-6928-42eb-8d95-da0c67f22bc8` | vertical 1947-1949 | `6d3cf41d58d091e38d219b938d2167ea28b0d1369f6583fbddac569c47c145d6` |
+
+The applicable resources are oblique CSV `0ef12a2f-da90-49fb-8c46-89024edece54`, corrected 1947-1949 CSV `09a0893e-3142-4950-8c54-1250540bde13`, and exact year CSVs from the vertical package for 1958, 1962, 1964, 1966, and 1971. All three packages state author `Service du greffe - Section des archives`, CC BY, and required credit exactly `Archives de la Ville de Montréal`.
+
+The current oblique download physically publishes five columns, including combined `Titre / Photographe / Dates`; the source artifact also records the seven-field logical schema `Cote`, `Titre`, `Date`, `Nom du photographe`, `Description`, `Hyperliens`, and `Mention de crédits`. Reportage-scoped values are explicitly marked `present_reportage_scope`. Eleven vertical records have photographers explicitly marked `missing_in_applicable_csv_row`; no placeholder is promoted into attribution. The CSV text `Cote. Nom du photographe. Archives de la Ville de Montréal` is retained only as `placeholder_not_complete_attribution` evidence and is never used as required credit.
 
 ## Media outcomes
 
@@ -37,16 +53,16 @@ Record `10153` remains a reserve despite its promoted aerial-mode label: the bou
 
 The four pilot aerial dispositions (`8132`, `8134`, `8139`, `8143`) remain held. Every Gate F record is held, and exact location, scale, footprint, area, acreage, distance, land use, and measurement all abstain. No georeference proposal is authored because no independently reviewed authoritative map/index body supports one. A future proposal must identify at least three distinct control-point IDs and the authoritative body supporting each; measurement additionally requires accepted scale evidence.
 
-Official City metadata, source URLs, and same-family records are not independent pictured-location corroboration. The tracked aerial, license, and CC BY bodies inherit exact predecessor hashes but remain held for fresh bounded Gate E review. Acquisition does not increase dossier or task counts.
+Official City metadata, source URLs, year labels, index descriptions, and same-family records are not independent pictured-location, scale, or georeference corroboration. CKAN rights and attribution facts are exact, but record-level applicability remains held for fresh bounded Gate E review. Acquisition does not increase dossier or task counts.
 
 ## Verification
 
 ```bash
 npm run dataset-factory:aerial-source-evidence-verify-v1
-npm run dataset-factory:aerial-source-evidence-verify-v1 -- --media-root /private/acquisition/root
+npm run dataset-factory:aerial-source-evidence-verify-v1 -- --media-root /tmp/mtl-gate-f-media --source-root /tmp/issue90-gate-f-remediation-sources-v1
 npm run dataset-factory:aerial-source-evidence-self-test-v1
-npm run dataset-factory:aerial-source-evidence-integration-test-v1 -- --media-root /private/acquisition/root
+npm run dataset-factory:aerial-source-evidence-integration-test-v1 -- --media-root /tmp/mtl-gate-f-media --source-root /tmp/issue90-gate-f-remediation-sources-v1
 npm run dataset-factory:artifacts:check -- --verify-files --verify-required-only --require dfv0_aerial_source_evidence_v1_candidate
 ```
 
-Offline tracked verification checks schemas, predecessor pins, member substitution, component uniqueness, disposition preservation, abstentions, descriptor tree, and candidate registry authority. Supplying the private root additionally re-hashes and decodes all 22 exact originals. Integration rebuilds the five tracked files from exact private bodies and requires byte identity. The self-test attacks component identity, abstention state, and registry digest authority.
+Offline tracked verification checks strict schemas, exact source/body/row pins, package-resource-family-record joins, rights and attribution joins, raw-sidecar receipt semantics, all cross-derived counts, predecessor pins, component uniqueness, abstentions, descriptor tree, and candidate registry authority. Supplying both private roots additionally re-hashes every exact body and sidecar and fully decodes all 22 originals. Integration rebuilds all six tracked candidate files and requires byte identity. The resealed self-test attacks rights, metadata, claims, status, archive member representations, source family/row/proposition identity, attribution placeholders, components, media, sidecars, predecessors, and truncated pixel data.
