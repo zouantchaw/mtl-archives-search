@@ -19,7 +19,7 @@
     "reviewer": {
       "type": "object", "additionalProperties": false,
       "required": ["reviewer_id", "session_id", "model", "reasoning_effort", "reviewed_at", "independent_of"],
-      "properties": { "reviewer_id": { "type": "string", "minLength": 1 }, "session_id": { "type": "string", "minLength": 1 }, "model": { "const": "gpt-5.6-sol" }, "reasoning_effort": { "const": "high" }, "reviewed_at": { "type": "string", "format": "date-time" }, "independent_of": { "const": ["implementation", "acquisition", "dossier_review"] } }
+      "properties": { "reviewer_id": { "type": "string", "minLength": 1, "pattern": "^\\S(?:[^\\r\\n]*\\S)?$" }, "session_id": { "type": "string", "minLength": 1, "pattern": "^\\S(?:[^\\r\\n]*\\S)?$" }, "model": { "const": "gpt-5.6-sol" }, "reasoning_effort": { "const": "high" }, "reviewed_at": { "type": "string", "format": "date-time" }, "independent_of": { "const": ["implementation", "acquisition", "dossier_review"] } }
     },
     "disposition": {
       "type": "object", "additionalProperties": false,
