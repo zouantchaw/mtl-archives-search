@@ -1,0 +1,168 @@
+{
+  "schema_version": "verified_dossiers_v1.0.0",
+  "dossier_id": "verified-dossier-candidate:14135",
+  "state": "candidate_independent_review_required",
+  "fully_verified": false,
+  "source_acquisition_only": false,
+  "expected_review_disposition": "independent_review_required",
+  "record": {
+    "record_id": "mtl_archives_metadata_14135.json",
+    "numeric_id": 14135,
+    "component_id": "leakage-component:c0b6337713bf7ab60cff872ffdd261df920926ed6103e26a2674a8f57e8f9d17",
+    "split": "train",
+    "phase_d_selection_index": 40,
+    "stratum": "aerial"
+  },
+  "predecessors": {
+    "phase_d": {
+      "artifact_id": "dfv0_issue69_phase_d_scale_v1_20260713",
+      "descriptor": {
+        "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/descriptor-v1.json",
+        "sha256": "1e72fb1fd74ad12b99de878ad97da9386afccdf77e7f0926811775dd416c48ce",
+        "bytes": 4098
+      },
+      "selection": {
+        "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+        "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+        "bytes": 4243798
+      }
+    },
+    "gate_e": {
+      "artifact_id": "dfv0_reviewed_source_evidence_v1",
+      "descriptor": {
+        "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/descriptor-v1.json",
+        "sha256": "af25f11f922bbd230e7372c27c2fd4d925be9cc95ea7ce78baa245461fc4efd8",
+        "bytes": 4210
+      }
+    },
+    "gate_f": {
+      "artifact_id": "dfv0_aerial_source_evidence_authority_v1_publication",
+      "descriptor": {
+        "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/final-descriptor-v1.json",
+        "sha256": "ab0936be1728a54e36f0fe8ed9d2e308b11a8bf54e2a9d182c87ba2187952eae",
+        "bytes": 2530
+      }
+    },
+    "canonical_image_recovery": {
+      "artifact_id": "canonical_image_recovery_v1",
+      "descriptor": {
+        "path": "docs/dataset-factory/fixtures/canonical-image-recovery-v1/inspection-derivatives/manifest-v1.json",
+        "sha256": "be840314e48969e8652f7a175a6d5f7305b8f26c1dadcac92e0a8a96c933689f",
+        "bytes": 64535
+      }
+    }
+  },
+  "review_pixels": {
+    "path": "docs/dataset-factory/fixtures/verified-dossiers-v1/review-pixels/14135.jpg",
+    "sha256": "aec0368d87f5aa7ffd3630eb8e6068d18e5e9d0140f67cbb062485a03e141056",
+    "bytes": 172055,
+    "format": "jpeg",
+    "width": 1017,
+    "height": 1024,
+    "full_decode_verified": true,
+    "evidence_declaration": "whole_image"
+  },
+  "rights": {
+    "license_id": "cc-by-4.0",
+    "attribution": "Archives de la Ville de Montréal",
+    "commercial_use_allowed": true,
+    "complete": true,
+    "authority": "gate_f_accepted_source_media_rights_attribution"
+  },
+  "archive_metadata": {
+    "evidence_class": "archive_metadata_report",
+    "name": "mtl_archives_metadata_14135.json",
+    "date": "",
+    "cote": "",
+    "source_urls": [
+      "http://depot.ville.montreal.qc.ca/vues-aeriennes-obliques-1960-1969/VM94-B164-226.tif"
+    ],
+    "disclaimer": "Reported archive metadata; not asserted as independent historical truth."
+  },
+  "visual_claims": [
+    {
+      "claim_id": "visual:14135:image-mode",
+      "statement": "The reviewed pixels are classified as image mode aerial_oblique.",
+      "predicate": "image_mode",
+      "value": "aerial_oblique",
+      "evidence": {
+        "declaration": "whole_image",
+        "normalized_bbox": null,
+        "review_row_sha256": "e7b02eb86875b1cc3313d885dcee8d7ee6f9e45d041a9169dd478fd1a638c158",
+        "target": "image_mode"
+      },
+      "boundary": "Visual classification only; no identity, place, date, land-use, scale, measurement, OCR, brand, or entity claim."
+    }
+  ],
+  "external_claims": [],
+  "alternatives": {
+    "held": [
+      {
+        "proposition": "archive-reported identity, date, and location",
+        "reason": "Archive metadata is reported but not independently established by this dossier."
+      }
+    ],
+    "rejected": [
+      {
+        "proposition": "unreviewed OCR, brand, entity, or place promotion",
+        "reason": "No such promotion is allowed from candidate pixels or metadata."
+      }
+    ],
+    "abstained": [
+      {
+        "category": "identity",
+        "reason": "No accepted dossier-level evidence establishes this category."
+      },
+      {
+        "category": "location",
+        "reason": "No accepted dossier-level evidence establishes this category."
+      },
+      {
+        "category": "georef",
+        "reason": "No accepted dossier-level evidence establishes this category."
+      },
+      {
+        "category": "scale",
+        "reason": "No accepted dossier-level evidence establishes this category."
+      },
+      {
+        "category": "land_use",
+        "reason": "No accepted dossier-level evidence establishes this category."
+      },
+      {
+        "category": "measurement",
+        "reason": "No accepted dossier-level evidence establishes this category."
+      }
+    ]
+  },
+  "contradictions": [],
+  "uncertainty": {
+    "statement": "Candidate claims are limited to accepted/adjudicated visual classifications and reported metadata labels.",
+    "unresolved": [
+      "historical identity",
+      "exact location",
+      "georeference",
+      "scale",
+      "land use",
+      "measurement"
+    ]
+  },
+  "author": {
+    "identity": "codex-sol-medium-gate-g-implementation",
+    "session_id": "issue91-gate-g-implementation-20260714",
+    "role": "candidate_dossier_author_and_implementation"
+  },
+  "independent_review": {
+    "required": true,
+    "completed": false,
+    "reviewer": null,
+    "disposition": null,
+    "required_attestations": [
+      "visual_evidence",
+      "metadata_labeling",
+      "rights_attribution",
+      "uncertainty",
+      "projection_fidelity"
+    ]
+  }
+}

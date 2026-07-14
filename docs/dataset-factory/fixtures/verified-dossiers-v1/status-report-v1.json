@@ -1,0 +1,20 @@
+{
+  "schema_version": "verified_dossiers_status_v1.0.0",
+  "artifact_id": "dfv0_verified_dossiers_v1_candidate_20260714",
+  "state": "candidate_independent_review_required",
+  "counts": {
+    "candidates": 36,
+    "aerial": 20,
+    "ground": 16,
+    "expected_hold": 4,
+    "fully_verified": 0,
+    "accepted": 0,
+    "held": 0,
+    "rejected": 0,
+    "benchmark_tasks": 0,
+    "search_tasks": 0
+  },
+  "production_mutation": false,
+  "paid_gpu": false,
+  "issue_complete": false
+}
