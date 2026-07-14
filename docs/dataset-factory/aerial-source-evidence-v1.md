@@ -25,7 +25,23 @@ npm run dataset-factory:aerial-authority-v1 -- seal-archived --candidate "$PWD/d
 npm run dataset-factory:aerial-authority-v1 -- verify-archived --archived /absolute/ARCHIVED_CANDIDATE --archive /tmp/mtl-gate-f-private/aerial-source-evidence-v1.tar.gz
 ```
 
-This phase stops at `archived_candidate_external_review_required`. It does not create or validate an independent reviewer receipt and cannot publish authority.
+Phase B stops at `archived_candidate_external_review_required`; Phase C below is the only path from that state to source authority.
+
+## External review and one-way publication
+
+Phase C generates only a blank, hash-bound review template. A fresh external reviewer must use model `gpt-5.6-sol` with reasoning effort `high`, supply distinct `reviewer_id` and `session_id`, attest independence from implementation, acquisition, and dossier review, and author all 22 dispositions outside this implementation session. The receipt may accept source/media/rights/attribution evidence completeness. Location, georef, scale, land use, and measurement must remain `held` or `abstained`; georeference proposals remain null and accepted claims, dossiers, and tasks remain zero.
+
+Reviewer inputs are the complete archived-candidate directory, the private archive through its durable readback binding, and the generated blank template. The template binds both candidate descriptors/trees, evidence and source-body ledgers, all ten body pins, source families and proposition hashes, archive/readback facts, predecessor pins, direct lineage families, and all 22 record/component/media/transport identities.
+
+```bash
+npm run dataset-factory:aerial-authority-review-template-v1 -- --archived /absolute/ARCHIVED_CANDIDATE --output /absolute/BLANK_SOL_HIGH_REVIEW.json
+# Fresh external Sol High reviewer writes /absolute/COMPLETED_SOL_HIGH_REVIEW.json; implementation does not fill it.
+npm run dataset-factory:aerial-authority-validate-review-v1 -- --archived /absolute/ARCHIVED_CANDIDATE --receipt /absolute/COMPLETED_SOL_HIGH_REVIEW.json
+npm run dataset-factory:aerial-authority-publish-v1 -- --archived /absolute/ARCHIVED_CANDIDATE --receipt /absolute/COMPLETED_SOL_HIGH_REVIEW.json --output /absolute/NEW_PUBLISHED_AUTHORITY
+npm run dataset-factory:aerial-authority-verify-published-v1 -- --output /absolute/NEW_PUBLISHED_AUTHORITY --archive /tmp/mtl-gate-f-private/aerial-source-evidence-v1.tar.gz
+```
+
+Publication requires a new output path, byte-preserves every archived-candidate file and the exact external receipt, and derives the review ledger, final status, final descriptor, and authoritative registry row from that receipt. Reusing an output path or attempting a second publication is refused. Issue #90 remains incomplete because semantic location/georeference/scale authority is intentionally absent.
 
 ## Official source bodies
 
