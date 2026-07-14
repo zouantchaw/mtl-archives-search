@@ -1,0 +1,23 @@
+{
+  "schema_version": "aerial_source_evidence_authority_v1.0.0",
+  "artifact_id": "aerial-source-evidence-v1",
+  "status": "completed",
+  "provider": "r2",
+  "bucket": "wiel-codex-worker-cache",
+  "object_key": "artifacts/mtl-archives/issue90-aerial-source-evidence/4a2629f8bdad65d4c070d3b0c20030574a810badf9851017911bd2d85b750999.tar.gz",
+  "durable_locator": "r2://wiel-codex-worker-cache/artifacts/mtl-archives/issue90-aerial-source-evidence/4a2629f8bdad65d4c070d3b0c20030574a810badf9851017911bd2d85b750999.tar.gz",
+  "archive_sha256": "4a2629f8bdad65d4c070d3b0c20030574a810badf9851017911bd2d85b750999",
+  "archive_bytes": 702964928,
+  "uploaded_at": "2026-07-14T10:18:04Z",
+  "local": {
+    "sha256": "4a2629f8bdad65d4c070d3b0c20030574a810badf9851017911bd2d85b750999",
+    "bytes": 702964928
+  },
+  "readback": {
+    "status": "byte_identical",
+    "observed_at": "2026-07-14T12:48:40Z",
+    "sha256": "4a2629f8bdad65d4c070d3b0c20030574a810badf9851017911bd2d85b750999",
+    "bytes": 702964928
+  },
+  "signed_url": null
+}

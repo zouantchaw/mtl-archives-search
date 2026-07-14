@@ -1,0 +1,72 @@
+{
+  "schema_version": "aerial_source_evidence_authority_v1.0.0",
+  "artifact_id": "aerial-source-evidence-v1",
+  "authority_status": "published_external_source_authority",
+  "authority_member": "independent-source-authority-receipt-v1.json",
+  "preserved_candidate_descriptor": "candidate-descriptor-v1.json",
+  "preserved_archived_candidate_descriptor": "archived-candidate-descriptor-v1.json",
+  "members": [
+    {
+      "path": "archived-candidate-descriptor-v1.json",
+      "bytes": 2063,
+      "sha256": "0fa3e055d2763779455b7642a2801cf6a3ae36254002626a56d1ed38b8dcfaf9"
+    },
+    {
+      "path": "candidate-descriptor-v1.json",
+      "bytes": 1266,
+      "sha256": "d8f2859e64f869f259c1f513b922d33f80f13e54dc609cd19ba718d52c485f0a"
+    },
+    {
+      "path": "descriptor-v1.json",
+      "bytes": 1266,
+      "sha256": "d8f2859e64f869f259c1f513b922d33f80f13e54dc609cd19ba718d52c485f0a"
+    },
+    {
+      "path": "evidence-ledger-v1.json",
+      "bytes": 134881,
+      "sha256": "ddcfa31a319ddafca533b83eb9e86c0afdc83235f8ab697f5c57db0f6fac5fd2"
+    },
+    {
+      "path": "external-archive-descriptor-v1.json",
+      "bytes": 9925,
+      "sha256": "81e486ea0978175a2ec0f8a4c7349d757a7fa90589e1a4530c51cfc5a63499b0"
+    },
+    {
+      "path": "external-archive-upload-readback-receipt-v1.json",
+      "bytes": 1025,
+      "sha256": "5cd5cf45e67f85255714d00b7eabe8300f7215757675470551125674f12fb5e3"
+    },
+    {
+      "path": "final-status-v1.json",
+      "bytes": 609,
+      "sha256": "dc8f363b6b2e3f1d1dba8bb0ea37fbc3b33469a9f2a29d1b688f3ec3450399cf"
+    },
+    {
+      "path": "independent-source-authority-receipt-v1.json",
+      "bytes": 46295,
+      "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383"
+    },
+    {
+      "path": "independent-source-review-receipt.template-v1.json",
+      "bytes": 6319,
+      "sha256": "d13e0c7a8526e47318de2ca9588308e932a947f635e58e8ec9265b74389b167d"
+    },
+    {
+      "path": "review-ledger-v1.json",
+      "bytes": 17017,
+      "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b"
+    },
+    {
+      "path": "source-body-evidence-v1.json",
+      "bytes": 55003,
+      "sha256": "c48f99dda2da5ee10265da73151fbb6d85649cae8122512571cb89f19e4d14eb"
+    },
+    {
+      "path": "status-report-v1.json",
+      "bytes": 1128,
+      "sha256": "ec5f686c1f9c85749b7691aa03b0a3a1c002bb4d6a3a541006cc6e8d8bb2c00d"
+    }
+  ],
+  "tree_sha256": "29cd419b027cabd8435c5106dc924a66d9532ce6f07eed3b1d510344d9c8bfe5",
+  "production_mutation": false
+}

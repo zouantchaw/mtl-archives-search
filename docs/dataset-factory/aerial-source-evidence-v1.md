@@ -1,10 +1,10 @@
 # Issue 90 Gate F Aerial Source Evidence v1
 
-`aerial-source-evidence-v1` is the candidate-only Gate F evidence contract. It binds all 20 Phase D aerial records plus the deterministic next two component-distinct Gold reserves (`10153`, rank 31; `9504`, rank 32) to 22 unique Visual Family Graph components, exact official media bytes, decode dimensions, sanitized transport facts, source/rights/attribution records, and explicit high-risk abstentions.
+`aerial-source-evidence-v1` is the published Gate F source-authority contract. It binds all 20 Phase D aerial records plus the deterministic next two component-distinct Gold reserves (`10153`, rank 31; `9504`, rank 32) to 22 unique Visual Family Graph components, exact official media bytes, decode dimensions, sanitized transport facts, independently reviewed source/rights/attribution records, and explicit high-risk abstentions.
 
 The 22 originals total 946,387,779 bytes: 20 TIFFs and two JPEGs. `sharp` 0.33.5/libvips 8.15.3 fully decoded every image and computed pixel statistics; header-only parsing does not count as pixel verification. Exact bodies are not committed. Every sanitized transport receipt binds the raw `.meta`, `.headers`, and `.probe` sidecars by bytes and SHA-256. TIFF probes are exact media-prefix ranges with HTTP 206; the two JPEG probes are byte-identical full bodies with HTTP 200.
 
-The private-snapshot descriptor binds the 22 exact media members and 22 sanitized receipts. Phase B defines deterministic local packing plus an external upload/readback seal, but performs no cloud write. Independent Gate E review and publication remain future work; therefore the tracked authority is `candidate_held_external_review_required`, issue completion is false, and the registry row is candidate-only.
+The private-snapshot descriptor binds the 22 exact media members and 22 sanitized receipts. The deterministic archive, external upload/readback seal, and independent Sol High review are complete. The coordinator publication was imported byte-for-byte to `docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1` under approved receipt SHA-256 `784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383`, reviewed at `2026-07-14T15:40:28Z`. Tracked authority is `published_external_source_authority` for source/media/rights/attribution only; all semantic abstentions remain and issue completion is false.
 
 ## Deterministic private archive and archived candidate
 
@@ -49,6 +49,8 @@ Every caught failure removes sibling staging and removes the final reservation o
 The canonical Dataset Factory v0 registry boundary is an explicit 12-file `file_set`: the nine archived-candidate files plus `independent-source-authority-receipt-v1.json`, `review-ledger-v1.json`, and `final-status-v1.json`. `storage.members` is that exact sorted list. The row uses `object_store` / `external_object_store`, the coordinator-selected final basename as its locator, `review_assisted` generation, `report_metadata` time basis, and `sorted_tree_manifest` scope. Its digest is SHA-256 over one UTF-8 line per sorted registered member in the canonical checker form `<path>\t<file_sha256>\t<file_bytes>\n`; `file_count` is exactly 12 and `byte_count` is the sum of those same 12 complete files.
 
 `final-descriptor-v1.json`, `authoritative-registry-row-v1.json`, and `publication-commit-v1.json` are deliberately outside the registry member/count/digest boundary to keep it acyclic. They are not unprotected: the descriptor independently binds the same 12 members, the commit marker hash-binds the authority receipt, final descriptor, and registry row, and `verify-published` requires and rederives the complete exact 15-file directory before accepting authority. Published verification also submits the generated row and restored 12-member file set to the canonical v0 schema/checker, in addition to the stricter aerial schema.
+
+The tracked closeout adds a separate global registry row, `dfv0_aerial_source_evidence_authority_v1_publication`, over the complete 15-file imported directory. Its canonical `sorted_tree_manifest` digest is `fad63cb7027e0e1f62bc02070c47cccc14342c736c62352545aa14f380371c11`, with exactly 15 files and 282,344 bytes. This outer tracked-directory registration does not alter the byte-identical inner 12-member authority row. Because the internal locator records the coordinator directory basename, tracked verification supplies `--registry-locator published-authority-v1` while independently checking the tracked outer locator through the global registry.
 
 ## Official source bodies
 
@@ -106,6 +108,8 @@ npm run dataset-factory:aerial-source-evidence-verify-v1
 npm run dataset-factory:aerial-source-evidence-verify-v1 -- --media-root /tmp/mtl-gate-f-media --source-root /tmp/issue90-gate-f-remediation-sources-v1
 npm run dataset-factory:aerial-source-evidence-self-test-v1
 npm run dataset-factory:aerial-source-evidence-integration-test-v1 -- --media-root /tmp/mtl-gate-f-media --source-root /tmp/issue90-gate-f-remediation-sources-v1
+npm run dataset-factory:aerial-authority-verify-tracked-v1 -- --archive /tmp/mtl-gate-f-private-coordinator/aerial-source-evidence-v1.readback.tar.gz
+npm run dataset-factory:artifacts:check --workspace=@mtl-archives/scripts -- --verify-files --verify-required-only --require dfv0_aerial_source_evidence_authority_v1_publication
 npm run dataset-factory:artifacts:check -- --verify-files --verify-required-only --require dfv0_aerial_source_evidence_v1_candidate
 ```
 

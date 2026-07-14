@@ -1,0 +1,238 @@
+{
+  "schema_version": "aerial_source_evidence_v1.0.0",
+  "artifact_id": "aerial-source-evidence-v1",
+  "stage": "independent_gate_e_source_review",
+  "status": "not_started",
+  "candidate_descriptor_sha256": null,
+  "reviewer": null,
+  "reviewed_at": null,
+  "required_attestations": [
+    "reviewer_is_independent_of_implementation",
+    "exact_hash_bound_bodies_reviewed",
+    "availability_and_metadata_are_not_location_support",
+    "no_georeference_without_three_distinct_control_points_and_authoritative_basis",
+    "no_measurement_without_accepted_georeference_and_scale"
+  ],
+  "dispositions": [
+    {
+      "numeric_id": 8132,
+      "source_body_disposition": "held",
+      "location": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "notes": ""
+    },
+    {
+      "numeric_id": 8134,
+      "source_body_disposition": "held",
+      "location": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "notes": ""
+    },
+    {
+      "numeric_id": 8139,
+      "source_body_disposition": "held",
+      "location": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "notes": ""
+    },
+    {
+      "numeric_id": 8143,
+      "source_body_disposition": "held",
+      "location": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "notes": ""
+    },
+    {
+      "numeric_id": 12115,
+      "source_body_disposition": "held",
+      "location": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "notes": ""
+    },
+    {
+      "numeric_id": 11923,
+      "source_body_disposition": "held",
+      "location": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "notes": ""
+    },
+    {
+      "numeric_id": 4501,
+      "source_body_disposition": "held",
+      "location": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "notes": ""
+    },
+    {
+      "numeric_id": 14135,
+      "source_body_disposition": "held",
+      "location": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "notes": ""
+    },
+    {
+      "numeric_id": 12623,
+      "source_body_disposition": "held",
+      "location": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "notes": ""
+    },
+    {
+      "numeric_id": 7929,
+      "source_body_disposition": "held",
+      "location": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "notes": ""
+    },
+    {
+      "numeric_id": 9844,
+      "source_body_disposition": "held",
+      "location": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "notes": ""
+    },
+    {
+      "numeric_id": 9092,
+      "source_body_disposition": "held",
+      "location": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "notes": ""
+    },
+    {
+      "numeric_id": 13389,
+      "source_body_disposition": "held",
+      "location": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "notes": ""
+    },
+    {
+      "numeric_id": 14965,
+      "source_body_disposition": "held",
+      "location": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "notes": ""
+    },
+    {
+      "numeric_id": 11836,
+      "source_body_disposition": "held",
+      "location": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "notes": ""
+    },
+    {
+      "numeric_id": 11993,
+      "source_body_disposition": "held",
+      "location": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "notes": ""
+    },
+    {
+      "numeric_id": 8432,
+      "source_body_disposition": "held",
+      "location": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "notes": ""
+    },
+    {
+      "numeric_id": 13272,
+      "source_body_disposition": "held",
+      "location": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "notes": ""
+    },
+    {
+      "numeric_id": 14813,
+      "source_body_disposition": "held",
+      "location": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "notes": ""
+    },
+    {
+      "numeric_id": 12117,
+      "source_body_disposition": "held",
+      "location": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "notes": ""
+    },
+    {
+      "numeric_id": 10153,
+      "source_body_disposition": "held",
+      "location": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "notes": ""
+    },
+    {
+      "numeric_id": 9504,
+      "source_body_disposition": "held",
+      "location": "abstained",
+      "scale": "abstained",
+      "land_use": "abstained",
+      "measurement": "abstained",
+      "georeference_proposal": null,
+      "notes": ""
+    }
+  ]
+}

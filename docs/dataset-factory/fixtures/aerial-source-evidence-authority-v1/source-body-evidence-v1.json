@@ -1,0 +1,1335 @@
+{
+  "schema_version": "aerial_source_evidence_v1.1.0",
+  "artifact_id": "aerial-source-evidence-v1",
+  "exact_private_source_root": "/tmp/issue90-gate-f-remediation-sources-v1",
+  "exact_bodies_tracked": false,
+  "oblique_published_physical_schema": [
+    "Cote (reportage)",
+    "Titre / Photographe / Dates",
+    "Description",
+    "Fichiers TIFF - 300 dpi (CLIQUEZ SUR LE LIEN)",
+    "Mention de crédits"
+  ],
+  "oblique_logical_schema": [
+    "Cote",
+    "Titre",
+    "Date",
+    "Nom du photographe",
+    "Description",
+    "Hyperliens",
+    "Mention de crédits"
+  ],
+  "packages": [
+    {
+      "source_id": "ckan-package-57f56aa9-1284-42d0-8b1a-336e66cd6de9",
+      "source_family_id": "archives-montreal-oblique-1960-1992",
+      "private_body": {
+        "path": "package-oblique-1960-1992.json",
+        "bytes": 7562,
+        "sha256": "08c49423cd603de776034ddced8a7204266eb3f206a84e40a7fb566f534e25f6"
+      },
+      "requested_url": "https://donnees.montreal.ca/api/3/action/package_show?id=57f56aa9-1284-42d0-8b1a-336e66cd6de9",
+      "rights_mode": "private_exact_public_body_with_tracked_bounded_representation",
+      "collection": {
+        "package_id": "57f56aa9-1284-42d0-8b1a-336e66cd6de9",
+        "title": "Vues aériennes obliques de l’île de Montréal, 1960-1992",
+        "author": "Service du greffe - Section des archives",
+        "license_id": "cc-by",
+        "license_title": "Creative Commons Attribution 4.0 International",
+        "exact_required_credit": "Archives de la Ville de Montréal",
+        "resource_ids": [
+          "0ef12a2f-da90-49fb-8c46-89024edece54"
+        ]
+      },
+      "propositions": [
+        {
+          "proposition_id": "oblique-1960-1992:collection",
+          "exact_text": "Vues aériennes obliques de l’île de Montréal, 1960-1992",
+          "text_sha256": "252bb66ba87deca64a9f92956ad74c867ba54c4b0f889e907dc8686a2b85d9de",
+          "review_status": "held_pending_independent_bounded_proposition_review"
+        },
+        {
+          "proposition_id": "oblique-1960-1992:license",
+          "exact_text": "cc-by|Creative Commons Attribution 4.0 International",
+          "text_sha256": "3d12f1b51d9506f1767e0cc1e77a99f66fa8e675a9cf7bd762f0ae0c82e02991",
+          "review_status": "held_pending_independent_bounded_proposition_review"
+        },
+        {
+          "proposition_id": "oblique-1960-1992:credit",
+          "exact_text": "Archives de la Ville de Montréal",
+          "text_sha256": "85d7fd224f388ae091e08dd8dba7ccd32d184815317e7c63055e1e3cf38ad96f",
+          "review_status": "held_pending_independent_bounded_proposition_review"
+        }
+      ]
+    },
+    {
+      "source_id": "ckan-package-6555c320-77bf-4478-a3d2-c29733a7046c",
+      "source_family_id": "archives-montreal-vertical-1958-1975",
+      "private_body": {
+        "path": "package-vertical-1958-1975.json",
+        "bytes": 60433,
+        "sha256": "227f3cfc8d09946218566b21fee78472c5ca354f467cf5bcec0193d68ec9fb24"
+      },
+      "requested_url": "https://donnees.montreal.ca/api/3/action/package_show?id=6555c320-77bf-4478-a3d2-c29733a7046c",
+      "rights_mode": "private_exact_public_body_with_tracked_bounded_representation",
+      "collection": {
+        "package_id": "6555c320-77bf-4478-a3d2-c29733a7046c",
+        "title": "Vues aériennes verticales de l'île de Montréal, 1958-1975",
+        "author": "Service du greffe - Section des archives",
+        "license_id": "cc-by",
+        "license_title": "Creative Commons Attribution 4.0 International",
+        "exact_required_credit": "Archives de la Ville de Montréal",
+        "resource_ids": [
+          "15624848-ffba-44b8-a92d-9e382bba511b",
+          "2df16f9d-663c-48a2-9f53-5a58be1d85b5",
+          "379921f4-1991-4a08-b900-0a72453ae28a",
+          "748bdb94-75d7-45df-9e7f-099c046a269a",
+          "78395826-e67e-467b-a017-29b03a156aa8",
+          "909eb60c-9530-4415-afec-4755bde192ab",
+          "9ab0c8c1-f4f3-4ea9-b6d5-d10018cebda2",
+          "bec2e474-e8d2-4bf0-8722-78f561ab92bc",
+          "c6e12ed5-8a9d-4559-a96c-f50689a41c44",
+          "d259d85d-a7ac-4ebd-8843-2ac6fd611017",
+          "d29a4e01-3cd3-4442-8864-5c5516641a77",
+          "d3206ff5-4e40-4713-abda-0fd498bbffb3",
+          "d53263dc-7df9-4cb4-a92e-e4be24ee7e18",
+          "e439c663-cd32-4709-bdb2-6473bd2a185a",
+          "ef51f063-9fc7-4b91-94b2-b5f0f76761f8",
+          "eff33c42-bad4-4d8c-9059-28e4b425b7e2"
+        ]
+      },
+      "propositions": [
+        {
+          "proposition_id": "vertical-1958-1975:collection",
+          "exact_text": "Vues aériennes verticales de l'île de Montréal, 1958-1975",
+          "text_sha256": "b32295b9a2e46465b87379ab86f49289a73a649203c225f548282c4909d05279",
+          "review_status": "held_pending_independent_bounded_proposition_review"
+        },
+        {
+          "proposition_id": "vertical-1958-1975:license",
+          "exact_text": "cc-by|Creative Commons Attribution 4.0 International",
+          "text_sha256": "3d12f1b51d9506f1767e0cc1e77a99f66fa8e675a9cf7bd762f0ae0c82e02991",
+          "review_status": "held_pending_independent_bounded_proposition_review"
+        },
+        {
+          "proposition_id": "vertical-1958-1975:credit",
+          "exact_text": "Archives de la Ville de Montréal",
+          "text_sha256": "85d7fd224f388ae091e08dd8dba7ccd32d184815317e7c63055e1e3cf38ad96f",
+          "review_status": "held_pending_independent_bounded_proposition_review"
+        }
+      ]
+    },
+    {
+      "source_id": "ckan-package-446b4220-6928-42eb-8d95-da0c67f22bc8",
+      "source_family_id": "archives-montreal-vertical-1947-1949",
+      "private_body": {
+        "path": "package-vertical-1947-1949.json",
+        "bytes": 16301,
+        "sha256": "6d3cf41d58d091e38d219b938d2167ea28b0d1369f6583fbddac569c47c145d6"
+      },
+      "requested_url": "https://donnees.montreal.ca/api/3/action/package_show?id=446b4220-6928-42eb-8d95-da0c67f22bc8",
+      "rights_mode": "private_exact_public_body_with_tracked_bounded_representation",
+      "collection": {
+        "package_id": "446b4220-6928-42eb-8d95-da0c67f22bc8",
+        "title": "Vues aériennes de l’île de Montréal, 1947-1949",
+        "author": "Service du greffe - Section des archives",
+        "license_id": "cc-by",
+        "license_title": "Creative Commons Attribution 4.0 International",
+        "exact_required_credit": "Archives de la Ville de Montréal",
+        "resource_ids": [
+          "09a0893e-3142-4950-8c54-1250540bde13",
+          "22144cd9-10e2-4e72-a74e-7b5b34a923f9",
+          "2948e9c1-d1de-4aa4-ba88-43201f8d5285"
+        ]
+      },
+      "propositions": [
+        {
+          "proposition_id": "vertical-1947-1949:collection",
+          "exact_text": "Vues aériennes de l’île de Montréal, 1947-1949",
+          "text_sha256": "8e5ed0f06443dd663437bafaa34270c8a7b054cd178edf02c5847f11e08fd106",
+          "review_status": "held_pending_independent_bounded_proposition_review"
+        },
+        {
+          "proposition_id": "vertical-1947-1949:license",
+          "exact_text": "cc-by|Creative Commons Attribution 4.0 International",
+          "text_sha256": "3d12f1b51d9506f1767e0cc1e77a99f66fa8e675a9cf7bd762f0ae0c82e02991",
+          "review_status": "held_pending_independent_bounded_proposition_review"
+        },
+        {
+          "proposition_id": "vertical-1947-1949:credit",
+          "exact_text": "Archives de la Ville de Montréal",
+          "text_sha256": "85d7fd224f388ae091e08dd8dba7ccd32d184815317e7c63055e1e3cf38ad96f",
+          "review_status": "held_pending_independent_bounded_proposition_review"
+        }
+      ]
+    }
+  ],
+  "record_rows": [
+    {
+      "numeric_id": 8132,
+      "source_family_id": "archives-montreal-vertical-1958-1975",
+      "package_source_id": "ckan-package-6555c320-77bf-4478-a3d2-c29733a7046c",
+      "resource_id": "9ab0c8c1-f4f3-4ea9-b6d5-d10018cebda2",
+      "private_csv_body": {
+        "path": "rows-vertical-1958.csv",
+        "bytes": 6965,
+        "sha256": "d89f8aa79354d48c07d5ad3844decc0cb23203888d021b07417c7a1e42371822"
+      },
+      "exact_row": {
+        "cote": {
+          "status": "present_exact_row",
+          "value": "VM97,S3,D02,P09-155"
+        },
+        "media_call_number": {
+          "status": "present_exact_media_url_path",
+          "value": "VM97-3_02_09-155"
+        },
+        "titre": {
+          "status": "missing_in_applicable_csv_row",
+          "value": null
+        },
+        "date": {
+          "status": "present_exact_row",
+          "value": "1958"
+        },
+        "photographer": {
+          "status": "missing_in_applicable_csv_row",
+          "value": null
+        },
+        "description": {
+          "status": "missing_in_applicable_csv_row",
+          "value": null
+        },
+        "media_url": "http://depot.ville.montreal.qc.ca/vues-aeriennes-1958/VM97-3_02_09-155.TIF",
+        "csv_credit_field": {
+          "status": "present_exact_row",
+          "value": "Archives de la Ville de Montréal"
+        }
+      },
+      "exact_row_sha256": "ed451cf7ed3ea613c5292ca04a6bf5613cec830b14ab51cb0e7043c4ca35b15d",
+      "exact_row_bytes": 738,
+      "bounded_propositions": [
+        {
+          "proposition_id": "8132:record-media-identity",
+          "exact_text": "8132|http://depot.ville.montreal.qc.ca/vues-aeriennes-1958/VM97-3_02_09-155.TIF|VM97,S3,D02,P09-155|1958",
+          "text_sha256": "2d9a885f97a5661e4ceb38d7242be593f3c1a2fc4c9e61c561f6a481d861cd7e",
+          "review_status": "held_pending_independent_bounded_proposition_review"
+        }
+      ],
+      "review_status": "held_pending_independent_bounded_proposition_review"
+    },
+    {
+      "numeric_id": 8134,
+      "source_family_id": "archives-montreal-vertical-1958-1975",
+      "package_source_id": "ckan-package-6555c320-77bf-4478-a3d2-c29733a7046c",
+      "resource_id": "9ab0c8c1-f4f3-4ea9-b6d5-d10018cebda2",
+      "private_csv_body": {
+        "path": "rows-vertical-1958.csv",
+        "bytes": 6965,
+        "sha256": "d89f8aa79354d48c07d5ad3844decc0cb23203888d021b07417c7a1e42371822"
+      },
+      "exact_row": {
+        "cote": {
+          "status": "present_exact_row",
+          "value": "VM97,S3,D02,P10-157"
+        },
+        "media_call_number": {
+          "status": "present_exact_media_url_path",
+          "value": "VM97-3_02_10-157"
+        },
+        "titre": {
+          "status": "missing_in_applicable_csv_row",
+          "value": null
+        },
+        "date": {
+          "status": "present_exact_row",
+          "value": "1958"
+        },
+        "photographer": {
+          "status": "missing_in_applicable_csv_row",
+          "value": null
+        },
+        "description": {
+          "status": "missing_in_applicable_csv_row",
+          "value": null
+        },
+        "media_url": "http://depot.ville.montreal.qc.ca/vues-aeriennes-1958/VM97-3_02_10-157.TIF",
+        "csv_credit_field": {
+          "status": "present_exact_row",
+          "value": "Archives de la Ville de Montréal"
+        }
+      },
+      "exact_row_sha256": "3f9cc82f1b9f015c4545e2095c87ed87af8b3e902be4eb670f6fe71f5cf02d3a",
+      "exact_row_bytes": 738,
+      "bounded_propositions": [
+        {
+          "proposition_id": "8134:record-media-identity",
+          "exact_text": "8134|http://depot.ville.montreal.qc.ca/vues-aeriennes-1958/VM97-3_02_10-157.TIF|VM97,S3,D02,P10-157|1958",
+          "text_sha256": "7c918a4daaa1f08ca5f92959416e2115ffa5df6d90cc5c63f9c80b4a655899b4",
+          "review_status": "held_pending_independent_bounded_proposition_review"
+        }
+      ],
+      "review_status": "held_pending_independent_bounded_proposition_review"
+    },
+    {
+      "numeric_id": 8139,
+      "source_family_id": "archives-montreal-vertical-1958-1975",
+      "package_source_id": "ckan-package-6555c320-77bf-4478-a3d2-c29733a7046c",
+      "resource_id": "9ab0c8c1-f4f3-4ea9-b6d5-d10018cebda2",
+      "private_csv_body": {
+        "path": "rows-vertical-1958.csv",
+        "bytes": 6965,
+        "sha256": "d89f8aa79354d48c07d5ad3844decc0cb23203888d021b07417c7a1e42371822"
+      },
+      "exact_row": {
+        "cote": {
+          "status": "present_exact_row",
+          "value": "VM97,S3,D02,P11-097"
+        },
+        "media_call_number": {
+          "status": "present_exact_media_url_path",
+          "value": "VM97-3_02_11-097"
+        },
+        "titre": {
+          "status": "missing_in_applicable_csv_row",
+          "value": null
+        },
+        "date": {
+          "status": "present_exact_row",
+          "value": "1958"
+        },
+        "photographer": {
+          "status": "missing_in_applicable_csv_row",
+          "value": null
+        },
+        "description": {
+          "status": "missing_in_applicable_csv_row",
+          "value": null
+        },
+        "media_url": "http://depot.ville.montreal.qc.ca/vues-aeriennes-1958/VM97-3_02_11-097.TIF",
+        "csv_credit_field": {
+          "status": "present_exact_row",
+          "value": "Archives de la Ville de Montréal"
+        }
+      },
+      "exact_row_sha256": "dbccdcc9f249a4bab1fd6a0e2c5480446a39d7003707fe8593cc93c65f411749",
+      "exact_row_bytes": 738,
+      "bounded_propositions": [
+        {
+          "proposition_id": "8139:record-media-identity",
+          "exact_text": "8139|http://depot.ville.montreal.qc.ca/vues-aeriennes-1958/VM97-3_02_11-097.TIF|VM97,S3,D02,P11-097|1958",
+          "text_sha256": "341b3c43d5d67e243452df6723fc2444b36ab0faceb36064d04c713c52f5ad26",
+          "review_status": "held_pending_independent_bounded_proposition_review"
+        }
+      ],
+      "review_status": "held_pending_independent_bounded_proposition_review"
+    },
+    {
+      "numeric_id": 8143,
+      "source_family_id": "archives-montreal-vertical-1958-1975",
+      "package_source_id": "ckan-package-6555c320-77bf-4478-a3d2-c29733a7046c",
+      "resource_id": "9ab0c8c1-f4f3-4ea9-b6d5-d10018cebda2",
+      "private_csv_body": {
+        "path": "rows-vertical-1958.csv",
+        "bytes": 6965,
+        "sha256": "d89f8aa79354d48c07d5ad3844decc0cb23203888d021b07417c7a1e42371822"
+      },
+      "exact_row": {
+        "cote": {
+          "status": "present_exact_row",
+          "value": "VM97,S3,D02,P12-097"
+        },
+        "media_call_number": {
+          "status": "present_exact_media_url_path",
+          "value": "VM97-3_02_12-097"
+        },
+        "titre": {
+          "status": "missing_in_applicable_csv_row",
+          "value": null
+        },
+        "date": {
+          "status": "present_exact_row",
+          "value": "1958"
+        },
+        "photographer": {
+          "status": "missing_in_applicable_csv_row",
+          "value": null
+        },
+        "description": {
+          "status": "missing_in_applicable_csv_row",
+          "value": null
+        },
+        "media_url": "http://depot.ville.montreal.qc.ca/vues-aeriennes-1958/VM97-3_02_12-097.TIF",
+        "csv_credit_field": {
+          "status": "present_exact_row",
+          "value": "Archives de la Ville de Montréal"
+        }
+      },
+      "exact_row_sha256": "00e6c547b96a4dc934ff6b01f1465001286eb9e17a19a28042666ea0f0413abf",
+      "exact_row_bytes": 738,
+      "bounded_propositions": [
+        {
+          "proposition_id": "8143:record-media-identity",
+          "exact_text": "8143|http://depot.ville.montreal.qc.ca/vues-aeriennes-1958/VM97-3_02_12-097.TIF|VM97,S3,D02,P12-097|1958",
+          "text_sha256": "b65b18d219c231efaaeb5e3ca1f34e08d5777dcbf08f73e289aa881a9dfe2aa2",
+          "review_status": "held_pending_independent_bounded_proposition_review"
+        }
+      ],
+      "review_status": "held_pending_independent_bounded_proposition_review"
+    },
+    {
+      "numeric_id": 12115,
+      "source_family_id": "archives-montreal-oblique-1960-1992",
+      "package_source_id": "ckan-package-57f56aa9-1284-42d0-8b1a-336e66cd6de9",
+      "resource_id": "0ef12a2f-da90-49fb-8c46-89024edece54",
+      "private_csv_body": {
+        "path": "rows-oblique-1960-1992.csv",
+        "bytes": 1171678,
+        "sha256": "7e26894578eb8a8f2fd032b0e9ea752f0e2ba5e4fd4f285c6928d2c6c33d0c65"
+      },
+      "exact_row": {
+        "cote": {
+          "status": "present_reportage_scope",
+          "value": "VM94-B055"
+        },
+        "media_call_number": {
+          "status": "present_exact_media_url_path",
+          "value": "VM94-B055-009"
+        },
+        "titre": {
+          "status": "present_reportage_scope",
+          "value": "Stade de Verdun - terrain et gradins"
+        },
+        "date": {
+          "status": "present_reportage_scope",
+          "value": "31 juillet 1969"
+        },
+        "photographer": {
+          "status": "present_reportage_scope",
+          "value": "Louis-Philippe Meunier"
+        },
+        "description": {
+          "status": "present_reportage_scope",
+          "value": "Stade de Verdun, Auditorium de Verdun et Piscine   (images 1-5, 7-10)."
+        },
+        "media_url": "http://depot.ville.montreal.qc.ca/vues-aeriennes-obliques-1960-1969/VM94-B055-009.tif",
+        "csv_credit_field": {
+          "status": "placeholder_not_complete_attribution",
+          "value": "Cote. Nom du photographe. Archives de la Ville de Montréal"
+        }
+      },
+      "exact_row_sha256": "95dbe730f8d4e338fa9bc373c3b446ac7cbbaeec73fbc0065b52b66b2f3b40c1",
+      "exact_row_bytes": 908,
+      "bounded_propositions": [
+        {
+          "proposition_id": "12115:record-media-identity",
+          "exact_text": "12115|http://depot.ville.montreal.qc.ca/vues-aeriennes-obliques-1960-1969/VM94-B055-009.tif|VM94-B055|31 juillet 1969",
+          "text_sha256": "ee1dd45c5d6d8c92c29b67156c7d82994d516160e13051e5e424d5d0b6303441",
+          "review_status": "held_pending_independent_bounded_proposition_review"
+        }
+      ],
+      "review_status": "held_pending_independent_bounded_proposition_review"
+    },
+    {
+      "numeric_id": 11923,
+      "source_family_id": "archives-montreal-oblique-1960-1992",
+      "package_source_id": "ckan-package-57f56aa9-1284-42d0-8b1a-336e66cd6de9",
+      "resource_id": "0ef12a2f-da90-49fb-8c46-89024edece54",
+      "private_csv_body": {
+        "path": "rows-oblique-1960-1992.csv",
+        "bytes": 1171678,
+        "sha256": "7e26894578eb8a8f2fd032b0e9ea752f0e2ba5e4fd4f285c6928d2c6c33d0c65"
+      },
+      "exact_row": {
+        "cote": {
+          "status": "present_reportage_scope",
+          "value": "VM94-B020"
+        },
+        "media_call_number": {
+          "status": "present_exact_media_url_path",
+          "value": "VM94-B020-026"
+        },
+        "titre": {
+          "status": "present_reportage_scope",
+          "value": "Vues diverses"
+        },
+        "date": {
+          "status": "present_reportage_scope",
+          "value": "3 mars 1966"
+        },
+        "photographer": {
+          "status": "present_reportage_scope",
+          "value": "Maurice Macot"
+        },
+        "description": {
+          "status": "present_reportage_scope",
+          "value": "Le reportage photographique comprend les lieux et bâtiments suivants :\nHélicoptère (image 1-2)\nQuartier résidentiel  Ahuntsic (3)\nÉglise Saint-Joseph Ahuntsic (4)\nMont Royal (5)\nParc Jeanne-Mance, monument Georges-Étienne-Cartier (6)\nÉchangeur Parc/des Pins, stade Percival-Molson, hôpital Hôtel-Dieu (7)\nPort de Montréal dans la glace (9)\nCentre-ville (10-11)\nCollège Dawson (12)\nGrand séminaire de Montréal (13)\nCollège Dawson (14)\nGrand séminaire de Montréal, centre-ville (15-17)\nPlace des arts (18)\nÉglise St.-James methodist (19-20)\nÉdifice de la Bourse (21-24)\nÉglise Sainte-Madeleine Outremont (25)\nCour de triage (26)."
+        },
+        "media_url": "http://depot.ville.montreal.qc.ca/vues-aeriennes-obliques-1960-1969/VM94-B020-026.tif",
+        "csv_credit_field": {
+          "status": "placeholder_not_complete_attribution",
+          "value": "Cote. Nom du photographe. Archives de la Ville de Montréal"
+        }
+      },
+      "exact_row_sha256": "a8934d4c842ba89674ab7c6373ce4b93551bafbbff8d772089e232a63539c779",
+      "exact_row_bytes": 1465,
+      "bounded_propositions": [
+        {
+          "proposition_id": "11923:record-media-identity",
+          "exact_text": "11923|http://depot.ville.montreal.qc.ca/vues-aeriennes-obliques-1960-1969/VM94-B020-026.tif|VM94-B020|3 mars 1966",
+          "text_sha256": "19d91b17b3e2c7e3e35b8bb6ef6f3b2540a1b67355b4582ce866767e89c1e946",
+          "review_status": "held_pending_independent_bounded_proposition_review"
+        }
+      ],
+      "review_status": "held_pending_independent_bounded_proposition_review"
+    },
+    {
+      "numeric_id": 4501,
+      "source_family_id": "archives-montreal-vertical-1947-1949",
+      "package_source_id": "ckan-package-446b4220-6928-42eb-8d95-da0c67f22bc8",
+      "resource_id": "09a0893e-3142-4950-8c54-1250540bde13",
+      "private_csv_body": {
+        "path": "rows-vertical-1947-1949.csv",
+        "bytes": 618223,
+        "sha256": "9a51bad0f5ba54ab4426bad9904ca12040705ae711370d31d0f05dc7c337b86b"
+      },
+      "exact_row": {
+        "cote": {
+          "status": "present_exact_row",
+          "value": "VM97-3_7P9-16.jpg"
+        },
+        "media_call_number": {
+          "status": "present_exact_media_url_path",
+          "value": "VM97-3_7P9-16"
+        },
+        "titre": {
+          "status": "missing_in_applicable_csv_row",
+          "value": null
+        },
+        "date": {
+          "status": "present_exact_row",
+          "value": "1947-1949"
+        },
+        "photographer": {
+          "status": "missing_in_applicable_csv_row",
+          "value": null
+        },
+        "description": {
+          "status": "missing_in_applicable_csv_row",
+          "value": null
+        },
+        "media_url": "http://archivesdemontreal.com/greffe/vues-aeriennes-archives/jpeg/VM97-3_7P9-16.jpg",
+        "csv_credit_field": {
+          "status": "present_exact_row",
+          "value": "Archives de la Ville de Montréal"
+        }
+      },
+      "exact_row_sha256": "6ed8db65d7710e19ee5cb0754a6b52c51d9a1e145fcb5da9f4a474594a626832",
+      "exact_row_bytes": 747,
+      "bounded_propositions": [
+        {
+          "proposition_id": "4501:record-media-identity",
+          "exact_text": "4501|http://archivesdemontreal.com/greffe/vues-aeriennes-archives/jpeg/VM97-3_7P9-16.jpg|VM97-3_7P9-16.jpg|1947-1949",
+          "text_sha256": "b606f3a5f2378e18d333a20e0782034ed54a1530a7cfe6c8f6bc7c85efa0168c",
+          "review_status": "held_pending_independent_bounded_proposition_review"
+        }
+      ],
+      "review_status": "held_pending_independent_bounded_proposition_review"
+    },
+    {
+      "numeric_id": 14135,
+      "source_family_id": "archives-montreal-oblique-1960-1992",
+      "package_source_id": "ckan-package-57f56aa9-1284-42d0-8b1a-336e66cd6de9",
+      "resource_id": "0ef12a2f-da90-49fb-8c46-89024edece54",
+      "private_csv_body": {
+        "path": "rows-oblique-1960-1992.csv",
+        "bytes": 1171678,
+        "sha256": "7e26894578eb8a8f2fd032b0e9ea752f0e2ba5e4fd4f285c6928d2c6c33d0c65"
+      },
+      "exact_row": {
+        "cote": {
+          "status": "present_reportage_scope",
+          "value": "VM94-B164"
+        },
+        "media_call_number": {
+          "status": "present_exact_media_url_path",
+          "value": "VM94-B164-226"
+        },
+        "titre": {
+          "status": "present_reportage_scope",
+          "value": "Bassin olympique"
+        },
+        "date": {
+          "status": "present_reportage_scope",
+          "value": "15 janvier 1975 au 2 août 1976"
+        },
+        "photographer": {
+          "status": "present_reportage_scope",
+          "value": "Rhéal Benny"
+        },
+        "description": {
+          "status": "present_reportage_scope",
+          "value": "État de l'avancement de la construction du Bassin olympique (images 1-266)."
+        },
+        "media_url": "http://depot.ville.montreal.qc.ca/vues-aeriennes-obliques-1960-1969/VM94-B164-226.tif",
+        "csv_credit_field": {
+          "status": "placeholder_not_complete_attribution",
+          "value": "Cote. Nom du photographe. Archives de la Ville de Montréal"
+        }
+      },
+      "exact_row_sha256": "a7fa8a53653bbbd9fc197534417247c5ea396ce61a89458a2e50c4020a6d73d0",
+      "exact_row_bytes": 900,
+      "bounded_propositions": [
+        {
+          "proposition_id": "14135:record-media-identity",
+          "exact_text": "14135|http://depot.ville.montreal.qc.ca/vues-aeriennes-obliques-1960-1969/VM94-B164-226.tif|VM94-B164|15 janvier 1975 au 2 août 1976",
+          "text_sha256": "1d6e7374725f5fc3ccc2bf9ceaa40be83a3597514d76e94764c2e02c3446e537",
+          "review_status": "held_pending_independent_bounded_proposition_review"
+        }
+      ],
+      "review_status": "held_pending_independent_bounded_proposition_review"
+    },
+    {
+      "numeric_id": 12623,
+      "source_family_id": "archives-montreal-oblique-1960-1992",
+      "package_source_id": "ckan-package-57f56aa9-1284-42d0-8b1a-336e66cd6de9",
+      "resource_id": "0ef12a2f-da90-49fb-8c46-89024edece54",
+      "private_csv_body": {
+        "path": "rows-oblique-1960-1992.csv",
+        "bytes": 1171678,
+        "sha256": "7e26894578eb8a8f2fd032b0e9ea752f0e2ba5e4fd4f285c6928d2c6c33d0c65"
+      },
+      "exact_row": {
+        "cote": {
+          "status": "present_reportage_scope",
+          "value": "VM94-B095"
+        },
+        "media_call_number": {
+          "status": "present_exact_media_url_path",
+          "value": "VM94-B095-002n&b"
+        },
+        "titre": {
+          "status": "present_reportage_scope",
+          "value": "Église et Marché Bonsecours - Église Notre-Dame - Place Victoria"
+        },
+        "date": {
+          "status": "present_reportage_scope",
+          "value": "9 juin 1971"
+        },
+        "photographer": {
+          "status": "present_reportage_scope",
+          "value": "Raymond Gagnon"
+        },
+        "description": {
+          "status": "present_reportage_scope",
+          "value": "Le reportage photographique comprend les lieux et bâtiments suivants :\nChapelle Notre-Dame-de Bonsecours (images 1-2)\nMarché Bonsecours (3)\nBasilique Notre-Dame (4-6)\nPlace Victoria (7-12)."
+        },
+        "media_url": "http://depot.ville.montreal.qc.ca/vues-aeriennes-obliques-1960-1969/VM94-B095-002n&b.tif",
+        "csv_credit_field": {
+          "status": "placeholder_not_complete_attribution",
+          "value": "Cote. Nom du photographe. Archives de la Ville de Montréal"
+        }
+      },
+      "exact_row_sha256": "2f4f16dd6ccdd92afce42173dab997712440a3b81983cced86266dd30b66026d",
+      "exact_row_bytes": 1058,
+      "bounded_propositions": [
+        {
+          "proposition_id": "12623:record-media-identity",
+          "exact_text": "12623|http://depot.ville.montreal.qc.ca/vues-aeriennes-obliques-1960-1969/VM94-B095-002n&b.tif|VM94-B095|9 juin 1971",
+          "text_sha256": "24982f6a502b79e5178ca1e2684aec416fb2084ee6d096d1e198dba83ec7ce40",
+          "review_status": "held_pending_independent_bounded_proposition_review"
+        }
+      ],
+      "review_status": "held_pending_independent_bounded_proposition_review"
+    },
+    {
+      "numeric_id": 7929,
+      "source_family_id": "archives-montreal-vertical-1947-1949",
+      "package_source_id": "ckan-package-446b4220-6928-42eb-8d95-da0c67f22bc8",
+      "resource_id": "09a0893e-3142-4950-8c54-1250540bde13",
+      "private_csv_body": {
+        "path": "rows-vertical-1947-1949.csv",
+        "bytes": 618223,
+        "sha256": "9a51bad0f5ba54ab4426bad9904ca12040705ae711370d31d0f05dc7c337b86b"
+      },
+      "exact_row": {
+        "cote": {
+          "status": "present_exact_row",
+          "value": "VM97-3_7P45-36.jpg"
+        },
+        "media_call_number": {
+          "status": "present_exact_media_url_path",
+          "value": "VM97-3_7P45-36"
+        },
+        "titre": {
+          "status": "missing_in_applicable_csv_row",
+          "value": null
+        },
+        "date": {
+          "status": "present_exact_row",
+          "value": "1947-1949"
+        },
+        "photographer": {
+          "status": "missing_in_applicable_csv_row",
+          "value": null
+        },
+        "description": {
+          "status": "missing_in_applicable_csv_row",
+          "value": null
+        },
+        "media_url": "http://archivesdemontreal.com/greffe/vues-aeriennes-archives/jpeg/VM97-3_7P45-36.jpg",
+        "csv_credit_field": {
+          "status": "present_exact_row",
+          "value": "Archives de la Ville de Montréal"
+        }
+      },
+      "exact_row_sha256": "b74306e2cb9389e635df68607ca3975c683bcbafbfd0a71c9e63650b1e64a5c1",
+      "exact_row_bytes": 750,
+      "bounded_propositions": [
+        {
+          "proposition_id": "7929:record-media-identity",
+          "exact_text": "7929|http://archivesdemontreal.com/greffe/vues-aeriennes-archives/jpeg/VM97-3_7P45-36.jpg|VM97-3_7P45-36.jpg|1947-1949",
+          "text_sha256": "661bd37ad4bae9baf4e1d66f2681f875e970bfc7abdea78e9b26b7c81d9afd8a",
+          "review_status": "held_pending_independent_bounded_proposition_review"
+        }
+      ],
+      "review_status": "held_pending_independent_bounded_proposition_review"
+    },
+    {
+      "numeric_id": 9844,
+      "source_family_id": "archives-montreal-vertical-1958-1975",
+      "package_source_id": "ckan-package-6555c320-77bf-4478-a3d2-c29733a7046c",
+      "resource_id": "379921f4-1991-4a08-b900-0a72453ae28a",
+      "private_csv_body": {
+        "path": "rows-vertical-1966.csv",
+        "bytes": 58972,
+        "sha256": "d2b722f6461beb9dd208835ec80240188a8b58da7ec2cb647ec19d2c8ba9a248"
+      },
+      "exact_row": {
+        "cote": {
+          "status": "present_exact_row",
+          "value": "VM97,S3,D08,P147"
+        },
+        "media_call_number": {
+          "status": "present_exact_media_url_path",
+          "value": "VM97-3_08-147"
+        },
+        "titre": {
+          "status": "missing_in_applicable_csv_row",
+          "value": null
+        },
+        "date": {
+          "status": "present_exact_row",
+          "value": "1966"
+        },
+        "photographer": {
+          "status": "missing_in_applicable_csv_row",
+          "value": null
+        },
+        "description": {
+          "status": "missing_in_applicable_csv_row",
+          "value": null
+        },
+        "media_url": "http://depot.ville.montreal.qc.ca/vues-aeriennes-1966/VM97-3_08-147.TIF",
+        "csv_credit_field": {
+          "status": "present_exact_row",
+          "value": "Archives de la Ville de Montréal"
+        }
+      },
+      "exact_row_sha256": "efe802741eb63a4e1d7ff05be36c6443edc7f5789bf97339a6704e340652c70b",
+      "exact_row_bytes": 729,
+      "bounded_propositions": [
+        {
+          "proposition_id": "9844:record-media-identity",
+          "exact_text": "9844|http://depot.ville.montreal.qc.ca/vues-aeriennes-1966/VM97-3_08-147.TIF|VM97,S3,D08,P147|1966",
+          "text_sha256": "708ddc5c4c23beeabc11c84138a1fe411e36e57ba7fb38d89de83cf8c5359bd8",
+          "review_status": "held_pending_independent_bounded_proposition_review"
+        }
+      ],
+      "review_status": "held_pending_independent_bounded_proposition_review"
+    },
+    {
+      "numeric_id": 9092,
+      "source_family_id": "archives-montreal-vertical-1958-1975",
+      "package_source_id": "ckan-package-6555c320-77bf-4478-a3d2-c29733a7046c",
+      "resource_id": "c6e12ed5-8a9d-4559-a96c-f50689a41c44",
+      "private_csv_body": {
+        "path": "rows-vertical-1964.csv",
+        "bytes": 37370,
+        "sha256": "f637c1524f48aed31ece01acc97371f45ef905a61b1d0ec45ee64d7bce461ce2"
+      },
+      "exact_row": {
+        "cote": {
+          "status": "present_exact_row",
+          "value": "VM97,S3,D05,P116"
+        },
+        "media_call_number": {
+          "status": "present_exact_media_url_path",
+          "value": "VM97-3_05_116"
+        },
+        "titre": {
+          "status": "missing_in_applicable_csv_row",
+          "value": null
+        },
+        "date": {
+          "status": "present_exact_row",
+          "value": "1964"
+        },
+        "photographer": {
+          "status": "missing_in_applicable_csv_row",
+          "value": null
+        },
+        "description": {
+          "status": "missing_in_applicable_csv_row",
+          "value": null
+        },
+        "media_url": "http://depot.ville.montreal.qc.ca/vues-aeriennes-1964/VM97-3_05_116.TIF",
+        "csv_credit_field": {
+          "status": "present_exact_row",
+          "value": "Archives de la Ville de Montréal"
+        }
+      },
+      "exact_row_sha256": "932a8c8c9371169ac4250b30bfdbdc96c0a14efd4df5df2c86b015152d3b37f0",
+      "exact_row_bytes": 729,
+      "bounded_propositions": [
+        {
+          "proposition_id": "9092:record-media-identity",
+          "exact_text": "9092|http://depot.ville.montreal.qc.ca/vues-aeriennes-1964/VM97-3_05_116.TIF|VM97,S3,D05,P116|1964",
+          "text_sha256": "6814bdc91f85d3cc683addc3778f117aa7f5dfcb33edf02b0eff9dd04ab561dc",
+          "review_status": "held_pending_independent_bounded_proposition_review"
+        }
+      ],
+      "review_status": "held_pending_independent_bounded_proposition_review"
+    },
+    {
+      "numeric_id": 13389,
+      "source_family_id": "archives-montreal-oblique-1960-1992",
+      "package_source_id": "ckan-package-57f56aa9-1284-42d0-8b1a-336e66cd6de9",
+      "resource_id": "0ef12a2f-da90-49fb-8c46-89024edece54",
+      "private_csv_body": {
+        "path": "rows-oblique-1960-1992.csv",
+        "bytes": 1171678,
+        "sha256": "7e26894578eb8a8f2fd032b0e9ea752f0e2ba5e4fd4f285c6928d2c6c33d0c65"
+      },
+      "exact_row": {
+        "cote": {
+          "status": "present_reportage_scope",
+          "value": "VM94-B146"
+        },
+        "media_call_number": {
+          "status": "present_exact_media_url_path",
+          "value": "VM94-B146-001"
+        },
+        "titre": {
+          "status": "present_reportage_scope",
+          "value": "Parc Lafontaine"
+        },
+        "date": {
+          "status": "present_reportage_scope",
+          "value": "24 septembre 1974"
+        },
+        "photographer": {
+          "status": "present_reportage_scope",
+          "value": "Rhéal Benny"
+        },
+        "description": {
+          "status": "present_reportage_scope",
+          "value": "Parc Lafontaine (images 1-2)."
+        },
+        "media_url": "http://depot.ville.montreal.qc.ca/vues-aeriennes-obliques-1960-1969/VM94-B146-001.tif",
+        "csv_credit_field": {
+          "status": "placeholder_not_complete_attribution",
+          "value": "Cote. Nom du photographe. Archives de la Ville de Montréal"
+        }
+      },
+      "exact_row_sha256": "b994ffd2e0d267bb9a798de3bd0491a3a2964f506ba292a9af395e30b484e444",
+      "exact_row_bytes": 838,
+      "bounded_propositions": [
+        {
+          "proposition_id": "13389:record-media-identity",
+          "exact_text": "13389|http://depot.ville.montreal.qc.ca/vues-aeriennes-obliques-1960-1969/VM94-B146-001.tif|VM94-B146|24 septembre 1974",
+          "text_sha256": "bd0c0ad509eeaad86e59791a1dac04dd606cd701e008e47a208cb752085539b1",
+          "review_status": "held_pending_independent_bounded_proposition_review"
+        }
+      ],
+      "review_status": "held_pending_independent_bounded_proposition_review"
+    },
+    {
+      "numeric_id": 14965,
+      "source_family_id": "archives-montreal-oblique-1960-1992",
+      "package_source_id": "ckan-package-57f56aa9-1284-42d0-8b1a-336e66cd6de9",
+      "resource_id": "0ef12a2f-da90-49fb-8c46-89024edece54",
+      "private_csv_body": {
+        "path": "rows-oblique-1960-1992.csv",
+        "bytes": 1171678,
+        "sha256": "7e26894578eb8a8f2fd032b0e9ea752f0e2ba5e4fd4f285c6928d2c6c33d0c65"
+      },
+      "exact_row": {
+        "cote": {
+          "status": "present_reportage_scope",
+          "value": "VM94-B189"
+        },
+        "media_call_number": {
+          "status": "present_exact_media_url_path",
+          "value": "VM94-B189-011"
+        },
+        "titre": {
+          "status": "present_reportage_scope",
+          "value": "Carrières Miron et Francon"
+        },
+        "date": {
+          "status": "present_reportage_scope",
+          "value": "6 avril 1976; 9 juin 1976"
+        },
+        "photographer": {
+          "status": "present_reportage_scope",
+          "value": "Rhéal Benny"
+        },
+        "description": {
+          "status": "present_reportage_scope",
+          "value": "Carrières Miron et Francon (images 1-37)."
+        },
+        "media_url": "http://depot.ville.montreal.qc.ca/vues-aeriennes-obliques-1960-1969/VM94-B189-011.tif",
+        "csv_credit_field": {
+          "status": "placeholder_not_complete_attribution",
+          "value": "Cote. Nom du photographe. Archives de la Ville de Montréal"
+        }
+      },
+      "exact_row_sha256": "b8dc8aef932eac1f8d7c15df282b3b7d80a4426443bbf6a1c558f331453e33fb",
+      "exact_row_bytes": 871,
+      "bounded_propositions": [
+        {
+          "proposition_id": "14965:record-media-identity",
+          "exact_text": "14965|http://depot.ville.montreal.qc.ca/vues-aeriennes-obliques-1960-1969/VM94-B189-011.tif|VM94-B189|6 avril 1976; 9 juin 1976",
+          "text_sha256": "5c7a41e373b8094c6362212f6950002879c3ef06395e15b39f23e36c93d1c5d4",
+          "review_status": "held_pending_independent_bounded_proposition_review"
+        }
+      ],
+      "review_status": "held_pending_independent_bounded_proposition_review"
+    },
+    {
+      "numeric_id": 11836,
+      "source_family_id": "archives-montreal-oblique-1960-1992",
+      "package_source_id": "ckan-package-57f56aa9-1284-42d0-8b1a-336e66cd6de9",
+      "resource_id": "0ef12a2f-da90-49fb-8c46-89024edece54",
+      "private_csv_body": {
+        "path": "rows-oblique-1960-1992.csv",
+        "bytes": 1171678,
+        "sha256": "7e26894578eb8a8f2fd032b0e9ea752f0e2ba5e4fd4f285c6928d2c6c33d0c65"
+      },
+      "exact_row": {
+        "cote": {
+          "status": "present_reportage_scope",
+          "value": "VM94-B018"
+        },
+        "media_call_number": {
+          "status": "present_exact_media_url_path",
+          "value": "VM94-B018-019"
+        },
+        "titre": {
+          "status": "present_reportage_scope",
+          "value": "Vues diverses"
+        },
+        "date": {
+          "status": "present_reportage_scope",
+          "value": "29 octobre 1965"
+        },
+        "photographer": {
+          "status": "present_reportage_scope",
+          "value": "Maurice Macot"
+        },
+        "description": {
+          "status": "present_reportage_scope",
+          "value": "Le reportage photographique comprend les lieux et bâtiments suivants :\nPort de Montréal (image 1-2)\nSilo no 2 (3)\nChâteau Champlain et place Bonaventure en construction (4)\nPont Jacques-Cartier (5)\nParc La Fontaine (6)\nChâteau Champlain et place Bonaventure en construction (7)\nPort de Montréal dans l'est (8-9)\nÉdifice port-Royal (10)\nStationnement commercial, quartier résidentiel (11)\nCentre-ville (12)\nParc La Fontaine (13)\nPlace des arts (14)\nPort de Montréal (15)\nCentre Rockland, échangeur l'Acadie (16-17)\nUniversité de Montréal, cimetière Notre-Dame-des-Neiges (18)\nCentre Rockland, échangeur l'Acadie (19)\nPlace des arts (20)\nCentre-ville (21)\nCimetière Notre-Dame-des-Neiges en hiver (22)\nCentre-ville, planétarium (23-24)\nParc La Fontaine  (25-26)\nSilo no 2 (27)\nParc Angrignon  (28-29)\nUniversité de Montréal, cimetière Côte-des-Neiges (30)."
+        },
+        "media_url": "http://depot.ville.montreal.qc.ca/vues-aeriennes-obliques-1960-1969/VM94-B018-019.tif",
+        "csv_credit_field": {
+          "status": "placeholder_not_complete_attribution",
+          "value": "Cote. Nom du photographe. Archives de la Ville de Montréal"
+        }
+      },
+      "exact_row_sha256": "8bdb76ea3ada051d0073f3a5b9f0e7bf04c90142cbcd282810f1967543de565e",
+      "exact_row_bytes": 1703,
+      "bounded_propositions": [
+        {
+          "proposition_id": "11836:record-media-identity",
+          "exact_text": "11836|http://depot.ville.montreal.qc.ca/vues-aeriennes-obliques-1960-1969/VM94-B018-019.tif|VM94-B018|29 octobre 1965",
+          "text_sha256": "1cf33ddc43be5db33a00e277b1f07b5885f27e6aeb3474831171308a7e939d50",
+          "review_status": "held_pending_independent_bounded_proposition_review"
+        }
+      ],
+      "review_status": "held_pending_independent_bounded_proposition_review"
+    },
+    {
+      "numeric_id": 11993,
+      "source_family_id": "archives-montreal-oblique-1960-1992",
+      "package_source_id": "ckan-package-57f56aa9-1284-42d0-8b1a-336e66cd6de9",
+      "resource_id": "0ef12a2f-da90-49fb-8c46-89024edece54",
+      "private_csv_body": {
+        "path": "rows-oblique-1960-1992.csv",
+        "bytes": 1171678,
+        "sha256": "7e26894578eb8a8f2fd032b0e9ea752f0e2ba5e4fd4f285c6928d2c6c33d0c65"
+      },
+      "exact_row": {
+        "cote": {
+          "status": "present_reportage_scope",
+          "value": "VM94-B039"
+        },
+        "media_call_number": {
+          "status": "present_exact_media_url_path",
+          "value": "VM94-B039-008"
+        },
+        "titre": {
+          "status": "present_reportage_scope",
+          "value": "Autostade"
+        },
+        "date": {
+          "status": "present_reportage_scope",
+          "value": "11 avril 1968"
+        },
+        "photographer": {
+          "status": "present_reportage_scope",
+          "value": "Louis-Philippe Meunier"
+        },
+        "description": {
+          "status": "present_reportage_scope",
+          "value": "Autostade (image 1-15)."
+        },
+        "media_url": "http://depot.ville.montreal.qc.ca/vues-aeriennes-obliques-1960-1969/VM94-B039-008.tif",
+        "csv_credit_field": {
+          "status": "placeholder_not_complete_attribution",
+          "value": "Cote. Nom du photographe. Archives de la Ville de Montréal"
+        }
+      },
+      "exact_row_sha256": "0816f6fbe904c80590cdf8fd90ea1c619ed84be7dc3e11aa1b692677338a77c0",
+      "exact_row_bytes": 832,
+      "bounded_propositions": [
+        {
+          "proposition_id": "11993:record-media-identity",
+          "exact_text": "11993|http://depot.ville.montreal.qc.ca/vues-aeriennes-obliques-1960-1969/VM94-B039-008.tif|VM94-B039|11 avril 1968",
+          "text_sha256": "054ea03e7b113e5f4000eed9a86ffb3e407e1590e0bb690b1a50410e5cd253a5",
+          "review_status": "held_pending_independent_bounded_proposition_review"
+        }
+      ],
+      "review_status": "held_pending_independent_bounded_proposition_review"
+    },
+    {
+      "numeric_id": 8432,
+      "source_family_id": "archives-montreal-vertical-1958-1975",
+      "package_source_id": "ckan-package-6555c320-77bf-4478-a3d2-c29733a7046c",
+      "resource_id": "eff33c42-bad4-4d8c-9059-28e4b425b7e2",
+      "private_csv_body": {
+        "path": "rows-vertical-1962.csv",
+        "bytes": 32717,
+        "sha256": "f596939734917013c0484085c58d2c129272b454b351b052974067e804358f05"
+      },
+      "exact_row": {
+        "cote": {
+          "status": "present_exact_row",
+          "value": "VM97,S3,D04,P792"
+        },
+        "media_call_number": {
+          "status": "present_exact_media_url_path",
+          "value": "VM97-3_04_792"
+        },
+        "titre": {
+          "status": "missing_in_applicable_csv_row",
+          "value": null
+        },
+        "date": {
+          "status": "present_exact_row",
+          "value": "1962"
+        },
+        "photographer": {
+          "status": "missing_in_applicable_csv_row",
+          "value": null
+        },
+        "description": {
+          "status": "missing_in_applicable_csv_row",
+          "value": null
+        },
+        "media_url": "http://depot.ville.montreal.qc.ca/vues-aeriennes-1962/VM97-3_04_792.TIF",
+        "csv_credit_field": {
+          "status": "present_exact_row",
+          "value": "Archives de la Ville de Montréal"
+        }
+      },
+      "exact_row_sha256": "c218bbb8a7625f355a3d4d019f66b02a206d16cd66edeb434c1bb6e0dfba70cb",
+      "exact_row_bytes": 729,
+      "bounded_propositions": [
+        {
+          "proposition_id": "8432:record-media-identity",
+          "exact_text": "8432|http://depot.ville.montreal.qc.ca/vues-aeriennes-1962/VM97-3_04_792.TIF|VM97,S3,D04,P792|1962",
+          "text_sha256": "5c73b94588cf337efcba1086b3c8557a6789a327d99e1440db069d184d5fa79d",
+          "review_status": "held_pending_independent_bounded_proposition_review"
+        }
+      ],
+      "review_status": "held_pending_independent_bounded_proposition_review"
+    },
+    {
+      "numeric_id": 13272,
+      "source_family_id": "archives-montreal-oblique-1960-1992",
+      "package_source_id": "ckan-package-57f56aa9-1284-42d0-8b1a-336e66cd6de9",
+      "resource_id": "0ef12a2f-da90-49fb-8c46-89024edece54",
+      "private_csv_body": {
+        "path": "rows-oblique-1960-1992.csv",
+        "bytes": 1171678,
+        "sha256": "7e26894578eb8a8f2fd032b0e9ea752f0e2ba5e4fd4f285c6928d2c6c33d0c65"
+      },
+      "exact_row": {
+        "cote": {
+          "status": "present_reportage_scope",
+          "value": "VM94-B119"
+        },
+        "media_call_number": {
+          "status": "present_exact_media_url_path",
+          "value": "VM94-B119-001"
+        },
+        "titre": {
+          "status": "present_reportage_scope",
+          "value": "Pont de la Concorde"
+        },
+        "date": {
+          "status": "present_reportage_scope",
+          "value": "16 septembre 1974"
+        },
+        "photographer": {
+          "status": "present_reportage_scope",
+          "value": "Rhéal Benny"
+        },
+        "description": {
+          "status": "present_reportage_scope",
+          "value": "Pont de la Concorde (Pont des Îles)(images 1-12)."
+        },
+        "media_url": "http://depot.ville.montreal.qc.ca/vues-aeriennes-obliques-1960-1969/VM94-B119-001.tif",
+        "csv_credit_field": {
+          "status": "placeholder_not_complete_attribution",
+          "value": "Cote. Nom du photographe. Archives de la Ville de Montréal"
+        }
+      },
+      "exact_row_sha256": "a0ce248e062880494d75ec34f0c1fd06e9eea46fa332303fb82628ed0ab70005",
+      "exact_row_bytes": 863,
+      "bounded_propositions": [
+        {
+          "proposition_id": "13272:record-media-identity",
+          "exact_text": "13272|http://depot.ville.montreal.qc.ca/vues-aeriennes-obliques-1960-1969/VM94-B119-001.tif|VM94-B119|16 septembre 1974",
+          "text_sha256": "890d4998986abcb1ba7eda00d024efd657c1d33b6990b2b799b79eaa99594833",
+          "review_status": "held_pending_independent_bounded_proposition_review"
+        }
+      ],
+      "review_status": "held_pending_independent_bounded_proposition_review"
+    },
+    {
+      "numeric_id": 14813,
+      "source_family_id": "archives-montreal-oblique-1960-1992",
+      "package_source_id": "ckan-package-57f56aa9-1284-42d0-8b1a-336e66cd6de9",
+      "resource_id": "0ef12a2f-da90-49fb-8c46-89024edece54",
+      "private_csv_body": {
+        "path": "rows-oblique-1960-1992.csv",
+        "bytes": 1171678,
+        "sha256": "7e26894578eb8a8f2fd032b0e9ea752f0e2ba5e4fd4f285c6928d2c6c33d0c65"
+      },
+      "exact_row": {
+        "cote": {
+          "status": "present_reportage_scope",
+          "value": "VM94-B180"
+        },
+        "media_call_number": {
+          "status": "present_exact_media_url_path",
+          "value": "VM94-B180-007"
+        },
+        "titre": {
+          "status": "present_reportage_scope",
+          "value": "Centre de formation des pompiers de Montréal, 6700 est, rue Notre-Dame"
+        },
+        "date": {
+          "status": "present_reportage_scope",
+          "value": "19 juin 1975"
+        },
+        "photographer": {
+          "status": "present_reportage_scope",
+          "value": "Rhéal Benny"
+        },
+        "description": {
+          "status": "present_reportage_scope",
+          "value": "Centre de formation des pompiers de Montréal (images 1-7)."
+        },
+        "media_url": "http://depot.ville.montreal.qc.ca/vues-aeriennes-obliques-1960-1969/VM94-B180-007.tif",
+        "csv_credit_field": {
+          "status": "placeholder_not_complete_attribution",
+          "value": "Cote. Nom du photographe. Archives de la Ville de Montréal"
+        }
+      },
+      "exact_row_sha256": "2c01c1a6534ef8bf7bbf5743849880d369785a08ba52bb26bd2a70dbb8978b58",
+      "exact_row_bytes": 919,
+      "bounded_propositions": [
+        {
+          "proposition_id": "14813:record-media-identity",
+          "exact_text": "14813|http://depot.ville.montreal.qc.ca/vues-aeriennes-obliques-1960-1969/VM94-B180-007.tif|VM94-B180|19 juin 1975",
+          "text_sha256": "3394dfe13037b0b03199b70c5fc23d36a767c408aa34bc591f2529d2f8e652fa",
+          "review_status": "held_pending_independent_bounded_proposition_review"
+        }
+      ],
+      "review_status": "held_pending_independent_bounded_proposition_review"
+    },
+    {
+      "numeric_id": 12117,
+      "source_family_id": "archives-montreal-oblique-1960-1992",
+      "package_source_id": "ckan-package-57f56aa9-1284-42d0-8b1a-336e66cd6de9",
+      "resource_id": "0ef12a2f-da90-49fb-8c46-89024edece54",
+      "private_csv_body": {
+        "path": "rows-oblique-1960-1992.csv",
+        "bytes": 1171678,
+        "sha256": "7e26894578eb8a8f2fd032b0e9ea752f0e2ba5e4fd4f285c6928d2c6c33d0c65"
+      },
+      "exact_row": {
+        "cote": {
+          "status": "present_reportage_scope",
+          "value": "VM94-B056"
+        },
+        "media_call_number": {
+          "status": "present_exact_media_url_path",
+          "value": "VM94-B056-001"
+        },
+        "titre": {
+          "status": "present_reportage_scope",
+          "value": "Bassin Laprairie - en amont du Pont Champlain, bassin d'eau au sud du chenal de la Voie maritime"
+        },
+        "date": {
+          "status": "present_reportage_scope",
+          "value": "31 juillet 1969"
+        },
+        "photographer": {
+          "status": "present_reportage_scope",
+          "value": "Louis-Philippe Meunier"
+        },
+        "description": {
+          "status": "present_reportage_scope",
+          "value": "Bassin Laprairie (images 1-4)."
+        },
+        "media_url": "http://depot.ville.montreal.qc.ca/vues-aeriennes-obliques-1960-1969/VM94-B056-001.tif",
+        "csv_credit_field": {
+          "status": "placeholder_not_complete_attribution",
+          "value": "Cote. Nom du photographe. Archives de la Ville de Montréal"
+        }
+      },
+      "exact_row_sha256": "5fc9f3044b8e01c089316a056e21de34223f640a85f4787a0d3256e437edb144",
+      "exact_row_bytes": 928,
+      "bounded_propositions": [
+        {
+          "proposition_id": "12117:record-media-identity",
+          "exact_text": "12117|http://depot.ville.montreal.qc.ca/vues-aeriennes-obliques-1960-1969/VM94-B056-001.tif|VM94-B056|31 juillet 1969",
+          "text_sha256": "3490df45061521d8fb4beb698b2c44b9db70a8b332624f7471643c66ac4e882c",
+          "review_status": "held_pending_independent_bounded_proposition_review"
+        }
+      ],
+      "review_status": "held_pending_independent_bounded_proposition_review"
+    },
+    {
+      "numeric_id": 10153,
+      "source_family_id": "archives-montreal-vertical-1958-1975",
+      "package_source_id": "ckan-package-6555c320-77bf-4478-a3d2-c29733a7046c",
+      "resource_id": "d259d85d-a7ac-4ebd-8843-2ac6fd611017",
+      "private_csv_body": {
+        "path": "rows-vertical-1971.csv",
+        "bytes": 34224,
+        "sha256": "d86e72ba77219f2245abaa6a711dd363cad6886707716f1dca56a899d341b8b1"
+      },
+      "exact_row": {
+        "cote": {
+          "status": "present_exact_row",
+          "value": "VM97,S3,D10,P008"
+        },
+        "media_call_number": {
+          "status": "present_exact_media_url_path",
+          "value": "VM97-3_10-008"
+        },
+        "titre": {
+          "status": "missing_in_applicable_csv_row",
+          "value": null
+        },
+        "date": {
+          "status": "present_exact_row",
+          "value": "1971"
+        },
+        "photographer": {
+          "status": "missing_in_applicable_csv_row",
+          "value": null
+        },
+        "description": {
+          "status": "missing_in_applicable_csv_row",
+          "value": null
+        },
+        "media_url": "http://depot.ville.montreal.qc.ca/vues-aeriennes-1971/VM97-3_10-008.TIF",
+        "csv_credit_field": {
+          "status": "present_exact_row",
+          "value": "Archives de la Ville de Montréal"
+        }
+      },
+      "exact_row_sha256": "1b47b34f82e504e801a8659e1b5b9e03534ce84b34455105e81f61cc3ed5cf66",
+      "exact_row_bytes": 729,
+      "bounded_propositions": [
+        {
+          "proposition_id": "10153:record-media-identity",
+          "exact_text": "10153|http://depot.ville.montreal.qc.ca/vues-aeriennes-1971/VM97-3_10-008.TIF|VM97,S3,D10,P008|1971",
+          "text_sha256": "49ec82c921767468cd39adfc0c681dc16c891ea107622f1b85f73079c980dfc2",
+          "review_status": "held_pending_independent_bounded_proposition_review"
+        }
+      ],
+      "review_status": "held_pending_independent_bounded_proposition_review"
+    },
+    {
+      "numeric_id": 9504,
+      "source_family_id": "archives-montreal-vertical-1958-1975",
+      "package_source_id": "ckan-package-6555c320-77bf-4478-a3d2-c29733a7046c",
+      "resource_id": "379921f4-1991-4a08-b900-0a72453ae28a",
+      "private_csv_body": {
+        "path": "rows-vertical-1966.csv",
+        "bytes": 58972,
+        "sha256": "d2b722f6461beb9dd208835ec80240188a8b58da7ec2cb647ec19d2c8ba9a248"
+      },
+      "exact_row": {
+        "cote": {
+          "status": "present_exact_row",
+          "value": "VM97,S3,D08,P252A"
+        },
+        "media_call_number": {
+          "status": "present_exact_media_url_path",
+          "value": "VM97-3_08-252A"
+        },
+        "titre": {
+          "status": "missing_in_applicable_csv_row",
+          "value": null
+        },
+        "date": {
+          "status": "present_exact_row",
+          "value": "1966"
+        },
+        "photographer": {
+          "status": "missing_in_applicable_csv_row",
+          "value": null
+        },
+        "description": {
+          "status": "missing_in_applicable_csv_row",
+          "value": null
+        },
+        "media_url": "http://depot.ville.montreal.qc.ca/vues-aeriennes-1966/VM97-3_08-252A.TIF",
+        "csv_credit_field": {
+          "status": "present_exact_row",
+          "value": "Archives de la Ville de Montréal"
+        }
+      },
+      "exact_row_sha256": "259131983c88e384b05eb6e086e02e2ed7592817abef906ce23b2bb1a14412c8",
+      "exact_row_bytes": 732,
+      "bounded_propositions": [
+        {
+          "proposition_id": "9504:record-media-identity",
+          "exact_text": "9504|http://depot.ville.montreal.qc.ca/vues-aeriennes-1966/VM97-3_08-252A.TIF|VM97,S3,D08,P252A|1966",
+          "text_sha256": "c8af1b27ca2358c024e663f304b13e07bf6587c30474762b691c0f1b75ee58bb",
+          "review_status": "held_pending_independent_bounded_proposition_review"
+        }
+      ],
+      "review_status": "held_pending_independent_bounded_proposition_review"
+    }
+  ]
+}

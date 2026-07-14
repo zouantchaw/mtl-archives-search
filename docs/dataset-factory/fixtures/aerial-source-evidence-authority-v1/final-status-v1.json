@@ -1,0 +1,24 @@
+{
+  "schema_version": "aerial_source_evidence_authority_v1.0.0",
+  "artifact_id": "aerial-source-evidence-v1",
+  "authority_status": "published_external_source_authority",
+  "issue_complete": false,
+  "counts": {
+    "records": 22,
+    "accepted_evidence": 22,
+    "held_evidence": 0,
+    "rejected_evidence": 0,
+    "accepted_claims": 0,
+    "verified_dossiers": 0,
+    "tasks": 0,
+    "location": 0,
+    "georef": 0,
+    "scale": 0,
+    "land_use": 0,
+    "measurement": 0
+  },
+  "blockers": [
+    "location_georef_scale_land_use_measurement_authority_not_established"
+  ],
+  "production_mutation": false
+}

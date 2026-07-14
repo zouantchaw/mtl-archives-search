@@ -1,0 +1,63 @@
+{
+  "stable_id": "dfv0_aerial_source_evidence_v1_authority",
+  "schema_version": "dataset_factory_artifact_registry_v0",
+  "artifact_schema_version": "aerial_source_evidence_authority_v1.0.0",
+  "artifact_kind": "file_set",
+  "content_digest": {
+    "algorithm": "sha256",
+    "value": "29cd419b027cabd8435c5106dc924a66d9532ce6f07eed3b1d510344d9c8bfe5",
+    "scope": "sorted_tree_manifest"
+  },
+  "counts": {
+    "file_count": 12,
+    "byte_count": 276797
+  },
+  "source_lineage": {
+    "description": "Issue #90 externally reviewed source/media/rights/attribution evidence with semantic abstentions preserved.",
+    "source_artifact_ids": [
+      "dfv0_aerial_source_evidence_v1_candidate"
+    ],
+    "source_urls": [
+      "https://github.com/zouantchaw/mtl-archives-search/issues/90"
+    ]
+  },
+  "storage": {
+    "storage_class": "object_store",
+    "path_class": "external_object_store",
+    "locator": "published-authority-v1",
+    "members": [
+      "archived-candidate-descriptor-v1.json",
+      "candidate-descriptor-v1.json",
+      "descriptor-v1.json",
+      "evidence-ledger-v1.json",
+      "external-archive-descriptor-v1.json",
+      "external-archive-upload-readback-receipt-v1.json",
+      "final-status-v1.json",
+      "independent-source-authority-receipt-v1.json",
+      "independent-source-review-receipt.template-v1.json",
+      "review-ledger-v1.json",
+      "source-body-evidence-v1.json",
+      "status-report-v1.json"
+    ]
+  },
+  "generation": {
+    "method": "review_assisted",
+    "command": "npm run dataset-factory:aerial-authority-v1 -- publish",
+    "code_ref": "codex/90-aerial-source-evidence",
+    "human_input_ids": []
+  },
+  "dependency_ids": [
+    "dfv0_aerial_source_evidence_v1_candidate"
+  ],
+  "required_by": [
+    "issue #90 Gate F"
+  ],
+  "rights_boundary": {
+    "license_id": "cc-by-4.0",
+    "attribution": "Archives de la Ville de Montréal",
+    "commercial_use_allowed": true,
+    "notes": "Source/media/rights/attribution authority only; location, georef, scale, land use, and measurement remain held or abstained."
+  },
+  "created_at": "2026-07-14T15:40:28Z",
+  "creation_time_basis": "report_metadata"
+}
