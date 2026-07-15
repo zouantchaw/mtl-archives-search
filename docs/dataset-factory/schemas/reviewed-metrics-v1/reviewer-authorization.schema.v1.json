@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "candidate_artifact_id",
+    "candidate_descriptor",
+    "candidate_tasks",
+    "review_template",
+    "review_scope",
+    "forbidden_principals",
+    "approved_reviewer",
+    "authorizing_authority",
+    "authorized_at",
+    "permitted_output",
+    "scope_note"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "reviewed_metrics_reviewer_authorization_v1.0.0"
+    },
+    "status": { "const": "authorized" },
+    "candidate_artifact_id": {
+      "const": "dfv0_reviewed_metrics_v1_candidate_20260714"
+    },
+    "candidate_descriptor": {
+      "$ref": "reviewer-authorization-template.schema.v1.json#/$defs/pin"
+    },
+    "candidate_tasks": {
+      "$ref": "reviewer-authorization-template.schema.v1.json#/$defs/pin"
+    },
+    "review_template": {
+      "$ref": "reviewer-authorization-template.schema.v1.json#/$defs/pin"
+    },
+    "review_scope": {
+      "$ref": "reviewer-authorization-template.schema.v1.json#/$defs/scope"
+    },
+    "forbidden_principals": {
+      "$ref": "reviewer-authorization-template.schema.v1.json#/$defs/forbidden"
+    },
+    "approved_reviewer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reviewer_id", "session_id", "model", "reasoning_effort"],
+      "properties": {
+        "reviewer_id": { "type": "string", "minLength": 1 },
+        "session_id": { "type": "string", "minLength": 1 },
+        "model": { "const": "gpt-5.6-sol" },
+        "reasoning_effort": { "const": "high" }
+      }
+    },
+    "authorizing_authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity", "session_id", "role"],
+      "properties": {
+        "identity": { "type": "string", "minLength": 1 },
+        "session_id": { "type": "string", "minLength": 1 },
+        "role": { "const": "gate_h_task_review_authority" }
+      }
+    },
+    "authorized_at": { "type": "string", "format": "date-time" },
+    "permitted_output": {
+      "$ref": "reviewer-authorization-template.schema.v1.json#/$defs/output"
+    },
+    "scope_note": { "type": "string", "minLength": 40 }
+  }
+}

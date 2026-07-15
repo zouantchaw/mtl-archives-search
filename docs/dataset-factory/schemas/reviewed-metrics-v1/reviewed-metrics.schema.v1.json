@@ -36,14 +36,60 @@
         "source_subset": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["id", "predecessor_digests"],
+          "required": [
+            "id",
+            "member_id_kind",
+            "selection_predicate",
+            "authority_files",
+            "universe_member_ids",
+            "included_member_ids",
+            "denominator_member_ids",
+            "numerator_member_ids",
+            "excluded_members",
+            "subset_sha256"
+          ],
           "properties": {
             "id": { "type": "string", "minLength": 1 },
-            "predecessor_digests": {
-              "type": "object",
-              "minProperties": 1,
-              "additionalProperties": { "$ref": "#/$defs/pin" }
-            }
+            "member_id_kind": { "const": "stable_evidence_member_id" },
+            "selection_predicate": { "type": "string", "minLength": 10 },
+            "authority_files": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/pin" }
+            },
+            "universe_member_ids": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 },
+              "uniqueItems": true
+            },
+            "included_member_ids": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 },
+              "uniqueItems": true
+            },
+            "denominator_member_ids": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 },
+              "uniqueItems": true
+            },
+            "numerator_member_ids": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 },
+              "uniqueItems": true
+            },
+            "excluded_members": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["member_id", "reason"],
+                "properties": {
+                  "member_id": { "type": "string", "minLength": 1 },
+                  "reason": { "type": "string", "minLength": 1 }
+                }
+              }
+            },
+            "subset_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
           }
         },
         "exclusions": {

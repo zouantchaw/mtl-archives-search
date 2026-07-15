@@ -4,7 +4,7 @@
   "artifact_id": "dfv0_reviewed_metrics_v1_candidate_20260714",
   "candidate_descriptor": {
     "path": "descriptor-v1.json",
-    "sha256": "dd02701d354c495293a98d9a1e05f61f43ed5f2a66f7b1bf309bb87a314d30e0",
+    "sha256": "bfc9de67251d7b30eb4e5ea46ee8d84922c209544f6c6e5c1e23b755397052d5",
     "bytes": 1007
   },
   "candidate_tasks": {

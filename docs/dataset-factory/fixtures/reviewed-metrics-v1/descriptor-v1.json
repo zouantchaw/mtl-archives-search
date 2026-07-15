@@ -9,7 +9,7 @@
   },
   "manifest": {
     "path": "manifest-v1.json",
-    "sha256": "f5fed6011f2a4580f503d27c422c3854a20d31bd818fe6babc71660ccd3b27f8",
+    "sha256": "2e698450ebba80fc4f6e77874f5cab57caeed844cf6dafa4e7cba770c410a55e",
     "bytes": 4885
   },
   "candidate_tasks": {

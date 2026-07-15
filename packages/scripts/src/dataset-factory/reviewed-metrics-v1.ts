@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -9,6 +10,18 @@ import addFormatsImport from "ajv-formats";
 
 type J = any;
 type Pin = { path: string; sha256: string; bytes: number };
+type TrackedAuthorityReader = {
+  readonly readWorking: (relativePath: string) => Buffer | null;
+  readonly readCommitted: (relativePath: string) => Buffer | null;
+};
+const INTERNAL_AUTHORIZATION_CAPABILITY = Symbol(
+  "reviewed-metrics-internal-authorization-capability",
+);
+type InternalAuthorizationCapability = {
+  readonly [INTERNAL_AUTHORIZATION_CAPABILITY]: true;
+  readonly pin: J;
+  readonly reader: TrackedAuthorityReader;
+};
 const ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "../../../..",
@@ -23,6 +36,15 @@ const REGISTRY = path.join(
   ROOT,
   "docs/dataset-factory/artifact-registry.v0.jsonl",
 );
+const PRODUCTION_AUTHORIZATION_PIN_REL =
+  "docs/dataset-factory/authorities/reviewed-metrics-v1/production-authorization-pin-v1.json";
+const PRODUCTION_AUTHORIZATION_PIN = path.join(
+  ROOT,
+  PRODUCTION_AUTHORIZATION_PIN_REL,
+);
+const PRODUCTION_REVIEWER_AUTHORIZATION_REL =
+  "docs/dataset-factory/authorities/reviewed-metrics-v1/reviewer-authorization-v1.json";
+const PRODUCTION_OUTPUT = "/tmp/issue92-gate-h-publication-v1";
 const ID = "dfv0_reviewed_metrics_v1_candidate_20260714";
 const CREATED = "2026-07-14T00:00:00.000Z";
 const AUTHOR = {
@@ -53,6 +75,10 @@ const FALSE_CASES = path.join(
 const TRANSCRIPTIONS = path.join(
   ROOT,
   "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+);
+const GROUND_REVIEW_INPUT = path.join(
+  ROOT,
+  "docs/dataset-factory/fixtures/ground-originals-v1/independent-review-input-v1.json",
 );
 const CLAIM_REVIEW = path.join(
   ROOT,
@@ -132,9 +158,10 @@ function schema(name: string, value: J): void {
     ROOT,
     "docs/dataset-factory/schemas/verified-dossiers-v1",
   );
-  for (const member of fs
-    .readdirSync(gateGSchemas)
-    .filter((file) => file.endsWith(".json")))
+  for (const member of [
+    "candidate-packets.schema.v1.json",
+    "completed-independent-review.schema.v1.json",
+  ])
     ajv.addSchema(load(path.join(gateGSchemas, member)), member);
   for (const member of fs
     .readdirSync(SCHEMAS)
@@ -284,17 +311,56 @@ function candidateTasks(): J {
     tasks,
   };
 }
+function subset(
+  id: string,
+  predicate: string,
+  authorityFiles: string[],
+  universe: string[],
+  included: string[],
+  denominator: string[],
+  numerator: string[],
+  excluded: Array<{ member_id: string; reason: string }>,
+): J {
+  const sorted = (values: string[]) => [...values].sort();
+  const value = {
+    id,
+    member_id_kind: "stable_evidence_member_id",
+    selection_predicate: predicate,
+    authority_files: authorityFiles.map((file) => pin(file)),
+    universe_member_ids: sorted(universe),
+    included_member_ids: sorted(included),
+    denominator_member_ids: sorted(denominator),
+    numerator_member_ids: sorted(numerator),
+    excluded_members: [...excluded].sort((a, b) =>
+      a.member_id.localeCompare(b.member_id),
+    ),
+  };
+  const universeSet = new Set(value.universe_member_ids);
+  const includedSet = new Set(value.included_member_ids);
+  assert(
+    value.included_member_ids.every((member) => universeSet.has(member)) &&
+      value.denominator_member_ids.every((member) => includedSet.has(member)) &&
+      value.numerator_member_ids.every((member) =>
+        new Set(value.denominator_member_ids).has(member),
+      ) &&
+      value.excluded_members.every((member) =>
+        universeSet.has(member.member_id),
+      ),
+    `metric subset membership invalid: ${id}`,
+  );
+  return { ...value, subset_sha256: hash(canon(value)) };
+}
 function metric(
   id: string,
   status: "available" | "unavailable",
-  numerator: number | null,
-  denominator: number,
   value: number | null,
   unit: string,
-  subset: string,
-  exclusions: string[],
+  sourceSubset: J,
   reason: string,
 ): J {
+  const denominator = sourceSubset.denominator_member_ids.length;
+  const numerator =
+    status === "available" ? sourceSubset.numerator_member_ids.length : null;
   return {
     metric_id: id,
     status,
@@ -302,8 +368,10 @@ function metric(
     denominator,
     value,
     unit,
-    source_subset: { id: subset, predecessor_digests: predecessorPins() },
-    exclusions,
+    source_subset: sourceSubset,
+    exclusions: sourceSubset.excluded_members.map(
+      (member: J) => `${member.member_id}: ${member.reason}`,
+    ),
     zero_denominator_policy:
       denominator === 0
         ? "status_unavailable_value_null_never_coerce_to_zero"
@@ -312,6 +380,16 @@ function metric(
   };
 }
 function reviewedMetrics(): J {
+  const accepted = acceptedDossiers();
+  const acceptedIds = accepted.map((row: J) => row.dossier_id);
+  const allDossiers = load(path.join(G, "published-dossiers-v1.json")).dossiers;
+  const allDossierIds = allDossiers.map((row: J) => row.dossier_id);
+  const held = allDossiers.filter((row: J) => !row.fully_verified);
+  const gateGFiles = [
+    path.join(G, "published-dossiers-v1.json"),
+    path.join(G, "independent-dossier-review-v1.json"),
+  ];
+  const gateFFiles = [GATE_F_REVIEW];
   const support: Record<string, number> = {
     ground_street: 0,
     aerial_vertical: 0,
@@ -319,35 +397,62 @@ function reviewedMetrics(): J {
     document_map: 0,
     low_information: 0,
   };
-  for (const dossier of acceptedDossiers())
-    support[dossier.visual_claims[0].value]++;
+  for (const dossier of accepted) support[dossier.visual_claims[0].value]++;
   const metrics: J[] = [];
+  const reviewedCrops = load(TRANSCRIPTIONS).rows;
+  const reviewInputs = load(GROUND_REVIEW_INPUT).crops;
+  const cropIds = reviewedCrops.map((row: J) => row.neutral_crop_id);
+  const unpairedCrops = reviewInputs
+    .filter((row: J) => row.machine_ocr_proposal.text === null)
+    .map((row: J) => row.neutral_crop_id);
+  const cropExclusions = unpairedCrops.map((member_id: string) => ({
+    member_id,
+    reason:
+      "reviewed reference crop has no intersecting machine OCR prediction",
+  }));
   for (const id of ["ocr_normalized_exact_match", "ocr_cer", "ocr_wer"])
     metrics.push(
       metric(
         id,
         "unavailable",
         null,
-        0,
-        null,
         id === "ocr_normalized_exact_match" ? "ratio" : "error_rate",
-        "paired_ocr_prediction_reference_crops",
-        ["no prediction/reference crop intersection"],
-        "No reviewed prediction/reference pair exists.",
+        subset(
+          "paired_ocr_prediction_reference_crops",
+          "reviewed crop decision exists AND intersecting machine_ocr_proposal.text is non-null",
+          [TRANSCRIPTIONS, GROUND_REVIEW_INPUT],
+          cropIds,
+          cropIds,
+          [],
+          [],
+          cropExclusions,
+        ),
+        "Two reviewed reference crops exist, but neither has a paired machine prediction.",
       ),
     );
+  const noEntity = acceptedIds.map((member_id: string) => ({
+    member_id,
+    reason:
+      "accepted dossier retains explicit entity abstention and has no reviewed prediction/gold pair",
+  }));
   for (const id of ["entity_precision", "entity_recall", "false_identity_rate"])
     metrics.push(
       metric(
         id,
         "unavailable",
         null,
-        0,
-        null,
         "ratio",
-        "reviewed_entity_prediction_gold",
-        ["no reviewed entity prediction/gold set"],
-        "Entity metrics require paired reviewed predictions and gold labels.",
+        subset(
+          "reviewed_entity_prediction_gold",
+          "Gate G dossier is fully_verified AND contains a reviewed entity prediction paired to entity gold",
+          gateGFiles,
+          acceptedIds,
+          [],
+          [],
+          [],
+          noEntity,
+        ),
+        "No accepted dossier contains a reviewed entity prediction/gold pair.",
       ),
     );
   metrics.push(
@@ -355,42 +460,68 @@ function reviewedMetrics(): J {
       "place_link_precision",
       "unavailable",
       null,
-      0,
-      null,
       "ratio",
-      "accepted_dossier_place_links",
-      ["no accepted dossier-level place link"],
+      subset(
+        "accepted_dossier_place_links",
+        "Gate G dossier is fully_verified AND contains an accepted dossier-level place link",
+        gateGFiles,
+        acceptedIds,
+        [],
+        [],
+        [],
+        acceptedIds.map((member_id: string) => ({
+          member_id,
+          reason: "accepted dossier has no accepted dossier-level place link",
+        })),
+      ),
       "No accepted place-link denominator exists.",
     ),
   );
   for (const name of Object.keys(support)) {
+    const classIds = accepted
+      .filter((row: J) => row.visual_claims[0].value === name)
+      .map((row: J) => row.dossier_id);
     metrics.push(
       metric(
         `image_mode_support_${name}`,
         "available",
-        support[name],
-        32,
-        support[name],
+        classIds.length,
         "records",
-        "gate_g_accepted_image_mode_labels",
-        [],
-        "Support count from independently accepted Gate G labels; not model performance.",
+        subset(
+          `gate_g_accepted_image_mode_support_${name}`,
+          `Gate G dossier is fully_verified AND accepted image_mode value equals ${name}`,
+          gateGFiles,
+          acceptedIds,
+          acceptedIds,
+          acceptedIds,
+          classIds,
+          [],
+        ),
+        "Support count from accepted Gate G labels; not model performance.",
       ),
     );
+    const unpaired = classIds.map((member_id: string) => ({
+      member_id,
+      reason: "accepted image-mode label has no paired model prediction",
+    }));
     for (const kind of ["precision", "recall"])
       metrics.push(
         metric(
           `image_mode_${name}_${kind}`,
           "unavailable",
           null,
-          0,
-          null,
           "ratio",
-          "paired_image_mode_predictions_gold",
-          [
-            "accepted labels are not paired model predictions versus independent gold",
-          ],
-          "Per-class model performance is unavailable.",
+          subset(
+            `paired_image_mode_predictions_gold_${name}`,
+            `accepted image_mode gold equals ${name} AND paired model prediction exists`,
+            gateGFiles,
+            classIds,
+            classIds,
+            [],
+            [],
+            unpaired,
+          ),
+          "Per-class model performance is unavailable without paired predictions.",
         ),
       );
   }
@@ -399,11 +530,20 @@ function reviewedMetrics(): J {
       "image_mode_macro_f1",
       "unavailable",
       null,
-      0,
-      null,
       "ratio",
-      "paired_image_mode_predictions_gold",
-      ["no model prediction/gold pairing"],
+      subset(
+        "paired_image_mode_predictions_gold_macro",
+        "class has at least one independently paired prediction/gold precision and recall result",
+        gateGFiles,
+        Object.keys(support),
+        Object.keys(support),
+        [],
+        [],
+        Object.keys(support).map((member_id) => ({
+          member_id,
+          reason: "class has no paired model prediction/gold metric",
+        })),
+      ),
       "Macro-F1 is unavailable.",
     ),
   );
@@ -411,44 +551,74 @@ function reviewedMetrics(): J {
     metric(
       "gate_g_reviewer_agreement",
       "available",
-      32,
-      32,
       1,
       "ratio",
-      "gate_g_accepted_image_mode_labels",
-      ["four categorically held pilots"],
-      "All 32 counted labels received positive independent dossier review; this is reviewer agreement, not model performance.",
+      subset(
+        "gate_g_independently_accepted_dossiers",
+        "Gate G independent dossier disposition is accepted and fully_verified is true",
+        gateGFiles,
+        allDossierIds,
+        acceptedIds,
+        acceptedIds,
+        acceptedIds,
+        held.map((row: J) => ({
+          member_id: row.dossier_id,
+          reason: `independent dossier disposition is ${row.independent_review.disposition}`,
+        })),
+      ),
+      "All 32 included labels received positive independent dossier review; this is not model performance.",
     ),
   );
+  const gateFRows = load(GATE_F_REVIEW).dispositions;
+  const gateFIds = gateFRows.map((row: J) => String(row.numeric_id));
+  const noMask = gateFIds.map((member_id: string) => ({
+    member_id,
+    reason: "Gate F row has no reviewed region mask",
+  }));
   for (const id of ["aerial_region_label_agreement", "aerial_mask_iou"])
     metrics.push(
       metric(
         id,
         "unavailable",
         null,
-        0,
-        null,
         "ratio",
-        "reviewed_aerial_masks",
-        ["no reviewed masks"],
-        "No mask denominator exists.",
+        subset(
+          "reviewed_aerial_masks",
+          "Gate F row contains a reviewed region mask",
+          gateFFiles,
+          gateFIds,
+          [],
+          [],
+          [],
+          noMask,
+        ),
+        "No reviewed mask denominator exists.",
       ),
     );
+  const noCoordinates = gateFIds.map((member_id: string) => ({
+    member_id,
+    reason: "Gate F row has no accepted verified coordinate",
+  }));
   for (const id of ["geolocation_median_distance", "geolocation_p90_distance"])
     metrics.push(
       metric(
         id,
         "unavailable",
         null,
-        0,
-        null,
         "distance",
-        "accepted_verified_coordinates",
-        ["no accepted coordinates"],
+        subset(
+          "accepted_verified_coordinates",
+          "Gate F row has an accepted verified coordinate and paired prediction",
+          gateFFiles,
+          gateFIds,
+          [],
+          [],
+          [],
+          noCoordinates,
+        ),
         "No verified coordinate/error sample exists.",
       ),
     );
-  const gateFDispositions = load(GATE_F_REVIEW).dispositions;
   for (const target of [
     "location",
     "georef",
@@ -456,34 +626,48 @@ function reviewedMetrics(): J {
     "land_use",
     "measurement",
   ]) {
-    const abstentions = gateFDispositions.filter(
-      (row: J) => row[target] === "abstained",
-    ).length;
-    const nonAbstentions = gateFDispositions.length - abstentions;
+    const abstained = gateFRows
+      .filter((row: J) => row[target] === "abstained")
+      .map((row: J) => String(row.numeric_id));
+    const nonAbstained = gateFIds.filter(
+      (id: string) => !abstained.includes(id),
+    );
     metrics.push(
       metric(
         `${target}_coverage`,
         "available",
-        nonAbstentions,
-        gateFDispositions.length,
-        nonAbstentions / gateFDispositions.length,
+        nonAbstained.length / gateFIds.length,
         "ratio",
-        "gate_f_semantic_target_universe",
-        [],
-        "Gate F records with accepted semantic authority.",
+        subset(
+          `gate_f_${target}_coverage`,
+          `Gate F ${target} disposition is not abstained`,
+          gateFFiles,
+          gateFIds,
+          gateFIds,
+          gateFIds,
+          nonAbstained,
+          [],
+        ),
+        "Coverage of accepted semantic authority in the Gate F target universe.",
       ),
     );
     metrics.push(
       metric(
         `${target}_abstention_rate`,
         "available",
-        abstentions,
-        gateFDispositions.length,
-        abstentions / gateFDispositions.length,
+        abstained.length / gateFIds.length,
         "ratio",
-        "gate_f_semantic_target_universe",
-        [],
-        "Gate F rows explicitly marked abstained.",
+        subset(
+          `gate_f_${target}_abstention`,
+          `Gate F ${target} disposition equals abstained`,
+          gateFFiles,
+          gateFIds,
+          gateFIds,
+          gateFIds,
+          abstained,
+          [],
+        ),
+        "Explicit abstention rate in the Gate F target universe.",
       ),
     );
     metrics.push(
@@ -491,15 +675,29 @@ function reviewedMetrics(): J {
         `${target}_error_among_non_abstentions`,
         "unavailable",
         null,
-        nonAbstentions,
-        null,
         "error_rate",
-        "gate_f_non_abstentions",
-        ["zero non-abstentions"],
-        "Error among non-abstentions is undefined when the denominator is zero.",
+        subset(
+          `gate_f_${target}_non_abstention_errors`,
+          `Gate F ${target} disposition is not abstained AND reviewed error judgment exists`,
+          gateFFiles,
+          gateFIds,
+          nonAbstained,
+          nonAbstained,
+          [],
+          abstained.map((member_id: string) => ({
+            member_id,
+            reason: `${target} disposition is abstained`,
+          })),
+        ),
+        "Error among non-abstentions is unavailable because the denominator is zero.",
       ),
     );
   }
+  const stages = ["phase_d", "gate_e", "gate_f", "gate_g", "gate_h_candidate"];
+  const unavailableStages = stages.map((member_id) => ({
+    member_id,
+    reason: "no tracked duration or billing evidence",
+  }));
   for (const id of [
     "stage_wall_time_median",
     "stage_wall_time_p90",
@@ -511,11 +709,22 @@ function reviewedMetrics(): J {
         id,
         "unavailable",
         null,
-        0,
-        null,
         id.includes("cost") ? "currency" : "duration",
-        "tracked_stage_runtime_and_billing",
-        ["no tracked prior stage durations or billing"],
+        subset(
+          "tracked_stage_runtime_and_billing",
+          "stage has tracked actual elapsed-time or billing evidence",
+          [
+            PHASE_D,
+            GATE_E_PROMOTION,
+            GATE_F_REVIEW,
+            path.join(G, "publication-descriptor-v1.json"),
+          ],
+          stages,
+          [],
+          [],
+          [],
+          unavailableStages,
+        ),
         "Values are unavailable and are not estimated.",
       ),
     );
@@ -881,6 +1090,49 @@ function blankReview(root: string, tasks: J): J {
     counts: { candidates: tasks.task_count, accepted: 0, held: 0, rejected: 0 },
   };
 }
+function blankAuthorization(root: string, output = PRODUCTION_OUTPUT): J {
+  return {
+    schema_version: "reviewed_metrics_reviewer_authorization_template_v1.0.0",
+    status: "blank_coordinator_authorization_required",
+    candidate_artifact_id: ID,
+    candidate_descriptor: pin(
+      path.join(root, "descriptor-v1.json"),
+      "descriptor-v1.json",
+    ),
+    candidate_tasks: pin(
+      path.join(root, "candidate-benchmark-tasks-v1.json"),
+      "candidate-benchmark-tasks-v1.json",
+    ),
+    review_template: pin(
+      path.join(root, "independent-task-review.template-v1.json"),
+      "independent-task-review.template-v1.json",
+    ),
+    review_scope: {
+      task_ids: candidateTasks().tasks.map((task: J) => task.task_id),
+      required_disposition: "accepted",
+      required_accepted_count: 32,
+    },
+    forbidden_principals: forbiddenPrincipals(),
+    approved_reviewer: {
+      reviewer_id: "",
+      session_id: "",
+      model: "gpt-5.6-sol",
+      reasoning_effort: "high",
+    },
+    authorizing_authority: {
+      identity: "",
+      session_id: "",
+      role: "gate_h_task_review_authority",
+    },
+    authorized_at: "",
+    permitted_output: {
+      absolute_path: output,
+      basename: path.basename(output),
+    },
+    scope_note:
+      "Blank coordinator authorization template. It grants no review or publication authority.",
+  };
+}
 async function build(output: string): Promise<J> {
   assert(output && !fs.existsSync(output), "new output path required");
   fs.mkdirSync(output, { recursive: true });
@@ -907,6 +1159,10 @@ async function build(output: string): Promise<J> {
     path.join(output, "independent-task-review.template-v1.json"),
     blankReview(output, tasks),
   );
+  writeJson(
+    path.join(output, "reviewer-authorization.template-v1.json"),
+    blankAuthorization(output),
+  );
   return verifyCandidate(output, false);
 }
 function expectedFiles(): string[] {
@@ -922,7 +1178,8 @@ function expectedFiles(): string[] {
     "run-report-v1.json",
     "stage-cost-evidence-v1.json",
     "status-report-v1.json",
-  ];
+    "reviewer-authorization.template-v1.json",
+  ].sort();
 }
 function verifyRegistry(root: string): void {
   const row = fs
@@ -941,6 +1198,37 @@ function verifyRegistry(root: string): void {
     "Gate H candidate registry drift",
   );
 }
+function verifyMetricSemantics(metrics: J): void {
+  for (const row of metrics.metrics) {
+    const source = row.source_subset;
+    const { subset_sha256: claimed, ...digestInput } = source;
+    assert(
+      hash(canon(digestInput)) === claimed,
+      `metric subset digest drift: ${row.metric_id}`,
+    );
+    for (const authority of source.authority_files) {
+      const actual = pin(path.join(ROOT, authority.path));
+      same(authority, actual, `metric authority pin ${row.metric_id}`);
+    }
+    assert(
+      row.denominator === source.denominator_member_ids.length &&
+        (row.status === "unavailable"
+          ? row.numerator === null && row.value === null
+          : row.numerator === source.numerator_member_ids.length),
+      `metric arithmetic/member count drift: ${row.metric_id}`,
+    );
+    if (row.status === "available" && row.unit === "ratio")
+      assert(
+        row.denominator > 0 && row.value === row.numerator / row.denominator,
+        `metric ratio drift: ${row.metric_id}`,
+      );
+    if (row.status === "available" && row.unit === "records")
+      assert(
+        row.value === row.numerator,
+        `metric count drift: ${row.metric_id}`,
+      );
+  }
+}
 function verifyCandidate(
   root: string,
   registry = root === FIXTURE,
@@ -954,6 +1242,7 @@ function verifyCandidate(
   else same(files(root), expectedFiles(), "candidate file set");
   const tasks = candidateTasks();
   const metrics = reviewedMetrics();
+  verifyMetricSemantics(load(path.join(root, "reviewed-metrics-v1.json")));
   schema(
     "candidate-tasks.schema.v1.json",
     load(path.join(root, "candidate-benchmark-tasks-v1.json")),
@@ -965,6 +1254,10 @@ function verifyCandidate(
   schema(
     "task-review-template.schema.v1.json",
     load(path.join(root, "independent-task-review.template-v1.json")),
+  );
+  schema(
+    "reviewer-authorization-template.schema.v1.json",
+    load(path.join(root, "reviewer-authorization.template-v1.json")),
   );
   same(
     load(path.join(root, "candidate-benchmark-tasks-v1.json")),
@@ -1012,6 +1305,7 @@ function verifyCandidate(
         "manifest-v1.json",
         "descriptor-v1.json",
         "independent-task-review.template-v1.json",
+        "reviewer-authorization.template-v1.json",
       ].includes(member),
   );
   same(
@@ -1028,6 +1322,11 @@ function verifyCandidate(
     load(path.join(root, "independent-task-review.template-v1.json")),
     blankReview(root, tasks),
     "review template",
+  );
+  same(
+    load(path.join(root, "reviewer-authorization.template-v1.json")),
+    blankAuthorization(root),
+    "authorization template",
   );
   assert(
     tasks.task_count === 32 &&
@@ -1081,14 +1380,310 @@ async function verify(root: string): Promise<J> {
     fs.rmSync(replay, { recursive: true, force: true });
   }
 }
+function committedBytes(relativePath: string): Buffer | null {
+  try {
+    return execFileSync("git", ["show", `HEAD:${relativePath}`], {
+      cwd: ROOT,
+      encoding: "buffer",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+  } catch {
+    return null;
+  }
+}
+const productionAuthorityReader: TrackedAuthorityReader = {
+  readWorking: (relativePath) => {
+    const absolute = path.join(ROOT, relativePath);
+    return fs.existsSync(absolute) ? fs.readFileSync(absolute) : null;
+  },
+  readCommitted: committedBytes,
+};
+function memoryAuthorityReader(bytes: Buffer): TrackedAuthorityReader {
+  return {
+    readWorking: (relativePath) =>
+      relativePath === PRODUCTION_REVIEWER_AUTHORIZATION_REL ? bytes : null,
+    readCommitted: (relativePath) =>
+      relativePath === PRODUCTION_REVIEWER_AUTHORIZATION_REL ? bytes : null,
+  };
+}
+function syntheticAuthorization(candidate: string, output: string): J {
+  return {
+    ...blankAuthorization(candidate, output),
+    schema_version: "reviewed_metrics_reviewer_authorization_v1.0.0",
+    status: "authorized",
+    approved_reviewer: {
+      reviewer_id: "synthetic-gate-h-reviewer-test-only",
+      session_id: "synthetic-gate-h-review-session-test-only",
+      model: "gpt-5.6-sol",
+      reasoning_effort: "high",
+    },
+    authorizing_authority: {
+      identity: "synthetic-gate-h-coordinator-test-only",
+      session_id: "synthetic-gate-h-coordinator-session-test-only",
+      role: "gate_h_task_review_authority",
+    },
+    authorized_at: "2026-07-14T22:00:00Z",
+    scope_note:
+      "Synthetic internal test authorization. It is not reachable through the production CLI authority loader.",
+  };
+}
+function activeAuthorizationPin(
+  candidate: string,
+  bytes: Buffer,
+  authorization: J,
+): J {
+  return {
+    schema_version: "reviewed_metrics_production_authorization_pin_v1.0.0",
+    authority_id: "gate-h-production-authorization-pin",
+    state: "active",
+    candidate_artifact_id: ID,
+    candidate_descriptor_sha256: pin(path.join(candidate, "descriptor-v1.json"))
+      .sha256,
+    authorization_file: {
+      path: PRODUCTION_REVIEWER_AUTHORIZATION_REL,
+      sha256: hash(bytes),
+      bytes: bytes.length,
+    },
+    approved_reviewer: authorization.approved_reviewer,
+    authorizing_authority: authorization.authorizing_authority,
+    authorized_at: authorization.authorized_at,
+    permitted_output: authorization.permitted_output,
+    scope_note:
+      "Synthetic internal test pin. It is accepted only through the unexported symbol-gated test capability.",
+  };
+}
+function internalAuthorizationCapability(
+  candidate: string,
+  authorizationFile: string,
+): InternalAuthorizationCapability {
+  const bytes = fs.readFileSync(authorizationFile);
+  const authorization = JSON.parse(bytes.toString("utf8"));
+  return {
+    [INTERNAL_AUTHORIZATION_CAPABILITY]: true,
+    pin: activeAuthorizationPin(candidate, bytes, authorization),
+    reader: memoryAuthorityReader(bytes),
+  };
+}
+function validateAuthorizationDocument(
+  candidate: string,
+  authorization: J,
+  pinValue: J,
+): void {
+  schema("reviewer-authorization.schema.v1.json", authorization);
+  const template = blankAuthorization(
+    candidate,
+    authorization.permitted_output.absolute_path,
+  );
+  same(
+    authorization.candidate_descriptor,
+    template.candidate_descriptor,
+    "authorization descriptor",
+  );
+  same(
+    authorization.candidate_tasks,
+    template.candidate_tasks,
+    "authorization tasks",
+  );
+  same(
+    authorization.review_template,
+    template.review_template,
+    "authorization review template",
+  );
+  same(
+    authorization.review_scope,
+    template.review_scope,
+    "authorization scope",
+  );
+  same(
+    authorization.forbidden_principals,
+    template.forbidden_principals,
+    "authorization forbidden principals",
+  );
+  assert(
+    authorization.permitted_output.absolute_path ===
+      path.resolve(authorization.permitted_output.absolute_path) &&
+      authorization.permitted_output.basename ===
+        path.basename(authorization.permitted_output.absolute_path),
+    "authorization output route invalid",
+  );
+  const reviewer = authorization.approved_reviewer;
+  const authority = authorization.authorizing_authority;
+  const principals = [
+    reviewer.reviewer_id,
+    reviewer.session_id,
+    authority.identity,
+    authority.session_id,
+  ];
+  const blocked = new Set([
+    ...template.forbidden_principals.identities,
+    ...template.forbidden_principals.sessions,
+  ]);
+  assert(
+    principals.every(
+      (value: string) => value.length > 0 && value.trim() === value,
+    ) &&
+      new Set(principals).size === principals.length &&
+      principals.every((value: string) => !blocked.has(value)),
+    "authorization principal route invalid",
+  );
+  assert(
+    reviewer.model === "gpt-5.6-sol" &&
+      reviewer.reasoning_effort === "high" &&
+      authority.role === "gate_h_task_review_authority" &&
+      strictTime(authorization.authorized_at) &&
+      Date.parse(authorization.authorized_at) >= Date.parse(CREATED),
+    "authorization reviewer, authority, or timestamp invalid",
+  );
+  same(pinValue.approved_reviewer, reviewer, "pin reviewer route");
+  same(pinValue.authorizing_authority, authority, "pin authority route");
+  same(
+    pinValue.permitted_output,
+    authorization.permitted_output,
+    "pin output route",
+  );
+  assert(
+    pinValue.authorized_at === authorization.authorized_at,
+    "pin timestamp drift",
+  );
+}
+function verifyTrackedAuthorizationAuthority(
+  candidate: string,
+  pinValue: J,
+  reader: TrackedAuthorityReader,
+): J {
+  schema("production-authorization-pin.schema.v1.json", pinValue);
+  assert(
+    pinValue.candidate_artifact_id === ID,
+    "authorization pin artifact drift",
+  );
+  const working = reader.readWorking(PRODUCTION_REVIEWER_AUTHORIZATION_REL);
+  const committed = reader.readCommitted(PRODUCTION_REVIEWER_AUTHORIZATION_REL);
+  if (pinValue.state === "unconfigured") {
+    assert(
+      pinValue.candidate_descriptor_sha256 === null &&
+        pinValue.authorization_file === null &&
+        pinValue.approved_reviewer === null &&
+        pinValue.authorizing_authority === null &&
+        pinValue.authorized_at === null &&
+        pinValue.permitted_output === null,
+      "unconfigured authorization pin is not fail-closed",
+    );
+    assert(
+      working === null && committed === null,
+      "unconfigured authorization file must be absent",
+    );
+    return { pin: pinValue, authorization: null, authorizationBytes: null };
+  }
+  assert(
+    working && committed,
+    "tracked authorization is absent or uncommitted",
+  );
+  assert(
+    working.equals(committed),
+    "tracked authorization differs from committed HEAD bytes",
+  );
+  same(
+    pinValue.authorization_file,
+    {
+      path: PRODUCTION_REVIEWER_AUTHORIZATION_REL,
+      sha256: hash(committed),
+      bytes: committed.length,
+    },
+    "authorization file pin",
+  );
+  assert(
+    pinValue.candidate_descriptor_sha256 ===
+      pin(path.join(candidate, "descriptor-v1.json")).sha256,
+    "pin candidate descriptor drift",
+  );
+  const authorization = JSON.parse(committed.toString("utf8"));
+  validateAuthorizationDocument(candidate, authorization, pinValue);
+  return { pin: pinValue, authorization, authorizationBytes: committed };
+}
+function loadProductionAuthorizationAuthority(candidate: string): J {
+  const working = fs.readFileSync(PRODUCTION_AUTHORIZATION_PIN);
+  const committed = committedBytes(PRODUCTION_AUTHORIZATION_PIN_REL);
+  assert(committed, "production authorization pin is not committed at HEAD");
+  assert(
+    working.equals(committed),
+    "production authorization pin differs from committed HEAD bytes",
+  );
+  return verifyTrackedAuthorizationAuthority(
+    candidate,
+    JSON.parse(committed.toString("utf8")),
+    productionAuthorityReader,
+  );
+}
+function resolveAuthorizationAuthority(
+  candidate: string,
+  capability?: InternalAuthorizationCapability,
+): J {
+  if (!capability) return loadProductionAuthorizationAuthority(candidate);
+  assert(
+    capability[INTERNAL_AUTHORIZATION_CAPABILITY] === true,
+    "invalid internal authorization capability",
+  );
+  return verifyTrackedAuthorizationAuthority(
+    candidate,
+    capability.pin,
+    capability.reader,
+  );
+}
+function validateAuthorization(
+  candidate: string,
+  authorizationFile: string,
+  receipt: J | null,
+  capability?: InternalAuthorizationCapability,
+): J {
+  const supplied = fs.readFileSync(authorizationFile);
+  const authority = resolveAuthorizationAuthority(candidate, capability);
+  assert(
+    authority.pin.state === "active",
+    "production authorization pin is unconfigured",
+  );
+  assert(
+    authority.authorizationBytes &&
+      authority.authorization &&
+      supplied.equals(authority.authorizationBytes),
+    "supplied authorization differs from tracked committed authority bytes",
+  );
+  if (receipt) {
+    assert(
+      receipt.authorization_sha256 === hash(supplied),
+      "receipt authorization hash drift",
+    );
+    const reviewer = authority.authorization.approved_reviewer;
+    assert(
+      receipt.reviewer.identity === reviewer.reviewer_id &&
+        receipt.reviewer.session_id === reviewer.session_id &&
+        receipt.reviewer.model === reviewer.model &&
+        receipt.reviewer.reasoning_effort === reviewer.reasoning_effort,
+      "receipt reviewer differs from authorized route",
+    );
+    assert(
+      Date.parse(receipt.reviewer.reviewed_at) >
+        Date.parse(authority.authorization.authorized_at),
+      "receipt does not postdate authorization",
+    );
+  }
+  return authority.authorization;
+}
 function validateReview(
   candidate: string,
   receiptFile: string,
+  authorizationFile: string,
   embedded = false,
+  capability?: InternalAuthorizationCapability,
 ): J {
   verifyCandidate(candidate, false, embedded);
   const receipt = load(receiptFile);
   schema("task-review-receipt.schema.v1.json", receipt);
+  const authorization = validateAuthorization(
+    candidate,
+    authorizationFile,
+    receipt,
+    capability,
+  );
   const tasks = load(path.join(candidate, "candidate-benchmark-tasks-v1.json"));
   const template = blankReview(candidate, tasks);
   assert(
@@ -1147,16 +1742,16 @@ function validateReview(
     ).length,
   };
   same(receipt.counts, counts, "review counts");
-  return { receipt, tasks, counts };
+  return { receipt, tasks, counts, authorization };
 }
-function derivePublishedTasks(tasks: J, receipt: J): J {
+function derivePublishedTasks(tasks: J, receipt: J, receiptBytes: Buffer): J {
   const dispositions = new Map<string, J>(
     receipt.dispositions.map((row: J) => [row.task_id, row]),
   );
   return {
     schema_version: "reviewed_metrics_published_tasks_v1.0.0",
     source_artifact_id: ID,
-    review_receipt_sha256: hash(pretty(receipt)),
+    review_receipt_sha256: hash(receiptBytes),
     accepted_tasks: tasks.tasks
       .filter(
         (task: J) => dispositions.get(task.task_id).disposition === "accepted",
@@ -1177,6 +1772,13 @@ function derivePublishedTasks(tasks: J, receipt: J): J {
   };
 }
 function publicationStatus(counts: J): J {
+  assert(
+    counts.candidates === 32 &&
+      counts.accepted === 32 &&
+      counts.held === 0 &&
+      counts.rejected === 0,
+    "authoritative publication requires all 32 tasks accepted",
+  );
   return {
     schema_version: "reviewed_metrics_publication_status_v1.0.0",
     state: "published_external_task_review",
@@ -1186,18 +1788,45 @@ function publicationStatus(counts: J): J {
       published_tasks: counts.accepted,
       search_tasks: 0,
     },
-    issue_complete: counts.accepted > 0,
+    issue_complete: true,
     production_mutation: false,
     search_index_mutation: false,
     paid_gpu: false,
+  };
+}
+function finalCriterionMatrix(counts: J): J {
+  publicationStatus(counts);
+  const candidate = criterionMatrix();
+  return {
+    ...candidate,
+    schema_version: "reviewed_metrics_final_criterion_matrix_v1.0.0",
+    issue_complete: true,
+    rows: candidate.rows.map((row: J) => ({
+      ...row,
+      status:
+        row.status === "pending_external_task_review"
+          ? "satisfied_all_32_externally_accepted"
+          : row.status === "candidate_ready"
+            ? "satisfied"
+            : row.status,
+    })),
+    task_review_result: {
+      candidates: 32,
+      reviewed: 32,
+      accepted: 32,
+      held: 0,
+      rejected: 0,
+    },
   };
 }
 function publicationFiles(): string[] {
   return [
     ...expectedFiles(),
     "independent-task-review-v1.json",
+    "reviewer-authorization-v1.json",
     "published-benchmark-tasks-v1.json",
     "publication-status-v1.json",
+    "final-criterion-matrix-v1.json",
     "final-descriptor-v1.json",
     "publication-commit-v1.json",
   ].sort();
@@ -1214,6 +1843,14 @@ function finalDescriptor(output: string, counts: J): J {
     artifact_id: ID,
     state: "published_external_task_review",
     counts,
+    review_receipt: pin(
+      path.join(output, "independent-task-review-v1.json"),
+      "independent-task-review-v1.json",
+    ),
+    reviewer_authorization: pin(
+      path.join(output, "reviewer-authorization-v1.json"),
+      "reviewer-authorization-v1.json",
+    ),
     members: tree(output, members),
     production_mutation: false,
   };
@@ -1236,10 +1873,26 @@ function publicationCommit(output: string, receipt: J): J {
 async function publish(
   candidate: string,
   receiptFile: string,
+  authorizationFile: string,
   output: string,
+  capability?: InternalAuthorizationCapability,
 ): Promise<J> {
   assert(!fs.existsSync(output), "publication destination exists");
-  const validated = validateReview(candidate, receiptFile);
+  const validated = validateReview(
+    candidate,
+    receiptFile,
+    authorizationFile,
+    false,
+    capability,
+  );
+  publicationStatus(validated.counts);
+  assert(
+    path.resolve(output) ===
+      validated.authorization.permitted_output.absolute_path &&
+      path.basename(output) ===
+        validated.authorization.permitted_output.basename,
+    "publication output differs from authorized route",
+  );
   const staging = fs.mkdtempSync(
     path.join(path.dirname(output), ".gate-h-publish-"),
   );
@@ -1250,13 +1903,22 @@ async function publish(
       receiptFile,
       path.join(staging, "independent-task-review-v1.json"),
     );
+    fs.copyFileSync(
+      authorizationFile,
+      path.join(staging, "reviewer-authorization-v1.json"),
+    );
+    const receiptBytes = fs.readFileSync(receiptFile);
     writeJson(
       path.join(staging, "published-benchmark-tasks-v1.json"),
-      derivePublishedTasks(validated.tasks, validated.receipt),
+      derivePublishedTasks(validated.tasks, validated.receipt, receiptBytes),
     );
     writeJson(
       path.join(staging, "publication-status-v1.json"),
       publicationStatus(validated.counts),
+    );
+    writeJson(
+      path.join(staging, "final-criterion-matrix-v1.json"),
+      finalCriterionMatrix(validated.counts),
     );
     writeJson(
       path.join(staging, "final-descriptor-v1.json"),
@@ -1266,7 +1928,7 @@ async function publish(
       path.join(staging, "publication-commit-v1.json"),
       publicationCommit(staging, validated.receipt),
     );
-    verifyPublished(staging);
+    verifyPublished(staging, authorizationFile, capability, false);
     fs.mkdirSync(output);
     reserved = true;
     const commit = "publication-commit-v1.json";
@@ -1276,7 +1938,7 @@ async function publish(
       fs.renameSync(path.join(staging, member), destination);
     }
     fs.renameSync(path.join(staging, commit), path.join(output, commit));
-    return verifyPublished(output);
+    return verifyPublished(output, authorizationFile, capability);
   } catch (error) {
     if (reserved) fs.rmSync(output, { recursive: true, force: true });
     throw error;
@@ -1284,7 +1946,12 @@ async function publish(
     fs.rmSync(staging, { recursive: true, force: true });
   }
 }
-function verifyPublished(output: string): J {
+function verifyPublished(
+  output: string,
+  authorizationFile: string,
+  capability?: InternalAuthorizationCapability,
+  enforceOutputRoute = true,
+): J {
   assert(
     fs.existsSync(path.join(output, "publication-commit-v1.json")),
     "publication commit absent",
@@ -1292,12 +1959,42 @@ function verifyPublished(output: string): J {
   const validated = validateReview(
     output,
     path.join(output, "independent-task-review-v1.json"),
+    authorizationFile,
     true,
+    capability,
   );
-  const published = derivePublishedTasks(validated.tasks, validated.receipt);
+  if (enforceOutputRoute)
+    assert(
+      path.resolve(output) ===
+        validated.authorization.permitted_output.absolute_path &&
+        path.basename(output) ===
+          validated.authorization.permitted_output.basename,
+      "published output differs from authorized route",
+    );
+  assert(
+    fs
+      .readFileSync(authorizationFile)
+      .equals(
+        fs.readFileSync(path.join(output, "reviewer-authorization-v1.json")),
+      ),
+    "published authorization bytes differ from supplied authority",
+  );
+  const receiptBytes = fs.readFileSync(
+    path.join(output, "independent-task-review-v1.json"),
+  );
+  const published = derivePublishedTasks(
+    validated.tasks,
+    validated.receipt,
+    receiptBytes,
+  );
   schema(
     "published-tasks.schema.v1.json",
     load(path.join(output, "published-benchmark-tasks-v1.json")),
+  );
+  same(
+    load(path.join(output, "final-criterion-matrix-v1.json")),
+    finalCriterionMatrix(validated.counts),
+    "final criterion matrix",
   );
   same(
     load(path.join(output, "published-benchmark-tasks-v1.json")),
@@ -1333,12 +2030,13 @@ function verifyPublished(output: string): J {
     paid_gpu: false,
   };
 }
-function syntheticReceipt(candidate: string): J {
+function syntheticReceipt(candidate: string, authorizationFile: string): J {
   const tasks = load(path.join(candidate, "candidate-benchmark-tasks-v1.json"));
   const template = blankReview(candidate, tasks);
   return {
     schema_version: "reviewed_metrics_task_review_receipt_v1.0.0",
     status: "completed",
+    authorization_sha256: hash(fs.readFileSync(authorizationFile)),
     candidate_descriptor_sha256: template.candidate_descriptor.sha256,
     candidate_tasks_sha256: template.candidate_tasks.sha256,
     reviewer: {
@@ -1380,6 +2078,13 @@ async function selfTest(): Promise<J> {
     await build(candidate);
     verifyCandidate(candidate, false);
     cases++;
+    const productionAuthority = loadProductionAuthorizationAuthority(candidate);
+    assert(
+      productionAuthority.pin.state === "unconfigured" &&
+        productionAuthority.authorization === null,
+      "tracked production authorization pin is not unconfigured",
+    );
+    cases++;
     const mutations: Array<[string, string, (value: J) => void]> = [
       [
         "metric numerator",
@@ -1417,6 +2122,37 @@ async function selfTest(): Promise<J> {
         "reviewed-metrics-v1.json",
         (v) => {
           v.metrics[0].source_subset.id = "fake_pair";
+        },
+      ],
+      [
+        "subset universe substitution",
+        "reviewed-metrics-v1.json",
+        (v) => {
+          v.metrics[0].source_subset.universe_member_ids[0] = "forged-crop";
+        },
+      ],
+      [
+        "subset included omission",
+        "reviewed-metrics-v1.json",
+        (v) => {
+          v.metrics[0].source_subset.included_member_ids.pop();
+        },
+      ],
+      [
+        "subset denominator extra",
+        "reviewed-metrics-v1.json",
+        (v) => {
+          v.metrics[0].source_subset.denominator_member_ids.push(
+            "ground-crop-01",
+          );
+        },
+      ],
+      [
+        "subset excluded member substitution",
+        "reviewed-metrics-v1.json",
+        (v) => {
+          v.metrics[0].source_subset.excluded_members[0].member_id =
+            "ground-crop-02";
         },
       ],
       [
@@ -1536,23 +2272,51 @@ async function selfTest(): Promise<J> {
       cases++;
       rejected++;
     }
+    const output = path.join(root, "published");
+    const authorizationFile = path.join(root, "authorization.json");
+    writeJson(authorizationFile, syntheticAuthorization(candidate, output));
+    const capability = internalAuthorizationCapability(
+      candidate,
+      authorizationFile,
+    );
     const receiptFile = path.join(root, "review.json");
-    writeJson(receiptFile, syntheticReceipt(candidate));
-    validateReview(candidate, receiptFile);
+    writeJson(receiptFile, syntheticReceipt(candidate, authorizationFile));
+    validateReview(
+      candidate,
+      receiptFile,
+      authorizationFile,
+      false,
+      capability,
+    );
     cases++;
+    let failed = false;
+    try {
+      validateReview(candidate, receiptFile, authorizationFile);
+    } catch {
+      failed = true;
+    }
+    assert(failed, "unconfigured production pin accepted review");
+    cases++;
+    rejected++;
     const changedReview = load(receiptFile);
     changedReview.dispositions[0].task_sha256 = "0".repeat(64);
     writeJson(path.join(root, "changed-review.json"), changedReview);
-    let failed = false;
+    failed = false;
     try {
-      validateReview(candidate, path.join(root, "changed-review.json"));
+      validateReview(
+        candidate,
+        path.join(root, "changed-review.json"),
+        authorizationFile,
+        false,
+        capability,
+      );
     } catch {
       failed = true;
     }
     assert(failed, "changed task review passed");
     cases++;
     rejected++;
-    const implementationReview = syntheticReceipt(candidate);
+    const implementationReview = syntheticReceipt(candidate, authorizationFile);
     implementationReview.reviewer.identity = AUTHOR.identity;
     writeJson(
       path.join(root, "implementation-review.json"),
@@ -1560,47 +2324,183 @@ async function selfTest(): Promise<J> {
     );
     failed = false;
     try {
-      validateReview(candidate, path.join(root, "implementation-review.json"));
+      validateReview(
+        candidate,
+        path.join(root, "implementation-review.json"),
+        authorizationFile,
+        false,
+        capability,
+      );
     } catch {
       failed = true;
     }
     assert(failed, "implementation reviewer passed");
     cases++;
     rejected++;
-    const mixedReview = syntheticReceipt(candidate);
-    mixedReview.dispositions[0].disposition = "held";
-    mixedReview.dispositions[0].approvals = {
-      exact_task_binding: true,
-      claim_and_dossier_authority: false,
-      component_and_split: true,
-      rights_and_pixels: true,
-      evidence_boundary: false,
-    };
-    mixedReview.dispositions[0].rationale =
-      "Synthetic hold proving that non-accepted tasks are retained but not published.";
-    mixedReview.counts = { candidates: 32, accepted: 31, held: 1, rejected: 0 };
+    const forgedRoute = syntheticReceipt(candidate, authorizationFile);
+    forgedRoute.reviewer.identity = "renamed-synthetic-reviewer";
+    writeJson(path.join(root, "forged-route.json"), forgedRoute);
+    failed = false;
+    try {
+      validateReview(
+        candidate,
+        path.join(root, "forged-route.json"),
+        authorizationFile,
+        false,
+        capability,
+      );
+    } catch {
+      failed = true;
+    }
+    assert(failed, "forged reviewer route passed");
+    cases++;
+    rejected++;
+    const changedAuthorizationFile = path.join(
+      root,
+      "changed-authorization.json",
+    );
+    const changedAuthorization = load(authorizationFile);
+    changedAuthorization.scope_note += " Changed.";
+    writeJson(changedAuthorizationFile, changedAuthorization);
+    failed = false;
+    try {
+      validateReview(
+        candidate,
+        receiptFile,
+        changedAuthorizationFile,
+        false,
+        capability,
+      );
+    } catch {
+      failed = true;
+    }
+    assert(failed, "changed authorization bytes passed");
+    cases++;
+    rejected++;
+    failed = false;
+    try {
+      verifyTrackedAuthorizationAuthority(candidate, capability.pin, {
+        readWorking: () => fs.readFileSync(authorizationFile),
+        readCommitted: () => null,
+      });
+    } catch {
+      failed = true;
+    }
+    assert(failed, "uncommitted authorization bytes passed");
+    cases++;
+    rejected++;
+    const mixedReview = syntheticReceipt(candidate, authorizationFile);
+    for (const row of mixedReview.dispositions.slice(1)) {
+      row.disposition = "held";
+      row.approvals = {
+        exact_task_binding: true,
+        claim_and_dossier_authority: false,
+        component_and_split: true,
+        rights_and_pixels: true,
+        evidence_boundary: false,
+      };
+      row.rationale =
+        "Synthetic hold proving that partial acceptance cannot complete or publish Gate H.";
+    }
+    mixedReview.counts = { candidates: 32, accepted: 1, held: 31, rejected: 0 };
     const mixedReviewFile = path.join(root, "mixed-review.json");
     writeJson(mixedReviewFile, mixedReview);
-    const mixedOutput = path.join(root, "mixed-published");
-    const mixedResult = await publish(candidate, mixedReviewFile, mixedOutput);
-    const mixedTasks = load(
-      path.join(mixedOutput, "published-benchmark-tasks-v1.json"),
+    failed = false;
+    try {
+      await publish(
+        candidate,
+        mixedReviewFile,
+        authorizationFile,
+        output,
+        capability,
+      );
+    } catch {
+      failed = true;
+    }
+    assert(failed, "1/32 accepted receipt published or completed issue");
+    cases++;
+    rejected++;
+    failed = false;
+    try {
+      await publish(
+        candidate,
+        receiptFile,
+        authorizationFile,
+        path.join(root, "alternate-output"),
+        capability,
+      );
+    } catch {
+      failed = true;
+    }
+    assert(failed, "alternate output route passed");
+    cases++;
+    rejected++;
+    failed = false;
+    try {
+      await publish(
+        candidate,
+        receiptFile,
+        authorizationFile,
+        path.join(root, "other-parent", path.basename(output)),
+        capability,
+      );
+    } catch {
+      failed = true;
+    }
+    assert(failed, "alternate output parent with authorized basename passed");
+    cases++;
+    rejected++;
+    const rawOutput = path.join(root, "raw-published");
+    const rawAuthorizationFile = path.join(root, "raw-authorization.json");
+    writeJson(
+      rawAuthorizationFile,
+      syntheticAuthorization(candidate, rawOutput),
+    );
+    const rawCapability = internalAuthorizationCapability(
+      candidate,
+      rawAuthorizationFile,
+    );
+    const rawReceiptFile = path.join(root, "raw-review.json");
+    const rawReceipt = syntheticReceipt(candidate, rawAuthorizationFile);
+    fs.writeFileSync(rawReceiptFile, JSON.stringify(rawReceipt));
+    await publish(
+      candidate,
+      rawReceiptFile,
+      rawAuthorizationFile,
+      rawOutput,
+      rawCapability,
+    );
+    const rawPublished = load(
+      path.join(rawOutput, "published-benchmark-tasks-v1.json"),
+    );
+    const rawDescriptor = load(
+      path.join(rawOutput, "final-descriptor-v1.json"),
     );
     assert(
-      mixedResult.accepted_tasks === 31 &&
-        mixedResult.held_tasks === 1 &&
-        mixedTasks.accepted_tasks.length === 31 &&
-        mixedTasks.retained.length === 1 &&
-        mixedTasks.retained[0].disposition === "held",
-      "held task publication boundary failed",
+      rawPublished.review_receipt_sha256 ===
+        hash(fs.readFileSync(rawReceiptFile)) &&
+        rawDescriptor.review_receipt.sha256 ===
+          hash(fs.readFileSync(rawReceiptFile)),
+      "alternate-whitespace receipt byte digest drift",
     );
     cases++;
-    const output = path.join(root, "published");
-    await publish(candidate, receiptFile, output);
+    await publish(
+      candidate,
+      receiptFile,
+      authorizationFile,
+      output,
+      capability,
+    );
     cases++;
     failed = false;
     try {
-      await publish(candidate, receiptFile, output);
+      await publish(
+        candidate,
+        receiptFile,
+        authorizationFile,
+        output,
+        capability,
+      );
     } catch {
       failed = true;
     }
@@ -1610,7 +2510,7 @@ async function selfTest(): Promise<J> {
     fs.rmSync(path.join(output, "publication-commit-v1.json"));
     failed = false;
     try {
-      verifyPublished(output);
+      verifyPublished(output, authorizationFile, capability);
     } catch {
       failed = true;
     }
@@ -1643,12 +2543,21 @@ async function integration(): Promise<J> {
           .equals(fs.readFileSync(path.join(replay, member))),
         `integration replay drift: ${member}`,
       );
+    const output = path.join(root, "published");
+    const authorization = path.join(root, "authorization.json");
+    writeJson(authorization, syntheticAuthorization(candidate, output));
+    const capability = internalAuthorizationCapability(
+      candidate,
+      authorization,
+    );
     const receipt = path.join(root, "review.json");
-    writeJson(receipt, syntheticReceipt(candidate));
+    writeJson(receipt, syntheticReceipt(candidate, authorization));
     const result = await publish(
       candidate,
       receipt,
-      path.join(root, "published"),
+      authorization,
+      output,
+      capability,
     );
     return {
       integration_test: "passed",
@@ -1728,6 +2637,7 @@ async function main(): Promise<void> {
       output: { type: "string" },
       candidate: { type: "string" },
       receipt: { type: "string" },
+      authorization: { type: "string" },
     },
   });
   let result: J;
@@ -1743,15 +2653,20 @@ async function main(): Promise<void> {
     result = validateReview(
       path.resolve(args.values.candidate ?? FIXTURE),
       path.resolve(args.values.receipt ?? ""),
+      path.resolve(args.values.authorization ?? ""),
     );
   else if (command === "publish")
     result = await publish(
       path.resolve(args.values.candidate ?? FIXTURE),
       path.resolve(args.values.receipt ?? ""),
+      path.resolve(args.values.authorization ?? ""),
       path.resolve(args.values.output ?? ""),
     );
   else if (command === "verify-published")
-    result = verifyPublished(path.resolve(args.values.output ?? ""));
+    result = verifyPublished(
+      path.resolve(args.values.output ?? ""),
+      path.resolve(args.values.authorization ?? ""),
+    );
   else if (command === "self-test") result = await selfTest();
   else if (command === "integration-test") result = await integration();
   else

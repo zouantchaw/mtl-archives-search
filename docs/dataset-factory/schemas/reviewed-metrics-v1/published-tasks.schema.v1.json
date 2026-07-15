@@ -15,6 +15,8 @@
     "review_receipt_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
     "accepted_tasks": {
       "type": "array",
+      "minItems": 32,
+      "maxItems": 32,
       "items": {
         "allOf": [
           { "$ref": "candidate-tasks.schema.v1.json#/$defs/task" },
@@ -48,6 +50,7 @@
     },
     "retained": {
       "type": "array",
+      "maxItems": 0,
       "items": {
         "$ref": "task-review-receipt.schema.v1.json#/$defs/disposition"
       }

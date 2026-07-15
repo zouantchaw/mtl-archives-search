@@ -1,0 +1,91 @@
+{
+  "schema_version": "reviewed_metrics_reviewer_authorization_template_v1.0.0",
+  "status": "blank_coordinator_authorization_required",
+  "candidate_artifact_id": "dfv0_reviewed_metrics_v1_candidate_20260714",
+  "candidate_descriptor": {
+    "path": "descriptor-v1.json",
+    "sha256": "bfc9de67251d7b30eb4e5ea46ee8d84922c209544f6c6e5c1e23b755397052d5",
+    "bytes": 1007
+  },
+  "candidate_tasks": {
+    "path": "candidate-benchmark-tasks-v1.json",
+    "sha256": "c715c411d37f0d6bde756cf68b0b3a2db59de2336fe2c55752744e3514cf6a66",
+    "bytes": 337705
+  },
+  "review_template": {
+    "path": "independent-task-review.template-v1.json",
+    "sha256": "67d979f78ff7476af3b679d9856f3cf5ad30f95356438f80cbc49a9d82b211ae",
+    "bytes": 14966
+  },
+  "review_scope": {
+    "task_ids": [
+      "gate-h:image-mode:10",
+      "gate-h:image-mode:11",
+      "gate-h:image-mode:17",
+      "gate-h:image-mode:30",
+      "gate-h:image-mode:31",
+      "gate-h:image-mode:33",
+      "gate-h:image-mode:45",
+      "gate-h:image-mode:54",
+      "gate-h:image-mode:58",
+      "gate-h:image-mode:77",
+      "gate-h:image-mode:88",
+      "gate-h:image-mode:100",
+      "gate-h:image-mode:101",
+      "gate-h:image-mode:102",
+      "gate-h:image-mode:105",
+      "gate-h:image-mode:106",
+      "gate-h:image-mode:4501",
+      "gate-h:image-mode:7929",
+      "gate-h:image-mode:8432",
+      "gate-h:image-mode:9092",
+      "gate-h:image-mode:9844",
+      "gate-h:image-mode:11836",
+      "gate-h:image-mode:11923",
+      "gate-h:image-mode:11993",
+      "gate-h:image-mode:12115",
+      "gate-h:image-mode:12117",
+      "gate-h:image-mode:12623",
+      "gate-h:image-mode:13272",
+      "gate-h:image-mode:13389",
+      "gate-h:image-mode:14135",
+      "gate-h:image-mode:14813",
+      "gate-h:image-mode:14965"
+    ],
+    "required_disposition": "accepted",
+    "required_accepted_count": 32
+  },
+  "forbidden_principals": {
+    "identities": [
+      "5bc4cfd0-0f60-47f6-a20d-af40f99c2267",
+      "codex-sol-medium-gate-g-implementation",
+      "codex-sol-medium-gate-h-implementation",
+      "sol-high-gate-g-dossier-reviewer:019f6216-987e-7000-95f0-9b9a054fedfa",
+      "sol-high-v7-reviewer:a2869a6c-7f23-4ec0-ab07-c031aae2bc54"
+    ],
+    "sessions": [
+      "019f6216-987e-7000-95f0-9b9a054fedfa",
+      "5bc4cfd0-0f60-47f6-a20d-af40f99c2267",
+      "issue91-gate-g-implementation-20260714",
+      "issue92-gate-h-implementation-20260714",
+      "sol-high-v7-session:cfabcb92-aa8e-4440-b564-55dccbe9877c"
+    ]
+  },
+  "approved_reviewer": {
+    "reviewer_id": "",
+    "session_id": "",
+    "model": "gpt-5.6-sol",
+    "reasoning_effort": "high"
+  },
+  "authorizing_authority": {
+    "identity": "",
+    "session_id": "",
+    "role": "gate_h_task_review_authority"
+  },
+  "authorized_at": "",
+  "permitted_output": {
+    "absolute_path": "/tmp/issue92-gate-h-publication-v1",
+    "basename": "issue92-gate-h-publication-v1"
+  },
+  "scope_note": "Blank coordinator authorization template. It grants no review or publication authority."
+}
