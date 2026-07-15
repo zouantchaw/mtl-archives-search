@@ -409,6 +409,8 @@ Vectorize reliability notes:
 
 Engineering tasks and roadmap are tracked in `TASKS.md`.
 
+Reviewed Metrics v2 remains candidate-only for issue #96. Its execution gate requires a clean, byte-identical authority committed at the fixed path and exact-bound to candidate commit `73ec8a9acbbbc6cd8713f2ae2d944ca2aebd7140`; completed gold, metrics, review, matrix, chronology, and publication contracts now fail closed. See `docs/dataset-factory/reviewed-metrics-v2.md`.
+
 ## Dataset
 
 The photo collection includes:

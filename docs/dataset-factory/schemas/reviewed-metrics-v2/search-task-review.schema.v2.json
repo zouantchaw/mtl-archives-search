@@ -16,8 +16,11 @@
     "disposition": {"type": ["string", "null"], "enum": ["accepted", "held", "rejected", null]},
     "rationale": {"type": ["string", "null"]}
   },
+  "allOf": [
+    {"if": {"properties": {"status": {"const": "completed"}}}, "then": {"properties": {"task_pin": {"$ref": "#/$defs/pin"}, "prediction_freeze_pin": {"$ref": "#/$defs/pin"}, "score_commitment_pin": {"$ref": "#/$defs/pin"}, "reviewer": {"$ref": "#/$defs/reviewer"}, "checks": {"$ref": "#/$defs/checks"}, "disposition": {"const": "accepted"}, "rationale": {"type": "string", "minLength": 1}}}}
+  ],
   "$defs": {
-    "pin": {"type": "object", "additionalProperties": false, "required": ["sha256", "bytes"], "properties": {"sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "bytes": {"type": "integer", "minimum": 1}}},
+    "pin": {"type": "object", "additionalProperties": false, "required": ["path", "sha256", "bytes"], "properties": {"path": {"type": "string", "minLength": 1}, "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "bytes": {"type": "integer", "minimum": 1}}},
     "reviewer": {"type": "object", "additionalProperties": false, "required": ["identity", "session_id", "model", "reasoning_effort", "reviewed_at", "independent"], "properties": {"identity": {"type": "string"}, "session_id": {"type": "string"}, "model": {"type": "string"}, "reasoning_effort": {"type": "string"}, "reviewed_at": {"type": "string", "format": "date-time"}, "independent": {"const": true}}},
     "checks": {"type": "object", "additionalProperties": false, "required": ["source_dossier_approved", "accepted_source_claim", "private_score_passed", "rights_passed", "no_leak_passed", "component_split_pinned", "separate_reviewer"], "properties": {"source_dossier_approved": {"const": true}, "accepted_source_claim": {"const": true}, "private_score_passed": {"const": true}, "rights_passed": {"const": true}, "no_leak_passed": {"const": true}, "component_split_pinned": {"const": true}, "separate_reviewer": {"const": true}}}
   }

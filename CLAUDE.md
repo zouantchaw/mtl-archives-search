@@ -223,4 +223,8 @@ It should be very engaging to read; don't make it sound like boring technical do
 Make sure to keep it updated as the project evolves
 # Gold Label Batch 002 Worker Rule
 
+## Reviewed Metrics v2 Rule
+
+Do not create or activate the issue #96 execution authority, run prediction, author gold, or publish from candidate work. Any later authority must be an authority-only commit at the fixed path, byte-identical across `HEAD`/index/worktree, exact-bound to candidate `73ec8a9acbbbc6cd8713f2ae2d944ca2aebd7140`, and contain distinct role provenance with strictly increasing event times.
+
 For issue #68 pixel review, read only the assigned sealed packet, instruction file, neutral templates, and referenced orientation views. Do not inspect hidden inputs, record/source/licensing fields, metadata, acquisition scores, prior labels, VLM/taxonomy, components/splits, search tasks, lineage, or another pass. Use `gold_label_review_pass_v1.0.0`; record directly observed pixels or explicit abstention only. Never add inferred, metadata, verified, identity, date, or location claims.

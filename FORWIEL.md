@@ -60,6 +60,8 @@ The real-pilot selector yields 26 mechanically eligible candidates. A downstream
 
 ## Important Boundaries
 
+Reviewed Metrics v2 is deliberately still a sealed candidate, not a completed evaluation. A future authority-only commit may unlock one prediction only if Git proves the fixed authority file is committed and clean byte-for-byte and it names the exact reviewed candidate. Think of it as a five-person chain of custody: implementation, prediction, gold review, task review, and publication identities are committed in advance, must be distinct, and every timestamp handoff must move strictly forward.
+
 - No generated report tree should be committed just because a script produced it.
 - No `.env`, tokens, private keys, credentials, or signed URLs belong in docs, registries, fixtures, commits, or PR text.
 - Dataset Factory smoke does not deploy, publish, mutate D1/R2/Vectorize, call paid compute, or prove production ranking quality.

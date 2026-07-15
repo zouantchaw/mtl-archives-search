@@ -3,19 +3,44 @@
   "$id": "execution-authorization.schema.v2.json",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "status", "candidate_id", "implementation_base_commit", "candidate_commit", "bundle_tree_sha256", "predictor", "authorized_at", "started_at", "ended_at", "freeze_at", "expires_at"],
+  "required": ["schema_version", "status", "candidate_id", "implementation_base_commit", "candidate_commit", "bundle_tree_sha256", "implementation", "predictor", "gold_reviewer", "task_reviewer", "publisher", "forbidden_prior_reviewers", "authorized_at", "started_at", "ended_at", "freeze_at", "expires_at"],
   "properties": {
     "schema_version": {"const": "reviewed_metrics_execution_authorization_v2.0.0"},
     "status": {"const": "activated_exact_one_shot"},
     "candidate_id": {"const": "dfv0_reviewed_metrics_v2_candidate_20260715"},
     "implementation_base_commit": {"const": "5fe4dfbe51a320a51f1f126b4a2d8cf0722be5dc"},
-    "candidate_commit": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+    "candidate_commit": {"const": "73ec8a9acbbbc6cd8713f2ae2d944ca2aebd7140"},
     "bundle_tree_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
-    "predictor": {"type": "object", "additionalProperties": false, "required": ["principal", "session_id", "model", "reasoning_effort", "route"], "properties": {"principal": {"type": "string", "minLength": 1}, "session_id": {"type": "string", "minLength": 1}, "model": {"type": "string", "minLength": 1}, "reasoning_effort": {"type": "string", "minLength": 1}, "route": {"type": "string", "minLength": 1}}},
+    "implementation": {"$ref": "#/$defs/implementationActor"},
+    "predictor": {"$ref": "#/$defs/predictorActor"},
+    "gold_reviewer": {"$ref": "#/$defs/goldActor"},
+    "task_reviewer": {"$ref": "#/$defs/taskActor"},
+    "publisher": {"$ref": "#/$defs/publisherActor"},
+    "forbidden_prior_reviewers": {"type": "array", "minItems": 4, "maxItems": 4, "uniqueItems": true, "items": {"$ref": "#/$defs/forbiddenActor"}},
     "authorized_at": {"type": "string", "format": "date-time"},
     "started_at": {"type": "string", "format": "date-time"},
     "ended_at": {"type": "string", "format": "date-time"},
     "freeze_at": {"type": "string", "format": "date-time"},
     "expires_at": {"type": "string", "format": "date-time"}
+  },
+  "$defs": {
+    "actor": {
+      "type": "object", "additionalProperties": false,
+      "required": ["principal", "session_id", "model", "reasoning_effort", "route", "role"],
+      "properties": {
+        "principal": {"type": "string", "minLength": 1}, "session_id": {"type": "string", "minLength": 1},
+        "model": {"type": "string", "minLength": 1}, "reasoning_effort": {"type": "string", "minLength": 1},
+        "route": {"type": "string", "minLength": 1}, "role": {"type": "string", "minLength": 1}
+      }
+    },
+    "implementationActor": {"allOf": [{"$ref": "#/$defs/actor"}, {"properties": {"role": {"const": "implementation"}}}]},
+    "predictorActor": {"allOf": [{"$ref": "#/$defs/actor"}, {"properties": {"role": {"const": "predictor"}}}]},
+    "goldActor": {"allOf": [{"$ref": "#/$defs/actor"}, {"properties": {"role": {"const": "gold_reviewer"}}}]},
+    "taskActor": {"allOf": [{"$ref": "#/$defs/actor"}, {"properties": {"role": {"const": "task_reviewer"}}}]},
+    "publisherActor": {"allOf": [{"$ref": "#/$defs/actor"}, {"properties": {"role": {"const": "publisher"}}}]},
+    "forbiddenActor": {
+      "type": "object", "additionalProperties": false, "required": ["principal", "session_id", "model", "role"],
+      "properties": {"principal": {"type": "string", "minLength": 1}, "session_id": {"type": "string", "minLength": 1}, "model": {"type": "string", "minLength": 1}, "role": {"const": "forbidden_prior_reviewer"}}
+    }
   }
 }
