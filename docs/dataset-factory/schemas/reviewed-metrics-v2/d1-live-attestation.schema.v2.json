@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "d1-live-attestation.schema.v2.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "synthetic", "provider", "api_contract", "account_capability_digest", "database_uuid_digest", "namespace_digest", "deployed_schema", "observation", "signer", "signature_base64"],
+  "properties": {
+    "schema_version": { "const": "reviewed_metrics_d1_live_attestation_v2.0.0" },
+    "status": { "const": "observed_live_append_only" },
+    "synthetic": { "const": false },
+    "provider": { "const": "cloudflare_d1" },
+    "api_contract": { "const": "cloudflare_v4_d1_query_select_v1" },
+    "account_capability_digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "database_uuid_digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "namespace_digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "deployed_schema": {
+      "type": "object", "additionalProperties": false,
+      "required": ["canonical_rows", "canonical_schema_sha256", "canonical_schema_bytes", "migration_sha256", "migration_bytes"],
+      "properties": {
+        "canonical_rows": { "type": "array", "minItems": 9, "uniqueItems": true, "items": { "type": "object", "additionalProperties": false, "required": ["type", "name", "tbl_name", "sql"], "properties": { "type": { "enum": ["table", "index", "trigger"] }, "name": { "type": "string", "minLength": 1 }, "tbl_name": { "type": "string", "pattern": "^gate_h2_stage_" }, "sql": { "type": ["string", "null"] } } } },
+        "canonical_schema_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "canonical_schema_bytes": { "type": "integer", "minimum": 1 },
+        "migration_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "migration_bytes": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "observation": { "$ref": "#/$defs/identity" },
+    "signer": { "$ref": "#/$defs/signer" },
+    "signature_base64": { "type": "string", "minLength": 80, "maxLength": 100 }
+  },
+  "$defs": {
+    "identity": { "type": "object", "additionalProperties": false, "required": ["observed_at", "principal", "session_id", "route"], "properties": { "observed_at": { "type": "string", "format": "date-time" }, "principal": { "type": "string", "minLength": 1 }, "session_id": { "type": "string", "minLength": 1 }, "route": { "type": "string", "pattern": "^/" } } },
+    "signer": { "type": "object", "additionalProperties": false, "required": ["principal", "session_id", "route", "public_key_pem", "public_key_sha256"], "properties": { "principal": { "type": "string", "minLength": 1 }, "session_id": { "type": "string", "minLength": 1 }, "route": { "type": "string", "pattern": "^/" }, "public_key_pem": { "type": "string", "pattern": "^-----BEGIN PUBLIC KEY-----" }, "public_key_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" } } }
+  }
+}

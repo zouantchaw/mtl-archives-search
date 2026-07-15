@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pre-activation-attestor-trust.schema.v2.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "attestors"],
+  "properties": {
+    "schema_version": { "const": "reviewed_metrics_pre_activation_attestor_trust_v2.0.0" },
+    "status": { "enum": ["blocked_no_real_attestors_admitted", "reviewed_real_attestors_admitted"] },
+    "attestors": { "type": "array", "uniqueItems": true, "items": { "type": "object", "additionalProperties": false, "required": ["evidence_kind", "principal", "route", "public_key_sha256", "admission_commit"], "properties": { "evidence_kind": { "enum": ["d1_live", "linux_sandbox", "pre_activation_verifier"] }, "principal": { "type": "string", "minLength": 1 }, "route": { "type": "string", "pattern": "^/" }, "public_key_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "admission_commit": { "type": "string", "pattern": "^[a-f0-9]{40}$" } } } }
+  }
+}

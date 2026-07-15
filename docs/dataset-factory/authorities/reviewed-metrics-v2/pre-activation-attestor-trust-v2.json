@@ -1,0 +1,5 @@
+{
+  "schema_version": "reviewed_metrics_pre_activation_attestor_trust_v2.0.0",
+  "status": "blocked_no_real_attestors_admitted",
+  "attestors": []
+}
