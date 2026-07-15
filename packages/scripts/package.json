@@ -217,6 +217,7 @@
     "dataset-factory:reviewed-metrics-verify-v2": "tsx src/dataset-factory/reviewed-metrics-v2.ts verify",
     "dataset-factory:reviewed-metrics-verify-tracked-v2": "tsx src/dataset-factory/reviewed-metrics-v2.ts verify-tracked",
     "dataset-factory:reviewed-metrics-self-test-v2": "tsx src/dataset-factory/reviewed-metrics-v2.ts self-test",
+    "dataset-factory:reviewed-metrics-security-self-test-v2": "tsx src/dataset-factory/reviewed-metrics-v2.ts security-self-test",
     "dataset-factory:reviewed-metrics-integration-test-v2": "tsx src/dataset-factory/reviewed-metrics-v2.ts integration-test",
     "dataset-factory:production-apply-gate-v0": "tsx src/dataset-factory/build-production-apply-gate-v0.ts",
     "dataset-factory:production-scoped-apply-v0": "tsx src/dataset-factory/build-production-scoped-apply-v0.ts",

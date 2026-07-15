@@ -17,6 +17,28 @@
   "publication_exists": false,
   "prediction_exists": false,
   "gold_exists": false,
+  "security_controls": {
+    "exact_stage_receipts": [
+      "visual_predict",
+      "visual_freeze",
+      "source_predict",
+      "source_freeze",
+      "gold_review",
+      "gold_envelope_authoring",
+      "private_prepare",
+      "r2_retain",
+      "private_finalize",
+      "task_review",
+      "metrics_score",
+      "publication"
+    ],
+    "durable_one_use_markers": true,
+    "actual_process_chronology": true,
+    "hmac_opaque_private_keys": true,
+    "conditional_versioned_readback": true,
+    "worker_binding_privacy_proof": true,
+    "trusted_absolute_executables": true
+  },
   "mutations": {
     "production": false,
     "search_index": false,

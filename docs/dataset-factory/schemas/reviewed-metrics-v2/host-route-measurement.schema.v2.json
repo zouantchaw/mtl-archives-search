@@ -9,6 +9,7 @@
     "candidate_commit":{"type":"string","pattern":"^[a-f0-9]{40}$"},
     "authority_hash":{"type":"string","pattern":"^[a-f0-9]{64}$"},
     "role":{"enum":["implementation","predictor","search_predictor","private_evaluator","gold_reviewer","task_reviewer","publisher"]},
+    "stage_id":{"enum":["visual_predict","visual_freeze","source_predict","source_freeze","gold_review","gold_envelope_authoring","private_prepare","r2_retain","private_finalize","task_review","metrics_score","publication"]},
     "nonce":{"type":"string","pattern":"^[a-f0-9]{32,128}$"},
     "invocation_id":{"type":"string","pattern":"^[a-f0-9]{64}$"},
     "surface_inventory_digest":{"type":"string","pattern":"^[a-f0-9]{64}$"},

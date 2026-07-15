@@ -14,8 +14,8 @@
     },
     {
       "path": "candidate-status-v2.json",
-      "sha256": "10f664b3f3e7de7f3a3164e25bb0b2c719138d90e161773c325765f5f36343eb",
-      "bytes": 703
+      "sha256": "f46d91df6d4d616ba663fc83b9395408bd613c25f6398b47133d1121a41ef58b",
+      "bytes": 1293
     },
     {
       "path": "gold-review.template-v2.json",
@@ -58,9 +58,9 @@
       "bytes": 1056
     }
   ],
-  "content_sha256": "6700749e658232081dd100f2fa453b63af48f3bef75ccdac2949f87208880956",
+  "content_sha256": "4930eeee3fb500d344416c2170608492900059f2fc1d9b585868815371e1f47d",
   "counts": {
     "files_before_manifest_and_descriptor": 11,
-    "bytes_before_manifest_and_descriptor": 67515
+    "bytes_before_manifest_and_descriptor": 68105
   }
 }

@@ -214,6 +214,8 @@
     "aws-pkcs7-wrong-instance-binding": "H2_AWS_IDENTITY_BINDING",
     "aws-pkcs7-document-byte-mismatch": "H2_AWS_IDENTITY_DOCUMENT_MISMATCH",
     "aws-pkcs7-stale-instance": "H2_AWS_IDENTITY_FRESHNESS",
+    "aws-pkcs7-unsupported-region": "H2_AWS_IDENTITY_CERTIFICATE",
+    "aws-pkcs7-pinned-fingerprint-mismatch": "H2_AWS_IDENTITY_CERTIFICATE",
     "wrong-evaluator-public-key": "H2_RETENTION_SIGNER",
     "wrong-evaluator-signature": "H2_FINALIZATION_SIGNATURE",
     "visual-freeze-substitution": "H2_GUARD_2C9707BAA419AF49",

@@ -1,0 +1,31 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"stage-route-receipt.schema.v2.json",
+  "type":"object",
+  "additionalProperties":false,
+  "required":["schema_version","surface_id","surface_inventory_digest","canonical_physical_host_id","candidate_commit","authority_hash","nonce","invocation_id","role","stage_id","requested_root","canonical_root","existing_ancestor","ancestor_device","ancestor_inode","measured_at","measurement_sha256","role_event_started_at","role_event_ended_at","issued_at","expires_at","signature_base64"],
+  "properties":{
+    "schema_version":{"const":"reviewed_metrics_coordinator_route_receipt_v2.0.0"},
+    "surface_id":{"type":"string","pattern":"^[a-f0-9]{64}$"},
+    "surface_inventory_digest":{"type":"string","pattern":"^[a-f0-9]{64}$"},
+    "canonical_physical_host_id":{"type":"string","pattern":"^[a-f0-9]{64}$"},
+    "candidate_commit":{"type":"string","pattern":"^[a-f0-9]{40}$"},
+    "authority_hash":{"type":"string","pattern":"^[a-f0-9]{64}$"},
+    "nonce":{"type":"string","pattern":"^[a-f0-9]{32,128}$"},
+    "invocation_id":{"type":"string","pattern":"^[a-f0-9]{64}$"},
+    "role":{"enum":["predictor","search_predictor","private_evaluator","gold_reviewer","task_reviewer","publisher"]},
+    "stage_id":{"enum":["visual_predict","visual_freeze","source_predict","source_freeze","gold_review","gold_envelope_authoring","private_prepare","r2_retain","private_finalize","task_review","metrics_score","publication"]},
+    "requested_root":{"type":"string","pattern":"^/"},
+    "canonical_root":{"type":"string","pattern":"^/"},
+    "existing_ancestor":{"type":"string","pattern":"^/"},
+    "ancestor_device":{"type":"integer","minimum":0},
+    "ancestor_inode":{"type":"integer","minimum":0},
+    "measured_at":{"type":"string","format":"date-time"},
+    "measurement_sha256":{"type":"string","pattern":"^[a-f0-9]{64}$"},
+    "role_event_started_at":{"type":"string","format":"date-time"},
+    "role_event_ended_at":{"type":"string","format":"date-time"},
+    "issued_at":{"type":"string","format":"date-time"},
+    "expires_at":{"type":"string","format":"date-time"},
+    "signature_base64":{"type":"string","minLength":80,"maxLength":100}
+  }
+}

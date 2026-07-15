@@ -18,8 +18,8 @@
     },
     {
       "path": "candidate-status-v2.json",
-      "sha256": "10f664b3f3e7de7f3a3164e25bb0b2c719138d90e161773c325765f5f36343eb",
-      "bytes": 703
+      "sha256": "f46d91df6d4d616ba663fc83b9395408bd613c25f6398b47133d1121a41ef58b",
+      "bytes": 1293
     },
     {
       "path": "gold-review.template-v2.json",
@@ -33,8 +33,8 @@
     },
     {
       "path": "manifest-v2.json",
-      "sha256": "b48b244293336f0dcec64d6ce0e0f9470da493dbed57b857ce87d60132e62822",
-      "bytes": 2198
+      "sha256": "802c9e2c146811e2db3f69eb46a6fcf4cb6421834c06ff6ca7da4f0ed98b2e05",
+      "bytes": 2199
     },
     {
       "path": "prediction-output.template-v2.json",
@@ -67,10 +67,10 @@
       "bytes": 1056
     }
   ],
-  "tree_before_descriptor_sha256": "e989fed112e1053eb4e19112ec5dfcd917e1ac004d5eb6c1333181bd50c93b64",
+  "tree_before_descriptor_sha256": "6063f66c6a2c50f2cdf377613f207fc8e7c633a5a818ff6424f10152995023c2",
   "counts": {
     "files_before_descriptor": 12,
-    "bytes_before_descriptor": 69713,
+    "bytes_before_descriptor": 70304,
     "unique_sources": 44,
     "task_memberships": 78
   },
