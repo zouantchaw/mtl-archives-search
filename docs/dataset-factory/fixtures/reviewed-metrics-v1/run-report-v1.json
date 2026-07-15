@@ -1,0 +1,19 @@
+{
+  "schema_version": "reviewed_metrics_run_report_v1.0.0",
+  "artifact_id": "dfv0_reviewed_metrics_v1_candidate_20260714",
+  "state": "candidate_external_task_review_required",
+  "issue_complete": false,
+  "counts": {
+    "phase_d_records": 60,
+    "gate_g_accepted_dossiers": 32,
+    "candidate_tasks": 32,
+    "reviewed_tasks": 0,
+    "available_metrics": 16,
+    "unavailable_metrics": 31,
+    "benchmark_tasks_published": 0,
+    "search_tasks": 0
+  },
+  "production_mutation": false,
+  "network": false,
+  "paid_gpu": false
+}

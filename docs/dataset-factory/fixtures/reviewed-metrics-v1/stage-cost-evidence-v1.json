@@ -1,0 +1,53 @@
+{
+  "schema_version": "reviewed_metrics_stage_cost_evidence_v1.0.0",
+  "artifact_id": "dfv0_reviewed_metrics_v1_candidate_20260714",
+  "audit_timestamp": "2026-07-14T00:00:00.000Z",
+  "audit_timestamp_is_elapsed_metric": false,
+  "stages": [
+    {
+      "stage": "phase_d",
+      "wall_time_median": null,
+      "wall_time_p90": null,
+      "actual_cost_total": null,
+      "actual_cost_per_record": null,
+      "status": "unavailable",
+      "reason": "No tracked deterministic duration or billing evidence; values are not estimated."
+    },
+    {
+      "stage": "gate_e",
+      "wall_time_median": null,
+      "wall_time_p90": null,
+      "actual_cost_total": null,
+      "actual_cost_per_record": null,
+      "status": "unavailable",
+      "reason": "No tracked deterministic duration or billing evidence; values are not estimated."
+    },
+    {
+      "stage": "gate_f",
+      "wall_time_median": null,
+      "wall_time_p90": null,
+      "actual_cost_total": null,
+      "actual_cost_per_record": null,
+      "status": "unavailable",
+      "reason": "No tracked deterministic duration or billing evidence; values are not estimated."
+    },
+    {
+      "stage": "gate_g",
+      "wall_time_median": null,
+      "wall_time_p90": null,
+      "actual_cost_total": null,
+      "actual_cost_per_record": null,
+      "status": "unavailable",
+      "reason": "No tracked deterministic duration or billing evidence; values are not estimated."
+    },
+    {
+      "stage": "gate_h_candidate",
+      "wall_time_median": null,
+      "wall_time_p90": null,
+      "actual_cost_total": null,
+      "actual_cost_per_record": null,
+      "status": "unavailable",
+      "reason": "No tracked deterministic duration or billing evidence; values are not estimated."
+    }
+  ]
+}

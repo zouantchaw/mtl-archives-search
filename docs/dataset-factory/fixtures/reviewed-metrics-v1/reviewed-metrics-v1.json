@@ -1,0 +1,3889 @@
+{
+  "schema_version": "reviewed_metrics_v1.0.0",
+  "artifact_id": "dfv0_reviewed_metrics_v1_candidate_20260714",
+  "metrics": [
+    {
+      "metric_id": "ocr_normalized_exact_match",
+      "status": "unavailable",
+      "numerator": null,
+      "denominator": 0,
+      "value": null,
+      "unit": "ratio",
+      "source_subset": {
+        "id": "paired_ocr_prediction_reference_crops",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [
+        "no prediction/reference crop intersection"
+      ],
+      "zero_denominator_policy": "status_unavailable_value_null_never_coerce_to_zero",
+      "reason": "No reviewed prediction/reference pair exists."
+    },
+    {
+      "metric_id": "ocr_cer",
+      "status": "unavailable",
+      "numerator": null,
+      "denominator": 0,
+      "value": null,
+      "unit": "error_rate",
+      "source_subset": {
+        "id": "paired_ocr_prediction_reference_crops",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [
+        "no prediction/reference crop intersection"
+      ],
+      "zero_denominator_policy": "status_unavailable_value_null_never_coerce_to_zero",
+      "reason": "No reviewed prediction/reference pair exists."
+    },
+    {
+      "metric_id": "ocr_wer",
+      "status": "unavailable",
+      "numerator": null,
+      "denominator": 0,
+      "value": null,
+      "unit": "error_rate",
+      "source_subset": {
+        "id": "paired_ocr_prediction_reference_crops",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [
+        "no prediction/reference crop intersection"
+      ],
+      "zero_denominator_policy": "status_unavailable_value_null_never_coerce_to_zero",
+      "reason": "No reviewed prediction/reference pair exists."
+    },
+    {
+      "metric_id": "entity_precision",
+      "status": "unavailable",
+      "numerator": null,
+      "denominator": 0,
+      "value": null,
+      "unit": "ratio",
+      "source_subset": {
+        "id": "reviewed_entity_prediction_gold",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [
+        "no reviewed entity prediction/gold set"
+      ],
+      "zero_denominator_policy": "status_unavailable_value_null_never_coerce_to_zero",
+      "reason": "Entity metrics require paired reviewed predictions and gold labels."
+    },
+    {
+      "metric_id": "entity_recall",
+      "status": "unavailable",
+      "numerator": null,
+      "denominator": 0,
+      "value": null,
+      "unit": "ratio",
+      "source_subset": {
+        "id": "reviewed_entity_prediction_gold",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [
+        "no reviewed entity prediction/gold set"
+      ],
+      "zero_denominator_policy": "status_unavailable_value_null_never_coerce_to_zero",
+      "reason": "Entity metrics require paired reviewed predictions and gold labels."
+    },
+    {
+      "metric_id": "false_identity_rate",
+      "status": "unavailable",
+      "numerator": null,
+      "denominator": 0,
+      "value": null,
+      "unit": "ratio",
+      "source_subset": {
+        "id": "reviewed_entity_prediction_gold",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [
+        "no reviewed entity prediction/gold set"
+      ],
+      "zero_denominator_policy": "status_unavailable_value_null_never_coerce_to_zero",
+      "reason": "Entity metrics require paired reviewed predictions and gold labels."
+    },
+    {
+      "metric_id": "place_link_precision",
+      "status": "unavailable",
+      "numerator": null,
+      "denominator": 0,
+      "value": null,
+      "unit": "ratio",
+      "source_subset": {
+        "id": "accepted_dossier_place_links",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [
+        "no accepted dossier-level place link"
+      ],
+      "zero_denominator_policy": "status_unavailable_value_null_never_coerce_to_zero",
+      "reason": "No accepted place-link denominator exists."
+    },
+    {
+      "metric_id": "image_mode_support_ground_street",
+      "status": "available",
+      "numerator": 16,
+      "denominator": 32,
+      "value": 16,
+      "unit": "records",
+      "source_subset": {
+        "id": "gate_g_accepted_image_mode_labels",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [],
+      "zero_denominator_policy": "ordinary_ratio_or_count",
+      "reason": "Support count from independently accepted Gate G labels; not model performance."
+    },
+    {
+      "metric_id": "image_mode_ground_street_precision",
+      "status": "unavailable",
+      "numerator": null,
+      "denominator": 0,
+      "value": null,
+      "unit": "ratio",
+      "source_subset": {
+        "id": "paired_image_mode_predictions_gold",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [
+        "accepted labels are not paired model predictions versus independent gold"
+      ],
+      "zero_denominator_policy": "status_unavailable_value_null_never_coerce_to_zero",
+      "reason": "Per-class model performance is unavailable."
+    },
+    {
+      "metric_id": "image_mode_ground_street_recall",
+      "status": "unavailable",
+      "numerator": null,
+      "denominator": 0,
+      "value": null,
+      "unit": "ratio",
+      "source_subset": {
+        "id": "paired_image_mode_predictions_gold",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [
+        "accepted labels are not paired model predictions versus independent gold"
+      ],
+      "zero_denominator_policy": "status_unavailable_value_null_never_coerce_to_zero",
+      "reason": "Per-class model performance is unavailable."
+    },
+    {
+      "metric_id": "image_mode_support_aerial_vertical",
+      "status": "available",
+      "numerator": 5,
+      "denominator": 32,
+      "value": 5,
+      "unit": "records",
+      "source_subset": {
+        "id": "gate_g_accepted_image_mode_labels",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [],
+      "zero_denominator_policy": "ordinary_ratio_or_count",
+      "reason": "Support count from independently accepted Gate G labels; not model performance."
+    },
+    {
+      "metric_id": "image_mode_aerial_vertical_precision",
+      "status": "unavailable",
+      "numerator": null,
+      "denominator": 0,
+      "value": null,
+      "unit": "ratio",
+      "source_subset": {
+        "id": "paired_image_mode_predictions_gold",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [
+        "accepted labels are not paired model predictions versus independent gold"
+      ],
+      "zero_denominator_policy": "status_unavailable_value_null_never_coerce_to_zero",
+      "reason": "Per-class model performance is unavailable."
+    },
+    {
+      "metric_id": "image_mode_aerial_vertical_recall",
+      "status": "unavailable",
+      "numerator": null,
+      "denominator": 0,
+      "value": null,
+      "unit": "ratio",
+      "source_subset": {
+        "id": "paired_image_mode_predictions_gold",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [
+        "accepted labels are not paired model predictions versus independent gold"
+      ],
+      "zero_denominator_policy": "status_unavailable_value_null_never_coerce_to_zero",
+      "reason": "Per-class model performance is unavailable."
+    },
+    {
+      "metric_id": "image_mode_support_aerial_oblique",
+      "status": "available",
+      "numerator": 11,
+      "denominator": 32,
+      "value": 11,
+      "unit": "records",
+      "source_subset": {
+        "id": "gate_g_accepted_image_mode_labels",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [],
+      "zero_denominator_policy": "ordinary_ratio_or_count",
+      "reason": "Support count from independently accepted Gate G labels; not model performance."
+    },
+    {
+      "metric_id": "image_mode_aerial_oblique_precision",
+      "status": "unavailable",
+      "numerator": null,
+      "denominator": 0,
+      "value": null,
+      "unit": "ratio",
+      "source_subset": {
+        "id": "paired_image_mode_predictions_gold",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [
+        "accepted labels are not paired model predictions versus independent gold"
+      ],
+      "zero_denominator_policy": "status_unavailable_value_null_never_coerce_to_zero",
+      "reason": "Per-class model performance is unavailable."
+    },
+    {
+      "metric_id": "image_mode_aerial_oblique_recall",
+      "status": "unavailable",
+      "numerator": null,
+      "denominator": 0,
+      "value": null,
+      "unit": "ratio",
+      "source_subset": {
+        "id": "paired_image_mode_predictions_gold",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [
+        "accepted labels are not paired model predictions versus independent gold"
+      ],
+      "zero_denominator_policy": "status_unavailable_value_null_never_coerce_to_zero",
+      "reason": "Per-class model performance is unavailable."
+    },
+    {
+      "metric_id": "image_mode_support_document_map",
+      "status": "available",
+      "numerator": 0,
+      "denominator": 32,
+      "value": 0,
+      "unit": "records",
+      "source_subset": {
+        "id": "gate_g_accepted_image_mode_labels",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [],
+      "zero_denominator_policy": "ordinary_ratio_or_count",
+      "reason": "Support count from independently accepted Gate G labels; not model performance."
+    },
+    {
+      "metric_id": "image_mode_document_map_precision",
+      "status": "unavailable",
+      "numerator": null,
+      "denominator": 0,
+      "value": null,
+      "unit": "ratio",
+      "source_subset": {
+        "id": "paired_image_mode_predictions_gold",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [
+        "accepted labels are not paired model predictions versus independent gold"
+      ],
+      "zero_denominator_policy": "status_unavailable_value_null_never_coerce_to_zero",
+      "reason": "Per-class model performance is unavailable."
+    },
+    {
+      "metric_id": "image_mode_document_map_recall",
+      "status": "unavailable",
+      "numerator": null,
+      "denominator": 0,
+      "value": null,
+      "unit": "ratio",
+      "source_subset": {
+        "id": "paired_image_mode_predictions_gold",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [
+        "accepted labels are not paired model predictions versus independent gold"
+      ],
+      "zero_denominator_policy": "status_unavailable_value_null_never_coerce_to_zero",
+      "reason": "Per-class model performance is unavailable."
+    },
+    {
+      "metric_id": "image_mode_support_low_information",
+      "status": "available",
+      "numerator": 0,
+      "denominator": 32,
+      "value": 0,
+      "unit": "records",
+      "source_subset": {
+        "id": "gate_g_accepted_image_mode_labels",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [],
+      "zero_denominator_policy": "ordinary_ratio_or_count",
+      "reason": "Support count from independently accepted Gate G labels; not model performance."
+    },
+    {
+      "metric_id": "image_mode_low_information_precision",
+      "status": "unavailable",
+      "numerator": null,
+      "denominator": 0,
+      "value": null,
+      "unit": "ratio",
+      "source_subset": {
+        "id": "paired_image_mode_predictions_gold",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [
+        "accepted labels are not paired model predictions versus independent gold"
+      ],
+      "zero_denominator_policy": "status_unavailable_value_null_never_coerce_to_zero",
+      "reason": "Per-class model performance is unavailable."
+    },
+    {
+      "metric_id": "image_mode_low_information_recall",
+      "status": "unavailable",
+      "numerator": null,
+      "denominator": 0,
+      "value": null,
+      "unit": "ratio",
+      "source_subset": {
+        "id": "paired_image_mode_predictions_gold",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [
+        "accepted labels are not paired model predictions versus independent gold"
+      ],
+      "zero_denominator_policy": "status_unavailable_value_null_never_coerce_to_zero",
+      "reason": "Per-class model performance is unavailable."
+    },
+    {
+      "metric_id": "image_mode_macro_f1",
+      "status": "unavailable",
+      "numerator": null,
+      "denominator": 0,
+      "value": null,
+      "unit": "ratio",
+      "source_subset": {
+        "id": "paired_image_mode_predictions_gold",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [
+        "no model prediction/gold pairing"
+      ],
+      "zero_denominator_policy": "status_unavailable_value_null_never_coerce_to_zero",
+      "reason": "Macro-F1 is unavailable."
+    },
+    {
+      "metric_id": "gate_g_reviewer_agreement",
+      "status": "available",
+      "numerator": 32,
+      "denominator": 32,
+      "value": 1,
+      "unit": "ratio",
+      "source_subset": {
+        "id": "gate_g_accepted_image_mode_labels",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [
+        "four categorically held pilots"
+      ],
+      "zero_denominator_policy": "ordinary_ratio_or_count",
+      "reason": "All 32 counted labels received positive independent dossier review; this is reviewer agreement, not model performance."
+    },
+    {
+      "metric_id": "aerial_region_label_agreement",
+      "status": "unavailable",
+      "numerator": null,
+      "denominator": 0,
+      "value": null,
+      "unit": "ratio",
+      "source_subset": {
+        "id": "reviewed_aerial_masks",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [
+        "no reviewed masks"
+      ],
+      "zero_denominator_policy": "status_unavailable_value_null_never_coerce_to_zero",
+      "reason": "No mask denominator exists."
+    },
+    {
+      "metric_id": "aerial_mask_iou",
+      "status": "unavailable",
+      "numerator": null,
+      "denominator": 0,
+      "value": null,
+      "unit": "ratio",
+      "source_subset": {
+        "id": "reviewed_aerial_masks",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [
+        "no reviewed masks"
+      ],
+      "zero_denominator_policy": "status_unavailable_value_null_never_coerce_to_zero",
+      "reason": "No mask denominator exists."
+    },
+    {
+      "metric_id": "geolocation_median_distance",
+      "status": "unavailable",
+      "numerator": null,
+      "denominator": 0,
+      "value": null,
+      "unit": "distance",
+      "source_subset": {
+        "id": "accepted_verified_coordinates",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [
+        "no accepted coordinates"
+      ],
+      "zero_denominator_policy": "status_unavailable_value_null_never_coerce_to_zero",
+      "reason": "No verified coordinate/error sample exists."
+    },
+    {
+      "metric_id": "geolocation_p90_distance",
+      "status": "unavailable",
+      "numerator": null,
+      "denominator": 0,
+      "value": null,
+      "unit": "distance",
+      "source_subset": {
+        "id": "accepted_verified_coordinates",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [
+        "no accepted coordinates"
+      ],
+      "zero_denominator_policy": "status_unavailable_value_null_never_coerce_to_zero",
+      "reason": "No verified coordinate/error sample exists."
+    },
+    {
+      "metric_id": "location_coverage",
+      "status": "available",
+      "numerator": 0,
+      "denominator": 22,
+      "value": 0,
+      "unit": "ratio",
+      "source_subset": {
+        "id": "gate_f_semantic_target_universe",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [],
+      "zero_denominator_policy": "ordinary_ratio_or_count",
+      "reason": "Gate F records with accepted semantic authority."
+    },
+    {
+      "metric_id": "location_abstention_rate",
+      "status": "available",
+      "numerator": 22,
+      "denominator": 22,
+      "value": 1,
+      "unit": "ratio",
+      "source_subset": {
+        "id": "gate_f_semantic_target_universe",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [],
+      "zero_denominator_policy": "ordinary_ratio_or_count",
+      "reason": "Gate F rows explicitly marked abstained."
+    },
+    {
+      "metric_id": "location_error_among_non_abstentions",
+      "status": "unavailable",
+      "numerator": null,
+      "denominator": 0,
+      "value": null,
+      "unit": "error_rate",
+      "source_subset": {
+        "id": "gate_f_non_abstentions",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [
+        "zero non-abstentions"
+      ],
+      "zero_denominator_policy": "status_unavailable_value_null_never_coerce_to_zero",
+      "reason": "Error among non-abstentions is undefined when the denominator is zero."
+    },
+    {
+      "metric_id": "georef_coverage",
+      "status": "available",
+      "numerator": 0,
+      "denominator": 22,
+      "value": 0,
+      "unit": "ratio",
+      "source_subset": {
+        "id": "gate_f_semantic_target_universe",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [],
+      "zero_denominator_policy": "ordinary_ratio_or_count",
+      "reason": "Gate F records with accepted semantic authority."
+    },
+    {
+      "metric_id": "georef_abstention_rate",
+      "status": "available",
+      "numerator": 22,
+      "denominator": 22,
+      "value": 1,
+      "unit": "ratio",
+      "source_subset": {
+        "id": "gate_f_semantic_target_universe",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [],
+      "zero_denominator_policy": "ordinary_ratio_or_count",
+      "reason": "Gate F rows explicitly marked abstained."
+    },
+    {
+      "metric_id": "georef_error_among_non_abstentions",
+      "status": "unavailable",
+      "numerator": null,
+      "denominator": 0,
+      "value": null,
+      "unit": "error_rate",
+      "source_subset": {
+        "id": "gate_f_non_abstentions",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [
+        "zero non-abstentions"
+      ],
+      "zero_denominator_policy": "status_unavailable_value_null_never_coerce_to_zero",
+      "reason": "Error among non-abstentions is undefined when the denominator is zero."
+    },
+    {
+      "metric_id": "scale_coverage",
+      "status": "available",
+      "numerator": 0,
+      "denominator": 22,
+      "value": 0,
+      "unit": "ratio",
+      "source_subset": {
+        "id": "gate_f_semantic_target_universe",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [],
+      "zero_denominator_policy": "ordinary_ratio_or_count",
+      "reason": "Gate F records with accepted semantic authority."
+    },
+    {
+      "metric_id": "scale_abstention_rate",
+      "status": "available",
+      "numerator": 22,
+      "denominator": 22,
+      "value": 1,
+      "unit": "ratio",
+      "source_subset": {
+        "id": "gate_f_semantic_target_universe",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [],
+      "zero_denominator_policy": "ordinary_ratio_or_count",
+      "reason": "Gate F rows explicitly marked abstained."
+    },
+    {
+      "metric_id": "scale_error_among_non_abstentions",
+      "status": "unavailable",
+      "numerator": null,
+      "denominator": 0,
+      "value": null,
+      "unit": "error_rate",
+      "source_subset": {
+        "id": "gate_f_non_abstentions",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [
+        "zero non-abstentions"
+      ],
+      "zero_denominator_policy": "status_unavailable_value_null_never_coerce_to_zero",
+      "reason": "Error among non-abstentions is undefined when the denominator is zero."
+    },
+    {
+      "metric_id": "land_use_coverage",
+      "status": "available",
+      "numerator": 0,
+      "denominator": 22,
+      "value": 0,
+      "unit": "ratio",
+      "source_subset": {
+        "id": "gate_f_semantic_target_universe",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [],
+      "zero_denominator_policy": "ordinary_ratio_or_count",
+      "reason": "Gate F records with accepted semantic authority."
+    },
+    {
+      "metric_id": "land_use_abstention_rate",
+      "status": "available",
+      "numerator": 22,
+      "denominator": 22,
+      "value": 1,
+      "unit": "ratio",
+      "source_subset": {
+        "id": "gate_f_semantic_target_universe",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [],
+      "zero_denominator_policy": "ordinary_ratio_or_count",
+      "reason": "Gate F rows explicitly marked abstained."
+    },
+    {
+      "metric_id": "land_use_error_among_non_abstentions",
+      "status": "unavailable",
+      "numerator": null,
+      "denominator": 0,
+      "value": null,
+      "unit": "error_rate",
+      "source_subset": {
+        "id": "gate_f_non_abstentions",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [
+        "zero non-abstentions"
+      ],
+      "zero_denominator_policy": "status_unavailable_value_null_never_coerce_to_zero",
+      "reason": "Error among non-abstentions is undefined when the denominator is zero."
+    },
+    {
+      "metric_id": "measurement_coverage",
+      "status": "available",
+      "numerator": 0,
+      "denominator": 22,
+      "value": 0,
+      "unit": "ratio",
+      "source_subset": {
+        "id": "gate_f_semantic_target_universe",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [],
+      "zero_denominator_policy": "ordinary_ratio_or_count",
+      "reason": "Gate F records with accepted semantic authority."
+    },
+    {
+      "metric_id": "measurement_abstention_rate",
+      "status": "available",
+      "numerator": 22,
+      "denominator": 22,
+      "value": 1,
+      "unit": "ratio",
+      "source_subset": {
+        "id": "gate_f_semantic_target_universe",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [],
+      "zero_denominator_policy": "ordinary_ratio_or_count",
+      "reason": "Gate F rows explicitly marked abstained."
+    },
+    {
+      "metric_id": "measurement_error_among_non_abstentions",
+      "status": "unavailable",
+      "numerator": null,
+      "denominator": 0,
+      "value": null,
+      "unit": "error_rate",
+      "source_subset": {
+        "id": "gate_f_non_abstentions",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [
+        "zero non-abstentions"
+      ],
+      "zero_denominator_policy": "status_unavailable_value_null_never_coerce_to_zero",
+      "reason": "Error among non-abstentions is undefined when the denominator is zero."
+    },
+    {
+      "metric_id": "stage_wall_time_median",
+      "status": "unavailable",
+      "numerator": null,
+      "denominator": 0,
+      "value": null,
+      "unit": "duration",
+      "source_subset": {
+        "id": "tracked_stage_runtime_and_billing",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [
+        "no tracked prior stage durations or billing"
+      ],
+      "zero_denominator_policy": "status_unavailable_value_null_never_coerce_to_zero",
+      "reason": "Values are unavailable and are not estimated."
+    },
+    {
+      "metric_id": "stage_wall_time_p90",
+      "status": "unavailable",
+      "numerator": null,
+      "denominator": 0,
+      "value": null,
+      "unit": "duration",
+      "source_subset": {
+        "id": "tracked_stage_runtime_and_billing",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [
+        "no tracked prior stage durations or billing"
+      ],
+      "zero_denominator_policy": "status_unavailable_value_null_never_coerce_to_zero",
+      "reason": "Values are unavailable and are not estimated."
+    },
+    {
+      "metric_id": "actual_cost_per_stage",
+      "status": "unavailable",
+      "numerator": null,
+      "denominator": 0,
+      "value": null,
+      "unit": "currency",
+      "source_subset": {
+        "id": "tracked_stage_runtime_and_billing",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [
+        "no tracked prior stage durations or billing"
+      ],
+      "zero_denominator_policy": "status_unavailable_value_null_never_coerce_to_zero",
+      "reason": "Values are unavailable and are not estimated."
+    },
+    {
+      "metric_id": "actual_cost_per_record",
+      "status": "unavailable",
+      "numerator": null,
+      "denominator": 0,
+      "value": null,
+      "unit": "currency",
+      "source_subset": {
+        "id": "tracked_stage_runtime_and_billing",
+        "predecessor_digests": {
+          "phase_d": {
+            "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+            "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+            "bytes": 4243798
+          },
+          "gate_e_promotion": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+            "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+            "bytes": 1000
+          },
+          "gate_e_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+            "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+            "bytes": 15435
+          },
+          "gate_f_review": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+            "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+            "bytes": 17017
+          },
+          "gate_f_review_receipt": {
+            "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+            "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+            "bytes": 46295
+          },
+          "gate_g_descriptor": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+            "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+            "bytes": 40954
+          },
+          "gate_g_receipt": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+            "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+            "bytes": 50658
+          },
+          "gate_g_authorization": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+            "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+            "bytes": 3179
+          },
+          "gate_g_status": {
+            "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+            "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+            "bytes": 824
+          },
+          "false_precision_candidates": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+            "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+            "bytes": 8794
+          },
+          "reviewed_transcriptions": {
+            "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+            "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+            "bytes": 1907
+          },
+          "claim_adjudication": {
+            "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+            "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+            "bytes": 7724
+          },
+          "pilot_promotion": {
+            "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+            "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+            "bytes": 1367
+          }
+        }
+      },
+      "exclusions": [
+        "no tracked prior stage durations or billing"
+      ],
+      "zero_denominator_policy": "status_unavailable_value_null_never_coerce_to_zero",
+      "reason": "Values are unavailable and are not estimated."
+    }
+  ],
+  "metric_count": 47,
+  "class_support": {
+    "ground_street": 16,
+    "aerial_vertical": 5,
+    "aerial_oblique": 11,
+    "document_map": 0,
+    "low_information": 0
+  },
+  "warnings": [
+    "Class support and dossier reviewer agreement are not model performance.",
+    "Unavailable values are null, never false zeroes."
+  ]
+}

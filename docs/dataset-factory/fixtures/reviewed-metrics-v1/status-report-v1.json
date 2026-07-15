@@ -1,0 +1,12 @@
+{
+  "schema_version": "reviewed_metrics_status_v1.0.0",
+  "artifact_id": "dfv0_reviewed_metrics_v1_candidate_20260714",
+  "state": "candidate_external_task_review_required",
+  "candidate_tasks": 32,
+  "reviewed_tasks": 0,
+  "accepted_tasks": 0,
+  "issue_complete": false,
+  "production_mutation": false,
+  "search_index_mutation": false,
+  "paid_gpu": false
+}

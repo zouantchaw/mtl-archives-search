@@ -1,0 +1,34 @@
+{
+  "schema_version": "reviewed_metrics_component_split_audit_v1.0.0",
+  "artifact_id": "dfv0_reviewed_metrics_v1_candidate_20260714",
+  "phase_d": {
+    "records": 60,
+    "unique_components": 60,
+    "split_counts": {
+      "train": 52,
+      "validation": 5,
+      "test": 3
+    },
+    "cross_split_component_crossings": 0
+  },
+  "candidate_tasks": {
+    "records": 32,
+    "unique_components": 32,
+    "split_counts": {
+      "train": 27,
+      "validation": 4,
+      "test": 1
+    },
+    "cross_split_component_crossings": 0
+  },
+  "checks": {
+    "phase_d_component_distinct": true,
+    "task_component_distinct": true,
+    "task_splits_match_phase_d": true
+  },
+  "source": {
+    "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+    "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+    "bytes": 4243798
+  }
+}

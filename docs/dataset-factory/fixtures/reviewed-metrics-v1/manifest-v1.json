@@ -1,0 +1,117 @@
+{
+  "schema_version": "reviewed_metrics_manifest_v1.0.0",
+  "artifact_id": "dfv0_reviewed_metrics_v1_candidate_20260714",
+  "predecessors": {
+    "phase_d": {
+      "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+      "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+      "bytes": 4243798
+    },
+    "gate_e_promotion": {
+      "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+      "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+      "bytes": 1000
+    },
+    "gate_e_review_receipt": {
+      "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/independent-source-body-review-receipt-v1.json",
+      "sha256": "edfb27f4044812e9cf7b98f91b1b49921e98006053257f7192360b547ce508ef",
+      "bytes": 15435
+    },
+    "gate_f_review": {
+      "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+      "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+      "bytes": 17017
+    },
+    "gate_f_review_receipt": {
+      "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+      "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+      "bytes": 46295
+    },
+    "gate_g_descriptor": {
+      "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+      "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+      "bytes": 40954
+    },
+    "gate_g_receipt": {
+      "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+      "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+      "bytes": 50658
+    },
+    "gate_g_authorization": {
+      "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/reviewer-authorization-v1.json",
+      "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+      "bytes": 3179
+    },
+    "gate_g_status": {
+      "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
+      "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+      "bytes": 824
+    },
+    "false_precision_candidates": {
+      "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+      "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+      "bytes": 8794
+    },
+    "reviewed_transcriptions": {
+      "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+      "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+      "bytes": 1907
+    },
+    "claim_adjudication": {
+      "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+      "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+      "bytes": 7724
+    },
+    "pilot_promotion": {
+      "path": "docs/dataset-factory/fixtures/verified-multimodal-batch-001/real-pilot-visual-promotion-v1.json",
+      "sha256": "8fe075ab8770891662b3b78045ea77d179455af893fdef5f68a28b4e6f2f075a",
+      "bytes": 1367
+    }
+  },
+  "members": {
+    "members": [
+      {
+        "path": "candidate-benchmark-tasks-v1.json",
+        "sha256": "c715c411d37f0d6bde756cf68b0b3a2db59de2336fe2c55752744e3514cf6a66",
+        "bytes": 337705
+      },
+      {
+        "path": "component-split-audit-v1.json",
+        "sha256": "f04e53e478c9243b6a7acce3819b137413f73db3c82d3d09f0bff7603daa8d8c",
+        "bytes": 891
+      },
+      {
+        "path": "criterion-matrix-v1.json",
+        "sha256": "dd49e24b258b7fccc1736d79def7d8dbdc13865028695ecb718036cc8d5ac476",
+        "bytes": 2830
+      },
+      {
+        "path": "false-precision-cases-v1.json",
+        "sha256": "244a04b6974f7724d19c07c02ce56cd356c6eca0d2bea6b01eae7eb20adaf967",
+        "bytes": 4208
+      },
+      {
+        "path": "reviewed-metrics-v1.json",
+        "sha256": "b1fbef31bd9cf60dd74dbcf9b5aaf2bff5b5b0864b0e77720dc7d39f89540180",
+        "bytes": 195138
+      },
+      {
+        "path": "run-report-v1.json",
+        "sha256": "690e258bd40643fc9a34fadc046ae7d2b71834507c150c06dfef0b0231dfda9c",
+        "bytes": 531
+      },
+      {
+        "path": "stage-cost-evidence-v1.json",
+        "sha256": "14178988ebdb2d6dfe1ec9e58e399546c1398f7256d55168ea465915ee1a390c",
+        "bytes": 1758
+      },
+      {
+        "path": "status-report-v1.json",
+        "sha256": "0108ef01ac1b9c11024b7fd7e79e900c23b2742829a126e7acfd36bd0bb05648",
+        "bytes": 360
+      }
+    ],
+    "sha256": "1420c8823016fdccaa168a0831f1f55cf268562933a1747fdb9610c9d5c86733",
+    "bytes": 543421
+  }
+}

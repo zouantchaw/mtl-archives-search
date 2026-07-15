@@ -1,0 +1,32 @@
+{
+  "schema_version": "reviewed_metrics_descriptor_v1.0.0",
+  "artifact_id": "dfv0_reviewed_metrics_v1_candidate_20260714",
+  "state": "candidate_external_task_review_required",
+  "author": {
+    "identity": "codex-sol-medium-gate-h-implementation",
+    "session_id": "issue92-gate-h-implementation-20260714",
+    "role": "candidate_metrics_and_task_author"
+  },
+  "manifest": {
+    "path": "manifest-v1.json",
+    "sha256": "f5fed6011f2a4580f503d27c422c3854a20d31bd818fe6babc71660ccd3b27f8",
+    "bytes": 4885
+  },
+  "candidate_tasks": {
+    "path": "candidate-benchmark-tasks-v1.json",
+    "sha256": "c715c411d37f0d6bde756cf68b0b3a2db59de2336fe2c55752744e3514cf6a66",
+    "bytes": 337705
+  },
+  "counts": {
+    "phase_d_records": 60,
+    "gate_g_accepted_dossiers": 32,
+    "candidate_tasks": 32,
+    "reviewed_tasks": 0,
+    "available_metrics": 16,
+    "unavailable_metrics": 31,
+    "benchmark_tasks_published": 0,
+    "search_tasks": 0
+  },
+  "issue_complete": false,
+  "production_mutation": false
+}
