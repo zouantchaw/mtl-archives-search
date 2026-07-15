@@ -296,6 +296,7 @@ type ExecutionAuthorityEvidence = { head: string; parents: string[]; changedPath
 type ExecutionAuthorityReader = () => ExecutionAuthorityEvidence;
 type Clock = () => Date;
 type FileSnapshot = { file: string; fd: number; raw: Buffer; value: J; stat: fs.Stats };
+type RawSnapshot = Omit<FileSnapshot, "value">;
 type FinalizationHooks = {
   afterInputs?: () => void;
   afterDetailWrite?: () => void;
@@ -353,10 +354,81 @@ function validateSignedAttestation(value: J, schemaName: string): void {
   rejectPlaceholderEvidence(value);
   const key = parseEd25519PublicKey(value.signer.public_key_pem);
   codedAssert(value.signer.public_key_pem === key.export({ type: "spki", format: "pem" }).toString() && value.signer.public_key_sha256 === hash(value.signer.public_key_pem), "H2_PREACTIVATION_SIGNER", "attestation signer key is not canonical or hash-matched");
-  codedAssert(value.observation.principal === value.signer.principal && value.observation.session_id === value.signer.session_id && value.observation.route === value.signer.route, "H2_PREACTIVATION_IDENTITY", "observation identity differs from signer principal/session/route");
+  codedAssert(value.observation.principal === value.signer.principal && value.observation.session_id === value.signer.session_id && value.observation.route === value.signer.route && value.observation.physical_route_identity_sha256 === value.signer.physical_route_identity_sha256, "H2_PREACTIVATION_IDENTITY", "observation identity differs from signer principal/session/logical or physical route");
   let valid = false;
   try { valid = crypto.verify(null, unsignedAttestationPayload(value), key, Buffer.from(value.signature_base64, "base64")); } catch { valid = false; }
   codedAssert(valid, "H2_PREACTIVATION_SIGNATURE", "attestation signature is invalid");
+}
+const PREACTIVATION_EVIDENCE_KINDS = ["d1_live", "linux_sandbox", "pre_activation_verifier"] as const;
+function attestorIdentity(identity: J): J {
+  return { principal: identity.principal, session_id: identity.session_id, logical_route: identity.route ?? identity.logical_route, physical_route_identity_sha256: identity.physical_route_identity_sha256, public_key_sha256: identity.public_key_sha256 };
+}
+function admissionPayload(value: J): Buffer { const unsigned = structuredClone(value); delete unsigned.signature_base64; return Buffer.from(canon(unsigned)); }
+function validateAdmissionReceipt(receipt: J, entry: J, raw: Buffer): void {
+  schema("pre-activation-attestor-admission.schema.v2.json", receipt);
+  rejectPlaceholderEvidence(receipt);
+  codedAssert(raw.equals(Buffer.from(pretty(receipt))), "H2_PREACTIVATION_ADMISSION", "admission receipt is not canonical JSON");
+  codedAssert(receipt.evidence_kind === entry.evidence_kind && canon(receipt.subject) === canon(attestorIdentity(entry)), "H2_PREACTIVATION_ADMISSION", "admission receipt subject differs from the registry");
+  codedAssert(!Object.values(attestorIdentity(entry)).some((value) => value === receipt.reviewer?.principal || value === receipt.reviewer?.session_id || value === receipt.reviewer?.logical_route || value === receipt.reviewer?.physical_route_identity_sha256 || value === receipt.reviewer?.public_key_sha256), "H2_PREACTIVATION_ADMISSION", "admission reviewer must be independent from the admitted attestor");
+  const key = parseEd25519PublicKey(receipt.reviewer.public_key_pem);
+  codedAssert(receipt.reviewer.public_key_sha256 === hash(receipt.reviewer.public_key_pem) && receipt.reviewer.public_key_pem === key.export({ type: "spki", format: "pem" }).toString() && crypto.verify(null, admissionPayload(receipt), key, Buffer.from(receipt.signature_base64, "base64")), "H2_PREACTIVATION_ADMISSION", "admission receipt signature or reviewer key is invalid");
+}
+function committedFileAt(commit: string, repositoryPath: string): Buffer {
+  const git = trustedExecutable("git");
+  try {
+    execFileSync(git, ["cat-file", "-e", `${commit}^{commit}`], { cwd: ROOT, env: {}, stdio: "ignore" });
+    execFileSync(git, ["merge-base", "--is-ancestor", commit, "HEAD"], { cwd: ROOT, env: {}, stdio: "ignore" });
+    codedAssert(commit !== execFileSync(git, ["rev-parse", "HEAD"], { cwd: ROOT, env: {}, encoding: "utf8" }).trim(), "H2_PREACTIVATION_ADMISSION_COMMIT", "admission commit must be a reviewed strict ancestor, not the current commit");
+    return execFileSync(git, ["show", `${commit}:${repositoryPath}`], { cwd: ROOT, env: {}, maxBuffer: 16 * 1024 * 1024 });
+  } catch (error) {
+    if (error instanceof GateH2Error) throw error;
+    throw new GateH2Error("H2_PREACTIVATION_ADMISSION_COMMIT", "admission commit is nonexistent, not an ancestor, or does not contain the pinned receipt");
+  }
+}
+function validatePreActivationTrustIdentitySet(trust: J): void {
+  codedAssert(trust && Array.isArray(trust.attestors), "H2_PREACTIVATION_TRUST", "pre-activation trust registry structure is missing");
+  if (trust.status !== "reviewed_real_attestors_admitted") {
+    schema("pre-activation-attestor-trust.schema.v2.json", trust);
+    codedAssert(trust.attestors.length === 0, "H2_PREACTIVATION_TRUST", "blocked trust registry must not contain attestors");
+    return;
+  }
+  codedAssert(trust.attestors.length === 3, "H2_PREACTIVATION_TRUST", "reviewed trust registry requires exactly three entries");
+  codedAssert(canon(trust.attestors.map((entry: J) => entry.evidence_kind)) === canon(PREACTIVATION_EVIDENCE_KINDS), "H2_PREACTIVATION_TRUST_KIND", "pre-activation trust registry requires the exact ordered three evidence kinds");
+  schema("pre-activation-attestor-trust.schema.v2.json", trust);
+  for (const field of ["principal", "session_id", "logical_route", "physical_route_identity_sha256", "public_key_sha256"])
+    codedAssert(new Set(trust.attestors.map((entry: J) => entry[field])).size === 3, "H2_PREACTIVATION_INDEPENDENCE", `all three pre-activation identities must have pairwise distinct ${field}`);
+}
+function validatePreActivationTrustRegistry(trust: J): void {
+  validatePreActivationTrustIdentitySet(trust);
+  if (trust.status !== "reviewed_real_attestors_admitted") return;
+  for (const entry of trust.attestors) {
+    const raw = committedFileAt(entry.admission_commit, entry.admission_receipt.path);
+    codedAssert(raw.length === entry.admission_receipt.bytes && hash(raw) === entry.admission_receipt.sha256, "H2_PREACTIVATION_ADMISSION", "committed admission receipt differs from the reviewed registry pin");
+    let receipt: J; try { receipt = JSON.parse(raw.toString("utf8")); } catch { throw new GateH2Error("H2_PREACTIVATION_ADMISSION", "committed admission receipt is not JSON"); }
+    validateAdmissionReceipt(receipt, entry, raw);
+  }
+}
+function trustedPreActivationIdentity(trust: J, kind: string, identity: J): boolean {
+  const expected = { evidence_kind: kind, ...attestorIdentity(identity) };
+  return trust.attestors.some((entry: J) => Object.entries(expected).every(([field, value]) => entry[field] === value));
+}
+function physicalRouteIdentitySha256(route: string): string {
+  const measured = strictHostRouteMeasurement(route);
+  return hash(canon({ canonical_root: measured.canonicalRoot, existing_ancestor: measured.existingAncestor, device: measured.stat.dev, inode: measured.stat.ino }));
+}
+function reviewedTrustSnapshot(): FileSnapshot {
+  const snapshot = readJsonSnapshot(PREACTIVATION_TRUST, "H2_PREACTIVATION_TRUST", true, undefined, [0o400, 0o444, 0o600, 0o644]);
+  try {
+    const relative = path.relative(ROOT, PREACTIVATION_TRUST);
+    const committed = execFileSync(trustedExecutable("git"), ["show", `HEAD:${relative}`], { cwd: ROOT, env: {} });
+    codedAssert(snapshot.raw.equals(committed), "H2_PREACTIVATION_TRUST", "pre-activation verifier requires the exact reviewed registry committed at HEAD");
+    validatePreActivationTrustRegistry(snapshot.value);
+    return snapshot;
+  } catch (error) {
+    closeSnapshot(snapshot);
+    if (error instanceof GateH2Error) throw error;
+    throw new GateH2Error("H2_PREACTIVATION_TRUST", "reviewed trust registry could not be verified at HEAD");
+  }
 }
 function validateD1LiveAttestation(value: J): void {
   validateSignedAttestation(value, "d1-live-attestation.schema.v2.json");
@@ -369,29 +441,69 @@ function validateD1LiveAttestation(value: J): void {
 }
 function validateLinuxSandboxAttestation(value: J): void {
   validateSignedAttestation(value, "linux-sandbox-attestation.schema.v2.json");
-  codedAssert(value.argv_prefix.every((entry: J, index: number) => entry.index === index && entry.value_sha256 === hash(entry.value) && entry.semantic_join_sha256 === hash(canon({ index, value: entry.value, semantic_role: entry.semantic_role }))), "H2_PREACTIVATION_SANDBOX_ARGV", "sandbox argv prefix semantics are not exact or ordered");
+  codedAssert(value.wrapper_grammar_version === "gate_h2_linux_wrapper_argv_v2" && canon(value.argv_prefix) === canon(deriveSandboxArgvPrefix(value)), "H2_PREACTIVATION_SANDBOX_ARGV", "sandbox argv prefix is not the exact typed grammar derived from signed image, mounts, network, runtime, capabilities, and fixed allowlist");
   codedAssert(value.network.policy === "deny_all" ? value.network.destination_capability_ids.length === 0 : value.network.destination_capability_ids.length > 0, "H2_PREACTIVATION_SANDBOX_NETWORK", "sandbox network policy and destination capabilities differ");
   codedAssert(value.mounts.readable_inputs.every((mount: J) => mount.mode === "ro") && value.mounts.output_mounts.every((mount: J) => mount.mode === "rw"), "H2_PREACTIVATION_SANDBOX_MOUNTS", "sandbox readable/output mount modes differ");
   unique([...value.mounts.readable_inputs, ...value.mounts.output_mounts].map((mount: J) => mount.guest_path), "sandbox guest mount path");
   same([...value.writable_confinement.writable_paths].sort(), value.mounts.output_mounts.map((mount: J) => mount.host_path).sort(), "sandbox writable paths and output mounts");
-  codedAssert(value.runtime_tree.complete_tree_sha256 !== value.runtime_tree.runtime.sha256 && value.runtime_tree.member_count > 1 && value.runtime_tree.complete_tree_bytes > value.runtime_tree.runtime.bytes, "H2_PREACTIVATION_RUNTIME_TREE", "sandbox runtime identity must cover the complete runtime/module tree, not only its manifest or executable");
+  const runtimeMembers = [...value.runtime_tree.members].sort((a: J, b: J) => a.realpath.localeCompare(b.realpath));
+  const runtimeBytes = dependencyTreeBytes(value.runtime_tree.physical_roots, runtimeMembers);
+  codedAssert(canon(runtimeMembers) === canon(value.runtime_tree.members) && value.runtime_tree.member_count === runtimeMembers.length && value.runtime_tree.complete_tree_sha256 === hash(runtimeBytes) && value.runtime_tree.complete_tree_bytes === runtimeBytes.length && runtimeMembers.some((member: J) => member.realpath === value.runtime_tree.runtime.realpath && member.sha256 === value.runtime_tree.runtime.sha256), "H2_PREACTIVATION_RUNTIME_TREE", "sandbox runtime identity must carry the complete exact runtime/module member set and physical discovery roots");
+}
+function wrapperJoin(entry: J): string { const payload = structuredClone(entry); delete payload.semantic_join_sha256; return hash(canon(payload)); }
+function sandboxArg(index: number, argument_kind: "derived" | "fixed", semantic_role: string, source_ref: string, value: string): J {
+  const entry = { index, argument_kind, value, value_sha256: hash(value), semantic_role, source_ref, semantic_join_sha256: "" };
+  entry.semantic_join_sha256 = wrapperJoin(entry); return entry;
+}
+function deriveSandboxArgvPrefix(value: J): J[] {
+  const result: J[] = []; const add = (kind: "derived" | "fixed", role: string, source: string, argument: string) => result.push(sandboxArg(result.length, kind, role, source, argument));
+  add("derived", "image_identity", "image:digest", `--image=${value.image.digest}`);
+  for (const mount of [...value.mounts.readable_inputs].sort((a: J, b: J) => a.artifact_role.localeCompare(b.artifact_role))) add("derived", "read_only_mount", `readable_mount:${mount.artifact_role}`, `--mount-ro=${mount.host_path}:${mount.guest_path}:${mount.content_sha256}`);
+  for (const mount of [...value.mounts.output_mounts].sort((a: J, b: J) => a.artifact_role.localeCompare(b.artifact_role))) add("derived", "output_mount", `output_mount:${mount.artifact_role}`, `--mount-rw=${mount.host_path}:${mount.guest_path}`);
+  add("derived", "network_namespace", "network:namespace", `--network-namespace-sha256=${value.network.namespace_identity_sha256}`);
+  add("derived", "firewall_policy", "network:firewall", `--firewall-rules-sha256=${value.network.firewall_rules_sha256}`);
+  add("derived", "runtime_entrypoint", "runtime:realpath", `--runtime=${value.runtime_tree.runtime.realpath}`);
+  for (const capability of [...value.network.destination_capability_ids].sort()) add("derived", "destination_capability", `destination_capability:${capability}`, `--destination-capability=${capability}`);
+  for (const fixed of value.fixed_argument_allowlist) { codedAssert(fixed.value_sha256 === hash(fixed.value) && !pathBearingValue(fixed.value), "H2_PREACTIVATION_SANDBOX_ARGV", "fixed wrapper argument must be explicitly pinned and non-path-bearing"); add("fixed", "fixed_flag", `fixed:${fixed.allowlist_id}`, fixed.value); }
+  return result;
+}
+function deriveBoundaryArgvPrefix(boundary: J, runtime: J): J[] {
+  const attestationShape = { image: { digest: boundary.image_digest }, mounts: { readable_inputs: boundary.readable_mounts, output_mounts: boundary.output_mounts }, network: { namespace_identity_sha256: boundary.network_namespace_sha256, firewall_rules_sha256: boundary.firewall_rules_sha256, destination_capability_ids: boundary.network_capability_ids }, runtime_tree: { runtime }, fixed_argument_allowlist: boundary.fixed_argument_allowlist ?? [] };
+  return deriveSandboxArgvPrefix(attestationShape);
 }
 function verifyAttestationArtifact(pinValue: J, schemaPin: string, expectedSchemaName: string): J {
   let snapshot: OperationSnapshot;
   try { snapshot = snapshotOperationFile(pinValue.artifact, "pre-activation attestation artifact"); }
   catch (error) { if (error instanceof GateH2Error) throw error; throw new GateH2Error("H2_PREACTIVATION_MISSING", "pre-activation attestation artifact is absent or unreadable"); }
-  const value = JSON.parse(snapshot.raw.toString("utf8"));
-  codedAssert(snapshot.raw.equals(Buffer.from(pretty(value))), "H2_PREACTIVATION_CANONICAL", "attestation artifact must use canonical JSON bytes");
-  codedAssert(schemaPin === schemaFilePin(expectedSchemaName).sha256, "H2_PREACTIVATION_SCHEMA_PIN", "authority attestation schema pin differs");
-  return value;
+  try {
+    const value = JSON.parse(snapshot.raw.toString("utf8"));
+    codedAssert(snapshot.raw.equals(Buffer.from(pretty(value))), "H2_PREACTIVATION_CANONICAL", "attestation artifact must use canonical JSON bytes");
+    codedAssert(schemaPin === schemaFilePin(expectedSchemaName).sha256, "H2_PREACTIVATION_SCHEMA_PIN", "authority attestation schema pin differs");
+    return value;
+  } finally { fs.closeSync(snapshot.fd); }
 }
 function writeJson(file: string, value: J): void { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, pretty(value), { mode: 0o600 }); }
 function writeJsonExclusive(file: string, value: J): void { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, pretty(value), { flag: "wx", mode: 0o600 }); }
+function writeOwnedExclusive(file: string, raw: Buffer, code: string): void {
+  let fd: number | undefined; let opened: fs.Stats | undefined;
+  try {
+    fd = fs.openSync(file, fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_NOFOLLOW, 0o600); opened = fs.fstatSync(fd);
+    codedAssert(opened.isFile() && opened.uid === process.getuid!() && opened.nlink === 1, code, "exclusive output is not the newly created owner-controlled file");
+    let offset = 0; while (offset < raw.length) offset += fs.writeSync(fd, raw, offset, raw.length - offset, offset);
+    fs.fsyncSync(fd); fs.closeSync(fd); fd = undefined;
+  } catch (error) {
+    if (fd !== undefined) { try { fs.closeSync(fd); } catch { /* cleanup continues by retained inode */ } }
+    if (opened) { try { const current = fs.lstatSync(file); if (current.dev === opened.dev && current.ino === opened.ino) fs.unlinkSync(file); } catch { /* fail closed without deleting an unowned path */ } }
+    if (error instanceof GateH2Error) throw error;
+    throw new GateH2Error(code, "exclusive output write failed");
+  }
+}
 function readJsonSnapshot(
   file: string,
   code: string,
   requireCanonical = true,
   expectedRaw?: Buffer,
+  allowedModes: readonly number[] = [0o400, 0o600],
 ): FileSnapshot {
   let fd: number | undefined;
   try {
@@ -436,9 +548,9 @@ function readJsonSnapshot(
       "retained evaluator path must still name the safely opened descriptor",
     );
     codedAssert(
-      before.nlink === 1 && [0o400, 0o600].includes(before.mode & 0o777),
+      before.nlink === 1 && allowedModes.includes(before.mode & 0o777),
       code,
-      "retained evaluator input must have one link and exact mode 0400 or 0600",
+      `retained input must have one link and one of the exact modes ${allowedModes.map((mode) => mode.toString(8)).join(",")}`,
     );
     const retainedFd = fd;
     fd = undefined;
@@ -453,7 +565,20 @@ function readJsonSnapshot(
     if (fd !== undefined) fs.closeSync(fd);
   }
 }
-function closeSnapshot(snapshot: FileSnapshot): void {
+function readRawSnapshot(file: string, code: string, allowedModes: readonly number[] = [0o400, 0o600]): RawSnapshot {
+  let fd: number | undefined;
+  try {
+    fd = fs.openSync(file, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+    const before = fs.fstatSync(fd); const raw = fs.readFileSync(fd); const after = fs.fstatSync(fd); const current = fs.lstatSync(file);
+    codedAssert(before.isFile() && before.uid === process.getuid!() && before.nlink === 1 && allowedModes.includes(before.mode & 0o777) && (before.mode & 0o022) === 0, code, "retained input must be an owner-controlled one-link regular file with an exact allowed mode");
+    codedAssert(before.dev === after.dev && before.ino === after.ino && before.size === after.size && before.mtimeMs === after.mtimeMs && raw.length === before.size && current.dev === before.dev && current.ino === before.ino, code, "retained input changed while safely opening");
+    const retainedFd = fd; fd = undefined; return { file, fd: retainedFd, raw, stat: before };
+  } catch (error) {
+    if (error instanceof GateH2Error) throw error;
+    throw new GateH2Error(code, "retained input could not be opened safely");
+  } finally { if (fd !== undefined) fs.closeSync(fd); }
+}
+function closeSnapshot(snapshot: FileSnapshot | RawSnapshot): void {
   fs.closeSync(snapshot.fd);
 }
 function readExactDescriptor(fd: number, size: number): Buffer {
@@ -466,7 +591,7 @@ function readExactDescriptor(fd: number, size: number): Buffer {
   }
   return raw;
 }
-function assertSnapshotPathUnchanged(snapshot: FileSnapshot): void {
+function assertSnapshotPathUnchanged(snapshot: FileSnapshot | RawSnapshot): void {
   let current: fs.Stats;
   try {
     current = fs.lstatSync(snapshot.file);
@@ -482,7 +607,9 @@ function assertSnapshotPathUnchanged(snapshot: FileSnapshot): void {
       current.dev === snapshot.stat.dev &&
       current.ino === snapshot.stat.ino &&
       current.size === snapshot.stat.size &&
-      current.nlink === 1,
+      current.nlink === 1 &&
+      current.uid === snapshot.stat.uid &&
+      (current.mode & 0o777) === (snapshot.stat.mode & 0o777),
     "H2_FINALIZATION_PATH_SUBSTITUTION",
     "retained evaluator input path was substituted before finalization",
   );
@@ -492,6 +619,7 @@ function assertSnapshotPathUnchanged(snapshot: FileSnapshot): void {
     "H2_FINALIZATION_EXACT_BYTES",
     "retained evaluator input bytes changed before finalization",
   );
+  codedAssert(current.mtimeMs === snapshot.stat.mtimeMs, "H2_FINALIZATION_PATH_SUBSTITUTION", "retained evaluator input metadata changed before finalization");
 }
 function snapshotPin(snapshot: FileSnapshot, shownPath: string): J {
   return {
@@ -994,6 +1122,9 @@ function internalD1FixtureAdapter(authority: J, fixtureFile: string, capability?
   const fixture = load(fixtureFile);
   codedAssert(fixture.schema_version === "gate_h2_internal_d1_fetch_fixture_v1" && fixture.synthetic === true, "H2_INTERNAL_CAPABILITY", "invalid internal D1 fetch fixture");
   const request: typeof fetch = async (_input, init) => {
+    if (process.env.GATE_H2_INTERNAL_D1_PENDING_FILE) fs.writeFileSync(path.resolve(process.env.GATE_H2_INTERNAL_D1_PENDING_FILE), "pending\n", { flag: "wx", mode: 0o600 });
+    const delay = Number(process.env.GATE_H2_INTERNAL_D1_DELAY_MS ?? "0");
+    if (Number.isInteger(delay) && delay > 0 && delay <= 10_000) await new Promise((resolve) => setTimeout(resolve, delay));
     const body = JSON.parse(String(init?.body)); const sql = String(body.sql); const params = body.params as J[];
     let results: J[];
     if (sql.includes("sqlite_master")) results = fixture.schema_rows;
@@ -1044,34 +1175,56 @@ function stableStageOutputPin(file: string, artifactRole: string): J {
     throw new GateH2Error("H2_STAGE_OUTPUT_SUBSTITUTION", "declared stage output could not be opened safely");
   } finally { if (fd !== undefined) fs.closeSync(fd); }
 }
-type OperationSnapshot = { pin: J; raw: Buffer; stat: fs.Stats };
-function pathBearingValue(value: string): boolean { return path.isAbsolute(value) || value.startsWith("./") || value.startsWith("../") || value.includes("/../") || value.includes("\\"); }
+type OperationSnapshot = { pin: J; fd: number; raw: Buffer; stat: fs.Stats };
+function pathBearingValue(value: string): boolean {
+  if (/^--?[a-z0-9_-]+=/i.test(value)) return true;
+  const candidates = [value, ...(value.includes("=") ? [value.slice(value.indexOf("=") + 1)] : [])];
+  return candidates.some((candidate) => path.isAbsolute(candidate) || /^[a-z][a-z0-9+.-]*:/i.test(candidate) || candidate.startsWith("~") || candidate.includes("/") || candidate.includes("\\") || candidate === "." || candidate === ".." || candidate.split(/[/:\\]/).includes(".."));
+}
 function snapshotOperationFile(pinValue: J, label: string): OperationSnapshot {
   codedAssert(path.isAbsolute(pinValue.path) && path.normalize(pinValue.path) === pinValue.path && fs.realpathSync(pinValue.path) === pinValue.realpath, "H2_STAGE_OPERATION_ARTIFACT", `${label} physical path differs from authority`);
   const fd = fs.openSync(pinValue.realpath, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
   try {
     const stat = fs.fstatSync(fd); const raw = fs.readFileSync(fd); const after = fs.fstatSync(fd);
-    codedAssert(stat.isFile() && stat.dev === after.dev && stat.ino === after.ino && stat.size === raw.length && hash(raw) === pinValue.sha256 && raw.length === pinValue.bytes && (stat.mode & 0o022) === 0, "H2_STAGE_OPERATION_ARTIFACT", `${label} bytes or identity differ from authority`);
-    return { pin: pinValue, raw, stat };
-  } finally { fs.closeSync(fd); }
+    const current = fs.lstatSync(pinValue.realpath);
+    codedAssert(stat.isFile() && stat.nlink === 1 && stat.dev === after.dev && stat.ino === after.ino && stat.size === raw.length && current.dev === stat.dev && current.ino === stat.ino && hash(raw) === pinValue.sha256 && raw.length === pinValue.bytes && (stat.mode & 0o022) === 0, "H2_STAGE_OPERATION_ARTIFACT", `${label} bytes or identity differ from authority`);
+    return { pin: pinValue, fd, raw, stat };
+  } catch (error) { fs.closeSync(fd); throw error; }
 }
 function assertOperationSnapshotsUnchanged(snapshots: OperationSnapshot[]): void {
   for (const snapshot of snapshots) {
     const current = snapshotOperationFile(snapshot.pin, "post-execution operation artifact");
-    codedAssert(current.stat.dev === snapshot.stat.dev && current.stat.ino === snapshot.stat.ino && current.raw.equals(snapshot.raw), "H2_STAGE_OPERATION_CHANGED", "operation artifact changed during stage execution");
+    try { codedAssert(current.stat.dev === snapshot.stat.dev && current.stat.ino === snapshot.stat.ino && current.raw.equals(snapshot.raw), "H2_STAGE_OPERATION_CHANGED", "operation artifact changed during stage execution"); }
+    finally { fs.closeSync(current.fd); }
   }
+}
+function dependencyTreeBytes(roots: J[], members: J[]): Buffer {
+  return Buffer.from(`${roots.map((root: J) => `${root.realpath}\t${root.discovery_rule}`).join("\n")}\n--members--\n${members.map((member: J) => `${member.realpath}\t${member.sha256}\t${member.bytes}`).join("\n")}\n`);
+}
+function enumerateDependencyRoot(rootValue: J): J[] {
+  codedAssert(path.isAbsolute(rootValue.path) && path.normalize(rootValue.path) === rootValue.path && fs.realpathSync(rootValue.path) === rootValue.realpath && rootValue.discovery_rule === "recursive_regular_files_no_symlinks_v1", "H2_STAGE_DEPENDENCY_TREE", "dependency root path, realpath, or discovery rule differs");
+  const members: J[] = [];
+  const visit = (current: string): void => {
+    const stat = fs.lstatSync(current); codedAssert(!stat.isSymbolicLink(), "H2_STAGE_DEPENDENCY_TREE", "dependency discovery refuses symlinks");
+    if (stat.isDirectory()) { for (const name of fs.readdirSync(current).sort()) visit(path.join(current, name)); return; }
+    codedAssert(stat.isFile() && stat.nlink === 1 && (stat.mode & 0o022) === 0, "H2_STAGE_DEPENDENCY_TREE", "dependency member must be a one-link regular file without group/world write permission");
+    const raw = fs.readFileSync(current); const realpath = fs.realpathSync(current); members.push({ path: current, realpath, sha256: hash(raw), bytes: raw.length, version: "content-sha256-v1" });
+  };
+  visit(rootValue.realpath); return members;
 }
 function installedDependencyTreeSnapshots(manifestPin: J, syntheticBoundary: boolean): { snapshots: OperationSnapshot[]; manifest?: J } {
   if (syntheticBoundary) return { snapshots: [] };
-  const value = load(manifestPin.realpath);
+  const manifestSnapshot = snapshotOperationFile(manifestPin, "installed dependency tree manifest"); const value = JSON.parse(manifestSnapshot.raw.toString("utf8")); fs.closeSync(manifestSnapshot.fd);
   schema("installed-dependency-tree.schema.v2.json", value);
   const sorted = [...value.members].sort((a: J, b: J) => a.realpath.localeCompare(b.realpath));
   codedAssert(canon(value.members) === canon(sorted) && value.member_count === sorted.length, "H2_STAGE_DEPENDENCY_TREE", "installed dependency tree must be complete, sorted, and exact");
-  const bytes = Buffer.from(`${sorted.map((member: J) => `${member.realpath}\t${member.sha256}\t${member.bytes}`).join("\n")}\n`);
+  const discovered = value.physical_roots.flatMap(enumerateDependencyRoot).sort((a: J, b: J) => a.realpath.localeCompare(b.realpath));
+  codedAssert(canon(discovered.map(({ realpath, sha256, bytes }: J) => ({ realpath, sha256, bytes }))) === canon(sorted.map(({ realpath, sha256, bytes }: J) => ({ realpath, sha256, bytes }))), "H2_STAGE_DEPENDENCY_TREE", "installed dependency manifest omits, adds, or substitutes a physically discoverable runtime/module member");
+  const bytes = dependencyTreeBytes(value.physical_roots, sorted);
   codedAssert(value.tree_sha256 === hash(bytes) && value.tree_bytes === bytes.length, "H2_STAGE_DEPENDENCY_TREE", "installed dependency tree arithmetic differs");
   return { snapshots: sorted.map((member: J) => snapshotOperationFile(member, "installed runtime/module dependency")), manifest: value };
 }
-function externalOperationPreflight(operation: J, outputs: J[], syntheticBoundary = false): { executable: string; argv: string[]; env: NodeJS.ProcessEnv; snapshots: OperationSnapshot[]; cwd: string; outputPaths: string[] } {
+function externalOperationPreflight(operation: J, outputs: J[], syntheticBoundary = false): { executable: string; argv: string[]; env: NodeJS.ProcessEnv; snapshots: OperationSnapshot[]; cwd: string; outputPaths: string[]; immutableRoot?: string } {
   codedAssert(operation?.kind === "external_command", "H2_STAGE_OPERATION_DECLARATION", "external stage operation is not authority-precommitted");
   const artifactPins = operation.artifacts.map((artifact: J) => artifact.pin);
   const pins = [operation.execution_boundary.wrapper, operation.runtime, operation.script, operation.dependency_lock, operation.installed_dependency_tree, ...artifactPins];
@@ -1082,7 +1235,10 @@ function externalOperationPreflight(operation: J, outputs: J[], syntheticBoundar
   const gitTree = execFileSync(git, ["-C", operation.cwd, "rev-parse", "HEAD^{tree}"], { encoding: "utf8", env: {} }).trim();
   const dirty = execFileSync(git, ["-C", operation.cwd, "status", "--porcelain=v1", "--untracked-files=all"], { encoding: "utf8", env: {} });
   codedAssert(hash(gitTree) === operation.repo_tree_sha256 && dirty === "", "H2_STAGE_OPERATION_REPO_TREE", "physical cwd must be the exact clean committed tree with no modified or untracked content");
-  const version = execFileSync(operation.runtime.realpath, ["--version"], { encoding: "utf8", env: {}, timeout: 10_000 }).trim();
+  const immutableRoot = fs.mkdtempSync(path.join(os.tmpdir(), "rmv2-immutable-operation-"));
+  const immutable = (name: string, snapshot: OperationSnapshot): string => { const file = path.join(immutableRoot, name); fs.writeFileSync(file, snapshot.raw, { flag: "wx", mode: 0o500 }); return file; };
+  const immutableWrapper = immutable("wrapper", snapshots[0]); const immutableRuntime = immutable("runtime", snapshots[1]); const immutableScript = immutable("script", snapshots[2]);
+  const version = execFileSync(immutableRuntime, ["--version"], { encoding: "utf8", env: {}, timeout: 10_000 }).trim();
   codedAssert(version === operation.runtime.version, "H2_STAGE_OPERATION_VERSION", "runtime version differs from authority");
   codedAssert(Array.isArray(operation.argv) && operation.argv[0] === operation.script.realpath, "H2_STAGE_OPERATION_ARGV", "argv must invoke the exact pinned script as argv[0]");
   codedAssert(operation.argv_bindings.length === operation.argv.length && operation.argv_bindings.every((binding: J, index: number) => binding.index === index && binding.value_sha256 === hash(operation.argv[index]) && ((binding.artifact_role === "literal" && !pathBearingValue(operation.argv[index])) || (binding.artifact_role === "script" && operation.script.realpath === operation.argv[index]) || operation.artifacts.some((artifact: J) => artifact.artifact_role === binding.artifact_role && artifact.pin.realpath === operation.argv[index]))), "H2_STAGE_OPERATION_ARGV", "every argv value must join an exact role-bearing input pin; path-bearing literals are forbidden");
@@ -1092,7 +1248,8 @@ function externalOperationPreflight(operation: J, outputs: J[], syntheticBoundar
   const attestedPayload = structuredClone(attestation); delete attestedPayload.attestation_sha256;
   codedAssert(attestation.kind === "linux_sandbox_attestation_v1" && attestation.platform === "linux" && attestation.repo_tree_sha256 === operation.repo_tree_sha256 && (!syntheticBoundary || attestation.dependency_tree_sha256 === operation.installed_dependency_tree.sha256) && attestation.attestation_sha256 === hash(canon(attestedPayload)) && (syntheticBoundary || process.platform === "linux"), "H2_STAGE_SANDBOX_ATTESTATION", "production execution requires the exact pinned Linux sandbox/container/VM attestation");
   if (!syntheticBoundary) {
-    codedAssert(attestation.argv_prefix_bindings.length === attestation.argv_prefix.length && attestation.argv_prefix_bindings.every((binding: J, index: number) => binding.index === index && binding.value_sha256 === hash(attestation.argv_prefix[index]) && binding.semantic_join_sha256 === hash(canon({ index, value: attestation.argv_prefix[index], semantic_role: binding.semantic_role }))), "H2_STAGE_SANDBOX_ARGV", "every wrapper argv prefix argument must have an exact signed semantic join");
+    const joinedPrefix = attestation.argv_prefix.map((value: string, index: number) => ({ ...attestation.argv_prefix_bindings[index], value }));
+    codedAssert(attestation.wrapper_grammar_version === "gate_h2_linux_wrapper_argv_v2" && attestation.argv_prefix_bindings.length === attestation.argv_prefix.length && canon(joinedPrefix) === canon(deriveBoundaryArgvPrefix(attestation, operation.runtime)), "H2_STAGE_SANDBOX_ARGV", "wrapper argv prefix must exactly derive from the typed signed boundary grammar");
     codedAssert(dependencyTree.manifest.tree_sha256 === attestation.dependency_tree_sha256 && dependencyTree.manifest.tree_bytes === attestation.dependency_tree_bytes && dependencyTree.manifest.member_count === attestation.dependency_tree_members, "H2_STAGE_DEPENDENCY_TREE", "installed runtime/module tree differs from sandbox attestation");
     const readableByRole = new Map<string, J>(attestation.readable_mounts.map((mount: J): [string, J] => [mount.artifact_role, mount]));
     for (const [role, pinValue] of [["runtime", operation.runtime], ["script", operation.script], ["dependency_lock", operation.dependency_lock], ["installed_dependency_tree", operation.installed_dependency_tree], ...operation.artifacts.map((artifact: J) => [artifact.artifact_role, artifact.pin])] as [string, J][]) {
@@ -1117,7 +1274,7 @@ function externalOperationPreflight(operation: J, outputs: J[], syntheticBoundar
   }
   codedAssert(new Set(names).size === names.length, "H2_STAGE_OPERATION_ENV", "stage environment variable names must be unique");
   codedAssert(operation.network_policy === "deny_all" ? operation.network_capability_ids.length === 0 : operation.network_capability_ids.length > 0, "H2_STAGE_NETWORK_POLICY", "network policy and capability IDs differ");
-  return { executable: operation.execution_boundary.wrapper.realpath, argv: [...operation.execution_boundary.argv_prefix, operation.runtime.realpath, ...operation.argv], env, snapshots, cwd: operation.cwd, outputPaths: operation.declared_output_paths };
+  return { executable: immutableWrapper, argv: [...operation.execution_boundary.argv_prefix, immutableRuntime, immutableScript, ...operation.argv.slice(1)], env, snapshots, cwd: operation.cwd, outputPaths: operation.declared_output_paths, immutableRoot };
 }
 function assertExternalOperationPostflight(exact: ReturnType<typeof externalOperationPreflight>): void {
   assertOperationSnapshotsUnchanged(exact.snapshots);
@@ -1127,9 +1284,14 @@ function assertExternalOperationPostflight(exact: ReturnType<typeof externalOper
 }
 function executeExternalStageOperation(operation: J, outputs: J[], syntheticBoundary = false): ReturnType<typeof externalOperationPreflight> {
   const exact = externalOperationPreflight(operation, outputs, syntheticBoundary);
-  execFileSync(exact.executable, exact.argv, { cwd: exact.cwd, stdio: "inherit", env: exact.env });
-  assertExternalOperationPostflight(exact);
-  return exact;
+  try {
+    execFileSync(exact.executable, exact.argv, { cwd: exact.cwd, stdio: "inherit", env: exact.env });
+    assertExternalOperationPostflight(exact);
+    return exact;
+  } finally {
+    for (const snapshot of exact.snapshots) { try { fs.closeSync(snapshot.fd); } catch { /* retained bytes have completed their authority role */ } }
+    if (exact.immutableRoot) { try { fs.rmSync(exact.immutableRoot, { recursive: true, force: true }); } catch { /* cleanup is not semantic validation */ } }
+  }
 }
 function externalOperationContractSelfTest(): J {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "rmv2-external-operation-"));
@@ -1161,6 +1323,10 @@ function externalOperationContractSelfTest(): J {
     const argvBad = structuredClone(operation); argvBad.argv.push(prompt); expect("H2_STAGE_OPERATION_ARGV", () => run(argvBad));
     const argvLiteralPath = structuredClone(operation); argvLiteralPath.argv_bindings[0].artifact_role = "literal"; expect("H2_STAGE_OPERATION_ARGV", () => run(argvLiteralPath));
     const envLiteralPath = structuredClone(operation); envLiteralPath.environment.public.push({ name: "INPUT_PATH", value: prompt, value_sha256: hash(prompt), binding: "literal" }); expect("H2_STAGE_OPERATION_ENV", () => run(envLiteralPath));
+    for (const literal of ["relative/input.json", "file:///tmp/input.json", "https://example.invalid/input", "--input=relative.json", "--input=../escape.json", "..\\escape.json"]) {
+      const badArgv = structuredClone(operation); badArgv.argv.push(literal); badArgv.argv_bindings.push({ index: 1, artifact_role: "literal", value_sha256: hash(literal) }); expect("H2_STAGE_OPERATION_ARGV", () => run(badArgv));
+      const badEnv = structuredClone(operation); badEnv.environment.public.push({ name: `BAD_INPUT_${hash(literal).slice(0, 8).toUpperCase()}`, value: literal, value_sha256: hash(literal), binding: "literal" }); expect("H2_STAGE_OPERATION_ENV", () => run(badEnv));
+    }
     const noBoundary = structuredClone(operation); noBoundary.execution_boundary.attestation_sha256 = "0".repeat(64); expect("H2_STAGE_SANDBOX_ATTESTATION", () => run(noBoundary));
     const networkEscape = structuredClone(operation); networkEscape.execution_boundary.network_policy = "allow_capabilities_only"; expect("H2_STAGE_SANDBOX_ATTESTATION", () => run(networkEscape));
     const originalScript = fs.readFileSync(script); fs.appendFileSync(script, "// replaced\n"); expect("H2_STAGE_OPERATION_ARTIFACT", () => run(operation)); fs.writeFileSync(script, originalScript);
@@ -3634,10 +3800,9 @@ function validatePreActivationAuthority(authority: J): void {
   const roles = ["implementation", "predictor", "search_predictor", "private_evaluator", "gold_reviewer", "task_reviewer", "publisher"];
   const rolePrincipals = new Set(roles.map((role) => authority[role].principal));
   const roleSessions = new Set(roles.map((role) => authority[role].session_id));
-  const trust = load(PREACTIVATION_TRUST); schema("pre-activation-attestor-trust.schema.v2.json", trust);
-  const trusted = (kind: string, identity: J): boolean => trust.attestors.some((entry: J) => entry.evidence_kind === kind && entry.principal === identity.principal && entry.route === identity.route && entry.public_key_sha256 === identity.public_key_sha256);
+  const trust = load(PREACTIVATION_TRUST); validatePreActivationTrustRegistry(trust);
   for (const [name, pinValue, attestation] of [["d1", pins.d1, d1], ["sandbox", pins.sandbox, sandbox]] as const) {
-    codedAssert(attestation.observation.principal === pinValue.attestor_principal && attestation.observation.session_id === pinValue.attestor_session_id && attestation.observation.route === pinValue.attestor_route && attestation.signer.public_key_sha256 === pinValue.signer_public_key_sha256, "H2_PREACTIVATION_IDENTITY", `${name} attestation identity differs from authority pin`);
+    codedAssert(attestation.observation.principal === pinValue.attestor_principal && attestation.observation.session_id === pinValue.attestor_session_id && attestation.observation.route === pinValue.attestor_route && attestation.observation.physical_route_identity_sha256 === pinValue.attestor_physical_route_identity_sha256 && attestation.signer.public_key_sha256 === pinValue.signer_public_key_sha256, "H2_PREACTIVATION_IDENTITY", `${name} attestation identity differs from authority pin`);
     codedAssert(!rolePrincipals.has(attestation.signer.principal) && !roleSessions.has(attestation.signer.session_id) && attestation.signer.public_key_sha256 !== authority.coordinator_trust.public_key_sha256, "H2_PREACTIVATION_SELF_AUTHORED", `${name} attestation must be independently authored and signed`);
     const observed = Date.parse(attestation.observation.observed_at); const authorized = Date.parse(authority.authorized_at);
     codedAssert(Number.isFinite(observed) && observed <= authorized && authorized - observed <= pins.max_age_seconds * 1000, "H2_PREACTIVATION_STALE", `${name} attestation is stale or postdates authority activation`);
@@ -3647,18 +3812,23 @@ function validatePreActivationAuthority(authority: J): void {
   try { verificationValid = crypto.verify(null, unsignedAttestationPayload(verification), verificationKey, Buffer.from(verification.signature_base64, "base64")); } catch { verificationValid = false; }
   codedAssert(verification.synthetic === false && verificationValid && verification.verifier.public_key_pem === verificationKey.export({ type: "spki", format: "pem" }).toString() && verification.verifier.public_key_sha256 === hash(verification.verifier.public_key_pem), "H2_PREACTIVATION_VERIFICATION", "pre-activation live verification receipt signature is invalid");
   codedAssert(verification.d1_attestation.sha256 === pins.d1.artifact.sha256 && verification.d1_attestation.bytes === pins.d1.artifact.bytes && verification.sandbox_attestation.sha256 === pins.sandbox.artifact.sha256 && verification.sandbox_attestation.bytes === pins.sandbox.artifact.bytes && verification.live_d1_schema_sha256 === d1.deployed_schema.canonical_schema_sha256, "H2_PREACTIVATION_VERIFICATION", "pre-activation receipt does not bind exact attestations and live D1 schema");
-  codedAssert(verification.verifier.principal === pins.verification.attestor_principal && verification.verifier.session_id === pins.verification.attestor_session_id && verification.verifier.route === pins.verification.attestor_route && verification.verifier.public_key_sha256 === pins.verification.signer_public_key_sha256, "H2_PREACTIVATION_IDENTITY", "pre-activation verifier identity differs from authority pin");
+  codedAssert(verification.verifier.principal === pins.verification.attestor_principal && verification.verifier.session_id === pins.verification.attestor_session_id && verification.verifier.route === pins.verification.attestor_route && verification.verifier.physical_route_identity_sha256 === pins.verification.attestor_physical_route_identity_sha256 && verification.verifier.public_key_sha256 === pins.verification.signer_public_key_sha256, "H2_PREACTIVATION_IDENTITY", "pre-activation verifier identity differs from authority pin");
   codedAssert(!rolePrincipals.has(verification.verifier.principal) && !roleSessions.has(verification.verifier.session_id) && verification.verifier.public_key_sha256 !== authority.coordinator_trust.public_key_sha256, "H2_PREACTIVATION_SELF_AUTHORED", "pre-activation verification must be independently authored and signed");
   const verified = Date.parse(verification.verified_at); const authorized = Date.parse(authority.authorized_at);
   codedAssert(Number.isFinite(verified) && verified <= authorized && authorized - verified <= pins.max_age_seconds * 1000 && verified >= Date.parse(d1.observation.observed_at) && verified >= Date.parse(sandbox.observation.observed_at), "H2_PREACTIVATION_STALE", "pre-activation verification is stale, future-dated, or predates observations");
-  codedAssert(trust.status === "reviewed_real_attestors_admitted" && trust.attestors.length >= 3, "H2_PREACTIVATION_TRUST", "real D1, sandbox, and verifier attestors have not been admitted in a prior reviewed commit");
-  codedAssert(trusted("d1_live", d1.signer) && trusted("linux_sandbox", sandbox.signer) && trusted("pre_activation_verifier", verification.verifier), "H2_PREACTIVATION_TRUST", "D1, sandbox, or verifier identity is not in the reviewed trust registry");
+  codedAssert(trust.status === "reviewed_real_attestors_admitted" && trust.attestors.length === 3, "H2_PREACTIVATION_TRUST", "exactly three real D1, sandbox, and verifier attestors must be admitted in a prior reviewed commit");
+  codedAssert(trustedPreActivationIdentity(trust, "d1_live", d1.signer) && trustedPreActivationIdentity(trust, "linux_sandbox", sandbox.signer) && trustedPreActivationIdentity(trust, "pre_activation_verifier", verification.verifier), "H2_PREACTIVATION_TRUST", "D1, sandbox, or verifier full identity is not in the reviewed trust registry");
   codedAssert(d1.account_capability_digest === authority.stage_execution.ledger.account_capability_digest && d1.database_uuid_digest === authority.stage_execution.ledger.database_uuid_digest && d1.namespace_digest === authority.stage_execution.ledger.namespace_digest && d1.deployed_schema.canonical_schema_sha256 === authority.stage_execution.ledger.table_schema_sha256 && d1.deployed_schema.canonical_schema_bytes === authority.stage_execution.ledger.table_schema_bytes, "H2_PREACTIVATION_D1_BINDING", "authority D1 ledger differs from live signed attestation");
   for (const entry of authority.stage_execution.stages.filter((candidate: J) => candidate.operation.kind === "external_command")) {
     const boundary = entry.operation.execution_boundary;
     codedAssert(boundary.attestation_artifact_sha256 === pins.sandbox.artifact.sha256 && canon(boundary.wrapper) === canon(sandbox.wrapper) && boundary.image_digest === sandbox.image.digest && boundary.repo_tree_sha256 === sandbox.repo_tree_sha256, "H2_PREACTIVATION_SANDBOX_BINDING", `stage ${entry.stage_id} sandbox identity differs from signed attestation`);
-    codedAssert(canon(boundary.argv_prefix) === canon(sandbox.argv_prefix.map((item: J) => item.value)) && canon(boundary.argv_prefix_bindings) === canon(sandbox.argv_prefix.map(({ index, semantic_role, value_sha256, semantic_join_sha256 }: J) => ({ index, semantic_role, value_sha256, semantic_join_sha256 }))), "H2_PREACTIVATION_SANDBOX_ARGV", `stage ${entry.stage_id} wrapper argv prefix differs from signed semantics`);
+    codedAssert(boundary.wrapper_grammar_version === sandbox.wrapper_grammar_version && canon(boundary.fixed_argument_allowlist) === canon(sandbox.fixed_argument_allowlist) && canon(boundary.argv_prefix) === canon(sandbox.argv_prefix.map((item: J) => item.value)) && canon(boundary.argv_prefix_bindings) === canon(sandbox.argv_prefix.map(({ index, argument_kind, semantic_role, source_ref, value_sha256, semantic_join_sha256 }: J) => ({ index, argument_kind, semantic_role, source_ref, value_sha256, semantic_join_sha256 }))), "H2_PREACTIVATION_SANDBOX_ARGV", `stage ${entry.stage_id} wrapper argv prefix differs from signed typed semantics`);
     codedAssert(boundary.dependency_tree_sha256 === sandbox.runtime_tree.complete_tree_sha256 && boundary.dependency_tree_bytes === sandbox.runtime_tree.complete_tree_bytes && boundary.dependency_tree_members === sandbox.runtime_tree.member_count, "H2_PREACTIVATION_RUNTIME_TREE", `stage ${entry.stage_id} complete runtime tree differs from signed attestation`);
+    const dependencySnapshot = snapshotOperationFile(entry.operation.installed_dependency_tree, `stage ${entry.stage_id} installed dependency manifest`);
+    try {
+      const dependencyManifest = JSON.parse(dependencySnapshot.raw.toString("utf8")); schema("installed-dependency-tree.schema.v2.json", dependencyManifest);
+      codedAssert(canon(dependencyManifest.physical_roots) === canon(sandbox.runtime_tree.physical_roots) && canon(dependencyManifest.members) === canon(sandbox.runtime_tree.members) && dependencyManifest.tree_sha256 === sandbox.runtime_tree.complete_tree_sha256 && dependencyManifest.tree_bytes === sandbox.runtime_tree.complete_tree_bytes && dependencyManifest.member_count === sandbox.runtime_tree.member_count, "H2_PREACTIVATION_RUNTIME_TREE", `stage ${entry.stage_id} installed manifest does not equal the signed complete sandbox runtime member set`);
+    } finally { fs.closeSync(dependencySnapshot.fd); }
     codedAssert(canon(boundary.readable_mounts) === canon(sandbox.mounts.readable_inputs) && canon(boundary.output_mounts) === canon(sandbox.mounts.output_mounts) && canon(boundary.writable_paths) === canon(sandbox.writable_confinement.writable_paths), "H2_PREACTIVATION_SANDBOX_MOUNTS", `stage ${entry.stage_id} mounts/writes differ from signed attestation`);
     codedAssert(boundary.network_policy === sandbox.network.policy && canon(boundary.network_capability_ids) === canon(sandbox.network.destination_capability_ids) && boundary.network_namespace_sha256 === sandbox.network.namespace_identity_sha256 && boundary.firewall_rules_sha256 === sandbox.network.firewall_rules_sha256, "H2_PREACTIVATION_SANDBOX_NETWORK", `stage ${entry.stage_id} network boundary differs from signed attestation`);
   }
@@ -6153,10 +6323,18 @@ function finalMatrixRows(baseDir: string): J[] {
   for (const [role, filename] of Object.entries(FINAL_EVIDENCE_PATHS)) rolePins[role] = { ...pin(resolveEvidencePath(filename, baseDir), filename), role };
   return FINAL_CRITERION_IDS.map((criterion_id) => { const requirement = FINAL_MATRIX_REQUIREMENTS[criterion_id]; return { criterion_id, required: true, verdict: "satisfied", result_ids: requirement.results, evidence: requirement.roles.map((role) => structuredClone(rolePins[role])), limitations: [] }; });
 }
+function publicationDescriptorFromSnapshots(snapshots: Map<string, FileSnapshot>, authority: J, createdAt: string): J {
+  const memberPins = [...snapshots.entries()].map(([member, snapshot]) => snapshotPin(snapshot, member)).sort((a, b) => a.path.localeCompare(b.path));
+  const treeSha256 = hash(`${memberPins.map((x: J) => `${x.path}\t${x.sha256}\t${x.bytes}`).join("\n")}\n`);
+  const dynamic = Object.fromEntries(Object.entries(PUBLICATION_DYNAMIC_PREDECESSORS).map(([role, filename]) => { const snapshot = snapshots.get(filename); codedAssert(snapshot !== undefined, "H2_PUBLICATION_EXACT_UNIVERSE", `retained publication snapshot missing ${filename}`); return [role, snapshotPin(snapshot, filename)]; }));
+  return { schema_version: "reviewed_metrics_publication_descriptor_v2.0.0", artifact_id: PUBLICATION_ID, status: "published", created_at: createdAt, implementation_base_commit: IMPLEMENTATION_BASE_COMMIT, candidate_commit: authority.candidate_commit, members_before_descriptor: memberPins, tree_before_descriptor_sha256: treeSha256, counts: { files_before_descriptor: memberPins.length, bytes_before_descriptor: memberPins.reduce((sum: number, member: J) => sum + member.bytes, 0), unique_sources: 44, task_memberships: 78, published_members: memberPins.length + 1 }, predecessors: { ...predecessorPins(), ...dynamic }, completion: { candidate_complete: true, issue_92_complete: true, issue_69_complete: true, publication_exists: true }, mutations: { production: false, search_index: false, private_object_store_write: false, paid_gpu: false }, required_publication_members: PUBLICATION_MEMBER_PATHS, publisher: { principal: authority.publisher.principal, session_id: authority.publisher.session_id, model: authority.publisher.model, role: authority.publisher.role, published_at: createdAt } };
+}
 function publicationDescriptorFromDirectory(baseDir: string, authority: J, createdAt: string): J {
-  const memberPins = tree(baseDir).members;
-  const dynamic = Object.fromEntries(Object.entries(PUBLICATION_DYNAMIC_PREDECESSORS).map(([role, filename]) => [role, pin(path.join(baseDir, filename), filename)]));
-  return { schema_version: "reviewed_metrics_publication_descriptor_v2.0.0", artifact_id: PUBLICATION_ID, status: "published", created_at: createdAt, implementation_base_commit: IMPLEMENTATION_BASE_COMMIT, candidate_commit: authority.candidate_commit, members_before_descriptor: memberPins, tree_before_descriptor_sha256: tree(baseDir).sha256, counts: { files_before_descriptor: memberPins.length, bytes_before_descriptor: memberPins.reduce((sum: number, member: J) => sum + member.bytes, 0), unique_sources: 44, task_memberships: 78, published_members: memberPins.length + 1 }, predecessors: { ...predecessorPins(), ...dynamic }, completion: { candidate_complete: true, issue_92_complete: true, issue_69_complete: true, publication_exists: true }, mutations: { production: false, search_index: false, private_object_store_write: false, paid_gpu: false }, required_publication_members: PUBLICATION_MEMBER_PATHS, publisher: { principal: authority.publisher.principal, session_id: authority.publisher.session_id, model: authority.publisher.model, role: authority.publisher.role, published_at: createdAt } };
+  const snapshots = new Map<string, FileSnapshot>();
+  try {
+    for (const member of files(baseDir)) snapshots.set(member, readJsonSnapshot(path.join(baseDir, member), "H2_PUBLICATION_MEMBER_SNAPSHOT", false, undefined, [0o400, 0o444, 0o600, 0o644]));
+    return publicationDescriptorFromSnapshots(snapshots, authority, createdAt);
+  } finally { for (const snapshot of snapshots.values()) closeSnapshot(snapshot); }
 }
 function assemblePublication(baseDir: string, planFile: string, ledgerFile: string, authority: J, beforeDescriptorCommit?: () => void): J {
   const descriptorFile = path.join(baseDir, "candidate-descriptor-v2.json"); const matrixFile = path.join(baseDir, "final-criterion-matrix-v2.json");
@@ -6171,13 +6349,34 @@ function assemblePublication(baseDir: string, planFile: string, ledgerFile: stri
   validateMatrixValue(matrix, baseDir, authority, ledger);
   const preDescriptorPaths = [...PUBLICATION_MEMBER_PATHS.filter((member) => member !== "candidate-descriptor-v2.json")].sort();
   codedAssert(canon(publicationDirectoryPaths(baseDir)) === canon(preDescriptorPaths), "H2_PUBLICATION_EXACT_UNIVERSE", "pre-descriptor exact finalized member universe differs");
-  const descriptor = publicationDescriptorFromDirectory(baseDir, authority, ledger.sealed_at);
-  validatePublicationValue(descriptor, baseDir, authority, true);
-  const result = { status: "publication_assembled_commit_last", matrix_sha256: hash(Buffer.from(pretty(matrix))), descriptor_sha256: hash(Buffer.from(pretty(descriptor))), members: 17 };
-  beforeDescriptorCommit?.();
-  codedAssert(canon(publicationDirectoryPaths(baseDir)) === canon(preDescriptorPaths), "H2_PUBLICATION_EXACT_UNIVERSE", "directory changed after in-memory descriptor validation");
-  writeJsonExclusive(descriptorFile, descriptor);
-  return result;
+  const snapshots = new Map<string, FileSnapshot>();
+  try {
+    for (const member of preDescriptorPaths) snapshots.set(member, readJsonSnapshot(path.join(baseDir, member), "H2_PUBLICATION_MEMBER_SNAPSHOT", false, undefined, [0o400, 0o444, 0o600, 0o644]));
+    codedAssert(canon(snapshots.get("publication-assembly-plan-v2.json")?.value) === canon(plan) && canon(snapshots.get("stage-execution-ledger-v2.json")?.value) === canon(ledger), "H2_PUBLICATION_PLAN_BINDING", "retained plan or ledger differs from the validated value");
+    const descriptor = publicationDescriptorFromSnapshots(snapshots, authority, ledger.sealed_at);
+    validatePublicationValue(descriptor, baseDir, authority, true);
+    const result = { status: "publication_assembled_commit_last", matrix_sha256: hash(Buffer.from(pretty(matrix))), descriptor_sha256: hash(Buffer.from(pretty(descriptor))), members: 17 };
+    beforeDescriptorCommit?.();
+    for (const snapshot of snapshots.values()) assertSnapshotPathUnchanged(snapshot);
+    codedAssert(canon(publicationDirectoryPaths(baseDir)) === canon(preDescriptorPaths), "H2_PUBLICATION_EXACT_UNIVERSE", "directory changed after in-memory descriptor validation");
+    const rederived = publicationDescriptorFromSnapshots(snapshots, authority, ledger.sealed_at);
+    codedAssert(canon(rederived) === canon(descriptor), "H2_PUBLICATION_MEMBER_SNAPSHOT", "descriptor no longer rederives from the retained exact member bytes");
+    codedAssert(canon(snapshots.get("publication-assembly-plan-v2.json")?.value) === canon(plan) && canon(snapshots.get("stage-execution-ledger-v2.json")?.value) === canon(ledger), "H2_PUBLICATION_PLAN_BINDING", "plan or ledger was substituted before commit-last descriptor creation");
+    writeOwnedExclusive(descriptorFile, Buffer.from(pretty(descriptor)), "H2_PUBLICATION_COMMIT_LAST");
+    return result;
+  } finally { for (const snapshot of snapshots.values()) { try { closeSnapshot(snapshot); } catch { /* descriptor write remains the final semantic operation */ } } }
+}
+function internalPublicationRace(baseDir: string, specRaw: string): void {
+  let spec: J; try { spec = JSON.parse(specRaw); } catch { throw new GateH2Error("H2_PUBLICATION_MEMBER_SNAPSHOT", "internal publication race spec is not JSON"); }
+  const target = path.resolve(baseDir, spec.target);
+  codedAssert(target.startsWith(`${path.resolve(baseDir)}${path.sep}`) && target !== path.join(baseDir, "candidate-descriptor-v2.json"), "H2_PUBLICATION_MEMBER_SNAPSHOT", "internal publication race target escapes the member directory");
+  const original = fs.readFileSync(target); const alternate = Buffer.from(original); if (alternate.length > 0) alternate[alternate.length - 1] ^= 1;
+  const temporary = path.join(baseDir, `.race-${crypto.randomUUID()}`);
+  if (spec.operation === "same_inode_bytes") fs.writeFileSync(target, alternate);
+  else if (spec.operation === "same_size_replace") { fs.writeFileSync(temporary, alternate, { mode: 0o600 }); fs.renameSync(temporary, target); }
+  else if (spec.operation === "symlink_replace") { fs.unlinkSync(target); fs.symlinkSync(spec.source ?? path.join(baseDir, "input-authority-v2.json"), target); }
+  else if (spec.operation === "hardlink_replace") { const source = path.join(baseDir, spec.source ?? "input-authority-v2.json"); fs.linkSync(source, temporary); fs.renameSync(temporary, target); }
+  else throw new GateH2Error("H2_PUBLICATION_MEMBER_SNAPSHOT", "unknown internal publication race operation");
 }
 function validateInputAuthorityValue(value: J): void {
   schema("input-authority.schema.v2.json", value);
@@ -9996,6 +10195,16 @@ async function sourceSearchSelfTest(): Promise<J> {
     expectAssemblyFailure("ledger-substitution", "H2_LEDGER_SIGNATURE", (dir) => { const value = load(path.join(dir, "stage-execution-ledger-v2.json")); value.signature_base64 = Buffer.alloc(64, 7).toString("base64"); fs.writeFileSync(path.join(dir, "stage-execution-ledger-v2.json"), pretty(value)); });
     expectAssemblyFailure("early", "H2_PUBLICATION_COMMIT_LAST", (dir) => fs.writeFileSync(path.join(dir, "candidate-descriptor-v2.json"), "{}\n"), false, false);
     expectAssemblyFailure("late-race", "H2_PUBLICATION_EXACT_UNIVERSE", undefined, true);
+    const expectMemberRace = (label: string, operation: string, target: string, code: string, source?: string): void => {
+      const result = runAssembly(label, undefined, { GATE_H2_INTERNAL_ASSEMBLY_RACE_SPEC: JSON.stringify({ operation, target, source }) });
+      codedAssert(!result.ok && result.stderr.includes(code) && !fs.existsSync(path.join(result.dir, "candidate-descriptor-v2.json")), "H2_PUBLICATION_CLI_TEST", `${label} did not reject retained-member race with ${code}: ${result.stderr.slice(0, 500)}`);
+    };
+    expectMemberRace("same-inode-bytes", "same_inode_bytes", "reviewed-metrics-v2.json", "H2_FINALIZATION_EXACT_BYTES");
+    expectMemberRace("same-size-replace", "same_size_replace", "reviewed-metrics-v2.json", "H2_FINALIZATION_PATH_SUBSTITUTION");
+    expectMemberRace("plan-replace", "same_size_replace", "publication-assembly-plan-v2.json", "H2_FINALIZATION_PATH_SUBSTITUTION");
+    expectMemberRace("ledger-replace", "same_size_replace", "stage-execution-ledger-v2.json", "H2_FINALIZATION_PATH_SUBSTITUTION");
+    expectMemberRace("symlink-replace", "symlink_replace", "reviewed-metrics-v2.json", "H2_FINALIZATION_PATH_SUBSTITUTION", path.join(root, "publication-cli-symlink-replace", "input-authority-v2.json"));
+    expectMemberRace("hardlink-replace", "hardlink_replace", "reviewed-metrics-v2.json", "H2_FINALIZATION_PATH_SUBSTITUTION", "input-authority-v2.json");
     const cliSuccess = runAssembly("success"); codedAssert(cliSuccess.ok && fs.existsSync(path.join(cliSuccess.dir, "candidate-descriptor-v2.json")), "H2_PUBLICATION_CLI_TEST", `assemble-publication CLI success failed: ${cliSuccess.stderr}`);
     const concurrentDir = path.join(root, "publication-cli-concurrent"); fs.cpSync(cliBase, concurrentDir, { recursive: true });
     const concurrentRun = () => new Promise<{ code: number | null; stderr: string }>((resolve) => { const child = spawn(cli, assemblyArgs(concurrentDir), { cwd: ROOT, env: { ...process.env, GATE_H2_INTERNAL_TEST_CAPABILITY: assemblyCapability }, stdio: ["ignore", "ignore", "pipe"] }); let stderr = ""; child.stderr.on("data", (chunk) => { stderr += chunk.toString(); }); child.on("close", (code) => resolve({ code, stderr })); });
@@ -10173,23 +10382,24 @@ function stageRunSubprocessSelfTest(root: string): J {
   const bad = invoke("path-literal", (candidate) => { candidate.stage_execution.stages.find((entry: J) => entry.stage_id === "visual_predict").operation.argv_bindings[0].artifact_role = "literal"; }); codedAssert(!bad.ok && bad.stderr.includes("H2_STAGE_OPERATION_ARGV") && bad.fixture.readback.attempts.length === 1 && bad.fixture.readback.claims.length === 1 && bad.fixture.readback.completions.length === 0 && !fs.existsSync(output), "H2_STAGE_RUN_CLI_TEST", "actual stage-run path-bearing argv rejection did not preserve auditable begin without completion");
   return { status: "actual_stage_run_cli_synthetic_boundary_passed", production_ready: false, real_linux_wrapper_test_satisfied: false, cases: ["success_with_production_shaped_d1", "path_bearing_literal_after_auditable_begin"] };
 }
-function preActivationFailClosedSelfTest(root: string): J {
+async function preActivationFailClosedSelfTest(root: string): Promise<J> {
   const keys = [crypto.generateKeyPairSync("ed25519"), crypto.generateKeyPairSync("ed25519"), crypto.generateKeyPairSync("ed25519")]; const observedAt = new Date(Date.now() - 1_000).toISOString(); const verifiedAt = new Date(Date.now() - 500).toISOString();
-  const identity = (index: number, principal: string) => { const pem = keys[index].publicKey.export({ type: "spki", format: "pem" }).toString(); return { principal, session_id: `session-${index + 1}`, route: `/opt/gate-h2/attestor-${index + 1}`, public_key_pem: pem, public_key_sha256: hash(pem) }; };
+  const identity = (index: number, principal: string) => { const pem = keys[index].publicKey.export({ type: "spki", format: "pem" }).toString(); const route = `/opt/gate-h2/attestor-${index + 1}`; return { principal, session_id: `session-${index + 1}`, route, physical_route_identity_sha256: physicalRouteIdentitySha256(route), public_key_pem: pem, public_key_sha256: hash(pem) }; };
   const sign = (value: J, index: number): J => { value.signature_base64 = crypto.sign(null, unsignedAttestationPayload(value), keys[index].privateKey).toString("base64"); return value; };
   const schemaEvidence = gateH2LedgerSchemaAttestation(ROOT); const migration = fs.readFileSync(path.join(ROOT, "infrastructure/d1/migrations/0012_gate_h2_stage_ledger.sql")); const d1Identity = identity(0, "attestor-alpha");
-  const d1: J = sign({ schema_version: "reviewed_metrics_d1_live_attestation_v2.0.0", status: "observed_live_append_only", synthetic: false, provider: "cloudflare_d1", api_contract: "cloudflare_v4_d1_query_select_v1", account_capability_digest: hash("account-capability-alpha"), database_uuid_digest: hash("database-capability-alpha"), namespace_digest: hash("namespace-alpha"), deployed_schema: { canonical_rows: schemaEvidence.rows, canonical_schema_sha256: schemaEvidence.sha256, canonical_schema_bytes: schemaEvidence.bytes, migration_sha256: hash(migration), migration_bytes: migration.length }, observation: { observed_at: observedAt, principal: d1Identity.principal, session_id: d1Identity.session_id, route: d1Identity.route }, signer: d1Identity, signature_base64: "" }, 0);
+  const d1: J = sign({ schema_version: "reviewed_metrics_d1_live_attestation_v2.1.0", status: "observed_live_append_only", synthetic: false, provider: "cloudflare_d1", api_contract: "cloudflare_v4_d1_query_select_v1", account_capability_digest: hash("account-capability-alpha"), database_uuid_digest: hash("database-capability-alpha"), namespace_digest: hash("namespace-alpha"), deployed_schema: { canonical_rows: schemaEvidence.rows, canonical_schema_sha256: schemaEvidence.sha256, canonical_schema_bytes: schemaEvidence.bytes, migration_sha256: hash(migration), migration_bytes: migration.length }, observation: { observed_at: observedAt, principal: d1Identity.principal, session_id: d1Identity.session_id, route: d1Identity.route, physical_route_identity_sha256: d1Identity.physical_route_identity_sha256 }, signer: d1Identity, signature_base64: "" }, 0);
   const wrapper = filePinForAttestation(process.execPath, process.version); const sandboxIdentity = identity(1, "attestor-bravo"); const output = path.join(root, "preactivation-output");
-  const sandbox: J = sign({ schema_version: "reviewed_metrics_linux_sandbox_attestation_v2.0.0", status: "observed_live_enforced", synthetic: false, platform: "linux", wrapper, image: { identity_kind: "oci_manifest", immutable_identity: "registry.local/gate-h2@sha256", digest: `sha256:${hash("image-alpha")}` }, runtime_tree: { runtime: wrapper, complete_tree_sha256: hash("runtime-tree-alpha"), complete_tree_bytes: wrapper.bytes + 100, member_count: 2, enumeration_contract: "sorted_physical_regular_files_path_sha256_bytes_v1" }, argv_prefix: [], mounts: { readable_inputs: [{ artifact_role: "runtime", host_path: wrapper.realpath, guest_path: "/runtime/node", mode: "ro", content_sha256: wrapper.sha256 }], output_mounts: [{ artifact_role: "stage_output", host_path: output, guest_path: "/output/result", mode: "rw", content_sha256: hash("empty-output-alpha") }] }, network: { namespace_identity_sha256: hash("network-namespace-alpha"), firewall_rules_sha256: hash("firewall-alpha"), policy: "deny_all", destination_capability_ids: [], observed_destinations_digest: hash("no-destinations-alpha") }, writable_confinement: { writable_paths: [output], read_only_root: true, pre_state_sha256: hash("pre-state-alpha"), post_state_sha256: hash("post-state-alpha"), enforcement_evidence_sha256: hash("enforcement-alpha") }, repo_tree_sha256: hash("repo-tree-alpha"), observation: { observed_at: observedAt, principal: sandboxIdentity.principal, session_id: sandboxIdentity.session_id, route: sandboxIdentity.route }, signer: sandboxIdentity, signature_base64: "" }, 1);
+  const runtimeMembers = [wrapper, filePinForAttestation(fileURLToPath(import.meta.url), "gate-h2-script-v2")].sort((a: J, b: J) => a.realpath.localeCompare(b.realpath)); const runtimeRoots = [{ path: ROOT, realpath: ROOT, discovery_rule: "recursive_regular_files_no_symlinks_v1" }]; const runtimeBytes = dependencyTreeBytes(runtimeRoots, runtimeMembers);
+  const sandbox: J = { schema_version: "reviewed_metrics_linux_sandbox_attestation_v2.1.0", status: "observed_live_enforced", synthetic: false, platform: "linux", wrapper, image: { identity_kind: "oci_manifest", immutable_identity: "registry.local/gate-h2@sha256", digest: `sha256:${hash("image-alpha")}` }, runtime_tree: { runtime: wrapper, physical_roots: runtimeRoots, members: runtimeMembers, complete_tree_sha256: hash(runtimeBytes), complete_tree_bytes: runtimeBytes.length, member_count: runtimeMembers.length, enumeration_contract: "sorted_physical_regular_files_path_sha256_bytes_v2" }, wrapper_grammar_version: "gate_h2_linux_wrapper_argv_v2", fixed_argument_allowlist: [], argv_prefix: [], mounts: { readable_inputs: [{ artifact_role: "runtime", host_path: wrapper.realpath, guest_path: "/runtime/node", mode: "ro", content_sha256: wrapper.sha256 }], output_mounts: [{ artifact_role: "stage_output", host_path: output, guest_path: "/output/result", mode: "rw", content_sha256: hash("empty-output-alpha") }] }, network: { namespace_identity_sha256: hash("network-namespace-alpha"), firewall_rules_sha256: hash("firewall-alpha"), policy: "deny_all", destination_capability_ids: [], observed_destinations_digest: hash("no-destinations-alpha") }, writable_confinement: { writable_paths: [output], read_only_root: true, pre_state_sha256: hash("pre-state-alpha"), post_state_sha256: hash("post-state-alpha"), enforcement_evidence_sha256: hash("enforcement-alpha") }, repo_tree_sha256: hash("repo-tree-alpha"), observation: { observed_at: observedAt, principal: sandboxIdentity.principal, session_id: sandboxIdentity.session_id, route: sandboxIdentity.route, physical_route_identity_sha256: sandboxIdentity.physical_route_identity_sha256 }, signer: sandboxIdentity, signature_base64: "" }; sandbox.argv_prefix = deriveSandboxArgvPrefix(sandbox); sign(sandbox, 1);
   const verifierIdentity = identity(2, "attestor-charlie"); const writeArtifact = (name: string, value: J): J => { const file = path.join(root, name); fs.writeFileSync(file, pretty(value), { mode: 0o600 }); return filePinForAttestation(file, value.schema_version); };
   const buildAuthority = (mutate?: (values: { authority: J; d1: J; sandbox: J; verification: J }) => void): J => {
     const values = { authority: syntheticExecutionAuthority(hash("preactivation-bundle-alpha")), d1: structuredClone(d1), sandbox: structuredClone(sandbox), verification: {} as J };
     values.authority.schema_version = "reviewed_metrics_execution_authorization_v2.4.0"; values.authority.authorized_at = new Date(Date.now()).toISOString(); values.authority.stage_execution.ledger = { ...values.authority.stage_execution.ledger, account_capability_digest: d1.account_capability_digest, database_uuid_digest: d1.database_uuid_digest, namespace_digest: d1.namespace_digest, table_schema_sha256: schemaEvidence.sha256, table_schema_bytes: schemaEvidence.bytes };
     const d1Pin = writeArtifact(`d1-${crypto.randomUUID()}.json`, values.d1); const sandboxPin = writeArtifact(`sandbox-${crypto.randomUUID()}.json`, values.sandbox);
-    values.verification = sign({ schema_version: "reviewed_metrics_pre_activation_verification_v2.0.0", status: "live_prerequisites_verified", synthetic: false, d1_attestation: { sha256: d1Pin.sha256, bytes: d1Pin.bytes }, sandbox_attestation: { sha256: sandboxPin.sha256, bytes: sandboxPin.bytes }, live_d1_schema_sha256: schemaEvidence.sha256, verified_at: verifiedAt, verifier: verifierIdentity, signature_base64: "" }, 2);
+    values.verification = sign({ schema_version: "reviewed_metrics_pre_activation_verification_v2.1.0", status: "live_prerequisites_verified", synthetic: false, d1_attestation: { sha256: d1Pin.sha256, bytes: d1Pin.bytes }, sandbox_attestation: { sha256: sandboxPin.sha256, bytes: sandboxPin.bytes }, live_d1_schema_sha256: schemaEvidence.sha256, verified_at: verifiedAt, verifier: verifierIdentity, signature_base64: "" }, 2);
     mutate?.(values);
     const finalD1Pin = writeArtifact(`d1-final-${crypto.randomUUID()}.json`, values.d1); const finalSandboxPin = writeArtifact(`sandbox-final-${crypto.randomUUID()}.json`, values.sandbox); values.verification.d1_attestation = { sha256: finalD1Pin.sha256, bytes: finalD1Pin.bytes }; values.verification.sandbox_attestation = { sha256: finalSandboxPin.sha256, bytes: finalSandboxPin.bytes }; values.verification.signature_base64 = crypto.sign(null, unsignedAttestationPayload(values.verification), keys[2].privateKey).toString("base64"); const verificationPin = writeArtifact(`verification-${crypto.randomUUID()}.json`, values.verification);
-    const attestationPin = (artifact: J, schemaName: string, signer: J) => ({ artifact, schema_sha256: schemaFilePin(schemaName).sha256, attestor_principal: signer.principal, attestor_session_id: signer.session_id, attestor_route: signer.route, signer_public_key_sha256: signer.public_key_sha256 });
+    const attestationPin = (artifact: J, schemaName: string, signer: J) => ({ artifact, schema_sha256: schemaFilePin(schemaName).sha256, attestor_principal: signer.principal, attestor_session_id: signer.session_id, attestor_route: signer.route, attestor_physical_route_identity_sha256: signer.physical_route_identity_sha256, signer_public_key_sha256: signer.public_key_sha256 });
     values.authority.pre_activation_attestations = { contract_version: "gate_h2_pre_activation_attestations_v1", max_age_seconds: 3600, d1: attestationPin(finalD1Pin, "d1-live-attestation.schema.v2.json", values.d1.signer), sandbox: attestationPin(finalSandboxPin, "linux-sandbox-attestation.schema.v2.json", values.sandbox.signer), verification: attestationPin(verificationPin, "pre-activation-verification.schema.v2.json", values.verification.verifier) }; sealSyntheticAuthority(values.authority, true); return values.authority;
   };
   const expect = (label: string, code: string | undefined, mutate?: Parameters<typeof buildAuthority>[0], after?: (authority: J) => void): void => { const authority = buildAuthority(mutate); after?.(authority); let observed = ""; try { validatePreActivationAuthority(authority); } catch (error) { observed = error instanceof GateH2Error ? error.code : "schema"; } codedAssert(observed !== "" && (code === undefined || observed === code), "H2_PREACTIVATION_TEST", `${label} expected ${code ?? "a rejection"}, observed ${observed || "none"}`); };
@@ -10202,7 +10412,49 @@ function preActivationFailClosedSelfTest(root: string): J {
   expect("wrong-identity-pin", "H2_PREACTIVATION_IDENTITY", undefined, (authority) => { authority.pre_activation_attestations.d1.attestor_session_id = "wrong-session"; });
   expect("mismatched-verification", "H2_PREACTIVATION_VERIFICATION", ({ verification }) => { verification.live_d1_schema_sha256 = hash("substituted-schema"); });
   expect("missing", "H2_PREACTIVATION_MISSING", undefined, (authority) => { fs.unlinkSync(authority.pre_activation_attestations.d1.artifact.path); });
-  return { status: "pre_activation_fail_closed_contract_passed", production_ready: false, real_attestors_admitted: false, cases: ["missing", "synthetic", "stale", "self_authored", "placeholder", "unsigned", "wrong_principal_session_route", "mismatched_evidence", "empty_trust_registry"] };
+  const fixtureAccount = "preactivation-fixture-account"; const fixtureDatabase = "preactivation-fixture-database";
+  const raceAuthority = buildAuthority(({ authority, d1: candidate }) => {
+    candidate.account_capability_digest = hash(`gate-h2-d1-account-capability-v1\0${fixtureAccount}`); candidate.database_uuid_digest = hash(`gate-h2-d1-database-uuid-v1\0${fixtureDatabase}`); candidate.signature_base64 = crypto.sign(null, unsignedAttestationPayload(candidate), keys[0].privateKey).toString("base64");
+    authority.stage_execution.ledger.account_capability_digest = candidate.account_capability_digest; authority.stage_execution.ledger.database_uuid_digest = candidate.database_uuid_digest;
+  });
+  const raceAuthorityFile = path.join(root, "preactivation-race-authority.json"); fs.writeFileSync(raceAuthorityFile, pretty(raceAuthority), { mode: 0o600 });
+  const raceD1 = raceAuthority.pre_activation_attestations.d1.artifact.path; const raceSandbox = raceAuthority.pre_activation_attestations.sandbox.artifact.path;
+  const trustEntry = (kind: string, identityValue: J, index: number): J => ({ evidence_kind: kind, ...attestorIdentity(identityValue), admission_commit: String(index + 1).repeat(40), admission_receipt: { path: `docs/dataset-factory/authorities/reviewed-metrics-v2/admissions/internal-${index + 1}.json`, sha256: hash(`internal-admission-${index}`), bytes: 100 + index } });
+  const trustValue = { schema_version: "reviewed_metrics_pre_activation_attestor_trust_v2.1.0", status: "reviewed_real_attestors_admitted", attestors: [trustEntry("d1_live", d1Identity, 0), trustEntry("linux_sandbox", sandboxIdentity, 1), trustEntry("pre_activation_verifier", verifierIdentity, 2)] };
+  const expectTrust = (field: string, code: string, mutate: (candidate: J) => void): void => { const candidate = structuredClone(trustValue); mutate(candidate); let observed = ""; try { validatePreActivationTrustIdentitySet(candidate); } catch (error) { observed = error instanceof GateH2Error ? error.code : ""; } codedAssert(observed === code, "H2_PREACTIVATION_TRUST_TEST", `${field} expected ${code}, observed ${observed || "none"}`); };
+  for (const field of ["principal", "session_id", "logical_route", "physical_route_identity_sha256", "public_key_sha256"]) expectTrust(field, "H2_PREACTIVATION_INDEPENDENCE", (candidate) => { candidate.attestors[1][field] = candidate.attestors[0][field]; });
+  expectTrust("wrong-kind", "H2_PREACTIVATION_TRUST_KIND", (candidate) => { candidate.attestors[1].evidence_kind = "d1_live"; });
+  const nonexistentCommit = structuredClone(trustValue); let nonexistentCode = ""; try { validatePreActivationTrustRegistry(nonexistentCommit); } catch (error) { nonexistentCode = error instanceof GateH2Error ? error.code : ""; } codedAssert(nonexistentCode === "H2_PREACTIVATION_ADMISSION_COMMIT", "H2_PREACTIVATION_TRUST_TEST", "nonexistent admission commit must fail with exact ancestry code");
+  const trustFile = path.join(root, "preactivation-internal-trust.json"); fs.writeFileSync(trustFile, pretty(trustValue), { mode: 0o600 });
+  const keyFile = path.join(root, "preactivation-verifier-key.pem"); fs.writeFileSync(keyFile, keys[2].privateKey.export({ type: "pkcs8", format: "pem" }), { mode: 0o600 });
+  const fixtureFile = path.join(root, "preactivation-d1-fixture.json"); fs.writeFileSync(fixtureFile, pretty({ schema_version: "gate_h2_internal_d1_fetch_fixture_v1", synthetic: true, account_id: fixtureAccount, database_id: fixtureDatabase, api_token: "preactivation-fixture-token", schema_rows: schemaEvidence.rows, readback: { attempts: [], claims: [], completions: [] } }), { mode: 0o600 });
+  const cli = path.join(ROOT, "node_modules/.bin/tsx"); const scriptFile = fileURLToPath(import.meta.url); const capability = hash(`gate-h2-internal-two-process-v2\n${canon(raceAuthority)}`);
+  const baseVerifierArgs = (outputReceipt: string) => [scriptFile, "pre-activation-verify", "--authority", raceAuthorityFile, "--d1-attestation", raceD1, "--sandbox-attestation", raceSandbox, "--max-age-seconds", "3600", "--signing-key", keyFile, "--verifier-principal", verifierIdentity.principal, "--verifier-session", verifierIdentity.session_id, "--verifier-route", verifierIdentity.route, "--output", outputReceipt];
+  const expectTrustSubprocess = (label: string, mutate: (candidate: J) => void, code: string, validateAdmissions = false): void => {
+    const candidate = structuredClone(trustValue); mutate(candidate); const candidateFile = path.join(root, `trust-${label}.json`); const outputReceipt = path.join(root, `trust-${label}-receipt.json`); fs.writeFileSync(candidateFile, pretty(candidate), { mode: 0o600 });
+    let stderr = ""; try { execFileSync(cli, baseVerifierArgs(outputReceipt), { cwd: ROOT, env: { ...process.env, GATE_H2_INTERNAL_TEST_CAPABILITY: capability, GATE_H2_INTERNAL_PREACTIVATION_TRUST: candidateFile, GATE_H2_INTERNAL_D1_FIXTURE: fixtureFile, ...(validateAdmissions ? { GATE_H2_INTERNAL_VALIDATE_ADMISSIONS: "1" } : {}) }, stdio: ["ignore", "ignore", "pipe"] }); } catch (error) { stderr = (error as { stderr?: Buffer }).stderr?.toString("utf8") ?? ""; }
+    codedAssert(stderr.includes(code) && !fs.existsSync(outputReceipt), "H2_PREACTIVATION_TRUST_TEST", `${label} subprocess did not reject ${code} without receipt: ${stderr.slice(0, 500)}`);
+  };
+  for (const field of ["principal", "session_id", "logical_route", "physical_route_identity_sha256", "public_key_sha256"]) expectTrustSubprocess(`same-${field}`, (candidate) => { candidate.attestors[1][field] = candidate.attestors[0][field]; }, "H2_PREACTIVATION_INDEPENDENCE");
+  expectTrustSubprocess("wrong-kind", (candidate) => { candidate.attestors[1].evidence_kind = "d1_live"; }, "H2_PREACTIVATION_TRUST_KIND");
+  expectTrustSubprocess("nonexistent-commit", () => {}, "H2_PREACTIVATION_ADMISSION_COMMIT", true);
+  const currentCommit = execFileSync(trustedExecutable("git"), ["rev-parse", "HEAD"], { cwd: ROOT, env: {}, encoding: "utf8" }).trim(); expectTrustSubprocess("non-prior-current-commit", (candidate) => { candidate.attestors[0].admission_commit = currentCommit; }, "H2_PREACTIVATION_ADMISSION_COMMIT", true);
+  const untrustedKeys = crypto.generateKeyPairSync("ed25519"); const untrustedPem = untrustedKeys.publicKey.export({ type: "spki", format: "pem" }).toString(); const untrustedD1 = structuredClone(load(raceD1)); untrustedD1.signer = { ...untrustedD1.signer, principal: "untrusted-attestor", session_id: "untrusted-session", route: "/opt/gate-h2/untrusted-attestor", physical_route_identity_sha256: physicalRouteIdentitySha256("/opt/gate-h2/untrusted-attestor"), public_key_pem: untrustedPem, public_key_sha256: hash(untrustedPem) }; untrustedD1.observation = { ...untrustedD1.observation, principal: untrustedD1.signer.principal, session_id: untrustedD1.signer.session_id, route: untrustedD1.signer.route, physical_route_identity_sha256: untrustedD1.signer.physical_route_identity_sha256 }; untrustedD1.signature_base64 = crypto.sign(null, unsignedAttestationPayload(untrustedD1), untrustedKeys.privateKey).toString("base64"); const untrustedD1File = path.join(root, "correctly-signed-untrusted-d1.json"); fs.writeFileSync(untrustedD1File, pretty(untrustedD1), { mode: 0o600 }); const untrustedOutput = path.join(root, "untrusted-receipt.json"); const untrustedArgs = baseVerifierArgs(untrustedOutput); untrustedArgs[untrustedArgs.indexOf(raceD1)] = untrustedD1File; let untrustedStderr = ""; try { execFileSync(cli, untrustedArgs, { cwd: ROOT, env: { ...process.env, GATE_H2_INTERNAL_TEST_CAPABILITY: capability, GATE_H2_INTERNAL_PREACTIVATION_TRUST: trustFile, GATE_H2_INTERNAL_D1_FIXTURE: fixtureFile }, stdio: ["ignore", "ignore", "pipe"] }); } catch (error) { untrustedStderr = (error as { stderr?: Buffer }).stderr?.toString("utf8") ?? ""; } codedAssert(untrustedStderr.includes("H2_PREACTIVATION_TRUST") && !fs.existsSync(untrustedOutput), "H2_PREACTIVATION_TRUST_TEST", "correctly signed untrusted attestation subprocess did not fail closed without receipt");
+  const race = async (label: string, target: string, mutate: (file: string, raw: Buffer, backup: string) => void, expectedCode: string): Promise<void> => {
+    const raw = fs.readFileSync(target); const backup = `${target}.${label}.backup`; const pending = path.join(root, `${label}.pending`); const outputReceipt = path.join(root, `${label}.receipt.json`);
+    const child = spawn(cli, baseVerifierArgs(outputReceipt), { cwd: ROOT, env: { ...process.env, GATE_H2_INTERNAL_TEST_CAPABILITY: capability, GATE_H2_INTERNAL_PREACTIVATION_TRUST: trustFile, GATE_H2_INTERNAL_D1_FIXTURE: fixtureFile, GATE_H2_INTERNAL_D1_PENDING_FILE: pending, GATE_H2_INTERNAL_D1_DELAY_MS: "300" }, stdio: ["ignore", "ignore", "pipe"] });
+    let stderr = ""; child.stderr.on("data", (chunk) => { stderr += chunk.toString(); });
+    for (let index = 0; index < 100 && !fs.existsSync(pending); index++) await new Promise((resolve) => setTimeout(resolve, 10));
+    codedAssert(fs.existsSync(pending), "H2_PREACTIVATION_RACE_TEST", `${label} did not reach delayed D1 attestation`); mutate(target, raw, backup);
+    const exitCode = await new Promise<number | null>((resolve) => child.on("close", resolve));
+    if (fs.existsSync(target)) fs.rmSync(target, { force: true }); if (fs.existsSync(backup)) fs.renameSync(backup, target); else fs.writeFileSync(target, raw, { mode: 0o600 });
+    codedAssert(exitCode !== 0 && stderr.includes(expectedCode) && !fs.existsSync(outputReceipt), "H2_PREACTIVATION_RACE_TEST", `${label} did not reject ${expectedCode} without a receipt: ${stderr.slice(0, 500)}`);
+  };
+  await race("rename", raceD1, (file, raw, backup) => { fs.renameSync(file, backup); fs.writeFileSync(file, raw, { mode: 0o600 }); }, "H2_FINALIZATION_PATH_SUBSTITUTION");
+  await race("symlink", raceSandbox, (file, _raw, backup) => { fs.renameSync(file, backup); fs.symlinkSync(backup, file); }, "H2_FINALIZATION_PATH_SUBSTITUTION");
+  await race("same-size", raceD1, (file, raw) => { const changed = Buffer.from(raw); changed[Math.floor(changed.length / 2)] ^= 1; fs.writeFileSync(file, changed); }, "H2_FINALIZATION_EXACT_BYTES");
+  await race("valid-alternate", raceSandbox, (file, _raw, backup) => { const alternate = structuredClone(sandbox); alternate.network.observed_destinations_digest = hash("valid-alternate-observation"); alternate.signature_base64 = crypto.sign(null, unsignedAttestationPayload(alternate), keys[1].privateKey).toString("base64"); fs.renameSync(file, backup); fs.writeFileSync(file, pretty(alternate), { mode: 0o600 }); }, "H2_FINALIZATION_PATH_SUBSTITUTION");
+  return { status: "pre_activation_fail_closed_contract_passed", production_ready: false, real_attestors_admitted: false, cases: ["missing", "synthetic", "stale", "self_authored", "placeholder", "unsigned", "wrong_principal_session_route", "mismatched_evidence", "empty_trust_registry", "subprocess_pairwise_principal_session_logical_physical_route_key", "subprocess_wrong_kind", "subprocess_nonexistent_or_nonprior_commit", "subprocess_correctly_signed_untrusted_artifact", "subprocess_rename_race", "subprocess_symlink_race", "subprocess_same_size_race", "subprocess_valid_alternate_race"] };
 }
 function filePinForAttestation(file: string, version: string): J { const raw = fs.readFileSync(file); return { path: file, realpath: fs.realpathSync(file), sha256: hash(raw), bytes: raw.length, version }; }
 async function integrationTest(): Promise<J> {
@@ -10210,7 +10462,7 @@ async function integrationTest(): Promise<J> {
   try {
     const d1Seal = await d1SealOrchestrationSelfTest(root);
     const stageRunCli = stageRunSubprocessSelfTest(root);
-    const preActivation = preActivationFailClosedSelfTest(root);
+    const preActivation = await preActivationFailClosedSelfTest(root);
     const candidate = path.join(root, "candidate");
     await build(candidate);
     const authority = load(path.join(candidate, "input-authority-v2.json"));
@@ -10957,22 +11209,48 @@ async function main(): Promise<void> {
   } else if (command === "pre-activation-verify") {
     const d1File = path.resolve(assertString(o["d1-attestation"], "--d1-attestation required"));
     const sandboxFile = path.resolve(assertString(o["sandbox-attestation"], "--sandbox-attestation required"));
-    const d1 = load(d1File); const sandbox = load(sandboxFile);
-    validateD1LiveAttestation(d1); validateLinuxSandboxAttestation(sandbox);
-    const maxAgeSeconds = Number(assertString(o["max-age-seconds"], "--max-age-seconds required"));
-    codedAssert(Number.isInteger(maxAgeSeconds) && maxAgeSeconds > 0 && maxAgeSeconds <= 86400, "H2_PREACTIVATION_STALE", "pre-activation maximum age must be 1..86400 seconds");
-    const now = Date.now();
-    for (const attestation of [d1, sandbox]) codedAssert(Date.parse(attestation.observation.observed_at) <= now && now - Date.parse(attestation.observation.observed_at) <= maxAgeSeconds * 1000, "H2_PREACTIVATION_STALE", "pre-activation attestation is stale or future-dated");
-    const adapter = CloudflareD1StageLedger.fromEnvironment({ account_capability_digest: d1.account_capability_digest, database_uuid_digest: d1.database_uuid_digest });
-    try { await adapter.attestSchema({ table_schema_sha256: d1.deployed_schema.canonical_schema_sha256, table_schema_bytes: d1.deployed_schema.canonical_schema_bytes }); }
-    catch (error) { if (error instanceof StageLedgerContractError) throw new GateH2Error(error.code, error.message); throw error; }
-    const keyFile = path.resolve(assertString(o["signing-key"], "--signing-key required")); const privateKey = crypto.createPrivateKey(fs.readFileSync(keyFile));
-    codedAssert(privateKey.asymmetricKeyType === "ed25519", "H2_PREACTIVATION_VERIFICATION", "pre-activation verifier key must be Ed25519");
-    const publicKeyPem = crypto.createPublicKey(privateKey).export({ type: "spki", format: "pem" }).toString();
-    const receipt: J = { schema_version: "reviewed_metrics_pre_activation_verification_v2.0.0", status: "live_prerequisites_verified", synthetic: false, d1_attestation: { sha256: hash(fs.readFileSync(d1File)), bytes: fs.statSync(d1File).size }, sandbox_attestation: { sha256: hash(fs.readFileSync(sandboxFile)), bytes: fs.statSync(sandboxFile).size }, live_d1_schema_sha256: d1.deployed_schema.canonical_schema_sha256, verified_at: new Date().toISOString(), verifier: { principal: assertString(o["verifier-principal"], "--verifier-principal required"), session_id: assertString(o["verifier-session"], "--verifier-session required"), route: path.resolve(assertString(o["verifier-route"], "--verifier-route required")), public_key_pem: publicKeyPem, public_key_sha256: hash(publicKeyPem) }, signature_base64: "" };
-    rejectPlaceholderEvidence(receipt); receipt.signature_base64 = crypto.sign(null, unsignedAttestationPayload(receipt), privateKey).toString("base64"); schema("pre-activation-verification.schema.v2.json", receipt);
-    const output = physicalPathSafety(path.resolve(assertString(o.output, "--output required"))); fs.writeFileSync(output, pretty(receipt), { flag: "wx", mode: 0o600 });
-    result = { status: "pre_activation_live_attestations_verified", authority_activation_prerequisites_verified: true, verification_sha256: hash(Buffer.from(pretty(receipt))), d1_attestation_sha256: receipt.d1_attestation.sha256, sandbox_attestation_sha256: receipt.sandbox_attestation.sha256 };
+    const keyFile = path.resolve(assertString(o["signing-key"], "--signing-key required"));
+    const output = physicalPathSafety(path.resolve(assertString(o.output, "--output required")));
+    codedAssert(!fs.existsSync(output), "H2_PREACTIVATION_VERIFICATION", "pre-activation receipt output must be absent");
+    const retained: (FileSnapshot | RawSnapshot)[] = [];
+    try {
+      const d1Snapshot = readJsonSnapshot(d1File, "H2_PREACTIVATION_ARTIFACT"); retained.push(d1Snapshot);
+      const sandboxSnapshot = readJsonSnapshot(sandboxFile, "H2_PREACTIVATION_ARTIFACT"); retained.push(sandboxSnapshot);
+      const internalTrustFile = internalCapability && process.env.GATE_H2_INTERNAL_PREACTIVATION_TRUST ? path.resolve(process.env.GATE_H2_INTERNAL_PREACTIVATION_TRUST) : undefined;
+      const trustSnapshot = internalTrustFile ? readJsonSnapshot(internalTrustFile, "H2_PREACTIVATION_TRUST") : reviewedTrustSnapshot(); retained.push(trustSnapshot);
+      const keySnapshot = readRawSnapshot(keyFile, "H2_PREACTIVATION_SIGNING_KEY"); retained.push(keySnapshot);
+      const d1 = d1Snapshot.value; const sandbox = sandboxSnapshot.value; const trust = trustSnapshot.value;
+      if (internalTrustFile) process.env.GATE_H2_INTERNAL_VALIDATE_ADMISSIONS === "1" ? validatePreActivationTrustRegistry(trust) : validatePreActivationTrustIdentitySet(trust);
+      validateD1LiveAttestation(d1); validateLinuxSandboxAttestation(sandbox);
+      codedAssert(trust.status === "reviewed_real_attestors_admitted" && trust.attestors.length === 3, "H2_PREACTIVATION_TRUST", "pre-activation verification is blocked until exactly three independently reviewed attestors are admitted");
+      codedAssert(trustedPreActivationIdentity(trust, "d1_live", d1.signer) && trustedPreActivationIdentity(trust, "linux_sandbox", sandbox.signer), "H2_PREACTIVATION_TRUST", "D1 or sandbox attestation full identity is not admitted");
+      const maxAgeSeconds = Number(assertString(o["max-age-seconds"], "--max-age-seconds required"));
+      codedAssert(Number.isInteger(maxAgeSeconds) && maxAgeSeconds > 0 && maxAgeSeconds <= 86400, "H2_PREACTIVATION_STALE", "pre-activation maximum age must be 1..86400 seconds");
+      const now = Date.now();
+      for (const attestation of [d1, sandbox]) codedAssert(Date.parse(attestation.observation.observed_at) <= now && now - Date.parse(attestation.observation.observed_at) <= maxAgeSeconds * 1000, "H2_PREACTIVATION_STALE", "pre-activation attestation is stale or future-dated");
+      const privateKey = crypto.createPrivateKey(keySnapshot.raw);
+      codedAssert(privateKey.asymmetricKeyType === "ed25519", "H2_PREACTIVATION_VERIFICATION", "pre-activation verifier key must be Ed25519");
+      const publicKeyPem = crypto.createPublicKey(privateKey).export({ type: "spki", format: "pem" }).toString();
+      const verifierRoute = path.resolve(assertString(o["verifier-route"], "--verifier-route required"));
+      const verifier = { principal: assertString(o["verifier-principal"], "--verifier-principal required"), session_id: assertString(o["verifier-session"], "--verifier-session required"), route: verifierRoute, physical_route_identity_sha256: physicalRouteIdentitySha256(verifierRoute), public_key_pem: publicKeyPem, public_key_sha256: hash(publicKeyPem) };
+      codedAssert(trustedPreActivationIdentity(trust, "pre_activation_verifier", verifier), "H2_PREACTIVATION_TRUST", "verifier full identity is not admitted");
+      const identities = [d1.signer, sandbox.signer, verifier];
+      for (const field of ["principal", "session_id", "route", "physical_route_identity_sha256", "public_key_sha256"])
+        codedAssert(new Set(identities.map((identity: J) => identity[field])).size === 3, "H2_PREACTIVATION_INDEPENDENCE", `D1, sandbox, and verifier must have pairwise distinct ${field}`);
+      const internalFixture = internalCapability && process.env.GATE_H2_INTERNAL_D1_FIXTURE ? internalD1FixtureAdapter(internalAuthority, path.resolve(process.env.GATE_H2_INTERNAL_D1_FIXTURE), internalCapability) : undefined;
+      const adapter = internalFixture ?? CloudflareD1StageLedger.fromEnvironment({ account_capability_digest: d1.account_capability_digest, database_uuid_digest: d1.database_uuid_digest });
+      try { await adapter.attestSchema({ table_schema_sha256: d1.deployed_schema.canonical_schema_sha256, table_schema_bytes: d1.deployed_schema.canonical_schema_bytes }); }
+      catch (error) { if (error instanceof StageLedgerContractError) throw new GateH2Error(error.code, error.message); throw error; }
+      for (const snapshot of retained) assertSnapshotPathUnchanged(snapshot);
+      codedAssert(internalCapability === undefined, "H2_PREACTIVATION_SYNTHETIC", "internal pre-activation fixtures can exercise retention and D1 orchestration but can never issue an activation receipt");
+      const receipt: J = { schema_version: "reviewed_metrics_pre_activation_verification_v2.1.0", status: "live_prerequisites_verified", synthetic: false, d1_attestation: { sha256: hash(d1Snapshot.raw), bytes: d1Snapshot.raw.length }, sandbox_attestation: { sha256: hash(sandboxSnapshot.raw), bytes: sandboxSnapshot.raw.length }, live_d1_schema_sha256: d1.deployed_schema.canonical_schema_sha256, verified_at: new Date().toISOString(), verifier, signature_base64: "" };
+      rejectPlaceholderEvidence(receipt); receipt.signature_base64 = crypto.sign(null, unsignedAttestationPayload(receipt), privateKey).toString("base64"); schema("pre-activation-verification.schema.v2.json", receipt);
+      for (const snapshot of retained) assertSnapshotPathUnchanged(snapshot);
+      writeOwnedExclusive(output, Buffer.from(pretty(receipt)), "H2_PREACTIVATION_VERIFICATION");
+      result = { status: "pre_activation_live_attestations_verified", authority_activation_prerequisites_verified: true, verification_sha256: hash(Buffer.from(pretty(receipt))), d1_attestation_sha256: receipt.d1_attestation.sha256, sandbox_attestation_sha256: receipt.sandbox_attestation.sha256 };
+    } catch (error) {
+      throw error;
+    } finally { for (const snapshot of retained) { try { closeSnapshot(snapshot); } catch { /* descriptors are no longer authority inputs */ } } }
   } else if (command === "stage-run") {
     const stageId = assertString(o.stage, "--stage required") as StageId;
     codedAssert(STAGE_ROLES[stageId] !== undefined, "H2_ROUTE_STAGE_ROLE", "unknown exact production stage");
@@ -11123,7 +11401,9 @@ async function main(): Promise<void> {
   else if (command === "assemble-publication") {
     const authority = internalAuthority ?? executionAuthority();
     const raceFile = internalCapability ? process.env.GATE_H2_INTERNAL_ASSEMBLY_RACE_FILE : undefined;
-    result = assemblePublication(path.resolve(assertString(o.workspace, "--workspace required")), path.resolve(assertString(o.input, "--input publication plan required")), path.resolve(assertString(o.envelope, "--envelope signed stage ledger required")), authority, raceFile ? () => fs.writeFileSync(path.resolve(raceFile), "late race\n", { flag: "wx" }) : undefined);
+    const raceSpec = internalCapability ? process.env.GATE_H2_INTERNAL_ASSEMBLY_RACE_SPEC : undefined;
+    const workspace = path.resolve(assertString(o.workspace, "--workspace required"));
+    result = assemblePublication(workspace, path.resolve(assertString(o.input, "--input publication plan required")), path.resolve(assertString(o.envelope, "--envelope signed stage ledger required")), authority, raceFile ? () => fs.writeFileSync(path.resolve(raceFile), "late race\n", { flag: "wx" }) : raceSpec ? () => internalPublicationRace(workspace, raceSpec) : undefined);
   }
   else if (command === "self-test") result = await selfTest();
   else if (command === "security-self-test") result = { cloudflare_r2: await securityHelperSelfTest(), cloudflare_d1_ledger: await stageLedgerProductionContractSelfTest(ROOT), status: "security_helper_self_test_passed" };

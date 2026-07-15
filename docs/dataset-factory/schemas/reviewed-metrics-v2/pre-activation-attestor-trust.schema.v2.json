@@ -5,8 +5,46 @@
   "additionalProperties": false,
   "required": ["schema_version", "status", "attestors"],
   "properties": {
-    "schema_version": { "const": "reviewed_metrics_pre_activation_attestor_trust_v2.0.0" },
+    "schema_version": { "const": "reviewed_metrics_pre_activation_attestor_trust_v2.1.0" },
     "status": { "enum": ["blocked_no_real_attestors_admitted", "reviewed_real_attestors_admitted"] },
-    "attestors": { "type": "array", "uniqueItems": true, "items": { "type": "object", "additionalProperties": false, "required": ["evidence_kind", "principal", "route", "public_key_sha256", "admission_commit"], "properties": { "evidence_kind": { "enum": ["d1_live", "linux_sandbox", "pre_activation_verifier"] }, "principal": { "type": "string", "minLength": 1 }, "route": { "type": "string", "pattern": "^/" }, "public_key_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "admission_commit": { "type": "string", "pattern": "^[a-f0-9]{40}$" } } } }
+    "attestors": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/attestor" }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "blocked_no_real_attestors_admitted" } } },
+      "then": { "properties": { "attestors": { "maxItems": 0 } } },
+      "else": { "properties": { "attestors": { "minItems": 3, "maxItems": 3 } } }
+    }
+  ],
+  "$defs": {
+    "attestor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidence_kind", "principal", "session_id", "logical_route", "physical_route_identity_sha256", "public_key_sha256", "admission_commit", "admission_receipt"],
+      "properties": {
+        "evidence_kind": { "enum": ["d1_live", "linux_sandbox", "pre_activation_verifier"] },
+        "principal": { "type": "string", "minLength": 1 },
+        "session_id": { "type": "string", "minLength": 1 },
+        "logical_route": { "type": "string", "pattern": "^/" },
+        "physical_route_identity_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "public_key_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "admission_commit": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+        "admission_receipt": { "$ref": "#/$defs/repositoryPin" }
+      }
+    },
+    "repositoryPin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "bytes"],
+      "properties": {
+        "path": { "type": "string", "pattern": "^docs/dataset-factory/authorities/reviewed-metrics-v2/admissions/[a-z0-9._-]+\\.json$" },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "bytes": { "type": "integer", "minimum": 1 }
+      }
+    }
   }
 }

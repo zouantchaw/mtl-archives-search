@@ -5,14 +5,14 @@
   "additionalProperties": false,
   "required": ["schema_version", "status", "synthetic", "d1_attestation", "sandbox_attestation", "live_d1_schema_sha256", "verified_at", "verifier", "signature_base64"],
   "properties": {
-    "schema_version": { "const": "reviewed_metrics_pre_activation_verification_v2.0.0" },
+    "schema_version": { "const": "reviewed_metrics_pre_activation_verification_v2.1.0" },
     "status": { "const": "live_prerequisites_verified" },
     "synthetic": { "const": false },
     "d1_attestation": { "$ref": "#/$defs/pin" },
     "sandbox_attestation": { "$ref": "#/$defs/pin" },
     "live_d1_schema_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
     "verified_at": { "type": "string", "format": "date-time" },
-    "verifier": { "type": "object", "additionalProperties": false, "required": ["principal", "session_id", "route", "public_key_pem", "public_key_sha256"], "properties": { "principal": { "type": "string", "minLength": 1 }, "session_id": { "type": "string", "minLength": 1 }, "route": { "type": "string", "pattern": "^/" }, "public_key_pem": { "type": "string", "pattern": "^-----BEGIN PUBLIC KEY-----" }, "public_key_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" } } },
+    "verifier": { "type": "object", "additionalProperties": false, "required": ["principal", "session_id", "route", "physical_route_identity_sha256", "public_key_pem", "public_key_sha256"], "properties": { "principal": { "type": "string", "minLength": 1 }, "session_id": { "type": "string", "minLength": 1 }, "route": { "type": "string", "pattern": "^/" }, "physical_route_identity_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "public_key_pem": { "type": "string", "pattern": "^-----BEGIN PUBLIC KEY-----" }, "public_key_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" } } },
     "signature_base64": { "type": "string", "minLength": 80, "maxLength": 100 }
   },
   "$defs": { "pin": { "type": "object", "additionalProperties": false, "required": ["sha256", "bytes"], "properties": { "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "bytes": { "type": "integer", "minimum": 1 } } } }
