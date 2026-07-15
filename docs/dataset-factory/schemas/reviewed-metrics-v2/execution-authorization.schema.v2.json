@@ -9,7 +9,7 @@
     "status": {"const": "activated_exact_one_shot"},
     "candidate_id": {"const": "dfv0_reviewed_metrics_v2_candidate_20260715"},
     "implementation_base_commit": {"const": "5fe4dfbe51a320a51f1f126b4a2d8cf0722be5dc"},
-    "candidate_commit": {"const": "8eb42713059622a5c94a092da5e5a2141463c85f"},
+    "candidate_commit": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
     "bundle_tree_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
     "implementation": {"$ref": "#/$defs/implementationActor"},
     "predictor": {"$ref": "#/$defs/predictorActor"},
