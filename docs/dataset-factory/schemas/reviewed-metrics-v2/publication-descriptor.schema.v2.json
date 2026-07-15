@@ -80,7 +80,7 @@
   },
   "allOf": [
     {"if": {"properties": {"status": {"const": "candidate_only"}}}, "then": {"properties": {"candidate_commit": {"type": "null"}, "required_publication_members": {"maxItems": 0}}}},
-    {"if": {"properties": {"status": {"const": "published"}}}, "then": {"required": ["required_publication_members", "publisher"], "properties": {"artifact_id": {"const": "dfv0_reviewed_metrics_v2_publication"}, "candidate_commit": {"type": "string", "pattern": "^[a-f0-9]{40}$"}, "publisher": {"$ref": "#/$defs/publisher"}, "required_publication_members": {"minItems": 10, "maxItems": 10}, "completion": {"properties": {"candidate_complete": {"const": true}, "issue_92_complete": {"const": true}, "issue_69_complete": {"const": true}, "publication_exists": {"const": true}}}, "predecessors": {"required": ["phase_d", "v1_tasks", "v1_receipt", "v1_descriptor", "gate_e_promotion", "gate_f_review", "gate_g_descriptor", "ground_input", "ground_records", "reviewed_visual_transcriptions", "candidate", "input_authority", "execution_authorization", "prediction_output", "prediction_freeze", "gold_review", "results", "search_task", "criterion_matrix", "task_review"]}}}}
+    {"if": {"properties": {"status": {"const": "published"}}}, "then": {"required": ["required_publication_members", "publisher"], "properties": {"artifact_id": {"const": "dfv0_reviewed_metrics_v2_publication"}, "candidate_commit": {"type": "string", "pattern": "^[a-f0-9]{40}$"}, "publisher": {"$ref": "#/$defs/publisher"}, "required_publication_members": {"minItems": 14, "maxItems": 14}, "completion": {"properties": {"candidate_complete": {"const": true}, "issue_92_complete": {"const": true}, "issue_69_complete": {"const": true}, "publication_exists": {"const": true}}}, "predecessors": {"required": ["phase_d", "v1_tasks", "v1_receipt", "v1_descriptor", "gate_e_promotion", "gate_f_review", "gate_g_descriptor", "ground_input", "ground_records", "reviewed_visual_transcriptions", "candidate", "input_authority", "execution_authorization", "prediction_output", "prediction_freeze", "gold_review", "private_score_receipt", "results", "source_search_bundle", "source_search_prediction", "source_search_freeze", "search_task", "criterion_matrix", "task_review"]}}}}
   ],
   "$defs": {
     "pin": {
@@ -196,7 +196,11 @@
         "gold_review": {
           "$ref": "#/$defs/pin"
         },
+        "private_score_receipt": {"$ref": "#/$defs/pin"},
         "results": {"$ref": "#/$defs/pin"},
+        "source_search_bundle": {"$ref": "#/$defs/pin"},
+        "source_search_prediction": {"$ref": "#/$defs/pin"},
+        "source_search_freeze": {"$ref": "#/$defs/pin"},
         "search_task": {"$ref": "#/$defs/pin"},
         "criterion_matrix": {"$ref": "#/$defs/pin"},
         "task_review": {"$ref": "#/$defs/pin"}

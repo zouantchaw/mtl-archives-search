@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "source-search-prediction.schema.v2.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "candidate_id", "task_id", "public_bundle", "session", "answer", "evidence", "attestations"],
+  "properties": {
+    "schema_version": {"const": "reviewed_metrics_source_search_prediction_v2.0.0"},
+    "status": {"enum": ["blank_no_prediction", "completed"]},
+    "candidate_id": {"const": "dfv0_reviewed_metrics_v2_candidate_20260715"},
+    "task_id": {"const": "gate-h-v2:official-source-search:c0-rpcq"},
+    "public_bundle": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/pin"}]},
+    "session": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/session"}]},
+    "answer": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/answer"}]},
+    "evidence": {"type": "array", "maxItems": 1, "items": {"$ref": "#/$defs/evidence"}},
+    "attestations": {"type": "object", "additionalProperties": false, "required": ["no_expected_received", "no_private_body_received", "no_repo_access", "no_pixel_identity_claim", "one_run_only"], "properties": {"no_expected_received": {"const": true}, "no_private_body_received": {"const": true}, "no_repo_access": {"const": true}, "no_pixel_identity_claim": {"const": true}, "one_run_only": {"const": true}}}
+  },
+  "$defs": {
+    "pin": {"type": "object", "additionalProperties": false, "required": ["path", "sha256", "bytes"], "properties": {"path": {"const": "source-search-bundle-v2.json"}, "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "bytes": {"type": "integer", "minimum": 1}}},
+    "session": {"type": "object", "additionalProperties": false, "required": ["principal", "session_id", "model", "reasoning_effort", "route", "started_at", "ended_at"], "properties": {"principal": {"type": "string", "minLength": 1}, "session_id": {"type": "string", "minLength": 1}, "model": {"type": "string", "minLength": 1}, "reasoning_effort": {"type": "string", "minLength": 1}, "route": {"type": "string", "minLength": 1}, "started_at": {"type": "string", "format": "date-time"}, "ended_at": {"type": "string", "format": "date-time"}}},
+    "answer": {"type": "object", "additionalProperties": false, "required": ["year", "civic_number", "street", "place", "official_url", "source_id", "source_representation_id"], "properties": {"year": {"type": "string", "pattern": "^[0-9]{4}$"}, "civic_number": {"type": "string", "pattern": "^[0-9]+$"}, "street": {"type": "string", "minLength": 1, "maxLength": 120}, "place": {"type": "string", "minLength": 1, "maxLength": 120}, "official_url": {"type": "string", "format": "uri"}, "source_id": {"type": "string", "minLength": 1}, "source_representation_id": {"type": "string", "minLength": 1}}},
+    "evidence": {"type": "object", "additionalProperties": false, "required": ["official_url", "source_id", "source_representation_id", "paraphrase"], "properties": {"official_url": {"type": "string", "format": "uri"}, "source_id": {"type": "string", "minLength": 1}, "source_representation_id": {"type": "string", "minLength": 1}, "paraphrase": {"type": "string", "minLength": 1, "maxLength": 240}}}
+  }
+}

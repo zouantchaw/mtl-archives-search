@@ -1,0 +1,17 @@
+{
+  "schema_version": "reviewed_metrics_source_search_prediction_v2.0.0",
+  "status": "blank_no_prediction",
+  "candidate_id": "dfv0_reviewed_metrics_v2_candidate_20260715",
+  "task_id": "gate-h-v2:official-source-search:c0-rpcq",
+  "public_bundle": null,
+  "session": null,
+  "answer": null,
+  "evidence": [],
+  "attestations": {
+    "no_expected_received": true,
+    "no_private_body_received": true,
+    "no_repo_access": true,
+    "no_pixel_identity_claim": true,
+    "one_run_only": true
+  }
+}

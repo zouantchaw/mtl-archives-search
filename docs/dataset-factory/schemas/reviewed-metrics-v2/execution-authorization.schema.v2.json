@@ -5,7 +5,7 @@
   "additionalProperties": false,
   "required": ["schema_version", "status", "candidate_id", "implementation_base_commit", "candidate_commit", "bundle_tree_sha256", "implementation", "predictor", "gold_reviewer", "task_reviewer", "publisher", "forbidden_prior_reviewers", "authorized_at", "started_at", "ended_at", "freeze_at", "expires_at"],
   "properties": {
-    "schema_version": {"const": "reviewed_metrics_execution_authorization_v2.0.0"},
+    "schema_version": {"enum": ["reviewed_metrics_execution_authorization_v2.0.0", "reviewed_metrics_execution_authorization_v2.1.0"]},
     "status": {"const": "activated_exact_one_shot"},
     "candidate_id": {"const": "dfv0_reviewed_metrics_v2_candidate_20260715"},
     "implementation_base_commit": {"const": "5fe4dfbe51a320a51f1f126b4a2d8cf0722be5dc"},
@@ -13,6 +13,8 @@
     "bundle_tree_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
     "implementation": {"$ref": "#/$defs/implementationActor"},
     "predictor": {"$ref": "#/$defs/predictorActor"},
+    "search_predictor": {"$ref": "#/$defs/searchPredictorActor"},
+    "private_evaluator": {"$ref": "#/$defs/privateEvaluatorActor"},
     "gold_reviewer": {"$ref": "#/$defs/goldActor"},
     "task_reviewer": {"$ref": "#/$defs/taskActor"},
     "publisher": {"$ref": "#/$defs/publisherActor"},
@@ -21,8 +23,12 @@
     "started_at": {"type": "string", "format": "date-time"},
     "ended_at": {"type": "string", "format": "date-time"},
     "freeze_at": {"type": "string", "format": "date-time"},
+    "source_search_started_at": {"type": "string", "format": "date-time"},
+    "source_search_ended_at": {"type": "string", "format": "date-time"},
+    "source_search_freeze_at": {"type": "string", "format": "date-time"},
     "expires_at": {"type": "string", "format": "date-time"}
   },
+  "allOf": [{"if": {"properties": {"schema_version": {"const": "reviewed_metrics_execution_authorization_v2.1.0"}}}, "then": {"required": ["search_predictor", "private_evaluator", "source_search_started_at", "source_search_ended_at", "source_search_freeze_at"]}}],
   "$defs": {
     "actor": {
       "type": "object", "additionalProperties": false,
@@ -35,6 +41,8 @@
     },
     "implementationActor": {"allOf": [{"$ref": "#/$defs/actor"}, {"properties": {"role": {"const": "implementation"}}}]},
     "predictorActor": {"allOf": [{"$ref": "#/$defs/actor"}, {"properties": {"role": {"const": "predictor"}}}]},
+    "searchPredictorActor": {"allOf": [{"$ref": "#/$defs/actor"}, {"properties": {"role": {"const": "search_predictor"}}}]},
+    "privateEvaluatorActor": {"allOf": [{"$ref": "#/$defs/actor"}, {"properties": {"role": {"const": "private_evaluator"}}}]},
     "goldActor": {"allOf": [{"$ref": "#/$defs/actor"}, {"properties": {"role": {"const": "gold_reviewer"}}}]},
     "taskActor": {"allOf": [{"$ref": "#/$defs/actor"}, {"properties": {"role": {"const": "task_reviewer"}}}]},
     "publisherActor": {"allOf": [{"$ref": "#/$defs/actor"}, {"properties": {"role": {"const": "publisher"}}}]},

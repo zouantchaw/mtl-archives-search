@@ -1,0 +1,32 @@
+{
+  "schema_version": "reviewed_metrics_source_search_bundle_v2.0.0",
+  "status": "template_no_bundle",
+  "candidate_id": "dfv0_reviewed_metrics_v2_candidate_20260715",
+  "task_id": "gate-h-v2:official-source-search:c0-rpcq",
+  "task": {
+    "prompt": "Locate the official source record and return every required normalized field with one bounded paraphrase.",
+    "required_normalized_fields": [
+      "year",
+      "civic_number",
+      "street",
+      "place",
+      "official_url",
+      "source_id",
+      "source_representation_id"
+    ],
+    "citation_requirement": "one_exact_allowed_official_url_with_bounded_paraphrase",
+    "bounded_paraphrase_max_words": 32
+  },
+  "allowed_official_origins": [
+    "https://www.patrimoine-culturel.gouv.qc.ca"
+  ],
+  "output_schema": null,
+  "source_dossier_pin": null,
+  "private_expected_commitment": null,
+  "attestations": {
+    "no_pixels": true,
+    "no_private_body": true,
+    "no_expected_plaintext": true,
+    "no_salt": true
+  }
+}

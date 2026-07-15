@@ -19,8 +19,8 @@
     },
     {
       "path": "gold-review.template-v2.json",
-      "sha256": "ebc3d48e45c12da55514f9cc3772e631747b209227617818bc293c2ef66a779c",
-      "bytes": 1049
+      "sha256": "032bbcac89867f5769378dd5944bd9a8cc1d98b138291a73ffd6703082afd192",
+      "bytes": 970
     },
     {
       "path": "input-authority-v2.json",
@@ -39,8 +39,18 @@
     },
     {
       "path": "search-task-review.template-v2.json",
-      "sha256": "f441347e7e734dff2645c05561dae92c6fa2bd13efc2796497b9ba24a0846815",
-      "bytes": 347
+      "sha256": "0c7dc53a3f179f0e343aa5242349874c7ee56e1c05e43d6764c1ecac3a17b8f9",
+      "bytes": 474
+    },
+    {
+      "path": "source-search-bundle.template-v2.json",
+      "sha256": "23eabe906cd2a6ed2441cd73d4ccdbc6118b20cf2c0f61926bf3f8b1c72af183",
+      "bytes": 988
+    },
+    {
+      "path": "source-search-prediction.template-v2.json",
+      "sha256": "44cdfaecf6556efa6e51648c40e3e68e25bfa0d1e7310d4ef357f5df982615ca",
+      "bytes": 499
     },
     {
       "path": "supersession-candidate-notice-v2.json",
@@ -48,9 +58,9 @@
       "bytes": 1056
     }
   ],
-  "content_sha256": "3969fb0e4bad6f785c9ade13a711787a687eca0894e0c9f002aeadbc2c4db448",
+  "content_sha256": "8c4f945b471ece6faf76c01cc19fdaf43360f20b29925bb64cbb416a7e0e1331",
   "counts": {
-    "files_before_manifest_and_descriptor": 9,
-    "bytes_before_manifest_and_descriptor": 66063
+    "files_before_manifest_and_descriptor": 11,
+    "bytes_before_manifest_and_descriptor": 67598
   }
 }

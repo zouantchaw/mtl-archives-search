@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "source-search-bundle.schema.v2.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "candidate_id", "task_id", "task", "allowed_official_origins", "output_schema", "source_dossier_pin", "private_expected_commitment", "attestations"],
+  "properties": {
+    "schema_version": {"const": "reviewed_metrics_source_search_bundle_v2.0.0"},
+    "status": {"enum": ["template_no_bundle", "sealed_public_bundle"]},
+    "candidate_id": {"const": "dfv0_reviewed_metrics_v2_candidate_20260715"},
+    "task_id": {"const": "gate-h-v2:official-source-search:c0-rpcq"},
+    "task": {"type": "object", "additionalProperties": false, "required": ["prompt", "required_normalized_fields", "citation_requirement", "bounded_paraphrase_max_words"], "properties": {
+      "prompt": {"type": "string", "minLength": 1},
+      "required_normalized_fields": {"const": ["year", "civic_number", "street", "place", "official_url", "source_id", "source_representation_id"]},
+      "citation_requirement": {"const": "one_exact_allowed_official_url_with_bounded_paraphrase"},
+      "bounded_paraphrase_max_words": {"const": 32}
+    }},
+    "allowed_official_origins": {"const": ["https://www.patrimoine-culturel.gouv.qc.ca"]},
+    "output_schema": {"$ref": "#/$defs/nullablePin"},
+    "source_dossier_pin": {"$ref": "#/$defs/nullablePin"},
+    "private_expected_commitment": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/commitment"}]},
+    "attestations": {"type": "object", "additionalProperties": false, "required": ["no_pixels", "no_private_body", "no_expected_plaintext", "no_salt"], "properties": {"no_pixels": {"const": true}, "no_private_body": {"const": true}, "no_expected_plaintext": {"const": true}, "no_salt": {"const": true}}}
+  },
+  "$defs": {
+    "pin": {"type": "object", "additionalProperties": false, "required": ["path", "sha256", "bytes"], "properties": {"path": {"type": "string", "minLength": 1}, "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "bytes": {"type": "integer", "minimum": 1}}},
+    "nullablePin": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/pin"}]},
+    "commitment": {"type": "object", "additionalProperties": false, "required": ["algorithm", "domain", "canonicalization", "value"], "properties": {"algorithm": {"const": "sha256"}, "domain": {"const": "reviewed-metrics-v2:source-search-expected:v1"}, "canonicalization": {"const": "rfc8785-compatible-canonical-json-v1"}, "value": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}}
+  }
+}
