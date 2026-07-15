@@ -229,6 +229,7 @@
     "dataset-factory:reviewed-metrics-score-v2": "npm run dataset-factory:reviewed-metrics-score-v2 --workspace=@mtl-archives/scripts --",
     "dataset-factory:reviewed-metrics-validate-task-review-v2": "npm run dataset-factory:reviewed-metrics-validate-task-review-v2 --workspace=@mtl-archives/scripts --",
     "dataset-factory:reviewed-metrics-publish-v2": "npm run dataset-factory:reviewed-metrics-publish-v2 --workspace=@mtl-archives/scripts --",
+    "dataset-factory:reviewed-metrics-assemble-publication-v2": "npm run dataset-factory:reviewed-metrics-assemble-publication-v2 --workspace=@mtl-archives/scripts --",
     "dataset-factory:reviewed-metrics-verify-v2": "npm run dataset-factory:reviewed-metrics-verify-v2 --workspace=@mtl-archives/scripts --",
     "dataset-factory:reviewed-metrics-verify-tracked-v2": "npm run dataset-factory:reviewed-metrics-verify-tracked-v2 --workspace=@mtl-archives/scripts --",
     "dataset-factory:reviewed-metrics-self-test-v2": "npm run dataset-factory:reviewed-metrics-self-test-v2 --workspace=@mtl-archives/scripts --",

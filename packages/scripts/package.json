@@ -216,6 +216,7 @@
     "dataset-factory:reviewed-metrics-score-v2": "tsx src/dataset-factory/reviewed-metrics-v2.ts score",
     "dataset-factory:reviewed-metrics-validate-task-review-v2": "tsx src/dataset-factory/reviewed-metrics-v2.ts validate-task-review",
     "dataset-factory:reviewed-metrics-publish-v2": "tsx src/dataset-factory/reviewed-metrics-v2.ts publish",
+    "dataset-factory:reviewed-metrics-assemble-publication-v2": "tsx src/dataset-factory/reviewed-metrics-v2.ts assemble-publication",
     "dataset-factory:reviewed-metrics-verify-v2": "tsx src/dataset-factory/reviewed-metrics-v2.ts verify",
     "dataset-factory:reviewed-metrics-verify-tracked-v2": "tsx src/dataset-factory/reviewed-metrics-v2.ts verify-tracked",
     "dataset-factory:reviewed-metrics-self-test-v2": "tsx src/dataset-factory/reviewed-metrics-v2.ts self-test",

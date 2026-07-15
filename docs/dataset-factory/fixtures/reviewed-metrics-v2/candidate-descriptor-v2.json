@@ -18,8 +18,8 @@
     },
     {
       "path": "candidate-status-v2.json",
-      "sha256": "8c8bfd6358111729c7f665f5e8df29d4e2f53811d4a6bf3abf1c819dd9c63104",
-      "bytes": 1787
+      "sha256": "3a837146c2eb8975a2510080dbe6981cfa508db3111ed372955419716a5b8195",
+      "bytes": 1885
     },
     {
       "path": "gold-review.template-v2.json",
@@ -33,7 +33,7 @@
     },
     {
       "path": "manifest-v2.json",
-      "sha256": "f0436f5298863feb0fb40e84622011b84a8e39989612ab25369e263ef73de515",
+      "sha256": "bf57e2103ea057cd75b8794fc8bf6284822a43c44d0d59519b57852ada9231f9",
       "bytes": 2199
     },
     {
@@ -67,10 +67,10 @@
       "bytes": 1056
     }
   ],
-  "tree_before_descriptor_sha256": "504637bbe805197d5b1fcdd0e906e47ff332c217111e41561587827a06f49934",
+  "tree_before_descriptor_sha256": "775b95c8c8703cbc43c528773939043c85f1528d3c7931dacca3dadf3c1765b5",
   "counts": {
     "files_before_descriptor": 12,
-    "bytes_before_descriptor": 70798,
+    "bytes_before_descriptor": 70896,
     "unique_sources": 44,
     "task_memberships": 78
   },

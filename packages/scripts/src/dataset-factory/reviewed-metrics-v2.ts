@@ -22,6 +22,7 @@ import {
   StageLedgerContractError,
   gateH2LedgerSchemaPin,
   stageLedgerProductionContractSelfTest,
+  validateCompleteLedgerReadback,
   type LedgerIdentity,
   type LedgerReadback,
   type StageLedgerAdapter,
@@ -336,6 +337,7 @@ function canon(value: J): string {
 function pretty(value: J): string { return `${JSON.stringify(value, null, 2)}\n`; }
 function load(file: string): J { return JSON.parse(fs.readFileSync(file, "utf8")); }
 function writeJson(file: string, value: J): void { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, pretty(value), { mode: 0o600 }); }
+function writeJsonExclusive(file: string, value: J): void { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, pretty(value), { flag: "wx", mode: 0o600 }); }
 function readJsonSnapshot(
   file: string,
   code: string,
@@ -919,6 +921,10 @@ class InternalAppendOnlyStageLedger implements StageLedgerAdapter {
     const match = (row: J) => row.candidate_commit === candidateCommit && row.authority_hash === authorityHash;
     return { attempts: this.attempts.filter(match).map((row) => structuredClone(row)), claims: this.claims.filter(match).map((row) => structuredClone(row)), completions: this.completions.filter(match).map((row) => structuredClone(row)) };
   }
+  async attestSchema(authorityLedger: Record<string, unknown>): Promise<void> {
+    const expected = gateH2LedgerSchemaPin(ROOT);
+    codedAssert(authorityLedger.table_schema_sha256 === expected.sha256 && authorityLedger.table_schema_bytes === expected.bytes, "H2_LEDGER_SCHEMA_ATTESTATION", "synthetic ledger schema pin differs");
+  }
 }
 const INTERNAL_STAGE_LEDGERS = new Map<string, InternalAppendOnlyStageLedger>();
 function ledgerNamespace(authority: J): string { return authority.stage_execution?.ledger?.namespace_digest; }
@@ -984,32 +990,54 @@ function assertOperationSnapshotsUnchanged(snapshots: OperationSnapshot[]): void
     codedAssert(current.stat.dev === snapshot.stat.dev && current.stat.ino === snapshot.stat.ino && current.raw.equals(snapshot.raw), "H2_STAGE_OPERATION_CHANGED", "operation artifact changed during stage execution");
   }
 }
-function externalOperationPreflight(operation: J, outputs: J[]): { executable: string; env: NodeJS.ProcessEnv; snapshots: OperationSnapshot[] } {
+function externalOperationPreflight(operation: J, outputs: J[], syntheticBoundary = false): { executable: string; argv: string[]; env: NodeJS.ProcessEnv; snapshots: OperationSnapshot[]; cwd: string; outputPaths: string[] } {
   codedAssert(operation?.kind === "external_command", "H2_STAGE_OPERATION_DECLARATION", "external stage operation is not authority-precommitted");
-  const pins = [operation.runtime, operation.script, operation.dependency_lock, ...operation.artifacts];
+  const artifactPins = operation.artifacts.map((artifact: J) => artifact.pin);
+  const pins = [operation.execution_boundary.wrapper, operation.runtime, operation.script, operation.dependency_lock, operation.installed_dependency_tree, ...artifactPins];
   const snapshots = pins.map((value: J, index: number) => snapshotOperationFile(value, `operation artifact ${index}`));
   codedAssert(fs.realpathSync(operation.cwd) === operation.cwd, "H2_STAGE_OPERATION_CWD", "stage cwd must be its exact physical realpath");
-  const gitTree = execFileSync(trustedExecutable("git"), ["-C", operation.cwd, "rev-parse", "HEAD^{tree}"], { encoding: "utf8", env: {} }).trim();
-  codedAssert(gitTree === operation.repo_tree_sha256, "H2_STAGE_OPERATION_REPO_TREE", "physical cwd repository tree differs from authority");
+  const git = trustedExecutable("git");
+  const gitTree = execFileSync(git, ["-C", operation.cwd, "rev-parse", "HEAD^{tree}"], { encoding: "utf8", env: {} }).trim();
+  const dirty = execFileSync(git, ["-C", operation.cwd, "status", "--porcelain=v1", "--untracked-files=all"], { encoding: "utf8", env: {} });
+  codedAssert(gitTree === operation.repo_tree_sha256 && dirty === "", "H2_STAGE_OPERATION_REPO_TREE", "physical cwd must be the exact clean committed tree with no modified or untracked content");
   const version = execFileSync(operation.runtime.realpath, ["--version"], { encoding: "utf8", env: {}, timeout: 10_000 }).trim();
   codedAssert(version === operation.runtime.version, "H2_STAGE_OPERATION_VERSION", "runtime version differs from authority");
   codedAssert(Array.isArray(operation.argv) && operation.argv[0] === operation.script.realpath, "H2_STAGE_OPERATION_ARGV", "argv must invoke the exact pinned script as argv[0]");
+  codedAssert(operation.argv_bindings.length === operation.argv.length && operation.argv_bindings.every((binding: J, index: number) => binding.index === index && binding.value_sha256 === hash(operation.argv[index]) && (binding.artifact_role === "literal" || (binding.artifact_role === "script" && operation.script.realpath === operation.argv[index]) || operation.artifacts.some((artifact: J) => artifact.artifact_role === binding.artifact_role && artifact.pin.realpath === operation.argv[index]))), "H2_STAGE_OPERATION_ARGV", "every argv value must join an exact role-bearing input pin or literal commitment");
   codedAssert(canon([...operation.declared_output_paths].sort()) === canon(outputs.map((output: J) => output.path).sort()) && new Set(operation.declared_output_paths).size === operation.declared_output_paths.length, "H2_STAGE_OUTPUT_DECLARATION", "external operation output paths differ from the exact stage manifest");
-  const forbidden = new Set(["PATH", "NODE_OPTIONS", "PYTHONPATH", "GATE_H2_LEDGER_ACCOUNT_ID", "GATE_H2_LEDGER_DATABASE_ID", "GATE_H2_LEDGER_API_TOKEN"]);
+  codedAssert(canon([...operation.execution_boundary.writable_paths].sort()) === canon([...operation.declared_output_paths].sort()) && operation.execution_boundary.network_policy === operation.network_policy && canon(operation.execution_boundary.network_capability_ids) === canon(operation.network_capability_ids), "H2_STAGE_SANDBOX_ATTESTATION", "sandbox writable/network boundary differs from authority operation");
+  const attestation = operation.execution_boundary;
+  const attestedPayload = { kind: attestation.kind, platform: attestation.platform, wrapper: attestation.wrapper, image_digest: attestation.image_digest, dependency_tree_sha256: attestation.dependency_tree_sha256, network_policy: attestation.network_policy, network_capability_ids: attestation.network_capability_ids, writable_paths: attestation.writable_paths, repo_tree_sha256: attestation.repo_tree_sha256 };
+  codedAssert(attestation.kind === "linux_sandbox_attestation_v1" && attestation.platform === "linux" && attestation.repo_tree_sha256 === operation.repo_tree_sha256 && attestation.dependency_tree_sha256 === operation.installed_dependency_tree.sha256 && attestation.attestation_sha256 === hash(canon(attestedPayload)) && (syntheticBoundary || process.platform === "linux"), "H2_STAGE_SANDBOX_ATTESTATION", "production execution requires the exact pinned Linux sandbox/container/VM attestation");
+  const forbidden = new Set(["PATH", "NODE_OPTIONS", "PYTHONPATH", "HOME", "XDG_CONFIG_HOME", "CODEX_HOME", "CLAUDE_CONFIG_DIR", "AWS_PROFILE", "AWS_SHARED_CREDENTIALS_FILE", "GOOGLE_APPLICATION_CREDENTIALS", "GATE_H2_LEDGER_ACCOUNT_ID", "GATE_H2_LEDGER_DATABASE_ID", "GATE_H2_LEDGER_API_TOKEN"]);
+  const forbiddenSecret = new Set(["PATH", "NODE_OPTIONS", "PYTHONPATH", "GATE_H2_LEDGER_ACCOUNT_ID", "GATE_H2_LEDGER_DATABASE_ID", "GATE_H2_LEDGER_API_TOKEN"]);
+  const credentialName = /(TOKEN|SECRET|PASSWORD|CREDENTIAL|AUTH|COOKIE|PRIVATE_KEY|ACCESS_KEY)/;
   const env: NodeJS.ProcessEnv = {};
   const names: string[] = [];
   for (const item of operation.environment.public) {
-    codedAssert(!forbidden.has(item.name) && hash(item.value) === item.value_sha256, "H2_STAGE_OPERATION_ENV", "public environment entry is forbidden or hash-mismatched");
+    codedAssert(!forbidden.has(item.name) && !credentialName.test(item.name) && hash(item.value) === item.value_sha256 && (item.binding === "literal" || (item.binding === "declared_output" && operation.declared_output_paths.includes(item.value))), "H2_STAGE_OPERATION_ENV", "public environment entry is forbidden, unbound, or hash-mismatched");
     env[item.name] = item.value; names.push(item.name);
   }
   for (const item of operation.environment.secret_capability_ids) {
     const value = process.env[item.name];
-    codedAssert(!forbidden.has(item.name) && typeof value === "string" && hash(`gate-h2-stage-secret-capability-v1\0${item.name}\0${value}`) === item.capability_id, "H2_STAGE_OPERATION_ENV", "secret environment capability is absent or differs");
+    codedAssert(!forbiddenSecret.has(item.name) && typeof value === "string" && hash(`gate-h2-stage-secret-capability-v1\0${item.name}\0${value}`) === item.capability_id, "H2_STAGE_OPERATION_ENV", "secret environment capability is absent or differs");
     env[item.name] = value; names.push(item.name);
   }
   codedAssert(new Set(names).size === names.length, "H2_STAGE_OPERATION_ENV", "stage environment variable names must be unique");
   codedAssert(operation.network_policy === "deny_all" ? operation.network_capability_ids.length === 0 : operation.network_capability_ids.length > 0, "H2_STAGE_NETWORK_POLICY", "network policy and capability IDs differ");
-  return { executable: operation.runtime.realpath, env, snapshots };
+  return { executable: operation.execution_boundary.wrapper.realpath, argv: [...operation.execution_boundary.argv_prefix, operation.runtime.realpath, ...operation.argv], env, snapshots, cwd: operation.cwd, outputPaths: operation.declared_output_paths };
+}
+function assertExternalOperationPostflight(exact: ReturnType<typeof externalOperationPreflight>): void {
+  assertOperationSnapshotsUnchanged(exact.snapshots);
+  const dirty = execFileSync(trustedExecutable("git"), ["-C", exact.cwd, "status", "--porcelain=v1", "--untracked-files=all"], { encoding: "utf8", env: {} }).trim().split("\n").filter(Boolean);
+  const allowed = new Set(exact.outputPaths.map((file) => path.relative(exact.cwd, path.join(fs.realpathSync(path.dirname(file)), path.basename(file)))));
+  codedAssert(dirty.every((line) => line.startsWith("?? ") && allowed.has(line.slice(3))), "H2_STAGE_UNDECLARED_WRITE", `sandbox produced an undeclared write or modified tracked content: ${canon(dirty)}`);
+}
+function executeExternalStageOperation(operation: J, outputs: J[], syntheticBoundary = false): ReturnType<typeof externalOperationPreflight> {
+  const exact = externalOperationPreflight(operation, outputs, syntheticBoundary);
+  execFileSync(exact.executable, exact.argv, { cwd: exact.cwd, stdio: "inherit", env: exact.env });
+  assertExternalOperationPostflight(exact);
+  return exact;
 }
 function externalOperationContractSelfTest(): J {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "rmv2-external-operation-"));
@@ -1017,28 +1045,37 @@ function externalOperationContractSelfTest(): J {
   const expect = (code: string, operation: () => unknown): void => { let observed = ""; try { operation(); } catch (error) { observed = error instanceof GateH2Error ? error.code : ""; } codedAssert(observed === code, "H2_EXTERNAL_TEST_CODE", `expected ${code}, observed ${observed || "none"}`); };
   try {
     execFileSync(git, ["init", "-q", "-b", "gate-h2-test"], { cwd: root, env: {} });
-    const script = path.join(root, "stage.cjs"); const prompt = path.join(root, "prompt.txt"); const lock = path.join(root, "package-lock.json"); const output = path.join(root, "output.json");
-    fs.writeFileSync(script, "const fs=require('node:fs');fs.writeFileSync(process.env.OUT,JSON.stringify(Object.keys(process.env).sort()));\n", { mode: 0o600 });
-    fs.writeFileSync(prompt, "sanitized prompt\n", { mode: 0o600 }); fs.writeFileSync(lock, "{}\n", { mode: 0o600 });
-    execFileSync(git, ["add", "stage.cjs", "prompt.txt", "package-lock.json"], { cwd: root, env: {} });
+    const script = path.join(root, "stage.cjs"); const prompt = path.join(root, "prompt.txt"); const lock = path.join(root, "package-lock.json"); const dependencies = path.join(root, "installed-dependencies.json"); const wrapper = path.join(root, "sandbox-wrapper.sh"); const output = path.join(root, "output.json");
+    fs.writeFileSync(script, "const fs=require('node:fs');fs.writeFileSync(process.env.OUT,JSON.stringify(Object.keys(process.env).sort()));if(process.env.UNDECLARED)fs.writeFileSync(process.env.UNDECLARED,'forbidden');\n", { mode: 0o600 });
+    fs.writeFileSync(prompt, "sanitized prompt\n", { mode: 0o600 }); fs.writeFileSync(lock, "{}\n", { mode: 0o600 }); fs.writeFileSync(dependencies, "{\"node\":\"exact-test-runtime\"}\n", { mode: 0o600 }); fs.writeFileSync(wrapper, `#!${process.execPath}\nconst {spawnSync}=require('node:child_process');const r=spawnSync(process.argv[2],process.argv.slice(3),{stdio:'inherit',env:process.env});process.exit(r.status??1);\n`, { mode: 0o500 });
+    execFileSync(git, ["add", "stage.cjs", "prompt.txt", "package-lock.json", "installed-dependencies.json", "sandbox-wrapper.sh"], { cwd: root, env: {} });
     execFileSync(git, ["-c", "user.name=Gate H2 Test", "-c", "user.email=gate-h2@example.invalid", "commit", "-q", "-m", "fixture"], { cwd: root, env: {} });
     const filePin = (file: string, version = "sha256-pinned-v1") => { const raw = fs.readFileSync(file); return { path: file, realpath: fs.realpathSync(file), sha256: hash(raw), bytes: raw.length, version }; };
-    const publicEnvironment = [{ name: "OUT", value: output, value_sha256: hash(output) }, ...(process.platform === "darwin" ? [{ name: "__CF_USER_TEXT_ENCODING", value: "0x0:0x0:0x0", value_sha256: hash("0x0:0x0:0x0") }] : [])];
-    const operation: J = { kind: "external_command", runtime: filePin(process.execPath, process.version), script: filePin(script), artifacts: [filePin(prompt)], dependency_lock: filePin(lock), repo_tree_sha256: execFileSync(git, ["rev-parse", "HEAD^{tree}"], { cwd: root, encoding: "utf8", env: {} }).trim(), cwd: fs.realpathSync(root), argv: [fs.realpathSync(script)], declared_output_paths: [output], network_policy: "deny_all", network_capability_ids: [], environment: { public: publicEnvironment, secret_capability_ids: [] } };
-    const exact = externalOperationPreflight(operation, [{ path: output }]);
+    const publicEnvironment = [{ name: "OUT", value: output, value_sha256: hash(output), binding: "declared_output" }, ...(process.platform === "darwin" ? [{ name: "__CF_USER_TEXT_ENCODING", value: "0x0:0x0:0x0", value_sha256: hash("0x0:0x0:0x0"), binding: "literal" }] : [])];
+    const repoTree = execFileSync(git, ["rev-parse", "HEAD^{tree}"], { cwd: root, encoding: "utf8", env: {} }).trim();
+    const boundaryPayload: J = { kind: "linux_sandbox_attestation_v1", platform: "linux", wrapper: filePin(wrapper), image_digest: `sha256:${hash("synthetic-linux-image")}`, dependency_tree_sha256: filePin(dependencies).sha256, network_policy: "deny_all", network_capability_ids: [], writable_paths: [output], repo_tree_sha256: repoTree };
+    const operation: J = { kind: "external_command", execution_boundary: { ...boundaryPayload, argv_prefix: [], attestation_sha256: hash(canon(boundaryPayload)) }, runtime: filePin(process.execPath, process.version), script: filePin(script), artifacts: [{ artifact_role: "sanitized_prompt", pin: filePin(prompt) }], dependency_lock: filePin(lock), installed_dependency_tree: filePin(dependencies), repo_tree_sha256: repoTree, cwd: fs.realpathSync(root), argv: [fs.realpathSync(script)], argv_bindings: [{ index: 0, artifact_role: "script", value_sha256: hash(fs.realpathSync(script)) }], declared_output_paths: [output], network_policy: "deny_all", network_capability_ids: [], environment: { public: publicEnvironment, secret_capability_ids: [] } };
     const ambient = { PATH: process.env.PATH, NODE_OPTIONS: "--require=/definitely/not/loaded", PYTHONPATH: "/unapproved", EXTRA_AMBIENT: "forbidden" };
     Object.assign(process.env, ambient);
-    execFileSync(exact.executable, operation.argv, { cwd: operation.cwd, env: exact.env }); assertOperationSnapshotsUnchanged(exact.snapshots);
+    executeExternalStageOperation(operation, [{ path: output }], true);
     const childEnvironmentNames = JSON.parse(fs.readFileSync(output, "utf8"));
     codedAssert(canon(childEnvironmentNames) === canon(publicEnvironment.map((item) => item.name).sort()), "H2_STAGE_OPERATION_ENV", `clean child environment differs: ${canon(childEnvironmentNames)}`); fs.unlinkSync(output);
-    for (const name of ["PATH", "NODE_OPTIONS", "PYTHONPATH"]) { const bad = structuredClone(operation); bad.environment.public.push({ name, value: "bad", value_sha256: hash("bad") }); expect("H2_STAGE_OPERATION_ENV", () => externalOperationPreflight(bad, [{ path: output }])); }
-    const missing = structuredClone(operation); missing.environment.secret_capability_ids = [{ name: "MISSING_SECRET", capability_id: "0".repeat(64) }]; expect("H2_STAGE_OPERATION_ENV", () => externalOperationPreflight(missing, [{ path: output }]));
-    const unpinned = structuredClone(operation); unpinned.declared_output_paths = [path.join(root, "other.json")]; expect("H2_STAGE_OUTPUT_DECLARATION", () => externalOperationPreflight(unpinned, [{ path: output }]));
-    const originalScript = fs.readFileSync(script); fs.appendFileSync(script, "// replaced\n"); expect("H2_STAGE_OPERATION_ARTIFACT", () => externalOperationPreflight(operation, [{ path: output }])); fs.writeFileSync(script, originalScript);
-    const originalLock = fs.readFileSync(lock); fs.appendFileSync(lock, " "); expect("H2_STAGE_OPERATION_ARTIFACT", () => externalOperationPreflight(operation, [{ path: output }])); fs.writeFileSync(lock, originalLock);
-    const replacedRuntime = structuredClone(operation); replacedRuntime.runtime.sha256 = "0".repeat(64); expect("H2_STAGE_OPERATION_ARTIFACT", () => externalOperationPreflight(replacedRuntime, [{ path: output }]));
-    const alias = `${root}-alias`; fs.symlinkSync(root, alias); const aliasOperation = structuredClone(operation); aliasOperation.cwd = alias; expect("H2_STAGE_OPERATION_CWD", () => externalOperationPreflight(aliasOperation, [{ path: output }])); fs.unlinkSync(alias);
-    return { status: "external_operation_contract_self_test_passed", cases: ["clean_environment", "path_injection", "node_options_injection", "pythonpath_injection", "extra_environment", "missing_environment", "replaced_executable", "replaced_script", "replaced_dependency", "cwd_alias", "unpinned_output"] };
+    const undeclaredFile = path.join(root, "undeclared.json"); const writesExtra = structuredClone(operation); writesExtra.environment.public.push({ name: "UNDECLARED", value: undeclaredFile, value_sha256: hash(undeclaredFile), binding: "literal" }); expect("H2_STAGE_UNDECLARED_WRITE", () => executeExternalStageOperation(writesExtra, [{ path: output }], true)); fs.unlinkSync(output); fs.unlinkSync(undeclaredFile);
+    const run = (candidate: J) => executeExternalStageOperation(candidate, [{ path: output }], true);
+    for (const name of ["PATH", "NODE_OPTIONS", "PYTHONPATH", "HOME", "CODEX_HOME", "AUTH_TOKEN"]) { const bad = structuredClone(operation); bad.environment.public.push({ name, value: "bad", value_sha256: hash("bad"), binding: "literal" }); expect("H2_STAGE_OPERATION_ENV", () => run(bad)); }
+    const secretHome = structuredClone(operation); secretHome.environment.secret_capability_ids = [{ name: "HOME", capability_id: hash(`gate-h2-stage-secret-capability-v1\0HOME\0${process.env.HOME}`) }]; run(secretHome); fs.unlinkSync(output);
+    const missing = structuredClone(operation); missing.environment.secret_capability_ids = [{ name: "MISSING_SECRET", capability_id: "0".repeat(64) }]; expect("H2_STAGE_OPERATION_ENV", () => run(missing));
+    const unpinned = structuredClone(operation); unpinned.declared_output_paths = [path.join(root, "other.json")]; expect("H2_STAGE_OUTPUT_DECLARATION", () => run(unpinned));
+    const argvBad = structuredClone(operation); argvBad.argv.push(prompt); expect("H2_STAGE_OPERATION_ARGV", () => run(argvBad));
+    const noBoundary = structuredClone(operation); noBoundary.execution_boundary.attestation_sha256 = "0".repeat(64); expect("H2_STAGE_SANDBOX_ATTESTATION", () => run(noBoundary));
+    const networkEscape = structuredClone(operation); networkEscape.execution_boundary.network_policy = "allow_capabilities_only"; expect("H2_STAGE_SANDBOX_ATTESTATION", () => run(networkEscape));
+    const originalScript = fs.readFileSync(script); fs.appendFileSync(script, "// replaced\n"); expect("H2_STAGE_OPERATION_ARTIFACT", () => run(operation)); fs.writeFileSync(script, originalScript);
+    const originalLock = fs.readFileSync(lock); fs.appendFileSync(lock, " "); expect("H2_STAGE_OPERATION_ARTIFACT", () => run(operation)); fs.writeFileSync(lock, originalLock);
+    const originalDependencies = fs.readFileSync(dependencies); fs.appendFileSync(dependencies, " "); expect("H2_STAGE_OPERATION_ARTIFACT", () => run(operation)); fs.writeFileSync(dependencies, originalDependencies);
+    fs.writeFileSync(path.join(root, "untracked-loader.cjs"), "module.exports=1\n"); expect("H2_STAGE_OPERATION_REPO_TREE", () => run(operation)); fs.unlinkSync(path.join(root, "untracked-loader.cjs"));
+    const replacedRuntime = structuredClone(operation); replacedRuntime.runtime.sha256 = "0".repeat(64); expect("H2_STAGE_OPERATION_ARTIFACT", () => run(replacedRuntime));
+    const alias = `${root}-alias`; fs.symlinkSync(root, alias); const aliasOperation = structuredClone(operation); aliasOperation.cwd = alias; expect("H2_STAGE_OPERATION_CWD", () => run(aliasOperation)); fs.unlinkSync(alias);
+    return { status: "external_operation_contract_self_test_passed_synthetic_boundary_only", production_ready: false, cases: ["clean_environment", "path_injection", "node_options_injection", "pythonpath_injection", "home_auth_public_injection", "secret_home_capability", "extra_environment", "missing_environment", "replaced_executable", "replaced_script", "replaced_imported_dependency_tree", "dirty_untracked_cwd", "argv_substitution", "network_policy_escape", "undeclared_write_actual_child", "missing_sandbox_attestation", "cwd_alias", "unpinned_output"] };
   } finally { delete process.env.NODE_OPTIONS; delete process.env.PYTHONPATH; delete process.env.EXTRA_AMBIENT; fs.rmSync(root, { recursive: true, force: true }); }
 }
 function consequentialGitPathShadowSelfTest(): J {
@@ -1082,6 +1119,8 @@ async function beginStageConsumption(authority: J, receiptFile: string, stageId:
   const attemptId = crypto.randomUUID();
   const evidence = { schema_version: "reviewed_metrics_stage_begin_v4.0.0", status: "begun", ...identity, attempt_id: attemptId, role, surface_id: receipt.surface_id, physical_host_commitment: hash(`gate-h2-public-stage-host-v4\0${receipt.canonical_physical_host_id}`), invocation_commitment: hash(`gate-h2-public-stage-invocation-v4\0${receipt.invocation_id}`), nonce_commitment: hash(`gate-h2-public-stage-nonce-v4\0${receipt.nonce}`), receipt_sha256: hash(Buffer.from(pretty(receipt))), receipt_signature_sha256: hash(Buffer.from(receipt.signature_base64, "base64")), command_started_at: startedAt };
   const ledger = stageLedger(authority, capability);
+  try { await ledger.attestSchema(authority.stage_execution.ledger); }
+  catch (error) { if (error instanceof StageLedgerContractError) throw new GateH2Error(error.code, error.message); throw error; }
   await ledger.appendAttempt(identity, attemptId, startedAt, hash(Buffer.from(pretty(evidence))));
   try { await ledger.claimBegin(identity, attemptId, startedAt, pretty(evidence), hash(Buffer.from(pretty(evidence)))); }
   catch (error) { if (error instanceof StageLedgerContractError) throw new GateH2Error(error.code, error.message); throw error; }
@@ -1092,6 +1131,8 @@ async function beginStageConsumption(authority: J, receiptFile: string, stageId:
   return { attemptId, beginEnvelope: evidence, receipt, startedAt, stageId, authority, ledger, capability };
 }
 async function completeStageConsumption(consumption: StageConsumption, clock: Clock = () => new Date()): Promise<void> {
+    try { await consumption.ledger.attestSchema(consumption.authority.stage_execution.ledger); }
+    catch (error) { if (error instanceof StageLedgerContractError) throw new GateH2Error(error.code, error.message); throw error; }
     const initialIdentity = { candidate_commit: consumption.authority.candidate_commit, authority_hash: authorityBindingHash(consumption.authority), stage_id: consumption.stageId };
     const initialReadback = await consumption.ledger.readAll(initialIdentity.candidate_commit, initialIdentity.authority_hash);
     codedAssert(initialReadback.claims.some((row) => row.attempt_id === consumption.attemptId), "H2_LEDGER_READBACK", "durable begin row is missing before completion");
@@ -1109,22 +1150,26 @@ async function completeStageConsumption(consumption: StageConsumption, clock: Cl
 }
 async function completedStageLedgerEvidence(authority: J, verifyCurrentOutputs = true, capability?: InternalSyntheticCapability, signingKeyFile?: string): Promise<J> {
     const ledger = stageLedger(authority, capability);
+    try { await ledger.attestSchema(authority.stage_execution.ledger); }
+    catch (error) { if (error instanceof StageLedgerContractError) throw new GateH2Error(error.code, error.message); throw error; }
     const readback = await ledger.readAll(authority.candidate_commit, authorityBindingHash(authority));
+    let joined: ReturnType<typeof validateCompleteLedgerReadback>;
+    try { joined = validateCompleteLedgerReadback(readback, authority.candidate_commit, authorityBindingHash(authority), STAGE_IDS); }
+    catch (error) { if (error instanceof StageLedgerContractError) throw new GateH2Error(error.code, error.message); throw error; }
     const publicStages: J[] = [];
     let priorCompletedAt: string | undefined;
     for (const entry of authority.stage_execution.stages) {
       const stageId = entry.stage_id as StageId;
-      const claim = readback.claims.filter((row) => row.stage_id === stageId);
-      const completed = readback.completions.filter((row) => row.stage_id === stageId);
-      codedAssert(claim.length === 1 && completed.length === 1, "H2_STAGE_LEDGER_MARKER", `stage ${stageId} requires one remote begin and completion row`);
-      const beginRaw = Buffer.from(String(claim[0].begin_envelope));
-      const completionRaw = Buffer.from(String(completed[0].completion_envelope));
+      const claim = joined.claims.get(stageId)!;
+      const completed = joined.completions.get(stageId)!;
+      const beginRaw = Buffer.from(String(claim.begin_envelope));
+      const completionRaw = Buffer.from(String(completed.completion_envelope));
       const begin = JSON.parse(beginRaw.toString("utf8"));
       const completion = JSON.parse(completionRaw.toString("utf8"));
       codedAssert(beginRaw.equals(Buffer.from(pretty(begin))) && completionRaw.equals(Buffer.from(pretty(completion))), "H2_STAGE_LEDGER_BYTES", "remote stage ledger envelopes must use exact canonical bytes");
-      codedAssert(begin.schema_version === "reviewed_metrics_stage_begin_v4.0.0" && completion.schema_version === "reviewed_metrics_stage_completion_v4.0.0" && begin.attempt_id === completion.attempt_id && claim[0].attempt_id === begin.attempt_id && completed[0].attempt_id === begin.attempt_id, "H2_STAGE_LEDGER_MARKER", "remote stage row envelope differs");
+      codedAssert(begin.schema_version === "reviewed_metrics_stage_begin_v4.0.0" && completion.schema_version === "reviewed_metrics_stage_completion_v4.0.0" && begin.attempt_id === completion.attempt_id && claim.attempt_id === begin.attempt_id && completed.attempt_id === begin.attempt_id, "H2_STAGE_LEDGER_MARKER", "remote stage row envelope differs");
       codedAssert(begin.candidate_commit === authority.candidate_commit && begin.authority_hash === authorityBindingHash(authority) && begin.stage_id === stageId && completion.stage_id === stageId && begin.role === entry.role && completion.role === entry.role, "H2_STAGE_PRECOMMIT_BINDING", "stage ledger envelope differs from authority");
-      codedAssert(claim[0].begin_sha256 === hash(beginRaw) && completed[0].completion_sha256 === hash(completionRaw) && completion.begin_sha256 === hash(beginRaw), "H2_LEDGER_READBACK", "remote row hashes differ from canonical envelopes");
+      codedAssert(claim.begin_sha256 === hash(beginRaw) && completed.completion_sha256 === hash(completionRaw) && completion.begin_sha256 === hash(beginRaw), "H2_LEDGER_READBACK", "remote row hashes differ from canonical envelopes");
       codedAssert(Date.parse(authority.authorized_at) <= Date.parse(begin.command_started_at) && Date.parse(begin.command_started_at) <= Date.parse(completion.command_completed_at) && Date.parse(completion.command_completed_at) <= Date.parse(authority.expires_at), "H2_STAGE_LEDGER_CHRONOLOGY", "stage ledger chronology differs");
       if (priorCompletedAt !== undefined) codedAssert(Date.parse(priorCompletedAt) <= Date.parse(begin.command_started_at), "H2_STAGE_LEDGER_CHRONOLOGY", "exact production stages overlap or execute out of order");
       priorCompletedAt = completion.command_completed_at;
@@ -1149,16 +1194,17 @@ async function completedStageLedgerEvidence(authority: J, verifyCurrentOutputs =
         outputs: completion.outputs,
       });
     }
-    codedAssert(readback.claims.length === STAGE_IDS.length && readback.completions.length === STAGE_IDS.length && readback.attempts.length === STAGE_IDS.length, "H2_LEDGER_ENUMERATION", "remote ledger must contain exactly one attempt, claim, and completion per stage");
+    const publicAttempts = joined.attempts.map((attempt) => ({ stage_id: attempt.stage_id, attempt_id: attempt.attempt_id, attempted_at: attempt.attempted_at, request_sha256: attempt.request_sha256 }));
     const envelope: J = {
-      schema_version: "reviewed_metrics_stage_execution_ledger_evidence_v2.1.0",
+      schema_version: "reviewed_metrics_stage_execution_ledger_evidence_v2.2.0",
       candidate_id: CANDIDATE_ID,
       candidate_commit: authority.candidate_commit,
       authority_hash: authorityBindingHash(authority),
       ledger_pin: authority.stage_execution.ledger,
       stage_count: STAGE_IDS.length,
       stages: publicStages,
-      attempts_digest: hash(canon(readback.attempts)),
+      attempts: publicAttempts,
+      attempts_digest: hash(canon(publicAttempts)),
       sealed_at: new Date().toISOString(),
       coordinator_signer_sha256: authority.stage_execution.ledger.coordinator_signer_sha256,
       signature_base64: "",
@@ -1172,11 +1218,15 @@ function validateStageExecutionEvidence(value: J, authority: J, requirePrivateLe
   schema("stage-execution-ledger.schema.v2.json", value);
   codedAssert(value.candidate_commit === authority.candidate_commit && value.authority_hash === authorityBindingHash(authority) && value.stage_count === STAGE_IDS.length, "H2_STAGE_LEDGER_EVIDENCE", "public stage ledger evidence identity differs");
   same(value.stages.map((entry: J) => entry.stage_id), STAGE_IDS, "public exact ordered stage evidence");
+  same(value.attempts.map((entry: J) => entry.stage_id), STAGE_IDS, "public exact ordered attempt evidence");
+  codedAssert(value.attempts_digest === hash(canon(value.attempts)), "H2_LEDGER_READBACK", "public attempt set commitment differs");
   unique(value.stages.map((entry: J) => entry.invocation_commitment), "public stage invocation commitment");
   unique(value.stages.map((entry: J) => entry.nonce_commitment), "public stage nonce commitment");
   for (let index = 0; index < STAGE_IDS.length; index++) {
     const stage = value.stages[index];
+    const attempt = value.attempts[index];
     const entry = authority.stage_execution.stages[index];
+    codedAssert(attempt.attempt_id === stage.attempt_id && attempt.request_sha256 === stage.begin_sha256 && Date.parse(attempt.attempted_at) <= Date.parse(stage.command_started_at), "H2_LEDGER_READBACK", "public attempt entry does not join its stage begin evidence");
     codedAssert(stage.role === entry.role && stage.invocation_commitment === hash(`gate-h2-public-stage-invocation-v4\0${entry.invocation_id}`) && stage.nonce_commitment === hash(`gate-h2-public-stage-nonce-v4\0${entry.nonce}`), "H2_STAGE_PRECOMMIT_BINDING", "public stage evidence commitments differ from authority");
     same(stage.outputs.map((output: J) => output.artifact_role), entry.outputs.map((output: J) => output.artifact_role), `public stage ${stage.stage_id} output roles`);
     if (index > 0) codedAssert(Date.parse(value.stages[index - 1].command_completed_at) <= Date.parse(stage.command_started_at), "H2_STAGE_LEDGER_CHRONOLOGY", "public stage evidence order overlaps");
@@ -1790,6 +1840,8 @@ async function candidateDocuments(output: string): Promise<Map<string, J>> {
       actual_process_chronology: false,
       d1_append_only_ledger_contract_synthetic_tested: true,
       exact_external_operation_contract_synthetic_tested: true,
+      external_operation_linux_sandbox_attested: false,
+      deployed_d1_schema_attested: false,
       publication_plan_ledger_matrix_protocol_synthetic_tested: true,
       hmac_opaque_private_keys: true,
       public_object_key_commitment_only: true,
@@ -5925,8 +5977,8 @@ const PUBLICATION_MEMBER_PATHS = [
   SOURCE_SEARCH_TASK_FILE,
   "stage-execution-ledger-v2.json",
 ].sort();
+const PUBLICATION_PRE_PLAN_PATHS = PUBLICATION_MEMBER_PATHS.filter((member) => !["candidate-descriptor-v2.json", "final-criterion-matrix-v2.json", "publication-assembly-plan-v2.json", "stage-execution-ledger-v2.json"].includes(member));
 const PUBLICATION_DYNAMIC_PREDECESSORS: Record<string, string> = {
-  candidate: "candidate-descriptor-v2.json",
   input_authority: "input-authority-v2.json",
   execution_authorization: "execution-authorization-v2.json",
   prediction_output: "prediction-output-v2.json",
@@ -5943,7 +5995,9 @@ const PUBLICATION_DYNAMIC_PREDECESSORS: Record<string, string> = {
   stage_execution_ledger: "stage-execution-ledger-v2.json",
   publication_assembly_plan: "publication-assembly-plan-v2.json",
 };
-function validatePublicationAssemblyPlan(value: J, baseDir: string, authority: J): void {
+function publicationDirectoryPaths(baseDir: string): string[] { return files(baseDir); }
+function validatePublicationAssemblyPlan(value: J, baseDir: string, authority: J, exactDirectoryPaths?: string[]): void {
+  codedAssert(Array.isArray(value?.pre_plan_member_paths) && Array.isArray(value?.members_before_plan) && canon(value.pre_plan_member_paths) === canon(PUBLICATION_PRE_PLAN_PATHS) && canon(value.members_before_plan.map((member: J) => member?.path)) === canon(PUBLICATION_PRE_PLAN_PATHS), "H2_PUBLICATION_PRE_PLAN_UNIVERSE", "publication plan must contain the exact ordered pre-plan path set");
   schema("publication-assembly-plan.schema.v2.json", value);
   codedAssert(value.candidate_commit === authority.candidate_commit && value.authority_hash === authorityBindingHash(authority), "H2_PUBLICATION_PLAN_BINDING", "publication plan authority differs");
   same(value.publisher, { principal: authority.publisher.principal, session_id: authority.publisher.session_id, model: authority.publisher.model, role: "publisher" }, "publication plan publisher");
@@ -5951,7 +6005,35 @@ function validatePublicationAssemblyPlan(value: J, baseDir: string, authority: J
   same(value.final_member_paths, PUBLICATION_MEMBER_PATHS, "publication plan exact final member names");
   codedAssert(hash(`${value.members_before_plan.map((x: J) => `${x.path}\t${x.sha256}\t${x.bytes}`).join("\n")}\n`) === value.tree_before_plan_sha256, "H2_PUBLICATION_PLAN_TREE", "publication plan tree arithmetic differs");
   for (const member of value.members_before_plan) verifyFilePin(member, baseDir);
+  if (exactDirectoryPaths) { const actualPaths = publicationDirectoryPaths(baseDir); const expectedPaths = [...exactDirectoryPaths].sort(); codedAssert(canon(actualPaths) === canon(expectedPaths), "H2_PUBLICATION_PRE_PLAN_UNIVERSE", `publication physical directory differs from the exact expected phase universe: actual=${canon(actualPaths)} expected=${canon(expectedPaths)}`); }
   same(value.expected_schemas, { matrix: pin(path.join(SCHEMAS, "final-criterion-matrix.schema.v2.json"), "final-criterion-matrix.schema.v2.json"), descriptor: pin(path.join(SCHEMAS, "publication-descriptor.schema.v2.json"), "publication-descriptor.schema.v2.json"), stage_ledger: pin(path.join(SCHEMAS, "stage-execution-ledger.schema.v2.json"), "stage-execution-ledger.schema.v2.json") }, "publication plan exact schemas");
+}
+function finalMatrixRows(baseDir: string): J[] {
+  const rolePins: Record<string, J> = {};
+  for (const [role, filename] of Object.entries(FINAL_EVIDENCE_PATHS)) rolePins[role] = { ...pin(resolveEvidencePath(filename, baseDir), filename), role };
+  return FINAL_CRITERION_IDS.map((criterion_id) => { const requirement = FINAL_MATRIX_REQUIREMENTS[criterion_id]; return { criterion_id, required: true, verdict: "satisfied", result_ids: requirement.results, evidence: requirement.roles.map((role) => structuredClone(rolePins[role])), limitations: [] }; });
+}
+function publicationDescriptorFromDirectory(baseDir: string, authority: J, createdAt: string): J {
+  const memberPins = tree(baseDir).members;
+  const dynamic = Object.fromEntries(Object.entries(PUBLICATION_DYNAMIC_PREDECESSORS).map(([role, filename]) => [role, pin(path.join(baseDir, filename), filename)]));
+  return { schema_version: "reviewed_metrics_publication_descriptor_v2.0.0", artifact_id: PUBLICATION_ID, status: "published", created_at: createdAt, implementation_base_commit: IMPLEMENTATION_BASE_COMMIT, candidate_commit: authority.candidate_commit, members_before_descriptor: memberPins, tree_before_descriptor_sha256: tree(baseDir).sha256, counts: { files_before_descriptor: memberPins.length, bytes_before_descriptor: memberPins.reduce((sum: number, member: J) => sum + member.bytes, 0), unique_sources: 44, task_memberships: 78, published_members: memberPins.length + 1 }, predecessors: { ...predecessorPins(), ...dynamic }, completion: { candidate_complete: true, issue_92_complete: true, issue_69_complete: true, publication_exists: true }, mutations: { production: false, search_index: false, private_object_store_write: false, paid_gpu: false }, required_publication_members: PUBLICATION_MEMBER_PATHS, publisher: { principal: authority.publisher.principal, session_id: authority.publisher.session_id, model: authority.publisher.model, role: authority.publisher.role, published_at: createdAt } };
+}
+function assemblePublication(baseDir: string, planFile: string, ledgerFile: string, authority: J): J {
+  const descriptorFile = path.join(baseDir, "candidate-descriptor-v2.json"); const matrixFile = path.join(baseDir, "final-criterion-matrix-v2.json");
+  codedAssert(!fs.existsSync(descriptorFile) && !fs.existsSync(matrixFile), "H2_PUBLICATION_COMMIT_LAST", "matrix/descriptor must be absent before coordinator assembly");
+  codedAssert(path.resolve(planFile) === path.join(baseDir, "publication-assembly-plan-v2.json") && path.resolve(ledgerFile) === path.join(baseDir, "stage-execution-ledger-v2.json"), "H2_PUBLICATION_PLAN_BINDING", "assembler requires canonical plan and ledger paths");
+  const plan = load(planFile); const ledger = load(ledgerFile);
+  validatePublicationAssemblyPlan(plan, baseDir, authority, [...PUBLICATION_PRE_PLAN_PATHS, "publication-assembly-plan-v2.json", "stage-execution-ledger-v2.json"]);
+  validateStageExecutionEvidence(ledger, authority);
+  codedAssert(ledger.stages.at(-1)?.outputs.some((output: J) => output.artifact_role === "publication_assembly_plan" && output.sha256 === pin(planFile, "publication-assembly-plan-v2.json").sha256), "H2_PUBLICATION_PLAN_BINDING", "signed final stage does not bind the exact plan bytes");
+  const matrix = { schema_version: "reviewed_metrics_final_criterion_matrix_v2.0.0", status: "final", candidate_id: CANDIDATE_ID, rows: finalMatrixRows(baseDir), stage_execution_ledger: pin(ledgerFile, "stage-execution-ledger-v2.json"), issue_92_complete: true, issue_69_complete: true };
+  writeJsonExclusive(matrixFile, matrix);
+  validateMatrixValue(matrix, baseDir, authority, ledger);
+  same(publicationDirectoryPaths(baseDir), [...PUBLICATION_MEMBER_PATHS.filter((member) => member !== "candidate-descriptor-v2.json")].sort(), "pre-descriptor exact finalized member universe");
+  const descriptor = publicationDescriptorFromDirectory(baseDir, authority, ledger.sealed_at);
+  writeJsonExclusive(descriptorFile, descriptor);
+  validatePublicationValue(descriptor, baseDir, authority);
+  return { status: "publication_assembled_commit_last", matrix_sha256: hash(Buffer.from(pretty(matrix))), descriptor_sha256: hash(Buffer.from(pretty(descriptor))), members: 17 };
 }
 function validateInputAuthorityValue(value: J): void {
   schema("input-authority.schema.v2.json", value);
@@ -6022,7 +6104,7 @@ function validatePublicationValue(
   );
   codedAssert(
     canon([...pins.map((x: J) => x.path)].sort()) ===
-      canon(PUBLICATION_MEMBER_PATHS),
+      canon(PUBLICATION_MEMBER_PATHS.filter((member) => member !== "candidate-descriptor-v2.json")),
     "H2_PUBLICATION_EXACT_UNIVERSE",
     "publication exact member filenames",
   );
@@ -6068,8 +6150,6 @@ function validatePublicationValue(
     const member = pins.find((candidate: J) => candidate.path === expectedPath);
     same(predecessor, member, `publication predecessor/member join ${role}`);
   }
-  const candidate = load(path.join(baseDir, "candidate-descriptor-v2.json"));
-  validatePublicationValue(candidate);
   const inputAuthorityRaw = fs.readFileSync(
     path.join(baseDir, "input-authority-v2.json"),
   );
@@ -9682,33 +9762,11 @@ async function sourceSearchSelfTest(): Promise<J> {
       path.join(FIXTURE, "input-authority-v2.json"),
       path.join(finalDir, "input-authority-v2.json"),
     );
-    fs.copyFileSync(
-      path.join(FIXTURE, "candidate-descriptor-v2.json"),
-      path.join(finalDir, "candidate-descriptor-v2.json"),
-    );
-    const rolePins: Record<string, J> = {};
-    for (const [role, filename] of Object.entries(FINAL_EVIDENCE_PATHS))
-      rolePins[role] = {
-        ...pin(resolveEvidencePath(filename, finalDir), filename),
-        role,
-      };
-    const finalRows = FINAL_CRITERION_IDS.map((criterion_id) => {
-      const requirement = FINAL_MATRIX_REQUIREMENTS[criterion_id];
-      return {
-        criterion_id,
-        required: true,
-        verdict: "satisfied",
-        result_ids: requirement.results,
-        evidence: requirement.roles.map((role) =>
-          structuredClone(rolePins[role]),
-        ),
-        limitations: [],
-      };
-    });
+    const finalRows = finalMatrixRows(finalDir);
     const membersBeforePlan = tree(finalDir).members;
-    const publicationPlan = { schema_version: "reviewed_metrics_publication_assembly_plan_v2.0.0", status: "planned", candidate_id: CANDIDATE_ID, candidate_commit: authority.candidate_commit, authority_hash: authorityBindingHash(authority), publisher: { principal: authority.publisher.principal, session_id: authority.publisher.session_id, model: authority.publisher.model, role: "publisher" }, ledger_pin: authority.stage_execution.ledger, members_before_plan: membersBeforePlan, tree_before_plan_sha256: hash(`${membersBeforePlan.map((x: J) => `${x.path}\t${x.sha256}\t${x.bytes}`).join("\n")}\n`), final_member_paths: PUBLICATION_MEMBER_PATHS, expected_schemas: { matrix: pin(path.join(SCHEMAS, "final-criterion-matrix.schema.v2.json"), "final-criterion-matrix.schema.v2.json"), descriptor: pin(path.join(SCHEMAS, "publication-descriptor.schema.v2.json"), "publication-descriptor.schema.v2.json"), stage_ledger: pin(path.join(SCHEMAS, "stage-execution-ledger.schema.v2.json"), "stage-execution-ledger.schema.v2.json") }, post_plan_derivations: ["seal_signed_stage_ledger_from_complete_remote_readback", "construct_final_matrix_with_exact_ledger_pin", "construct_commit_last_descriptor_from_plan_ledger_matrix_and_members"] };
+    const publicationPlan = { schema_version: "reviewed_metrics_publication_assembly_plan_v2.1.0", status: "planned", candidate_id: CANDIDATE_ID, candidate_commit: authority.candidate_commit, authority_hash: authorityBindingHash(authority), publisher: { principal: authority.publisher.principal, session_id: authority.publisher.session_id, model: authority.publisher.model, role: "publisher" }, ledger_pin: authority.stage_execution.ledger, pre_plan_member_paths: PUBLICATION_PRE_PLAN_PATHS, members_before_plan: membersBeforePlan, tree_before_plan_sha256: hash(`${membersBeforePlan.map((x: J) => `${x.path}\t${x.sha256}\t${x.bytes}`).join("\n")}\n`), final_member_paths: PUBLICATION_MEMBER_PATHS, expected_schemas: { matrix: pin(path.join(SCHEMAS, "final-criterion-matrix.schema.v2.json"), "final-criterion-matrix.schema.v2.json"), descriptor: pin(path.join(SCHEMAS, "publication-descriptor.schema.v2.json"), "publication-descriptor.schema.v2.json"), stage_ledger: pin(path.join(SCHEMAS, "stage-execution-ledger.schema.v2.json"), "stage-execution-ledger.schema.v2.json") }, post_plan_derivations: ["seal_signed_stage_ledger_from_complete_remote_readback", "construct_final_matrix_with_exact_ledger_pin", "construct_commit_last_descriptor_from_plan_ledger_matrix_and_members"] };
     writeJson(path.join(finalDir, "publication-assembly-plan-v2.json"), publicationPlan);
-    validatePublicationAssemblyPlan(publicationPlan, finalDir, authority);
+    validatePublicationAssemblyPlan(publicationPlan, finalDir, authority, [...PUBLICATION_PRE_PLAN_PATHS, "publication-assembly-plan-v2.json"]);
     writeJson(path.join(finalDir, "stage-execution-ledger-v2.json"), await materializeSyntheticCompletedStageLedger(authority));
     const stageEvidenceValue = load(path.join(finalDir, "stage-execution-ledger-v2.json"));
     const matrix = {
@@ -9761,56 +9819,19 @@ async function sourceSearchSelfTest(): Promise<J> {
     fs.writeFileSync(publicationPayload, publicationPayloadRaw);
     const forgedEvidence = structuredClone(stageEvidenceValue); forgedEvidence.signature_base64 = Buffer.alloc(64, 9).toString("base64");
     await reject("final_chain", "stage-ledger-forged-envelope", () => validateStageExecutionEvidence(forgedEvidence, authority), "H2_LEDGER_SIGNATURE");
-    const memberPins = tree(finalDir).members;
-    const dynamic = Object.fromEntries(
-      Object.entries(PUBLICATION_DYNAMIC_PREDECESSORS).map(
-        ([role, filename]) => [
-          role,
-          pin(path.join(finalDir, filename), filename),
-        ],
-      ),
-    );
-    const publication = {
-      schema_version: "reviewed_metrics_publication_descriptor_v2.0.0",
-      artifact_id: PUBLICATION_ID,
-      status: "published",
-      created_at: "2026-07-15T00:00:11.000Z",
-      implementation_base_commit: IMPLEMENTATION_BASE_COMMIT,
-      candidate_commit: authority.candidate_commit,
-      members_before_descriptor: memberPins,
-      tree_before_descriptor_sha256: tree(finalDir).sha256,
-      counts: {
-        files_before_descriptor: memberPins.length,
-        bytes_before_descriptor: memberPins.reduce(
-          (sum: number, member: J) => sum + member.bytes,
-          0,
-        ),
-        unique_sources: 44,
-        task_memberships: 78,
-        published_members: memberPins.length + 1,
-      },
-      predecessors: { ...predecessorPins(), ...dynamic },
-      completion: {
-        candidate_complete: true,
-        issue_92_complete: true,
-        issue_69_complete: true,
-        publication_exists: true,
-      },
-      mutations: {
-        production: false,
-        search_index: false,
-        private_object_store_write: false,
-        paid_gpu: false,
-      },
-      required_publication_members: PUBLICATION_MEMBER_PATHS,
-      publisher: {
-        principal: authority.publisher.principal,
-        session_id: authority.publisher.session_id,
-        model: authority.publisher.model,
-        role: authority.publisher.role,
-        published_at: "2026-07-15T00:00:11.000Z",
-      },
-    };
+    for (const [label, mutate] of [["publication-plan-missing", (x: J) => x.members_before_plan.pop()], ["publication-plan-reordered", (x: J) => x.members_before_plan.reverse()]] as [string, (x: J) => void][]) { const bad = structuredClone(publicationPlan); mutate(bad); await reject("final_chain", label, () => validatePublicationAssemblyPlan(bad, finalDir, authority), "H2_PUBLICATION_PRE_PLAN_UNIVERSE"); }
+    const extraFile = path.join(finalDir, "unplanned-extra.json"); fs.writeFileSync(extraFile, "{}\n");
+    await reject("final_chain", "publication-plan-extra-file", () => validatePublicationAssemblyPlan(publicationPlan, finalDir, authority, [...PUBLICATION_PRE_PLAN_PATHS, "publication-assembly-plan-v2.json", "stage-execution-ledger-v2.json"]), "H2_PUBLICATION_PRE_PLAN_UNIVERSE"); fs.unlinkSync(extraFile);
+    fs.unlinkSync(path.join(finalDir, "final-criterion-matrix-v2.json"));
+    const planRaw = fs.readFileSync(publicationPayload); const substitutedPlan = structuredClone(publicationPlan); substitutedPlan.authority_hash = "0".repeat(64); fs.writeFileSync(publicationPayload, pretty(substitutedPlan));
+    await reject("final_chain", "publication-plan-substitution", () => assemblePublication(finalDir, publicationPayload, path.join(finalDir, "stage-execution-ledger-v2.json"), authority), "H2_PUBLICATION_PLAN_BINDING"); fs.writeFileSync(publicationPayload, planRaw);
+    const ledgerFile = path.join(finalDir, "stage-execution-ledger-v2.json"); const ledgerRaw = fs.readFileSync(ledgerFile); fs.writeFileSync(ledgerFile, pretty(forgedEvidence));
+    await reject("final_chain", "publication-ledger-substitution", () => assemblePublication(finalDir, publicationPayload, ledgerFile, authority), "H2_LEDGER_SIGNATURE"); fs.writeFileSync(ledgerFile, ledgerRaw);
+    writeJsonExclusive(path.join(finalDir, "candidate-descriptor-v2.json"), { early: true });
+    await reject("final_chain", "publication-early-descriptor", () => assemblePublication(finalDir, publicationPayload, path.join(finalDir, "stage-execution-ledger-v2.json"), authority), "H2_PUBLICATION_COMMIT_LAST"); fs.unlinkSync(path.join(finalDir, "candidate-descriptor-v2.json"));
+    await accept("final_chain", "publication-production-assembler", () => assemblePublication(finalDir, publicationPayload, path.join(finalDir, "stage-execution-ledger-v2.json"), authority));
+    await reject("final_chain", "publication-concurrent-assembler", () => assemblePublication(finalDir, publicationPayload, ledgerFile, authority), "H2_PUBLICATION_COMMIT_LAST");
+    const publication = load(path.join(finalDir, "candidate-descriptor-v2.json"));
     await accept("final_chain", "publication-exact-chain", () =>
       validatePublicationValue(publication, finalDir, authority),
     );
@@ -10658,10 +10679,8 @@ async function main(): Promise<void> {
     codedAssert(STAGE_ROLES[stageId] !== undefined, "H2_ROUTE_STAGE_ROLE", "unknown exact production stage");
     const authority = internalAuthority ?? executionAuthority();
     const operation = stageManifestEntry(authority, stageId).operation;
-    const exact = externalOperationPreflight(operation, stageManifestEntry(authority, stageId).outputs);
     const consumption = await beginStageConsumption(authority, path.resolve(assertString(o["stage-receipt"], "--stage-receipt required")), stageId, () => new Date(), internalCapability);
-    execFileSync(exact.executable, operation.argv, { cwd: operation.cwd, stdio: "inherit", env: exact.env });
-    assertOperationSnapshotsUnchanged(exact.snapshots);
+    executeExternalStageOperation(operation, stageManifestEntry(authority, stageId).outputs, internalCapability !== undefined);
     await completeStageConsumption(consumption);
     result = { status: "external_stage_operation_completed", stage_id: stageId };
   } else if (command === "seal-stage-ledger") {
@@ -10796,11 +10815,15 @@ async function main(): Promise<void> {
     result = await runAttestedStage("publication_assembly_plan", () => {
       const authority = internalAuthority ?? executionAuthority();
       const operation = stageManifestEntry(authority, "publication_assembly_plan").operation;
-      const exact = externalOperationPreflight(operation, stageManifestEntry(authority, "publication_assembly_plan").outputs);
-      execFileSync(exact.executable, operation.argv, { cwd: operation.cwd, stdio: "inherit", env: exact.env });
-      assertOperationSnapshotsUnchanged(exact.snapshots);
+      executeExternalStageOperation(operation, stageManifestEntry(authority, "publication_assembly_plan").outputs, internalCapability !== undefined);
+      const planFile = stageManifestEntry(authority, "publication_assembly_plan").outputs[0].path;
+      validatePublicationAssemblyPlan(load(planFile), path.dirname(planFile), authority, [...PUBLICATION_PRE_PLAN_PATHS, "publication-assembly-plan-v2.json"]);
       return { status: "publication_assembly_plan_completed" };
     });
+  else if (command === "assemble-publication") {
+    const authority = internalAuthority ?? executionAuthority();
+    result = assemblePublication(path.resolve(assertString(o.workspace, "--workspace required")), path.resolve(assertString(o.input, "--input publication plan required")), path.resolve(assertString(o.envelope, "--envelope signed stage ledger required")), authority);
+  }
   else if (command === "self-test") result = await selfTest();
   else if (command === "security-self-test") result = { cloudflare_r2: await securityHelperSelfTest(), cloudflare_d1_ledger: await stageLedgerProductionContractSelfTest(ROOT), status: "security_helper_self_test_passed" };
   else if (command === "integration-test") result = await integrationTest();

@@ -38,6 +38,8 @@
     "actual_process_chronology": false,
     "d1_append_only_ledger_contract_synthetic_tested": true,
     "exact_external_operation_contract_synthetic_tested": true,
+    "external_operation_linux_sandbox_attested": false,
+    "deployed_d1_schema_attested": false,
     "publication_plan_ledger_matrix_protocol_synthetic_tested": true,
     "hmac_opaque_private_keys": true,
     "public_object_key_commitment_only": true,

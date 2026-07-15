@@ -1,17 +1,20 @@
 import crypto from "node:crypto";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
 export type LedgerIdentity = { candidate_commit: string; authority_hash: string; stage_id: string };
 export type LedgerRow = Record<string, unknown>;
 export type LedgerReadback = { attempts: LedgerRow[]; claims: LedgerRow[]; completions: LedgerRow[] };
+export type LedgerSchemaAttestation = { rows: LedgerRow[]; sha256: string; bytes: number };
 
 export interface StageLedgerAdapter {
   appendAttempt(identity: LedgerIdentity, attemptId: string, attemptedAt: string, requestSha256: string): Promise<void>;
   claimBegin(identity: LedgerIdentity, attemptId: string, beganAt: string, envelope: string, envelopeSha256: string): Promise<void>;
   appendCompletion(identity: LedgerIdentity, attemptId: string, completedAt: string, envelope: string, envelopeSha256: string): Promise<void>;
   readAll(candidateCommit: string, authorityHash: string): Promise<LedgerReadback>;
+  attestSchema(authorityLedger: Record<string, unknown>): Promise<void>;
 }
 
 export class StageLedgerContractError extends Error {
@@ -20,6 +23,18 @@ export class StageLedgerContractError extends Error {
 
 function digest(domain: string, value: string): string {
   return crypto.createHash("sha256").update(`${domain}\0${value}`).digest("hex");
+}
+function canonical(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+  const object = value as Record<string, unknown>;
+  return `{${Object.keys(object).sort().map((key) => `${JSON.stringify(key)}:${canonical(object[key])}`).join(",")}}`;
+}
+function schemaAttestation(rows: LedgerRow[]): LedgerSchemaAttestation {
+  const normalized = rows.map((row) => ({ type: row.type, name: row.name, tbl_name: row.tbl_name, sql: row.sql ?? null }))
+    .sort((a, b) => `${a.type}\0${a.name}`.localeCompare(`${b.type}\0${b.name}`));
+  const bytesValue = Buffer.from(`${canonical(normalized)}\n`);
+  return { rows: normalized, sha256: crypto.createHash("sha256").update(bytesValue).digest("hex"), bytes: bytesValue.length };
 }
 
 type D1Envelope = {
@@ -84,25 +99,71 @@ export class CloudflareD1StageLedger implements StageLedgerAdapter {
     const [attempts, claimRows, completionRows] = await Promise.all([rows("gate_h2_stage_attempts"), claims(), completions()]);
     return { attempts, claims: claimRows, completions: completionRows };
   }
+  async attestSchema(authorityLedger: Record<string, unknown>): Promise<void> {
+    const rows = await this.query("SELECT type,name,tbl_name,sql FROM sqlite_master WHERE tbl_name LIKE 'gate_h2_stage_%' ORDER BY type,name", [], false);
+    const observed = schemaAttestation(rows);
+    if (observed.sha256 !== authorityLedger.table_schema_sha256 || observed.bytes !== authorityLedger.table_schema_bytes)
+      throw new StageLedgerContractError("H2_LEDGER_SCHEMA_ATTESTATION", "deployed D1 tables, indexes, or triggers differ from authority");
+  }
 }
 
+export function gateH2LedgerSchemaAttestation(repositoryRoot: string): LedgerSchemaAttestation {
+  const sqlite = "/usr/bin/sqlite3";
+  if (!fs.existsSync(sqlite)) throw new StageLedgerContractError("H2_LEDGER_SCHEMA_ATTESTATION", "sqlite3 is required to canonicalize the ledger migration");
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "gate-h2-schema-"));
+  try {
+    const database = path.join(root, "ledger.sqlite3");
+    execFileSync(sqlite, [database], { input: fs.readFileSync(path.join(repositoryRoot, "infrastructure/d1/migrations/0012_gate_h2_stage_ledger.sql")) });
+    const output = execFileSync(sqlite, ["-json", database, "SELECT type,name,tbl_name,sql FROM sqlite_master WHERE tbl_name LIKE 'gate_h2_stage_%' ORDER BY type,name"], { encoding: "utf8" });
+    return schemaAttestation(JSON.parse(output) as LedgerRow[]);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+}
 export function gateH2LedgerSchemaPin(repositoryRoot: string): { sha256: string; bytes: number } {
-  const raw = fs.readFileSync(path.join(repositoryRoot, "infrastructure/d1/migrations/0012_gate_h2_stage_ledger.sql"));
-  return { sha256: crypto.createHash("sha256").update(raw).digest("hex"), bytes: raw.length };
+  const { sha256, bytes } = gateH2LedgerSchemaAttestation(repositoryRoot); return { sha256, bytes };
+}
+
+export function validateCompleteLedgerReadback(readback: LedgerReadback, candidateCommit: string, authorityHash: string, stageIds: readonly string[]): { attempts: LedgerRow[]; claims: Map<string, LedgerRow>; completions: Map<string, LedgerRow> } {
+  function fail(condition: unknown, message: string): asserts condition { if (!condition) throw new StageLedgerContractError("H2_LEDGER_READBACK", message); }
+  fail(readback.attempts.length === stageIds.length && readback.claims.length === stageIds.length && readback.completions.length === stageIds.length, "remote ledger cardinality differs from exact stage set");
+  const exact = new Set(stageIds); const claims = new Map<string, LedgerRow>(); const completions = new Map<string, LedgerRow>(); const attempts = new Map<string, LedgerRow>();
+  for (const row of readback.attempts) {
+    const stage = String(row.stage_id); fail(exact.has(stage) && row.candidate_commit === candidateCommit && row.authority_hash === authorityHash && typeof row.attempt_id === "string" && typeof row.attempted_at === "string" && typeof row.request_sha256 === "string" && !attempts.has(stage), "attempt identity or exact stage set differs"); attempts.set(stage, row);
+  }
+  for (const row of readback.claims) { const stage = String(row.stage_id); fail(exact.has(stage) && row.candidate_commit === candidateCommit && row.authority_hash === authorityHash && !claims.has(stage), "claim identity or exact stage set differs"); claims.set(stage, row); }
+  for (const row of readback.completions) { const stage = String(row.stage_id); fail(exact.has(stage) && row.candidate_commit === candidateCommit && row.authority_hash === authorityHash && !completions.has(stage), "completion identity or exact stage set differs"); completions.set(stage, row); }
+  for (const stage of stageIds) {
+    const attempt = attempts.get(stage)!; const claim = claims.get(stage)!; const completion = completions.get(stage)!;
+    fail(attempt.attempt_id === claim.attempt_id && claim.attempt_id === completion.attempt_id, "attempt/claim/completion composite identity join differs");
+    const beginRaw = Buffer.from(String(claim.begin_envelope)); const completionRaw = Buffer.from(String(completion.completion_envelope));
+    let begin: LedgerRow; let completed: LedgerRow;
+    try { begin = JSON.parse(beginRaw.toString("utf8")); completed = JSON.parse(completionRaw.toString("utf8")); } catch { throw new StageLedgerContractError("H2_LEDGER_READBACK", "remote envelope is not JSON"); }
+    fail(beginRaw.equals(Buffer.from(`${JSON.stringify(begin, null, 2)}\n`)) && completionRaw.equals(Buffer.from(`${JSON.stringify(completed, null, 2)}\n`)), "remote envelope is not canonical");
+    const beginHash = crypto.createHash("sha256").update(beginRaw).digest("hex"); const completionHash = crypto.createHash("sha256").update(completionRaw).digest("hex");
+    fail(begin.candidate_commit === candidateCommit && begin.authority_hash === authorityHash && begin.stage_id === stage && begin.attempt_id === attempt.attempt_id &&
+      completed.candidate_commit === candidateCommit && completed.authority_hash === authorityHash && completed.stage_id === stage && completed.attempt_id === attempt.attempt_id,
+    "remote envelope identity differs from row identity");
+    fail(attempt.attempted_at === begin.command_started_at && claim.began_at === begin.command_started_at && completion.completed_at === completed.command_completed_at, "remote row chronology does not join canonical envelope times");
+    fail(attempt.request_sha256 === beginHash && claim.begin_sha256 === beginHash && completed.begin_sha256 === beginHash && completion.completion_sha256 === completionHash, "remote envelope hash join differs");
+  }
+  return { attempts: stageIds.map((stage) => attempts.get(stage)!), claims, completions };
 }
 
 export async function stageLedgerProductionContractSelfTest(repositoryRoot: string): Promise<{ status: string; cases: string[] }> {
   const account = "0123456789abcdef0123456789abcdef";
   const database = "11111111-2222-4333-8444-555555555555";
+  const deployedSchema = gateH2LedgerSchemaAttestation(repositoryRoot);
   const authority = {
     account_capability_digest: digest("gate-h2-d1-account-capability-v1", account),
     database_uuid_digest: digest("gate-h2-d1-database-uuid-v1", database),
+    table_schema_sha256: deployedSchema.sha256,
+    table_schema_bytes: deployedSchema.bytes,
   };
   const attempts: LedgerRow[] = []; const claims: LedgerRow[] = []; const completions: LedgerRow[] = [];
   const requests: Array<{ url: string; sql: string }> = [];
   const mock: typeof fetch = async (input, init) => {
     const body = JSON.parse(String(init?.body)) as { sql: string; params: unknown[] };
     requests.push({ url: String(input), sql: body.sql });
+    if (body.sql.includes("FROM sqlite_master")) return new Response(JSON.stringify({ success: true, result: [{ success: true, results: deployedSchema.rows }] }), { status: 200 });
     const table = body.sql.match(/(?:INTO|FROM)\s+(gate_h2_stage_[a-z]+)/)?.[1] ?? "";
     const target = table.endsWith("attempts") ? attempts : table.endsWith("claims") ? claims : completions;
     if (body.sql.startsWith("INSERT")) {
@@ -118,6 +179,7 @@ export async function stageLedgerProductionContractSelfTest(repositoryRoot: stri
     return new Response(JSON.stringify({ success: true, result: [{ success: true, results: target }] }), { status: 200 });
   };
   const adapter = CloudflareD1StageLedger.fromEnvironment(authority, { GATE_H2_LEDGER_ACCOUNT_ID: account, GATE_H2_LEDGER_DATABASE_ID: database, GATE_H2_LEDGER_API_TOKEN: "test-only-token" }, mock);
+  await adapter.attestSchema(authority);
   const identity = { candidate_commit: "c".repeat(40), authority_hash: "a".repeat(64), stage_id: "visual_predict" };
   await adapter.appendAttempt(identity, "attempt-1", "2026-07-15T00:00:00.000Z", "1".repeat(64));
   await adapter.claimBegin(identity, "attempt-1", "2026-07-15T00:00:00.001Z", "{}", "2".repeat(64));
@@ -146,8 +208,28 @@ export async function stageLedgerProductionContractSelfTest(repositoryRoot: stri
   if (afterCacheDeletion.attempts.length !== readback.attempts.length) throw new StageLedgerContractError("H2_LEDGER_TEST", "local cache affected remote authority");
   const detectsIncomplete = (rows: LedgerReadback): boolean => rows.attempts.length !== 4 || rows.claims.length !== 2 || rows.completions.length !== 1;
   if (!detectsIncomplete({ ...readback, completions: [] })) throw new StageLedgerContractError("H2_LEDGER_TEST", "missing remote row was not detected");
-  const mismatched = structuredClone(readback); mismatched.claims[0].begin_sha256 = "0".repeat(64);
-  if (mismatched.claims[0].begin_sha256 === readback.claims[0].begin_sha256) throw new StageLedgerContractError("H2_LEDGER_TEST", "readback mismatch fixture was ineffective");
+  const exactStages = ["visual_predict", "visual_freeze", "source_predict", "source_freeze", "gold_review", "gold_envelope_authoring", "private_prepare", "r2_retain", "private_finalize", "task_review", "metrics_score", "publication_assembly_plan"];
+  const complete: LedgerReadback = { attempts: [], claims: [], completions: [] };
+  for (let index = 0; index < exactStages.length; index++) {
+    const stage = exactStages[index]; const attemptId = `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`;
+    const startedAt = `2026-07-15T00:00:${String(index).padStart(2, "0")}.000Z`; const completedAt = `2026-07-15T00:01:${String(index).padStart(2, "0")}.000Z`;
+    const begin = { candidate_commit: identity.candidate_commit, authority_hash: identity.authority_hash, stage_id: stage, attempt_id: attemptId, command_started_at: startedAt }; const beginRaw = `${JSON.stringify(begin, null, 2)}\n`; const beginHash = crypto.createHash("sha256").update(beginRaw).digest("hex");
+    const completed = { candidate_commit: identity.candidate_commit, authority_hash: identity.authority_hash, stage_id: stage, attempt_id: attemptId, begin_sha256: beginHash, command_completed_at: completedAt }; const completedRaw = `${JSON.stringify(completed, null, 2)}\n`; const completedHash = crypto.createHash("sha256").update(completedRaw).digest("hex");
+    complete.attempts.push({ sequence: index + 1, candidate_commit: identity.candidate_commit, authority_hash: identity.authority_hash, stage_id: stage, attempt_id: attemptId, attempted_at: startedAt, request_sha256: beginHash });
+    complete.claims.push({ candidate_commit: identity.candidate_commit, authority_hash: identity.authority_hash, stage_id: stage, attempt_id: attemptId, began_at: startedAt, begin_envelope: beginRaw, begin_sha256: beginHash });
+    complete.completions.push({ candidate_commit: identity.candidate_commit, authority_hash: identity.authority_hash, stage_id: stage, attempt_id: attemptId, completed_at: completedAt, completion_envelope: completedRaw, completion_sha256: completedHash });
+  }
+  validateCompleteLedgerReadback(complete, identity.candidate_commit, identity.authority_hash, exactStages);
+  const expectReadbackRejection = (mutate: (rows: LedgerReadback) => void): void => { const bad = structuredClone(complete); mutate(bad); let rejected = false; try { validateCompleteLedgerReadback(bad, identity.candidate_commit, identity.authority_hash, exactStages); } catch (error) { rejected = error instanceof StageLedgerContractError && error.code === "H2_LEDGER_READBACK"; } if (!rejected) throw new StageLedgerContractError("H2_LEDGER_TEST", "injected remote readback mismatch reached the seal path"); };
+  expectReadbackRejection((rows) => { rows.attempts[0].stage_id = "source_predict"; });
+  expectReadbackRejection((rows) => { rows.claims[0].authority_hash = "f".repeat(64); });
+  expectReadbackRejection((rows) => { rows.completions.pop(); });
+  expectReadbackRejection((rows) => { rows.attempts[1] = structuredClone(rows.attempts[0]); });
+  expectReadbackRejection((rows) => { rows.claims[0].begin_sha256 = "0".repeat(64); });
+  const driftedSchemaMock: typeof fetch = async (_input, init) => { const body = JSON.parse(String(init?.body)) as { sql: string }; return new Response(JSON.stringify({ success: true, result: [{ success: true, results: body.sql.includes("sqlite_master") ? deployedSchema.rows.filter((row) => row.type !== "trigger") : [] }] }), { status: 200 }); };
+  const driftedAdapter = CloudflareD1StageLedger.fromEnvironment(authority, { GATE_H2_LEDGER_ACCOUNT_ID: account, GATE_H2_LEDGER_DATABASE_ID: database, GATE_H2_LEDGER_API_TOKEN: "test-only-token" }, driftedSchemaMock);
+  let schemaRejected = false; try { await driftedAdapter.attestSchema(authority); } catch (error) { schemaRejected = error instanceof StageLedgerContractError && error.code === "H2_LEDGER_SCHEMA_ATTESTATION"; }
+  if (!schemaRejected) throw new StageLedgerContractError("H2_LEDGER_TEST", "deployed schema/trigger mismatch passed attestation");
   if (requests.some((request) => !/^(INSERT|SELECT)\b/.test(request.sql)) || requests.some((request) => !request.url.endsWith(`/accounts/${account}/d1/database/${database}/query`))) throw new StageLedgerContractError("H2_LEDGER_TEST", "production adapter used an unapproved verb or endpoint");
   const schema = fs.readFileSync(path.join(repositoryRoot, "infrastructure/d1/migrations/0012_gate_h2_stage_ledger.sql"), "utf8");
   const sqlite = "/usr/bin/sqlite3";
@@ -169,5 +251,5 @@ INSERT INTO gate_h2_stage_completions VALUES ('${identity.candidate_commit}','${
       }
     }
   } finally { fs.rmSync(sqliteRoot, { recursive: true, force: true }); }
-  return { status: "stage_ledger_production_contract_self_test_passed", cases: ["deleted_local_cache_irrelevant", "alternate_cache_irrelevant", "second_attempt_audited", "concurrent_unique_claim", "update_delete_trigger_rejected", "missing_remote_row", "readback_mismatch", "enumeration_mismatch", "no_real_d1_write"] };
+  return { status: "stage_ledger_production_contract_self_test_passed", cases: ["deleted_local_cache_irrelevant", "alternate_cache_irrelevant", "second_attempt_audited", "concurrent_unique_claim", "update_delete_trigger_rejected", "wrong_stage_readback", "wrong_authority_readback", "missing_remote_row", "duplicate_stage_readback", "envelope_hash_mismatch", "deployed_schema_trigger_mismatch", "enumeration_mismatch", "no_real_d1_write"] };
 }
