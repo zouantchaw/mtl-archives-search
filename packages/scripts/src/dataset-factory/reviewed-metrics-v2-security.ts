@@ -36,11 +36,15 @@ export type StorageObjectMetadata = {
 };
 
 export type StorageWriteEvidence = {
-  status: "created" | "preexisting_identical";
+  status: "new_write" | "preexisting_verified";
   statusCode: number;
-  at: string;
+  attemptedAt: string;
+  completedAt: string;
   etag: string;
   versionId: string | null;
+  observedExistingAt?: string;
+  recoveryHead?: StorageHeadEvidence;
+  recoveryGet?: StorageGetEvidence;
 };
 
 export type StorageHeadEvidence = {
@@ -56,18 +60,22 @@ export type StorageGetEvidence = StorageHeadEvidence & { bytesValue: Buffer };
 
 export type StoragePrivacyEvidence = {
   checkedAt: string;
-  customDomainsStatusCode: number;
-  managedDomainStatusCode: number;
   enabledCustomDomains: number;
   managedDomainEnabled: boolean;
-  scriptsStatusCode: number;
-  bindingsStatusCount: number;
-  routesStatusCode: number;
+  statusCodeDigest: string;
+  requestCount: number;
   scriptCount: number;
+  dispatchNamespaceCount: number;
+  dispatchScriptCount: number;
+  pagesProjectCount: number;
   bindingCount: number;
+  workersDevEnabled: boolean;
+  customWorkerDomainCount: number;
+  zoneCount: number;
   routeCount: number;
   inventoryDigest: string;
-  noWorkerBucketBinding: boolean;
+  noR2BucketBinding: boolean;
+  noDirectPublicDomain: boolean;
 };
 
 export interface PrivateObjectStore {
@@ -101,6 +109,31 @@ async function bodyBytes(body: unknown): Promise<Buffer> {
 
 type CloudflareEnvelope<T> = { success: boolean; result: T; result_info?: { page?: number; total_pages?: number; count?: number; total_count?: number }; errors?: Array<{ code?: number; message?: string }> };
 
+const WORKER_SETTINGS_KEYS = [
+  "bindings", "compatibility_date", "compatibility_flags", "limits", "logpush",
+  "observability", "placement", "tail_consumers", "usage_model",
+] as const;
+const KNOWN_WORKER_BINDING_TYPES = new Set([
+  "ai", "analytics_engine", "browser", "d1", "dispatch_namespace", "durable_object_namespace",
+  "hyperdrive", "inherit", "json", "kv_namespace", "mtls_certificate", "plain_text", "queue",
+  "r2_bucket", "secret_text", "service", "vectorize", "version_metadata", "wasm_module",
+]);
+function isObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function hasOnlyKeys(value: Record<string, unknown>, allowed: readonly string[]): boolean {
+  return Object.keys(value).every((key) => allowed.includes(key));
+}
+function isExactObject(value: unknown, keys: readonly string[]): value is Record<string, unknown> {
+  return isObject(value) && Object.keys(value).length === keys.length && hasOnlyKeys(value, keys);
+}
+function isExactBooleanObject(value: unknown, key: string): value is Record<string, boolean> {
+  return isExactObject(value, [key]) && typeof value[key] === "boolean";
+}
+function assertNamedCollection(values: Record<string, unknown>[], nameKeys: readonly string[], label: string): void {
+  fail(values.every((value) => isObject(value) && nameKeys.some((key) => typeof value[key] === "string" && (value[key] as string).length > 0)), "H2_RETENTION_PRIVACY_SCHEMA", `${label} do not match the pinned v4 schema`);
+}
+
 export class CloudflareR2PrivateStore implements PrivateObjectStore {
   readonly bucketDigest: string;
   readonly capabilityId: string;
@@ -120,6 +153,7 @@ export class CloudflareR2PrivateStore implements PrivateObjectStore {
     bucketIdentity: string,
     private readonly request: typeof fetch = fetch,
     client?: S3Client,
+    private readonly clock: () => string = now,
   ) {
     const expectedEndpoint = `https://${accountId}.r2.cloudflarestorage.com`;
     fail(/^[a-f0-9]{32}$/.test(accountId), "H2_RETENTION_ACCOUNT_ENDPOINT", "Cloudflare account ID must be an exact 32-character lowercase hex identity");
@@ -170,6 +204,7 @@ export class CloudflareR2PrivateStore implements PrivateObjectStore {
   }
 
   async putIfAbsent(key: string, bytes: Buffer, metadata: StorageObjectMetadata): Promise<StorageWriteEvidence> {
+    const attemptedAt = this.clock();
     try {
       const response = await this.client.send(new PutObjectCommand({
         Bucket: this.bucket,
@@ -185,8 +220,9 @@ export class CloudflareR2PrivateStore implements PrivateObjectStore {
           "gate-h2-finalization": metadata.finalizationId,
         },
       }));
-      return { status: "created", statusCode: response.$metadata.httpStatusCode ?? 0, at: now(), etag: etag(response.ETag), versionId: response.VersionId ?? null };
+      return { status: "new_write", statusCode: response.$metadata.httpStatusCode ?? 0, attemptedAt, completedAt: this.clock(), etag: etag(response.ETag), versionId: response.VersionId ?? null };
     } catch (error) {
+      const completedAt = this.clock();
       if (error instanceof GateH2SecurityError) throw error;
       const status = (error as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode;
       if (status !== 409 && status !== 412) throw new GateH2SecurityError("H2_RETENTION_PUT", "conditional R2 PUT failed");
@@ -194,14 +230,24 @@ export class CloudflareR2PrivateStore implements PrivateObjectStore {
       const existing = await this.get(key, { etag: head.etag, versionId: head.versionId });
       fail(existing.bytesValue.equals(bytes), "H2_RETENTION_PREEXISTING_DIFFERENT", "opaque content key already contains different bytes");
       fail(canonicalMetadata(existing.metadata) === canonicalMetadata(metadata), "H2_RETENTION_METADATA", "preexisting object metadata differs");
-      return { status: "preexisting_identical", statusCode: status, at: now(), etag: head.etag, versionId: head.versionId };
+      return {
+        status: "preexisting_verified",
+        statusCode: status,
+        attemptedAt,
+        completedAt,
+        etag: head.etag,
+        versionId: head.versionId,
+        observedExistingAt: existing.at,
+        recoveryHead: head,
+        recoveryGet: existing,
+      };
     }
   }
 
   async head(key: string): Promise<StorageHeadEvidence> {
     try {
       const response = await this.client.send(new HeadObjectCommand({ Bucket: this.bucket, Key: key }));
-      return { statusCode: response.$metadata.httpStatusCode ?? 0, at: now(), etag: etag(response.ETag), versionId: response.VersionId ?? null, bytes: response.ContentLength ?? -1, metadata: parseMetadata(response.Metadata) };
+      return { statusCode: response.$metadata.httpStatusCode ?? 0, at: this.clock(), etag: etag(response.ETag), versionId: response.VersionId ?? null, bytes: response.ContentLength ?? -1, metadata: parseMetadata(response.Metadata) };
     } catch (error) {
       if (error instanceof GateH2SecurityError) throw error;
       throw new GateH2SecurityError("H2_RETENTION_HEAD", "R2 HEAD failed");
@@ -212,15 +258,15 @@ export class CloudflareR2PrivateStore implements PrivateObjectStore {
     try {
       const response = await this.client.send(new GetObjectCommand({ Bucket: this.bucket, Key: key, IfMatch: identity.etag, ...(identity.versionId === null ? {} : { VersionId: identity.versionId }) }));
       const bytesValue = await bodyBytes(response.Body);
-      return { statusCode: response.$metadata.httpStatusCode ?? 0, at: now(), bytesValue, etag: etag(response.ETag), versionId: response.VersionId ?? null, bytes: response.ContentLength ?? bytesValue.length, metadata: parseMetadata(response.Metadata) };
+      return { statusCode: response.$metadata.httpStatusCode ?? 0, at: this.clock(), bytesValue, etag: etag(response.ETag), versionId: response.VersionId ?? null, bytes: response.ContentLength ?? bytesValue.length, metadata: parseMetadata(response.Metadata) };
     } catch (error) {
       if (error instanceof GateH2SecurityError) throw error;
       throw new GateH2SecurityError("H2_RETENTION_READBACK", "R2 GET failed");
     }
   }
 
-  private async api<T>(suffix: string): Promise<{ statusCode: number; result: T; resultInfo?: CloudflareEnvelope<T>["result_info"] }> {
-    const url = `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(this.accountId)}${suffix}`;
+  private async api<T>(apiPath: string): Promise<{ statusCode: number; result: T; resultInfo?: CloudflareEnvelope<T>["result_info"] }> {
+    const url = `https://api.cloudflare.com/client/v4${apiPath}`;
     let response: Response;
     try {
       response = await this.request(url, { method: "GET", headers: { Authorization: `Bearer ${this.apiToken}`, Accept: "application/json" }, redirect: "error" });
@@ -234,12 +280,12 @@ export class CloudflareR2PrivateStore implements PrivateObjectStore {
     return { statusCode: response.status, result: payload.result, resultInfo: payload.result_info };
   }
 
-  private async collection<T>(suffix: string): Promise<{ statusCodes: number[]; result: T[] }> {
+  private async collection<T>(apiPath: string): Promise<{ statusCodes: number[]; result: T[] }> {
     const result: T[] = [];
     const statusCodes: number[] = [];
     for (let page = 1; page <= 100; page++) {
-      const separator = suffix.includes("?") ? "&" : "?";
-      const response = await this.api<T[]>(`${suffix}${separator}page=${page}&per_page=100`);
+      const separator = apiPath.includes("?") ? "&" : "?";
+      const response = await this.api<T[]>(`${apiPath}${separator}page=${page}&per_page=100`);
       const info = response.resultInfo;
       fail(Array.isArray(response.result) && info?.page === page && Number.isInteger(info.total_pages) && info.total_pages! >= page && info.count === response.result.length && Number.isInteger(info.total_count) && info.total_count! >= result.length + response.result.length, "H2_RETENTION_PRIVACY_ENUMERATION", "Cloudflare collection pagination proof is incomplete");
       result.push(...response.result);
@@ -253,35 +299,108 @@ export class CloudflareR2PrivateStore implements PrivateObjectStore {
   }
 
   async verifyPrivate(): Promise<StoragePrivacyEvidence> {
-    const bucketRoot = `/r2/buckets/${encodeURIComponent(this.bucket)}`;
+    const accountRoot = `/accounts/${encodeURIComponent(this.accountId)}`;
+    const bucketRoot = `${accountRoot}/r2/buckets/${encodeURIComponent(this.bucket)}`;
     const custom = await this.api<{ domains: Array<{ enabled: boolean }> }>(`${bucketRoot}/domains/custom`);
     const managed = await this.api<{ enabled: boolean }>(`${bucketRoot}/domains/managed`);
-    fail(Array.isArray(custom.result.domains) && custom.result.domains.every((domain) => typeof domain.enabled === "boolean") && typeof managed.result.enabled === "boolean", "H2_RETENTION_PRIVACY_PROOF", "Cloudflare privacy API response shape is incomplete");
+    fail(isExactObject(custom.result, ["domains"]) && Array.isArray(custom.result.domains) && custom.result.domains.every((domain) => isExactBooleanObject(domain, "enabled")) && isExactBooleanObject(managed.result, "enabled"), "H2_RETENTION_PRIVACY_SCHEMA", "Cloudflare R2 domain response does not match the pinned v4 schema");
     const enabledCustomDomains = custom.result.domains.filter((domain) => domain.enabled).length;
     fail(enabledCustomDomains === 0 && managed.result.enabled === false, "H2_RETENTION_PUBLIC_EXPOSURE", "R2 bucket has enabled custom-domain or r2.dev public exposure");
-    const scripts = await this.collection<{ id?: string }>("/workers/scripts");
-    fail(Array.isArray(scripts.result) && scripts.result.every((script) => typeof script.id === "string" && script.id.length > 0), "H2_RETENTION_PRIVACY_ENUMERATION", "Workers script enumeration is incomplete");
-    const bindingDigests: string[] = [];
+
+    const scripts = await this.collection<Record<string, unknown>>(`${accountRoot}/workers/scripts`);
+    assertNamedCollection(scripts.result, ["id"], "Workers scripts");
+    const dispatchNamespaces = await this.collection<Record<string, unknown>>(`${accountRoot}/workers/dispatch/namespaces`);
+    assertNamedCollection(dispatchNamespaces.result, ["namespace", "name"], "dispatch namespaces");
+    const pagesProjects = await this.collection<Record<string, unknown>>(`${accountRoot}/pages/projects`);
+    const workerDomains = await this.collection<Record<string, unknown>>(`${accountRoot}/workers/domains`);
+    assertNamedCollection(workerDomains.result, ["id", "hostname"], "Workers custom domains");
+    const zones = await this.collection<Record<string, unknown>>(`/zones?account.id=${encodeURIComponent(this.accountId)}`);
+    assertNamedCollection(zones.result, ["id"], "account zones");
+    const subdomain = await this.api<Record<string, unknown>>(`${accountRoot}/workers/subdomain`);
+    fail(isObject(subdomain.result) && typeof subdomain.result.enabled === "boolean" && typeof subdomain.result.subdomain === "string" && hasOnlyKeys(subdomain.result, ["enabled", "subdomain", "previews_enabled"]), "H2_RETENTION_PRIVACY_SCHEMA", "Workers subdomain response does not match the pinned v4 schema");
+
+    const statusCodes = [custom.statusCode, managed.statusCode, subdomain.statusCode, ...scripts.statusCodes, ...dispatchNamespaces.statusCodes, ...pagesProjects.statusCodes, ...workerDomains.statusCodes, ...zones.statusCodes];
+    const inventory: string[] = [];
     let bindingCount = 0;
-    let bindingsStatusCount = 0;
     let bucketBound = false;
-    for (const script of scripts.result) {
-      const bindings = await this.collection<Record<string, unknown>>(`/workers/scripts/${encodeURIComponent(script.id!)}/bindings`);
-      bindingsStatusCount += bindings.statusCodes.length;
-      fail(Array.isArray(bindings.result), "H2_RETENTION_PRIVACY_ENUMERATION", "Workers binding enumeration is incomplete");
-      for (const binding of bindings.result) {
+    const inspectBindings = (bindings: unknown, surface: string): void => {
+      fail(Array.isArray(bindings), "H2_RETENTION_PRIVACY_SCHEMA", `${surface} bindings must be an array`);
+      for (const binding of bindings) {
+        fail(isObject(binding) && typeof binding.type === "string" && typeof binding.name === "string", "H2_RETENTION_PRIVACY_SCHEMA", `${surface} binding does not match the pinned v4 schema`);
+        const type = binding.type;
+        fail(KNOWN_WORKER_BINDING_TYPES.has(type), "H2_RETENTION_PRIVACY_SCHEMA", `${surface} returned an unknown binding type`);
+        const bucketName = type === "r2_bucket" ? binding.bucket_name : undefined;
+        fail(type !== "r2_bucket" || typeof bucketName === "string", "H2_RETENTION_PRIVACY_SCHEMA", `${surface} R2 binding omitted bucket_name`);
         bindingCount += 1;
-        const type = String(binding.type ?? "");
-        const namespace = String(binding.namespace ?? binding.bucket_name ?? "");
-        if ((type === "r2_bucket" || type === "r2") && namespace === this.bucket) bucketBound = true;
-        bindingDigests.push(sha256(JSON.stringify([type, namespace === this.bucket, Object.keys(binding).sort()])));
+        if (bucketName === this.bucket) bucketBound = true;
+        inventory.push(sha256(JSON.stringify([surface, type, bucketName === this.bucket, Object.keys(binding).sort()])));
+      }
+    };
+    for (const script of scripts.result) {
+      const id = script.id as string;
+      const settings = await this.api<Record<string, unknown>>(`${accountRoot}/workers/scripts/${encodeURIComponent(id)}/settings`);
+      statusCodes.push(settings.statusCode);
+      fail(isObject(settings.result) && "bindings" in settings.result && hasOnlyKeys(settings.result, WORKER_SETTINGS_KEYS), "H2_RETENTION_PRIVACY_SCHEMA", "Workers script settings do not match the pinned v4 schema");
+      inspectBindings(settings.result.bindings, "worker_script");
+    }
+    let dispatchScriptCount = 0;
+    for (const namespace of dispatchNamespaces.result) {
+      const namespaceName = String(namespace.namespace ?? namespace.name);
+      const dispatchScripts = await this.collection<Record<string, unknown>>(`${accountRoot}/workers/dispatch/namespaces/${encodeURIComponent(namespaceName)}/scripts`);
+      statusCodes.push(...dispatchScripts.statusCodes);
+      assertNamedCollection(dispatchScripts.result, ["id", "name"], "dispatch scripts");
+      dispatchScriptCount += dispatchScripts.result.length;
+      for (const script of dispatchScripts.result) {
+        const scriptName = String(script.id ?? script.name);
+        const settings = await this.api<Record<string, unknown>>(`${accountRoot}/workers/dispatch/namespaces/${encodeURIComponent(namespaceName)}/scripts/${encodeURIComponent(scriptName)}/settings`);
+        statusCodes.push(settings.statusCode);
+        fail(isObject(settings.result) && "bindings" in settings.result && hasOnlyKeys(settings.result, WORKER_SETTINGS_KEYS), "H2_RETENTION_PRIVACY_SCHEMA", "dispatch script settings do not match the pinned v4 schema");
+        inspectBindings(settings.result.bindings, "dispatch_script");
       }
     }
-    const routes = await this.collection<Record<string, unknown>>("/workers/routes");
-    fail(Array.isArray(routes.result), "H2_RETENTION_PRIVACY_ENUMERATION", "Workers route enumeration is incomplete");
+    for (const project of pagesProjects.result) {
+      fail(isObject(project) && typeof project.name === "string" && isObject(project.deployment_configs), "H2_RETENTION_PRIVACY_SCHEMA", "Pages project does not match the pinned v4 schema");
+      for (const environment of ["production", "preview"] as const) {
+        const config = project.deployment_configs[environment];
+        fail(isObject(config), "H2_RETENTION_PRIVACY_SCHEMA", `Pages ${environment} deployment config is missing`);
+        const r2Buckets = config.r2_buckets ?? {};
+        fail(isObject(r2Buckets), "H2_RETENTION_PRIVACY_SCHEMA", `Pages ${environment} r2_buckets must be an object`);
+        for (const value of Object.values(r2Buckets)) {
+          fail(isObject(value) && typeof value.name === "string" && hasOnlyKeys(value, ["name", "jurisdiction"]), "H2_RETENTION_PRIVACY_SCHEMA", "Pages R2 binding does not match the pinned v4 schema");
+          bindingCount += 1;
+          if (value.name === this.bucket) bucketBound = true;
+          inventory.push(sha256(JSON.stringify(["pages", environment, value.name === this.bucket, Object.keys(value).sort()])));
+        }
+      }
+    }
+    let routeCount = 0;
+    for (const zone of zones.result) {
+      const routes = await this.collection<Record<string, unknown>>(`/zones/${encodeURIComponent(zone.id as string)}/workers/routes`);
+      statusCodes.push(...routes.statusCodes);
+      for (const route of routes.result)
+        fail(isObject(route) && typeof route.id === "string" && typeof route.pattern === "string" && (typeof route.script === "string" || route.script === undefined), "H2_RETENTION_PRIVACY_SCHEMA", "zone Worker route does not match the pinned v4 schema");
+      routeCount += routes.result.length;
+    }
     fail(!bucketBound, "H2_RETENTION_WORKER_EXPOSURE", "a Worker has an R2 binding to the dedicated private bucket");
-    const inventoryDigest = sha256(JSON.stringify({ scripts: scripts.result.length, bindings: bindingDigests.sort(), routes: routes.result.length }));
-    return { checkedAt: now(), customDomainsStatusCode: custom.statusCode, managedDomainStatusCode: managed.statusCode, enabledCustomDomains, managedDomainEnabled: false, scriptsStatusCode: scripts.statusCodes[0], bindingsStatusCount, routesStatusCode: routes.statusCodes[0], scriptCount: scripts.result.length, bindingCount, routeCount: routes.result.length, inventoryDigest, noWorkerBucketBinding: true };
+    return {
+      checkedAt: this.clock(),
+      enabledCustomDomains,
+      managedDomainEnabled: false,
+      statusCodeDigest: sha256(JSON.stringify(statusCodes)),
+      requestCount: statusCodes.length,
+      scriptCount: scripts.result.length,
+      dispatchNamespaceCount: dispatchNamespaces.result.length,
+      dispatchScriptCount,
+      pagesProjectCount: pagesProjects.result.length,
+      bindingCount,
+      workersDevEnabled: subdomain.result.enabled as boolean,
+      customWorkerDomainCount: workerDomains.result.length,
+      zoneCount: zones.result.length,
+      routeCount,
+      inventoryDigest: sha256(JSON.stringify({ counts: [scripts.result.length, dispatchNamespaces.result.length, dispatchScriptCount, pagesProjects.result.length, bindingCount, workerDomains.result.length, zones.result.length, routeCount], inventory: inventory.sort(), statusCodeDigest: sha256(JSON.stringify(statusCodes)) })),
+      noR2BucketBinding: true,
+      noDirectPublicDomain: true,
+    };
   }
 }
 
@@ -314,8 +433,8 @@ export async function retainPrivateObjects(store: PrivateObjectStore, inputs: Re
     const metadata = { sha256: digest, bytes: String(input.bytes.length), candidateId: input.candidateId, finalizationId: input.finalizationId };
     const put = await store.putIfAbsent(key, input.bytes, metadata);
     fail(
-      (put.status === "created" && put.statusCode >= 200 && put.statusCode < 300) ||
-        (put.status === "preexisting_identical" && (put.statusCode === 409 || put.statusCode === 412)),
+      (put.status === "new_write" && put.statusCode >= 200 && put.statusCode < 300) ||
+        (put.status === "preexisting_verified" && (put.statusCode === 409 || put.statusCode === 412)),
       "H2_RETENTION_PUT",
       "conditional R2 PUT did not return an allowed status",
     );
@@ -331,19 +450,22 @@ export async function retainPrivateObjects(store: PrivateObjectStore, inputs: Re
     fail(stableHead.etag === head.etag && stableHead.versionId === head.versionId && stableHead.bytes === head.bytes && canonicalMetadata(stableHead.metadata) === canonicalMetadata(metadata), "H2_RETENTION_OBJECT_IDENTITY", "R2 object identity changed after exact readback");
     objects.push({
       artifact_role: input.artifactRole,
-      object_key_sha256: sha256(`gate-h2-r2-object-key-v2\n${key}`),
-      opaque_object_id: path.posix.basename(key),
+      object_key_commitment: sha256(`gate-h2-public-object-key-commitment-v3\0${key}`),
       version_id: head.versionId,
       etag: head.etag,
       sha256: digest,
       bytes: input.bytes.length,
       operations: {
-        put: { status: put.status, status_code: put.statusCode, at: put.at },
+        put: { status: put.status, status_code: put.statusCode, attempted_at: put.attemptedAt, completed_at: put.completedAt },
+        ...(put.status === "preexisting_verified" ? {
+          recovery_head: { status: "preexisting_identity_observed", status_code: put.recoveryHead!.statusCode, at: put.recoveryHead!.at },
+          recovery_get: { status: "preexisting_exact_bytes_verified", status_code: put.recoveryGet!.statusCode, at: put.recoveryGet!.at },
+        } : {}),
         head: { status: "verified", status_code: head.statusCode, at: head.at },
         get: { status: "exact_version_bytes_verified", status_code: get.statusCode, at: get.at },
         stable_head: { status: "verified", status_code: stableHead.statusCode, at: stableHead.at },
       },
-      written_at: put.at,
+      ...(put.status === "new_write" ? { written_at: put.completedAt } : { observed_existing_at: put.observedExistingAt }),
       readback_at: get.at,
       no_public_acl: true,
       readback_verified: true,
@@ -352,28 +474,32 @@ export async function retainPrivateObjects(store: PrivateObjectStore, inputs: Re
   const postflight = await store.verifyPrivate();
   const privacyEvidence = (value: StoragePrivacyEvidence) => ({
     checked_at: value.checkedAt,
-    custom_domains_status_code: value.customDomainsStatusCode,
-    managed_domain_status_code: value.managedDomainStatusCode,
     enabled_custom_domains: value.enabledCustomDomains,
     managed_domain_enabled: value.managedDomainEnabled,
-    scripts_status_code: value.scriptsStatusCode,
-    bindings_status_count: value.bindingsStatusCount,
-    routes_status_code: value.routesStatusCode,
+    status_code_digest: value.statusCodeDigest,
+    request_count: value.requestCount,
     script_count: value.scriptCount,
+    dispatch_namespace_count: value.dispatchNamespaceCount,
+    dispatch_script_count: value.dispatchScriptCount,
+    pages_project_count: value.pagesProjectCount,
     binding_count: value.bindingCount,
+    workers_dev_enabled: value.workersDevEnabled,
+    custom_worker_domain_count: value.customWorkerDomainCount,
+    zone_count: value.zoneCount,
     route_count: value.routeCount,
     inventory_digest: value.inventoryDigest,
-    no_worker_bucket_binding: value.noWorkerBucketBinding,
+    no_r2_bucket_binding: value.noR2BucketBinding,
+    no_direct_public_domain: value.noDirectPublicDomain,
   });
   return { privacy: { preflight: privacyEvidence(preflight), postflight: privacyEvidence(postflight) }, objects };
 }
 
 export type AwsCertificate = { regions: string[]; pem: string; certificate_sha256: string };
 
-export type TrustedExecutableName = "openssl" | "curl" | "ioreg" | "sw_vers" | "uname";
+export type TrustedExecutableName = "openssl" | "curl" | "git" | "ioreg" | "sw_vers" | "uname";
 const TRUSTED_EXECUTABLES: Record<NodeJS.Platform, Partial<Record<TrustedExecutableName, string>>> = {
-  darwin: { openssl: "/usr/bin/openssl", curl: "/usr/bin/curl", ioreg: "/usr/sbin/ioreg", sw_vers: "/usr/bin/sw_vers", uname: "/usr/bin/uname" },
-  linux: { openssl: "/usr/bin/openssl", curl: "/usr/bin/curl", uname: "/usr/bin/uname" },
+  darwin: { openssl: "/usr/bin/openssl", curl: "/usr/bin/curl", git: "/usr/bin/git", ioreg: "/usr/sbin/ioreg", sw_vers: "/usr/bin/sw_vers", uname: "/usr/bin/uname" },
+  linux: { openssl: "/usr/bin/openssl", curl: "/usr/bin/curl", git: "/usr/bin/git", uname: "/usr/bin/uname" },
   aix: {}, android: {}, freebsd: {}, haiku: {}, openbsd: {}, sunos: {}, win32: {}, cygwin: {}, netbsd: {},
 };
 
@@ -414,12 +540,27 @@ export async function securityHelperSelfTest(): Promise<{ status: string; exact_
   const endpoint = `https://${account}.r2.cloudflarestorage.com`;
   const hmacKey = crypto.randomBytes(32).toString("base64");
   const bucketIdentity = crypto.randomBytes(32).toString("hex");
-  type MockOptions = { metadataMismatch?: boolean; identityRace?: boolean; workerBinding?: boolean; incompleteScripts?: boolean; postflightExposure?: boolean };
+  type MockOptions = {
+    apiDrift?: boolean;
+    advancingClock?: boolean;
+    bindingSurface?: "worker" | "dispatch" | "pages";
+    incompletePagination?: boolean;
+    metadataMismatch?: boolean;
+    identityRace?: boolean;
+    permissionError?: boolean;
+    postflightExposure?: boolean;
+    preexisting?: boolean;
+  };
   const makeStore = (options: MockOptions = {}) => {
     const objects = new Map<string, { bytes: Buffer; metadata: Record<string, string>; etag: string; version: string }>();
     const client = { send: async (command: { constructor: { name: string }; input: Record<string, unknown> }) => {
       const input = command.input as { Key: string; Body?: Buffer; Metadata?: Record<string, string>; IfMatch?: string; VersionId?: string };
       if (command.constructor.name === "PutObjectCommand") {
+        if (options.preexisting && objects.has(input.Key)) {
+          const error = new Error("precondition failed") as Error & { $metadata: { httpStatusCode: number } };
+          error.$metadata = { httpStatusCode: 412 };
+          throw error;
+        }
         objects.set(input.Key, { bytes: Buffer.from(input.Body!), metadata: { ...input.Metadata }, etag: '"etag-v1"', version: "version-v1" });
         return { $metadata: { httpStatusCode: 200 }, ETag: '"etag-v1"', VersionId: "version-v1" };
       }
@@ -432,17 +573,30 @@ export async function securityHelperSelfTest(): Promise<{ status: string; exact_
     const request: typeof fetch = async (urlValue) => {
       const url = new URL(String(urlValue));
       const pathname = url.pathname;
+      if (options.permissionError) return new Response(JSON.stringify({ success: false, result: null, errors: [{ code: 10000 }] }), { status: 403 });
       let result: unknown;
       if (pathname.endsWith("/domains/custom")) { customChecks += 1; result = { domains: options.postflightExposure && customChecks === 2 ? [{ enabled: true }] : [] }; }
       else if (pathname.endsWith("/domains/managed")) result = { enabled: false };
-      else if (pathname.endsWith("/workers/scripts")) result = options.incompleteScripts ? [{}] : [{ id: "opaque-script" }];
-      else if (pathname.endsWith("/bindings")) result = options.workerBinding ? [{ type: "r2_bucket", namespace: "dedicated-private" }] : [];
-      else if (pathname.endsWith("/workers/routes")) result = [];
+      else if (pathname.endsWith("/workers/subdomain")) result = options.apiDrift ? { enabled: "false", subdomain: "account" } : { enabled: false, subdomain: "account" };
+      else if (pathname.endsWith("/workers/scripts/opaque-script/settings")) result = { bindings: options.bindingSurface === "worker" ? [{ type: "r2_bucket", name: "PRIVATE", bucket_name: "dedicated-private" }] : [] };
+      else if (pathname.endsWith("/workers/scripts")) result = [{ id: "opaque-script" }];
+      else if (pathname.endsWith("/workers/dispatch/namespaces/opaque-namespace/scripts/opaque-dispatch/settings")) result = { bindings: options.bindingSurface === "dispatch" ? [{ type: "r2_bucket", name: "PRIVATE", bucket_name: "dedicated-private" }] : [] };
+      else if (pathname.endsWith("/workers/dispatch/namespaces/opaque-namespace/scripts")) result = [{ id: "opaque-dispatch" }];
+      else if (pathname.endsWith("/workers/dispatch/namespaces")) result = [{ namespace: "opaque-namespace" }];
+      else if (pathname.endsWith("/pages/projects")) result = [{ name: "opaque-pages-project", deployment_configs: { production: { r2_buckets: options.bindingSurface === "pages" ? { PRIVATE: { name: "dedicated-private" } } : {} }, preview: { r2_buckets: {} } } }];
+      else if (pathname.endsWith("/workers/domains")) result = [];
+      else if (pathname === "/client/v4/zones") result = [{ id: "opaque-zone" }];
+      else if (pathname.endsWith("/zones/opaque-zone/workers/routes")) result = [];
       else return new Response("not found", { status: 404 });
       const collection = url.searchParams.has("page");
-      return new Response(JSON.stringify({ success: true, result, ...(collection ? { result_info: { page: 1, total_pages: 1, count: (result as unknown[]).length, total_count: (result as unknown[]).length } } : {}) }), { status: 200, headers: { "content-type": "application/json" } });
+      const count = collection ? (result as unknown[]).length : 0;
+      return new Response(JSON.stringify({ success: true, result, ...(collection ? { result_info: { page: 1, total_pages: options.incompletePagination ? 2 : 1, count, total_count: count } } : {}) }), { status: 200, headers: { "content-type": "application/json" } });
     };
-    return new CloudflareR2PrivateStore(account, "dedicated-private", "api-token", endpoint, "access-key", "secret-key", "capability", hmacKey, bucketIdentity, request, client);
+    let tick = 0;
+    const clock = options.advancingClock
+      ? () => new Date(Date.parse("2026-07-15T00:00:00.000Z") + tick++ * 10).toISOString()
+      : now;
+    return new CloudflareR2PrivateStore(account, "dedicated-private", "api-token", endpoint, "access-key", "secret-key", "capability", hmacKey, bucketIdentity, request, client, clock);
   };
   await reject("account-endpoint-mismatch", "H2_RETENTION_ACCOUNT_ENDPOINT", () => new CloudflareR2PrivateStore(account, "dedicated-private", "token", "https://ffffffffffffffffffffffffffffffff.r2.cloudflarestorage.com", "access", "secret", "capability", hmacKey, bucketIdentity));
   await reject("weak-hmac-key", "H2_RETENTION_HMAC_KEY", () => new CloudflareR2PrivateStore(account, "dedicated-private", "token", endpoint, "access", "secret", "capability", Buffer.alloc(8, 1).toString("base64"), bucketIdentity));
@@ -454,25 +608,46 @@ export async function securityHelperSelfTest(): Promise<{ status: string; exact_
     { artifactRole: "private_score_detail", bytes: Buffer.from("sealed-detail"), candidateId: "candidate", finalizationId: "a".repeat(64) },
   ];
   const noExposure = await retainPrivateObjects(makeStore(), inputs);
-  fail(noExposure.objects.length === 2 && noExposure.privacy.postflight.no_worker_bucket_binding === true, "H2_SECURITY_TEST_PRIVATE", "no-exposure mock did not complete");
+  fail(noExposure.objects.length === 2 && noExposure.privacy.postflight.no_r2_bucket_binding === true, "H2_SECURITY_TEST_PRIVATE", "no-exposure mock did not complete");
+  const publicReceipt = JSON.stringify(noExposure);
+  const privateKeys = inputs.map((input) => makeStore().objectKey(sha256(input.bytes)));
+  fail(privateKeys.every((key) => !publicReceipt.includes(key) && !publicReceipt.includes(path.posix.basename(key)) && !publicReceipt.includes(key.slice(0, -8))), "H2_SECURITY_TEST_OBJECT_KEY", "public retention evidence leaks a reconstructable private object key");
   const plainKeyStore = makeStore();
   plainKeyStore.objectKey = (contentSha256: string) => `gate-h2/private/sha256/${contentSha256}`;
   await reject("plain-reconstructable-key", "H2_RETENTION_OBJECT_KEY", () => retainPrivateObjects(plainKeyStore, inputs));
   await reject("ifmatch-version-race", "H2_RETENTION_OBJECT_IDENTITY", () => retainPrivateObjects(makeStore({ identityRace: true }), inputs));
   await reject("custom-metadata-mismatch", "H2_RETENTION_METADATA", () => retainPrivateObjects(makeStore({ metadataMismatch: true }), inputs));
-  await reject("worker-r2-binding", "H2_RETENTION_WORKER_EXPOSURE", () => retainPrivateObjects(makeStore({ workerBinding: true }), inputs));
-  await reject("incomplete-worker-enumeration", "H2_RETENTION_PRIVACY_ENUMERATION", () => retainPrivateObjects(makeStore({ incompleteScripts: true }), inputs));
+  await reject("worker-r2-binding", "H2_RETENTION_WORKER_EXPOSURE", () => retainPrivateObjects(makeStore({ bindingSurface: "worker" }), inputs));
+  await reject("dispatch-r2-binding", "H2_RETENTION_WORKER_EXPOSURE", () => retainPrivateObjects(makeStore({ bindingSurface: "dispatch" }), inputs));
+  await reject("pages-r2-binding", "H2_RETENTION_WORKER_EXPOSURE", () => retainPrivateObjects(makeStore({ bindingSurface: "pages" }), inputs));
+  await reject("incomplete-worker-enumeration", "H2_RETENTION_PRIVACY_ENUMERATION", () => retainPrivateObjects(makeStore({ incompletePagination: true }), inputs));
+  await reject("cloudflare-api-drift", "H2_RETENTION_PRIVACY_SCHEMA", () => retainPrivateObjects(makeStore({ apiDrift: true }), inputs));
+  await reject("cloudflare-permission-error", "H2_RETENTION_PRIVACY_PROOF", () => retainPrivateObjects(makeStore({ permissionError: true }), inputs));
   await reject("postflight-public-change", "H2_RETENTION_PUBLIC_EXPOSURE", () => retainPrivateObjects(makeStore({ postflightExposure: true }), inputs));
+  const preexistingStore = makeStore({ preexisting: true, advancingClock: true });
+  await retainPrivateObjects(preexistingStore, inputs);
+  const preexisting = await retainPrivateObjects(preexistingStore, inputs);
+  for (const object of preexisting.objects as Array<Record<string, unknown>>) {
+    const operations = object.operations as Record<string, Record<string, unknown>>;
+    fail(!("written_at" in object) && typeof object.observed_existing_at === "string", "H2_SECURITY_TEST_PREEXISTING_CHRONOLOGY", "preexisting object must record observation, not a fictitious write");
+    fail(Date.parse(String(operations.put.attempted_at)) < Date.parse(String(operations.put.completed_at)) && Date.parse(String(operations.put.completed_at)) < Date.parse(String(operations.recovery_head.at)) && Date.parse(String(operations.recovery_head.at)) < Date.parse(String(operations.recovery_get.at)) && Date.parse(String(operations.recovery_get.at)) <= Date.parse(String(object.observed_existing_at)), "H2_SECURITY_TEST_PREEXISTING_CHRONOLOGY", "preexisting conditional PUT and recovery chronology is not exact");
+  }
   const oldPath = process.env.PATH;
   const shadow = fs.mkdtempSync(path.join(os.tmpdir(), "gate-h2-path-shadow-"));
   try {
     fs.writeFileSync(path.join(shadow, "openssl"), "#!/bin/sh\nexit 0\n", { mode: 0o777 });
+    fs.writeFileSync(path.join(shadow, "git"), "#!/bin/sh\nprintf forged\n", { mode: 0o777 });
     process.env.PATH = `${shadow}:${oldPath ?? ""}`;
     fail(trustedExecutable("openssl") === "/usr/bin/openssl", "H2_SECURITY_TEST_PATH_SHADOW", "PATH shadow changed trusted executable resolution");
+    fail(trustedExecutable("git") === "/usr/bin/git", "H2_SECURITY_TEST_PATH_SHADOW", "PATH shadow changed trusted git resolution");
     await reject("writable-executable", "H2_TRUSTED_EXECUTABLE", () => verifyTrustedExecutable("openssl", path.join(shadow, "openssl")));
+    await reject("writable-git", "H2_TRUSTED_EXECUTABLE", () => verifyTrustedExecutable("git", path.join(shadow, "git")));
     const alias = path.join(shadow, "openssl-alias");
     fs.symlinkSync("/usr/bin/openssl", alias);
     await reject("replaced-executable-alias", "H2_TRUSTED_EXECUTABLE", () => verifyTrustedExecutable("openssl", alias));
+    const gitAlias = path.join(shadow, "git-alias");
+    fs.symlinkSync("/usr/bin/git", gitAlias);
+    await reject("replaced-git-alias", "H2_TRUSTED_EXECUTABLE", () => verifyTrustedExecutable("git", gitAlias));
   } finally { process.env.PATH = oldPath; fs.rmSync(shadow, { recursive: true, force: true }); }
   return { status: "security_helper_self_test_passed", exact_codes: exactCodes };
 }

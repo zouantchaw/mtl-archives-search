@@ -245,6 +245,8 @@ const INTERNAL_SYNTHETIC_CAPABILITY = Symbol("reviewed-metrics-v2-internal-synth
 const INTERNAL_SYNTHETIC_AUTHORITIES = new WeakSet<object>();
 const SYNTHETIC_EVALUATOR_KEYS = crypto.generateKeyPairSync("ed25519");
 const SYNTHETIC_COORDINATOR_KEYS = crypto.generateKeyPairSync("ed25519");
+const SYNTHETIC_STAGE_LEDGER_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), "rmv2-stage-ledger-"));
+const SYNTHETIC_STAGE_OUTPUT_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), "rmv2-stage-outputs-"));
 const ENTITY_IOU_THRESHOLD = 0.5;
 const ENTITY_DUPLICATE_IOU_THRESHOLD = 0.98;
 const ENTITY_BBOX_QUANTIZATION = 10_000;
@@ -266,6 +268,7 @@ const STAGE_ROLES = {
   publication: "publisher",
 } as const;
 type StageId = keyof typeof STAGE_ROLES;
+const STAGE_IDS = Object.keys(STAGE_ROLES) as StageId[];
 const AWS_IID_CERTIFICATES = path.join(ROOT, "docs/dataset-factory/aws-ec2-instance-identity-dsa-certificates-v2.json");
 type InternalSyntheticCapability = { readonly [INTERNAL_SYNTHETIC_CAPABILITY]: true };
 function hasInternalSyntheticCapability(authority: J, capability?: InternalSyntheticCapability): boolean {
@@ -791,13 +794,14 @@ function measureRoute(authorityFile: string, role: string, measuredAt = new Date
   const measuredIdentity = capability?.[INTERNAL_SYNTHETIC_CAPABILITY] === true ? expectedIdentity : currentPhysicalHostIdentity(inventory, measuredAt);
   codedAssert(canon(measuredIdentity) === canon(expectedIdentity), "H2_PHYSICAL_HOST_EVIDENCE", "current physical host evidence does not match coordinator-verified inventory");
   const physical = strictHostRouteMeasurement(actorValue.route);
+  const stage = stageId === undefined ? undefined : stageManifestEntry(authority, stageId);
   const measurement: J = {
     schema_version: "reviewed_metrics_host_route_measurement_v2.0.0",
     candidate_commit: authority.candidate_commit,
     authority_hash: authorityBindingHash(authority),
     role,
-    nonce: stageId ? crypto.randomBytes(32).toString("hex") : actorValue.route_nonce,
-    invocation_id: stageId ? hash(crypto.randomBytes(32)) : actorValue.invocation_id,
+    nonce: stage ? stage.nonce : actorValue.route_nonce,
+    invocation_id: stage ? stage.invocation_id : actorValue.invocation_id,
     surface_inventory_digest: actorValue.surface_inventory_digest,
     canonical_physical_host_id: inventory.canonical_physical_host_id,
     requested_root: actorValue.route,
@@ -836,7 +840,7 @@ function signRouteReceipt(authorityFile: string, measurementFile: string, role: 
   const issuedAt = testNow ?? new Date().toISOString();
   codedAssert(
     measurement.role === role && measurement.stage_id === stageId && measurement.candidate_commit === authority.candidate_commit && measurement.authority_hash === authorityBindingHash(authority) &&
-      (stageId ? /^[a-f0-9]{32,128}$/.test(measurement.nonce) && /^[a-f0-9]{64}$/.test(measurement.invocation_id) : measurement.nonce === actorValue.route_nonce && measurement.invocation_id === actorValue.invocation_id) &&
+      (stageId ? measurement.nonce === stageManifestEntry(authority, stageId).nonce && measurement.invocation_id === stageManifestEntry(authority, stageId).invocation_id : measurement.nonce === actorValue.route_nonce && measurement.invocation_id === actorValue.invocation_id) &&
       measurement.surface_inventory_digest === actorValue.surface_inventory_digest && measurement.canonical_physical_host_id === inventory.canonical_physical_host_id && measurement.requested_root === actorValue.route && measurement.canonical_root === actorValue.canonical_root,
     "H2_ROUTE_MEASUREMENT_BINDING",
     "coordinator refused measurement that does not exactly match candidate, authority, role, nonce, inventory, and route",
@@ -884,48 +888,193 @@ function signRouteReceipt(authorityFile: string, measurementFile: string, role: 
   return receipt;
 }
 
-type StageConsumption = { marker: string; completion: string; receipt: J; startedAt: string; stageId: StageId };
-function beginStageConsumption(authority: J, receiptFile: string, directory: string, stageId: StageId, clock: Clock = () => new Date()): StageConsumption {
+type StageConsumption = { marker: string; completion: string; receipt: J; startedAt: string; stageId: StageId; authority: J; ledgerRoot: string; ledgerFd: number; capability?: InternalSyntheticCapability };
+function stageManifestEntry(authority: J, stageId: StageId): J {
+  const entries = authority.stage_execution?.stages;
+  codedAssert(Array.isArray(entries), "H2_STAGE_MANIFEST_EXACT_SET", "authority stage manifest is missing");
+  const entry = entries.find((candidate: J) => candidate.stage_id === stageId);
+  codedAssert(entry !== undefined, "H2_STAGE_MANIFEST_EXACT_SET", `authority stage ${stageId} is missing`);
+  return entry;
+}
+function assertCurrentStageHostAndRoute(authority: J, entry: J, receipt: J, measuredAt: string, capability?: InternalSyntheticCapability): void {
+  const actorValue = authority[entry.role];
+  const inventory = authority.trusted_surface_inventory.find((candidate: J) => trustedInventoryDigest(candidate) === actorValue.surface_inventory_digest);
+  codedAssert(inventory !== undefined && inventory.canonical_physical_host_id === receipt.canonical_physical_host_id, "H2_ROUTE_CURRENT_HOST", "stage inventory or physical host binding is missing");
+  const expectedIdentity = structuredClone(inventory.physical_host_identity);
+  delete expectedIdentity.measured_at;
+  delete expectedIdentity.coordinator_verification_pin;
+  const currentIdentity = capability?.[INTERNAL_SYNTHETIC_CAPABILITY] === true ? expectedIdentity : currentPhysicalHostIdentity(inventory, measuredAt);
+  codedAssert(canon(currentIdentity) === canon(expectedIdentity) && canonicalPhysicalHostId(inventory.physical_host_identity) === receipt.canonical_physical_host_id, "H2_ROUTE_CURRENT_HOST", "actual current physical host differs from the authority stage host");
+  const physical = strictHostRouteMeasurement(actorValue.route);
+  codedAssert(physical.canonicalRoot === receipt.canonical_root && physical.existingAncestor === receipt.existing_ancestor && physical.stat.dev === receipt.ancestor_device && physical.stat.ino === receipt.ancestor_inode, "H2_ROUTE_CANONICAL_MISMATCH", "actual stage route differs from the fresh signed route measurement");
+}
+function canonicalLedgerRoot(authority: J): { root: string; fd: number } {
+  const declared = authority.stage_execution?.ledger_root;
+  codedAssert(typeof declared === "string" && path.isAbsolute(declared) && path.normalize(declared) === declared, "H2_STAGE_LEDGER_ROOT", "authority ledger root must be one normalized absolute path");
+  const root = fs.realpathSync(declared);
+  codedAssert(root === authority.stage_execution.ledger_canonical_root, "H2_STAGE_LEDGER_ROOT", "authority ledger root canonical path differs");
+  const fd = fs.openSync(root, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+  const stat = fs.fstatSync(fd);
+  const pathStat = fs.lstatSync(root);
+  codedAssert(stat.isDirectory() && pathStat.isDirectory() && stat.dev === pathStat.dev && stat.ino === pathStat.ino && stat.dev === authority.stage_execution.ledger_device && stat.ino === authority.stage_execution.ledger_inode && stat.uid === process.getuid!() && (stat.mode & 0o022) === 0, "H2_STAGE_LEDGER_ROOT", "authority ledger root must remain the exact owner-controlled non-writable directory");
+  return { root, fd };
+}
+function assertLedgerDescriptor(root: string, fd: number): void {
+  const opened = fs.fstatSync(fd);
+  const current = fs.lstatSync(root);
+  codedAssert(opened.isDirectory() && current.isDirectory() && opened.dev === current.dev && opened.ino === current.ino, "H2_STAGE_LEDGER_ROOT", "stage ledger root changed while retained");
+}
+function stableStageOutputPin(file: string, artifactRole: string): J {
+  let fd: number | undefined;
+  try {
+    fd = fs.openSync(file, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+    const before = fs.fstatSync(fd);
+    codedAssert(before.isFile() && before.uid === process.getuid!() && before.nlink === 1 && (before.mode & 0o022) === 0, "H2_STAGE_OUTPUT_SUBSTITUTION", "declared stage output must be an owner-controlled one-link non-writable regular file");
+    const raw = fs.readFileSync(fd);
+    const after = fs.fstatSync(fd);
+    const current = fs.lstatSync(file);
+    codedAssert(before.dev === after.dev && before.ino === after.ino && before.size === after.size && before.mtimeMs === after.mtimeMs && current.dev === before.dev && current.ino === before.ino && raw.length === before.size, "H2_STAGE_OUTPUT_SUBSTITUTION", "declared stage output changed during exact-byte hashing");
+    return { artifact_role: artifactRole, sha256: hash(raw), bytes: raw.length };
+  } catch (error) {
+    if (error instanceof GateH2Error) throw error;
+    throw new GateH2Error("H2_STAGE_OUTPUT_SUBSTITUTION", "declared stage output could not be opened safely");
+  } finally { if (fd !== undefined) fs.closeSync(fd); }
+}
+function beginStageConsumption(authority: J, receiptFile: string, stageId: StageId, clock: Clock = () => new Date(), capability?: InternalSyntheticCapability): StageConsumption {
   const receipt = load(path.resolve(receiptFile));
   schema("stage-route-receipt.schema.v2.json", receipt);
-  const role = STAGE_ROLES[stageId];
+  const entry = stageManifestEntry(authority, stageId);
+  const role = entry.role;
   const actorValue = authority[role];
   const now = clock().getTime();
   const issued = Date.parse(receipt.issued_at);
   const expires = Date.parse(receipt.expires_at);
   const measured = Date.parse(receipt.measured_at);
   codedAssert(receipt.stage_id === stageId && receipt.role === role && actorValue?.role === role, "H2_ROUTE_STAGE_ROLE", "stage receipt has the wrong stage or role");
-  codedAssert(receipt.candidate_commit === authority.candidate_commit && receipt.authority_hash === authorityBindingHash(authority) && receipt.surface_id === actorValue.surface_id && receipt.surface_inventory_digest === actorValue.surface_inventory_digest && receipt.requested_root === actorValue.route && receipt.canonical_root === actorValue.canonical_root, "H2_ROUTE_RECEIPT_BINDING", "stage receipt candidate, authority, surface, or route binding differs");
-  codedAssert(Number.isFinite(now) && Number.isFinite(issued) && Number.isFinite(expires) && Number.isFinite(measured) && now >= Date.parse(authority.authorized_at) && now <= Date.parse(authority.expires_at) && measured <= issued && issued <= now && now - issued <= ROUTE_IMMEDIATE_BOUND_MS && now <= expires, "H2_ROUTE_RECEIPT_INVOCATION_WINDOW", "actual command start is outside the authority or fresh stage receipt window");
+  codedAssert(receipt.nonce === entry.nonce && receipt.invocation_id === entry.invocation_id, "H2_STAGE_PRECOMMIT_BINDING", "stage receipt nonce or invocation differs from the authority precommitment");
+  codedAssert(receipt.candidate_commit === authority.candidate_commit && receipt.authority_hash === authorityBindingHash(authority) && receipt.surface_id === actorValue.surface_id && receipt.surface_inventory_digest === actorValue.surface_inventory_digest && receipt.canonical_physical_host_id === actorValue.route_receipt.canonical_physical_host_id && receipt.requested_root === actorValue.route && receipt.canonical_root === actorValue.canonical_root, "H2_ROUTE_RECEIPT_BINDING", "stage receipt candidate, authority, host, surface, or route binding differs");
+  codedAssert(Number.isFinite(now) && Number.isFinite(issued) && Number.isFinite(expires) && Number.isFinite(measured) && now >= Date.parse(authority.authorized_at) && now <= Date.parse(authority.expires_at) && measured <= issued && issued <= now && issued - measured <= ROUTE_IMMEDIATE_BOUND_MS && now - issued <= ROUTE_IMMEDIATE_BOUND_MS && now <= expires && receipt.role_event_started_at === receipt.issued_at && receipt.role_event_ended_at === receipt.expires_at, "H2_ROUTE_RECEIPT_INVOCATION_WINDOW", "actual command start is outside the authority or fresh stage receipt window");
+  const measurement = { schema_version: "reviewed_metrics_host_route_measurement_v2.0.0", candidate_commit: receipt.candidate_commit, authority_hash: receipt.authority_hash, role: receipt.role, nonce: receipt.nonce, invocation_id: receipt.invocation_id, surface_inventory_digest: receipt.surface_inventory_digest, canonical_physical_host_id: receipt.canonical_physical_host_id, requested_root: receipt.requested_root, canonical_root: receipt.canonical_root, existing_ancestor: receipt.existing_ancestor, ancestor_device: receipt.ancestor_device, ancestor_inode: receipt.ancestor_inode, measured_at: receipt.measured_at, stage_id: receipt.stage_id };
+  codedAssert(hash(routeMeasurementPayload(measurement)) === receipt.measurement_sha256, "H2_ROUTE_MEASUREMENT_BINDING", "stage receipt does not bind the exact fresh measurement");
   let signatureValid = false;
   try { signatureValid = crypto.verify(null, routeReceiptPayload(receipt), authority.coordinator_trust.public_key_pem, Buffer.from(receipt.signature_base64, "base64")); } catch { signatureValid = false; }
   codedAssert(signatureValid, "H2_ROUTE_RECEIPT_SIGNATURE", "stage receipt coordinator signature is invalid");
-  const root = fs.realpathSync(path.resolve(directory));
-  const rootStat = fs.lstatSync(root);
-  codedAssert(rootStat.isDirectory() && rootStat.uid === process.getuid!() && (rootStat.mode & 0o022) === 0, "H2_ROUTE_CONSUMPTION_DIRECTORY", "durable stage consumption directory must be a canonical owner-controlled non-writable directory");
-  const key = hash(`gate-h2-stage-consumption-v2\n${receipt.invocation_id}\n${hash(routeReceiptPayload(receipt))}`);
+  assertCurrentStageHostAndRoute(authority, entry, receipt, new Date(now).toISOString(), capability);
+  const { root, fd: ledgerFd } = canonicalLedgerRoot(authority);
+  const key = hash(`gate-h2-stage-ledger-v3\n${authority.candidate_commit}\n${authorityBindingHash(authority)}\n${stageId}`);
   const marker = path.join(root, `${key}.started.json`);
   const completion = path.join(root, `${key}.completed.json`);
-  const evidence = { schema_version: "reviewed_metrics_stage_consumption_v2.0.0", status: "started", candidate_commit: authority.candidate_commit, authority_hash: authorityBindingHash(authority), stage_id: stageId, role, surface_id: receipt.surface_id, route: receipt.canonical_root, invocation_id: receipt.invocation_id, receipt_sha256: hash(Buffer.from(pretty(receipt))), command_started_at: new Date(now).toISOString() };
+  codedAssert(!fs.existsSync(marker) && !fs.existsSync(completion), "H2_ROUTE_STAGE_REPLAY", "candidate/authority/stage ledger entry already exists");
+  for (const output of entry.outputs) codedAssert(!fs.existsSync(output.path), "H2_STAGE_OUTPUT_PREEXISTS", `declared ${stageId} output exists before stage begin`);
+  const evidence = { schema_version: "reviewed_metrics_stage_begin_v3.0.0", status: "begun", candidate_commit: authority.candidate_commit, authority_hash: authorityBindingHash(authority), stage_id: stageId, role, surface_id: receipt.surface_id, physical_host_id: receipt.canonical_physical_host_id, invocation_id: receipt.invocation_id, nonce: receipt.nonce, receipt_sha256: hash(Buffer.from(pretty(receipt))), route_receipt: receipt, command_started_at: new Date(now).toISOString() };
   let fd: number | undefined;
   try {
     fd = fs.openSync(marker, fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_NOFOLLOW, 0o400);
     fs.writeFileSync(fd, pretty(evidence)); fs.fsyncSync(fd);
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "EEXIST") throw new GateH2Error("H2_ROUTE_INVOCATION_REPLAY", "stage receipt was already consumed");
+    if ((error as NodeJS.ErrnoException).code === "EEXIST") throw new GateH2Error("H2_ROUTE_STAGE_REPLAY", "candidate/authority/stage was already begun");
     throw error;
   } finally { if (fd !== undefined) fs.closeSync(fd); }
   fsyncDirectory(root);
-  return { marker, completion, receipt, startedAt: evidence.command_started_at, stageId };
+  assertLedgerDescriptor(root, ledgerFd);
+  return { marker, completion, receipt, startedAt: evidence.command_started_at, stageId, authority, ledgerRoot: root, ledgerFd, capability };
 }
 function completeStageConsumption(consumption: StageConsumption, clock: Clock = () => new Date()): void {
-  codedAssert(fs.existsSync(consumption.marker), "H2_ROUTE_CONSUMPTION_MARKER", "stage start marker is missing before completion");
-  const completedAt = clock().toISOString();
-  codedAssert(Date.parse(consumption.startedAt) <= Date.parse(completedAt) && Date.parse(completedAt) <= Date.parse(consumption.receipt.expires_at), "H2_ROUTE_EVENT_WINDOW", "actual stage completion or freeze is outside the signed receipt window");
-  const value = { schema_version: "reviewed_metrics_stage_consumption_v2.0.0", status: "completed", stage_id: consumption.stageId, invocation_id: consumption.receipt.invocation_id, receipt_sha256: hash(Buffer.from(pretty(consumption.receipt))), start_marker_sha256: hash(fs.readFileSync(consumption.marker)), command_started_at: consumption.startedAt, command_completed_at: completedAt };
-  const fd = fs.openSync(consumption.completion, fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_NOFOLLOW, 0o400);
-  try { fs.writeFileSync(fd, pretty(value)); fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
-  fsyncDirectory(path.dirname(consumption.completion));
+  try {
+    assertLedgerDescriptor(consumption.ledgerRoot, consumption.ledgerFd);
+    codedAssert(fs.existsSync(consumption.marker), "H2_ROUTE_CONSUMPTION_MARKER", "stage begin marker is missing before completion");
+    codedAssert(!fs.existsSync(consumption.completion), "H2_ROUTE_STAGE_REPLAY", "stage already completed");
+    const completedAt = clock().toISOString();
+    const entry = stageManifestEntry(consumption.authority, consumption.stageId);
+    codedAssert(Date.parse(consumption.startedAt) <= Date.parse(completedAt) && Date.parse(completedAt) <= Date.parse(consumption.receipt.expires_at) && Date.parse(completedAt) <= Date.parse(consumption.authority.expires_at), "H2_ROUTE_EVENT_WINDOW", "actual stage completion is outside the signed receipt or authority window");
+    assertCurrentStageHostAndRoute(consumption.authority, entry, consumption.receipt, completedAt, consumption.capability);
+    const outputs = entry.outputs.map((output: J) => stableStageOutputPin(output.path, output.artifact_role));
+    const value = { schema_version: "reviewed_metrics_stage_completion_v3.0.0", status: "completed", candidate_commit: consumption.authority.candidate_commit, authority_hash: authorityBindingHash(consumption.authority), stage_id: consumption.stageId, role: entry.role, surface_id: consumption.receipt.surface_id, physical_host_id: consumption.receipt.canonical_physical_host_id, invocation_id: consumption.receipt.invocation_id, nonce: consumption.receipt.nonce, receipt_sha256: hash(Buffer.from(pretty(consumption.receipt))), begin_marker_sha256: hash(fs.readFileSync(consumption.marker)), command_started_at: consumption.startedAt, command_completed_at: completedAt, outputs };
+    const fd = fs.openSync(consumption.completion, fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_NOFOLLOW, 0o400);
+    try { fs.writeFileSync(fd, pretty(value)); fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
+    fsyncDirectory(consumption.ledgerRoot);
+    assertLedgerDescriptor(consumption.ledgerRoot, consumption.ledgerFd);
+  } finally { fs.closeSync(consumption.ledgerFd); }
+}
+function completedStageLedgerEvidence(authority: J, verifyCurrentOutputs = true): J {
+  const { root, fd } = canonicalLedgerRoot(authority);
+  try {
+    const expectedMembers: string[] = [];
+    const publicStages: J[] = [];
+    let priorCompletedAt: string | undefined;
+    for (const entry of authority.stage_execution.stages) {
+      const stageId = entry.stage_id as StageId;
+      const key = hash(`gate-h2-stage-ledger-v3\n${authority.candidate_commit}\n${authorityBindingHash(authority)}\n${stageId}`);
+      const beginName = `${key}.started.json`;
+      const completionName = `${key}.completed.json`;
+      expectedMembers.push(beginName, completionName);
+      codedAssert(fs.existsSync(path.join(root, beginName)) && fs.existsSync(path.join(root, completionName)), "H2_STAGE_LEDGER_MARKER", `stage ${stageId} requires both begin and completion markers`);
+      const beginRaw = fs.readFileSync(path.join(root, beginName));
+      const completionRaw = fs.readFileSync(path.join(root, completionName));
+      const begin = JSON.parse(beginRaw.toString("utf8"));
+      const completion = JSON.parse(completionRaw.toString("utf8"));
+      codedAssert(beginRaw.equals(Buffer.from(pretty(begin))) && completionRaw.equals(Buffer.from(pretty(completion))), "H2_STAGE_LEDGER_BYTES", "stage ledger markers must use exact canonical bytes");
+      const receipt = begin.route_receipt;
+      codedAssert(begin.schema_version === "reviewed_metrics_stage_begin_v3.0.0" && begin.status === "begun" && completion.schema_version === "reviewed_metrics_stage_completion_v3.0.0" && completion.status === "completed", "H2_STAGE_LEDGER_MARKER", "stage begin/completion marker schema differs");
+      codedAssert(begin.candidate_commit === authority.candidate_commit && begin.authority_hash === authorityBindingHash(authority) && completion.candidate_commit === authority.candidate_commit && completion.authority_hash === authorityBindingHash(authority) && begin.stage_id === stageId && completion.stage_id === stageId && begin.role === entry.role && completion.role === entry.role && begin.invocation_id === entry.invocation_id && completion.invocation_id === entry.invocation_id && begin.nonce === entry.nonce && completion.nonce === entry.nonce, "H2_STAGE_PRECOMMIT_BINDING", "stage ledger marker differs from exact authority precommitment");
+      codedAssert(begin.receipt_sha256 === hash(Buffer.from(pretty(receipt))) && completion.receipt_sha256 === begin.receipt_sha256 && completion.begin_marker_sha256 === hash(beginRaw), "H2_STAGE_LEDGER_MARKER", "stage marker receipt or predecessor hash differs");
+      let signatureValid = false;
+      try { signatureValid = crypto.verify(null, routeReceiptPayload(receipt), authority.coordinator_trust.public_key_pem, Buffer.from(receipt.signature_base64, "base64")); } catch { signatureValid = false; }
+      codedAssert(signatureValid, "H2_ROUTE_RECEIPT_SIGNATURE", "stage ledger route receipt signature is invalid");
+      const actorValue = authority[entry.role];
+      codedAssert(receipt.stage_id === stageId && receipt.role === entry.role && receipt.nonce === entry.nonce && receipt.invocation_id === entry.invocation_id && receipt.candidate_commit === authority.candidate_commit && receipt.authority_hash === authorityBindingHash(authority) && receipt.surface_id === actorValue.surface_id && receipt.surface_inventory_digest === actorValue.surface_inventory_digest && receipt.canonical_physical_host_id === begin.physical_host_id && receipt.requested_root === actorValue.route && receipt.canonical_root === actorValue.canonical_root, "H2_ROUTE_RECEIPT_BINDING", "stage ledger receipt binding differs");
+      const measurement = { schema_version: "reviewed_metrics_host_route_measurement_v2.0.0", candidate_commit: receipt.candidate_commit, authority_hash: receipt.authority_hash, role: receipt.role, nonce: receipt.nonce, invocation_id: receipt.invocation_id, surface_inventory_digest: receipt.surface_inventory_digest, canonical_physical_host_id: receipt.canonical_physical_host_id, requested_root: receipt.requested_root, canonical_root: receipt.canonical_root, existing_ancestor: receipt.existing_ancestor, ancestor_device: receipt.ancestor_device, ancestor_inode: receipt.ancestor_inode, measured_at: receipt.measured_at, stage_id: receipt.stage_id };
+      codedAssert(receipt.measurement_sha256 === hash(routeMeasurementPayload(measurement)), "H2_ROUTE_MEASUREMENT_BINDING", "stage ledger receipt measurement hash differs");
+      codedAssert(Date.parse(authority.authorized_at) <= Date.parse(receipt.measured_at) && Date.parse(receipt.measured_at) <= Date.parse(receipt.issued_at) && Date.parse(receipt.issued_at) <= Date.parse(begin.command_started_at) && Date.parse(begin.command_started_at) <= Date.parse(completion.command_completed_at) && Date.parse(completion.command_completed_at) <= Date.parse(receipt.expires_at) && Date.parse(receipt.expires_at) <= Date.parse(authority.expires_at), "H2_STAGE_LEDGER_CHRONOLOGY", "stage ledger receipt/begin/completion chronology differs");
+      if (priorCompletedAt !== undefined) codedAssert(Date.parse(priorCompletedAt) <= Date.parse(begin.command_started_at), "H2_STAGE_LEDGER_CHRONOLOGY", "exact production stages overlap or execute out of order");
+      priorCompletedAt = completion.command_completed_at;
+      same(completion.outputs.map((output: J) => output.artifact_role), entry.outputs.map((output: J) => output.artifact_role), `stage ${stageId} exact output roles`);
+      if (verifyCurrentOutputs) for (let index = 0; index < entry.outputs.length; index++) {
+        const raw = fs.readFileSync(entry.outputs[index].path);
+        codedAssert(completion.outputs[index].sha256 === hash(raw) && completion.outputs[index].bytes === raw.length, "H2_STAGE_OUTPUT_SUBSTITUTION", `stage ${stageId} declared output bytes changed after completion`);
+      }
+      publicStages.push({
+        stage_id: stageId,
+        role: entry.role,
+        invocation_commitment: hash(`gate-h2-public-stage-invocation-v3\0${entry.invocation_id}`),
+        nonce_commitment: hash(`gate-h2-public-stage-nonce-v3\0${entry.nonce}`),
+        physical_host_commitment: hash(`gate-h2-public-stage-host-v3\0${begin.physical_host_id}`),
+        receipt_sha256: begin.receipt_sha256,
+        receipt_signature_sha256: hash(Buffer.from(receipt.signature_base64, "base64")),
+        begin_marker_sha256: hash(beginRaw),
+        completion_marker_sha256: hash(completionRaw),
+        command_started_at: begin.command_started_at,
+        command_completed_at: completion.command_completed_at,
+        outputs: completion.outputs,
+      });
+    }
+    exactSet(files(root), expectedMembers, "canonical stage ledger members");
+    assertLedgerDescriptor(root, fd);
+    return {
+      schema_version: "reviewed_metrics_stage_execution_ledger_evidence_v2.0.0",
+      candidate_id: CANDIDATE_ID,
+      candidate_commit: authority.candidate_commit,
+      authority_hash: authorityBindingHash(authority),
+      ledger_root_commitment: hash(`gate-h2-public-ledger-root-v3\0${authority.stage_execution.ledger_canonical_root}\0${authority.stage_execution.ledger_device}\0${authority.stage_execution.ledger_inode}`),
+      stage_count: STAGE_IDS.length,
+      stages: publicStages,
+    };
+  } finally { fs.closeSync(fd); }
+}
+function validateStageExecutionEvidence(value: J, authority: J, requirePrivateLedger = false): void {
+  schema("stage-execution-ledger.schema.v2.json", value);
+  codedAssert(value.candidate_commit === authority.candidate_commit && value.authority_hash === authorityBindingHash(authority) && value.stage_count === STAGE_IDS.length, "H2_STAGE_LEDGER_EVIDENCE", "public stage ledger evidence identity differs");
+  same(value.stages.map((entry: J) => entry.stage_id), STAGE_IDS, "public exact ordered stage evidence");
+  unique(value.stages.map((entry: J) => entry.invocation_commitment), "public stage invocation commitment");
+  unique(value.stages.map((entry: J) => entry.nonce_commitment), "public stage nonce commitment");
+  for (let index = 0; index < STAGE_IDS.length; index++) {
+    const stage = value.stages[index];
+    const entry = authority.stage_execution.stages[index];
+    codedAssert(stage.role === entry.role && stage.invocation_commitment === hash(`gate-h2-public-stage-invocation-v3\0${entry.invocation_id}`) && stage.nonce_commitment === hash(`gate-h2-public-stage-nonce-v3\0${entry.nonce}`), "H2_STAGE_PRECOMMIT_BINDING", "public stage evidence commitments differ from authority");
+    same(stage.outputs.map((output: J) => output.artifact_role), entry.outputs.map((output: J) => output.artifact_role), `public stage ${stage.stage_id} output roles`);
+    if (index > 0) codedAssert(Date.parse(value.stages[index - 1].command_completed_at) <= Date.parse(stage.command_started_at), "H2_STAGE_LEDGER_CHRONOLOGY", "public stage evidence order overlaps");
+  }
+  if (requirePrivateLedger) same(value, completedStageLedgerEvidence(authority), "public/private completed stage ledger evidence");
 }
 function physicalPathSafety(output: string): string {
   assert(
@@ -1523,13 +1672,17 @@ async function candidateDocuments(output: string): Promise<Map<string, J>> {
     prediction_exists: false,
     gold_exists: false,
     security_controls: {
-      exact_stage_receipts: Object.keys(STAGE_ROLES),
-      durable_one_use_markers: true,
+      exact_stage_receipts: [...STAGE_IDS],
+      authority_precommitted_stage_nonce_and_invocation: true,
+      canonical_candidate_authority_stage_ledger: true,
+      public_stage_execution_ledger_evidence: true,
       actual_process_chronology: true,
       hmac_opaque_private_keys: true,
+      public_object_key_commitment_only: true,
       conditional_versioned_readback: true,
-      worker_binding_privacy_proof: true,
+      complete_cloudflare_exposure_audit: true,
       trusted_absolute_executables: true,
+      trusted_absolute_git: true,
     },
     mutations: authority.mutations,
     stop_conditions: [],
@@ -2785,8 +2938,7 @@ function validatePrivateExpectedEnvelopeValue(
   );
   if (authority) {
     assert(
-      authority.schema_version ===
-        "reviewed_metrics_execution_authorization_v2.2.0",
+      ["reviewed_metrics_execution_authorization_v2.2.0", "reviewed_metrics_execution_authorization_v2.3.0"].includes(authority.schema_version),
       "private envelope chronology requires v2.2 unified authority",
     );
     codedAssert(
@@ -2839,8 +2991,7 @@ function validateSourceSearchFreezeValue(
 ): void {
   schema("source-search-freeze.schema.v2.json", freeze);
   assert(
-    authority.schema_version ===
-      "reviewed_metrics_execution_authorization_v2.2.0",
+    ["reviewed_metrics_execution_authorization_v2.2.0", "reviewed_metrics_execution_authorization_v2.3.0"].includes(authority.schema_version),
     "source-search freeze requires v2.2 unified authority",
   );
   assert(
@@ -2962,7 +3113,7 @@ function freezeSourceSearchPrediction(
 }
 function gitExecutionAuthorityEvidence(): ExecutionAuthorityEvidence {
   const git = (args: string[]): Buffer =>
-    execFileSync("git", args, { cwd: ROOT, stdio: ["ignore", "pipe", "pipe"] });
+    execFileSync(trustedExecutable("git"), args, { cwd: ROOT, stdio: ["ignore", "pipe", "pipe"] });
   let tracked = true;
   let headBytes: Buffer = Buffer.alloc(0);
   let indexBytes: Buffer = Buffer.alloc(0);
@@ -2976,7 +3127,7 @@ function gitExecutionAuthorityEvidence(): ExecutionAuthorityEvidence {
   const clean = (cached: boolean): boolean => {
     try {
       execFileSync(
-        "git",
+        trustedExecutable("git"),
         [
           "diff",
           "--quiet",
@@ -3104,7 +3255,7 @@ function validateAuthorityPrincipals(value: J): void {
         !forbiddenSessions.has(actor.session_id),
       `authority forbidden prior reviewer overlap: ${actor.role}`,
     );
-  if (value.schema_version === "reviewed_metrics_execution_authorization_v2.2.0") {
+  if (["reviewed_metrics_execution_authorization_v2.2.0", "reviewed_metrics_execution_authorization_v2.3.0"].includes(value.schema_version)) {
     const isolated = [
       value.implementation,
       value.predictor,
@@ -3180,11 +3331,30 @@ function validateAuthorityPrincipals(value: J): void {
         "H2_EVALUATOR_PUBLIC_KEY",
         `signing key forbidden for ${actorValue.role}`,
       );
+    if (value.schema_version === "reviewed_metrics_execution_authorization_v2.3.0") {
+      const stageExecution = value.stage_execution;
+      codedAssert(path.isAbsolute(stageExecution.ledger_root) && path.normalize(stageExecution.ledger_root) === stageExecution.ledger_root && path.isAbsolute(stageExecution.ledger_canonical_root) && path.normalize(stageExecution.ledger_canonical_root) === stageExecution.ledger_canonical_root, "H2_STAGE_LEDGER_ROOT", "stage ledger roots must be normalized absolute paths");
+      same(stageExecution.stages.map((entry: J) => entry.stage_id), STAGE_IDS, "authority exact ordered stage manifest");
+      exactSet(stageExecution.stages.map((entry: J) => entry.stage_id), STAGE_IDS, "authority stage manifest");
+      unique(stageExecution.stages.map((entry: J) => entry.nonce), "stage nonce");
+      unique(stageExecution.stages.map((entry: J) => entry.invocation_id), "stage invocation ID");
+      const outputPaths: string[] = [];
+      for (const entry of stageExecution.stages) {
+        codedAssert(entry.role === STAGE_ROLES[entry.stage_id as StageId], "H2_ROUTE_STAGE_ROLE", `authority stage role mismatch for ${entry.stage_id}`);
+        codedAssert(entry.outputs.length > 0, "H2_STAGE_OUTPUT_DECLARATION", `authority stage ${entry.stage_id} must declare outputs`);
+        for (const output of entry.outputs) {
+          codedAssert(path.isAbsolute(output.path) && path.normalize(output.path) === output.path, "H2_STAGE_OUTPUT_DECLARATION", "stage output paths must be normalized absolute paths");
+          codedAssert(!pathInside(output.path, stageExecution.ledger_canonical_root), "H2_STAGE_OUTPUT_DECLARATION", "stage outputs must remain outside the canonical marker-only ledger root");
+          outputPaths.push(output.path);
+        }
+      }
+      unique(outputPaths, "stage output path");
+    }
   }
 }
 function validateAuthorityValue(value: J): void {
   schema("execution-authorization.schema.v2.json", value);
-  before(value.authorized_at, value.started_at, "authorization before visual prediction"); before(value.started_at, value.ended_at, "visual prediction execution"); before(value.ended_at, value.freeze_at, "visual prediction before freeze"); if (value.schema_version === "reviewed_metrics_execution_authorization_v2.2.0") { before(value.freeze_at, value.source_search_started_at, "visual freeze before source-search run"); before(value.source_search_started_at, value.source_search_ended_at, "source-search execution"); before(value.source_search_ended_at, value.source_search_freeze_at, "source-search prediction before freeze"); before(value.source_search_freeze_at, value.source_dossier_authored_at, "source-search freeze before dossier authoring"); before(value.source_dossier_authored_at, value.private_envelope_sealed_at, "dossier before private envelope seal"); before(value.private_envelope_sealed_at, value.expires_at, "private envelope before authorization expiry"); } else before(value.freeze_at, value.expires_at, "visual freeze authorization expiry");
+  before(value.authorized_at, value.started_at, "authorization before visual prediction"); before(value.started_at, value.ended_at, "visual prediction execution"); before(value.ended_at, value.freeze_at, "visual prediction before freeze"); if (["reviewed_metrics_execution_authorization_v2.2.0", "reviewed_metrics_execution_authorization_v2.3.0"].includes(value.schema_version)) { before(value.freeze_at, value.source_search_started_at, "visual freeze before source-search run"); before(value.source_search_started_at, value.source_search_ended_at, "source-search execution"); before(value.source_search_ended_at, value.source_search_freeze_at, "source-search prediction before freeze"); before(value.source_search_freeze_at, value.source_dossier_authored_at, "source-search freeze before dossier authoring"); before(value.source_dossier_authored_at, value.private_envelope_sealed_at, "dossier before private envelope seal"); before(value.private_envelope_sealed_at, value.expires_at, "private envelope before authorization expiry"); } else before(value.freeze_at, value.expires_at, "visual freeze authorization expiry");
   validateAuthorityPrincipals(value);
 }
 function executionAuthority(
@@ -4240,7 +4410,7 @@ function validatePrivateRetentionReceiptValue(
   codedAssert(value.objects.every((object: J) => typeof object.etag === "string" && object.etag.length > 0), "H2_RETENTION_OBJECT_IDENTITY", "private retention ETag is mandatory");
   codedAssert(value.objects.every((object: J) => object.no_public_acl === true), "H2_RETENTION_PUBLIC_ACL", "private retention objects must attest no public ACL");
   codedAssert(value.objects.every((object: J) => object.readback_verified === true), "H2_RETENTION_READBACK", "private retention objects require byte-identical readback");
-  codedAssert(value.privacy_verification?.preflight?.enabled_custom_domains === 0 && value.privacy_verification?.preflight?.managed_domain_enabled === false && value.privacy_verification?.preflight?.no_worker_bucket_binding === true && value.privacy_verification?.postflight?.enabled_custom_domains === 0 && value.privacy_verification?.postflight?.managed_domain_enabled === false && value.privacy_verification?.postflight?.no_worker_bucket_binding === true, "H2_RETENTION_PUBLIC_EXPOSURE", "private retention requires preflight and postflight proof for domains, r2.dev, and Worker bindings");
+  codedAssert(value.privacy_verification?.preflight?.enabled_custom_domains === 0 && value.privacy_verification?.preflight?.managed_domain_enabled === false && value.privacy_verification?.preflight?.no_r2_bucket_binding === true && value.privacy_verification?.preflight?.no_direct_public_domain === true && value.privacy_verification?.postflight?.enabled_custom_domains === 0 && value.privacy_verification?.postflight?.managed_domain_enabled === false && value.privacy_verification?.postflight?.no_r2_bucket_binding === true && value.privacy_verification?.postflight?.no_direct_public_domain === true, "H2_RETENTION_PUBLIC_EXPOSURE", "private retention requires complete preflight and postflight proof for direct domains and every supported binding surface");
   schema("private-retention-receipt.schema.v2.json", value);
   codedAssert(
     value.candidate_commit === authority.candidate_commit &&
@@ -4258,10 +4428,13 @@ function validatePrivateRetentionReceiptValue(
   for (const object of value.objects) {
     const pinValue = expected.get(object.artifact_role)!;
     codedAssert(object.sha256 === pinValue.sha256 && object.bytes === pinValue.bytes, "H2_RETENTION_EXACT_BYTES", `retention ${object.artifact_role} must bind exact private bytes`);
-    codedAssert(/^[a-f0-9]{64}$/.test(object.opaque_object_id) && object.opaque_object_id !== object.sha256 && object.object_key_sha256 === hash(`gate-h2-r2-object-key-v2\ngate-h2/private/opaque/${object.opaque_object_id}`), "H2_RETENTION_OBJECT_KEY", "private object key must be an opaque keyed address exposed only by digest and opaque ID");
+    codedAssert(/^[a-f0-9]{64}$/.test(object.object_key_commitment) && new Set(object.object_key_commitment).size >= 12 && object.object_key_commitment !== object.sha256 && !JSON.stringify(object).includes("gate-h2/private/opaque/"), "H2_RETENTION_OBJECT_KEY", "public retention evidence may contain only a domain-separated commitment to the private object key");
     codedAssert(typeof object.etag === "string" && object.etag.length > 0, "H2_RETENTION_OBJECT_IDENTITY", "private retention ETag is mandatory");
-    codedAssert(Date.parse(finalization.scoredAt) <= Date.parse(object.written_at) && Date.parse(object.written_at) <= Date.parse(object.readback_at) && Date.parse(object.readback_at) <= Date.parse(value.issued_at) && Date.parse(value.issued_at) <= Date.parse(finalization.finalizedAt), "H2_RETENTION_CHRONOLOGY", "private retention chronology must follow score, write, exact readback, receipt issue, and public finalization");
-    codedAssert(Date.parse(value.privacy_verification.preflight.checked_at) <= Date.parse(object.operations.put.at) && Date.parse(object.operations.put.at) <= Date.parse(object.operations.head.at) && Date.parse(object.operations.head.at) <= Date.parse(object.operations.get.at) && Date.parse(object.operations.get.at) <= Date.parse(object.operations.stable_head.at) && Date.parse(object.operations.stable_head.at) <= Date.parse(value.privacy_verification.postflight.checked_at) && Date.parse(value.privacy_verification.postflight.checked_at) <= Date.parse(value.issued_at), "H2_RETENTION_CHRONOLOGY", "retention must order preflight, PUT, HEAD, conditional GET, stable HEAD, postflight, and actual issuance");
+    const put = object.operations.put;
+    const retainedAt = put.status === "new_write" ? object.written_at : object.observed_existing_at;
+    codedAssert(Date.parse(finalization.scoredAt) <= Date.parse(put.attempted_at) && Date.parse(put.attempted_at) <= Date.parse(put.completed_at) && Date.parse(put.completed_at) <= Date.parse(retainedAt) && Date.parse(retainedAt) <= Date.parse(object.readback_at) && Date.parse(object.readback_at) <= Date.parse(value.issued_at) && Date.parse(value.issued_at) <= Date.parse(finalization.finalizedAt), "H2_RETENTION_CHRONOLOGY", "private retention chronology must follow score, conditional PUT, retention verification, receipt issue, and public finalization");
+    if (put.status === "preexisting_verified") codedAssert(Date.parse(put.completed_at) <= Date.parse(object.operations.recovery_head.at) && Date.parse(object.operations.recovery_head.at) <= Date.parse(object.operations.recovery_get.at) && object.observed_existing_at === object.operations.recovery_get.at, "H2_RETENTION_CHRONOLOGY", "preexisting recovery HEAD/GET chronology must be explicit");
+    codedAssert(Date.parse(value.privacy_verification.preflight.checked_at) <= Date.parse(put.attempted_at) && Date.parse(put.completed_at) <= Date.parse(object.operations.head.at) && Date.parse(object.operations.head.at) <= Date.parse(object.operations.get.at) && Date.parse(object.operations.get.at) <= Date.parse(object.operations.stable_head.at) && Date.parse(object.operations.stable_head.at) <= Date.parse(value.privacy_verification.postflight.checked_at) && Date.parse(value.privacy_verification.postflight.checked_at) <= Date.parse(value.issued_at), "H2_RETENTION_CHRONOLOGY", "retention must order preflight, conditional PUT, exact verification, postflight, and actual issuance");
   }
   codedAssert(Date.parse(value.issued_at) <= Date.parse(authority.expires_at), "H2_RETENTION_AUTHORITY_WINDOW", "retention receipt must be issued inside authority window");
   codedAssert(canon(value.evaluator) === canon({ principal: authority.private_evaluator.principal, session_id: authority.private_evaluator.session_id, surface_id: authority.private_evaluator.surface_id }), "H2_RETENTION_EVALUATOR", "retention evaluator binding mismatch");
@@ -4280,10 +4453,10 @@ function syntheticPrivateRetentionReceipt(envelopeRaw: Buffer, detailRaw: Buffer
   ].map(([artifact_role, raw]) => {
     const bytes = raw as Buffer;
     const sha256 = hash(bytes);
-    const opaque = hash(`synthetic-private-key\n${sha256}`);
-    return { artifact_role, object_key_sha256: hash(`gate-h2-r2-object-key-v2\ngate-h2/private/opaque/${opaque}`), opaque_object_id: opaque, version_id: hash(`memory-version:${sha256}`).slice(0, 32), etag: hash(`memory-etag:${sha256}`), sha256, bytes: bytes.length, operations: { put: { status: "created", status_code: 200, at: "2026-07-15T00:00:09.100Z" }, head: { status: "verified", status_code: 200, at: "2026-07-15T00:00:09.150Z" }, get: { status: "exact_version_bytes_verified", status_code: 200, at: "2026-07-15T00:00:09.200Z" }, stable_head: { status: "verified", status_code: 200, at: "2026-07-15T00:00:09.225Z" } }, written_at: "2026-07-15T00:00:09.100Z", readback_at: "2026-07-15T00:00:09.200Z", no_public_acl: true, readback_verified: true };
+    const privateKey = `gate-h2/private/opaque/${hash(`synthetic-private-key\n${sha256}`)}`;
+    return { artifact_role, object_key_commitment: hash(`gate-h2-public-object-key-commitment-v3\0${privateKey}`), version_id: hash(`memory-version:${sha256}`).slice(0, 32), etag: hash(`memory-etag:${sha256}`), sha256, bytes: bytes.length, operations: { put: { status: "new_write", status_code: 200, attempted_at: "2026-07-15T00:00:09.090Z", completed_at: "2026-07-15T00:00:09.100Z" }, head: { status: "verified", status_code: 200, at: "2026-07-15T00:00:09.150Z" }, get: { status: "exact_version_bytes_verified", status_code: 200, at: "2026-07-15T00:00:09.200Z" }, stable_head: { status: "verified", status_code: 200, at: "2026-07-15T00:00:09.225Z" } }, written_at: "2026-07-15T00:00:09.100Z", readback_at: "2026-07-15T00:00:09.200Z", no_public_acl: true, readback_verified: true };
   });
-  const privacy = { checked_at: "2026-07-15T00:00:09.050Z", custom_domains_status_code: 200, managed_domain_status_code: 200, enabled_custom_domains: 0, managed_domain_enabled: false, scripts_status_code: 200, bindings_status_count: 0, routes_status_code: 200, script_count: 0, binding_count: 0, route_count: 0, inventory_digest: hash("synthetic-empty-worker-inventory"), no_worker_bucket_binding: true };
+  const privacy = { checked_at: "2026-07-15T00:00:09.050Z", enabled_custom_domains: 0, managed_domain_enabled: false, status_code_digest: hash("synthetic-status-codes"), request_count: 9, script_count: 0, dispatch_namespace_count: 0, dispatch_script_count: 0, pages_project_count: 0, binding_count: 0, workers_dev_enabled: false, custom_worker_domain_count: 0, zone_count: 0, route_count: 0, inventory_digest: hash("synthetic-empty-exposure-inventory"), no_r2_bucket_binding: true, no_direct_public_domain: true };
   const receipt: J = { schema_version: "reviewed_metrics_private_retention_receipt_v2.2.0", candidate_id: CANDIDATE_ID, candidate_commit: authority.candidate_commit, authority_hash: authorityBindingHash(authority), finalization_id: detail.finalization_id, scored_at: detail.scored_at, provider_capability: { provider: "synthetic_in_memory", bucket_capability_id: hash("gate-h2-synthetic-private-store"), bucket_digest: hash("gate-h2-synthetic-private-bucket") }, privacy_verification: { preflight: privacy, postflight: { ...privacy, checked_at: "2026-07-15T00:00:09.250Z" } }, objects, issued_at: "2026-07-15T00:00:09.300Z", evaluator: { principal: authority.private_evaluator.principal, session_id: authority.private_evaluator.session_id, surface_id: authority.private_evaluator.surface_id }, signer: { authority_role: "private_evaluator", public_key_sha256: hash(authority.private_evaluator.signing_public_key_pem) }, signature: null };
   receipt.signature = { algorithm: "ed25519", signature_base64: crypto.sign(null, retentionSigningPayload(receipt), signingKey).toString("base64") };
   return receipt;
@@ -4304,14 +4477,18 @@ class InMemoryPrivateObjectStore implements PrivateObjectStore {
   async verifyPrivate() {
     if (this.publicExposure) throw new GateH2SecurityError("H2_RETENTION_PUBLIC_EXPOSURE", "synthetic public exposure");
     this.privacyChecks++;
-    return { checkedAt: this.at(this.privacyChecks === 1 ? "050" : "250"), customDomainsStatusCode: 200, managedDomainStatusCode: 200, enabledCustomDomains: 0, managedDomainEnabled: false, scriptsStatusCode: 200, bindingsStatusCount: 0, routesStatusCode: 200, scriptCount: 0, bindingCount: 0, routeCount: 0, inventoryDigest: hash("synthetic-empty-worker-inventory"), noWorkerBucketBinding: true };
+    return { checkedAt: this.at(this.privacyChecks === 1 ? "050" : "250"), enabledCustomDomains: 0, managedDomainEnabled: false, statusCodeDigest: hash("synthetic-status-codes"), requestCount: 9, scriptCount: 0, dispatchNamespaceCount: 0, dispatchScriptCount: 0, pagesProjectCount: 0, bindingCount: 0, workersDevEnabled: false, customWorkerDomainCount: 0, zoneCount: 0, routeCount: 0, inventoryDigest: hash("synthetic-empty-exposure-inventory"), noR2BucketBinding: true, noDirectPublicDomain: true };
   }
   objectKey(contentSha256: string) { return `gate-h2/private/opaque/${hash(`synthetic-private-key\n${contentSha256}`)}`; }
   async putIfAbsent(key: string, bytes: Buffer, metadata: { sha256: string; bytes: string; candidateId: string; finalizationId: string }) {
     const existing = this.objects.get(key);
     if (existing && !existing.equals(bytes)) throw new GateH2SecurityError("H2_RETENTION_PREEXISTING_DIFFERENT", "synthetic preexisting bytes differ");
     if (!existing) { this.objects.set(key, Buffer.from(bytes)); this.metadata.set(key, structuredClone(metadata)); }
-    return { status: existing ? "preexisting_identical" as const : "created" as const, statusCode: existing ? 412 : 200, at: this.at("100"), etag: hash(`etag:${hash(bytes)}`), versionId: null };
+    const etag = hash(`etag:${hash(bytes)}`);
+    if (!existing) return { status: "new_write" as const, statusCode: 200, attemptedAt: this.at("090"), completedAt: this.at("100"), etag, versionId: null };
+    const recoveryHead = { statusCode: 200, at: this.at("110"), etag, versionId: null, bytes: bytes.length, metadata: structuredClone(this.metadata.get(key)!) };
+    const recoveryGet = { ...recoveryHead, at: this.at("120"), bytesValue: Buffer.from(bytes) };
+    return { status: "preexisting_verified" as const, statusCode: 412, attemptedAt: this.at("090"), completedAt: this.at("100"), etag, versionId: null, observedExistingAt: recoveryGet.at, recoveryHead, recoveryGet };
   }
   async head(key: string) {
     const bytes = this.objects.get(key);
@@ -4432,7 +4609,7 @@ function evaluatorSigningKey(
       "signing key cannot be inside repository or PKM trees",
     );
   try {
-    execFileSync("git", ["ls-files", "--error-unmatch", "--", physical], {
+    execFileSync(trustedExecutable("git"), ["ls-files", "--error-unmatch", "--", physical], {
       cwd: ROOT,
       stdio: "ignore",
     });
@@ -5003,6 +5180,7 @@ function validateResultsValue(
   value: J,
   baseDir = ROOT,
   suppliedAuthority?: J,
+  stageEvidence?: J,
 ): void {
   schema("reviewed-metrics.schema.v2.json", value);
   if (value.status === "synthetic_test_only") {
@@ -5125,6 +5303,7 @@ function validateResultsValue(
     },
     "result criterion derivation",
   );
+  if (stageEvidence !== undefined) validateStageExecutionEvidence(stageEvidence, authority, true);
 }
 function exactMetricCompletion(metrics: J[]): boolean {
   exactSet(
@@ -5276,7 +5455,7 @@ const FINAL_EVIDENCE_PATHS: Record<string, string> = {
 };
 function canonicalCommittedHeadAuthorityBytes(): Buffer {
   const head = execFileSync(
-    "git",
+    trustedExecutable("git"),
     ["cat-file", "blob", `HEAD:${CANONICAL_AUTHORITY_REL}`],
     { cwd: ROOT, stdio: ["ignore", "pipe", "pipe"] },
   );
@@ -5471,6 +5650,7 @@ function validateMatrixValue(
   value: J,
   baseDir = ROOT,
   suppliedAuthority?: J,
+  stageEvidence?: J,
 ): void {
   schema("final-criterion-matrix.schema.v2.json", value);
   exactSet(
@@ -5606,6 +5786,7 @@ function validateMatrixValue(
     value.issue_92_complete && value.issue_69_complete,
     "final matrix completion booleans",
   );
+  if (stageEvidence !== undefined) validateStageExecutionEvidence(stageEvidence, authority, true);
 }
 const PUBLICATION_MEMBER_PATHS = [
   "candidate-descriptor-v2.json",
@@ -5623,6 +5804,7 @@ const PUBLICATION_MEMBER_PATHS = [
   SOURCE_SEARCH_FREEZE_FILE,
   SOURCE_SEARCH_PREDICTION_FILE,
   SOURCE_SEARCH_TASK_FILE,
+  "stage-execution-ledger-v2.json",
 ].sort();
 const PUBLICATION_DYNAMIC_PREDECESSORS: Record<string, string> = {
   candidate: "candidate-descriptor-v2.json",
@@ -5639,6 +5821,7 @@ const PUBLICATION_DYNAMIC_PREDECESSORS: Record<string, string> = {
   search_task: SOURCE_SEARCH_TASK_FILE,
   criterion_matrix: "final-criterion-matrix-v2.json",
   task_review: "search-task-review-v2.json",
+  stage_execution_ledger: "stage-execution-ledger-v2.json",
 };
 function validateInputAuthorityValue(value: J): void {
   schema("input-authority.schema.v2.json", value);
@@ -5784,14 +5967,16 @@ function validatePublicationValue(
   assert(gold.status === "completed", "publication completed gold");
   validateFreezeValue(freeze, predictionRaw, prediction, authority);
   validateIndependentChronology(prediction, gold, freeze, authority);
+  const stageEvidence = load(path.join(baseDir, "stage-execution-ledger-v2.json"));
+  validateStageExecutionEvidence(stageEvidence, authority, true);
   const results = load(path.join(baseDir, "reviewed-metrics-v2.json"));
-  validateResultsValue(results, baseDir, authority);
+  validateResultsValue(results, baseDir, authority, stageEvidence);
   const task = load(path.join(baseDir, "search-task-v2.json"));
   validateSearchTaskValue(task, gold);
   const taskReceipt = load(path.join(baseDir, "search-task-review-v2.json"));
   validateTaskReviewValue(taskReceipt, baseDir, authority);
   const matrix = load(path.join(baseDir, "final-criterion-matrix-v2.json"));
-  validateMatrixValue(matrix, baseDir, authority);
+  validateMatrixValue(matrix, baseDir, authority, stageEvidence);
   const matrixInputPin = matrix.rows
     .flatMap((row: J) => row.evidence)
     .find((evidence: J) => evidence.role === "input_authority");
@@ -5857,8 +6042,7 @@ function validateIndependentChronology(
   );
   validateAuthorityPrincipals(authority);
   assert(
-    authority.schema_version ===
-      "reviewed_metrics_execution_authorization_v2.2.0",
+    ["reviewed_metrics_execution_authorization_v2.2.0", "reviewed_metrics_execution_authorization_v2.3.0"].includes(authority.schema_version),
     "completed visual gold requires unified v2.2 authority",
   );
   assert(
@@ -6290,6 +6474,16 @@ async function baselineContractSelfTest(): Promise<J> {
   };
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "rmv2-self-"));
   try {
+    const gitShadow = path.join(root, "git-shadow");
+    fs.mkdirSync(gitShadow);
+    fs.writeFileSync(path.join(gitShadow, "git"), "#!/bin/sh\nprintf 'forged-authority-evidence'\n", { mode: 0o777 });
+    const oldPath = process.env.PATH;
+    try {
+      process.env.PATH = `${gitShadow}:${oldPath ?? ""}`;
+      const gitEvidence = gitExecutionAuthorityEvidence();
+      const actualHead = execFileSync(trustedExecutable("git"), ["rev-parse", "HEAD"], { cwd: ROOT }).toString("utf8").trim();
+      codedAssert(gitEvidence.head === actualHead && gitEvidence.tracked === false && gitEvidence.headBytes.length === 0, "H2_TEST_GIT_PATH_SHADOW", "PATH shadow forged consequential git authority evidence");
+    } finally { process.env.PATH = oldPath; }
     const candidate = path.join(root, "candidate");
     await build(candidate);
     const capability: InternalSyntheticCapability = {
@@ -7409,7 +7603,31 @@ async function sourceSearchSelfTest(): Promise<J> {
       assertSanitizedMetadata({ comments: ["x"] }),
     );
     await reject("authority", "no-real-authority", () => executionAuthority());
+    const finalDir = path.join(root, "final");
+    const passDir = path.join(root, "pass");
+    const testLedger = path.join(root, "stage-ledger");
+    fs.mkdirSync(testLedger, { mode: 0o700 });
     const authority = syntheticAuthorityV21(visualDescriptor.media_tree.sha256);
+    authority.stage_execution.ledger_root = testLedger;
+    authority.stage_execution.ledger_canonical_root = fs.realpathSync(testLedger);
+    authority.stage_execution.ledger_device = fs.statSync(testLedger).dev;
+    authority.stage_execution.ledger_inode = fs.statSync(testLedger).ino;
+    const stageOutputMap: Record<StageId, J[]> = {
+      visual_predict: [{ artifact_role: "prediction_output", path: path.join(finalDir, "prediction-output-v2.json") }],
+      visual_freeze: [{ artifact_role: "prediction_freeze", path: path.join(finalDir, "prediction-freeze-v2.json") }],
+      source_predict: [{ artifact_role: "source_search_prediction", path: path.join(finalDir, SOURCE_SEARCH_PREDICTION_FILE) }],
+      source_freeze: [{ artifact_role: "source_search_freeze", path: path.join(finalDir, SOURCE_SEARCH_FREEZE_FILE) }],
+      gold_review: [{ artifact_role: "gold_review", path: path.join(finalDir, "gold-review-v2.json") }],
+      gold_envelope_authoring: [{ artifact_role: "private_expected_envelope", path: path.join(root, "pass-sealed/private-expected-envelope-v2.json") }],
+      private_prepare: [{ artifact_role: "private_score_detail", path: path.join(root, "pass-detail/private-score-detail-v2.json") }, { artifact_role: "private_score_preparation_handoff", path: path.join(root, "pass-detail/private-score-preparation-handoff-v2.json") }],
+      r2_retain: [{ artifact_role: "private_retention_receipt", path: path.join(root, "pass-detail/private-retention-receipt-v2.json") }],
+      private_finalize: [{ artifact_role: "private_score_receipt", path: path.join(passDir, PRIVATE_SCORE_RECEIPT_FILE) }],
+      task_review: [{ artifact_role: "task_review", path: path.join(finalDir, "search-task-review-v2.json") }],
+      metrics_score: [{ artifact_role: "reviewed_metrics", path: path.join(finalDir, "reviewed-metrics-v2.json") }, { artifact_role: "final_criterion_matrix", path: path.join(finalDir, "final-criterion-matrix-v2.json") }],
+      publication: [{ artifact_role: "publication_payload", path: path.join(root, "publication-payload.json") }],
+    };
+    for (const entry of authority.stage_execution.stages) entry.outputs = stageOutputMap[entry.stage_id as StageId];
+    sealSyntheticAuthority(authority);
     const resignAuthority = (authorityValue: J): void => {
       const bindingHash = authorityBindingHash(authorityValue);
       for (const role of ["implementation", "predictor", "search_predictor", "private_evaluator", "gold_reviewer", "task_reviewer", "publisher"]) {
@@ -7830,7 +8048,6 @@ async function sourceSearchSelfTest(): Promise<J> {
       validateAuthorityValue(oldVersion),
     );
 
-    const passDir = path.join(root, "pass");
     const passPaths = makeSyntheticSearchWorkspace(
       passDir,
       authority,
@@ -8732,12 +8949,14 @@ async function sourceSearchSelfTest(): Promise<J> {
     nullRetentionEtag.private_retention.objects[0].etag = null;
     await reject("receipt", "null-retention-etag", () => validatePrivateScoreReceiptValue(nullRetentionEtag, passDir, authority), "H2_RETENTION_OBJECT_IDENTITY");
     const wrongRetentionKey = structuredClone(receipt);
-    wrongRetentionKey.private_retention.objects[0].object_key_sha256 = "0".repeat(64);
+    wrongRetentionKey.private_retention.objects[0].object_key_commitment = "0".repeat(64);
     await reject("receipt", "wrong-content-addressed-retention-key", () => validatePrivateScoreReceiptValue(wrongRetentionKey, passDir, authority), "H2_RETENTION_OBJECT_KEY");
     const wrongRetentionFinalization = structuredClone(receipt);
     wrongRetentionFinalization.private_retention.finalization_id = "0".repeat(64);
     await reject("receipt", "wrong-retention-finalization", () => validatePrivateScoreReceiptValue(wrongRetentionFinalization, passDir, authority), "H2_RETENTION_FINALIZATION_BINDING");
     const impossibleRetentionChronology = structuredClone(receipt);
+    impossibleRetentionChronology.private_retention.objects[0].operations.put.attempted_at = "2026-07-15T00:00:08.800Z";
+    impossibleRetentionChronology.private_retention.objects[0].operations.put.completed_at = "2026-07-15T00:00:08.900Z";
     impossibleRetentionChronology.private_retention.objects[0].written_at = "2026-07-15T00:00:08.900Z";
     impossibleRetentionChronology.private_retention.signature.signature_base64 = crypto.sign(null, retentionSigningPayload(impossibleRetentionChronology.private_retention), SYNTHETIC_EVALUATOR_KEYS.privateKey).toString("base64");
     await reject("receipt", "retention-write-before-score", () => validatePrivateScoreReceiptValue(impossibleRetentionChronology, passDir, authority), "H2_RETENTION_CHRONOLOGY");
@@ -8758,7 +8977,7 @@ async function sourceSearchSelfTest(): Promise<J> {
     await retainPrivateObjects(idempotentStore, storageInputs);
     await accept("receipt", "retention-idempotent-identical", async () => {
       const second = await retainPrivateObjects(idempotentStore, storageInputs);
-      assert(second.objects.every((object: J) => object.operations.put.status === "preexisting_identical"), "identical content-addressed objects must be idempotent");
+      assert(second.objects.every((object: J) => object.operations.put.status === "preexisting_verified" && object.written_at === undefined && typeof object.observed_existing_at === "string"), "identical content-addressed objects must use verified preexisting chronology without claiming a write");
     });
     const differentStore = new InMemoryPrivateObjectStore();
     const conflictingKey = differentStore.objectKey(hash(storageInputs[0].bytes));
@@ -8801,7 +9020,6 @@ async function sourceSearchSelfTest(): Promise<J> {
       "H2_FINALIZATION_SIGNATURE",
     );
 
-    const finalDir = path.join(root, "final");
     fs.cpSync(passDir, finalDir, { recursive: true });
     const visualPrediction = syntheticCompletedPrediction(
       authority.bundle_tree_sha256,
@@ -9400,6 +9618,37 @@ async function sourceSearchSelfTest(): Promise<J> {
         validateMatrixValue(bad, finalDir, authority),
       );
     }
+    writeJson(path.join(root, "publication-payload.json"), { status: "synthetic_publication_payload_complete" });
+    writeJson(path.join(finalDir, "stage-execution-ledger-v2.json"), materializeSyntheticCompletedStageLedger(authority));
+    await accept("final_chain", "exact-12-stage-ledger-chain", () => validateStageExecutionEvidence(load(path.join(finalDir, "stage-execution-ledger-v2.json")), authority, true));
+    const stageEvidenceValue = load(path.join(finalDir, "stage-execution-ledger-v2.json"));
+    const lastStage = authority.stage_execution.stages.at(-1);
+    const lastKey = hash(`gate-h2-stage-ledger-v3\n${authority.candidate_commit}\n${authorityBindingHash(authority)}\n${lastStage.stage_id}`);
+    const lastBeginFile = path.join(testLedger, `${lastKey}.started.json`);
+    const lastCompletionFile = path.join(testLedger, `${lastKey}.completed.json`);
+    const lastBeginRaw = fs.readFileSync(lastBeginFile);
+    const lastCompletionRaw = fs.readFileSync(lastCompletionFile);
+    fs.unlinkSync(lastCompletionFile);
+    await reject("final_chain", "stage-ledger-missing-completion", () => completedStageLedgerEvidence(authority), "H2_STAGE_LEDGER_MARKER");
+    fs.writeFileSync(lastCompletionFile, lastCompletionRaw, { mode: 0o400, flag: "wx" });
+    fs.unlinkSync(lastBeginFile);
+    await reject("final_chain", "stage-ledger-missing-begin", () => completedStageLedgerEvidence(authority), "H2_STAGE_LEDGER_MARKER");
+    fs.writeFileSync(lastBeginFile, lastBeginRaw, { mode: 0o400, flag: "wx" });
+    const publicationPayload = path.join(root, "publication-payload.json");
+    const publicationPayloadRaw = fs.readFileSync(publicationPayload);
+    fs.appendFileSync(publicationPayload, "substitution");
+    await reject("final_chain", "stage-ledger-output-substitution", () => validateStageExecutionEvidence(stageEvidenceValue, authority, true), "H2_STAGE_OUTPUT_SUBSTITUTION");
+    fs.writeFileSync(publicationPayload, publicationPayloadRaw);
+    const tamperedBegin = load(lastBeginFile);
+    tamperedBegin.route_receipt.signature_base64 = Buffer.alloc(64, 9).toString("base64");
+    tamperedBegin.receipt_sha256 = hash(Buffer.from(pretty(tamperedBegin.route_receipt)));
+    fs.chmodSync(lastBeginFile, 0o600);
+    writeJson(lastBeginFile, tamperedBegin);
+    await reject("final_chain", "stage-ledger-forged-receipt", () => completedStageLedgerEvidence(authority), "H2_STAGE_LEDGER_MARKER");
+    fs.writeFileSync(lastBeginFile, lastBeginRaw);
+    fs.chmodSync(lastBeginFile, 0o400);
+    const completedAgain: StageConsumption = { marker: lastBeginFile, completion: lastCompletionFile, receipt: load(lastBeginFile).route_receipt, startedAt: load(lastBeginFile).command_started_at, stageId: lastStage.stage_id, authority, ledgerRoot: testLedger, ledgerFd: fs.openSync(testLedger, fs.constants.O_RDONLY), capability };
+    await reject("final_chain", "stage-after-completion", () => completeStageConsumption(completedAgain), "H2_ROUTE_STAGE_REPLAY");
     const memberPins = tree(finalDir).members;
     const dynamic = Object.fromEntries(
       Object.entries(PUBLICATION_DYNAMIC_PREDECESSORS).map(
@@ -9618,11 +9867,25 @@ async function integrationTest(): Promise<J> {
       unified,
       capability,
     );
+    const stageLedger = path.join(sourceDir, "stage-ledger");
+    fs.mkdirSync(stageLedger, { mode: 0o700 });
+    unified.stage_execution.ledger_root = stageLedger;
+    unified.stage_execution.ledger_canonical_root = fs.realpathSync(stageLedger);
+    unified.stage_execution.ledger_device = fs.statSync(stageLedger).dev;
+    unified.stage_execution.ledger_inode = fs.statSync(stageLedger).ino;
     unified.private_evaluator.route = unified.private_evaluator.canonical_root = fs.realpathSync(sourceDir);
     sealSyntheticAuthority(unified, true);
     fs.writeFileSync(path.join(sourceDir, "execution-authorization-v2.json"), pretty(unified), { mode: 0o600 });
     const handoffFile = path.join(path.dirname(sourcePaths.detailFile), "private-score-preparation-handoff-v2.json");
     const retentionFile = path.join(path.dirname(sourcePaths.detailFile), "private-retention-receipt-v2.json");
+    const outputsByStage: Partial<Record<StageId, J[]>> = {
+      private_prepare: [{ artifact_role: "private_score_detail", path: sourcePaths.detailFile }, { artifact_role: "private_score_preparation_handoff", path: handoffFile }],
+      r2_retain: [{ artifact_role: "private_retention_receipt", path: retentionFile }],
+      private_finalize: [{ artifact_role: "private_score_receipt", path: sourcePaths.receiptFile }],
+    };
+    for (const entry of unified.stage_execution.stages) entry.outputs = outputsByStage[entry.stage_id as StageId] ?? [{ artifact_role: `${entry.stage_id}_output`, path: path.join(sourceDir, `${entry.stage_id}-output.json`) }];
+    sealSyntheticAuthority(unified, true);
+    fs.writeFileSync(path.join(sourceDir, "execution-authorization-v2.json"), pretty(unified), { mode: 0o600 });
     const signingKeyFile = path.join(sourceDir, "synthetic-evaluator-private.pem");
     fs.writeFileSync(signingKeyFile, SYNTHETIC_EVALUATOR_KEYS.privateKey.export({ type: "pkcs8", format: "pem" }), { mode: 0o600, flag: "wx" });
     const authorityFile = path.join(sourceDir, "execution-authorization-v2.json");
@@ -9630,15 +9893,13 @@ async function integrationTest(): Promise<J> {
     const cli = path.join(ROOT, "node_modules/.bin/tsx");
     const scriptFile = fileURLToPath(import.meta.url);
     const coordinatorKeyFile = path.join(sourceDir, "synthetic-coordinator-private.pem");
-    const consumptionDir = path.join(sourceDir, "stage-consumption");
-    fs.mkdirSync(consumptionDir);
     fs.writeFileSync(coordinatorKeyFile, SYNTHETIC_COORDINATOR_KEYS.privateKey.export({ type: "pkcs8", format: "pem" }), { mode: 0o600, flag: "wx" });
     const stageArgs = (stage: StageId, role: string): string[] => {
       const measurementFile = path.join(sourceDir, `${stage}-measurement.json`);
       const receiptFile = path.join(sourceDir, `${stage}-route-receipt.json`);
       execFileSync(cli, [scriptFile, "measure-route", "--authority", authorityFile, "--role", role, "--stage", stage, "--output", measurementFile], { cwd: ROOT, env: childEnv });
       execFileSync(cli, [scriptFile, "sign-route-receipt", "--authority", authorityFile, "--measurement", measurementFile, "--role", role, "--stage", stage, "--signing-key", coordinatorKeyFile, "--expires-at", new Date(Date.now() + 60_000).toISOString(), "--output", receiptFile], { cwd: ROOT, env: childEnv });
-      return ["--stage-receipt", receiptFile, "--consumption-dir", consumptionDir];
+      return ["--stage-receipt", receiptFile];
     };
     const expectStageCode = (expected: string, operation: () => unknown): void => {
       let observed = "";
@@ -9657,19 +9918,30 @@ async function integrationTest(): Promise<J> {
       return file;
     };
     const roleProbe = directStageReceipt("private_prepare", "private_evaluator");
-    expectStageCode("H2_ROUTE_STAGE_ROLE", () => beginStageConsumption(unified, writeDirectReceipt(roleProbe), consumptionDir, "r2_retain"));
+    expectStageCode("H2_ROUTE_STAGE_ROLE", () => beginStageConsumption(unified, writeDirectReceipt(roleProbe), "r2_retain", () => new Date(), capability));
+    const changedInvocation = directStageReceipt("gold_review", "gold_reviewer");
+    changedInvocation.invocation_id = hash("caller-selected-alternate-invocation");
+    changedInvocation.signature_base64 = crypto.sign(null, routeReceiptPayload(changedInvocation), SYNTHETIC_COORDINATOR_KEYS.privateKey).toString("base64");
+    expectStageCode("H2_STAGE_PRECOMMIT_BINDING", () => beginStageConsumption(unified, writeDirectReceipt(changedInvocation), "gold_review", () => new Date(), capability));
+    const wrongHost = directStageReceipt("task_review", "task_reviewer");
+    wrongHost.canonical_physical_host_id = hash("wrong-current-host");
+    wrongHost.signature_base64 = crypto.sign(null, routeReceiptPayload(wrongHost), SYNTHETIC_COORDINATOR_KEYS.privateKey).toString("base64");
+    expectStageCode("H2_ROUTE_RECEIPT_BINDING", () => beginStageConsumption(unified, writeDirectReceipt(wrongHost), "task_review", () => new Date(), capability));
+    const currentHostMismatch = directStageReceipt("task_review", "task_reviewer");
+    expectStageCode("H2_ROUTE_CURRENT_HOST", () => beginStageConsumption(unified, writeDirectReceipt(currentHostMismatch), "task_review"));
     const backdatedAt = new Date(Date.now() - 31_000).toISOString();
     const backdated = directStageReceipt("private_prepare", "private_evaluator", backdatedAt, new Date(Date.now() + 30_000).toISOString());
-    expectStageCode("H2_ROUTE_RECEIPT_INVOCATION_WINDOW", () => beginStageConsumption(unified, writeDirectReceipt(backdated), consumptionDir, "private_prepare"));
+    expectStageCode("H2_ROUTE_RECEIPT_INVOCATION_WINDOW", () => beginStageConsumption(unified, writeDirectReceipt(backdated), "private_prepare", () => new Date(), capability));
     const expiredAuthorityProbe = directStageReceipt("private_prepare", "private_evaluator");
-    expectStageCode("H2_ROUTE_RECEIPT_INVOCATION_WINDOW", () => beginStageConsumption(unified, writeDirectReceipt(expiredAuthorityProbe), consumptionDir, "private_prepare", () => new Date(Date.parse(unified.expires_at) + 1)));
+    expectStageCode("H2_ROUTE_RECEIPT_INVOCATION_WINDOW", () => beginStageConsumption(unified, writeDirectReceipt(expiredAuthorityProbe), "private_prepare", () => new Date(Date.parse(unified.expires_at) + 1), capability));
     const missingMarkerProbe = directStageReceipt("private_prepare", "private_evaluator");
-    const missingMarkerConsumption = beginStageConsumption(unified, writeDirectReceipt(missingMarkerProbe), consumptionDir, "private_prepare");
+    const missingMarkerConsumption = beginStageConsumption(unified, writeDirectReceipt(missingMarkerProbe), "private_prepare", () => new Date(), capability);
     fs.unlinkSync(missingMarkerConsumption.marker);
     expectStageCode("H2_ROUTE_CONSUMPTION_MARKER", () => completeStageConsumption(missingMarkerConsumption));
     const eventWindowProbe = directStageReceipt("private_prepare", "private_evaluator");
-    const eventWindowConsumption = beginStageConsumption(unified, writeDirectReceipt(eventWindowProbe), consumptionDir, "private_prepare");
+    const eventWindowConsumption = beginStageConsumption(unified, writeDirectReceipt(eventWindowProbe), "private_prepare", () => new Date(), capability);
     expectStageCode("H2_ROUTE_EVENT_WINDOW", () => completeStageConsumption(eventWindowConsumption, () => new Date(Date.parse(eventWindowProbe.expires_at) + 1)));
+    fs.unlinkSync(eventWindowConsumption.marker);
     const commonArgs = [
       scriptFile,
       "--workspace", sourceDir,
@@ -9686,8 +9958,14 @@ async function integrationTest(): Promise<J> {
     assert(preparation.status === "private_detail_prepared_retention_required", "first private-score process must stop after stable preparation");
     let replayRejected = false;
     try { execFileSync(cli, [scriptFile, "prepare-private-score", ...commonArgs.slice(1), ...prepareStageArgs], { cwd: ROOT, env: childEnv, stdio: ["ignore", "pipe", "pipe"] }); }
-    catch (error) { replayRejected = (error as { stderr?: Buffer }).stderr?.toString("utf8").includes("H2_ROUTE_INVOCATION_REPLAY") === true; }
+    catch (error) { replayRejected = (error as { stderr?: Buffer }).stderr?.toString("utf8").includes("H2_ROUTE_STAGE_REPLAY") === true; }
     assert(replayRejected, "cross-process stage receipt replay must fail by exact code before side effects");
+    let alternateDirectoryRejected = false;
+    try { execFileSync(cli, [scriptFile, "prepare-private-score", ...commonArgs.slice(1), ...prepareStageArgs, "--consumption-dir", path.join(root, "alternate-ledger")], { cwd: ROOT, env: childEnv, stdio: ["ignore", "pipe", "pipe"] }); }
+    catch (error) { alternateDirectoryRejected = (error as { stderr?: Buffer }).stderr?.toString("utf8").includes("H2_STAGE_LEDGER_ROOT") === true; }
+    assert(alternateDirectoryRejected, "cross-process caller-selected alternate ledger directory must be refused by exact code");
+    const secondFreshPrepareReceipt = directStageReceipt("private_prepare", "private_evaluator");
+    expectStageCode("H2_ROUTE_STAGE_REPLAY", () => beginStageConsumption(unified, writeDirectReceipt(secondFreshPrepareReceipt), "private_prepare", () => new Date(), capability));
     const retentionOutput = execFileSync(cli, [scriptFile, "retain-private-score", "--workspace", sourceDir, "--envelope", sourcePaths.envelopeFile, "--detail", sourcePaths.detailFile, "--handoff", handoffFile, "--output", retentionFile, "--signing-key", signingKeyFile, "--authority", authorityFile, ...stageArgs("r2_retain", "private_evaluator")], { cwd: ROOT, env: childEnv }).toString("utf8");
     const retentionBuild = JSON.parse(retentionOutput);
     assert(retentionBuild.status === "private_retention_verified", "retention command orchestration must complete before finalization");
@@ -9701,7 +9979,7 @@ async function integrationTest(): Promise<J> {
     const retained = load(retentionFile);
     const finalized = load(sourcePaths.receiptFile);
     for (const object of retained.objects) {
-      codedAssert(Date.parse(detail.scored_at) <= Date.parse(object.operations.put.at) && Date.parse(object.operations.put.at) <= Date.parse(object.operations.head.at) && Date.parse(object.operations.head.at) <= Date.parse(object.operations.get.at) && Date.parse(object.operations.get.at) <= Date.parse(object.operations.stable_head.at) && Date.parse(object.operations.stable_head.at) <= Date.parse(retained.privacy_verification.postflight.checked_at) && Date.parse(retained.privacy_verification.postflight.checked_at) <= Date.parse(retained.issued_at) && Date.parse(retained.issued_at) <= Date.parse(finalized.finalized_at), "H2_RETENTION_CHRONOLOGY", "three-process real-clock chronology must advance from score through finalization");
+      codedAssert(Date.parse(detail.scored_at) <= Date.parse(object.operations.put.attempted_at) && Date.parse(object.operations.put.attempted_at) <= Date.parse(object.operations.put.completed_at) && Date.parse(object.operations.put.completed_at) <= Date.parse(object.operations.head.at) && Date.parse(object.operations.head.at) <= Date.parse(object.operations.get.at) && Date.parse(object.operations.get.at) <= Date.parse(object.operations.stable_head.at) && Date.parse(object.operations.stable_head.at) <= Date.parse(retained.privacy_verification.postflight.checked_at) && Date.parse(retained.privacy_verification.postflight.checked_at) <= Date.parse(retained.issued_at) && Date.parse(retained.issued_at) <= Date.parse(finalized.finalized_at), "H2_RETENTION_CHRONOLOGY", "three-process real-clock chronology must advance from score through finalization");
     }
     const routeAuthority = structuredClone(unified);
     routeAuthority.predictor.route = routeAuthority.predictor.canonical_root = fs.realpathSync(sourceDir);
@@ -9742,6 +10020,8 @@ async function integrationTest(): Promise<J> {
       stable_preparation_finalization_id: preparation.finalization_id,
       route_cli_round_trip: "host_measurement_then_coordinator_signature_passed",
       cross_process_stage_replay: "rejected_before_side_effects",
+      cross_process_alternate_ledger_root: "rejected_before_side_effects",
+      fresh_second_receipt_same_stage: "rejected_by_candidate_authority_stage_key",
       real_authority_created: false,
       normal_score_cli_requires_committed_unified_authority_and_both_freezes: true,
       normal_score_cli_available_in_current_candidate: false,
@@ -9997,6 +10277,32 @@ function sealSyntheticAuthority(authority: J, fresh = false): J {
   INTERNAL_SYNTHETIC_AUTHORITIES.add(authority);
   return authority;
 }
+function materializeSyntheticCompletedStageLedger(authority: J): J {
+  const authorityHash = authorityBindingHash(authority);
+  for (let index = 0; index < authority.stage_execution.stages.length; index++) {
+    const entry = authority.stage_execution.stages[index];
+    const actorValue = authority[entry.role];
+    const inventory = authority.trusted_surface_inventory.find((candidate: J) => trustedInventoryDigest(candidate) === actorValue.surface_inventory_digest);
+    const physical = nearestExistingPhysicalRoot(actorValue.route);
+    const measuredAt = new Date(Date.parse(authority.authorized_at) + 10 + index * 100).toISOString();
+    const issuedAt = new Date(Date.parse(measuredAt) + 10).toISOString();
+    const startedAt = new Date(Date.parse(issuedAt) + 10).toISOString();
+    const completedAt = new Date(Date.parse(startedAt) + 10).toISOString();
+    const expiresAt = new Date(Date.parse(completedAt) + 10).toISOString();
+    const measurement: J = { schema_version: "reviewed_metrics_host_route_measurement_v2.0.0", candidate_commit: authority.candidate_commit, authority_hash: authorityHash, role: entry.role, nonce: entry.nonce, invocation_id: entry.invocation_id, surface_inventory_digest: actorValue.surface_inventory_digest, canonical_physical_host_id: inventory.canonical_physical_host_id, requested_root: actorValue.route, canonical_root: physical.canonicalRoot, existing_ancestor: physical.existingAncestor, ancestor_device: physical.stat.dev, ancestor_inode: physical.stat.ino, measured_at: measuredAt, stage_id: entry.stage_id };
+    const receipt: J = { schema_version: "reviewed_metrics_coordinator_route_receipt_v2.0.0", surface_id: actorValue.surface_id, surface_inventory_digest: actorValue.surface_inventory_digest, canonical_physical_host_id: inventory.canonical_physical_host_id, candidate_commit: authority.candidate_commit, authority_hash: authorityHash, nonce: entry.nonce, invocation_id: entry.invocation_id, role: entry.role, requested_root: actorValue.route, canonical_root: physical.canonicalRoot, existing_ancestor: physical.existingAncestor, ancestor_device: physical.stat.dev, ancestor_inode: physical.stat.ino, measured_at: measuredAt, measurement_sha256: hash(routeMeasurementPayload(measurement)), role_event_started_at: issuedAt, role_event_ended_at: expiresAt, issued_at: issuedAt, expires_at: expiresAt, stage_id: entry.stage_id, signature_base64: "" };
+    receipt.signature_base64 = crypto.sign(null, routeReceiptPayload(receipt), SYNTHETIC_COORDINATOR_KEYS.privateKey).toString("base64");
+    const key = hash(`gate-h2-stage-ledger-v3\n${authority.candidate_commit}\n${authorityHash}\n${entry.stage_id}`);
+    const begin = { schema_version: "reviewed_metrics_stage_begin_v3.0.0", status: "begun", candidate_commit: authority.candidate_commit, authority_hash: authorityHash, stage_id: entry.stage_id, role: entry.role, surface_id: actorValue.surface_id, physical_host_id: inventory.canonical_physical_host_id, invocation_id: entry.invocation_id, nonce: entry.nonce, receipt_sha256: hash(Buffer.from(pretty(receipt))), route_receipt: receipt, command_started_at: startedAt };
+    const beginRaw = Buffer.from(pretty(begin));
+    fs.writeFileSync(path.join(authority.stage_execution.ledger_root, `${key}.started.json`), beginRaw, { flag: "wx", mode: 0o400 });
+    const outputs = entry.outputs.map((output: J) => { const raw = fs.readFileSync(output.path); return { artifact_role: output.artifact_role, sha256: hash(raw), bytes: raw.length }; });
+    const completion = { schema_version: "reviewed_metrics_stage_completion_v3.0.0", status: "completed", candidate_commit: authority.candidate_commit, authority_hash: authorityHash, stage_id: entry.stage_id, role: entry.role, surface_id: actorValue.surface_id, physical_host_id: inventory.canonical_physical_host_id, invocation_id: entry.invocation_id, nonce: entry.nonce, receipt_sha256: begin.receipt_sha256, begin_marker_sha256: hash(beginRaw), command_started_at: startedAt, command_completed_at: completedAt, outputs };
+    fs.writeFileSync(path.join(authority.stage_execution.ledger_root, `${key}.completed.json`), pretty(completion), { flag: "wx", mode: 0o400 });
+  }
+  fsyncDirectory(authority.stage_execution.ledger_root);
+  return completedStageLedgerEvidence(authority);
+}
 function syntheticExecutionAuthority(bundle: string): J {
   const v1 = load(path.join(V1, "independent-task-review-v1.json")).reviewer;
   const gateE = load(
@@ -10018,7 +10324,7 @@ function syntheticExecutionAuthority(bundle: string): J {
     ),
   ).reviewer;
   return sealSyntheticAuthority({
-    schema_version: "reviewed_metrics_execution_authorization_v2.2.0",
+    schema_version: "reviewed_metrics_execution_authorization_v2.3.0",
     status: "activated_exact_one_shot",
     candidate_id: CANDIDATE_ID,
     implementation_base_commit: IMPLEMENTATION_BASE_COMMIT,
@@ -10045,6 +10351,20 @@ function syntheticExecutionAuthority(bundle: string): J {
     private_evaluator: {
       ...actor("private_evaluator"), principal: "synthetic-private-evaluator", session_id: "synthetic-private-evaluator-session", model: "synthetic-private-evaluator-model",
       signing_public_key_pem: SYNTHETIC_EVALUATOR_KEYS.publicKey.export({ type: "spki", format: "pem" }).toString(),
+    },
+    stage_execution: {
+      ledger_root: SYNTHETIC_STAGE_LEDGER_ROOT,
+      ledger_canonical_root: fs.realpathSync(SYNTHETIC_STAGE_LEDGER_ROOT),
+      ledger_device: fs.statSync(SYNTHETIC_STAGE_LEDGER_ROOT).dev,
+      ledger_inode: fs.statSync(SYNTHETIC_STAGE_LEDGER_ROOT).ino,
+      stages: STAGE_IDS.map((stageId) => ({
+        stage_id: stageId,
+        role: STAGE_ROLES[stageId],
+        nonce: hash(`synthetic-stage-nonce:${stageId}`).slice(0, 32),
+        invocation_id: hash(`synthetic-stage-invocation:${stageId}`),
+        operation: { kind: "builtin" },
+        outputs: [{ artifact_role: `${stageId}_output`, path: path.join(SYNTHETIC_STAGE_OUTPUT_ROOT, `${stageId}-output.json`) }],
+      })),
     },
     forbidden_prior_reviewers: [
       {
@@ -10121,6 +10441,7 @@ function syntheticCompletedResults(
 }
 async function main(): Promise<void> {
   const command = process.argv[2] ?? "verify";
+  codedAssert(!process.argv.slice(3).includes("--consumption-dir"), "H2_STAGE_LEDGER_ROOT", "caller-selected stage consumption directories are forbidden");
   const parsed = parseArgs({
     args: process.argv.slice(3),
     options: {
@@ -10139,7 +10460,6 @@ async function main(): Promise<void> {
       role: { type: "string" },
       stage: { type: "string" },
       "stage-receipt": { type: "string" },
-      "consumption-dir": { type: "string" },
       "issued-at": { type: "string" },
       "expires-at": { type: "string" },
       "scored-at": { type: "string" },
@@ -10167,12 +10487,18 @@ async function main(): Promise<void> {
     const consumption = beginStageConsumption(
       authority,
       path.resolve(assertString(o["stage-receipt"], "--stage-receipt required")),
-      path.resolve(assertString(o["consumption-dir"], "--consumption-dir required")),
       stageId,
+      () => new Date(),
+      internalCapability,
     );
-    const value = await operation();
-    completeStageConsumption(consumption);
-    return value;
+    try {
+      const value = await operation();
+      completeStageConsumption(consumption);
+      return value;
+    } catch (error) {
+      try { fs.closeSync(consumption.ledgerFd); } catch {}
+      throw error;
+    }
   };
   let result: J;
   if (command === "measure-route") {
@@ -10205,6 +10531,25 @@ async function main(): Promise<void> {
     const output = physicalPathSafety(path.resolve(assertString(o.output, "--output required")));
     fs.writeFileSync(output, pretty(receipt), { flag: "wx", mode: 0o644 });
     result = { status: "coordinator_route_receipt_signed", receipt_sha256: hash(Buffer.from(pretty(receipt))) };
+  } else if (command === "stage-run") {
+    const stageId = assertString(o.stage, "--stage required") as StageId;
+    codedAssert(STAGE_ROLES[stageId] !== undefined, "H2_ROUTE_STAGE_ROLE", "unknown exact production stage");
+    result = await runAttestedStage(stageId, () => {
+      const authority = internalAuthority ?? executionAuthority();
+      const operation = stageManifestEntry(authority, stageId).operation;
+      codedAssert(operation?.kind === "external_command" && path.isAbsolute(operation.executable) && path.normalize(operation.executable) === operation.executable && Array.isArray(operation.args) && operation.args.every((arg: unknown) => typeof arg === "string") && path.isAbsolute(operation.cwd) && path.normalize(operation.cwd) === operation.cwd, "H2_STAGE_OPERATION_DECLARATION", "external stage operation is not exactly authority-precommitted");
+      const executable = fs.realpathSync(operation.executable);
+      const executableStat = fs.statSync(executable);
+      codedAssert(executable === operation.executable && executableStat.isFile() && [0, process.getuid!()].includes(executableStat.uid) && (executableStat.mode & 0o022) === 0, "H2_STAGE_OPERATION_DECLARATION", "external stage executable is replaced or writable by other users");
+      execFileSync(executable, operation.args, { cwd: operation.cwd, stdio: "inherit", env: process.env });
+      return { status: "external_stage_operation_completed", stage_id: stageId };
+    });
+  } else if (command === "seal-stage-ledger") {
+    const authority = internalAuthority ?? executionAuthority();
+    const evidence = completedStageLedgerEvidence(authority);
+    const output = physicalPathSafety(path.resolve(assertString(o.output, "--output required")));
+    fs.writeFileSync(output, pretty(evidence), { flag: "wx", mode: 0o600 });
+    result = { status: "stage_execution_ledger_evidence_sealed", stage_count: evidence.stage_count, evidence_sha256: hash(Buffer.from(pretty(evidence))) };
   } else if (command === "build")
     result = await build(o.output ? path.resolve(o.output) : FIXTURE);
   else if (command === "build-blind-bundle")
@@ -10230,7 +10575,7 @@ async function main(): Promise<void> {
       },
     };
   else if (command === "validate-prediction")
-    result = await runAttestedStage("visual_predict", () => validatePrediction(assertString(o.input, "--input required")));
+    result = validatePrediction(assertString(o.input, "--input required"));
   else if (command === "freeze-prediction")
     result = await runAttestedStage("visual_freeze", () => freezePrediction(
       path.resolve(assertString(o.input, "--input required")),
@@ -10238,10 +10583,10 @@ async function main(): Promise<void> {
     ));
   else if (command === "validate-source-search-prediction") {
     const file = path.resolve(assertString(o.input, "--input required"));
-    result = await runAttestedStage("source_predict", () => {
+    result = (() => {
       validateSourceSearchPredictionValue(load(file), path.dirname(file));
       return { status: "source_search_prediction_valid" };
-    });
+    })();
   } else if (command === "freeze-source-search-prediction")
     result = await runAttestedStage("source_freeze", () => freezeSourceSearchPrediction(
       path.resolve(assertString(o.input, "--input required")),
@@ -10249,14 +10594,14 @@ async function main(): Promise<void> {
       path.resolve(assertString(o.output, "--output required")),
     ));
   else if (command === "validate-private-expected-envelope") {
-    result = await runAttestedStage("gold_envelope_authoring", () => {
+    result = (() => {
       validatePrivateExpectedEnvelopeValue(
         load(path.resolve(assertString(o.input, "--input required"))),
         internalCapability,
         internalAuthority ?? executionAuthority(),
       );
       return { status: "private_expected_envelope_valid" };
-    });
+    })();
   } else if (command === "prepare-private-score")
     result = await runAttestedStage("private_prepare", () => scorePrivateSourceSearch(
       path.resolve(assertString(o.workspace, "--workspace required")),
@@ -10305,7 +10650,7 @@ async function main(): Promise<void> {
       true,
     ));
   else if (command === "validate-gold")
-    result = await runAttestedStage("gold_review", () => validateGold(assertString(o.input, "--input required")));
+    result = validateGold(assertString(o.input, "--input required"));
   else if (command === "score")
     result = await runAttestedStage("metrics_score", () => scoreCompleted(
       path.resolve(assertString(o.input, "--input prediction required")),
@@ -10316,7 +10661,7 @@ async function main(): Promise<void> {
   else if (command === "validate-task-review") {
     const file = path.resolve(assertString(o.input, "--input required"));
     const value = load(file);
-    result = await runAttestedStage("task_review", () => {
+    result = (() => {
       if (value.status === "completed")
         validateTaskReviewValue(value, path.dirname(file), internalAuthority ?? executionAuthority());
       else validateTaskReviewValue(value, path.dirname(file));
@@ -10326,9 +10671,18 @@ async function main(): Promise<void> {
           ? "task_review_completed_valid"
           : "task_review_placeholder_valid",
       };
-    });
+    })();
   } else if (command === "publish")
-    result = await runAttestedStage("publication", () => { throw new Error("v2 publication is issue #97 scope and requires completed external authorities"); });
+    result = await runAttestedStage("publication", () => {
+      const authority = internalAuthority ?? executionAuthority();
+      const operation = stageManifestEntry(authority, "publication").operation;
+      codedAssert(operation?.kind === "external_command" && path.isAbsolute(operation.executable) && path.normalize(operation.executable) === operation.executable && Array.isArray(operation.args) && operation.args.every((arg: unknown) => typeof arg === "string") && path.isAbsolute(operation.cwd) && path.normalize(operation.cwd) === operation.cwd, "H2_STAGE_OPERATION_DECLARATION", "publication operation must be exactly authority-precommitted");
+      const executable = fs.realpathSync(operation.executable);
+      const executableStat = fs.statSync(executable);
+      codedAssert(executable === operation.executable && executableStat.isFile() && [0, process.getuid!()].includes(executableStat.uid) && (executableStat.mode & 0o022) === 0, "H2_STAGE_OPERATION_DECLARATION", "publication executable is replaced or writable by other users");
+      execFileSync(executable, operation.args, { cwd: operation.cwd, stdio: "inherit", env: process.env });
+      return { status: "publication_stage_completed" };
+    });
   else if (command === "self-test") result = await selfTest();
   else if (command === "security-self-test") result = await securityHelperSelfTest();
   else if (command === "integration-test") result = await integrationTest();

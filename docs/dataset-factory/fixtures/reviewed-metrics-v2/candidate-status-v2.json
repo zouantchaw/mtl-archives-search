@@ -32,12 +32,16 @@
       "metrics_score",
       "publication"
     ],
-    "durable_one_use_markers": true,
+    "authority_precommitted_stage_nonce_and_invocation": true,
+    "canonical_candidate_authority_stage_ledger": true,
+    "public_stage_execution_ledger_evidence": true,
     "actual_process_chronology": true,
     "hmac_opaque_private_keys": true,
+    "public_object_key_commitment_only": true,
     "conditional_versioned_readback": true,
-    "worker_binding_privacy_proof": true,
-    "trusted_absolute_executables": true
+    "complete_cloudflare_exposure_audit": true,
+    "trusted_absolute_executables": true,
+    "trusted_absolute_git": true
   },
   "mutations": {
     "production": false,
