@@ -100,6 +100,7 @@
         "surface_id",
         "surface_inventory_digest",
         "route_nonce",
+        "invocation_id",
         "route_receipt",
         "canonical_root",
         "role"
@@ -113,6 +114,7 @@
         "surface_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
         "surface_inventory_digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
         "route_nonce": { "type": "string", "pattern": "^[a-f0-9]{32,128}$" },
+        "invocation_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
         "route_receipt": { "$ref": "#/$defs/routeReceipt" },
         "canonical_root": { "type": "string", "pattern": "^/" },
         "signing_public_key_pem": {
@@ -137,7 +139,7 @@
     "surfaceInventory": {
       "oneOf": [
         {"type":"object","additionalProperties":false,"required":["inventory_id","kind","canonical_physical_host_id","physical_host_identity","coordinator_signature_base64"],"properties":{"inventory_id":{"type":"string","pattern":"^[a-z0-9_-]+$"},"kind":{"const":"local_host"},"canonical_physical_host_id":{"type":"string","pattern":"^[a-f0-9]{64}$"},"physical_host_identity":{"type":"object","additionalProperties":false,"required":["type","hardware_uuid","os_host_evidence_sha256","measured_at","coordinator_verification_pin"],"properties":{"type":{"const":"local_macos"},"hardware_uuid":{"type":"string","pattern":"^[A-Fa-f0-9-]{16,64}$"},"os_host_evidence_sha256":{"type":"string","pattern":"^[a-f0-9]{64}$"},"measured_at":{"type":"string","format":"date-time"},"coordinator_verification_pin":{"type":"string","pattern":"^[a-f0-9]{64}$"}}},"coordinator_signature_base64":{"type":"string","minLength":80,"maxLength":100}}},
-        {"type":"object","additionalProperties":false,"required":["inventory_id","kind","canonical_physical_host_id","physical_host_identity","coordinator_signature_base64"],"properties":{"inventory_id":{"type":"string","pattern":"^[a-z0-9_-]+$"},"kind":{"const":"remote_host"},"canonical_physical_host_id":{"type":"string","pattern":"^[a-f0-9]{64}$"},"physical_host_identity":{"type":"object","additionalProperties":false,"required":["type","identity_document_sha256","identity_signature_pkcs7_sha256","instance_id","account_id","region","image_id","pending_time","coordinator_verification_pin"],"properties":{"type":{"const":"aws_ec2"},"identity_document_sha256":{"type":"string","pattern":"^[a-f0-9]{64}$"},"identity_signature_pkcs7_sha256":{"type":"string","pattern":"^[a-f0-9]{64}$"},"instance_id":{"type":"string","pattern":"^i-[a-f0-9]+$"},"account_id":{"type":"string","pattern":"^[0-9]{12}$"},"region":{"type":"string","pattern":"^[a-z]{2}-[a-z]+-[0-9]+$"},"image_id":{"type":"string","pattern":"^ami-[a-f0-9]+$"},"pending_time":{"type":"string","format":"date-time"},"coordinator_verification_pin":{"type":"string","pattern":"^[a-f0-9]{64}$"}}},"coordinator_signature_base64":{"type":"string","minLength":80,"maxLength":100}}}
+        {"type":"object","additionalProperties":false,"required":["inventory_id","kind","canonical_physical_host_id","physical_host_identity","coordinator_signature_base64"],"properties":{"inventory_id":{"type":"string","pattern":"^[a-z0-9_-]+$"},"kind":{"const":"remote_host"},"canonical_physical_host_id":{"type":"string","pattern":"^[a-f0-9]{64}$"},"physical_host_identity":{"type":"object","additionalProperties":false,"required":["type","identity_document_sha256","identity_signature_pkcs7_sha256","identity_certificate_sha256","instance_id","account_id","region","image_id","pending_time","coordinator_verification_pin"],"properties":{"type":{"const":"aws_ec2"},"identity_document_sha256":{"type":"string","pattern":"^[a-f0-9]{64}$"},"identity_signature_pkcs7_sha256":{"type":"string","pattern":"^[a-f0-9]{64}$"},"identity_certificate_sha256":{"type":"string","pattern":"^[a-f0-9]{64}$"},"instance_id":{"type":"string","pattern":"^i-[a-f0-9]+$"},"account_id":{"type":"string","pattern":"^[0-9]{12}$"},"region":{"type":"string","pattern":"^[a-z]{2}-[a-z]+-[0-9]+$"},"image_id":{"type":"string","pattern":"^ami-[a-f0-9]+$"},"pending_time":{"type":"string","format":"date-time"},"coordinator_verification_pin":{"type":"string","pattern":"^[a-f0-9]{64}$"}}},"coordinator_signature_base64":{"type":"string","minLength":80,"maxLength":100}}}
       ]
     },
     "routeReceipt": {
@@ -151,6 +153,7 @@
         "candidate_commit",
         "authority_hash",
         "nonce",
+        "invocation_id",
         "role",
         "requested_root",
         "canonical_root",
@@ -175,6 +178,7 @@
         "candidate_commit": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
         "authority_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
         "nonce": { "type": "string", "pattern": "^[a-f0-9]{32,128}$" },
+        "invocation_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
         "role": { "type": "string", "minLength": 1 },
         "requested_root": { "type": "string", "pattern": "^/" },
         "canonical_root": { "type": "string", "pattern": "^/" },

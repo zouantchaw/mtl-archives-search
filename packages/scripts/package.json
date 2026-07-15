@@ -208,6 +208,7 @@
     "dataset-factory:reviewed-metrics-measure-route-v2": "tsx src/dataset-factory/reviewed-metrics-v2.ts measure-route",
     "dataset-factory:reviewed-metrics-sign-route-receipt-v2": "tsx src/dataset-factory/reviewed-metrics-v2.ts sign-route-receipt",
     "dataset-factory:reviewed-metrics-prepare-private-score-v2": "tsx src/dataset-factory/reviewed-metrics-v2.ts prepare-private-score",
+    "dataset-factory:reviewed-metrics-retain-private-score-v2": "tsx src/dataset-factory/reviewed-metrics-v2.ts retain-private-score",
     "dataset-factory:reviewed-metrics-finalize-private-score-v2": "tsx src/dataset-factory/reviewed-metrics-v2.ts finalize-private-score",
     "dataset-factory:reviewed-metrics-validate-gold-v2": "tsx src/dataset-factory/reviewed-metrics-v2.ts validate-gold",
     "dataset-factory:reviewed-metrics-score-v2": "tsx src/dataset-factory/reviewed-metrics-v2.ts score",
