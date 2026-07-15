@@ -1,0 +1,29 @@
+{
+  "schema_version": "verified_dossiers_publication_status_v1.0.0",
+  "state": "published",
+  "counts": {
+    "candidates": 36,
+    "accepted": 32,
+    "held": 4,
+    "rejected": 0,
+    "fully_verified": 32,
+    "benchmark_tasks": 0,
+    "search_tasks": 0
+  },
+  "reviewer": {
+    "reviewer_id": "sol-high-gate-g-dossier-reviewer:019f6216-987e-7000-95f0-9b9a054fedfa",
+    "session_id": "019f6216-987e-7000-95f0-9b9a054fedfa",
+    "model": "gpt-5.6-sol",
+    "reasoning_effort": "high",
+    "reviewed_at": "2026-07-14T20:44:08Z",
+    "independence_attestations": {
+      "no_author_overlap": true,
+      "no_gate_e_source_review_overlap": true,
+      "no_gate_f_source_review_overlap": true,
+      "no_implementation_overlap": true
+    }
+  },
+  "production_mutation": false,
+  "paid_gpu": false,
+  "issue_complete": true
+}

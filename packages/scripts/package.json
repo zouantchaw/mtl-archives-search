@@ -185,6 +185,7 @@
     "dataset-factory:verified-dossiers-validate-review-v1": "tsx src/dataset-factory/verified-dossiers-v1.ts validate-review",
     "dataset-factory:verified-dossiers-publish-v1": "tsx src/dataset-factory/verified-dossiers-v1.ts publish",
     "dataset-factory:verified-dossiers-verify-published-v1": "tsx src/dataset-factory/verified-dossiers-v1.ts verify-published",
+    "dataset-factory:verified-dossiers-verify-tracked-v1": "tsx src/dataset-factory/verified-dossiers-v1.ts verify-published --output ../../docs/dataset-factory/fixtures/verified-dossiers-publication-v1 --authorization ../../docs/dataset-factory/authorities/verified-dossiers-v1/reviewer-authorization-v1.json",
     "dataset-factory:verified-dossiers-self-test-v1": "tsx src/dataset-factory/verified-dossiers-v1.ts self-test",
     "dataset-factory:verified-dossiers-integration-test-v1": "tsx src/dataset-factory/verified-dossiers-v1.ts integration-test",
     "dataset-factory:production-apply-gate-v0": "tsx src/dataset-factory/build-production-apply-gate-v0.ts",

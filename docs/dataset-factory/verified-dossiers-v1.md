@@ -1,6 +1,6 @@
 # Issue 91 Gate G Verified Dossiers v1
 
-Gate G is a candidate, independent-review, and one-way publication contract. The tracked artifact is candidate-only: all 36 dossiers have `fully_verified=false`, the independent review template is blank, and no authoritative dossier publication or completed review receipt is committed.
+Gate G is a candidate, independent-review, and one-way publication contract. The tracked candidate artifact remains candidate-only: all 36 candidate dossiers have `fully_verified=false`, and its independent review template is blank. The separately tracked final publication described below preserves the completed external review and authoritative derived projections without changing candidate bytes.
 
 The deterministic attrition cohort contains all 20 Phase D aerial records and the first 16 component-distinct Phase D ground records with `promoted` Gold authority, ordered by Phase D selection index. Gate F reserves `10153` and `9504` are excluded because they are not Phase D records. Pilot aerials `8132`, `8134`, `8139`, and `8143` are categorically ineligible in v1: a completed review may mark them only `held` or `rejected`, and they can never increment `fully_verified`.
 
@@ -41,3 +41,13 @@ Until the separate authority-only activation commit exists, all three normal com
 The generic `dataset-factory:verified-dossiers-self-test-v1` command is valid before and after that authority-only activation. In the unconfigured state it verifies null authority fields, absence of the fixed authorization file, and fail-closed normal CLI behavior. In the active state it requires both authority files to be committed at `HEAD` byte-identically, parses the committed authorization through the strict reviewer-authorization schema, and cross-checks pin -> committed authorization bytes -> deterministic candidate descriptor, packet manifest, review scope, reviewer, authorizing authority, timestamp, and forbidden-principal derivations. It does not require a completed review receipt. Its synthetic active-state mutations use only an in-process symbol-gated reader and cannot establish production authority or bypass the normal CLI's exact committed-file checks.
 
 Publication refuses an existing destination, an unconfigured or uncommitted pin, authorization bytes or routes that differ from the pin, fewer than 25 eligible accepted dossiers, count drift, identity overlap, missing attestations, held/rejected rows counted as verified, source-acquisition-only packets, changed packet/projection/image hashes, or incomplete output without the final commit marker. It freshly derives the complete published aggregate from the verified candidate and exact receipt, then byte-compares every per-record JSON/HTML projection, reviewed contact sheet, status, descriptor, and commit. It exclusively reserves the destination, installs under an owner token, and writes the commit marker last. It retains held and rejected rows with rationale and sets `fully_verified=true` only for eligible accepted rows. It performs no production, benchmark, search, network, upload, deploy, or paid-GPU action.
+
+## Tracked publication
+
+`docs/dataset-factory/fixtures/verified-dossiers-publication-v1` is the byte-identical tracked import of the independently reviewed publication. Its complete 234-file tree is 16,995,574 bytes with SHA-256 `30629103fd0573dfa668b70d6cbd10a193598e2b55def7d652b36b36791c0a04`. The publication descriptor SHA-256 is `dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7`, the completed review receipt SHA-256 is `22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc`, and the authorization SHA-256 is `35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff`. The fail-closed derived counts are 32 accepted and `fully_verified`, four held pilot aerials, and zero rejected; benchmark/search tasks and production mutation remain zero.
+
+```bash
+npm run dataset-factory:verified-dossiers-verify-tracked-v1
+```
+
+The fixed tracked verifier replays the candidate, authorization, completed receipt, aggregate publication, per-record JSON/HTML, reviewed contact sheets, status, descriptor, and commit derivations directly from repository bytes. The distinct final-authority registry row covers the complete imported tree; the candidate registry row is unchanged.
