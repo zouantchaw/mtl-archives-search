@@ -1,0 +1,100 @@
+{
+  "schema_version": "reviewed_metrics_false_precision_cases_v1.0.0",
+  "artifact_id": "dfv0_reviewed_metrics_v1_candidate_20260714",
+  "population_rate_claimed": false,
+  "cases": [
+    {
+      "case_id": "castrol-catelli",
+      "kind": "rejected_false_precision",
+      "record_id": 105,
+      "proposed": "CASTROL",
+      "reviewed_result": "CATELLI\nEGG NOODLES",
+      "disposition": "rejected_false_precision_hypothesis",
+      "boundary": "Full-resolution visual QA reads CATELLI / EGG NOODLES; CASTROL is retained only as a false-precision example and is not an accepted transcription or identity.",
+      "evidence": [
+        {
+          "path": "docs/dataset-factory/fixtures/ground-originals-v1/research-candidates-v1.json",
+          "sha256": "6b3b21cdd0e67065e1108bec51c7d4c81f58cea6f3d1252f256f978c35e182ea",
+          "bytes": 8794
+        },
+        {
+          "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+          "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+          "bytes": 1907
+        }
+      ]
+    },
+    {
+      "case_id": "c105-unsupported-join",
+      "kind": "unsupported_entity_address_operator_join",
+      "record_id": 105,
+      "proposed": "Tilden/HERTZ address and operator join",
+      "reviewed_result": "abstained",
+      "disposition": "abstained",
+      "boundary": [
+        "Tilden and HERTZ wording is visible only at whole-scene scope and is not a formal independently reviewed crop transcription.",
+        "The formal reviewed crops establish only WHITE ROSE and CATELLI literal text.",
+        "No sealed evidence establishes 1130 Windsor near Dorchester, a Tilden-Hertz join, an entity/operator attribution, or a scene-address link."
+      ],
+      "evidence": [
+        {
+          "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+          "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+          "bytes": 7724
+        },
+        {
+          "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+          "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+          "bytes": 1907
+        }
+      ]
+    },
+    {
+      "case_id": "magic-not-pixel-confirmed",
+      "kind": "metadata_only_identity_control",
+      "record_id": 0,
+      "proposed": "Magic Baking Powder identity",
+      "reviewed_result": "not_pixel_confirmed",
+      "disposition": "abstained",
+      "boundary": [
+        "No independently reviewed directory pixels or transcription are sealed.",
+        "No reviewed visual region establishes Gillett, Magic, or Gazette identity in record 0."
+      ],
+      "evidence": [
+        {
+          "path": "docs/dataset-factory/fixtures/ground-claim-adjudication-v1/independent-adjudication-v1.json",
+          "sha256": "d97fafe4095dcbcdf80a19353af67728d3e85f5d5a5a7dd9c5bd5992ccd79fdf",
+          "bytes": 7724
+        },
+        {
+          "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+          "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+          "bytes": 4243798
+        }
+      ]
+    },
+    {
+      "case_id": "held-low-information-pilots",
+      "kind": "low_information_control",
+      "record_id": null,
+      "proposed": "Task emission from held detail-limited pilots",
+      "reviewed_result": "categorically held",
+      "disposition": "held",
+      "boundary": [
+        "8132, 8134, 8139, and 8143 have no accepted Gate G visual claim and emit no task."
+      ],
+      "evidence": [
+        {
+          "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
+          "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+          "bytes": 50658
+        },
+        {
+          "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+          "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+          "bytes": 4243798
+        }
+      ]
+    }
+  ]
+}

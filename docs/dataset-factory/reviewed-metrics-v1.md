@@ -27,3 +27,13 @@ npm run dataset-factory:reviewed-metrics-verify-published-v1 -- --authorization 
 Authoritative v1 publication requires exactly 32 accepted, zero held, and zero rejected task rows. Any partial review is validatable evidence but cannot publish or set `issue_complete=true`. Publication rederives a complete final criterion matrix, hashes the exact supplied receipt bytes, and installs the commit marker last.
 
 One-way refusal is enforced at the single authorized absolute route and basename. The same route cannot be published twice, and a different route cannot be substituted. The contract does not claim filesystem-global uniqueness outside that authorization boundary. Publication performs no network, paid-GPU, production search, or index operation.
+
+## Tracked Publication
+
+`docs/dataset-factory/fixtures/reviewed-metrics-publication-v1` is the byte-identical tracked import of the independently reviewed publication. Its 19-file tree is 1,005,718 bytes with SHA-256 `1e61ba2d92b6ee59f6eb6221b8274ef9a6bcbf56299274da7a5525b1e14974a1`. The final descriptor SHA-256 is `e44ca758c7d17d2256b974e714b15795a637d634eb29253a7f7ecee6347c0b93`, the completed task-review receipt SHA-256 is `422cd4d3faab3e233af0241ca11dd82cc9a26e75c0af08961698bc342b97552a`, and the authorization SHA-256 is `d66a969563878b6e02f46d965ab374cf7e186d8c518c8d62aa1e275adcd96dbc`. All 32 tasks are accepted, none are held or rejected, and `issue_complete=true`; production, search-index, and paid-GPU mutation remain false.
+
+The tracked verifier replays the complete publication derivation against the committed authorization and receipt, checks the exact file set and bytes, and then enforces the fixed tracked envelope. It is read-only and does not relax the authorized `/tmp/issue92-gate-h-publication-v1` route used by normal review and publication commands.
+
+```bash
+npm run dataset-factory:reviewed-metrics-verify-tracked-v1
+```

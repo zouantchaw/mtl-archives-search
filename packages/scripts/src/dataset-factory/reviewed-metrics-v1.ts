@@ -28,6 +28,9 @@ const ROOT = path.resolve(
 );
 const REL = "docs/dataset-factory/fixtures/reviewed-metrics-v1";
 const FIXTURE = path.join(ROOT, REL);
+const FINAL_PUBLICATION_REL =
+  "docs/dataset-factory/fixtures/reviewed-metrics-publication-v1";
+const FINAL_PUBLICATION = path.join(ROOT, FINAL_PUBLICATION_REL);
 const SCHEMAS = path.join(
   ROOT,
   "docs/dataset-factory/schemas/reviewed-metrics-v1",
@@ -44,8 +47,25 @@ const PRODUCTION_AUTHORIZATION_PIN = path.join(
 );
 const PRODUCTION_REVIEWER_AUTHORIZATION_REL =
   "docs/dataset-factory/authorities/reviewed-metrics-v1/reviewer-authorization-v1.json";
+const PRODUCTION_REVIEWER_AUTHORIZATION = path.join(
+  ROOT,
+  PRODUCTION_REVIEWER_AUTHORIZATION_REL,
+);
 const PRODUCTION_OUTPUT = "/tmp/issue92-gate-h-publication-v1";
 const ID = "dfv0_reviewed_metrics_v1_candidate_20260714";
+const FINAL_PUBLICATION_ID = "dfv0_reviewed_metrics_v1_publication";
+const FINAL_PUBLICATION_EXPECTED = {
+  files: 19,
+  bytes: 1_005_718,
+  tree_sha256:
+    "1e61ba2d92b6ee59f6eb6221b8274ef9a6bcbf56299274da7a5525b1e14974a1",
+  final_descriptor_sha256:
+    "e44ca758c7d17d2256b974e714b15795a637d634eb29253a7f7ecee6347c0b93",
+  receipt_sha256:
+    "422cd4d3faab3e233af0241ca11dd82cc9a26e75c0af08961698bc342b97552a",
+  authorization_sha256:
+    "d66a969563878b6e02f46d965ab374cf7e186d8c518c8d62aa1e275adcd96dbc",
+} as const;
 const CREATED = "2026-07-14T00:00:00.000Z";
 const AUTHOR = {
   identity: "codex-sol-medium-gate-h-implementation",
@@ -2030,6 +2050,65 @@ function verifyPublished(
     paid_gpu: false,
   };
 }
+function verifyTrackedPublication(): J {
+  const result = verifyPublished(
+    FINAL_PUBLICATION,
+    PRODUCTION_REVIEWER_AUTHORIZATION,
+    undefined,
+    false,
+  );
+  same(
+    result,
+    {
+      status: "verified_published",
+      accepted_tasks: 32,
+      held_tasks: 0,
+      rejected_tasks: 0,
+      files: FINAL_PUBLICATION_EXPECTED.files,
+      bytes: FINAL_PUBLICATION_EXPECTED.bytes,
+      tree_sha256: FINAL_PUBLICATION_EXPECTED.tree_sha256,
+      production_mutation: false,
+      paid_gpu: false,
+    },
+    "tracked publication envelope",
+  );
+  const status = load(
+    path.join(FINAL_PUBLICATION, "publication-status-v1.json"),
+  );
+  assert(
+    status.issue_complete === true &&
+      status.counts.accepted === 32 &&
+      status.counts.held === 0 &&
+      status.counts.rejected === 0 &&
+      status.counts.reviewed_tasks === 32 &&
+      status.counts.published_tasks === 32 &&
+      status.production_mutation === false &&
+      status.search_index_mutation === false &&
+      status.paid_gpu === false,
+    "tracked publication status envelope drift",
+  );
+  const descriptor = load(
+    path.join(FINAL_PUBLICATION, "final-descriptor-v1.json"),
+  );
+  assert(
+    pin(path.join(FINAL_PUBLICATION, "final-descriptor-v1.json")).sha256 ===
+      FINAL_PUBLICATION_EXPECTED.final_descriptor_sha256 &&
+      descriptor.review_receipt.sha256 ===
+        FINAL_PUBLICATION_EXPECTED.receipt_sha256 &&
+      descriptor.reviewer_authorization.sha256 ===
+        FINAL_PUBLICATION_EXPECTED.authorization_sha256,
+    "tracked publication authority pins drift",
+  );
+  return {
+    ...result,
+    registry_artifact_id: FINAL_PUBLICATION_ID,
+    final_descriptor_sha256: FINAL_PUBLICATION_EXPECTED.final_descriptor_sha256,
+    review_receipt_sha256: FINAL_PUBLICATION_EXPECTED.receipt_sha256,
+    authorization_sha256: FINAL_PUBLICATION_EXPECTED.authorization_sha256,
+    issue_complete: true,
+    search_index_mutation: false,
+  };
+}
 function syntheticReceipt(candidate: string, authorizationFile: string): J {
   const tasks = load(path.join(candidate, "candidate-benchmark-tasks-v1.json"));
   const template = blankReview(candidate, tasks);
@@ -2795,11 +2874,12 @@ async function main(): Promise<void> {
       path.resolve(args.values.output ?? ""),
       path.resolve(args.values.authorization ?? ""),
     );
+  else if (command === "verify-tracked") result = verifyTrackedPublication();
   else if (command === "self-test") result = await selfTest();
   else if (command === "integration-test") result = await integration();
   else
     throw new Error(
-      "command required: build|verify|seal-registry|validate-review|publish|verify-published|self-test|integration-test",
+      "command required: build|verify|seal-registry|validate-review|publish|verify-published|verify-tracked|self-test|integration-test",
     );
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
 }

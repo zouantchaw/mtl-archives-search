@@ -207,6 +207,7 @@
     "dataset-factory:reviewed-metrics-validate-review-v1": "npm run dataset-factory:reviewed-metrics-validate-review-v1 --workspace=@mtl-archives/scripts --",
     "dataset-factory:reviewed-metrics-publish-v1": "npm run dataset-factory:reviewed-metrics-publish-v1 --workspace=@mtl-archives/scripts --",
     "dataset-factory:reviewed-metrics-verify-published-v1": "npm run dataset-factory:reviewed-metrics-verify-published-v1 --workspace=@mtl-archives/scripts --",
+    "dataset-factory:reviewed-metrics-verify-tracked-v1": "npm run dataset-factory:reviewed-metrics-verify-tracked-v1 --workspace=@mtl-archives/scripts --",
     "dataset-factory:reviewed-metrics-self-test-v1": "npm run dataset-factory:reviewed-metrics-self-test-v1 --workspace=@mtl-archives/scripts --",
     "dataset-factory:reviewed-metrics-integration-test-v1": "npm run dataset-factory:reviewed-metrics-integration-test-v1 --workspace=@mtl-archives/scripts --",
     "dataset-factory:production-apply-gate-v0": "npm run dataset-factory:production-apply-gate-v0 --workspace=@mtl-archives/scripts --",

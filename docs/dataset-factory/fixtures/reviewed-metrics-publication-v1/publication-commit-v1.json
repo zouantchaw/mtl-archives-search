@@ -1,0 +1,15 @@
+{
+  "schema_version": "reviewed_metrics_publication_commit_v1.0.0",
+  "state": "committed",
+  "receipt": {
+    "path": "independent-task-review-v1.json",
+    "sha256": "422cd4d3faab3e233af0241ca11dd82cc9a26e75c0af08961698bc342b97552a",
+    "bytes": 27037
+  },
+  "descriptor": {
+    "path": "final-descriptor-v1.json",
+    "sha256": "e44ca758c7d17d2256b974e714b15795a637d634eb29253a7f7ecee6347c0b93",
+    "bytes": 3741
+  },
+  "committed_at": "2026-07-15T03:58:30Z"
+}

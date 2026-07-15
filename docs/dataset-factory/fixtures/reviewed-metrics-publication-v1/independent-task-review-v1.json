@@ -1,0 +1,445 @@
+{
+  "schema_version": "reviewed_metrics_task_review_receipt_v1.0.0",
+  "status": "completed",
+  "authorization_sha256": "d66a969563878b6e02f46d965ab374cf7e186d8c518c8d62aa1e275adcd96dbc",
+  "candidate_descriptor_sha256": "bfc9de67251d7b30eb4e5ea46ee8d84922c209544f6c6e5c1e23b755397052d5",
+  "candidate_tasks_sha256": "c715c411d37f0d6bde756cf68b0b3a2db59de2336fe2c55752744e3514cf6a66",
+  "reviewer": {
+    "identity": "sol-high-gate-h-task-reviewer:019f63c9-b9ff-7460-b541-b8b331c31021",
+    "session_id": "019f63c9-b9ff-7460-b541-b8b331c31021",
+    "model": "gpt-5.6-sol",
+    "reasoning_effort": "high",
+    "reviewed_at": "2026-07-15T03:58:30Z",
+    "attestations": {
+      "no_implementation_overlap": true,
+      "no_candidate_author_overlap": true,
+      "no_gate_e_source_reviewer_overlap": true,
+      "no_gate_f_source_reviewer_overlap": true,
+      "no_gate_g_reviewer_overlap": true
+    }
+  },
+  "dispositions": [
+    {
+      "task_id": "gate-h:image-mode:10",
+      "task_sha256": "c7e20d111dfe804bdea31a968a11a2bfe45085391feaaee541b1b19635077337",
+      "disposition": "accepted",
+      "approvals": {
+        "exact_task_binding": true,
+        "claim_and_dossier_authority": true,
+        "component_and_split": true,
+        "rights_and_pixels": true,
+        "evidence_boundary": true
+      },
+      "rationale": "Accepted. The exact whole-image review pixels show a terrestrial street intersection with facade elevations, utility poles, vehicles, and a street-level vanishing point, independently supporting ground_street. The canonical task and claim hashes, exact pixel bytes, Phase D component/split/source row, accepted Gate G dossier/review, rights authority, bounded evidence boundary, and predecessor pins were all verified."
+    },
+    {
+      "task_id": "gate-h:image-mode:11",
+      "task_sha256": "061c4409280a46cafb1d0780f62180016abc525df89285ab75cfdfb1dc7f152d",
+      "disposition": "accepted",
+      "approvals": {
+        "exact_task_binding": true,
+        "claim_and_dossier_authority": true,
+        "component_and_split": true,
+        "rights_and_pixels": true,
+        "evidence_boundary": true
+      },
+      "rationale": "Accepted. The exact whole-image review pixels show a terrestrial street intersection with facade elevations, cars, sidewalks, and street-level perspective, independently supporting ground_street. The canonical task and claim hashes, exact pixel bytes, Phase D component/split/source row, accepted Gate G dossier/review, rights authority, bounded evidence boundary, and predecessor pins were all verified."
+    },
+    {
+      "task_id": "gate-h:image-mode:17",
+      "task_sha256": "1d16ae7a654e1e75f2e7ae94123e6084aeb1c752b1fe5fce0c0f2ab3c932fd23",
+      "disposition": "accepted",
+      "approvals": {
+        "exact_task_binding": true,
+        "claim_and_dossier_authority": true,
+        "component_and_split": true,
+        "rights_and_pixels": true,
+        "evidence_boundary": true
+      },
+      "rationale": "Accepted. The exact whole-image review pixels show a sidewalk and roadway corridor with facade elevations, vehicles, and a terrestrial vanishing point, independently supporting ground_street. The canonical task and claim hashes, exact pixel bytes, Phase D component/split/source row, accepted Gate G dossier/review, rights authority, bounded evidence boundary, and predecessor pins were all verified."
+    },
+    {
+      "task_id": "gate-h:image-mode:30",
+      "task_sha256": "eabbdadcd64c30678fc4a23b731c8839d8566bf638e72456d9b627b526d9fd34",
+      "disposition": "accepted",
+      "approvals": {
+        "exact_task_binding": true,
+        "claim_and_dossier_authority": true,
+        "component_and_split": true,
+        "rights_and_pixels": true,
+        "evidence_boundary": true
+      },
+      "rationale": "Accepted. The exact whole-image review pixels show a terrestrial building view with facade elevation, tracks, street furniture, and overhead wires, independently supporting ground_street. The canonical task and claim hashes, exact pixel bytes, Phase D component/split/source row, accepted Gate G dossier/review, rights authority, bounded evidence boundary, and predecessor pins were all verified."
+    },
+    {
+      "task_id": "gate-h:image-mode:31",
+      "task_sha256": "645f9b7cf0aa6add760e56ae5f3cc4dabc3c9f116d6002fb190ddea348ccddff",
+      "disposition": "accepted",
+      "approvals": {
+        "exact_task_binding": true,
+        "claim_and_dossier_authority": true,
+        "component_and_split": true,
+        "rights_and_pixels": true,
+        "evidence_boundary": true
+      },
+      "rationale": "Accepted. The exact whole-image review pixels show a frontal terrestrial facade view with pedestrians and a ground-plane foreground, independently supporting ground_street. The canonical task and claim hashes, exact pixel bytes, Phase D component/split/source row, accepted Gate G dossier/review, rights authority, bounded evidence boundary, and predecessor pins were all verified."
+    },
+    {
+      "task_id": "gate-h:image-mode:33",
+      "task_sha256": "b16d08abd06aae29110da5fdb62711c89ad5c30a2e4b12f4edfad90073674457",
+      "disposition": "accepted",
+      "approvals": {
+        "exact_task_binding": true,
+        "claim_and_dossier_authority": true,
+        "component_and_split": true,
+        "rights_and_pixels": true,
+        "evidence_boundary": true
+      },
+      "rationale": "Accepted. The exact whole-image review pixels show a terrestrial corner-building view with facade convergence, street frontage, and overhead wires, independently supporting ground_street. The canonical task and claim hashes, exact pixel bytes, Phase D component/split/source row, accepted Gate G dossier/review, rights authority, bounded evidence boundary, and predecessor pins were all verified."
+    },
+    {
+      "task_id": "gate-h:image-mode:45",
+      "task_sha256": "5aeda6c3b5476af9783eb8c3cb095a00c41b30252e51102c54af96a69f9dc7cd",
+      "disposition": "accepted",
+      "approvals": {
+        "exact_task_binding": true,
+        "claim_and_dossier_authority": true,
+        "component_and_split": true,
+        "rights_and_pixels": true,
+        "evidence_boundary": true
+      },
+      "rationale": "Accepted. The exact whole-image review pixels show a terrestrial streetside facade with roadway foreground, vehicles, and ground-level perspective, independently supporting ground_street. The canonical task and claim hashes, exact pixel bytes, Phase D component/split/source row, accepted Gate G dossier/review, rights authority, bounded evidence boundary, and predecessor pins were all verified."
+    },
+    {
+      "task_id": "gate-h:image-mode:54",
+      "task_sha256": "ad8d7c8b24ddd7cd539efbbba389b376ed14c54073dff1d26de25a4da2b43f12",
+      "disposition": "accepted",
+      "approvals": {
+        "exact_task_binding": true,
+        "claim_and_dossier_authority": true,
+        "component_and_split": true,
+        "rights_and_pixels": true,
+        "evidence_boundary": true
+      },
+      "rationale": "Accepted. The exact whole-image review pixels show a terrestrial frontal building view with street traffic and a ground-plane foreground, independently supporting ground_street. The canonical task and claim hashes, exact pixel bytes, Phase D component/split/source row, accepted Gate G dossier/review, rights authority, bounded evidence boundary, and predecessor pins were all verified."
+    },
+    {
+      "task_id": "gate-h:image-mode:58",
+      "task_sha256": "7202cb3d5712ab2aefb63dd0d751926350e7be33bb832572ae00e3f090f43841",
+      "disposition": "accepted",
+      "approvals": {
+        "exact_task_binding": true,
+        "claim_and_dossier_authority": true,
+        "component_and_split": true,
+        "rights_and_pixels": true,
+        "evidence_boundary": true
+      },
+      "rationale": "Accepted. The exact whole-image review pixels show a terrestrial storefront and parked-car scene with facade elevation and street-level perspective, independently supporting ground_street. The canonical task and claim hashes, exact pixel bytes, Phase D component/split/source row, accepted Gate G dossier/review, rights authority, bounded evidence boundary, and predecessor pins were all verified."
+    },
+    {
+      "task_id": "gate-h:image-mode:77",
+      "task_sha256": "3958351d5def289644c958e930e46b7a280281be72ba40d79980972be77569ea",
+      "disposition": "accepted",
+      "approvals": {
+        "exact_task_binding": true,
+        "claim_and_dossier_authority": true,
+        "component_and_split": true,
+        "rights_and_pixels": true,
+        "evidence_boundary": true
+      },
+      "rationale": "Accepted. The exact whole-image review pixels show a terrestrial frontal building view with street/plaza foreground and no aerial geometry, independently supporting ground_street. The canonical task and claim hashes, exact pixel bytes, Phase D component/split/source row, accepted Gate G dossier/review, rights authority, bounded evidence boundary, and predecessor pins were all verified."
+    },
+    {
+      "task_id": "gate-h:image-mode:88",
+      "task_sha256": "aaa3e24d9b6bfcc2ad8e788a3ca9514cfe448d1b125bc852af1a16dd5539151e",
+      "disposition": "accepted",
+      "approvals": {
+        "exact_task_binding": true,
+        "claim_and_dossier_authority": true,
+        "component_and_split": true,
+        "rights_and_pixels": true,
+        "evidence_boundary": true
+      },
+      "rationale": "Accepted. The exact whole-image review pixels show a terrestrial streetscape with facade elevations, roadway recession, vehicles, and utility lines, independently supporting ground_street. The canonical task and claim hashes, exact pixel bytes, Phase D component/split/source row, accepted Gate G dossier/review, rights authority, bounded evidence boundary, and predecessor pins were all verified."
+    },
+    {
+      "task_id": "gate-h:image-mode:100",
+      "task_sha256": "65ad74fe1bbf4766256c4192dfed663c8322826d0bc1057adc605cb793172d48",
+      "disposition": "accepted",
+      "approvals": {
+        "exact_task_binding": true,
+        "claim_and_dossier_authority": true,
+        "component_and_split": true,
+        "rights_and_pixels": true,
+        "evidence_boundary": true
+      },
+      "rationale": "Accepted. The exact whole-image review pixels show a terrestrial construction-site view with full facade elevation, pedestrians, vehicles, and ground foreground, independently supporting ground_street. The canonical task and claim hashes, exact pixel bytes, Phase D component/split/source row, accepted Gate G dossier/review, rights authority, bounded evidence boundary, and predecessor pins were all verified."
+    },
+    {
+      "task_id": "gate-h:image-mode:101",
+      "task_sha256": "0cca55ff8d1edc74d8f827dc674a43bcf501cbb76834bd077d12247dec322db9",
+      "disposition": "accepted",
+      "approvals": {
+        "exact_task_binding": true,
+        "claim_and_dossier_authority": true,
+        "component_and_split": true,
+        "rights_and_pixels": true,
+        "evidence_boundary": true
+      },
+      "rationale": "Accepted. The exact whole-image review pixels show a terrestrial view from beneath a sidewalk awning across a roadway toward facade elevations, independently supporting ground_street. The canonical task and claim hashes, exact pixel bytes, Phase D component/split/source row, accepted Gate G dossier/review, rights authority, bounded evidence boundary, and predecessor pins were all verified."
+    },
+    {
+      "task_id": "gate-h:image-mode:102",
+      "task_sha256": "c449d3739b3b3ef896a5a3be2acef0ec441fd188320df41242af77d2cc19e537",
+      "disposition": "accepted",
+      "approvals": {
+        "exact_task_binding": true,
+        "claim_and_dossier_authority": true,
+        "component_and_split": true,
+        "rights_and_pixels": true,
+        "evidence_boundary": true
+      },
+      "rationale": "Accepted. The exact whole-image review pixels show a terrestrial streetside church view with facade elevation, roadway traffic, and ground-level perspective, independently supporting ground_street. The canonical task and claim hashes, exact pixel bytes, Phase D component/split/source row, accepted Gate G dossier/review, rights authority, bounded evidence boundary, and predecessor pins were all verified."
+    },
+    {
+      "task_id": "gate-h:image-mode:105",
+      "task_sha256": "a53cd5a1a190573244b55b65c41e72c31cf816913ec980d7bf3cc33214ee79a6",
+      "disposition": "accepted",
+      "approvals": {
+        "exact_task_binding": true,
+        "claim_and_dossier_authority": true,
+        "component_and_split": true,
+        "rights_and_pixels": true,
+        "evidence_boundary": true
+      },
+      "rationale": "Accepted. The exact whole-image review pixels show a terrestrial parking/street scene with facade elevations, traffic wires, vehicles, and pedestrians, independently supporting ground_street. The canonical task and claim hashes, exact pixel bytes, Phase D component/split/source row, accepted Gate G dossier/review, rights authority, bounded evidence boundary, and predecessor pins were all verified."
+    },
+    {
+      "task_id": "gate-h:image-mode:106",
+      "task_sha256": "c1775d2cfe3259cde1fcb4579cb5765832ee066783bbcaca1e8792da423e2519",
+      "disposition": "accepted",
+      "approvals": {
+        "exact_task_binding": true,
+        "claim_and_dossier_authority": true,
+        "component_and_split": true,
+        "rights_and_pixels": true,
+        "evidence_boundary": true
+      },
+      "rationale": "Accepted. The exact whole-image review pixels show a terrestrial grade-separated rail/street construction view with near-ground infrastructure, poles, workers, and a horizontal vanishing point, independently supporting ground_street. The canonical task and claim hashes, exact pixel bytes, Phase D component/split/source row, accepted Gate G dossier/review, rights authority, bounded evidence boundary, and predecessor pins were all verified."
+    },
+    {
+      "task_id": "gate-h:image-mode:4501",
+      "task_sha256": "0fc9bef593eba6bead81e96f3404282190180e9bcc18cc6a8eff598df38b19ed",
+      "disposition": "accepted",
+      "approvals": {
+        "exact_task_binding": true,
+        "claim_and_dossier_authority": true,
+        "component_and_split": true,
+        "rights_and_pixels": true,
+        "evidence_boundary": true
+      },
+      "rationale": "Accepted. The exact whole-image review pixels show a near-nadir aerial view with planimetric rail, road, and roof geometry and no horizon, independently supporting aerial_vertical. The canonical task and claim hashes, exact pixel bytes, Phase D component/split/source row, accepted Gate G dossier/review, rights authority, bounded evidence boundary, and predecessor pins were all verified."
+    },
+    {
+      "task_id": "gate-h:image-mode:7929",
+      "task_sha256": "36a5d97ae694dd234e2ebb505072748ceb761d765e79c60a9d170c76e0516f69",
+      "disposition": "accepted",
+      "approvals": {
+        "exact_task_binding": true,
+        "claim_and_dossier_authority": true,
+        "component_and_split": true,
+        "rights_and_pixels": true,
+        "evidence_boundary": true
+      },
+      "rationale": "Accepted. The exact whole-image review pixels show a near-nadir aerial view of shoreline and fields with planimetric geometry and no horizon, independently supporting aerial_vertical. The canonical task and claim hashes, exact pixel bytes, Phase D component/split/source row, accepted Gate G dossier/review, rights authority, bounded evidence boundary, and predecessor pins were all verified."
+    },
+    {
+      "task_id": "gate-h:image-mode:8432",
+      "task_sha256": "45a2063c4e7dad2d95d98881cdf32863e354b244c28dcb6dde9dc4bbfc11eb4b",
+      "disposition": "accepted",
+      "approvals": {
+        "exact_task_binding": true,
+        "claim_and_dossier_authority": true,
+        "component_and_split": true,
+        "rights_and_pixels": true,
+        "evidence_boundary": true
+      },
+      "rationale": "Accepted. The exact whole-image review pixels show a near-nadir aerial frame with planimetric parcel, road, and roof geometry and no horizon, independently supporting aerial_vertical. The canonical task and claim hashes, exact pixel bytes, Phase D component/split/source row, accepted Gate G dossier/review, rights authority, bounded evidence boundary, and predecessor pins were all verified."
+    },
+    {
+      "task_id": "gate-h:image-mode:9092",
+      "task_sha256": "d714d9b28233686a32c9a3c80a6c809c4e596d6f1a611216388b45fda23ae186",
+      "disposition": "accepted",
+      "approvals": {
+        "exact_task_binding": true,
+        "claim_and_dossier_authority": true,
+        "component_and_split": true,
+        "rights_and_pixels": true,
+        "evidence_boundary": true
+      },
+      "rationale": "Accepted. The exact whole-image review pixels show a near-nadir aerial frame with planimetric rail-yard and road geometry and no horizon, independently supporting aerial_vertical. The canonical task and claim hashes, exact pixel bytes, Phase D component/split/source row, accepted Gate G dossier/review, rights authority, bounded evidence boundary, and predecessor pins were all verified."
+    },
+    {
+      "task_id": "gate-h:image-mode:9844",
+      "task_sha256": "d85c4c41f9918567aa8cf93be7b5ad147f8533403aeb4a990bbd2b02dfdcae66",
+      "disposition": "accepted",
+      "approvals": {
+        "exact_task_binding": true,
+        "claim_and_dossier_authority": true,
+        "component_and_split": true,
+        "rights_and_pixels": true,
+        "evidence_boundary": true
+      },
+      "rationale": "Accepted. The exact whole-image review pixels show a near-nadir aerial frame dominated by planimetric water, highway, and shoreline geometry, independently supporting aerial_vertical. The canonical task and claim hashes, exact pixel bytes, Phase D component/split/source row, accepted Gate G dossier/review, rights authority, bounded evidence boundary, and predecessor pins were all verified."
+    },
+    {
+      "task_id": "gate-h:image-mode:11836",
+      "task_sha256": "b59ca91dc56a420ccdb152157ab492ed907a7929cc25b3ffb3b79285807770e4",
+      "disposition": "accepted",
+      "approvals": {
+        "exact_task_binding": true,
+        "claim_and_dossier_authority": true,
+        "component_and_split": true,
+        "rights_and_pixels": true,
+        "evidence_boundary": true
+      },
+      "rationale": "Accepted. The exact whole-image review pixels show an angled aerial city view with strong depth recession, visible structure sides, and a distant horizon, independently supporting aerial_oblique. The canonical task and claim hashes, exact pixel bytes, Phase D component/split/source row, accepted Gate G dossier/review, rights authority, bounded evidence boundary, and predecessor pins were all verified."
+    },
+    {
+      "task_id": "gate-h:image-mode:11923",
+      "task_sha256": "2d685469da3b95622eafe4e543faa18fcf1ae6c1c9466946617fdc829e7f4003",
+      "disposition": "accepted",
+      "approvals": {
+        "exact_task_binding": true,
+        "claim_and_dossier_authority": true,
+        "component_and_split": true,
+        "rights_and_pixels": true,
+        "evidence_boundary": true
+      },
+      "rationale": "Accepted. The exact whole-image review pixels show an angled aerial rail/industrial view with visible object sides and pronounced depth perspective, independently supporting aerial_oblique. The canonical task and claim hashes, exact pixel bytes, Phase D component/split/source row, accepted Gate G dossier/review, rights authority, bounded evidence boundary, and predecessor pins were all verified."
+    },
+    {
+      "task_id": "gate-h:image-mode:11993",
+      "task_sha256": "21e4a68309260619794a607df023d89e73d7bd97e46a5a967ade593190eb4382",
+      "disposition": "accepted",
+      "approvals": {
+        "exact_task_binding": true,
+        "claim_and_dossier_authority": true,
+        "component_and_split": true,
+        "rights_and_pixels": true,
+        "evidence_boundary": true
+      },
+      "rationale": "Accepted. The exact whole-image review pixels show an angled aerial stadium/river view with visible structure sides and depth recession, independently supporting aerial_oblique. The canonical task and claim hashes, exact pixel bytes, Phase D component/split/source row, accepted Gate G dossier/review, rights authority, bounded evidence boundary, and predecessor pins were all verified."
+    },
+    {
+      "task_id": "gate-h:image-mode:12115",
+      "task_sha256": "4a5066fb10ba52ec4ef52bd8a3c326d82d85ace1dbc1026b89ddc154101954f0",
+      "disposition": "accepted",
+      "approvals": {
+        "exact_task_binding": true,
+        "claim_and_dossier_authority": true,
+        "component_and_split": true,
+        "rights_and_pixels": true,
+        "evidence_boundary": true
+      },
+      "rationale": "Accepted. The exact whole-image review pixels show an angled aerial waterfront view with visible building/stadium sides and depth perspective, independently supporting aerial_oblique. The canonical task and claim hashes, exact pixel bytes, Phase D component/split/source row, accepted Gate G dossier/review, rights authority, bounded evidence boundary, and predecessor pins were all verified."
+    },
+    {
+      "task_id": "gate-h:image-mode:12117",
+      "task_sha256": "77163f2728a38297d3062e2a3ea59224fab60295c7bb9900f1ce485bcc403283",
+      "disposition": "accepted",
+      "approvals": {
+        "exact_task_binding": true,
+        "claim_and_dossier_authority": true,
+        "component_and_split": true,
+        "rights_and_pixels": true,
+        "evidence_boundary": true
+      },
+      "rationale": "Accepted. The exact whole-image review pixels show an angled aerial landscape view with horizon/depth cues and visible structure sides, independently supporting aerial_oblique. The canonical task and claim hashes, exact pixel bytes, Phase D component/split/source row, accepted Gate G dossier/review, rights authority, bounded evidence boundary, and predecessor pins were all verified."
+    },
+    {
+      "task_id": "gate-h:image-mode:12623",
+      "task_sha256": "3b8b970feadbf9f6512e9e89f7aa75e905feb535240416ce6596a2beebaba740",
+      "disposition": "accepted",
+      "approvals": {
+        "exact_task_binding": true,
+        "claim_and_dossier_authority": true,
+        "component_and_split": true,
+        "rights_and_pixels": true,
+        "evidence_boundary": true
+      },
+      "rationale": "Accepted. The exact whole-image review pixels show a steep but non-nadir aerial view with clearly visible tower/building sides, shadows, and perspective, independently supporting aerial_oblique. The canonical task and claim hashes, exact pixel bytes, Phase D component/split/source row, accepted Gate G dossier/review, rights authority, bounded evidence boundary, and predecessor pins were all verified."
+    },
+    {
+      "task_id": "gate-h:image-mode:13272",
+      "task_sha256": "8e35804ff453739e990456bf2273947846cb92064006535315a864c9315d4421",
+      "disposition": "accepted",
+      "approvals": {
+        "exact_task_binding": true,
+        "claim_and_dossier_authority": true,
+        "component_and_split": true,
+        "rights_and_pixels": true,
+        "evidence_boundary": true
+      },
+      "rationale": "Accepted. The exact whole-image review pixels show an angled aerial bridge/island view with visible structure sides and depth perspective, independently supporting aerial_oblique. The canonical task and claim hashes, exact pixel bytes, Phase D component/split/source row, accepted Gate G dossier/review, rights authority, bounded evidence boundary, and predecessor pins were all verified."
+    },
+    {
+      "task_id": "gate-h:image-mode:13389",
+      "task_sha256": "1d57fa3a1fd593c8d412bfa2b974d4a20d65a4c453431615f0dd616b503c3335",
+      "disposition": "accepted",
+      "approvals": {
+        "exact_task_binding": true,
+        "claim_and_dossier_authority": true,
+        "component_and_split": true,
+        "rights_and_pixels": true,
+        "evidence_boundary": true
+      },
+      "rationale": "Accepted. The exact whole-image review pixels show an angled aerial park/city view with a distant horizon, facade exposure, and depth recession, independently supporting aerial_oblique. The canonical task and claim hashes, exact pixel bytes, Phase D component/split/source row, accepted Gate G dossier/review, rights authority, bounded evidence boundary, and predecessor pins were all verified."
+    },
+    {
+      "task_id": "gate-h:image-mode:14135",
+      "task_sha256": "142e9a07c4982f5a0e563abe74678b56379fcee491dd759d0e9bc87d64e2c5fa",
+      "disposition": "accepted",
+      "approvals": {
+        "exact_task_binding": true,
+        "claim_and_dossier_authority": true,
+        "component_and_split": true,
+        "rights_and_pixels": true,
+        "evidence_boundary": true
+      },
+      "rationale": "Accepted. The exact whole-image review pixels show a steep oblique aerial view with visible stadium/structure sides, shadows, and perspective, independently supporting aerial_oblique. The canonical task and claim hashes, exact pixel bytes, Phase D component/split/source row, accepted Gate G dossier/review, rights authority, bounded evidence boundary, and predecessor pins were all verified."
+    },
+    {
+      "task_id": "gate-h:image-mode:14813",
+      "task_sha256": "7ed1c029120e3a3c1213cb998292c8a923abea37b28c9c3c3e109d2305f07c1c",
+      "disposition": "accepted",
+      "approvals": {
+        "exact_task_binding": true,
+        "claim_and_dossier_authority": true,
+        "component_and_split": true,
+        "rights_and_pixels": true,
+        "evidence_boundary": true
+      },
+      "rationale": "Accepted. The exact whole-image review pixels show a steep oblique aerial view with visible building facade, vehicle projection, shadows, and depth, independently supporting aerial_oblique. The canonical task and claim hashes, exact pixel bytes, Phase D component/split/source row, accepted Gate G dossier/review, rights authority, bounded evidence boundary, and predecessor pins were all verified."
+    },
+    {
+      "task_id": "gate-h:image-mode:14965",
+      "task_sha256": "3a9054757a7d3d5e9d99fe83137e130864cb38980d8dd96beeb32a22e4514418",
+      "disposition": "accepted",
+      "approvals": {
+        "exact_task_binding": true,
+        "claim_and_dossier_authority": true,
+        "component_and_split": true,
+        "rights_and_pixels": true,
+        "evidence_boundary": true
+      },
+      "rationale": "Accepted. The exact whole-image review pixels show an angled aerial quarry view with visible pit slopes, benches, and depth recession, independently supporting aerial_oblique. The canonical task and claim hashes, exact pixel bytes, Phase D component/split/source row, accepted Gate G dossier/review, rights authority, bounded evidence boundary, and predecessor pins were all verified."
+    }
+  ],
+  "counts": {
+    "candidates": 32,
+    "accepted": 32,
+    "held": 0,
+    "rejected": 0
+  }
+}

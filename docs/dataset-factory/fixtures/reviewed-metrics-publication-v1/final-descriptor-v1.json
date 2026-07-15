@@ -1,0 +1,113 @@
+{
+  "schema_version": "reviewed_metrics_final_descriptor_v1.0.0",
+  "artifact_id": "dfv0_reviewed_metrics_v1_candidate_20260714",
+  "state": "published_external_task_review",
+  "counts": {
+    "candidates": 32,
+    "accepted": 32,
+    "held": 0,
+    "rejected": 0
+  },
+  "review_receipt": {
+    "path": "independent-task-review-v1.json",
+    "sha256": "422cd4d3faab3e233af0241ca11dd82cc9a26e75c0af08961698bc342b97552a",
+    "bytes": 27037
+  },
+  "reviewer_authorization": {
+    "path": "reviewer-authorization-v1.json",
+    "sha256": "d66a969563878b6e02f46d965ab374cf7e186d8c518c8d62aa1e275adcd96dbc",
+    "bytes": 3265
+  },
+  "members": {
+    "members": [
+      {
+        "path": "candidate-benchmark-tasks-v1.json",
+        "sha256": "c715c411d37f0d6bde756cf68b0b3a2db59de2336fe2c55752744e3514cf6a66",
+        "bytes": 337705
+      },
+      {
+        "path": "component-split-audit-v1.json",
+        "sha256": "f04e53e478c9243b6a7acce3819b137413f73db3c82d3d09f0bff7603daa8d8c",
+        "bytes": 891
+      },
+      {
+        "path": "criterion-matrix-v1.json",
+        "sha256": "dd49e24b258b7fccc1736d79def7d8dbdc13865028695ecb718036cc8d5ac476",
+        "bytes": 2830
+      },
+      {
+        "path": "descriptor-v1.json",
+        "sha256": "bfc9de67251d7b30eb4e5ea46ee8d84922c209544f6c6e5c1e23b755397052d5",
+        "bytes": 1007
+      },
+      {
+        "path": "false-precision-cases-v1.json",
+        "sha256": "244a04b6974f7724d19c07c02ce56cd356c6eca0d2bea6b01eae7eb20adaf967",
+        "bytes": 4208
+      },
+      {
+        "path": "final-criterion-matrix-v1.json",
+        "sha256": "c54fcb468e143c8870ce2a705baaeb9f18afc07e9919a5c38c6ba5c41b3699ad",
+        "bytes": 2965
+      },
+      {
+        "path": "independent-task-review-v1.json",
+        "sha256": "422cd4d3faab3e233af0241ca11dd82cc9a26e75c0af08961698bc342b97552a",
+        "bytes": 27037
+      },
+      {
+        "path": "independent-task-review.template-v1.json",
+        "sha256": "67d979f78ff7476af3b679d9856f3cf5ad30f95356438f80cbc49a9d82b211ae",
+        "bytes": 14966
+      },
+      {
+        "path": "manifest-v1.json",
+        "sha256": "2e698450ebba80fc4f6e77874f5cab57caeed844cf6dafa4e7cba770c410a55e",
+        "bytes": 4885
+      },
+      {
+        "path": "publication-status-v1.json",
+        "sha256": "e061c09444f1c80f85b63f0b42164bf0602e6172b2895a469182ea6a50e5c0c1",
+        "bytes": 397
+      },
+      {
+        "path": "published-benchmark-tasks-v1.json",
+        "sha256": "9381129f41fbd21f238f7a7a4eed53b0a3147f815f82a810ec1e020c63ecef99",
+        "bytes": 370235
+      },
+      {
+        "path": "reviewed-metrics-v1.json",
+        "sha256": "88c73267a73264d8aaf629f43a7927dfd801ebf6f63dda4645cf8656b3d140ef",
+        "bytes": 225454
+      },
+      {
+        "path": "reviewer-authorization-v1.json",
+        "sha256": "d66a969563878b6e02f46d965ab374cf7e186d8c518c8d62aa1e275adcd96dbc",
+        "bytes": 3265
+      },
+      {
+        "path": "reviewer-authorization.template-v1.json",
+        "sha256": "423359b0cbe16a73be92c3da5c3fe8b6833915e3be61fb2ec886fc71e3df811a",
+        "bytes": 3017
+      },
+      {
+        "path": "run-report-v1.json",
+        "sha256": "690e258bd40643fc9a34fadc046ae7d2b71834507c150c06dfef0b0231dfda9c",
+        "bytes": 531
+      },
+      {
+        "path": "stage-cost-evidence-v1.json",
+        "sha256": "14178988ebdb2d6dfe1ec9e58e399546c1398f7256d55168ea465915ee1a390c",
+        "bytes": 1758
+      },
+      {
+        "path": "status-report-v1.json",
+        "sha256": "0108ef01ac1b9c11024b7fd7e79e900c23b2742829a126e7acfd36bd0bb05648",
+        "bytes": 360
+      }
+    ],
+    "sha256": "15dadcba3af525c23d1481bb14161b37b22e6462c0f9596f558b46b33bfa3dba",
+    "bytes": 1001511
+  },
+  "production_mutation": false
+}
