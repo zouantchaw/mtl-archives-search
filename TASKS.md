@@ -149,7 +149,7 @@ New archive source is `archivesdemontreal.ica-atom.org`; ingest safely before fu
 - [x] Weekly funnel baseline instrumented (`order_mode_entered -> cart_item_added -> checkout_clicked -> order_completed`).
 
 ### Core platform + performance
-- [x] Issue #96 Reviewed Metrics v2 candidate contracts fail closed on committed authority bytes, exact candidate binding, fixed gold universes/support, per-metric denominators, completed receipts/pins, distinct principals, and strict chronology; execution/publication remain intentionally absent.
+- [x] Issue #96 Reviewed Metrics v2 candidate contracts prove an authority-only direct-child activation, live-clock freeze, exact frozen prediction/gold pins, deterministic metric derivation, semantic task/matrix/publication evidence, and exact commit-last publication membership; execution/publication remain intentionally absent, and issue #97 place-opportunity evidence remains a required final-publication gate.
 - [x] Sitemap 404 fix for Clerk middleware/public routes.
 - [x] D1 cost stabilization package (Cache API, offset sampling, semantic fallback, AbortController).
 - [x] Vercel Image Optimization migration and 20MB image cap.

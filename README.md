@@ -409,7 +409,7 @@ Vectorize reliability notes:
 
 Engineering tasks and roadmap are tracked in `TASKS.md`.
 
-Reviewed Metrics v2 remains candidate-only for issue #96. Its execution gate requires a clean, byte-identical authority committed at the fixed path and exact-bound to candidate commit `73ec8a9acbbbc6cd8713f2ae2d944ca2aebd7140`; completed gold, metrics, review, matrix, chronology, and publication contracts now fail closed. See `docs/dataset-factory/reviewed-metrics-v2.md`.
+Reviewed Metrics v2 remains candidate-only for issue #96. Activation requires an authority-only commit whose sole parent is reviewed HEAD `8eb42713059622a5c94a092da5e5a2141463c85f`, whose sole changed path is the fixed authority file, and whose authority bytes are identical in `HEAD`, index, and worktree while its UTC window is live. The completed-state validators deterministically rederive metrics from exact frozen prediction/gold bytes and schema-plus-semantic validate task, matrix, and publication evidence. These are candidate guarantees only: no authority, prediction, gold, score, or publication exists, and issue #97 must still add a reviewed source-search place opportunity before final publication. See `docs/dataset-factory/reviewed-metrics-v2.md`.
 
 ## Dataset
 

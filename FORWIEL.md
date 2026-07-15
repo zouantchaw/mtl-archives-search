@@ -60,7 +60,7 @@ The real-pilot selector yields 26 mechanically eligible candidates. A downstream
 
 ## Important Boundaries
 
-Reviewed Metrics v2 is deliberately still a sealed candidate, not a completed evaluation. A future authority-only commit may unlock one prediction only if Git proves the fixed authority file is committed and clean byte-for-byte and it names the exact reviewed candidate. Think of it as a five-person chain of custody: implementation, prediction, gold review, task review, and publication identities are committed in advance, must be distinct, and every timestamp handoff must move strictly forward.
+Reviewed Metrics v2 is deliberately still a sealed candidate, not a completed evaluation. A future authority-only commit may unlock one prediction only if Git proves it is the direct child of reviewed HEAD `8eb42713059622a5c94a092da5e5a2141463c85f`, changes only the fixed authority path, is otherwise clean, and carries byte-identical authority in `HEAD`, index, and worktree during a live UTC window. Completed metrics are recomputed from the exact raw prediction bytes pinned by the freeze and the exact gold bytes; task, matrix, and publication claims must validate their referenced artifacts rather than merely pin arbitrary files. Issue #97 still has to contribute at least one reviewed source-search place opportunity and an observed place result before the v2 final matrix or publication can close.
 
 - No generated report tree should be committed just because a script produced it.
 - No `.env`, tokens, private keys, credentials, or signed URLs belong in docs, registries, fixtures, commits, or PR text.
