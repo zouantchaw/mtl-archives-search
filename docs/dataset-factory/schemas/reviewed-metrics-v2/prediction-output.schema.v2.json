@@ -252,12 +252,14 @@
         },
         "entities": {
           "type": "array",
+          "maxItems": 12,
           "items": {
             "$ref": "#/$defs/entity"
           }
         },
         "place_links": {
           "type": "array",
+          "maxItems": 0,
           "items": {
             "$ref": "#/$defs/place"
           }

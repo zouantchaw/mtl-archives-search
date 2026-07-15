@@ -233,14 +233,18 @@ const SAFE_ATTESTATION_KEYS = new Set([
 ]);
 const INTERNAL_SYNTHETIC_CAPABILITY = Symbol("reviewed-metrics-v2-internal-synthetic-capability");
 const SYNTHETIC_EVALUATOR_KEYS = crypto.generateKeyPairSync("ed25519");
-const SYNTHETIC_SURFACE_KEYS = crypto.generateKeyPairSync("ed25519");
+const SYNTHETIC_COORDINATOR_KEYS = crypto.generateKeyPairSync("ed25519");
 const ENTITY_IOU_THRESHOLD = 0.5;
+const ENTITY_DUPLICATE_IOU_THRESHOLD = 0.98;
+const ENTITY_BBOX_QUANTIZATION = 10_000;
+const MAX_ENTITIES_PER_ROW = 12;
+const ROUTE_RECEIPT_MAX_AGE_MS = 5 * 60 * 1000;
 type InternalSyntheticCapability = { readonly [INTERNAL_SYNTHETIC_CAPABILITY]: true };
 type Reservation = { root: string; marker: string; token: string; dev: number; ino: number };
 type ExecutionAuthorityEvidence = { head: string; parents: string[]; changedPaths: string[]; repositoryClean: boolean; tracked: boolean; headBytes: Buffer; indexBytes: Buffer; worktreeBytes: Buffer; indexClean: boolean; worktreeClean: boolean };
 type ExecutionAuthorityReader = () => ExecutionAuthorityEvidence;
 type Clock = () => Date;
-type FileSnapshot = { file: string; raw: Buffer; value: J; stat: fs.Stats };
+type FileSnapshot = { file: string; fd: number; raw: Buffer; value: J; stat: fs.Stats };
 type FinalizationHooks = {
   afterInputs?: () => void;
   afterDetailWrite?: () => void;
@@ -281,11 +285,12 @@ function canon(value: J): string {
 }
 function pretty(value: J): string { return `${JSON.stringify(value, null, 2)}\n`; }
 function load(file: string): J { return JSON.parse(fs.readFileSync(file, "utf8")); }
-function writeJson(file: string, value: J): void { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, pretty(value)); }
+function writeJson(file: string, value: J): void { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, pretty(value), { mode: 0o600 }); }
 function readJsonSnapshot(
   file: string,
   code: string,
   requireCanonical = true,
+  expectedRaw?: Buffer,
 ): FileSnapshot {
   let fd: number | undefined;
   try {
@@ -309,15 +314,12 @@ function readJsonSnapshot(
       code,
       "retained evaluator input changed while open",
     );
+    if (expectedRaw)
+      codedAssert(raw.equals(expectedRaw), "H2_FINALIZATION_EXACT_BYTES", "sealed artifact readback differs from the exact canonical bytes written");
     let value: J;
     try {
       value = JSON.parse(raw.toString("utf8"));
-    } catch (error) {
-      codedAssert(
-        error instanceof GateH2Error,
-        "H2_TEST_UNTYPED_REJECTION",
-        "baseline adversarial case must fail with a stable Gate H2 code",
-      );
+    } catch {
       throw new GateH2Error(code, "retained evaluator input is not valid JSON");
     }
     if (requireCanonical)
@@ -326,7 +328,20 @@ function readJsonSnapshot(
         "H2_FINALIZATION_NONCANONICAL",
         "retained evaluator JSON must use exact canonical pretty bytes",
       );
-    return { file, raw, value, stat: before };
+    const pathStat = fs.lstatSync(file);
+    codedAssert(
+      pathStat.dev === before.dev && pathStat.ino === before.ino,
+      code,
+      "retained evaluator path must still name the safely opened descriptor",
+    );
+    codedAssert(
+      before.nlink === 1 && [0o400, 0o600].includes(before.mode & 0o777),
+      code,
+      "retained evaluator input must have one link and exact mode 0400 or 0600",
+    );
+    const retainedFd = fd;
+    fd = undefined;
+    return { file, fd: retainedFd, raw, value, stat: before };
   } catch (error) {
     if (error instanceof GateH2Error) throw error;
     throw new GateH2Error(
@@ -336,6 +351,19 @@ function readJsonSnapshot(
   } finally {
     if (fd !== undefined) fs.closeSync(fd);
   }
+}
+function closeSnapshot(snapshot: FileSnapshot): void {
+  fs.closeSync(snapshot.fd);
+}
+function readExactDescriptor(fd: number, size: number): Buffer {
+  const raw = Buffer.alloc(size);
+  let offset = 0;
+  while (offset < size) {
+    const count = fs.readSync(fd, raw, offset, size - offset, offset);
+    codedAssert(count > 0, "H2_FINALIZATION_EXACT_BYTES", "unexpected EOF while rereading retained descriptor");
+    offset += count;
+  }
+  return raw;
 }
 function assertSnapshotPathUnchanged(snapshot: FileSnapshot): void {
   let current: fs.Stats;
@@ -353,9 +381,15 @@ function assertSnapshotPathUnchanged(snapshot: FileSnapshot): void {
       current.dev === snapshot.stat.dev &&
       current.ino === snapshot.stat.ino &&
       current.size === snapshot.stat.size &&
-      current.mtimeMs === snapshot.stat.mtimeMs,
+      current.nlink === 1,
     "H2_FINALIZATION_PATH_SUBSTITUTION",
     "retained evaluator input path was substituted before finalization",
+  );
+  const raw = readExactDescriptor(snapshot.fd, snapshot.raw.length);
+  codedAssert(
+    raw.equals(snapshot.raw),
+    "H2_FINALIZATION_EXACT_BYTES",
+    "retained evaluator input bytes changed before finalization",
   );
 }
 function snapshotPin(snapshot: FileSnapshot, shownPath: string): J {
@@ -435,14 +469,11 @@ function nearestExistingPhysicalRoot(attested: string): {
     stat: fs.statSync(canonicalAncestor),
   };
 }
-function surfaceIdentityDigest(identity: J): string {
-  return hash(
-    canon({
-      kind: identity.kind,
-      value: identity.value,
-      public_key_sha256: identity.public_key_sha256,
-    }),
-  );
+function trustedInventoryDigest(inventory: J): string {
+  return hash(canon(inventory));
+}
+function trustedSurfaceId(inventory: J): string {
+  return hash(`gate-h2-trusted-surface-v2\n${canon(inventory)}`);
 }
 function routeReceiptPayload(receipt: J): Buffer {
   const unsigned = structuredClone(receipt);
@@ -466,39 +497,47 @@ function parseEd25519PublicKey(
   );
   return key;
 }
-function validateRouteIdentity(actorValue: J): void {
-  const identity = actorValue.surface_identity;
+function authorityBindingHash(authority: J): string {
+  const unsigned = structuredClone(authority);
+  for (const role of ["implementation", "predictor", "search_predictor", "private_evaluator", "gold_reviewer", "task_reviewer", "publisher"])
+    if (unsigned[role]) delete unsigned[role].route_receipt;
+  return hash(canon(unsigned));
+}
+function validateRouteIdentity(actorValue: J, authority: J, inventoryByDigest: Map<string, J>): void {
   const receipt = actorValue.route_receipt;
+  const inventory = inventoryByDigest.get(actorValue.surface_inventory_digest);
   codedAssert(
-    identity &&
-      ["local_host", "remote_host"].includes(identity.kind) &&
-      typeof identity.value === "string" &&
-      identity.value.trim().length > 0,
+    inventory !== undefined,
     "H2_ROUTE_SURFACE_ID",
-    `authority ${actorValue.role} surface identity`,
+    `authority ${actorValue.role} must reference an exact trusted inventory entry`,
   );
-  const surfaceKey = parseEd25519PublicKey(
-    identity.public_key_pem,
-    "H2_ROUTE_RECEIPT_KEY",
+  const coordinatorKey = parseEd25519PublicKey(
+    authority.coordinator_trust.public_key_pem,
+    "H2_COORDINATOR_TRUST_KEY",
   );
-  const canonicalSurfaceKey = surfaceKey
+  const canonicalCoordinatorKey = coordinatorKey
     .export({ type: "spki", format: "pem" })
     .toString();
   codedAssert(
-    identity.public_key_pem === canonicalSurfaceKey &&
-      identity.public_key_sha256 === hash(canonicalSurfaceKey),
-    "H2_ROUTE_RECEIPT_KEY",
-    "surface key must be canonical and hash-bound",
+    authority.coordinator_trust.public_key_pem === canonicalCoordinatorKey &&
+      authority.coordinator_trust.public_key_sha256 === hash(canonicalCoordinatorKey),
+    "H2_COORDINATOR_TRUST_KEY",
+    "coordinator trust key must be canonical and hash-bound",
   );
-  const derivedSurfaceId = surfaceIdentityDigest(identity);
+  const inventoryDigest = trustedInventoryDigest(inventory);
+  const derivedSurfaceId = trustedSurfaceId(inventory);
   codedAssert(
-    actorValue.surface_id === derivedSurfaceId &&
-      receipt.surface_id === derivedSurfaceId,
+    actorValue.surface_inventory_digest === inventoryDigest &&
+      actorValue.surface_id === derivedSurfaceId && receipt.surface_id === derivedSurfaceId &&
+      receipt.surface_inventory_digest === inventoryDigest,
     "H2_ROUTE_SURFACE_ID",
-    `authority ${actorValue.role} surface_id must be evidence-derived`,
+    `authority ${actorValue.role} surface_id must derive from canonical trusted inventory bytes`,
   );
   codedAssert(
     receipt.role === actorValue.role &&
+      receipt.nonce === actorValue.route_nonce &&
+      receipt.candidate_commit === authority.candidate_commit &&
+      receipt.authority_hash === authorityBindingHash(authority) &&
       receipt.requested_root === actorValue.route &&
       receipt.canonical_root === actorValue.canonical_root,
     "H2_ROUTE_RECEIPT_BINDING",
@@ -517,7 +556,7 @@ function validateRouteIdentity(actorValue: J): void {
     valid = crypto.verify(
       null,
       routeReceiptPayload(receipt),
-      surfaceKey,
+      coordinatorKey,
       Buffer.from(receipt.signature_base64, "base64"),
     );
   } catch {
@@ -526,9 +565,18 @@ function validateRouteIdentity(actorValue: J): void {
   codedAssert(
     valid,
     "H2_ROUTE_RECEIPT_SIGNATURE",
-    `authority ${actorValue.role} host-route receipt signature`,
+    `authority ${actorValue.role} route receipt must be signed by the coordinator trust key`,
   );
-  if (identity.kind === "local_host") {
+  const issued = Date.parse(receipt.issued_at);
+  const expires = Date.parse(receipt.expires_at);
+  codedAssert(
+    Number.isFinite(issued) && Number.isFinite(expires) &&
+      issued >= Date.parse(authority.authorized_at) && expires <= Date.parse(authority.expires_at) &&
+      expires > issued && expires - issued <= ROUTE_RECEIPT_MAX_AGE_MS,
+    "H2_ROUTE_RECEIPT_FRESHNESS",
+    "route receipt must be fresh and bounded by the one-shot authority window",
+  );
+  if (inventory.kind === "local_host") {
     const physical = nearestExistingPhysicalRoot(receipt.requested_root);
     codedAssert(
       physical.canonicalRoot === receipt.canonical_root &&
@@ -1389,7 +1437,7 @@ async function buildBlindBundle(
   try {
     const authority = await trackedAuthority(injected, capability);
     if (failAfterReservation)
-      throw new Error("synthetic failure after reservation");
+      throw new GateH2Error("H2_TEST_INJECTED_FAILURE", "synthetic failure after reservation");
     const raw = await sources();
     const byKey = new Map(raw.map((x) => [x.source_key, x]));
     fs.mkdirSync(path.join(reservation.root, "media"), { recursive: false });
@@ -1730,6 +1778,10 @@ function validatePrediction(file: string): J {
   };
 }
 function validatePredictionValue(value: J): void {
+  if (Array.isArray(value?.outputs))
+    codedAssert(value.outputs.every((row: J) => Array.isArray(row.place_links) && row.place_links.length === 0), "H2_PLACE_VISUAL_ATTACHMENT", "visual prediction rows cannot carry source-only place tasks");
+  if (Array.isArray(value?.outputs))
+    codedAssert(value.outputs.every((row: J) => Array.isArray(row.entities) && row.entities.length <= MAX_ENTITIES_PER_ROW), "H2_ENTITY_SIZE_CAP", "visual prediction exceeds bounded entity assignment size");
   schema("prediction-output.schema.v2.json", value);
   exactSet(
     value.required_opaque_ids,
@@ -1795,6 +1847,11 @@ function validatePredictionValue(value: J): void {
           "non-abstained place link requires visible linked fields",
         );
       }
+      codedAssert(
+        row.place_links.length === 0,
+        "H2_PLACE_VISUAL_ATTACHMENT",
+        "visual rows cannot carry source-only place predictions",
+      );
       unique(
         row.place_links.map((place: J) => place.opportunity_id),
         `prediction place opportunity ${row.opaque_id}`,
@@ -1825,7 +1882,9 @@ function validateGold(file: string): J {
 function normalizedMentionKey(entity: J): string {
   return canon({
     surface: normalizePublicText(entity.surface),
-    bbox: entity.bbox,
+    bbox: entity.bbox.map((coordinate: number) =>
+      Math.round(coordinate * ENTITY_BBOX_QUANTIZATION),
+    ),
     type: entity.type,
   });
 }
@@ -1834,6 +1893,11 @@ function validateMentions(
   label: string,
   identityField: "identity" | "supported_identity",
 ): void {
+  codedAssert(
+    entities.length <= MAX_ENTITIES_PER_ROW,
+    "H2_ENTITY_SIZE_CAP",
+    `${label} exceeds the ${MAX_ENTITIES_PER_ROW}-mention per-row bound`,
+  );
   unique(
     entities.map((entity: J) => entity.entity_id),
     `${label} entity ID`,
@@ -1883,8 +1947,23 @@ function validateMentions(
     "H2_ENTITY_DUPLICATE_MENTION",
     `${label} duplicate canonical mention`,
   );
+  for (let left = 0; left < entities.length; left++)
+    for (let right = left + 1; right < entities.length; right++)
+      codedAssert(
+        entities[left].type !== entities[right].type ||
+          normalizePublicText(entities[left].surface) !==
+            normalizePublicText(entities[right].surface) ||
+          bboxIou(entities[left].bbox, entities[right].bbox) <
+            ENTITY_DUPLICATE_IOU_THRESHOLD,
+        "H2_ENTITY_DUPLICATE_MENTION",
+        `${label} near-identical mention exceeds IoU ${ENTITY_DUPLICATE_IOU_THRESHOLD}`,
+      );
 }
 function validateGoldValue(value: J, sourceTask?: J): void {
+  if (Array.isArray(value?.reviews))
+    codedAssert(value.reviews.every((row: J) => Array.isArray(row.place_opportunities) && row.place_opportunities.length === 0), "H2_PLACE_VISUAL_ATTACHMENT", "visual gold rows cannot carry source-only place support");
+  if (Array.isArray(value?.reviews))
+    codedAssert(value.reviews.every((row: J) => Array.isArray(row.entities) && row.entities.length <= MAX_ENTITIES_PER_ROW), "H2_ENTITY_SIZE_CAP", "visual gold exceeds bounded entity assignment size");
   schema("gold-review-authority.schema.v2.json", value);
   exactSet(value.required_opaque_ids, FIXED_OPAQUE_IDS, "gold required IDs");
   unique(
@@ -1988,6 +2067,11 @@ function validateGoldValue(value: J, sourceTask?: J): void {
             "unsupported opportunity cannot carry pseudo-support",
           );
       }
+      codedAssert(
+        row.place_opportunities.length === 0,
+        "H2_PLACE_VISUAL_ATTACHMENT",
+        "visual rows cannot create support for the source-only place universe",
+      );
       if (AERIAL_OPAQUE.includes(row.opaque_id)) {
         assert(
           typeof row.aerial_reviewable === "boolean",
@@ -2354,8 +2438,8 @@ function validatePrivateExpectedEnvelopeValue(
   if (authority) {
     assert(
       authority.schema_version ===
-        "reviewed_metrics_execution_authorization_v2.1.0",
-      "private envelope chronology requires v2.1 unified authority",
+        "reviewed_metrics_execution_authorization_v2.2.0",
+      "private envelope chronology requires v2.2 unified authority",
     );
     codedAssert(
       canon(value.authored_by) === canon(identityPin(authority.gold_reviewer)),
@@ -2408,8 +2492,8 @@ function validateSourceSearchFreezeValue(
   schema("source-search-freeze.schema.v2.json", freeze);
   assert(
     authority.schema_version ===
-      "reviewed_metrics_execution_authorization_v2.1.0",
-    "source-search freeze requires v2.1 unified authority",
+      "reviewed_metrics_execution_authorization_v2.2.0",
+    "source-search freeze requires v2.2 unified authority",
   );
   assert(
     freeze.prediction.sha256 === hash(rawPrediction) &&
@@ -2672,9 +2756,7 @@ function validateAuthorityPrincipals(value: J): void {
         !forbiddenSessions.has(actor.session_id),
       `authority forbidden prior reviewer overlap: ${actor.role}`,
     );
-  if (
-    value.schema_version === "reviewed_metrics_execution_authorization_v2.1.0"
-  ) {
+  if (value.schema_version === "reviewed_metrics_execution_authorization_v2.2.0") {
     const isolated = [
       value.implementation,
       value.predictor,
@@ -2684,26 +2766,17 @@ function validateAuthorityPrincipals(value: J): void {
       value.task_reviewer,
       value.publisher,
     ];
-    const surfaceByKey = new Map<string, string>();
-    const identityBySurface = new Map<string, string>();
+    const inventoryByDigest = new Map<string, J>();
+    for (const inventory of value.trusted_surface_inventory) {
+      const digest = trustedInventoryDigest(inventory);
+      codedAssert(!inventoryByDigest.has(digest), "H2_ROUTE_INVENTORY_DUPLICATE", "trusted inventory entries must be byte-unique");
+      inventoryByDigest.set(digest, inventory);
+    }
+    const nonces = new Set<string>();
     for (const actorValue of isolated) {
-      validateRouteIdentity(actorValue);
-      const keyDigest = actorValue.surface_identity.public_key_sha256;
-      const priorSurface = surfaceByKey.get(keyDigest);
-      codedAssert(
-        priorSurface === undefined || priorSurface === actorValue.surface_id,
-        "H2_ROUTE_SURFACE_RELABEL",
-        "one signed host key cannot declare multiple surface identities",
-      );
-      surfaceByKey.set(keyDigest, actorValue.surface_id);
-      const identity = canon(actorValue.surface_identity);
-      const priorIdentity = identityBySurface.get(actorValue.surface_id);
-      codedAssert(
-        priorIdentity === undefined || priorIdentity === identity,
-        "H2_ROUTE_SURFACE_RELABEL",
-        "one surface_id cannot map to different surface evidence",
-      );
-      identityBySurface.set(actorValue.surface_id, identity);
+      validateRouteIdentity(actorValue, value, inventoryByDigest);
+      codedAssert(!nonces.has(actorValue.route_receipt.nonce), "H2_ROUTE_NONCE_REPLAY", "route receipt nonce must be one-shot across roles");
+      nonces.add(actorValue.route_receipt.nonce);
     }
     for (let left = 0; left < isolated.length; left++)
       for (let right = left + 1; right < isolated.length; right++) {
@@ -2738,7 +2811,7 @@ function validateAuthorityPrincipals(value: J): void {
 }
 function validateAuthorityValue(value: J): void {
   schema("execution-authorization.schema.v2.json", value);
-  before(value.authorized_at, value.started_at, "authorization before visual prediction"); before(value.started_at, value.ended_at, "visual prediction execution"); before(value.ended_at, value.freeze_at, "visual prediction before freeze"); if (value.schema_version === "reviewed_metrics_execution_authorization_v2.1.0") { before(value.freeze_at, value.source_search_started_at, "visual freeze before source-search run"); before(value.source_search_started_at, value.source_search_ended_at, "source-search execution"); before(value.source_search_ended_at, value.source_search_freeze_at, "source-search prediction before freeze"); before(value.source_search_freeze_at, value.source_dossier_authored_at, "source-search freeze before dossier authoring"); before(value.source_dossier_authored_at, value.private_envelope_sealed_at, "dossier before private envelope seal"); before(value.private_envelope_sealed_at, value.expires_at, "private envelope before authorization expiry"); } else before(value.freeze_at, value.expires_at, "visual freeze authorization expiry");
+  before(value.authorized_at, value.started_at, "authorization before visual prediction"); before(value.started_at, value.ended_at, "visual prediction execution"); before(value.ended_at, value.freeze_at, "visual prediction before freeze"); if (value.schema_version === "reviewed_metrics_execution_authorization_v2.2.0") { before(value.freeze_at, value.source_search_started_at, "visual freeze before source-search run"); before(value.source_search_started_at, value.source_search_ended_at, "source-search execution"); before(value.source_search_ended_at, value.source_search_freeze_at, "source-search prediction before freeze"); before(value.source_search_freeze_at, value.source_dossier_authored_at, "source-search freeze before dossier authoring"); before(value.source_dossier_authored_at, value.private_envelope_sealed_at, "dossier before private envelope seal"); before(value.private_envelope_sealed_at, value.expires_at, "private envelope before authorization expiry"); } else before(value.freeze_at, value.expires_at, "visual freeze authorization expiry");
   validateAuthorityPrincipals(value);
 }
 function executionAuthority(
@@ -2893,7 +2966,7 @@ function freezePrediction(
 function metricUniverse(metricId: string): string[] {
   if (metricId.startsWith("ocr_")) return OCR_OPAQUE;
   if (metricId.startsWith("entity_")) return SCENE_OPAQUE;
-  if (metricId.startsWith("place_link_")) return SCENE_OPAQUE;
+  if (metricId.startsWith("place_link_")) return [ISSUE_97_TASK_ID];
   if (metricId.startsWith("image_mode_") || metricId === "mask_iou") return IMAGE_OPAQUE;
   if (metricId.startsWith("aerial_")) return AERIAL_OPAQUE;
   if (metricId.startsWith("abstention_")) return ABSTENTION_OPAQUE;
@@ -2959,60 +3032,96 @@ function bboxIou(left: number[], right: number[]): number {
 }
 type MentionMatch = { prediction: number; gold: number; iou: number };
 function maximumMentionMatching(predicted: J[], gold: J[]): MentionMatch[] {
-  const candidates = predicted.map((mention, prediction) =>
-    gold
-      .map((target, goldIndex) => ({
+  codedAssert(predicted.length <= MAX_ENTITIES_PER_ROW && gold.length <= MAX_ENTITIES_PER_ROW, "H2_ENTITY_SIZE_CAP", "entity assignment exceeds bounded matrix");
+  const size = Math.max(predicted.length, gold.length);
+  if (size === 0) return [];
+  const iouScale = 1_000_000;
+  const tieScale = 4_096;
+  const maximumTiePenalty = MAX_ENTITIES_PER_ROW ** 2 - 1;
+  const cardinalityWeight =
+    (MAX_ENTITIES_PER_ROW + 1) *
+      (iouScale * tieScale + maximumTiePenalty) +
+    1;
+  const weights: number[][] = Array.from({ length: size }, () =>
+    Array(size).fill(0),
+  );
+  const validMatches = new Map<string, MentionMatch>();
+  for (let prediction = 0; prediction < predicted.length; prediction++)
+    for (let goldIndex = 0; goldIndex < gold.length; goldIndex++) {
+      const iou = bboxIou(predicted[prediction].bbox, gold[goldIndex].bbox);
+      if (iou < ENTITY_IOU_THRESHOLD || predicted[prediction].type !== gold[goldIndex].type || normalizePublicText(predicted[prediction].surface) !== normalizePublicText(gold[goldIndex].surface)) continue;
+      const iouWeight = Math.round(iou * iouScale);
+      const tiePenalty =
+        Math.abs(prediction - goldIndex) * MAX_ENTITIES_PER_ROW + goldIndex;
+      weights[prediction][goldIndex] =
+        cardinalityWeight + iouWeight * tieScale - tiePenalty;
+      validMatches.set(`${prediction}:${goldIndex}`, {
         prediction,
         gold: goldIndex,
-        iou: bboxIou(mention.bbox, target.bbox),
-      }))
-      .filter(
-        (edge) =>
-          edge.iou >= ENTITY_IOU_THRESHOLD &&
-          mention.type === gold[edge.gold].type &&
-          normalizePublicText(mention.surface) ===
-            normalizePublicText(gold[edge.gold].surface),
-      )
-      .sort((a, b) => b.iou - a.iou || a.gold - b.gold),
-  );
-  let best: MentionMatch[] = [];
-  let bestIou = -1;
-  let bestKey = "";
-  const visit = (
-    prediction: number,
-    usedGold: Set<number>,
-    current: MentionMatch[],
-    totalIou: number,
-  ): void => {
-    if (prediction === predicted.length) {
-      const key = current
-        .map((edge) => `${edge.prediction}:${edge.gold}`)
-        .join(",");
-      if (
-        current.length > best.length ||
-        (current.length === best.length &&
-          (totalIou > bestIou + Number.EPSILON ||
-            (Math.abs(totalIou - bestIou) <= Number.EPSILON &&
-              (bestKey === "" || key < bestKey))))
-      ) {
-        best = [...current];
-        bestIou = totalIou;
-        bestKey = key;
-      }
-      return;
+        iou,
+      });
     }
-    visit(prediction + 1, usedGold, current, totalIou);
-    for (const edge of candidates[prediction])
-      if (!usedGold.has(edge.gold)) {
-        usedGold.add(edge.gold);
-        current.push(edge);
-        visit(prediction + 1, usedGold, current, totalIou + edge.iou);
-        current.pop();
-        usedGold.delete(edge.gold);
+
+  // Hungarian assignment minimizes cost. Padding and invalid edges have zero
+  // weight, so the weighted square assignment also permits unmatched mentions.
+  const maximumWeight = Math.max(0, ...weights.flat());
+  const potentialsByRow = Array(size + 1).fill(0);
+  const potentialsByColumn = Array(size + 1).fill(0);
+  const rowForColumn = Array(size + 1).fill(0);
+  const previousColumn = Array(size + 1).fill(0);
+  for (let row = 1; row <= size; row++) {
+    rowForColumn[0] = row;
+    let column = 0;
+    const minimumReducedCost = Array(size + 1).fill(Number.POSITIVE_INFINITY);
+    const used = Array(size + 1).fill(false);
+    do {
+      used[column] = true;
+      const currentRow = rowForColumn[column];
+      let delta = Number.POSITIVE_INFINITY;
+      let nextColumn = 0;
+      for (let candidateColumn = 1; candidateColumn <= size; candidateColumn++) {
+        if (used[candidateColumn]) continue;
+        const cost = maximumWeight - weights[currentRow - 1][candidateColumn - 1];
+        const reducedCost =
+          cost - potentialsByRow[currentRow] - potentialsByColumn[candidateColumn];
+        if (reducedCost < minimumReducedCost[candidateColumn]) {
+          minimumReducedCost[candidateColumn] = reducedCost;
+          previousColumn[candidateColumn] = column;
+        }
+        if (
+          minimumReducedCost[candidateColumn] < delta ||
+          (minimumReducedCost[candidateColumn] === delta &&
+            candidateColumn < nextColumn)
+        ) {
+          delta = minimumReducedCost[candidateColumn];
+          nextColumn = candidateColumn;
+        }
       }
-  };
-  visit(0, new Set(), [], 0);
-  return best.sort((a, b) => a.prediction - b.prediction || a.gold - b.gold);
+      for (let candidateColumn = 0; candidateColumn <= size; candidateColumn++) {
+        if (used[candidateColumn]) {
+          potentialsByRow[rowForColumn[candidateColumn]] += delta;
+          potentialsByColumn[candidateColumn] -= delta;
+        } else {
+          minimumReducedCost[candidateColumn] -= delta;
+        }
+      }
+      column = nextColumn;
+    } while (rowForColumn[column] !== 0);
+    do {
+      const nextColumn = previousColumn[column];
+      rowForColumn[column] = rowForColumn[nextColumn];
+      column = nextColumn;
+    } while (column !== 0);
+  }
+  const matches: MentionMatch[] = [];
+  for (let column = 1; column <= size; column++) {
+    const prediction = rowForColumn[column] - 1;
+    const match = validMatches.get(`${prediction}:${column - 1}`);
+    if (match) {
+      matches.push(match);
+    }
+  }
+  return matches.sort((a, b) => a.prediction - b.prediction || a.gold - b.gold);
 }
 function metricRow(
   metric_id: string,
@@ -3199,56 +3308,16 @@ function deriveMetrics(
       visualProvenance,
     ),
   );
-  const placeField = (field: string, value: unknown): string | null => {
-    if (value === null || value === undefined) return null;
-    try {
-      return normalizeSourceSearchField(field, String(value));
-    } catch {
-      return `invalid:${normalizePublicText(String(value))}`;
-    }
-  };
-  const placeKey = (place: J) =>
-    canon({
-      civic_number: placeField("civic_number", place.civic_number),
-      street: placeField("street", place.street),
-      place: placeField("place", place.place),
-      official_url: placeField("official_url", place.official_url),
-    });
   if (sourceTask) validateGoldPlaceSupport(gold, sourceTask);
-  let place = { correct: 0, predicted: 0, opportunities: 0, covered: 0 };
-  for (const id of SCENE_OPAQUE) {
-    const predictedByOpportunity = new Map<string, J>(
-      predictions
-        .get(id)
-        .place_links.map((item: J) => [item.opportunity_id, item]),
-    );
-    for (const supported of reviews
-      .get(id)
-      .place_opportunities.filter((item: J) => item.supported)) {
-      place.opportunities++;
-      const attempt = predictedByOpportunity.get(supported.opportunity_id);
-      if (attempt && !attempt.abstained) {
-        place.covered++;
-        place.predicted++;
-        if (placeKey(attempt) === placeKey(supported)) place.correct++;
-      }
-    }
-    for (const attempt of predictions.get(id).place_links)
-      if (
-        !attempt.abstained &&
-        !reviews
-          .get(id)
-          .place_opportunities.some(
-            (opportunity: J) =>
-              opportunity.supported &&
-              opportunity.opportunity_id === attempt.opportunity_id,
-          )
-      )
-        place.predicted++;
-  }
+  const place = {
+    correct: privateScoreReceipt.source_task_outcome.correct_supported_source_tasks ? 1 : 0,
+    predicted: privateScoreReceipt.source_task_outcome.predicted_source_tasks ? 1 : 0,
+    opportunities: 1,
+    covered: privateScoreReceipt.source_task_outcome.predicted_source_tasks ? 1 : 0,
+  };
   const placeProvenance = [
-    "prediction-output-v2.json",
-    "gold-review-v2.json",
+    SOURCE_SEARCH_PREDICTION_FILE,
+    SOURCE_SEARCH_FREEZE_FILE,
     PRIVATE_SCORE_RECEIPT_FILE,
     SOURCE_SEARCH_TASK_FILE,
   ];
@@ -3763,6 +3832,46 @@ function identityPin(actorValue: J): J {
   };
 }
 function receiptSigningPayload(receipt: J): Buffer { const unsigned = structuredClone(receipt); delete unsigned.finalization_signature; return Buffer.from(canon(unsigned), "utf8"); }
+function retentionSigningPayload(receipt: J): Buffer { const unsigned = structuredClone(receipt); delete unsigned.signature; return Buffer.from(canon(unsigned), "utf8"); }
+function fsyncDirectory(directory: string): void {
+  const fd = fs.openSync(directory, fs.constants.O_RDONLY);
+  try { fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
+}
+function validatePrivateRetentionReceiptValue(value: J, envelopePin: J, detailPin: J, authority: J): void {
+  codedAssert(value && Array.isArray(value.objects), "H2_RETENTION_MISSING", "private retention receipt is required");
+  codedAssert(value.objects.every((object: J) => object.no_public_acl === true), "H2_RETENTION_PUBLIC_ACL", "private retention objects must attest no public ACL");
+  codedAssert(value.objects.every((object: J) => object.readback_verified === true), "H2_RETENTION_READBACK", "private retention objects require byte-identical readback");
+  schema("private-retention-receipt.schema.v2.json", value);
+  const expected = new Map([
+    ["private_expected_envelope", envelopePin],
+    ["private_score_detail", detailPin],
+  ]);
+  exactSet(value.objects.map((object: J) => object.artifact_role), [...expected.keys()], "private retention object roles");
+  for (const object of value.objects) {
+    const pinValue = expected.get(object.artifact_role)!;
+    codedAssert(object.sha256 === pinValue.sha256 && object.bytes === pinValue.bytes, "H2_RETENTION_EXACT_BYTES", `retention ${object.artifact_role} must bind exact private bytes`);
+    codedAssert(object.object_key_sha256 === hash(`gate-h2-private-object:${object.sha256}`), "H2_RETENTION_OBJECT_KEY", "private object key must be content-addressed and exposed only by hash");
+    codedAssert(Date.parse(object.written_at) <= Date.parse(object.readback_at) && Date.parse(object.readback_at) <= Date.parse(value.issued_at), "H2_RETENTION_CHRONOLOGY", "private retention write/readback chronology");
+  }
+  const evaluatorPem = authority.private_evaluator.signing_public_key_pem;
+  codedAssert(value.signer.authority_role === "private_evaluator" && value.signer.public_key_sha256 === hash(evaluatorPem), "H2_RETENTION_SIGNER", "retention receipt signer must be the authorized evaluator");
+  let valid = false;
+  try { valid = crypto.verify(null, retentionSigningPayload(value), evaluatorPem, Buffer.from(value.signature.signature_base64, "base64")); } catch { valid = false; }
+  codedAssert(valid, "H2_RETENTION_SIGNATURE", "private retention receipt signature verification failed");
+}
+function syntheticPrivateRetentionReceipt(envelopeRaw: Buffer, detailRaw: Buffer, authority: J, signingKey: crypto.KeyObject): J {
+  const objects = [
+    ["private_expected_envelope", envelopeRaw],
+    ["private_score_detail", detailRaw],
+  ].map(([artifact_role, raw]) => {
+    const bytes = raw as Buffer;
+    const sha256 = hash(bytes);
+    return { artifact_role, object_key_sha256: hash(`gate-h2-private-object:${sha256}`), version_id: hash(`memory-version:${sha256}`).slice(0, 32), etag: hash(`memory-etag:${sha256}`), sha256, bytes: bytes.length, written_at: "2026-07-15T00:00:08.700Z", readback_at: "2026-07-15T00:00:08.800Z", no_public_acl: true, readback_verified: true };
+  });
+  const receipt: J = { schema_version: "reviewed_metrics_private_retention_receipt_v2.0.0", candidate_id: CANDIDATE_ID, provider_capability: { provider: "synthetic_in_memory", bucket_capability_id: hash("gate-h2-synthetic-private-store") }, objects, issued_at: "2026-07-15T00:00:08.900Z", signer: { authority_role: "private_evaluator", public_key_sha256: hash(authority.private_evaluator.signing_public_key_pem) }, signature: null };
+  receipt.signature = { algorithm: "ed25519", signature_base64: crypto.sign(null, retentionSigningPayload(receipt), signingKey).toString("base64") };
+  return receipt;
+}
 function verifyReceiptSignature(receipt: J, authority: J): void {
   codedAssert(
     receipt.finalization_signature?.algorithm === "ed25519",
@@ -3832,22 +3941,21 @@ function evaluatorSigningKey(
     "private finalization requires an evaluator signing-key path",
   );
   const keyPath = path.resolve(signingKey);
+  let fd: number | undefined;
   let keyStat: fs.Stats;
+  let raw: Buffer;
   try {
-    keyStat = fs.lstatSync(keyPath);
-  } catch {
-    throw new GateH2Error(
-      "H2_FINALIZATION_KEY_UNSAFE",
-      "signing key is unavailable",
-    );
+    fd = fs.openSync(keyPath, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+    keyStat = fs.fstatSync(fd);
+    codedAssert(keyStat.isFile() && keyStat.uid === process.getuid!() && keyStat.nlink === 1, "H2_FINALIZATION_KEY_UNSAFE", "signing key descriptor must be an owner-controlled regular file with one link");
+    const pathStat = fs.lstatSync(keyPath);
+    codedAssert(pathStat.dev === keyStat.dev && pathStat.ino === keyStat.ino, "H2_FINALIZATION_KEY_SWAP", "signing key path must still name the opened descriptor");
+    raw = fs.readFileSync(fd);
+    codedAssert(readExactDescriptor(fd, raw.length).equals(raw), "H2_FINALIZATION_KEY_SWAP", "signing key bytes changed while retained open");
+  } catch (error) {
+    if (error instanceof GateH2Error) throw error;
+    throw new GateH2Error("H2_FINALIZATION_KEY_UNSAFE", "signing key could not be opened safely");
   }
-  codedAssert(
-    keyStat.isFile() &&
-      !keyStat.isSymbolicLink() &&
-      keyStat.uid === process.getuid!(),
-    "H2_FINALIZATION_KEY_UNSAFE",
-    "signing key must be an owner-controlled regular non-symlink mode-0600 file",
-  );
   const physical = fs.realpathSync(keyPath);
   const evaluatorRoot = authority.private_evaluator.canonical_root;
   codedAssert(
@@ -3879,35 +3987,7 @@ function evaluatorSigningKey(
   } catch (error) {
     if (error instanceof GateH2Error) throw error;
   }
-  codedAssert(
-    (keyStat.mode & 0o777) === 0o600,
-    "H2_FINALIZATION_KEY_UNSAFE",
-    "signing key must have exact mode 0600",
-  );
-  let fd: number | undefined;
-  let raw: Buffer;
-  try {
-    fd = fs.openSync(keyPath, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
-    const before = fs.fstatSync(fd);
-    raw = fs.readFileSync(fd);
-    const after = fs.fstatSync(fd);
-    codedAssert(
-      before.dev === after.dev &&
-        before.ino === after.ino &&
-        before.size === after.size &&
-        before.mtimeMs === after.mtimeMs,
-      "H2_FINALIZATION_KEY_UNSAFE",
-      "signing key changed while open",
-    );
-  } catch (error) {
-    if (error instanceof GateH2Error) throw error;
-    throw new GateH2Error(
-      "H2_FINALIZATION_KEY_UNSAFE",
-      "signing key could not be read safely",
-    );
-  } finally {
-    if (fd !== undefined) fs.closeSync(fd);
-  }
+  codedAssert((keyStat.mode & 0o777) === 0o600, "H2_FINALIZATION_KEY_UNSAFE", "signing key descriptor must have exact mode 0600");
   let privateKey: crypto.KeyObject;
   try {
     privateKey = crypto.createPrivateKey(raw!);
@@ -3932,6 +4012,7 @@ function evaluatorSigningKey(
     "H2_FINALIZATION_WRONG_KEY",
     "signing key does not derive the authority public key",
   );
+  if (fd !== undefined) fs.closeSync(fd);
   return privateKey;
 }
 function validatePrivateScoreReceiptValue(
@@ -3945,12 +4026,23 @@ function validatePrivateScoreReceiptValue(
     "H2_FINALIZATION_MISSING",
     "signed private finalization is required",
   );
+  codedAssert(value.private_retention !== undefined && value.private_retention !== null, "H2_RETENTION_MISSING", "public finalization requires a signed private retention receipt");
+  if (value.private_retention?.objects && value.private_envelope?.sha256 && value.private_detail?.sha256)
+    validatePrivateRetentionReceiptValue(value.private_retention, value.private_envelope, value.private_detail, authority);
   schema("private-score-receipt.schema.v2.json", value);
+  validatePrivateRetentionReceiptValue(value.private_retention, value.private_envelope, value.private_detail, authority);
   assert(
     value.pass === true && value.failure_codes.length === 0,
     "final source-search chain requires passing private score receipt",
   );
   validateCommitmentShape(value.expected_commitment);
+  codedAssert(
+    value.source_task_outcome.predicted_source_tasks === true &&
+      value.source_task_outcome.correct_supported_source_tasks === value.pass &&
+      value.source_task_outcome.no_visual_scene_support === true,
+    "H2_PLACE_SOURCE_TASK_OUTCOME",
+    "place outcome must derive only from the signed private source-task finalization",
+  );
   const exactPins: [J, string][] = [
     [value.source_task, SOURCE_SEARCH_TASK_FILE],
     [value.public_bundle, SOURCE_SEARCH_BUNDLE_FILE],
@@ -4043,6 +4135,7 @@ function scorePrivateSourceSearch(
   scoredAt?: string,
   signingKey?: crypto.KeyObject | string,
   hooks?: FinalizationHooks,
+  retentionReceiptFile?: string,
 ): J {
   assert(
     injected === undefined ||
@@ -4208,25 +4301,20 @@ function scorePrivateSourceSearch(
   };
   schema("private-score-detail.schema.v2.json", detail);
   const canonicalDetailRaw = Buffer.from(pretty(detail), "utf8");
-  const detailPath = physicalPathSafety(detailOutput);
-  let detailFd: number | undefined;
-  try {
-    detailFd = fs.openSync(
-      detailPath,
-      fs.constants.O_WRONLY |
-        fs.constants.O_CREAT |
-        fs.constants.O_EXCL |
-        fs.constants.O_NOFOLLOW,
-      0o600,
-    );
-    fs.writeFileSync(detailFd, canonicalDetailRaw);
-    fs.fsyncSync(detailFd);
-  } finally {
-    if (detailFd !== undefined) fs.closeSync(detailFd);
+  const detailPath = path.resolve(detailOutput);
+  if (!fs.existsSync(detailPath)) {
+    physicalPathSafety(detailPath);
+    let detailFd: number | undefined;
+    try {
+      detailFd = fs.openSync(detailPath, fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_NOFOLLOW, 0o400);
+      fs.writeFileSync(detailFd, canonicalDetailRaw);
+      fs.fsyncSync(detailFd);
+    } finally { if (detailFd !== undefined) fs.closeSync(detailFd); }
+    fsyncDirectory(path.dirname(detailPath));
   }
   const writtenDetailStat = fs.lstatSync(detailPath);
   hooks?.afterDetailWrite?.();
-  const detailSnapshot = readJsonSnapshot(detailPath, "H2_FINALIZATION_DETAIL");
+  const detailSnapshot = readJsonSnapshot(detailPath, "H2_FINALIZATION_DETAIL", true, canonicalDetailRaw);
   codedAssert(
     detailSnapshot.stat.dev === writtenDetailStat.dev &&
       detailSnapshot.stat.ino === writtenDetailStat.ino &&
@@ -4242,6 +4330,25 @@ function scorePrivateSourceSearch(
     "H2_FINALIZATION_DETAIL_BYTES",
     "private score detail exact canonical readback mismatch",
   );
+  const finalizationKey = evaluatorSigningKey(
+    signingKey ?? (capability?.[INTERNAL_SYNTHETIC_CAPABILITY] === true ? SYNTHETIC_EVALUATOR_KEYS.privateKey : undefined),
+    authority,
+    capability,
+  );
+  let retentionPath = retentionReceiptFile ? path.resolve(retentionReceiptFile) : path.join(path.dirname(detailPath), "private-retention-receipt-v2.json");
+  if (capability?.[INTERNAL_SYNTHETIC_CAPABILITY] === true && !fs.existsSync(retentionPath)) {
+    const retention = syntheticPrivateRetentionReceipt(envelopeSnapshot.raw, detailSnapshot.raw, authority, finalizationKey);
+    const raw = Buffer.from(pretty(retention), "utf8");
+    const fd = fs.openSync(retentionPath, fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_NOFOLLOW, 0o400);
+    try { fs.writeFileSync(fd, raw); fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
+    fsyncDirectory(path.dirname(retentionPath));
+  }
+  if (!fs.existsSync(retentionPath)) {
+    [...snapshots, detailSnapshot].forEach(closeSnapshot);
+    return { status: "private_detail_prepared_retention_required", detail_sha256: hash(detailSnapshot.raw), detail_bytes: detailSnapshot.raw.length, retention_ingestion_network_write_performed: false };
+  }
+  const retentionSnapshot = readJsonSnapshot(retentionPath, "H2_RETENTION_INPUT");
+  validatePrivateRetentionReceiptValue(retentionSnapshot.value, { sha256: hash(envelopeSnapshot.raw), bytes: envelopeSnapshot.raw.length }, { sha256: hash(detailSnapshot.raw), bytes: detailSnapshot.raw.length }, authority);
   const receipt: J = {
     schema_version: "reviewed_metrics_private_score_receipt_v2.0.0",
     status: "completed_public_receipt",
@@ -4263,6 +4370,13 @@ function scorePrivateSourceSearch(
       sha256: hash(detailSnapshot.raw),
       bytes: detailSnapshot.raw.length,
     },
+    private_retention: retentionSnapshot.value,
+    source_task_outcome: {
+      universe: [ISSUE_97_TASK_ID],
+      predicted_source_tasks: true,
+      correct_supported_source_tasks: pass,
+      no_visual_scene_support: true,
+    },
     expected_commitment: envelope.commitment,
     evaluator_authority: {
       ...identityPin(authority.private_evaluator),
@@ -4281,16 +4395,8 @@ function scorePrivateSourceSearch(
     },
     finalization_signature: null,
   };
-  const finalizationKey = evaluatorSigningKey(
-    signingKey ??
-      (capability?.[INTERNAL_SYNTHETIC_CAPABILITY] === true
-        ? SYNTHETIC_EVALUATOR_KEYS.privateKey
-        : undefined),
-    authority,
-    capability,
-  );
   hooks?.beforeSign?.();
-  [...snapshots, detailSnapshot].forEach(assertSnapshotPathUnchanged);
+  [...snapshots, detailSnapshot, retentionSnapshot].forEach(assertSnapshotPathUnchanged);
   receipt.finalization_signature = {
     algorithm: "ed25519",
     public_key_sha256: hash(authority.private_evaluator.signing_public_key_pem),
@@ -4302,7 +4408,9 @@ function scorePrivateSourceSearch(
   const receiptPath = physicalPathSafety(receiptOutput);
   const receiptRaw = Buffer.from(pretty(receipt), "utf8");
   fs.writeFileSync(receiptPath, receiptRaw, { flag: "wx", mode: 0o644 });
+  fsyncDirectory(path.dirname(receiptPath));
   if (pass) validatePrivateScoreReceiptValue(receipt, baseDir, authority);
+  [...snapshots, detailSnapshot, retentionSnapshot].forEach(closeSnapshot);
   return {
     status: pass
       ? "private_source_search_score_passed"
@@ -4454,12 +4562,29 @@ function exactMetricCompletion(metrics: J[]): boolean {
       metric.status === "unavailable_no_real_usage_receipt",
   );
 }
-function independentSyntheticMetricExpectations(): Map<string, { numerator: number | null; denominator: number; status: string }> {
-  const expected = new Map<string, { numerator: number | null; denominator: number; status: string }>(); const observed = (id: string, numerator: number, denominator: number) => expected.set(id, { numerator, denominator, status: "observed" }); const undefinedRow = (id: string) => expected.set(id, { numerator: null, denominator: 0, status: "observed_undefined_zero_support" });
-  observed("ocr_normalized_exact_match", 2, 2); observed("ocr_cer", 0, 32); observed("ocr_wer", 0, 6); observed("entity_precision", 6, 6); observed("entity_recall", 6, 6); undefinedRow("entity_false_identity_rate"); observed("place_link_precision", 1, 1); observed("place_link_coverage", 1, 1);
-  for (const className of IMAGE_MODE_CLASSES) for (const suffix of ["precision", "recall", "f1"]) { const support = className === "ground_street" ? 8 : 7; observed(`image_mode_${className}_${suffix}`, suffix === "f1" ? 2 * support : support, suffix === "f1" ? 2 * support : support); } observed("image_mode_macro_f1", 5, 5);
-  observed("aerial_exact_set_accuracy", 12, 12); observed("aerial_jaccard", 12, 12); for (const label of AERIAL_LABELS) for (const suffix of ["precision", "recall", "f1"]) { const id = `aerial_${label}_${suffix}`; if (label === "mixed_urban") observed(id, suffix === "f1" ? 24 : 12, suffix === "f1" ? 24 : 12); else undefinedRow(id); } observed("aerial_micro_precision", 12, 12); observed("aerial_micro_recall", 12, 12); observed("aerial_micro_f1", 24, 24);
-  observed("abstention_coverage", 9, 18); observed("abstention_rate", 9, 18); observed("appropriate_abstention_recall", 9, 9); observed("unsafe_non_abstention_rate", 0, 9); observed("abstention_selective_error", 0, 9); observed("abstention_decision_accuracy", 18, 18); expected.set("mask_iou", { numerator: null, denominator: 0, status: "prerequisite_not_applicable" }); expected.set("geolocation_distance", { numerator: null, denominator: 0, status: "prerequisite_not_applicable" }); observed("operation_timing_seconds", 2, 1); expected.set("model_tool_cost", { numerator: null, denominator: 0, status: "unavailable_no_real_usage_receipt" }); codedAssert(expected.size === 63, "H2_TEST_METRIC_FIXTURE", `independent metric expectation fixture must contain 63 rows, found ${expected.size}`); return expected;
+function independentSyntheticMetricExpectations(): Map<string, J> {
+  const expected = new Map<string, J>();
+  const visual = ["prediction-output-v2.json", "gold-review-v2.json", "input-authority-v2.json"];
+  const universe = (id: string): string[] => id.startsWith("ocr_") ? OCR_OPAQUE : id.startsWith("entity_") ? SCENE_OPAQUE : id.startsWith("place_link_") ? [ISSUE_97_TASK_ID] : id.startsWith("image_mode_") || id === "mask_iou" ? IMAGE_OPAQUE : id.startsWith("aerial_") ? AERIAL_OPAQUE : id.startsWith("abstention_") ? ABSTENTION_OPAQUE : id === "geolocation_distance" ? FIXED_OPAQUE_IDS : ["visual_prediction_session", "source_search_prediction_session"];
+  const row = (id: string, raw: J, numerator: number | null, denominator: number, provenance: J, status = "observed", reason: string | null = null, limitations: string[] = [], included?: string[], excluded: J[] = []): void => {
+    if (denominator === 0 && status === "observed") { numerator = null; status = "observed_undefined_zero_support"; reason = "zero support in the fixed universe; denominator was not replaced or shrunk"; }
+    const fixed = universe(id); const used = included ?? fixed;
+    expected.set(id, { metric_id: id, fixed_universe_ids: fixed, included_ids: used, excluded, raw_counts: raw, numerator, denominator, status, value: numerator === null ? null : numerator / denominator, undefined_or_na_reason: numerator === null ? reason : null, limitations, support: { fixed_universe: fixed.length, denominator, no_denominator_shrinkage: true }, provenance });
+  };
+  row("ocr_normalized_exact_match", { exact_matches: 2, support: 2 }, 2, 2, visual); row("ocr_cer", { character_edits: 0, gold_characters: 32 }, 0, 32, visual); row("ocr_wer", { word_edits: 0, gold_words: 6 }, 0, 6, visual);
+  const entity = { tp: 6, fp: 0, fn: 0, iou_threshold: 0.5 }; row("entity_precision", entity, 6, 6, visual); row("entity_recall", entity, 6, 6, visual); row("entity_false_identity_rate", { false_identities: 0, linked_identity_predictions: 0 }, 0, 0, visual);
+  const place = { correct_supported_links: 1, predicted_links: 1, reviewed_supported_opportunities: 1, covered_opportunities: 1 }; const placeProvenance = [SOURCE_SEARCH_PREDICTION_FILE, SOURCE_SEARCH_FREEZE_FILE, PRIVATE_SCORE_RECEIPT_FILE, SOURCE_SEARCH_TASK_FILE]; row("place_link_precision", place, 1, 1, placeProvenance); row("place_link_coverage", place, 1, 1, placeProvenance);
+  const confusion: J = {}; for (const predicted of IMAGE_MODE_CLASSES) for (const actual of IMAGE_MODE_CLASSES) confusion[`${actual}__predicted_${predicted}`] = actual === predicted ? (actual === "ground_street" ? 8 : 7) : 0;
+  for (const className of IMAGE_MODE_CLASSES) { const support = className === "ground_street" ? 8 : 7; const raw = { tp: support, fp: 0, fn: 0, gold_support: support, predicted_support: support }; row(`image_mode_${className}_precision`, raw, support, support, visual); row(`image_mode_${className}_recall`, raw, support, support, visual); row(`image_mode_${className}_f1`, raw, 2 * support, 2 * support, visual); }
+  row("image_mode_macro_f1", { ...confusion, classes: 5, image_support: 36 }, 5, 5, visual);
+  const aerialIncluded = AERIAL_OPAQUE.slice(0, 12); const aerialExcluded = AERIAL_OPAQUE.slice(12).map((opaque_id) => ({ opaque_id, reason: "independent gold review found the whole-image aerial label prerequisite unreviewable", fixed_before_scoring: true }));
+  row("aerial_exact_set_accuracy", { exact_sets: 12, fixed_images: 16, reviewable_images: 12, excluded_unreviewable: 4 }, 12, 12, visual, "observed", null, [], aerialIncluded, aerialExcluded); row("aerial_jaccard", { jaccard_sum: 12, fixed_images: 16, reviewable_images: 12, excluded_unreviewable: 4 }, 12, 12, visual, "observed", null, [], aerialIncluded, aerialExcluded);
+  for (const label of AERIAL_LABELS) { const active = label === "mixed_urban"; const raw = { tp: active ? 12 : 0, fp: 0, fn: 0, reviewable_images: 12, excluded_unreviewable: 4 }; for (const suffix of ["precision", "recall", "f1"]) row(`aerial_${label}_${suffix}`, raw, active ? (suffix === "f1" ? 24 : 12) : 0, active ? (suffix === "f1" ? 24 : 12) : 0, visual, "observed", null, [], aerialIncluded, aerialExcluded); }
+  const aerialRaw = { tp: 12, fp: 0, fn: 0, reviewable_images: 12, excluded_unreviewable: 4 }; row("aerial_micro_precision", aerialRaw, 12, 12, visual, "observed", null, [], aerialIncluded, aerialExcluded); row("aerial_micro_recall", aerialRaw, 12, 12, visual, "observed", null, [], aerialIncluded, aerialExcluded); row("aerial_micro_f1", aerialRaw, 24, 24, visual, "observed", null, [], aerialIncluded, aerialExcluded);
+  const abstention = { abstained: 9, non_abstained: 9, unanswerable: 9, appropriate_abstentions: 9, unsafe_non_abstentions: 0, selective_errors: 0 }; row("abstention_coverage", abstention, 9, 18, visual); row("abstention_rate", abstention, 9, 18, visual); row("appropriate_abstention_recall", abstention, 9, 9, visual); row("unsafe_non_abstention_rate", abstention, 0, 9, visual); row("abstention_selective_error", abstention, 0, 9, visual); row("abstention_decision_accuracy", abstention, 18, 18, visual);
+  const exclusions = (ids: string[], reason: string) => ids.map((opaque_id) => ({ opaque_id, reason, fixed_before_scoring: true })); row("mask_iou", { reviewed_masks: 0, excluded_missing_prerequisite: 36 }, null, 0, visual, "prerequisite_not_applicable", "no real reviewed masks exist; masks must not be fabricated", ["Prerequisite evidence absent by design."], [], exclusions(IMAGE_OPAQUE, "no reviewed mask prerequisite exists")); row("geolocation_distance", { verified_coordinates: 0, excluded_missing_prerequisite: 44 }, null, 0, visual, "prerequisite_not_applicable", "no real verified coordinates exist; coordinates must not be fabricated", ["Prerequisite evidence absent by design."], [], exclusions(FIXED_OPAQUE_IDS, "no verified coordinate prerequisite exists"));
+  row("operation_timing_seconds", { visual_prediction_seconds: 1, source_search_prediction_seconds: 1 }, 2, 1, ["prediction-output-v2.json", "execution-authorization-v2.json"]); row("model_tool_cost", { real_usage_receipts: 0 }, null, 0, ["execution-authorization-v2.json"], "unavailable_no_real_usage_receipt", "model/tool cost is unavailable because no real usage receipt is present", ["No estimate or authored cost is accepted."]);
+  codedAssert(expected.size === 63, "H2_TEST_METRIC_FIXTURE", `independent full-row fixture must contain 63 rows, found ${expected.size}`); return expected;
 }
 function resolveEvidencePath(shownPath: string, baseDir = ROOT): string {
   assert(
@@ -4700,26 +4825,11 @@ function validateGateESourceProvenance(provenance: J): {
   };
 }
 function validateGoldPlaceSupport(gold: J, sourceTask: J): void {
-  const derived = validateGateESourceProvenance(sourceTask.internal_provenance);
-  const dossier = sourceTask.source_task_dossier;
-  const exactOpportunity = {
-    opportunity_id: dossier.opportunity_id,
-    task_gate_id: ISSUE_97_TASK_ID,
-    accepted_claim_id: derived.disposition.claim_id,
-    source_representation_id: derived.representation.representation_id,
-    civic_number: derived.expected.civic_number,
-    street: derived.expected.street,
-    place: derived.expected.place,
-    official_url: derived.expected.official_url,
-    supported: true,
-  };
-  const supported = gold.reviews.flatMap((row: J) =>
-    row.place_opportunities.filter((place: J) => place.supported),
-  );
+  validateGateESourceProvenance(sourceTask.internal_provenance);
   codedAssert(
-    supported.length === 1 && canon(supported[0]) === canon(exactOpportunity),
-    "H2_PLACE_GATE_E_JOIN",
-    "supported place opportunity must be the exact Gate E-derived source-task opportunity",
+    gold.reviews.every((row: J) => row.place_opportunities.length === 0),
+    "H2_PLACE_VISUAL_ATTACHMENT",
+    "Gate E source support cannot be attached to any visual row or mention",
   );
 }
 function validateSearchTaskValue(value: J, _legacyGold?: J): void {
@@ -5170,8 +5280,8 @@ function validateIndependentChronology(
   validateAuthorityPrincipals(authority);
   assert(
     authority.schema_version ===
-      "reviewed_metrics_execution_authorization_v2.1.0",
-    "completed visual gold requires unified v2.1 authority",
+      "reviewed_metrics_execution_authorization_v2.2.0",
+    "completed visual gold requires unified v2.2 authority",
   );
   assert(
     prediction.bundle_tree_sha256 === gold.bundle_tree_sha256 &&
@@ -5579,11 +5689,16 @@ async function baselineContractSelfTest(): Promise<J> {
     cases++;
     try {
       await fn();
-    } catch {
+    } catch (error) {
+      codedAssert(
+        error instanceof GateH2Error,
+        "H2_TEST_UNTYPED_REJECTION",
+        `baseline case ${cases} must reject through a Gate H2 boundary`,
+      );
       rejections++;
       return;
     }
-    throw new Error("adversarial case accepted");
+    throw new Error(`adversarial case accepted at baseline case ${cases}`);
   };
   const accept = async (fn: () => unknown | Promise<unknown>) => {
     cases++;
@@ -5767,7 +5882,7 @@ async function baselineContractSelfTest(): Promise<J> {
         syntheticExecutionAuthority("a".repeat(64)),
         capability,
         gitExecutionAuthorityEvidence,
-        () => new Date("2026-07-15T00:10:00.000Z"),
+        () => new Date("2026-07-15T00:20:00.000Z"),
       ),
     );
     const wrongCommitAuthority = syntheticExecutionAuthority("a".repeat(64));
@@ -6341,32 +6456,7 @@ async function baselineContractSelfTest(): Promise<J> {
   }
 }
 function syntheticAuthorityV21(bundle: string): J {
-  const legacy = syntheticExecutionAuthority(bundle);
-  return {
-    ...legacy,
-    schema_version: "reviewed_metrics_execution_authorization_v2.1.0",
-    search_predictor: {
-      ...actor("search_predictor"),
-      principal: "synthetic-search-predictor",
-      session_id: "synthetic-search-prediction-session",
-      model: "synthetic-search-model",
-    },
-    private_evaluator: {
-      ...actor("private_evaluator"),
-      principal: "synthetic-private-evaluator",
-      session_id: "synthetic-private-evaluator-session",
-      model: "synthetic-private-evaluator-model",
-      signing_public_key_pem: SYNTHETIC_EVALUATOR_KEYS.publicKey
-        .export({ type: "spki", format: "pem" })
-        .toString(),
-    },
-    source_search_started_at: "2026-07-15T00:00:06.000Z",
-    source_search_ended_at: "2026-07-15T00:00:07.000Z",
-    source_search_freeze_at: "2026-07-15T00:00:08.000Z",
-    source_dossier_authored_at: "2026-07-15T00:00:08.200Z",
-    private_envelope_sealed_at: "2026-07-15T00:00:08.400Z",
-    expires_at: "2026-07-15T00:20:00.000Z",
-  };
+  return syntheticExecutionAuthority(bundle);
 }
 function syntheticGoldV21(bundle: string): J { const legacy = syntheticCompletedGold(bundle); delete legacy.source_task_dossier_decision; delete legacy.private_expected_commitment; return legacy; }
 function syntheticGateEExpected(gateEPins: J): {
@@ -6729,44 +6819,22 @@ async function sourceSearchSelfTest(): Promise<J> {
     );
     await reject("authority", "no-real-authority", () => executionAuthority());
     const authority = syntheticAuthorityV21(visualDescriptor.media_tree.sha256);
-    const resignRoute = (actorValue: J): void => {
-      const physical = nearestExistingPhysicalRoot(actorValue.route);
-      actorValue.canonical_root = physical.canonicalRoot;
-      Object.assign(actorValue.route_receipt, {
-        surface_id: actorValue.surface_id,
-        role: actorValue.role,
-        requested_root: actorValue.route,
-        canonical_root: physical.canonicalRoot,
-        existing_ancestor: physical.existingAncestor,
-        ancestor_device: physical.stat.dev,
-        ancestor_inode: physical.stat.ino,
-        signature_base64: "",
-      });
-      actorValue.route = physical.canonicalRoot;
-      actorValue.route_receipt.requested_root = actorValue.route;
-      actorValue.route_receipt.signature_base64 = crypto
-        .sign(
-          null,
-          routeReceiptPayload(actorValue.route_receipt),
-          SYNTHETIC_SURFACE_KEYS.privateKey,
-        )
-        .toString("base64");
-    };
-    const signCurrentReceipt = (actorValue: J): void => {
-      Object.assign(actorValue.route_receipt, {
-        surface_id: actorValue.surface_id,
-        role: actorValue.role,
-        requested_root: actorValue.route,
-        canonical_root: actorValue.canonical_root,
-        signature_base64: "",
-      });
-      actorValue.route_receipt.signature_base64 = crypto
-        .sign(
-          null,
-          routeReceiptPayload(actorValue.route_receipt),
-          SYNTHETIC_SURFACE_KEYS.privateKey,
-        )
-        .toString("base64");
+    const resignAuthority = (authorityValue: J): void => {
+      const bindingHash = authorityBindingHash(authorityValue);
+      for (const role of ["implementation", "predictor", "search_predictor", "private_evaluator", "gold_reviewer", "task_reviewer", "publisher"]) {
+        const actorValue = authorityValue[role];
+        Object.assign(actorValue.route_receipt, {
+          surface_id: actorValue.surface_id,
+          surface_inventory_digest: actorValue.surface_inventory_digest,
+          candidate_commit: authorityValue.candidate_commit,
+          authority_hash: bindingHash,
+          role: actorValue.role,
+          requested_root: actorValue.route,
+          canonical_root: actorValue.canonical_root,
+          signature_base64: "",
+        });
+        actorValue.route_receipt.signature_base64 = crypto.sign(null, routeReceiptPayload(actorValue.route_receipt), SYNTHETIC_COORDINATOR_KEYS.privateKey).toString("base64");
+      }
     };
     await accept("authority", "unified-v21", () =>
       validateAuthorityValue(authority),
@@ -6808,7 +6876,9 @@ async function sourceSearchSelfTest(): Promise<J> {
       const equal = structuredClone(authority);
       equal[role].route = equal[role].canonical_root =
         equal.implementation.canonical_root;
-      resignRoute(equal[role]);
+      equal[role].surface_id = equal.implementation.surface_id;
+      equal[role].surface_inventory_digest = equal.implementation.surface_inventory_digest;
+      resignAuthority(equal);
       await reject(
         "authority",
         `implementation-${role}-route-equality`,
@@ -6820,7 +6890,9 @@ async function sourceSearchSelfTest(): Promise<J> {
         nested.implementation.canonical_root,
         role,
       );
-      resignRoute(nested[role]);
+      nested[role].surface_id = nested.implementation.surface_id;
+      nested[role].surface_inventory_digest = nested.implementation.surface_inventory_digest;
+      resignAuthority(nested);
       await reject(
         "authority",
         `implementation-${role}-route-descendant`,
@@ -6830,7 +6902,9 @@ async function sourceSearchSelfTest(): Promise<J> {
       const ancestor = structuredClone(authority);
       ancestor.implementation.route = ancestor.implementation.canonical_root =
         path.dirname(ancestor[role].canonical_root);
-      resignRoute(ancestor.implementation);
+      ancestor.implementation.surface_id = ancestor[role].surface_id;
+      ancestor.implementation.surface_inventory_digest = ancestor[role].surface_inventory_digest;
+      resignAuthority(ancestor);
       await reject(
         "authority",
         `implementation-${role}-route-ancestor`,
@@ -6848,7 +6922,9 @@ async function sourceSearchSelfTest(): Promise<J> {
       const overlap = structuredClone(authority);
       overlap[role].route = overlap[role].canonical_root =
         overlap.predictor.canonical_root;
-      resignRoute(overlap[role]);
+      overlap[role].surface_id = overlap.predictor.surface_id;
+      overlap[role].surface_inventory_digest = overlap.predictor.surface_inventory_digest;
+      resignAuthority(overlap);
       await reject(
         "authority",
         `visual-${role}-route-overlap`,
@@ -6859,7 +6935,7 @@ async function sourceSearchSelfTest(): Promise<J> {
     const aliasedImplementationRoute = structuredClone(authority);
     aliasedImplementationRoute.implementation.route =
       aliasedImplementationRoute.implementation.canonical_root = `${path.dirname(aliasedImplementationRoute.predictor.canonical_root)}/alias/../predictor`;
-    signCurrentReceipt(aliasedImplementationRoute.implementation);
+    resignAuthority(aliasedImplementationRoute);
     await reject(
       "authority",
       "implementation-route-non-normalized-alias",
@@ -6869,7 +6945,7 @@ async function sourceSearchSelfTest(): Promise<J> {
     const relativeRoute = structuredClone(authority);
     relativeRoute.publisher.route = relativeRoute.publisher.canonical_root =
       "relative/publisher";
-    signCurrentReceipt(relativeRoute.publisher);
+    resignAuthority(relativeRoute);
     await reject(
       "authority",
       "relative-filesystem-route",
@@ -6879,7 +6955,9 @@ async function sourceSearchSelfTest(): Promise<J> {
     const nestedRoute = structuredClone(authority);
     nestedRoute.publisher.route = nestedRoute.publisher.canonical_root =
       path.join(nestedRoute.task_reviewer.canonical_root, "nested");
-    resignRoute(nestedRoute.publisher);
+    nestedRoute.publisher.surface_id = nestedRoute.task_reviewer.surface_id;
+    nestedRoute.publisher.surface_inventory_digest = nestedRoute.task_reviewer.surface_inventory_digest;
+    resignAuthority(nestedRoute);
     await reject(
       "authority",
       "nested-filesystem-route-overlap",
@@ -6891,8 +6969,7 @@ async function sourceSearchSelfTest(): Promise<J> {
       "/tmp/h2-route-a";
     tmpAlias.predictor.route = tmpAlias.predictor.canonical_root =
       "/private/tmp/h2-route-a";
-    signCurrentReceipt(tmpAlias.implementation);
-    signCurrentReceipt(tmpAlias.predictor);
+    resignAuthority(tmpAlias);
     await reject(
       "authority",
       "tmp-private-tmp-physical-alias",
@@ -6911,135 +6988,59 @@ async function sourceSearchSelfTest(): Promise<J> {
       );
     symlinkAlias.predictor.route = symlinkAlias.predictor.canonical_root =
       path.join(aliasLink, "worker");
-    signCurrentReceipt(symlinkAlias.implementation);
-    signCurrentReceipt(symlinkAlias.predictor);
+    resignAuthority(symlinkAlias);
     await reject(
       "authority",
       "symlink-physical-alias",
       () => validateAuthorityPrincipals(symlinkAlias),
       "H2_ROUTE_CANONICAL_MISMATCH",
     );
-    const distinctSurfaces = structuredClone(authority);
-    const attestRemote = (
-      actorValue: J,
-      surfaceValue: string,
-      keyPair: crypto.KeyPairKeyObjectResult,
-      requested: string,
-      canonical = requested,
-    ): void => {
-      const publicKeyPem = keyPair.publicKey
-        .export({ type: "spki", format: "pem" })
-        .toString();
-      actorValue.surface_identity = {
-        kind: "remote_host",
-        value: surfaceValue,
-        public_key_pem: publicKeyPem,
-        public_key_sha256: hash(publicKeyPem),
-      };
-      actorValue.surface_id = surfaceIdentityDigest(
-        actorValue.surface_identity,
-      );
-      actorValue.route = requested;
-      actorValue.canonical_root = canonical;
-      actorValue.route_receipt = {
-        schema_version: "reviewed_metrics_host_route_receipt_v2.0.0",
-        surface_id: actorValue.surface_id,
-        role: actorValue.role,
-        requested_root: requested,
-        canonical_root: canonical,
-        existing_ancestor: path.dirname(canonical),
-        ancestor_device: 1,
-        ancestor_inode: 1,
-        issued_at: "2026-07-15T00:00:00.000Z",
-        signature_base64: "",
-      };
-      actorValue.route_receipt.signature_base64 = crypto
-        .sign(
-          null,
-          routeReceiptPayload(actorValue.route_receipt),
-          keyPair.privateKey,
-        )
-        .toString("base64");
-    };
-    attestRemote(
-      distinctSurfaces.implementation,
-      "remote-a",
-      crypto.generateKeyPairSync("ed25519"),
-      "/workspace/same",
-    );
-    attestRemote(
-      distinctSurfaces.predictor,
-      "remote-b",
-      crypto.generateKeyPairSync("ed25519"),
-      "/workspace/same",
-    );
-    await accept("authority", "same-path-distinct-stable-surfaces", () =>
-      validateAuthorityPrincipals(distinctSurfaces),
-    );
-    const kamiAlias = structuredClone(authority);
-    const kamiKeys = crypto.generateKeyPairSync("ed25519");
-    attestRemote(
-      kamiAlias.implementation,
-      "kami-host-key",
-      kamiKeys,
-      "/tmp/h2-shared",
-      "/private/tmp/h2-shared",
-    );
-    attestRemote(
-      kamiAlias.predictor,
-      "kami-host-key",
-      kamiKeys,
-      "/private/tmp/h2-shared",
-      "/private/tmp/h2-shared",
-    );
-    await reject(
-      "authority",
-      "same-kami-tmp-alias",
-      () => validateAuthorityPrincipals(kamiAlias),
-      "H2_ROUTE_PHYSICAL_OVERLAP",
-    );
-    const remoteSymlinkAlias = structuredClone(authority);
-    const remoteKeys = crypto.generateKeyPairSync("ed25519");
-    attestRemote(
-      remoteSymlinkAlias.implementation,
-      "remote-symlink-host",
-      remoteKeys,
-      "/srv/work-link",
-      "/srv/work-real",
-    );
-    attestRemote(
-      remoteSymlinkAlias.predictor,
-      "remote-symlink-host",
-      remoteKeys,
-      "/srv/work-real",
-      "/srv/work-real",
-    );
-    await reject(
-      "authority",
-      "remote-symlink-alias",
-      () => validateAuthorityPrincipals(remoteSymlinkAlias),
-      "H2_ROUTE_PHYSICAL_OVERLAP",
-    );
     const relabeledSurface = structuredClone(authority);
-    relabeledSurface.predictor.surface_identity.value = "forged-second-label";
-    relabeledSurface.predictor.surface_id = surfaceIdentityDigest(
-      relabeledSurface.predictor.surface_identity,
-    );
-    relabeledSurface.predictor.route_receipt.surface_id =
-      relabeledSurface.predictor.surface_id;
-    relabeledSurface.predictor.route_receipt.signature_base64 = crypto
-      .sign(
-        null,
-        routeReceiptPayload(relabeledSurface.predictor.route_receipt),
-        SYNTHETIC_SURFACE_KEYS.privateKey,
-      )
-      .toString("base64");
-    await reject(
-      "authority",
-      "surface-relabel-with-same-host-key",
-      () => validateAuthorityPrincipals(relabeledSurface),
-      "H2_ROUTE_SURFACE_RELABEL",
-    );
+    relabeledSurface.predictor.surface_inventory_digest = relabeledSurface.implementation.surface_inventory_digest;
+    resignAuthority(relabeledSurface);
+    await reject("authority", "one-inventory-multiple-surface-ids", () => validateAuthorityPrincipals(relabeledSurface), "H2_ROUTE_SURFACE_ID");
+    const duplicateInventory = structuredClone(authority);
+    duplicateInventory.trusted_surface_inventory[1] = structuredClone(duplicateInventory.trusted_surface_inventory[0]);
+    resignAuthority(duplicateInventory);
+    await reject("authority", "duplicate-trusted-inventory", () => validateAuthorityPrincipals(duplicateInventory), "H2_ROUTE_INVENTORY_DUPLICATE");
+    const remoteInventory = { kind: "remote_host", ssh_host_fingerprint_sha256: hash("synthetic-kami-ssh-host"), instance_identity: { provider: "coordinator_verified_ssh", instance_id: "i-synthetic-kami", identity_document_sha256: hash("synthetic-instance-identity"), aws_signature_verified: false } };
+    const remoteSymlinkAlias = structuredClone(authority);
+    remoteSymlinkAlias.trusted_surface_inventory[0] = remoteInventory;
+    for (const role of ["implementation", "predictor"]) { remoteSymlinkAlias[role].surface_inventory_digest = trustedInventoryDigest(remoteInventory); remoteSymlinkAlias[role].surface_id = trustedSurfaceId(remoteInventory); }
+    remoteSymlinkAlias.implementation.route = "/srv/work-link"; remoteSymlinkAlias.implementation.canonical_root = "/srv/work-real"; remoteSymlinkAlias.predictor.route = "/srv/work-real"; remoteSymlinkAlias.predictor.canonical_root = "/srv/work-real"; resignAuthority(remoteSymlinkAlias);
+    await reject("authority", "remote-symlink-canonical-alias", () => validateAuthorityPrincipals(remoteSymlinkAlias), "H2_ROUTE_PHYSICAL_OVERLAP");
+    const remoteTmpAlias = structuredClone(remoteSymlinkAlias); remoteTmpAlias.implementation.route = "/tmp/h2-shared"; remoteTmpAlias.implementation.canonical_root = "/private/tmp/h2-shared"; remoteTmpAlias.predictor.route = remoteTmpAlias.predictor.canonical_root = "/private/tmp/h2-shared"; resignAuthority(remoteTmpAlias);
+    await reject("authority", "remote-tmp-private-tmp-alias", () => validateAuthorityPrincipals(remoteTmpAlias), "H2_ROUTE_PHYSICAL_OVERLAP");
+    const replayedNonce = structuredClone(authority);
+    replayedNonce.predictor.route_nonce = replayedNonce.implementation.route_nonce;
+    replayedNonce.predictor.route_receipt.nonce = replayedNonce.implementation.route_receipt.nonce;
+    resignAuthority(replayedNonce);
+    await reject("authority", "one-shot-nonce-replay", () => validateAuthorityPrincipals(replayedNonce), "H2_ROUTE_NONCE_REPLAY");
+    const staleReceipt = structuredClone(authority);
+    staleReceipt.publisher.route_receipt.issued_at = "2026-07-14T23:00:00.000Z";
+    staleReceipt.publisher.route_receipt.expires_at = "2026-07-14T23:01:00.000Z";
+    staleReceipt.publisher.route_receipt.signature_base64 = crypto.sign(null, routeReceiptPayload(staleReceipt.publisher.route_receipt), SYNTHETIC_COORDINATOR_KEYS.privateKey).toString("base64");
+    await reject("authority", "stale-route-receipt", () => validateAuthorityPrincipals(staleReceipt), "H2_ROUTE_RECEIPT_FRESHNESS");
+    const wrongCandidateReceipt = structuredClone(authority);
+    wrongCandidateReceipt.publisher.route_receipt.candidate_commit = "0".repeat(40);
+    wrongCandidateReceipt.publisher.route_receipt.signature_base64 = crypto.sign(null, routeReceiptPayload(wrongCandidateReceipt.publisher.route_receipt), SYNTHETIC_COORDINATOR_KEYS.privateKey).toString("base64");
+    await reject("authority", "wrong-candidate-route-receipt", () => validateAuthorityPrincipals(wrongCandidateReceipt), "H2_ROUTE_RECEIPT_BINDING");
+    const wrongNonceReceipt = structuredClone(authority);
+    wrongNonceReceipt.publisher.route_receipt.nonce = hash("wrong-nonce").slice(0, 32);
+    wrongNonceReceipt.publisher.route_receipt.signature_base64 = crypto.sign(null, routeReceiptPayload(wrongNonceReceipt.publisher.route_receipt), SYNTHETIC_COORDINATOR_KEYS.privateKey).toString("base64");
+    await reject("authority", "wrong-precommitted-route-nonce", () => validateAuthorityPrincipals(wrongNonceReceipt), "H2_ROUTE_RECEIPT_BINDING");
+    const wrongAuthorityHashReceipt = structuredClone(authority);
+    wrongAuthorityHashReceipt.publisher.route_receipt.authority_hash = "0".repeat(64);
+    wrongAuthorityHashReceipt.publisher.route_receipt.signature_base64 = crypto.sign(null, routeReceiptPayload(wrongAuthorityHashReceipt.publisher.route_receipt), SYNTHETIC_COORDINATOR_KEYS.privateKey).toString("base64");
+    await reject("authority", "wrong-authority-hash-route-receipt", () => validateAuthorityPrincipals(wrongAuthorityHashReceipt), "H2_ROUTE_RECEIPT_BINDING");
+    const wrongRoleReceipt = structuredClone(authority);
+    wrongRoleReceipt.publisher.route_receipt.role = "predictor";
+    wrongRoleReceipt.publisher.route_receipt.signature_base64 = crypto.sign(null, routeReceiptPayload(wrongRoleReceipt.publisher.route_receipt), SYNTHETIC_COORDINATOR_KEYS.privateKey).toString("base64");
+    await reject("authority", "wrong-role-route-receipt", () => validateAuthorityPrincipals(wrongRoleReceipt), "H2_ROUTE_RECEIPT_BINDING");
+    const selfSignedReceipt = structuredClone(authority);
+    const selfKey = crypto.generateKeyPairSync("ed25519");
+    selfSignedReceipt.publisher.route_receipt.signature_base64 = crypto.sign(null, routeReceiptPayload(selfSignedReceipt.publisher.route_receipt), selfKey.privateKey).toString("base64");
+    await reject("authority", "self-signed-route-receipt", () => validateAuthorityPrincipals(selfSignedReceipt), "H2_ROUTE_RECEIPT_SIGNATURE");
     const forgedReceipt = structuredClone(authority);
     forgedReceipt.publisher.route_receipt.signature_base64 = Buffer.alloc(
       64,
@@ -7056,6 +7057,7 @@ async function sourceSearchSelfTest(): Promise<J> {
       .generateKeyPairSync("rsa", { modulusLength: 2048 })
       .publicKey.export({ type: "spki", format: "pem" })
       .toString();
+    resignAuthority(rsaAuthority);
     await reject(
       "authority",
       "rsa-evaluator-authority-key",
@@ -7082,8 +7084,9 @@ async function sourceSearchSelfTest(): Promise<J> {
       const bad = structuredClone(authority);
       bad.implementation.route = bad.implementation.canonical_root = leftRoot;
       bad.predictor.route = bad.predictor.canonical_root = rightRoot;
-      resignRoute(bad.implementation);
-      resignRoute(bad.predictor);
+      bad.predictor.surface_id = bad.implementation.surface_id;
+      bad.predictor.surface_inventory_digest = bad.implementation.surface_inventory_digest;
+      resignAuthority(bad);
       await reject(
         "authority",
         label,
@@ -7104,6 +7107,7 @@ async function sourceSearchSelfTest(): Promise<J> {
     ] as const) {
       const bad = structuredClone(authority);
       bad[field] = bad[prior];
+      resignAuthority(bad);
       await reject("authority", `chronology-${field}`, () =>
         validateAuthorityValue(bad),
       );
@@ -7621,6 +7625,17 @@ async function sourceSearchSelfTest(): Promise<J> {
       ["envelope", "envelope"],
     ] as const)
       await substitutionCase(label, filename);
+    const sameInodeRewriteCase = async (label: string, targetName: string): Promise<void> => {
+      const caseDir = path.join(root, `same-inode-${label}`);
+      const casePaths = makeSyntheticSearchWorkspace(caseDir, authority, capability);
+      const target = targetName === "envelope" ? casePaths.envelopeFile : path.join(caseDir, targetName);
+      await reject("private_score", `finalization-${label}-same-inode-restored-metadata`, () => scorePrivateSourceSearch(caseDir, casePaths.envelopeFile, casePaths.detailFile, casePaths.receiptFile, authority, capability, "2026-07-15T00:00:09.000Z", SYNTHETIC_EVALUATOR_KEYS.privateKey, { afterInputs: () => {
+        const stat = fs.statSync(target); const bytes = fs.readFileSync(target); const changed = Buffer.from(bytes); changed[changed.length - 2] = changed[changed.length - 2] === 0x7d ? 0x20 : 0x7d;
+        const fd = fs.openSync(target, "r+"); try { fs.writeSync(fd, changed, 0, changed.length, 0); fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
+        fs.utimesSync(target, stat.atime, stat.mtime);
+      } }), "H2_FINALIZATION_EXACT_BYTES");
+    };
+    for (const [label, filename] of [["authority", "execution-authorization-v2.json"], ["task", SOURCE_SEARCH_TASK_FILE], ["bundle", SOURCE_SEARCH_BUNDLE_FILE], ["prediction", SOURCE_SEARCH_PREDICTION_FILE], ["freeze", SOURCE_SEARCH_FREEZE_FILE], ["envelope", "envelope"]] as const) await sameInodeRewriteCase(label, filename);
     const detailRaceDir = path.join(root, "race-detail");
     const detailRace = makeSyntheticSearchWorkspace(
       detailRaceDir,
@@ -7656,6 +7671,16 @@ async function sourceSearchSelfTest(): Promise<J> {
         ),
       "H2_FINALIZATION_PATH_SUBSTITUTION",
     );
+    const detailBytesRaceDir = path.join(root, "same-inode-detail");
+    const detailBytesRace = makeSyntheticSearchWorkspace(detailBytesRaceDir, authority, capability);
+    await reject("private_score", "finalization-detail-same-inode-restored-metadata", () => scorePrivateSourceSearch(detailBytesRaceDir, detailBytesRace.envelopeFile, detailBytesRace.detailFile, detailBytesRace.receiptFile, authority, capability, "2026-07-15T00:00:09.000Z", SYNTHETIC_EVALUATOR_KEYS.privateKey, { afterDetailWrite: () => {
+      const stat = fs.statSync(detailBytesRace.detailFile); const bytes = fs.readFileSync(detailBytesRace.detailFile); const changed = Buffer.from(bytes); changed[changed.length - 2] = 0x20;
+      fs.chmodSync(detailBytesRace.detailFile, 0o600); const fd = fs.openSync(detailBytesRace.detailFile, "r+"); try { fs.writeSync(fd, changed, 0, changed.length, 0); fs.fsyncSync(fd); } finally { fs.closeSync(fd); } fs.chmodSync(detailBytesRace.detailFile, 0o400); fs.utimesSync(detailBytesRace.detailFile, stat.atime, stat.mtime);
+    } }), "H2_FINALIZATION_EXACT_BYTES");
+    const hardLinkDir = path.join(root, "hard-link-input");
+    const hardLinkPaths = makeSyntheticSearchWorkspace(hardLinkDir, authority, capability);
+    fs.linkSync(hardLinkPaths.envelopeFile, `${hardLinkPaths.envelopeFile}.alias`);
+    await reject("private_score", "finalization-envelope-hard-link", () => scorePrivateSourceSearch(hardLinkDir, hardLinkPaths.envelopeFile, hardLinkPaths.detailFile, hardLinkPaths.receiptFile, authority, capability, "2026-07-15T00:00:09.000Z", SYNTHETIC_EVALUATOR_KEYS.privateKey), "H2_FINALIZATION_INPUT");
     const symlinkDir = path.join(root, "symlink-input");
     const symlinkPaths = makeSyntheticSearchWorkspace(
       symlinkDir,
@@ -7716,6 +7741,10 @@ async function sourceSearchSelfTest(): Promise<J> {
     await accept("authority", "ed25519-key-path-safe", () =>
       evaluatorSigningKey(validKey, keyAuthority),
     );
+    const hardLinkedKey = path.join(keyRoot, "evaluator-hardlink.key");
+    fs.linkSync(validKey, hardLinkedKey);
+    await reject("authority", "hard-linked-signing-key", () => evaluatorSigningKey(validKey, keyAuthority), "H2_FINALIZATION_KEY_UNSAFE");
+    fs.unlinkSync(hardLinkedKey);
     const rsaKey = path.join(keyRoot, "rsa.key");
     fs.writeFileSync(
       rsaKey,
@@ -7954,7 +7983,7 @@ async function sourceSearchSelfTest(): Promise<J> {
       "coherent-public-forgery",
       () =>
         validatePrivateScoreReceiptValue(coherentForgery, passDir, authority),
-      "H2_FINALIZATION_SIGNATURE",
+      "H2_RETENTION_EXACT_BYTES",
     );
     const substitutedPrivateHash = structuredClone(receipt);
     substitutedPrivateHash.private_detail.bytes += 1;
@@ -7967,7 +7996,7 @@ async function sourceSearchSelfTest(): Promise<J> {
           passDir,
           authority,
         ),
-      "H2_FINALIZATION_SIGNATURE",
+      "H2_RETENTION_EXACT_BYTES",
     );
     const missingFinalization = structuredClone(receipt);
     delete missingFinalization.finalization_signature;
@@ -7982,6 +8011,18 @@ async function sourceSearchSelfTest(): Promise<J> {
         ),
       "H2_FINALIZATION_MISSING",
     );
+    const missingRetention = structuredClone(receipt);
+    delete missingRetention.private_retention;
+    await reject("receipt", "missing-private-retention", () => validatePrivateScoreReceiptValue(missingRetention, passDir, authority), "H2_RETENTION_MISSING");
+    const wrongRetentionSignature = structuredClone(receipt);
+    wrongRetentionSignature.private_retention.signature.signature_base64 = Buffer.alloc(64, 3).toString("base64");
+    await reject("receipt", "wrong-retention-signature", () => validatePrivateScoreReceiptValue(wrongRetentionSignature, passDir, authority), "H2_RETENTION_SIGNATURE");
+    const failedRetentionReadback = structuredClone(receipt);
+    failedRetentionReadback.private_retention.objects[0].readback_verified = false;
+    await reject("receipt", "failed-retention-readback", () => validatePrivateScoreReceiptValue(failedRetentionReadback, passDir, authority), "H2_RETENTION_READBACK");
+    const publicRetentionAcl = structuredClone(receipt);
+    publicRetentionAcl.private_retention.objects[0].no_public_acl = false;
+    await reject("receipt", "public-retention-acl", () => validatePrivateScoreReceiptValue(publicRetentionAcl, passDir, authority), "H2_RETENTION_PUBLIC_ACL");
     const wrongKeyAuthority = structuredClone(authority);
     const wrongKeys = crypto.generateKeyPairSync("ed25519");
     wrongKeyAuthority.private_evaluator.signing_public_key_pem =
@@ -7991,7 +8032,7 @@ async function sourceSearchSelfTest(): Promise<J> {
       "wrong-evaluator-public-key",
       () =>
         validatePrivateScoreReceiptValue(receipt, passDir, wrongKeyAuthority),
-      "H2_FINALIZATION_WRONG_KEY",
+      "H2_RETENTION_SIGNER",
     );
     const wrongSignature = structuredClone(receipt);
     wrongSignature.finalization_signature.signature_base64 = Buffer.alloc(
@@ -8161,13 +8202,13 @@ async function sourceSearchSelfTest(): Promise<J> {
     assert(
       metrics
         .filter((m: J) => m.metric_id.startsWith("place_link_"))
-        .every((m: J) => canon(m.fixed_universe_ids) === canon(SCENE_OPAQUE)),
-      "place metrics require the six fixed reviewed scenes",
+        .every((m: J) => canon(m.fixed_universe_ids) === canon([ISSUE_97_TASK_ID])),
+      "place metrics require the exact source-only official-search task",
     );
     assert(
       metric(metrics, "place_link_precision").value === 1 &&
         metric(metrics, "place_link_coverage").value === 1,
-      "reviewed scene place baseline",
+      "signed source-task place baseline",
     );
     assert(
       metric(metrics, "aerial_exact_set_accuracy").included_ids.length === 12 &&
@@ -8179,7 +8220,7 @@ async function sourceSearchSelfTest(): Promise<J> {
         metric(metrics, "mask_iou").excluded.length === IMAGE_OPAQUE.length,
       "mask prerequisite exclusion partition",
     );
-    await accept("final_chain", "metric-all-63-independent-hand-checks", () => { const expected = independentSyntheticMetricExpectations(); exactSet(metrics.map((row: J) => row.metric_id), [...expected.keys()], "independent 63-row metric fixture IDs"); for (const row of metrics) { const hand = expected.get(row.metric_id)!; codedAssert(row.numerator === hand.numerator && row.denominator === hand.denominator && row.status === hand.status && row.value === (hand.numerator === null ? null : hand.numerator / hand.denominator), "H2_TEST_METRIC_FIXTURE", `independent hand check failed for ${row.metric_id}`); } });
+    await accept("final_chain", "metric-all-63-independent-full-row-hand-checks", () => { const expected = independentSyntheticMetricExpectations(); exactSet(metrics.map((row: J) => row.metric_id), [...expected.keys()], "independent 63-row metric fixture IDs"); for (const row of metrics) codedAssert(canon(row) === canon(expected.get(row.metric_id)), "H2_TEST_METRIC_FIXTURE", `independent full-row hand check failed for ${row.metric_id}`); });
     await accept("final_chain", "metric-ocr-normalization-hand-check", () => {
       const normalized = normalizePublicText("  École---du\nPORT!  ");
       codedAssert(
@@ -8203,7 +8244,10 @@ async function sourceSearchSelfTest(): Promise<J> {
     ] as [string, (x: J) => void, string][]) { const bad = structuredClone(visualPrediction); mutate(bad); await reject("final_chain", label, () => validatePredictionValue(bad), code); }
     const mismatchedOcrGold = structuredClone(visualGold); mismatchedOcrGold.reviews.find((row: J) => row.opaque_id === OCR_OPAQUE[0]).ocr_normalized = "authored mismatch"; await reject("final_chain", "gold-authored-ocr-normalized-mismatch", () => validateGoldValue(mismatchedOcrGold), "H2_OCR_NORMALIZED_MISMATCH");
     const duplicateGoldMention = structuredClone(visualGold); { const row = duplicateGoldMention.reviews.find((item: J) => item.opaque_id === SCENE_OPAQUE[0]); const duplicate = structuredClone(row.entities[0]); duplicate.entity_id = "different-gold-id"; row.entities.push(duplicate); } await reject("final_chain", "gold-duplicate-canonical-mention", () => validateGoldValue(duplicateGoldMention), "H2_ENTITY_DUPLICATE_MENTION");
-    const pseudoPlaceGold = structuredClone(visualGold); pseudoPlaceGold.reviews.find((row: J) => row.opaque_id === SCENE_OPAQUE[1]).place_opportunities = [{ opportunity_id: "unsupported-pseudo", task_gate_id: null, accepted_claim_id: null, source_representation_id: null, civic_number: null, street: null, place: "invented", official_url: null, supported: false }]; await reject("final_chain", "gold-unsupported-pseudo-support", () => validateGoldValue(pseudoPlaceGold), "H2_PLACE_PSEUDO_SUPPORT");
+    const epsilonDuplicate = structuredClone(visualPrediction); { const row = epsilonDuplicate.outputs.find((item: J) => item.opaque_id === SCENE_OPAQUE[0]); const duplicate = structuredClone(row.entities[0]); duplicate.entity_id = "epsilon-duplicate"; duplicate.bbox = [0, 0, 0.999999, 1]; row.entities.push(duplicate); } await reject("final_chain", "prediction-epsilon-duplicate-mention", () => validatePredictionValue(epsilonDuplicate), "H2_ENTITY_DUPLICATE_MENTION");
+    const oversizedMentions = structuredClone(visualPrediction); { const row = oversizedMentions.outputs.find((item: J) => item.opaque_id === SCENE_OPAQUE[0]); row.entities = Array.from({ length: 13 }, (_, index) => ({ ...structuredClone(row.entities[0]), entity_id: `oversized-${index}`, surface: `surface-${index}`, bbox: [index / 20, 0, (index + 1) / 20, 1] })); } await reject("final_chain", "prediction-entity-size-cap", () => validatePredictionValue(oversizedMentions), "H2_ENTITY_SIZE_CAP");
+    const pseudoPlaceGold = structuredClone(visualGold); pseudoPlaceGold.reviews.find((row: J) => row.opaque_id === SCENE_OPAQUE[1]).place_opportunities = [{ opportunity_id: "arbitrary-scene-attachment" }]; await reject("final_chain", "gold-arbitrary-scene-attachment", () => validateGoldValue(pseudoPlaceGold), "H2_PLACE_VISUAL_ATTACHMENT");
+    const pixelIdentityPrediction = structuredClone(visualPrediction); pixelIdentityPrediction.outputs.find((row: J) => row.opaque_id === SCENE_OPAQUE[2]).place_links = [{ opportunity_id: ISSUE_97_TASK_ID, civic_number: "1", street: "pixel-derived", place: "Montreal", official_url: RPCQ_ORIGIN, abstained: false }]; await reject("final_chain", "prediction-pixel-identity-place-attachment", () => validatePredictionValue(pixelIdentityPrediction), "H2_PLACE_VISUAL_ATTACHMENT");
     await accept(
       "final_chain",
       "metric-entity-maximum-matching-hand-check",
@@ -8229,6 +8273,13 @@ async function sourceSearchSelfTest(): Promise<J> {
         );
       },
     );
+    await accept("final_chain", "metric-entity-12x12-polynomial-bound", () => {
+      const predicted = Array.from({ length: 12 }, (_, index) => ({ surface: "A", type: "place", bbox: [0, 0, 1, 1], index }));
+      const reviewed = Array.from({ length: 12 }, (_, index) => ({ surface: "A", type: "place", bbox: [0, 0, 1, 1], index }));
+      const started = performance.now(); const matches = maximumMentionMatching(predicted, reviewed); const elapsed = performance.now() - started;
+      codedAssert(matches.length === 12 && elapsed < 1_000, "H2_TEST_ENTITY_MATCHING", `12x12 assignment must complete within 1000ms, took ${elapsed}ms`);
+      codedAssert(canon(matches.map(({ prediction, gold }) => [prediction, gold])) === canon(Array.from({ length: 12 }, (_, index) => [index, index])), "H2_TEST_ENTITY_MATCHING", "12x12 deterministic tie must select stable diagonal assignment");
+    });
     await accept("final_chain", "metric-identity-is-mention-local", () => {
       const changedPrediction = structuredClone(visualPrediction);
       const changedGold = structuredClone(visualGold);
@@ -8293,15 +8344,12 @@ async function sourceSearchSelfTest(): Promise<J> {
       "final_chain",
       "metric-place-precision-coverage-diverge",
       () => {
-        const changedPrediction = structuredClone(visualPrediction);
-        const attempted = changedPrediction.outputs.flatMap(
-          (row: J) => row.place_links,
-        )[0];
-        attempted.street = "Wrong Street";
+        const changedReceipt = structuredClone(finalReceipt);
+        changedReceipt.source_task_outcome.correct_supported_source_tasks = false;
         const changed = deriveMetrics(
-          changedPrediction,
+          visualPrediction,
           visualGold,
-          finalReceipt,
+          changedReceipt,
           authority,
           finalTask,
         );
@@ -8354,15 +8402,12 @@ async function sourceSearchSelfTest(): Promise<J> {
       },
       "entity_recall",
     );
-    await metricMutation(
-      "metric-place-raw-recompute",
-      (prediction) => {
-        prediction.outputs.find(
-          (row: J) => row.opaque_id === SCENE_OPAQUE[0],
-        ).place_links[0].street = "Wrong Street";
-      },
-      "place_link_precision",
-    );
+    await accept("final_chain", "metric-place-source-outcome-recompute", () => {
+      const changedReceipt = structuredClone(finalReceipt);
+      changedReceipt.source_task_outcome.correct_supported_source_tasks = false;
+      const changed = deriveMetrics(visualPrediction, visualGold, changedReceipt, authority, finalTask);
+      codedAssert(metric(changed, "place_link_precision").value === 0 && metric(changed, "place_link_coverage").value === 1, "H2_TEST_PLACE_SEMANTICS", "source-task precision and coverage derive from signed finalization outcome");
+    });
     await metricMutation(
       "metric-image-mode-raw-recompute",
       (prediction) => {
@@ -8833,40 +8878,8 @@ async function integrationTest(): Promise<J> {
     fs.rmSync(root, { recursive: true, force: true });
   }
 }
-function syntheticReviewedPlace(): { prediction: J; gold: J } {
-  const gateEPins = Object.fromEntries(
-    Object.entries(GATE_E_PATHS).map(([role, shownPath]) => [
-      role,
-      pin(path.join(ROOT, shownPath), shownPath),
-    ]),
-  );
-  const derived = syntheticGateEExpected(gateEPins);
-  const opportunity_id = "gate-h-v2-place:task-0001";
-  return {
-    prediction: {
-      opportunity_id,
-      civic_number: derived.expected.civic_number,
-      street: derived.expected.street,
-      place: derived.expected.place,
-      official_url: derived.expected.official_url,
-      abstained: false,
-    },
-    gold: {
-      opportunity_id,
-      task_gate_id: ISSUE_97_TASK_ID,
-      accepted_claim_id: derived.claimId,
-      source_representation_id: derived.representation.representation_id,
-      civic_number: derived.expected.civic_number,
-      street: derived.expected.street,
-      place: derived.expected.place,
-      official_url: derived.expected.official_url,
-      supported: true,
-    },
-  };
-}
 function syntheticCompletedPrediction(bundle: string): J {
   let aerialSeen = 0;
-  const reviewed = syntheticReviewedPlace();
   return {
     schema_version: "reviewed_metrics_prediction_output_v2.0.0",
     status: "completed",
@@ -8904,7 +8917,7 @@ function syntheticCompletedPrediction(bundle: string): J {
               },
             ]
           : [],
-        place_links: index === 38 ? [reviewed.prediction] : [],
+        place_links: [],
         aerial_labels: aerialReviewable ? ["mixed_urban"] : [],
         abstention: {
           abstained: ABSTENTION_OPAQUE.includes(opaque_id)
@@ -8928,7 +8941,6 @@ function syntheticCompletedPrediction(bundle: string): J {
 }
 function syntheticCompletedGold(bundle: string): J {
   let aerialSeen = 0;
-  const reviewed = syntheticReviewedPlace();
   return {
     schema_version: "reviewed_metrics_gold_review_authority_v2.0.0",
     status: "completed",
@@ -8974,7 +8986,7 @@ function syntheticCompletedGold(bundle: string): J {
               },
             ]
           : [],
-        place_opportunities: index === 38 ? [reviewed.gold] : [],
+        place_opportunities: [],
         aerial_reviewable: aerial ? reviewable : null,
         aerial_labels: aerial
           ? reviewable
@@ -8991,50 +9003,56 @@ function syntheticCompletedGold(bundle: string): J {
     reviewed_exclusions: [],
   };
 }
+function syntheticSurfaceInventory(role: string): J {
+  return { kind: "local_host", stable_host_uuid: `synthetic-host-uuid-${hash(role).slice(0, 32)}` };
+}
 function actor(role: string): J {
   const requested = `/synthetic-isolation/${role}`;
   const physical = nearestExistingPhysicalRoot(requested);
-  const publicKeyPem = SYNTHETIC_SURFACE_KEYS.publicKey
-    .export({ type: "spki", format: "pem" })
-    .toString();
-  const surface_identity = {
-    kind: "local_host",
-    value: "synthetic-local-host",
-    public_key_pem: publicKeyPem,
-    public_key_sha256: hash(publicKeyPem),
-  };
-  const surface_id = surfaceIdentityDigest(surface_identity);
-  const route_receipt: J = {
-    schema_version: "reviewed_metrics_host_route_receipt_v2.0.0",
-    surface_id,
-    role,
-    requested_root: requested,
-    canonical_root: physical.canonicalRoot,
-    existing_ancestor: physical.existingAncestor,
-    ancestor_device: physical.stat.dev,
-    ancestor_inode: physical.stat.ino,
-    issued_at: "2026-07-15T00:00:00.000Z",
-    signature_base64: "",
-  };
-  route_receipt.signature_base64 = crypto
-    .sign(
-      null,
-      routeReceiptPayload(route_receipt),
-      SYNTHETIC_SURFACE_KEYS.privateKey,
-    )
-    .toString("base64");
+  const inventory = syntheticSurfaceInventory(role);
   return {
     principal: `synthetic-${role}`,
     session_id: `synthetic-${role}-session`,
     model: `synthetic-${role}-model`,
     reasoning_effort: "synthetic",
     route: physical.canonicalRoot,
-    surface_id,
-    surface_identity,
-    route_receipt,
+    surface_id: trustedSurfaceId(inventory),
+    surface_inventory_digest: trustedInventoryDigest(inventory),
+    route_nonce: hash(`synthetic-one-shot-nonce:${role}`).slice(0, 32),
     canonical_root: physical.canonicalRoot,
     role,
   };
+}
+function sealSyntheticAuthority(authority: J): J {
+  const coordinatorPem = SYNTHETIC_COORDINATOR_KEYS.publicKey.export({ type: "spki", format: "pem" }).toString();
+  authority.coordinator_trust = { public_key_pem: coordinatorPem, public_key_sha256: hash(coordinatorPem) };
+  const roles = ["implementation", "predictor", "search_predictor", "private_evaluator", "gold_reviewer", "task_reviewer", "publisher"];
+  authority.trusted_surface_inventory = roles.map(syntheticSurfaceInventory);
+  const authorityHash = authorityBindingHash(authority);
+  roles.forEach((role, index) => {
+    const actorValue = authority[role];
+    const physical = nearestExistingPhysicalRoot(actorValue.route);
+    const receipt: J = {
+      schema_version: "reviewed_metrics_coordinator_route_receipt_v2.0.0",
+      surface_id: actorValue.surface_id,
+      surface_inventory_digest: actorValue.surface_inventory_digest,
+      candidate_commit: authority.candidate_commit,
+      authority_hash: authorityHash,
+      nonce: actorValue.route_nonce,
+      role,
+      requested_root: actorValue.route,
+      canonical_root: physical.canonicalRoot,
+      existing_ancestor: physical.existingAncestor,
+      ancestor_device: physical.stat.dev,
+      ancestor_inode: physical.stat.ino,
+      issued_at: `2026-07-15T00:00:0${index + 1}.100Z`,
+      expires_at: `2026-07-15T00:05:0${index + 1}.100Z`,
+      signature_base64: "",
+    };
+    receipt.signature_base64 = crypto.sign(null, routeReceiptPayload(receipt), SYNTHETIC_COORDINATOR_KEYS.privateKey).toString("base64");
+    actorValue.route_receipt = receipt;
+  });
+  return authority;
 }
 function syntheticExecutionAuthority(bundle: string): J {
   const v1 = load(path.join(V1, "independent-task-review-v1.json")).reviewer;
@@ -9056,8 +9074,8 @@ function syntheticExecutionAuthority(bundle: string): J {
       "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json",
     ),
   ).reviewer;
-  return {
-    schema_version: "reviewed_metrics_execution_authorization_v2.0.0",
+  return sealSyntheticAuthority({
+    schema_version: "reviewed_metrics_execution_authorization_v2.2.0",
     status: "activated_exact_one_shot",
     candidate_id: CANDIDATE_ID,
     implementation_base_commit: IMPLEMENTATION_BASE_COMMIT,
@@ -9078,6 +9096,13 @@ function syntheticExecutionAuthority(bundle: string): J {
     },
     task_reviewer: actor("task_reviewer"),
     publisher: actor("publisher"),
+    search_predictor: {
+      ...actor("search_predictor"), principal: "synthetic-search-predictor", session_id: "synthetic-search-prediction-session", model: "synthetic-search-model",
+    },
+    private_evaluator: {
+      ...actor("private_evaluator"), principal: "synthetic-private-evaluator", session_id: "synthetic-private-evaluator-session", model: "synthetic-private-evaluator-model",
+      signing_public_key_pem: SYNTHETIC_EVALUATOR_KEYS.publicKey.export({ type: "spki", format: "pem" }).toString(),
+    },
     forbidden_prior_reviewers: [
       {
         principal: v1.identity,
@@ -9108,8 +9133,13 @@ function syntheticExecutionAuthority(bundle: string): J {
     started_at: "2026-07-15T00:00:02.000Z",
     ended_at: "2026-07-15T00:00:03.000Z",
     freeze_at: "2026-07-15T00:00:04.000Z",
-    expires_at: "2026-07-15T00:10:00.000Z",
-  };
+    source_search_started_at: "2026-07-15T00:00:06.000Z",
+    source_search_ended_at: "2026-07-15T00:00:07.000Z",
+    source_search_freeze_at: "2026-07-15T00:00:08.000Z",
+    source_dossier_authored_at: "2026-07-15T00:00:08.200Z",
+    private_envelope_sealed_at: "2026-07-15T00:00:08.400Z",
+    expires_at: "2026-07-15T00:20:00.000Z",
+  });
 }
 function syntheticCompletedResults(
   prediction: J,
@@ -9160,6 +9190,7 @@ async function main(): Promise<void> {
       detail: { type: "string" },
       workspace: { type: "string" },
       "signing-key": { type: "string" },
+      "retention-receipt": { type: "string" },
     },
     allowPositionals: false,
   });
@@ -9223,6 +9254,8 @@ async function main(): Promise<void> {
       undefined,
       undefined,
       path.resolve(assertString(o["signing-key"], "--signing-key required")),
+      undefined,
+      o["retention-receipt"] ? path.resolve(o["retention-receipt"]) : undefined,
     );
   else if (command === "validate-gold")
     result = validateGold(assertString(o.input, "--input required"));

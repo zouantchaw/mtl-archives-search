@@ -8,8 +8,8 @@
   "purpose": "uniform blind visual annotation over 44 opaque media inputs",
   "output_schema": {
     "path": "prediction-output.schema.v2.json",
-    "sha256": "d4b5f6b512324c86f953b7b7c5370887be03585306716a644db39b741371f10a",
-    "bytes": 6844
+    "sha256": "3c1ba95950e31e874695dfbd5c2f01bc1ce82ac31fa2f64a311c1437b7ee0401",
+    "bytes": 6895
   },
   "scans": {
     "denylisted_keys": 0,

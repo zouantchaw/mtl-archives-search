@@ -201,9 +201,10 @@
         },
         "ocr_raw": { "type": ["string", "null"] },
         "ocr_normalized": { "type": ["string", "null"] },
-        "entities": { "type": "array", "items": { "$ref": "#/$defs/entity" } },
+        "entities": { "type": "array", "maxItems": 12, "items": { "$ref": "#/$defs/entity" } },
         "place_opportunities": {
           "type": "array",
+          "maxItems": 0,
           "items": { "$ref": "#/$defs/place" }
         },
         "aerial_reviewable": { "type": ["boolean", "null"] },
