@@ -2079,11 +2079,138 @@ async function selfTest(): Promise<J> {
     verifyCandidate(candidate, false);
     cases++;
     const productionAuthority = loadProductionAuthorizationAuthority(candidate);
-    assert(
-      productionAuthority.pin.state === "unconfigured" &&
-        productionAuthority.authorization === null,
-      "tracked production authorization pin is not unconfigured",
-    );
+    const productionState = productionAuthority.pin.state;
+    if (productionState === "unconfigured") {
+      assert(
+        productionAuthority.authorization === null &&
+          productionAuthority.authorizationBytes === null,
+        "unconfigured production authority exposed authorization bytes",
+      );
+    } else {
+      assert(
+        productionState === "active" &&
+          productionAuthority.authorization &&
+          productionAuthority.authorizationBytes,
+        "active production authority is incomplete",
+      );
+      const trackedAuthorization = productionAuthority.authorization;
+      const trackedAuthorizationBytes = productionAuthority.authorizationBytes;
+      const expectedAuthorization = blankAuthorization(
+        candidate,
+        trackedAuthorization.permitted_output.absolute_path,
+      );
+      same(
+        trackedAuthorization.candidate_descriptor,
+        expectedAuthorization.candidate_descriptor,
+        "active authority candidate descriptor",
+      );
+      same(
+        trackedAuthorization.candidate_tasks,
+        expectedAuthorization.candidate_tasks,
+        "active authority task packet",
+      );
+      same(
+        trackedAuthorization.review_template,
+        expectedAuthorization.review_template,
+        "active authority review template",
+      );
+      same(
+        trackedAuthorization.review_scope,
+        expectedAuthorization.review_scope,
+        "active authority task scope",
+      );
+      same(
+        trackedAuthorization.forbidden_principals,
+        expectedAuthorization.forbidden_principals,
+        "active authority forbidden principals",
+      );
+      same(
+        productionAuthority.pin.approved_reviewer,
+        trackedAuthorization.approved_reviewer,
+        "active authority reviewer route",
+      );
+      same(
+        productionAuthority.pin.authorizing_authority,
+        trackedAuthorization.authorizing_authority,
+        "active authority coordinator route",
+      );
+      same(
+        productionAuthority.pin.permitted_output,
+        trackedAuthorization.permitted_output,
+        "active authority output route",
+      );
+      assert(
+        productionAuthority.pin.authorized_at ===
+          trackedAuthorization.authorized_at,
+        "active authority timestamp drift",
+      );
+      const activePinMutations: Array<[string, (value: J) => void]> = [
+        [
+          "active pin authorization hash",
+          (value) => {
+            value.authorization_file.sha256 = "0".repeat(64);
+          },
+        ],
+        [
+          "active pin candidate descriptor",
+          (value) => {
+            value.candidate_descriptor_sha256 = "0".repeat(64);
+          },
+        ],
+        [
+          "active pin reviewer route",
+          (value) => {
+            value.approved_reviewer.reviewer_id = "forged-reviewer";
+          },
+        ],
+        [
+          "active pin output route",
+          (value) => {
+            value.permitted_output.basename = "forged-publication";
+          },
+        ],
+      ];
+      for (const [name, mutate] of activePinMutations) {
+        const mutatedPin = structuredClone(productionAuthority.pin);
+        mutate(mutatedPin);
+        let failed = false;
+        try {
+          verifyTrackedAuthorizationAuthority(
+            candidate,
+            mutatedPin,
+            memoryAuthorityReader(trackedAuthorizationBytes),
+          );
+        } catch {
+          failed = true;
+        }
+        assert(failed, `${name} mutation passed`);
+        cases++;
+        rejected++;
+      }
+      const mutatedAuthorization = structuredClone(trackedAuthorization);
+      mutatedAuthorization.review_scope.task_ids.pop();
+      const mutatedAuthorizationBytes = Buffer.from(
+        pretty(mutatedAuthorization),
+      );
+      const mutatedAuthorizationPin = activeAuthorizationPin(
+        candidate,
+        mutatedAuthorizationBytes,
+        mutatedAuthorization,
+      );
+      let failed = false;
+      try {
+        verifyTrackedAuthorizationAuthority(
+          candidate,
+          mutatedAuthorizationPin,
+          memoryAuthorityReader(mutatedAuthorizationBytes),
+        );
+      } catch {
+        failed = true;
+      }
+      assert(failed, "active authorization task-scope mutation passed");
+      cases++;
+      rejected++;
+    }
     cases++;
     const mutations: Array<[string, string, (value: J) => void]> = [
       [
@@ -2295,7 +2422,7 @@ async function selfTest(): Promise<J> {
     } catch {
       failed = true;
     }
-    assert(failed, "unconfigured production pin accepted review");
+    assert(failed, "production path accepted untracked synthetic authority");
     cases++;
     rejected++;
     const changedReview = load(receiptFile);
@@ -2519,6 +2646,7 @@ async function selfTest(): Promise<J> {
     rejected++;
     return {
       self_test: "passed",
+      production_authorization_state: productionState,
       cases,
       adversarial_rejections: rejected,
       tracked_task_review_authored: false,
