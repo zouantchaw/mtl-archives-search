@@ -145,12 +145,22 @@
     "stageExecution": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["ledger_root", "ledger_canonical_root", "ledger_device", "ledger_inode", "stages"],
+      "required": ["ledger", "stages"],
       "properties": {
-        "ledger_root": { "type": "string", "pattern": "^/" },
-        "ledger_canonical_root": { "type": "string", "pattern": "^/" },
-        "ledger_device": { "type": "integer", "minimum": 0 },
-        "ledger_inode": { "type": "integer", "minimum": 0 },
+        "ledger": {
+          "type": "object", "additionalProperties": false,
+          "required": ["provider", "api_contract", "account_capability_digest", "database_uuid_digest", "namespace_digest", "table_schema_sha256", "table_schema_bytes", "coordinator_signer_sha256"],
+          "properties": {
+            "provider": { "const": "cloudflare_d1" },
+            "api_contract": { "const": "cloudflare_v4_d1_query_insert_select_v1" },
+            "account_capability_digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+            "database_uuid_digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+            "namespace_digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+            "table_schema_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+            "table_schema_bytes": { "type": "integer", "minimum": 1 },
+            "coordinator_signer_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+          }
+        },
         "stages": { "type": "array", "minItems": 12, "maxItems": 12, "uniqueItems": true, "items": { "$ref": "#/$defs/stageEntry" } }
       }
     },
@@ -159,19 +169,36 @@
       "additionalProperties": false,
       "required": ["stage_id", "role", "nonce", "invocation_id", "operation", "outputs"],
       "properties": {
-        "stage_id": { "enum": ["visual_predict", "visual_freeze", "source_predict", "source_freeze", "gold_review", "gold_envelope_authoring", "private_prepare", "r2_retain", "private_finalize", "task_review", "metrics_score", "publication"] },
+        "stage_id": { "enum": ["visual_predict", "visual_freeze", "source_predict", "source_freeze", "gold_review", "gold_envelope_authoring", "private_prepare", "r2_retain", "private_finalize", "task_review", "metrics_score", "publication_assembly_plan"] },
         "role": { "enum": ["predictor", "search_predictor", "gold_reviewer", "private_evaluator", "task_reviewer", "publisher"] },
         "nonce": { "type": "string", "pattern": "^[a-f0-9]{32,128}$" },
         "invocation_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
         "operation": {
           "oneOf": [
             { "type": "object", "additionalProperties": false, "required": ["kind"], "properties": { "kind": { "const": "builtin" } } },
-            { "type": "object", "additionalProperties": false, "required": ["kind", "executable", "args", "cwd"], "properties": { "kind": { "const": "external_command" }, "executable": { "type": "string", "pattern": "^/" }, "args": { "type": "array", "items": { "type": "string" } }, "cwd": { "type": "string", "pattern": "^/" } } }
+            { "type": "object", "additionalProperties": false, "required": ["kind", "runtime", "script", "artifacts", "dependency_lock", "repo_tree_sha256", "cwd", "argv", "declared_output_paths", "network_policy", "network_capability_ids", "environment"], "properties": {
+              "kind": { "const": "external_command" },
+              "runtime": { "$ref": "#/$defs/filePin" },
+              "script": { "$ref": "#/$defs/filePin" },
+              "artifacts": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/filePin" } },
+              "dependency_lock": { "$ref": "#/$defs/filePin" },
+              "repo_tree_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+              "cwd": { "type": "string", "pattern": "^/" },
+              "argv": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+              "declared_output_paths": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "^/" } },
+              "network_policy": { "enum": ["deny_all", "allow_capabilities_only"] },
+              "network_capability_ids": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-f0-9]{64}$" } },
+              "environment": { "type": "object", "additionalProperties": false, "required": ["public", "secret_capability_ids"], "properties": {
+                "public": { "type": "array", "uniqueItems": true, "items": { "type": "object", "additionalProperties": false, "required": ["name", "value_sha256", "value"], "properties": { "name": { "type": "string", "pattern": "^[A-Z_][A-Z0-9_]*$" }, "value_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "value": { "type": "string" } } } },
+                "secret_capability_ids": { "type": "array", "uniqueItems": true, "items": { "type": "object", "additionalProperties": false, "required": ["name", "capability_id"], "properties": { "name": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" }, "capability_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" } } } }
+              } }
+            } }
           ]
         },
         "outputs": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "object", "additionalProperties": false, "required": ["artifact_role", "path"], "properties": { "artifact_role": { "type": "string", "pattern": "^[a-z0-9_]+$" }, "path": { "type": "string", "pattern": "^/" } } } }
       }
     },
+    "filePin": { "type": "object", "additionalProperties": false, "required": ["path", "realpath", "sha256", "bytes", "version"], "properties": { "path": { "type": "string", "pattern": "^/" }, "realpath": { "type": "string", "pattern": "^/" }, "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "bytes": { "type": "integer", "minimum": 1 }, "version": { "type": "string", "minLength": 1 } } },
     "surfaceInventory": {
       "oneOf": [
         {"type":"object","additionalProperties":false,"required":["inventory_id","kind","canonical_physical_host_id","physical_host_identity","coordinator_signature_base64"],"properties":{"inventory_id":{"type":"string","pattern":"^[a-z0-9_-]+$"},"kind":{"const":"local_host"},"canonical_physical_host_id":{"type":"string","pattern":"^[a-f0-9]{64}$"},"physical_host_identity":{"type":"object","additionalProperties":false,"required":["type","hardware_uuid","os_host_evidence_sha256","measured_at","coordinator_verification_pin"],"properties":{"type":{"const":"local_macos"},"hardware_uuid":{"type":"string","pattern":"^[A-Fa-f0-9-]{16,64}$"},"os_host_evidence_sha256":{"type":"string","pattern":"^[a-f0-9]{64}$"},"measured_at":{"type":"string","format":"date-time"},"coordinator_verification_pin":{"type":"string","pattern":"^[a-f0-9]{64}$"}}},"coordinator_signature_base64":{"type":"string","minLength":80,"maxLength":100}}},

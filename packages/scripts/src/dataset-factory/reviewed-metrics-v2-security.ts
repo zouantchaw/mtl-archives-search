@@ -110,8 +110,8 @@ async function bodyBytes(body: unknown): Promise<Buffer> {
 type CloudflareEnvelope<T> = { success: boolean; result: T; result_info?: { page?: number; total_pages?: number; count?: number; total_count?: number }; errors?: Array<{ code?: number; message?: string }> };
 
 const WORKER_SETTINGS_KEYS = [
-  "bindings", "compatibility_date", "compatibility_flags", "limits", "logpush",
-  "observability", "placement", "tail_consumers", "usage_model",
+  "annotations", "assets", "bindings", "compatibility_date", "compatibility_flags", "limits", "logpush",
+  "observability", "placement", "tail_consumers", "tags", "usage_model",
 ] as const;
 const KNOWN_WORKER_BINDING_TYPES = new Set([
   "ai", "analytics_engine", "browser", "d1", "dispatch_namespace", "durable_object_namespace",
@@ -132,6 +132,15 @@ function isExactBooleanObject(value: unknown, key: string): value is Record<stri
 }
 function assertNamedCollection(values: Record<string, unknown>[], nameKeys: readonly string[], label: string): void {
   fail(values.every((value) => isObject(value) && nameKeys.some((key) => typeof value[key] === "string" && (value[key] as string).length > 0)), "H2_RETENTION_PRIVACY_SCHEMA", `${label} do not match the pinned v4 schema`);
+}
+function canonicalInventoryValue(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canonicalInventoryValue).join(",")}]`;
+  const object = value as Record<string, unknown>;
+  return `{${Object.keys(object).sort().map((key) => `${JSON.stringify(key)}:${canonicalInventoryValue(object[key])}`).join(",")}}`;
+}
+function canonInventory(value: unknown): string {
+  return sha256(`gate-h2-cloudflare-inventory-v4\0${canonicalInventoryValue(value)}`);
 }
 
 export class CloudflareR2PrivateStore implements PrivateObjectStore {
@@ -280,7 +289,13 @@ export class CloudflareR2PrivateStore implements PrivateObjectStore {
     return { statusCode: response.status, result: payload.result, resultInfo: payload.result_info };
   }
 
-  private async collection<T>(apiPath: string): Promise<{ statusCodes: number[]; result: T[] }> {
+  private async singlePage<T>(apiPath: string): Promise<{ statusCodes: number[]; result: T[] }> {
+    const response = await this.api<T[]>(apiPath);
+    fail(Array.isArray(response.result) && response.resultInfo === undefined, "H2_RETENTION_PRIVACY_ENUMERATION", "Cloudflare SinglePage response unexpectedly used pagination metadata");
+    return { statusCodes: [response.statusCode], result: response.result };
+  }
+
+  private async paginated<T>(apiPath: string): Promise<{ statusCodes: number[]; result: T[] }> {
     const result: T[] = [];
     const statusCodes: number[] = [];
     for (let page = 1; page <= 100; page++) {
@@ -307,20 +322,31 @@ export class CloudflareR2PrivateStore implements PrivateObjectStore {
     const enabledCustomDomains = custom.result.domains.filter((domain) => domain.enabled).length;
     fail(enabledCustomDomains === 0 && managed.result.enabled === false, "H2_RETENTION_PUBLIC_EXPOSURE", "R2 bucket has enabled custom-domain or r2.dev public exposure");
 
-    const scripts = await this.collection<Record<string, unknown>>(`${accountRoot}/workers/scripts`);
+    const scripts = await this.singlePage<Record<string, unknown>>(`${accountRoot}/workers/scripts`);
     assertNamedCollection(scripts.result, ["id"], "Workers scripts");
-    const dispatchNamespaces = await this.collection<Record<string, unknown>>(`${accountRoot}/workers/dispatch/namespaces`);
+    const dispatchNamespaces = await this.paginated<Record<string, unknown>>(`${accountRoot}/workers/dispatch/namespaces`);
     assertNamedCollection(dispatchNamespaces.result, ["namespace", "name"], "dispatch namespaces");
-    const pagesProjects = await this.collection<Record<string, unknown>>(`${accountRoot}/pages/projects`);
-    const workerDomains = await this.collection<Record<string, unknown>>(`${accountRoot}/workers/domains`);
+    const pagesProjects = await this.paginated<Record<string, unknown>>(`${accountRoot}/pages/projects`);
+    const workerDomains = await this.paginated<Record<string, unknown>>(`${accountRoot}/workers/domains`);
     assertNamedCollection(workerDomains.result, ["id", "hostname"], "Workers custom domains");
-    const zones = await this.collection<Record<string, unknown>>(`/zones?account.id=${encodeURIComponent(this.accountId)}`);
+    const zones = await this.paginated<Record<string, unknown>>(`/zones?account.id=${encodeURIComponent(this.accountId)}`);
     assertNamedCollection(zones.result, ["id"], "account zones");
-    const subdomain = await this.api<Record<string, unknown>>(`${accountRoot}/workers/subdomain`);
-    fail(isObject(subdomain.result) && typeof subdomain.result.enabled === "boolean" && typeof subdomain.result.subdomain === "string" && hasOnlyKeys(subdomain.result, ["enabled", "subdomain", "previews_enabled"]), "H2_RETENTION_PRIVACY_SCHEMA", "Workers subdomain response does not match the pinned v4 schema");
-
-    const statusCodes = [custom.statusCode, managed.statusCode, subdomain.statusCode, ...scripts.statusCodes, ...dispatchNamespaces.statusCodes, ...pagesProjects.statusCodes, ...workerDomains.statusCodes, ...zones.statusCodes];
+    const statusCodes = [custom.statusCode, managed.statusCode, ...scripts.statusCodes, ...dispatchNamespaces.statusCodes, ...pagesProjects.statusCodes, ...workerDomains.statusCodes, ...zones.statusCodes];
     const inventory: string[] = [];
+    inventory.push(canonInventory(["r2_custom_domains", custom.result]), canonInventory(["r2_managed_domain", managed.result]));
+    const identities = (values: Record<string, unknown>[], key: string, label: string): string[] => {
+      const result = values.map((value) => String(value[key]));
+      fail(result.every((value) => value.length > 0) && new Set(result).size === result.length, "H2_RETENTION_PRIVACY_ENUMERATION", `${label} identities must be complete and unique`);
+      return result;
+    };
+    const scriptIds = identities(scripts.result, "id", "Workers script");
+    const namespaceIds = dispatchNamespaces.result.map((value) => String(value.namespace ?? value.name));
+    fail(namespaceIds.every((value) => value.length > 0) && new Set(namespaceIds).size === namespaceIds.length, "H2_RETENTION_PRIVACY_ENUMERATION", "dispatch namespace identities must be complete and unique");
+    fail(dispatchNamespaces.result.length === 0, "H2_RETENTION_DISPATCH_INVENTORY", "dispatch namespaces exist but Cloudflare exposes no documented complete dispatch-script inventory endpoint");
+    identities(pagesProjects.result, "name", "Pages project");
+    identities(workerDomains.result, workerDomains.result.some((value) => typeof value.id === "string") ? "id" : "hostname", "Workers custom domain");
+    identities(zones.result, "id", "zone");
+    for (const value of [...scripts.result, ...dispatchNamespaces.result, ...pagesProjects.result, ...workerDomains.result, ...zones.result]) inventory.push(canonInventory(value));
     let bindingCount = 0;
     let bucketBound = false;
     const inspectBindings = (bindings: unknown, surface: string): void => {
@@ -336,27 +362,16 @@ export class CloudflareR2PrivateStore implements PrivateObjectStore {
         inventory.push(sha256(JSON.stringify([surface, type, bucketName === this.bucket, Object.keys(binding).sort()])));
       }
     };
-    for (const script of scripts.result) {
-      const id = script.id as string;
+    let workersDevEnabled = false;
+    for (const id of scriptIds) {
       const settings = await this.api<Record<string, unknown>>(`${accountRoot}/workers/scripts/${encodeURIComponent(id)}/settings`);
-      statusCodes.push(settings.statusCode);
+      const subdomain = await this.api<Record<string, unknown>>(`${accountRoot}/workers/scripts/${encodeURIComponent(id)}/subdomain`);
+      statusCodes.push(settings.statusCode, subdomain.statusCode);
       fail(isObject(settings.result) && "bindings" in settings.result && hasOnlyKeys(settings.result, WORKER_SETTINGS_KEYS), "H2_RETENTION_PRIVACY_SCHEMA", "Workers script settings do not match the pinned v4 schema");
-      inspectBindings(settings.result.bindings, "worker_script");
-    }
-    let dispatchScriptCount = 0;
-    for (const namespace of dispatchNamespaces.result) {
-      const namespaceName = String(namespace.namespace ?? namespace.name);
-      const dispatchScripts = await this.collection<Record<string, unknown>>(`${accountRoot}/workers/dispatch/namespaces/${encodeURIComponent(namespaceName)}/scripts`);
-      statusCodes.push(...dispatchScripts.statusCodes);
-      assertNamedCollection(dispatchScripts.result, ["id", "name"], "dispatch scripts");
-      dispatchScriptCount += dispatchScripts.result.length;
-      for (const script of dispatchScripts.result) {
-        const scriptName = String(script.id ?? script.name);
-        const settings = await this.api<Record<string, unknown>>(`${accountRoot}/workers/dispatch/namespaces/${encodeURIComponent(namespaceName)}/scripts/${encodeURIComponent(scriptName)}/settings`);
-        statusCodes.push(settings.statusCode);
-        fail(isObject(settings.result) && "bindings" in settings.result && hasOnlyKeys(settings.result, WORKER_SETTINGS_KEYS), "H2_RETENTION_PRIVACY_SCHEMA", "dispatch script settings do not match the pinned v4 schema");
-        inspectBindings(settings.result.bindings, "dispatch_script");
-      }
+      fail(isObject(subdomain.result) && typeof subdomain.result.enabled === "boolean" && (subdomain.result.previews_enabled === undefined || typeof subdomain.result.previews_enabled === "boolean") && hasOnlyKeys(subdomain.result, ["enabled", "previews_enabled"]), "H2_RETENTION_PRIVACY_SCHEMA", "per-script Workers subdomain response does not match the pinned v4 schema");
+      workersDevEnabled ||= subdomain.result.enabled as boolean;
+      inventory.push(canonInventory(["worker_settings", id, settings.result]), canonInventory(["worker_subdomain", id, subdomain.result]));
+      inspectBindings(settings.result.bindings, `worker_script:${id}`);
     }
     for (const project of pagesProjects.result) {
       fail(isObject(project) && typeof project.name === "string" && isObject(project.deployment_configs), "H2_RETENTION_PRIVACY_SCHEMA", "Pages project does not match the pinned v4 schema");
@@ -369,16 +384,18 @@ export class CloudflareR2PrivateStore implements PrivateObjectStore {
           fail(isObject(value) && typeof value.name === "string" && hasOnlyKeys(value, ["name", "jurisdiction"]), "H2_RETENTION_PRIVACY_SCHEMA", "Pages R2 binding does not match the pinned v4 schema");
           bindingCount += 1;
           if (value.name === this.bucket) bucketBound = true;
-          inventory.push(sha256(JSON.stringify(["pages", environment, value.name === this.bucket, Object.keys(value).sort()])));
+          inventory.push(canonInventory(["pages_binding", project.name, environment, value]));
         }
       }
     }
     let routeCount = 0;
     for (const zone of zones.result) {
-      const routes = await this.collection<Record<string, unknown>>(`/zones/${encodeURIComponent(zone.id as string)}/workers/routes`);
+      const routes = await this.singlePage<Record<string, unknown>>(`/zones/${encodeURIComponent(zone.id as string)}/workers/routes`);
       statusCodes.push(...routes.statusCodes);
+      const routeIds = identities(routes.result, "id", `zone ${zone.id} route`);
       for (const route of routes.result)
         fail(isObject(route) && typeof route.id === "string" && typeof route.pattern === "string" && (typeof route.script === "string" || route.script === undefined), "H2_RETENTION_PRIVACY_SCHEMA", "zone Worker route does not match the pinned v4 schema");
+      inventory.push(...routes.result.map((route, index) => canonInventory(["zone_route", zone.id, routeIds[index], route.pattern, route.script ?? null])));
       routeCount += routes.result.length;
     }
     fail(!bucketBound, "H2_RETENTION_WORKER_EXPOSURE", "a Worker has an R2 binding to the dedicated private bucket");
@@ -390,14 +407,14 @@ export class CloudflareR2PrivateStore implements PrivateObjectStore {
       requestCount: statusCodes.length,
       scriptCount: scripts.result.length,
       dispatchNamespaceCount: dispatchNamespaces.result.length,
-      dispatchScriptCount,
+      dispatchScriptCount: 0,
       pagesProjectCount: pagesProjects.result.length,
       bindingCount,
-      workersDevEnabled: subdomain.result.enabled as boolean,
+      workersDevEnabled,
       customWorkerDomainCount: workerDomains.result.length,
       zoneCount: zones.result.length,
       routeCount,
-      inventoryDigest: sha256(JSON.stringify({ counts: [scripts.result.length, dispatchNamespaces.result.length, dispatchScriptCount, pagesProjects.result.length, bindingCount, workerDomains.result.length, zones.result.length, routeCount], inventory: inventory.sort(), statusCodeDigest: sha256(JSON.stringify(statusCodes)) })),
+      inventoryDigest: sha256(JSON.stringify({ schema: "cloudflare-v4-endpoint-contracts-2026-07-15", counts: [scripts.result.length, dispatchNamespaces.result.length, 0, pagesProjects.result.length, bindingCount, workerDomains.result.length, zones.result.length, routeCount], inventory: [...new Set(inventory)].sort(), statusCodeDigest: sha256(JSON.stringify(statusCodes)) })),
       noR2BucketBinding: true,
       noDirectPublicDomain: true,
     };
@@ -472,6 +489,8 @@ export async function retainPrivateObjects(store: PrivateObjectStore, inputs: Re
     });
   }
   const postflight = await store.verifyPrivate();
+  const stablePrivacy = (value: StoragePrivacyEvidence) => ({ ...value, checkedAt: undefined });
+  fail(canonicalInventoryValue(stablePrivacy(preflight)) === canonicalInventoryValue(stablePrivacy(postflight)), "H2_RETENTION_PRIVACY_DRIFT", "Cloudflare exposure inventory changed between preflight and postflight");
   const privacyEvidence = (value: StoragePrivacyEvidence) => ({
     checked_at: value.checkedAt,
     enabled_custom_domains: value.enabledCustomDomains,
@@ -543,8 +562,10 @@ export async function securityHelperSelfTest(): Promise<{ status: string; exact_
   type MockOptions = {
     apiDrift?: boolean;
     advancingClock?: boolean;
-    bindingSurface?: "worker" | "dispatch" | "pages";
+    bindingSurface?: "worker" | "pages";
+    dispatchNamespace?: boolean;
     incompletePagination?: boolean;
+    identityDriftSurface?: "worker" | "pages" | "domain" | "zone" | "route";
     metadataMismatch?: boolean;
     identityRace?: boolean;
     permissionError?: boolean;
@@ -577,20 +598,18 @@ export async function securityHelperSelfTest(): Promise<{ status: string; exact_
       let result: unknown;
       if (pathname.endsWith("/domains/custom")) { customChecks += 1; result = { domains: options.postflightExposure && customChecks === 2 ? [{ enabled: true }] : [] }; }
       else if (pathname.endsWith("/domains/managed")) result = { enabled: false };
-      else if (pathname.endsWith("/workers/subdomain")) result = options.apiDrift ? { enabled: "false", subdomain: "account" } : { enabled: false, subdomain: "account" };
-      else if (pathname.endsWith("/workers/scripts/opaque-script/settings")) result = { bindings: options.bindingSurface === "worker" ? [{ type: "r2_bucket", name: "PRIVATE", bucket_name: "dedicated-private" }] : [] };
-      else if (pathname.endsWith("/workers/scripts")) result = [{ id: "opaque-script" }];
-      else if (pathname.endsWith("/workers/dispatch/namespaces/opaque-namespace/scripts/opaque-dispatch/settings")) result = { bindings: options.bindingSurface === "dispatch" ? [{ type: "r2_bucket", name: "PRIVATE", bucket_name: "dedicated-private" }] : [] };
-      else if (pathname.endsWith("/workers/dispatch/namespaces/opaque-namespace/scripts")) result = [{ id: "opaque-dispatch" }];
-      else if (pathname.endsWith("/workers/dispatch/namespaces")) result = [{ namespace: "opaque-namespace" }];
-      else if (pathname.endsWith("/pages/projects")) result = [{ name: "opaque-pages-project", deployment_configs: { production: { r2_buckets: options.bindingSurface === "pages" ? { PRIVATE: { name: "dedicated-private" } } : {} }, preview: { r2_buckets: {} } } }];
-      else if (pathname.endsWith("/workers/domains")) result = [];
-      else if (pathname === "/client/v4/zones") result = [{ id: "opaque-zone" }];
-      else if (pathname.endsWith("/zones/opaque-zone/workers/routes")) result = [];
+      else if (/\/workers\/scripts\/[^/]+\/subdomain$/.test(pathname)) result = options.apiDrift ? { enabled: "false" } : { enabled: false, previews_enabled: false };
+      else if (/\/workers\/scripts\/[^/]+\/settings$/.test(pathname)) result = { bindings: options.bindingSurface === "worker" ? [{ type: "r2_bucket", name: "PRIVATE", bucket_name: "dedicated-private" }] : [], annotations: { owner: "fixture" }, tags: ["fixture"] };
+      else if (pathname.endsWith("/workers/scripts")) result = [{ id: options.identityDriftSurface === "worker" && customChecks === 2 ? "opaque-script-replaced" : "opaque-script" }];
+      else if (pathname.endsWith("/workers/dispatch/namespaces")) result = options.dispatchNamespace ? [{ namespace: "opaque-namespace", script_count: 1 }] : [];
+      else if (pathname.endsWith("/pages/projects")) result = [{ name: options.identityDriftSurface === "pages" && customChecks === 2 ? "opaque-pages-project-replaced" : "opaque-pages-project", deployment_configs: { production: { r2_buckets: options.bindingSurface === "pages" ? { PRIVATE: { name: "dedicated-private" } } : {} }, preview: { r2_buckets: {} } } }];
+      else if (pathname.endsWith("/workers/domains")) result = [{ id: options.identityDriftSurface === "domain" && customChecks === 2 ? "domain-replaced" : "domain", hostname: options.identityDriftSurface === "domain" && customChecks === 2 ? "replaced.example.invalid" : "fixture.example.invalid", service: "opaque-script" }];
+      else if (pathname === "/client/v4/zones") result = [{ id: options.identityDriftSurface === "zone" && customChecks === 2 ? "opaque-zone-replaced" : "opaque-zone" }];
+      else if (/\/zones\/[^/]+\/workers\/routes$/.test(pathname)) result = [{ id: options.identityDriftSurface === "route" && customChecks === 2 ? "route-replaced" : "route", pattern: options.identityDriftSurface === "route" && customChecks === 2 ? "replaced.example.invalid/*" : "fixture.example.invalid/*", script: "opaque-script" }];
       else return new Response("not found", { status: 404 });
-      const collection = url.searchParams.has("page");
-      const count = collection ? (result as unknown[]).length : 0;
-      return new Response(JSON.stringify({ success: true, result, ...(collection ? { result_info: { page: 1, total_pages: options.incompletePagination ? 2 : 1, count, total_count: count } } : {}) }), { status: 200, headers: { "content-type": "application/json" } });
+      const paginated = url.searchParams.has("page");
+      const count = paginated ? (result as unknown[]).length : 0;
+      return new Response(JSON.stringify({ success: true, result, ...(paginated ? { result_info: { page: 1, total_pages: options.incompletePagination ? 2 : 1, count, total_count: count } } : {}) }), { status: 200, headers: { "content-type": "application/json" } });
     };
     let tick = 0;
     const clock = options.advancingClock
@@ -618,12 +637,14 @@ export async function securityHelperSelfTest(): Promise<{ status: string; exact_
   await reject("ifmatch-version-race", "H2_RETENTION_OBJECT_IDENTITY", () => retainPrivateObjects(makeStore({ identityRace: true }), inputs));
   await reject("custom-metadata-mismatch", "H2_RETENTION_METADATA", () => retainPrivateObjects(makeStore({ metadataMismatch: true }), inputs));
   await reject("worker-r2-binding", "H2_RETENTION_WORKER_EXPOSURE", () => retainPrivateObjects(makeStore({ bindingSurface: "worker" }), inputs));
-  await reject("dispatch-r2-binding", "H2_RETENTION_WORKER_EXPOSURE", () => retainPrivateObjects(makeStore({ bindingSurface: "dispatch" }), inputs));
+  await reject("dispatch-inventory-unavailable", "H2_RETENTION_DISPATCH_INVENTORY", () => retainPrivateObjects(makeStore({ dispatchNamespace: true }), inputs));
   await reject("pages-r2-binding", "H2_RETENTION_WORKER_EXPOSURE", () => retainPrivateObjects(makeStore({ bindingSurface: "pages" }), inputs));
   await reject("incomplete-worker-enumeration", "H2_RETENTION_PRIVACY_ENUMERATION", () => retainPrivateObjects(makeStore({ incompletePagination: true }), inputs));
   await reject("cloudflare-api-drift", "H2_RETENTION_PRIVACY_SCHEMA", () => retainPrivateObjects(makeStore({ apiDrift: true }), inputs));
   await reject("cloudflare-permission-error", "H2_RETENTION_PRIVACY_PROOF", () => retainPrivateObjects(makeStore({ permissionError: true }), inputs));
   await reject("postflight-public-change", "H2_RETENTION_PUBLIC_EXPOSURE", () => retainPrivateObjects(makeStore({ postflightExposure: true }), inputs));
+  for (const surface of ["worker", "pages", "domain", "zone", "route"] as const)
+    await reject(`same-count-${surface}-identity-drift`, "H2_RETENTION_PRIVACY_DRIFT", () => retainPrivateObjects(makeStore({ identityDriftSurface: surface }), inputs));
   const preexistingStore = makeStore({ preexisting: true, advancingClock: true });
   await retainPrivateObjects(preexistingStore, inputs);
   const preexisting = await retainPrivateObjects(preexistingStore, inputs);

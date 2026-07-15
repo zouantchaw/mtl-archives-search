@@ -17,6 +17,15 @@ import {
   trustedExecutable,
   verifyAwsInstanceIdentityPkcs7,
 } from "./reviewed-metrics-v2-security.js";
+import {
+  CloudflareD1StageLedger,
+  StageLedgerContractError,
+  gateH2LedgerSchemaPin,
+  stageLedgerProductionContractSelfTest,
+  type LedgerIdentity,
+  type LedgerReadback,
+  type StageLedgerAdapter,
+} from "./reviewed-metrics-v2-ledger.js";
 type J = any;
 type Source = {
   source_key: string;
@@ -265,7 +274,7 @@ const STAGE_ROLES = {
   private_finalize: "private_evaluator",
   task_review: "task_reviewer",
   metrics_score: "publisher",
-  publication: "publisher",
+  publication_assembly_plan: "publisher",
 } as const;
 type StageId = keyof typeof STAGE_ROLES;
 const STAGE_IDS = Object.keys(STAGE_ROLES) as StageId[];
@@ -545,6 +554,7 @@ function routeReceiptPayload(receipt: J): Buffer {
   delete unsigned.signature_base64;
   return Buffer.from(canon(unsigned), "utf8");
 }
+function stageLedgerSignaturePayload(value: J): Buffer { const unsigned = structuredClone(value); delete unsigned.signature_base64; return Buffer.from(canon(unsigned), "utf8"); }
 function parseEd25519PublicKey(
   pem: string,
   code = "H2_EVALUATOR_PUBLIC_KEY",
@@ -888,7 +898,41 @@ function signRouteReceipt(authorityFile: string, measurementFile: string, role: 
   return receipt;
 }
 
-type StageConsumption = { marker: string; completion: string; receipt: J; startedAt: string; stageId: StageId; authority: J; ledgerRoot: string; ledgerFd: number; capability?: InternalSyntheticCapability };
+type StageConsumption = { attemptId: string; beginEnvelope: J; receipt: J; startedAt: string; stageId: StageId; authority: J; ledger: StageLedgerAdapter; capability?: InternalSyntheticCapability };
+class InternalAppendOnlyStageLedger implements StageLedgerAdapter {
+  readonly attempts: J[] = [];
+  readonly claims: J[] = [];
+  readonly completions: J[] = [];
+  async appendAttempt(identity: LedgerIdentity, attemptId: string, attemptedAt: string, requestSha256: string): Promise<void> {
+    codedAssert(!this.attempts.some((row) => row.attempt_id === attemptId), "H2_LEDGER_WRITE_CONFLICT", "duplicate ledger attempt ID");
+    this.attempts.push({ sequence: this.attempts.length + 1, attempt_id: attemptId, ...identity, attempted_at: attemptedAt, request_sha256: requestSha256 });
+  }
+  async claimBegin(identity: LedgerIdentity, attemptId: string, beganAt: string, envelope: string, envelopeSha256: string): Promise<void> {
+    codedAssert(!this.claims.some((row) => row.candidate_commit === identity.candidate_commit && row.authority_hash === identity.authority_hash && row.stage_id === identity.stage_id), "H2_ROUTE_STAGE_REPLAY", "candidate/authority/stage already has a durable begin claim");
+    this.claims.push({ ...identity, attempt_id: attemptId, began_at: beganAt, begin_envelope: envelope, begin_sha256: envelopeSha256 });
+  }
+  async appendCompletion(identity: LedgerIdentity, attemptId: string, completedAt: string, envelope: string, envelopeSha256: string): Promise<void> {
+    codedAssert(this.claims.some((row) => row.attempt_id === attemptId) && !this.completions.some((row) => row.stage_id === identity.stage_id), "H2_ROUTE_STAGE_REPLAY", "completion lacks its unique durable begin or already exists");
+    this.completions.push({ ...identity, attempt_id: attemptId, completed_at: completedAt, completion_envelope: envelope, completion_sha256: envelopeSha256 });
+  }
+  async readAll(candidateCommit: string, authorityHash: string): Promise<LedgerReadback> {
+    const match = (row: J) => row.candidate_commit === candidateCommit && row.authority_hash === authorityHash;
+    return { attempts: this.attempts.filter(match).map((row) => structuredClone(row)), claims: this.claims.filter(match).map((row) => structuredClone(row)), completions: this.completions.filter(match).map((row) => structuredClone(row)) };
+  }
+}
+const INTERNAL_STAGE_LEDGERS = new Map<string, InternalAppendOnlyStageLedger>();
+function ledgerNamespace(authority: J): string { return authority.stage_execution?.ledger?.namespace_digest; }
+function stageLedger(authority: J, capability?: InternalSyntheticCapability): StageLedgerAdapter {
+  if (hasInternalSyntheticCapability(authority, capability)) {
+    const namespace = ledgerNamespace(authority);
+    codedAssert(typeof namespace === "string", "H2_LEDGER_AUTHORITY", "synthetic ledger namespace missing");
+    let ledger = INTERNAL_STAGE_LEDGERS.get(namespace);
+    if (!ledger) { ledger = new InternalAppendOnlyStageLedger(); INTERNAL_STAGE_LEDGERS.set(namespace, ledger); }
+    return ledger;
+  }
+  try { return CloudflareD1StageLedger.fromEnvironment(authority.stage_execution.ledger); }
+  catch (error) { if (error instanceof StageLedgerContractError) throw new GateH2Error(error.code, error.message); throw error; }
+}
 function stageManifestEntry(authority: J, stageId: StageId): J {
   const entries = authority.stage_execution?.stages;
   codedAssert(Array.isArray(entries), "H2_STAGE_MANIFEST_EXACT_SET", "authority stage manifest is missing");
@@ -908,22 +952,6 @@ function assertCurrentStageHostAndRoute(authority: J, entry: J, receipt: J, meas
   const physical = strictHostRouteMeasurement(actorValue.route);
   codedAssert(physical.canonicalRoot === receipt.canonical_root && physical.existingAncestor === receipt.existing_ancestor && physical.stat.dev === receipt.ancestor_device && physical.stat.ino === receipt.ancestor_inode, "H2_ROUTE_CANONICAL_MISMATCH", "actual stage route differs from the fresh signed route measurement");
 }
-function canonicalLedgerRoot(authority: J): { root: string; fd: number } {
-  const declared = authority.stage_execution?.ledger_root;
-  codedAssert(typeof declared === "string" && path.isAbsolute(declared) && path.normalize(declared) === declared, "H2_STAGE_LEDGER_ROOT", "authority ledger root must be one normalized absolute path");
-  const root = fs.realpathSync(declared);
-  codedAssert(root === authority.stage_execution.ledger_canonical_root, "H2_STAGE_LEDGER_ROOT", "authority ledger root canonical path differs");
-  const fd = fs.openSync(root, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
-  const stat = fs.fstatSync(fd);
-  const pathStat = fs.lstatSync(root);
-  codedAssert(stat.isDirectory() && pathStat.isDirectory() && stat.dev === pathStat.dev && stat.ino === pathStat.ino && stat.dev === authority.stage_execution.ledger_device && stat.ino === authority.stage_execution.ledger_inode && stat.uid === process.getuid!() && (stat.mode & 0o022) === 0, "H2_STAGE_LEDGER_ROOT", "authority ledger root must remain the exact owner-controlled non-writable directory");
-  return { root, fd };
-}
-function assertLedgerDescriptor(root: string, fd: number): void {
-  const opened = fs.fstatSync(fd);
-  const current = fs.lstatSync(root);
-  codedAssert(opened.isDirectory() && current.isDirectory() && opened.dev === current.dev && opened.ino === current.ino, "H2_STAGE_LEDGER_ROOT", "stage ledger root changed while retained");
-}
 function stableStageOutputPin(file: string, artifactRole: string): J {
   let fd: number | undefined;
   try {
@@ -940,7 +968,96 @@ function stableStageOutputPin(file: string, artifactRole: string): J {
     throw new GateH2Error("H2_STAGE_OUTPUT_SUBSTITUTION", "declared stage output could not be opened safely");
   } finally { if (fd !== undefined) fs.closeSync(fd); }
 }
-function beginStageConsumption(authority: J, receiptFile: string, stageId: StageId, clock: Clock = () => new Date(), capability?: InternalSyntheticCapability): StageConsumption {
+type OperationSnapshot = { pin: J; raw: Buffer; stat: fs.Stats };
+function snapshotOperationFile(pinValue: J, label: string): OperationSnapshot {
+  codedAssert(path.isAbsolute(pinValue.path) && path.normalize(pinValue.path) === pinValue.path && fs.realpathSync(pinValue.path) === pinValue.realpath, "H2_STAGE_OPERATION_ARTIFACT", `${label} physical path differs from authority`);
+  const fd = fs.openSync(pinValue.realpath, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+  try {
+    const stat = fs.fstatSync(fd); const raw = fs.readFileSync(fd); const after = fs.fstatSync(fd);
+    codedAssert(stat.isFile() && stat.dev === after.dev && stat.ino === after.ino && stat.size === raw.length && hash(raw) === pinValue.sha256 && raw.length === pinValue.bytes && (stat.mode & 0o022) === 0, "H2_STAGE_OPERATION_ARTIFACT", `${label} bytes or identity differ from authority`);
+    return { pin: pinValue, raw, stat };
+  } finally { fs.closeSync(fd); }
+}
+function assertOperationSnapshotsUnchanged(snapshots: OperationSnapshot[]): void {
+  for (const snapshot of snapshots) {
+    const current = snapshotOperationFile(snapshot.pin, "post-execution operation artifact");
+    codedAssert(current.stat.dev === snapshot.stat.dev && current.stat.ino === snapshot.stat.ino && current.raw.equals(snapshot.raw), "H2_STAGE_OPERATION_CHANGED", "operation artifact changed during stage execution");
+  }
+}
+function externalOperationPreflight(operation: J, outputs: J[]): { executable: string; env: NodeJS.ProcessEnv; snapshots: OperationSnapshot[] } {
+  codedAssert(operation?.kind === "external_command", "H2_STAGE_OPERATION_DECLARATION", "external stage operation is not authority-precommitted");
+  const pins = [operation.runtime, operation.script, operation.dependency_lock, ...operation.artifacts];
+  const snapshots = pins.map((value: J, index: number) => snapshotOperationFile(value, `operation artifact ${index}`));
+  codedAssert(fs.realpathSync(operation.cwd) === operation.cwd, "H2_STAGE_OPERATION_CWD", "stage cwd must be its exact physical realpath");
+  const gitTree = execFileSync(trustedExecutable("git"), ["-C", operation.cwd, "rev-parse", "HEAD^{tree}"], { encoding: "utf8", env: {} }).trim();
+  codedAssert(gitTree === operation.repo_tree_sha256, "H2_STAGE_OPERATION_REPO_TREE", "physical cwd repository tree differs from authority");
+  const version = execFileSync(operation.runtime.realpath, ["--version"], { encoding: "utf8", env: {}, timeout: 10_000 }).trim();
+  codedAssert(version === operation.runtime.version, "H2_STAGE_OPERATION_VERSION", "runtime version differs from authority");
+  codedAssert(Array.isArray(operation.argv) && operation.argv[0] === operation.script.realpath, "H2_STAGE_OPERATION_ARGV", "argv must invoke the exact pinned script as argv[0]");
+  codedAssert(canon([...operation.declared_output_paths].sort()) === canon(outputs.map((output: J) => output.path).sort()) && new Set(operation.declared_output_paths).size === operation.declared_output_paths.length, "H2_STAGE_OUTPUT_DECLARATION", "external operation output paths differ from the exact stage manifest");
+  const forbidden = new Set(["PATH", "NODE_OPTIONS", "PYTHONPATH", "GATE_H2_LEDGER_ACCOUNT_ID", "GATE_H2_LEDGER_DATABASE_ID", "GATE_H2_LEDGER_API_TOKEN"]);
+  const env: NodeJS.ProcessEnv = {};
+  const names: string[] = [];
+  for (const item of operation.environment.public) {
+    codedAssert(!forbidden.has(item.name) && hash(item.value) === item.value_sha256, "H2_STAGE_OPERATION_ENV", "public environment entry is forbidden or hash-mismatched");
+    env[item.name] = item.value; names.push(item.name);
+  }
+  for (const item of operation.environment.secret_capability_ids) {
+    const value = process.env[item.name];
+    codedAssert(!forbidden.has(item.name) && typeof value === "string" && hash(`gate-h2-stage-secret-capability-v1\0${item.name}\0${value}`) === item.capability_id, "H2_STAGE_OPERATION_ENV", "secret environment capability is absent or differs");
+    env[item.name] = value; names.push(item.name);
+  }
+  codedAssert(new Set(names).size === names.length, "H2_STAGE_OPERATION_ENV", "stage environment variable names must be unique");
+  codedAssert(operation.network_policy === "deny_all" ? operation.network_capability_ids.length === 0 : operation.network_capability_ids.length > 0, "H2_STAGE_NETWORK_POLICY", "network policy and capability IDs differ");
+  return { executable: operation.runtime.realpath, env, snapshots };
+}
+function externalOperationContractSelfTest(): J {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "rmv2-external-operation-"));
+  const git = trustedExecutable("git");
+  const expect = (code: string, operation: () => unknown): void => { let observed = ""; try { operation(); } catch (error) { observed = error instanceof GateH2Error ? error.code : ""; } codedAssert(observed === code, "H2_EXTERNAL_TEST_CODE", `expected ${code}, observed ${observed || "none"}`); };
+  try {
+    execFileSync(git, ["init", "-q", "-b", "gate-h2-test"], { cwd: root, env: {} });
+    const script = path.join(root, "stage.cjs"); const prompt = path.join(root, "prompt.txt"); const lock = path.join(root, "package-lock.json"); const output = path.join(root, "output.json");
+    fs.writeFileSync(script, "const fs=require('node:fs');fs.writeFileSync(process.env.OUT,JSON.stringify(Object.keys(process.env).sort()));\n", { mode: 0o600 });
+    fs.writeFileSync(prompt, "sanitized prompt\n", { mode: 0o600 }); fs.writeFileSync(lock, "{}\n", { mode: 0o600 });
+    execFileSync(git, ["add", "stage.cjs", "prompt.txt", "package-lock.json"], { cwd: root, env: {} });
+    execFileSync(git, ["-c", "user.name=Gate H2 Test", "-c", "user.email=gate-h2@example.invalid", "commit", "-q", "-m", "fixture"], { cwd: root, env: {} });
+    const filePin = (file: string, version = "sha256-pinned-v1") => { const raw = fs.readFileSync(file); return { path: file, realpath: fs.realpathSync(file), sha256: hash(raw), bytes: raw.length, version }; };
+    const publicEnvironment = [{ name: "OUT", value: output, value_sha256: hash(output) }, ...(process.platform === "darwin" ? [{ name: "__CF_USER_TEXT_ENCODING", value: "0x0:0x0:0x0", value_sha256: hash("0x0:0x0:0x0") }] : [])];
+    const operation: J = { kind: "external_command", runtime: filePin(process.execPath, process.version), script: filePin(script), artifacts: [filePin(prompt)], dependency_lock: filePin(lock), repo_tree_sha256: execFileSync(git, ["rev-parse", "HEAD^{tree}"], { cwd: root, encoding: "utf8", env: {} }).trim(), cwd: fs.realpathSync(root), argv: [fs.realpathSync(script)], declared_output_paths: [output], network_policy: "deny_all", network_capability_ids: [], environment: { public: publicEnvironment, secret_capability_ids: [] } };
+    const exact = externalOperationPreflight(operation, [{ path: output }]);
+    const ambient = { PATH: process.env.PATH, NODE_OPTIONS: "--require=/definitely/not/loaded", PYTHONPATH: "/unapproved", EXTRA_AMBIENT: "forbidden" };
+    Object.assign(process.env, ambient);
+    execFileSync(exact.executable, operation.argv, { cwd: operation.cwd, env: exact.env }); assertOperationSnapshotsUnchanged(exact.snapshots);
+    const childEnvironmentNames = JSON.parse(fs.readFileSync(output, "utf8"));
+    codedAssert(canon(childEnvironmentNames) === canon(publicEnvironment.map((item) => item.name).sort()), "H2_STAGE_OPERATION_ENV", `clean child environment differs: ${canon(childEnvironmentNames)}`); fs.unlinkSync(output);
+    for (const name of ["PATH", "NODE_OPTIONS", "PYTHONPATH"]) { const bad = structuredClone(operation); bad.environment.public.push({ name, value: "bad", value_sha256: hash("bad") }); expect("H2_STAGE_OPERATION_ENV", () => externalOperationPreflight(bad, [{ path: output }])); }
+    const missing = structuredClone(operation); missing.environment.secret_capability_ids = [{ name: "MISSING_SECRET", capability_id: "0".repeat(64) }]; expect("H2_STAGE_OPERATION_ENV", () => externalOperationPreflight(missing, [{ path: output }]));
+    const unpinned = structuredClone(operation); unpinned.declared_output_paths = [path.join(root, "other.json")]; expect("H2_STAGE_OUTPUT_DECLARATION", () => externalOperationPreflight(unpinned, [{ path: output }]));
+    const originalScript = fs.readFileSync(script); fs.appendFileSync(script, "// replaced\n"); expect("H2_STAGE_OPERATION_ARTIFACT", () => externalOperationPreflight(operation, [{ path: output }])); fs.writeFileSync(script, originalScript);
+    const originalLock = fs.readFileSync(lock); fs.appendFileSync(lock, " "); expect("H2_STAGE_OPERATION_ARTIFACT", () => externalOperationPreflight(operation, [{ path: output }])); fs.writeFileSync(lock, originalLock);
+    const replacedRuntime = structuredClone(operation); replacedRuntime.runtime.sha256 = "0".repeat(64); expect("H2_STAGE_OPERATION_ARTIFACT", () => externalOperationPreflight(replacedRuntime, [{ path: output }]));
+    const alias = `${root}-alias`; fs.symlinkSync(root, alias); const aliasOperation = structuredClone(operation); aliasOperation.cwd = alias; expect("H2_STAGE_OPERATION_CWD", () => externalOperationPreflight(aliasOperation, [{ path: output }])); fs.unlinkSync(alias);
+    return { status: "external_operation_contract_self_test_passed", cases: ["clean_environment", "path_injection", "node_options_injection", "pythonpath_injection", "extra_environment", "missing_environment", "replaced_executable", "replaced_script", "replaced_dependency", "cwd_alias", "unpinned_output"] };
+  } finally { delete process.env.NODE_OPTIONS; delete process.env.PYTHONPATH; delete process.env.EXTRA_AMBIENT; fs.rmSync(root, { recursive: true, force: true }); }
+}
+function consequentialGitPathShadowSelfTest(): J {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "rmv2-git-shadow-")); const fake = path.join(root, "git"); const marker = path.join(root, "invoked"); const oldPath = process.env.PATH;
+  try {
+    fs.writeFileSync(fake, `#!/bin/sh\nprintf invoked > ${JSON.stringify(marker)}\nprintf forged\n`, { mode: 0o755 }); process.env.PATH = `${root}:${oldPath ?? ""}`;
+    const expectedHead = execFileSync("/usr/bin/git", ["rev-parse", "HEAD"], { cwd: ROOT, encoding: "utf8" }).trim();
+    const first = gitExecutionAuthorityEvidence();
+    codedAssert(first.head === expectedHead && !fs.existsSync(marker), "H2_GIT_PATH_SHADOW_TEST", "consequential Git evidence used PATH shadow");
+    canonicalCommittedHeadAuthorityBytes();
+    let directChildRejected = false; try { executionAuthority(); } catch { directChildRejected = true; }
+    codedAssert(directChildRejected && !fs.existsSync(marker), "H2_GIT_PATH_SHADOW_TEST", "authority direct-child gate did not use trusted Git");
+    fs.writeFileSync(fake, `#!/bin/sh\nprintf replaced > ${JSON.stringify(marker)}\nprintf different-forgery\n`, { mode: 0o755 });
+    const second = gitExecutionAuthorityEvidence();
+    codedAssert(second.head === first.head && canon(second.parents) === canon(first.parents) && canon(second.changedPaths) === canon(first.changedPaths) && !fs.existsSync(marker), "H2_GIT_REPLACEMENT_TEST", "replaced PATH-shadow Git influenced consequential provenance gates");
+    return { status: "consequential_git_path_shadow_self_test_passed", cases: ["direct_child_gate_path_shadow", "tracked_authority_blob_path_shadow", "provenance_gate_replaced_git"] };
+  } finally { process.env.PATH = oldPath; fs.rmSync(root, { recursive: true, force: true }); }
+}
+async function beginStageConsumption(authority: J, receiptFile: string, stageId: StageId, clock: Clock = () => new Date(), capability?: InternalSyntheticCapability): Promise<StageConsumption> {
   const receipt = load(path.resolve(receiptFile));
   schema("stage-route-receipt.schema.v2.json", receipt);
   const entry = stageManifestEntry(authority, stageId);
@@ -960,72 +1077,55 @@ function beginStageConsumption(authority: J, receiptFile: string, stageId: Stage
   try { signatureValid = crypto.verify(null, routeReceiptPayload(receipt), authority.coordinator_trust.public_key_pem, Buffer.from(receipt.signature_base64, "base64")); } catch { signatureValid = false; }
   codedAssert(signatureValid, "H2_ROUTE_RECEIPT_SIGNATURE", "stage receipt coordinator signature is invalid");
   assertCurrentStageHostAndRoute(authority, entry, receipt, new Date(now).toISOString(), capability);
-  const { root, fd: ledgerFd } = canonicalLedgerRoot(authority);
-  const key = hash(`gate-h2-stage-ledger-v3\n${authority.candidate_commit}\n${authorityBindingHash(authority)}\n${stageId}`);
-  const marker = path.join(root, `${key}.started.json`);
-  const completion = path.join(root, `${key}.completed.json`);
-  codedAssert(!fs.existsSync(marker) && !fs.existsSync(completion), "H2_ROUTE_STAGE_REPLAY", "candidate/authority/stage ledger entry already exists");
-  for (const output of entry.outputs) codedAssert(!fs.existsSync(output.path), "H2_STAGE_OUTPUT_PREEXISTS", `declared ${stageId} output exists before stage begin`);
-  const evidence = { schema_version: "reviewed_metrics_stage_begin_v3.0.0", status: "begun", candidate_commit: authority.candidate_commit, authority_hash: authorityBindingHash(authority), stage_id: stageId, role, surface_id: receipt.surface_id, physical_host_id: receipt.canonical_physical_host_id, invocation_id: receipt.invocation_id, nonce: receipt.nonce, receipt_sha256: hash(Buffer.from(pretty(receipt))), route_receipt: receipt, command_started_at: new Date(now).toISOString() };
-  let fd: number | undefined;
-  try {
-    fd = fs.openSync(marker, fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_NOFOLLOW, 0o400);
-    fs.writeFileSync(fd, pretty(evidence)); fs.fsyncSync(fd);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "EEXIST") throw new GateH2Error("H2_ROUTE_STAGE_REPLAY", "candidate/authority/stage was already begun");
-    throw error;
-  } finally { if (fd !== undefined) fs.closeSync(fd); }
-  fsyncDirectory(root);
-  assertLedgerDescriptor(root, ledgerFd);
-  return { marker, completion, receipt, startedAt: evidence.command_started_at, stageId, authority, ledgerRoot: root, ledgerFd, capability };
+  const startedAt = new Date(now).toISOString();
+  const identity = { candidate_commit: authority.candidate_commit, authority_hash: authorityBindingHash(authority), stage_id: stageId };
+  const attemptId = crypto.randomUUID();
+  const evidence = { schema_version: "reviewed_metrics_stage_begin_v4.0.0", status: "begun", ...identity, attempt_id: attemptId, role, surface_id: receipt.surface_id, physical_host_commitment: hash(`gate-h2-public-stage-host-v4\0${receipt.canonical_physical_host_id}`), invocation_commitment: hash(`gate-h2-public-stage-invocation-v4\0${receipt.invocation_id}`), nonce_commitment: hash(`gate-h2-public-stage-nonce-v4\0${receipt.nonce}`), receipt_sha256: hash(Buffer.from(pretty(receipt))), receipt_signature_sha256: hash(Buffer.from(receipt.signature_base64, "base64")), command_started_at: startedAt };
+  const ledger = stageLedger(authority, capability);
+  await ledger.appendAttempt(identity, attemptId, startedAt, hash(Buffer.from(pretty(evidence))));
+  try { await ledger.claimBegin(identity, attemptId, startedAt, pretty(evidence), hash(Buffer.from(pretty(evidence)))); }
+  catch (error) { if (error instanceof StageLedgerContractError) throw new GateH2Error(error.code, error.message); throw error; }
+  const readback = await ledger.readAll(identity.candidate_commit, identity.authority_hash);
+  const claim = readback.claims.find((row) => row.stage_id === stageId);
+  codedAssert(claim?.attempt_id === attemptId && claim.begin_sha256 === hash(Buffer.from(pretty(evidence))), "H2_LEDGER_READBACK", "durable begin readback differs from the appended claim");
+  for (const output of entry.outputs) codedAssert(!fs.existsSync(output.path), "H2_STAGE_OUTPUT_PREEXISTS", `declared ${stageId} output exists before stage work`);
+  return { attemptId, beginEnvelope: evidence, receipt, startedAt, stageId, authority, ledger, capability };
 }
-function completeStageConsumption(consumption: StageConsumption, clock: Clock = () => new Date()): void {
-  try {
-    assertLedgerDescriptor(consumption.ledgerRoot, consumption.ledgerFd);
-    codedAssert(fs.existsSync(consumption.marker), "H2_ROUTE_CONSUMPTION_MARKER", "stage begin marker is missing before completion");
-    codedAssert(!fs.existsSync(consumption.completion), "H2_ROUTE_STAGE_REPLAY", "stage already completed");
+async function completeStageConsumption(consumption: StageConsumption, clock: Clock = () => new Date()): Promise<void> {
+    const initialIdentity = { candidate_commit: consumption.authority.candidate_commit, authority_hash: authorityBindingHash(consumption.authority), stage_id: consumption.stageId };
+    const initialReadback = await consumption.ledger.readAll(initialIdentity.candidate_commit, initialIdentity.authority_hash);
+    codedAssert(initialReadback.claims.some((row) => row.attempt_id === consumption.attemptId), "H2_LEDGER_READBACK", "durable begin row is missing before completion");
     const completedAt = clock().toISOString();
     const entry = stageManifestEntry(consumption.authority, consumption.stageId);
     codedAssert(Date.parse(consumption.startedAt) <= Date.parse(completedAt) && Date.parse(completedAt) <= Date.parse(consumption.receipt.expires_at) && Date.parse(completedAt) <= Date.parse(consumption.authority.expires_at), "H2_ROUTE_EVENT_WINDOW", "actual stage completion is outside the signed receipt or authority window");
     assertCurrentStageHostAndRoute(consumption.authority, entry, consumption.receipt, completedAt, consumption.capability);
     const outputs = entry.outputs.map((output: J) => stableStageOutputPin(output.path, output.artifact_role));
-    const value = { schema_version: "reviewed_metrics_stage_completion_v3.0.0", status: "completed", candidate_commit: consumption.authority.candidate_commit, authority_hash: authorityBindingHash(consumption.authority), stage_id: consumption.stageId, role: entry.role, surface_id: consumption.receipt.surface_id, physical_host_id: consumption.receipt.canonical_physical_host_id, invocation_id: consumption.receipt.invocation_id, nonce: consumption.receipt.nonce, receipt_sha256: hash(Buffer.from(pretty(consumption.receipt))), begin_marker_sha256: hash(fs.readFileSync(consumption.marker)), command_started_at: consumption.startedAt, command_completed_at: completedAt, outputs };
-    const fd = fs.openSync(consumption.completion, fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_NOFOLLOW, 0o400);
-    try { fs.writeFileSync(fd, pretty(value)); fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
-    fsyncDirectory(consumption.ledgerRoot);
-    assertLedgerDescriptor(consumption.ledgerRoot, consumption.ledgerFd);
-  } finally { fs.closeSync(consumption.ledgerFd); }
+    const identity = { candidate_commit: consumption.authority.candidate_commit, authority_hash: authorityBindingHash(consumption.authority), stage_id: consumption.stageId };
+    const value = { schema_version: "reviewed_metrics_stage_completion_v4.0.0", status: "completed", ...identity, attempt_id: consumption.attemptId, role: entry.role, surface_id: consumption.receipt.surface_id, physical_host_commitment: consumption.beginEnvelope.physical_host_commitment, invocation_commitment: consumption.beginEnvelope.invocation_commitment, nonce_commitment: consumption.beginEnvelope.nonce_commitment, receipt_sha256: consumption.beginEnvelope.receipt_sha256, begin_sha256: hash(Buffer.from(pretty(consumption.beginEnvelope))), command_started_at: consumption.startedAt, command_completed_at: completedAt, outputs };
+    await consumption.ledger.appendCompletion(identity, consumption.attemptId, completedAt, pretty(value), hash(Buffer.from(pretty(value))));
+    const readback = await consumption.ledger.readAll(identity.candidate_commit, identity.authority_hash);
+    const completion = readback.completions.find((row) => row.stage_id === consumption.stageId);
+    codedAssert(completion?.attempt_id === consumption.attemptId && completion.completion_sha256 === hash(Buffer.from(pretty(value))), "H2_LEDGER_READBACK", "durable completion readback differs from appended completion");
 }
-function completedStageLedgerEvidence(authority: J, verifyCurrentOutputs = true): J {
-  const { root, fd } = canonicalLedgerRoot(authority);
-  try {
-    const expectedMembers: string[] = [];
+async function completedStageLedgerEvidence(authority: J, verifyCurrentOutputs = true, capability?: InternalSyntheticCapability, signingKeyFile?: string): Promise<J> {
+    const ledger = stageLedger(authority, capability);
+    const readback = await ledger.readAll(authority.candidate_commit, authorityBindingHash(authority));
     const publicStages: J[] = [];
     let priorCompletedAt: string | undefined;
     for (const entry of authority.stage_execution.stages) {
       const stageId = entry.stage_id as StageId;
-      const key = hash(`gate-h2-stage-ledger-v3\n${authority.candidate_commit}\n${authorityBindingHash(authority)}\n${stageId}`);
-      const beginName = `${key}.started.json`;
-      const completionName = `${key}.completed.json`;
-      expectedMembers.push(beginName, completionName);
-      codedAssert(fs.existsSync(path.join(root, beginName)) && fs.existsSync(path.join(root, completionName)), "H2_STAGE_LEDGER_MARKER", `stage ${stageId} requires both begin and completion markers`);
-      const beginRaw = fs.readFileSync(path.join(root, beginName));
-      const completionRaw = fs.readFileSync(path.join(root, completionName));
+      const claim = readback.claims.filter((row) => row.stage_id === stageId);
+      const completed = readback.completions.filter((row) => row.stage_id === stageId);
+      codedAssert(claim.length === 1 && completed.length === 1, "H2_STAGE_LEDGER_MARKER", `stage ${stageId} requires one remote begin and completion row`);
+      const beginRaw = Buffer.from(String(claim[0].begin_envelope));
+      const completionRaw = Buffer.from(String(completed[0].completion_envelope));
       const begin = JSON.parse(beginRaw.toString("utf8"));
       const completion = JSON.parse(completionRaw.toString("utf8"));
-      codedAssert(beginRaw.equals(Buffer.from(pretty(begin))) && completionRaw.equals(Buffer.from(pretty(completion))), "H2_STAGE_LEDGER_BYTES", "stage ledger markers must use exact canonical bytes");
-      const receipt = begin.route_receipt;
-      codedAssert(begin.schema_version === "reviewed_metrics_stage_begin_v3.0.0" && begin.status === "begun" && completion.schema_version === "reviewed_metrics_stage_completion_v3.0.0" && completion.status === "completed", "H2_STAGE_LEDGER_MARKER", "stage begin/completion marker schema differs");
-      codedAssert(begin.candidate_commit === authority.candidate_commit && begin.authority_hash === authorityBindingHash(authority) && completion.candidate_commit === authority.candidate_commit && completion.authority_hash === authorityBindingHash(authority) && begin.stage_id === stageId && completion.stage_id === stageId && begin.role === entry.role && completion.role === entry.role && begin.invocation_id === entry.invocation_id && completion.invocation_id === entry.invocation_id && begin.nonce === entry.nonce && completion.nonce === entry.nonce, "H2_STAGE_PRECOMMIT_BINDING", "stage ledger marker differs from exact authority precommitment");
-      codedAssert(begin.receipt_sha256 === hash(Buffer.from(pretty(receipt))) && completion.receipt_sha256 === begin.receipt_sha256 && completion.begin_marker_sha256 === hash(beginRaw), "H2_STAGE_LEDGER_MARKER", "stage marker receipt or predecessor hash differs");
-      let signatureValid = false;
-      try { signatureValid = crypto.verify(null, routeReceiptPayload(receipt), authority.coordinator_trust.public_key_pem, Buffer.from(receipt.signature_base64, "base64")); } catch { signatureValid = false; }
-      codedAssert(signatureValid, "H2_ROUTE_RECEIPT_SIGNATURE", "stage ledger route receipt signature is invalid");
-      const actorValue = authority[entry.role];
-      codedAssert(receipt.stage_id === stageId && receipt.role === entry.role && receipt.nonce === entry.nonce && receipt.invocation_id === entry.invocation_id && receipt.candidate_commit === authority.candidate_commit && receipt.authority_hash === authorityBindingHash(authority) && receipt.surface_id === actorValue.surface_id && receipt.surface_inventory_digest === actorValue.surface_inventory_digest && receipt.canonical_physical_host_id === begin.physical_host_id && receipt.requested_root === actorValue.route && receipt.canonical_root === actorValue.canonical_root, "H2_ROUTE_RECEIPT_BINDING", "stage ledger receipt binding differs");
-      const measurement = { schema_version: "reviewed_metrics_host_route_measurement_v2.0.0", candidate_commit: receipt.candidate_commit, authority_hash: receipt.authority_hash, role: receipt.role, nonce: receipt.nonce, invocation_id: receipt.invocation_id, surface_inventory_digest: receipt.surface_inventory_digest, canonical_physical_host_id: receipt.canonical_physical_host_id, requested_root: receipt.requested_root, canonical_root: receipt.canonical_root, existing_ancestor: receipt.existing_ancestor, ancestor_device: receipt.ancestor_device, ancestor_inode: receipt.ancestor_inode, measured_at: receipt.measured_at, stage_id: receipt.stage_id };
-      codedAssert(receipt.measurement_sha256 === hash(routeMeasurementPayload(measurement)), "H2_ROUTE_MEASUREMENT_BINDING", "stage ledger receipt measurement hash differs");
-      codedAssert(Date.parse(authority.authorized_at) <= Date.parse(receipt.measured_at) && Date.parse(receipt.measured_at) <= Date.parse(receipt.issued_at) && Date.parse(receipt.issued_at) <= Date.parse(begin.command_started_at) && Date.parse(begin.command_started_at) <= Date.parse(completion.command_completed_at) && Date.parse(completion.command_completed_at) <= Date.parse(receipt.expires_at) && Date.parse(receipt.expires_at) <= Date.parse(authority.expires_at), "H2_STAGE_LEDGER_CHRONOLOGY", "stage ledger receipt/begin/completion chronology differs");
+      codedAssert(beginRaw.equals(Buffer.from(pretty(begin))) && completionRaw.equals(Buffer.from(pretty(completion))), "H2_STAGE_LEDGER_BYTES", "remote stage ledger envelopes must use exact canonical bytes");
+      codedAssert(begin.schema_version === "reviewed_metrics_stage_begin_v4.0.0" && completion.schema_version === "reviewed_metrics_stage_completion_v4.0.0" && begin.attempt_id === completion.attempt_id && claim[0].attempt_id === begin.attempt_id && completed[0].attempt_id === begin.attempt_id, "H2_STAGE_LEDGER_MARKER", "remote stage row envelope differs");
+      codedAssert(begin.candidate_commit === authority.candidate_commit && begin.authority_hash === authorityBindingHash(authority) && begin.stage_id === stageId && completion.stage_id === stageId && begin.role === entry.role && completion.role === entry.role, "H2_STAGE_PRECOMMIT_BINDING", "stage ledger envelope differs from authority");
+      codedAssert(claim[0].begin_sha256 === hash(beginRaw) && completed[0].completion_sha256 === hash(completionRaw) && completion.begin_sha256 === hash(beginRaw), "H2_LEDGER_READBACK", "remote row hashes differ from canonical envelopes");
+      codedAssert(Date.parse(authority.authorized_at) <= Date.parse(begin.command_started_at) && Date.parse(begin.command_started_at) <= Date.parse(completion.command_completed_at) && Date.parse(completion.command_completed_at) <= Date.parse(authority.expires_at), "H2_STAGE_LEDGER_CHRONOLOGY", "stage ledger chronology differs");
       if (priorCompletedAt !== undefined) codedAssert(Date.parse(priorCompletedAt) <= Date.parse(begin.command_started_at), "H2_STAGE_LEDGER_CHRONOLOGY", "exact production stages overlap or execute out of order");
       priorCompletedAt = completion.command_completed_at;
       same(completion.outputs.map((output: J) => output.artifact_role), entry.outputs.map((output: J) => output.artifact_role), `stage ${stageId} exact output roles`);
@@ -1036,30 +1136,37 @@ function completedStageLedgerEvidence(authority: J, verifyCurrentOutputs = true)
       publicStages.push({
         stage_id: stageId,
         role: entry.role,
-        invocation_commitment: hash(`gate-h2-public-stage-invocation-v3\0${entry.invocation_id}`),
-        nonce_commitment: hash(`gate-h2-public-stage-nonce-v3\0${entry.nonce}`),
-        physical_host_commitment: hash(`gate-h2-public-stage-host-v3\0${begin.physical_host_id}`),
+        attempt_id: begin.attempt_id,
+        invocation_commitment: begin.invocation_commitment,
+        nonce_commitment: begin.nonce_commitment,
+        physical_host_commitment: begin.physical_host_commitment,
         receipt_sha256: begin.receipt_sha256,
-        receipt_signature_sha256: hash(Buffer.from(receipt.signature_base64, "base64")),
-        begin_marker_sha256: hash(beginRaw),
-        completion_marker_sha256: hash(completionRaw),
+        receipt_signature_sha256: begin.receipt_signature_sha256,
+        begin_sha256: hash(beginRaw),
+        completion_sha256: hash(completionRaw),
         command_started_at: begin.command_started_at,
         command_completed_at: completion.command_completed_at,
         outputs: completion.outputs,
       });
     }
-    exactSet(files(root), expectedMembers, "canonical stage ledger members");
-    assertLedgerDescriptor(root, fd);
-    return {
-      schema_version: "reviewed_metrics_stage_execution_ledger_evidence_v2.0.0",
+    codedAssert(readback.claims.length === STAGE_IDS.length && readback.completions.length === STAGE_IDS.length && readback.attempts.length === STAGE_IDS.length, "H2_LEDGER_ENUMERATION", "remote ledger must contain exactly one attempt, claim, and completion per stage");
+    const envelope: J = {
+      schema_version: "reviewed_metrics_stage_execution_ledger_evidence_v2.1.0",
       candidate_id: CANDIDATE_ID,
       candidate_commit: authority.candidate_commit,
       authority_hash: authorityBindingHash(authority),
-      ledger_root_commitment: hash(`gate-h2-public-ledger-root-v3\0${authority.stage_execution.ledger_canonical_root}\0${authority.stage_execution.ledger_device}\0${authority.stage_execution.ledger_inode}`),
+      ledger_pin: authority.stage_execution.ledger,
       stage_count: STAGE_IDS.length,
       stages: publicStages,
+      attempts_digest: hash(canon(readback.attempts)),
+      sealed_at: new Date().toISOString(),
+      coordinator_signer_sha256: authority.stage_execution.ledger.coordinator_signer_sha256,
+      signature_base64: "",
     };
-  } finally { fs.closeSync(fd); }
+    const key = signingKeyFile ? coordinatorSigningKey(signingKeyFile, authority) : (hasInternalSyntheticCapability(authority, capability) ? SYNTHETIC_COORDINATOR_KEYS.privateKey : undefined);
+    codedAssert(key !== undefined, "H2_LEDGER_SIGNER", "coordinator signing key is required to seal remote ledger readback");
+    envelope.signature_base64 = crypto.sign(null, stageLedgerSignaturePayload(envelope), key).toString("base64");
+    return envelope;
 }
 function validateStageExecutionEvidence(value: J, authority: J, requirePrivateLedger = false): void {
   schema("stage-execution-ledger.schema.v2.json", value);
@@ -1070,11 +1177,15 @@ function validateStageExecutionEvidence(value: J, authority: J, requirePrivateLe
   for (let index = 0; index < STAGE_IDS.length; index++) {
     const stage = value.stages[index];
     const entry = authority.stage_execution.stages[index];
-    codedAssert(stage.role === entry.role && stage.invocation_commitment === hash(`gate-h2-public-stage-invocation-v3\0${entry.invocation_id}`) && stage.nonce_commitment === hash(`gate-h2-public-stage-nonce-v3\0${entry.nonce}`), "H2_STAGE_PRECOMMIT_BINDING", "public stage evidence commitments differ from authority");
+    codedAssert(stage.role === entry.role && stage.invocation_commitment === hash(`gate-h2-public-stage-invocation-v4\0${entry.invocation_id}`) && stage.nonce_commitment === hash(`gate-h2-public-stage-nonce-v4\0${entry.nonce}`), "H2_STAGE_PRECOMMIT_BINDING", "public stage evidence commitments differ from authority");
     same(stage.outputs.map((output: J) => output.artifact_role), entry.outputs.map((output: J) => output.artifact_role), `public stage ${stage.stage_id} output roles`);
     if (index > 0) codedAssert(Date.parse(value.stages[index - 1].command_completed_at) <= Date.parse(stage.command_started_at), "H2_STAGE_LEDGER_CHRONOLOGY", "public stage evidence order overlaps");
   }
-  if (requirePrivateLedger) same(value, completedStageLedgerEvidence(authority), "public/private completed stage ledger evidence");
+  same(value.ledger_pin, authority.stage_execution.ledger, "public authority ledger pin");
+  let signatureValid = false;
+  try { signatureValid = crypto.verify(null, stageLedgerSignaturePayload(value), authority.coordinator_trust.public_key_pem, Buffer.from(value.signature_base64, "base64")); } catch { signatureValid = false; }
+  codedAssert(signatureValid, "H2_LEDGER_SIGNATURE", "public stage ledger coordinator signature is invalid");
+  codedAssert(!requirePrivateLedger || hasInternalSyntheticCapability(authority), "H2_LEDGER_PRIVATE_PATH", "public ledger verification is independent of private/local filesystem state");
 }
 function physicalPathSafety(output: string): string {
   assert(
@@ -1673,14 +1784,18 @@ async function candidateDocuments(output: string): Promise<Map<string, J>> {
     gold_exists: false,
     security_controls: {
       exact_stage_receipts: [...STAGE_IDS],
-      authority_precommitted_stage_nonce_and_invocation: true,
-      canonical_candidate_authority_stage_ledger: true,
-      public_stage_execution_ledger_evidence: true,
-      actual_process_chronology: true,
+      authority_precommitted_stage_nonce_and_invocation: false,
+      canonical_candidate_authority_stage_ledger: false,
+      public_stage_execution_ledger_evidence: false,
+      actual_process_chronology: false,
+      d1_append_only_ledger_contract_synthetic_tested: true,
+      exact_external_operation_contract_synthetic_tested: true,
+      publication_plan_ledger_matrix_protocol_synthetic_tested: true,
       hmac_opaque_private_keys: true,
       public_object_key_commitment_only: true,
       conditional_versioned_readback: true,
-      complete_cloudflare_exposure_audit: true,
+      complete_cloudflare_exposure_audit: false,
+      cloudflare_endpoint_contract_synthetic_tested: true,
       trusted_absolute_executables: true,
       trusted_absolute_git: true,
     },
@@ -3333,7 +3448,8 @@ function validateAuthorityPrincipals(value: J): void {
       );
     if (value.schema_version === "reviewed_metrics_execution_authorization_v2.3.0") {
       const stageExecution = value.stage_execution;
-      codedAssert(path.isAbsolute(stageExecution.ledger_root) && path.normalize(stageExecution.ledger_root) === stageExecution.ledger_root && path.isAbsolute(stageExecution.ledger_canonical_root) && path.normalize(stageExecution.ledger_canonical_root) === stageExecution.ledger_canonical_root, "H2_STAGE_LEDGER_ROOT", "stage ledger roots must be normalized absolute paths");
+      const schemaPin = gateH2LedgerSchemaPin(ROOT);
+      codedAssert(stageExecution.ledger.provider === "cloudflare_d1" && stageExecution.ledger.api_contract === "cloudflare_v4_d1_query_insert_select_v1" && stageExecution.ledger.table_schema_sha256 === schemaPin.sha256 && stageExecution.ledger.table_schema_bytes === schemaPin.bytes && stageExecution.ledger.coordinator_signer_sha256 === value.coordinator_trust.public_key_sha256, "H2_LEDGER_AUTHORITY", "authority D1 ledger contract or immutable schema pin differs");
       same(stageExecution.stages.map((entry: J) => entry.stage_id), STAGE_IDS, "authority exact ordered stage manifest");
       exactSet(stageExecution.stages.map((entry: J) => entry.stage_id), STAGE_IDS, "authority stage manifest");
       unique(stageExecution.stages.map((entry: J) => entry.nonce), "stage nonce");
@@ -3344,7 +3460,6 @@ function validateAuthorityPrincipals(value: J): void {
         codedAssert(entry.outputs.length > 0, "H2_STAGE_OUTPUT_DECLARATION", `authority stage ${entry.stage_id} must declare outputs`);
         for (const output of entry.outputs) {
           codedAssert(path.isAbsolute(output.path) && path.normalize(output.path) === output.path, "H2_STAGE_OUTPUT_DECLARATION", "stage output paths must be normalized absolute paths");
-          codedAssert(!pathInside(output.path, stageExecution.ledger_canonical_root), "H2_STAGE_OUTPUT_DECLARATION", "stage outputs must remain outside the canonical marker-only ledger root");
           outputPaths.push(output.path);
         }
       }
@@ -5303,7 +5418,7 @@ function validateResultsValue(
     },
     "result criterion derivation",
   );
-  if (stageEvidence !== undefined) validateStageExecutionEvidence(stageEvidence, authority, true);
+  if (stageEvidence !== undefined) validateStageExecutionEvidence(stageEvidence, authority);
 }
 function exactMetricCompletion(metrics: J[]): boolean {
   exactSet(
@@ -5786,7 +5901,10 @@ function validateMatrixValue(
     value.issue_92_complete && value.issue_69_complete,
     "final matrix completion booleans",
   );
-  if (stageEvidence !== undefined) validateStageExecutionEvidence(stageEvidence, authority, true);
+  codedAssert(stageEvidence !== undefined, "H2_MATRIX_STAGE_LEDGER", "final matrix requires signed complete stage ledger evidence");
+  validateStageExecutionEvidence(stageEvidence, authority);
+  const ledgerPin = pin(path.join(baseDir, "stage-execution-ledger-v2.json"), "stage-execution-ledger-v2.json");
+  same(value.stage_execution_ledger, ledgerPin, "final matrix exact signed stage ledger pin");
 }
 const PUBLICATION_MEMBER_PATHS = [
   "candidate-descriptor-v2.json",
@@ -5796,6 +5914,7 @@ const PUBLICATION_MEMBER_PATHS = [
   "input-authority-v2.json",
   "prediction-freeze-v2.json",
   "prediction-output-v2.json",
+  "publication-assembly-plan-v2.json",
   PRIVATE_SCORE_RECEIPT_FILE,
   "reviewed-metrics-v2.json",
   "search-task-review-v2.json",
@@ -5822,7 +5941,18 @@ const PUBLICATION_DYNAMIC_PREDECESSORS: Record<string, string> = {
   criterion_matrix: "final-criterion-matrix-v2.json",
   task_review: "search-task-review-v2.json",
   stage_execution_ledger: "stage-execution-ledger-v2.json",
+  publication_assembly_plan: "publication-assembly-plan-v2.json",
 };
+function validatePublicationAssemblyPlan(value: J, baseDir: string, authority: J): void {
+  schema("publication-assembly-plan.schema.v2.json", value);
+  codedAssert(value.candidate_commit === authority.candidate_commit && value.authority_hash === authorityBindingHash(authority), "H2_PUBLICATION_PLAN_BINDING", "publication plan authority differs");
+  same(value.publisher, { principal: authority.publisher.principal, session_id: authority.publisher.session_id, model: authority.publisher.model, role: "publisher" }, "publication plan publisher");
+  same(value.ledger_pin, authority.stage_execution.ledger, "publication plan ledger authority pin");
+  same(value.final_member_paths, PUBLICATION_MEMBER_PATHS, "publication plan exact final member names");
+  codedAssert(hash(`${value.members_before_plan.map((x: J) => `${x.path}\t${x.sha256}\t${x.bytes}`).join("\n")}\n`) === value.tree_before_plan_sha256, "H2_PUBLICATION_PLAN_TREE", "publication plan tree arithmetic differs");
+  for (const member of value.members_before_plan) verifyFilePin(member, baseDir);
+  same(value.expected_schemas, { matrix: pin(path.join(SCHEMAS, "final-criterion-matrix.schema.v2.json"), "final-criterion-matrix.schema.v2.json"), descriptor: pin(path.join(SCHEMAS, "publication-descriptor.schema.v2.json"), "publication-descriptor.schema.v2.json"), stage_ledger: pin(path.join(SCHEMAS, "stage-execution-ledger.schema.v2.json"), "stage-execution-ledger.schema.v2.json") }, "publication plan exact schemas");
+}
 function validateInputAuthorityValue(value: J): void {
   schema("input-authority.schema.v2.json", value);
   assert(
@@ -5968,7 +6098,8 @@ function validatePublicationValue(
   validateFreezeValue(freeze, predictionRaw, prediction, authority);
   validateIndependentChronology(prediction, gold, freeze, authority);
   const stageEvidence = load(path.join(baseDir, "stage-execution-ledger-v2.json"));
-  validateStageExecutionEvidence(stageEvidence, authority, true);
+  validateStageExecutionEvidence(stageEvidence, authority);
+  validatePublicationAssemblyPlan(load(path.join(baseDir, "publication-assembly-plan-v2.json")), baseDir, authority);
   const results = load(path.join(baseDir, "reviewed-metrics-v2.json"));
   validateResultsValue(results, baseDir, authority, stageEvidence);
   const task = load(path.join(baseDir, "search-task-v2.json"));
@@ -7092,6 +7223,7 @@ async function baselineContractSelfTest(): Promise<J> {
     falseFinal.status = "final";
     falseFinal.issue_92_complete = true;
     falseFinal.issue_69_complete = true;
+    falseFinal.stage_execution_ledger = { path: "stage-execution-ledger-v2.json", sha256: "0".repeat(64), bytes: 1 };
     await reject(() => validateMatrixValue(falseFinal));
     const currentFinalChainCases = await runCurrentFinalChainRegressionControls(
       evidenceDir,
@@ -7608,10 +7740,6 @@ async function sourceSearchSelfTest(): Promise<J> {
     const testLedger = path.join(root, "stage-ledger");
     fs.mkdirSync(testLedger, { mode: 0o700 });
     const authority = syntheticAuthorityV21(visualDescriptor.media_tree.sha256);
-    authority.stage_execution.ledger_root = testLedger;
-    authority.stage_execution.ledger_canonical_root = fs.realpathSync(testLedger);
-    authority.stage_execution.ledger_device = fs.statSync(testLedger).dev;
-    authority.stage_execution.ledger_inode = fs.statSync(testLedger).ino;
     const stageOutputMap: Record<StageId, J[]> = {
       visual_predict: [{ artifact_role: "prediction_output", path: path.join(finalDir, "prediction-output-v2.json") }],
       visual_freeze: [{ artifact_role: "prediction_freeze", path: path.join(finalDir, "prediction-freeze-v2.json") }],
@@ -7623,8 +7751,8 @@ async function sourceSearchSelfTest(): Promise<J> {
       r2_retain: [{ artifact_role: "private_retention_receipt", path: path.join(root, "pass-detail/private-retention-receipt-v2.json") }],
       private_finalize: [{ artifact_role: "private_score_receipt", path: path.join(passDir, PRIVATE_SCORE_RECEIPT_FILE) }],
       task_review: [{ artifact_role: "task_review", path: path.join(finalDir, "search-task-review-v2.json") }],
-      metrics_score: [{ artifact_role: "reviewed_metrics", path: path.join(finalDir, "reviewed-metrics-v2.json") }, { artifact_role: "final_criterion_matrix", path: path.join(finalDir, "final-criterion-matrix-v2.json") }],
-      publication: [{ artifact_role: "publication_payload", path: path.join(root, "publication-payload.json") }],
+      metrics_score: [{ artifact_role: "reviewed_metrics", path: path.join(finalDir, "reviewed-metrics-v2.json") }],
+      publication_assembly_plan: [{ artifact_role: "publication_assembly_plan", path: path.join(finalDir, "publication-assembly-plan-v2.json") }],
     };
     for (const entry of authority.stage_execution.stages) entry.outputs = stageOutputMap[entry.stage_id as StageId];
     sealSyntheticAuthority(authority);
@@ -9577,17 +9705,24 @@ async function sourceSearchSelfTest(): Promise<J> {
         limitations: [],
       };
     });
+    const membersBeforePlan = tree(finalDir).members;
+    const publicationPlan = { schema_version: "reviewed_metrics_publication_assembly_plan_v2.0.0", status: "planned", candidate_id: CANDIDATE_ID, candidate_commit: authority.candidate_commit, authority_hash: authorityBindingHash(authority), publisher: { principal: authority.publisher.principal, session_id: authority.publisher.session_id, model: authority.publisher.model, role: "publisher" }, ledger_pin: authority.stage_execution.ledger, members_before_plan: membersBeforePlan, tree_before_plan_sha256: hash(`${membersBeforePlan.map((x: J) => `${x.path}\t${x.sha256}\t${x.bytes}`).join("\n")}\n`), final_member_paths: PUBLICATION_MEMBER_PATHS, expected_schemas: { matrix: pin(path.join(SCHEMAS, "final-criterion-matrix.schema.v2.json"), "final-criterion-matrix.schema.v2.json"), descriptor: pin(path.join(SCHEMAS, "publication-descriptor.schema.v2.json"), "publication-descriptor.schema.v2.json"), stage_ledger: pin(path.join(SCHEMAS, "stage-execution-ledger.schema.v2.json"), "stage-execution-ledger.schema.v2.json") }, post_plan_derivations: ["seal_signed_stage_ledger_from_complete_remote_readback", "construct_final_matrix_with_exact_ledger_pin", "construct_commit_last_descriptor_from_plan_ledger_matrix_and_members"] };
+    writeJson(path.join(finalDir, "publication-assembly-plan-v2.json"), publicationPlan);
+    validatePublicationAssemblyPlan(publicationPlan, finalDir, authority);
+    writeJson(path.join(finalDir, "stage-execution-ledger-v2.json"), await materializeSyntheticCompletedStageLedger(authority));
+    const stageEvidenceValue = load(path.join(finalDir, "stage-execution-ledger-v2.json"));
     const matrix = {
       schema_version: "reviewed_metrics_final_criterion_matrix_v2.0.0",
       status: "final",
       candidate_id: CANDIDATE_ID,
       rows: finalRows,
+      stage_execution_ledger: pin(path.join(finalDir, "stage-execution-ledger-v2.json"), "stage-execution-ledger-v2.json"),
       issue_92_complete: true,
       issue_69_complete: true,
     };
     writeJson(path.join(finalDir, "final-criterion-matrix-v2.json"), matrix);
     await accept("final_chain", "final-matrix-exact-chain", () =>
-      validateMatrixValue(matrix, finalDir, authority),
+      validateMatrixValue(matrix, finalDir, authority, stageEvidenceValue),
     );
     const remappedAuthorityMatrix = structuredClone(matrix);
     const remappedInput = remappedAuthorityMatrix.rows
@@ -9618,37 +9753,14 @@ async function sourceSearchSelfTest(): Promise<J> {
         validateMatrixValue(bad, finalDir, authority),
       );
     }
-    writeJson(path.join(root, "publication-payload.json"), { status: "synthetic_publication_payload_complete" });
-    writeJson(path.join(finalDir, "stage-execution-ledger-v2.json"), materializeSyntheticCompletedStageLedger(authority));
-    await accept("final_chain", "exact-12-stage-ledger-chain", () => validateStageExecutionEvidence(load(path.join(finalDir, "stage-execution-ledger-v2.json")), authority, true));
-    const stageEvidenceValue = load(path.join(finalDir, "stage-execution-ledger-v2.json"));
-    const lastStage = authority.stage_execution.stages.at(-1);
-    const lastKey = hash(`gate-h2-stage-ledger-v3\n${authority.candidate_commit}\n${authorityBindingHash(authority)}\n${lastStage.stage_id}`);
-    const lastBeginFile = path.join(testLedger, `${lastKey}.started.json`);
-    const lastCompletionFile = path.join(testLedger, `${lastKey}.completed.json`);
-    const lastBeginRaw = fs.readFileSync(lastBeginFile);
-    const lastCompletionRaw = fs.readFileSync(lastCompletionFile);
-    fs.unlinkSync(lastCompletionFile);
-    await reject("final_chain", "stage-ledger-missing-completion", () => completedStageLedgerEvidence(authority), "H2_STAGE_LEDGER_MARKER");
-    fs.writeFileSync(lastCompletionFile, lastCompletionRaw, { mode: 0o400, flag: "wx" });
-    fs.unlinkSync(lastBeginFile);
-    await reject("final_chain", "stage-ledger-missing-begin", () => completedStageLedgerEvidence(authority), "H2_STAGE_LEDGER_MARKER");
-    fs.writeFileSync(lastBeginFile, lastBeginRaw, { mode: 0o400, flag: "wx" });
-    const publicationPayload = path.join(root, "publication-payload.json");
+    await accept("final_chain", "exact-12-stage-ledger-chain", () => validateStageExecutionEvidence(load(path.join(finalDir, "stage-execution-ledger-v2.json")), authority));
+    const publicationPayload = path.join(finalDir, "publication-assembly-plan-v2.json");
     const publicationPayloadRaw = fs.readFileSync(publicationPayload);
     fs.appendFileSync(publicationPayload, "substitution");
-    await reject("final_chain", "stage-ledger-output-substitution", () => validateStageExecutionEvidence(stageEvidenceValue, authority, true), "H2_STAGE_OUTPUT_SUBSTITUTION");
+    await accept("final_chain", "public-ledger-independent-of-local-output", () => validateStageExecutionEvidence(stageEvidenceValue, authority));
     fs.writeFileSync(publicationPayload, publicationPayloadRaw);
-    const tamperedBegin = load(lastBeginFile);
-    tamperedBegin.route_receipt.signature_base64 = Buffer.alloc(64, 9).toString("base64");
-    tamperedBegin.receipt_sha256 = hash(Buffer.from(pretty(tamperedBegin.route_receipt)));
-    fs.chmodSync(lastBeginFile, 0o600);
-    writeJson(lastBeginFile, tamperedBegin);
-    await reject("final_chain", "stage-ledger-forged-receipt", () => completedStageLedgerEvidence(authority), "H2_STAGE_LEDGER_MARKER");
-    fs.writeFileSync(lastBeginFile, lastBeginRaw);
-    fs.chmodSync(lastBeginFile, 0o400);
-    const completedAgain: StageConsumption = { marker: lastBeginFile, completion: lastCompletionFile, receipt: load(lastBeginFile).route_receipt, startedAt: load(lastBeginFile).command_started_at, stageId: lastStage.stage_id, authority, ledgerRoot: testLedger, ledgerFd: fs.openSync(testLedger, fs.constants.O_RDONLY), capability };
-    await reject("final_chain", "stage-after-completion", () => completeStageConsumption(completedAgain), "H2_ROUTE_STAGE_REPLAY");
+    const forgedEvidence = structuredClone(stageEvidenceValue); forgedEvidence.signature_base64 = Buffer.alloc(64, 9).toString("base64");
+    await reject("final_chain", "stage-ledger-forged-envelope", () => validateStageExecutionEvidence(forgedEvidence, authority), "H2_LEDGER_SIGNATURE");
     const memberPins = tree(finalDir).members;
     const dynamic = Object.fromEntries(
       Object.entries(PUBLICATION_DYNAMIC_PREDECESSORS).map(
@@ -9867,12 +9979,6 @@ async function integrationTest(): Promise<J> {
       unified,
       capability,
     );
-    const stageLedger = path.join(sourceDir, "stage-ledger");
-    fs.mkdirSync(stageLedger, { mode: 0o700 });
-    unified.stage_execution.ledger_root = stageLedger;
-    unified.stage_execution.ledger_canonical_root = fs.realpathSync(stageLedger);
-    unified.stage_execution.ledger_device = fs.statSync(stageLedger).dev;
-    unified.stage_execution.ledger_inode = fs.statSync(stageLedger).ino;
     unified.private_evaluator.route = unified.private_evaluator.canonical_root = fs.realpathSync(sourceDir);
     sealSyntheticAuthority(unified, true);
     fs.writeFileSync(path.join(sourceDir, "execution-authorization-v2.json"), pretty(unified), { mode: 0o600 });
@@ -9901,9 +10007,9 @@ async function integrationTest(): Promise<J> {
       execFileSync(cli, [scriptFile, "sign-route-receipt", "--authority", authorityFile, "--measurement", measurementFile, "--role", role, "--stage", stage, "--signing-key", coordinatorKeyFile, "--expires-at", new Date(Date.now() + 60_000).toISOString(), "--output", receiptFile], { cwd: ROOT, env: childEnv });
       return ["--stage-receipt", receiptFile];
     };
-    const expectStageCode = (expected: string, operation: () => unknown): void => {
+    const expectStageCode = async (expected: string, operation: () => unknown | Promise<unknown>): Promise<void> => {
       let observed = "";
-      try { operation(); }
+      try { await operation(); }
       catch (error) { observed = error instanceof GateH2Error || error instanceof GateH2SecurityError ? error.code : ""; }
       codedAssert(observed === expected, "H2_TEST_STAGE_EXACT_CODE", `expected ${expected}, observed ${observed || "no rejection"}`);
     };
@@ -9918,30 +10024,29 @@ async function integrationTest(): Promise<J> {
       return file;
     };
     const roleProbe = directStageReceipt("private_prepare", "private_evaluator");
-    expectStageCode("H2_ROUTE_STAGE_ROLE", () => beginStageConsumption(unified, writeDirectReceipt(roleProbe), "r2_retain", () => new Date(), capability));
+    await expectStageCode("H2_ROUTE_STAGE_ROLE", () => beginStageConsumption(unified, writeDirectReceipt(roleProbe), "r2_retain", () => new Date(), capability));
     const changedInvocation = directStageReceipt("gold_review", "gold_reviewer");
     changedInvocation.invocation_id = hash("caller-selected-alternate-invocation");
     changedInvocation.signature_base64 = crypto.sign(null, routeReceiptPayload(changedInvocation), SYNTHETIC_COORDINATOR_KEYS.privateKey).toString("base64");
-    expectStageCode("H2_STAGE_PRECOMMIT_BINDING", () => beginStageConsumption(unified, writeDirectReceipt(changedInvocation), "gold_review", () => new Date(), capability));
+    await expectStageCode("H2_STAGE_PRECOMMIT_BINDING", () => beginStageConsumption(unified, writeDirectReceipt(changedInvocation), "gold_review", () => new Date(), capability));
     const wrongHost = directStageReceipt("task_review", "task_reviewer");
     wrongHost.canonical_physical_host_id = hash("wrong-current-host");
     wrongHost.signature_base64 = crypto.sign(null, routeReceiptPayload(wrongHost), SYNTHETIC_COORDINATOR_KEYS.privateKey).toString("base64");
-    expectStageCode("H2_ROUTE_RECEIPT_BINDING", () => beginStageConsumption(unified, writeDirectReceipt(wrongHost), "task_review", () => new Date(), capability));
+    await expectStageCode("H2_ROUTE_RECEIPT_BINDING", () => beginStageConsumption(unified, writeDirectReceipt(wrongHost), "task_review", () => new Date(), capability));
     const currentHostMismatch = directStageReceipt("task_review", "task_reviewer");
-    expectStageCode("H2_ROUTE_CURRENT_HOST", () => beginStageConsumption(unified, writeDirectReceipt(currentHostMismatch), "task_review"));
+    await expectStageCode("H2_ROUTE_CURRENT_HOST", () => beginStageConsumption(unified, writeDirectReceipt(currentHostMismatch), "task_review"));
     const backdatedAt = new Date(Date.now() - 31_000).toISOString();
     const backdated = directStageReceipt("private_prepare", "private_evaluator", backdatedAt, new Date(Date.now() + 30_000).toISOString());
-    expectStageCode("H2_ROUTE_RECEIPT_INVOCATION_WINDOW", () => beginStageConsumption(unified, writeDirectReceipt(backdated), "private_prepare", () => new Date(), capability));
+    await expectStageCode("H2_ROUTE_RECEIPT_INVOCATION_WINDOW", () => beginStageConsumption(unified, writeDirectReceipt(backdated), "private_prepare", () => new Date(), capability));
     const expiredAuthorityProbe = directStageReceipt("private_prepare", "private_evaluator");
-    expectStageCode("H2_ROUTE_RECEIPT_INVOCATION_WINDOW", () => beginStageConsumption(unified, writeDirectReceipt(expiredAuthorityProbe), "private_prepare", () => new Date(Date.parse(unified.expires_at) + 1), capability));
+    await expectStageCode("H2_ROUTE_RECEIPT_INVOCATION_WINDOW", () => beginStageConsumption(unified, writeDirectReceipt(expiredAuthorityProbe), "private_prepare", () => new Date(Date.parse(unified.expires_at) + 1), capability));
     const missingMarkerProbe = directStageReceipt("private_prepare", "private_evaluator");
-    const missingMarkerConsumption = beginStageConsumption(unified, writeDirectReceipt(missingMarkerProbe), "private_prepare", () => new Date(), capability);
-    fs.unlinkSync(missingMarkerConsumption.marker);
-    expectStageCode("H2_ROUTE_CONSUMPTION_MARKER", () => completeStageConsumption(missingMarkerConsumption));
+    const missingMarkerConsumption = await beginStageConsumption(unified, writeDirectReceipt(missingMarkerProbe), "private_prepare", () => new Date(), capability);
+    (missingMarkerConsumption.ledger as InternalAppendOnlyStageLedger).claims.length = 0;
+    await expectStageCode("H2_LEDGER_READBACK", () => completeStageConsumption(missingMarkerConsumption));
     const eventWindowProbe = directStageReceipt("private_prepare", "private_evaluator");
-    const eventWindowConsumption = beginStageConsumption(unified, writeDirectReceipt(eventWindowProbe), "private_prepare", () => new Date(), capability);
-    expectStageCode("H2_ROUTE_EVENT_WINDOW", () => completeStageConsumption(eventWindowConsumption, () => new Date(Date.parse(eventWindowProbe.expires_at) + 1)));
-    fs.unlinkSync(eventWindowConsumption.marker);
+    const eventWindowConsumption = await beginStageConsumption(unified, writeDirectReceipt(eventWindowProbe), "private_prepare", () => new Date(), capability);
+    await expectStageCode("H2_ROUTE_EVENT_WINDOW", () => completeStageConsumption(eventWindowConsumption, () => new Date(Date.parse(eventWindowProbe.expires_at) + 1)));
     const commonArgs = [
       scriptFile,
       "--workspace", sourceDir,
@@ -9956,16 +10061,16 @@ async function integrationTest(): Promise<J> {
     const preparationOutput = execFileSync(cli, [scriptFile, "prepare-private-score", ...commonArgs.slice(1), ...prepareStageArgs], { cwd: ROOT, env: childEnv }).toString("utf8");
     const preparation = JSON.parse(preparationOutput);
     assert(preparation.status === "private_detail_prepared_retention_required", "first private-score process must stop after stable preparation");
-    let replayRejected = false;
+    let outputReplayRejected = false;
     try { execFileSync(cli, [scriptFile, "prepare-private-score", ...commonArgs.slice(1), ...prepareStageArgs], { cwd: ROOT, env: childEnv, stdio: ["ignore", "pipe", "pipe"] }); }
-    catch (error) { replayRejected = (error as { stderr?: Buffer }).stderr?.toString("utf8").includes("H2_ROUTE_STAGE_REPLAY") === true; }
-    assert(replayRejected, "cross-process stage receipt replay must fail by exact code before side effects");
+    catch (error) { outputReplayRejected = (error as { stderr?: Buffer }).stderr?.toString("utf8").includes("H2_STAGE_OUTPUT_PREEXISTS") === true; }
+    assert(outputReplayRejected, "synthetic child replay must fail before replacing an existing output");
     let alternateDirectoryRejected = false;
     try { execFileSync(cli, [scriptFile, "prepare-private-score", ...commonArgs.slice(1), ...prepareStageArgs, "--consumption-dir", path.join(root, "alternate-ledger")], { cwd: ROOT, env: childEnv, stdio: ["ignore", "pipe", "pipe"] }); }
     catch (error) { alternateDirectoryRejected = (error as { stderr?: Buffer }).stderr?.toString("utf8").includes("H2_STAGE_LEDGER_ROOT") === true; }
     assert(alternateDirectoryRejected, "cross-process caller-selected alternate ledger directory must be refused by exact code");
     const secondFreshPrepareReceipt = directStageReceipt("private_prepare", "private_evaluator");
-    expectStageCode("H2_ROUTE_STAGE_REPLAY", () => beginStageConsumption(unified, writeDirectReceipt(secondFreshPrepareReceipt), "private_prepare", () => new Date(), capability));
+    await expectStageCode("H2_ROUTE_STAGE_REPLAY", () => beginStageConsumption(unified, writeDirectReceipt(secondFreshPrepareReceipt), "private_prepare", () => new Date(), capability));
     const retentionOutput = execFileSync(cli, [scriptFile, "retain-private-score", "--workspace", sourceDir, "--envelope", sourcePaths.envelopeFile, "--detail", sourcePaths.detailFile, "--handoff", handoffFile, "--output", retentionFile, "--signing-key", signingKeyFile, "--authority", authorityFile, ...stageArgs("r2_retain", "private_evaluator")], { cwd: ROOT, env: childEnv }).toString("utf8");
     const retentionBuild = JSON.parse(retentionOutput);
     assert(retentionBuild.status === "private_retention_verified", "retention command orchestration must complete before finalization");
@@ -10007,6 +10112,8 @@ async function integrationTest(): Promise<J> {
     assert(crypto.verify(null, routeReceiptPayload(cliRouteReceipt), routeAuthority.coordinator_trust.public_key_pem, Buffer.from(cliRouteReceipt.signature_base64, "base64")), "measure-route/sign-route-receipt CLI round trip signature");
     const routeInventory = new Map<string, J>(routeAuthority.trusted_surface_inventory.map((inventory: J) => [trustedInventoryDigest(inventory), inventory] as [string, J]));
     validateRouteIdentity({ ...routeAuthority.predictor, route_receipt: cliRouteReceipt }, routeAuthority, routeInventory);
+    const externalOperationContract = externalOperationContractSelfTest();
+    const consequentialGitContract = consequentialGitPathShadowSelfTest();
     return {
       status: "integration_test_passed",
       deterministic_bundle_tree_sha256: a.tree_sha256,
@@ -10019,9 +10126,11 @@ async function integrationTest(): Promise<J> {
       retention_command_orchestration: "conditional_put_head_privacy_get_exact_readback_signed",
       stable_preparation_finalization_id: preparation.finalization_id,
       route_cli_round_trip: "host_measurement_then_coordinator_signature_passed",
-      cross_process_stage_replay: "rejected_before_side_effects",
-      cross_process_alternate_ledger_root: "rejected_before_side_effects",
+      synthetic_child_output_replay: "rejected_before_output_replacement",
+      caller_selected_ledger_root: "rejected_before_side_effects",
       fresh_second_receipt_same_stage: "rejected_by_candidate_authority_stage_key",
+      external_operation_contract: externalOperationContract,
+      consequential_git_contract: consequentialGitContract,
       real_authority_created: false,
       normal_score_cli_requires_committed_unified_authority_and_both_freezes: true,
       normal_score_cli_available_in_current_candidate: false,
@@ -10220,6 +10329,12 @@ function actor(role: string): J {
 function sealSyntheticAuthority(authority: J, fresh = false): J {
   const coordinatorPem = SYNTHETIC_COORDINATOR_KEYS.publicKey.export({ type: "spki", format: "pem" }).toString();
   authority.coordinator_trust = { public_key_pem: coordinatorPem, public_key_sha256: hash(coordinatorPem) };
+  if (authority.stage_execution?.ledger) {
+    const schemaPin = gateH2LedgerSchemaPin(ROOT);
+    authority.stage_execution.ledger.table_schema_sha256 = schemaPin.sha256;
+    authority.stage_execution.ledger.table_schema_bytes = schemaPin.bytes;
+    authority.stage_execution.ledger.coordinator_signer_sha256 = hash(coordinatorPem);
+  }
   const roles = ["implementation", "predictor", "search_predictor", "private_evaluator", "gold_reviewer", "task_reviewer", "publisher"];
   authority.trusted_surface_inventory = roles.map(syntheticSurfaceInventory);
   const authorityHash = authorityBindingHash(authority);
@@ -10277,31 +10392,25 @@ function sealSyntheticAuthority(authority: J, fresh = false): J {
   INTERNAL_SYNTHETIC_AUTHORITIES.add(authority);
   return authority;
 }
-function materializeSyntheticCompletedStageLedger(authority: J): J {
+async function materializeSyntheticCompletedStageLedger(authority: J): Promise<J> {
   const authorityHash = authorityBindingHash(authority);
+  const ledger = stageLedger(authority, { [INTERNAL_SYNTHETIC_CAPABILITY]: true });
   for (let index = 0; index < authority.stage_execution.stages.length; index++) {
     const entry = authority.stage_execution.stages[index];
     const actorValue = authority[entry.role];
     const inventory = authority.trusted_surface_inventory.find((candidate: J) => trustedInventoryDigest(candidate) === actorValue.surface_inventory_digest);
-    const physical = nearestExistingPhysicalRoot(actorValue.route);
-    const measuredAt = new Date(Date.parse(authority.authorized_at) + 10 + index * 100).toISOString();
-    const issuedAt = new Date(Date.parse(measuredAt) + 10).toISOString();
-    const startedAt = new Date(Date.parse(issuedAt) + 10).toISOString();
+    const startedAt = new Date(Date.parse(authority.authorized_at) + 30 + index * 100).toISOString();
     const completedAt = new Date(Date.parse(startedAt) + 10).toISOString();
-    const expiresAt = new Date(Date.parse(completedAt) + 10).toISOString();
-    const measurement: J = { schema_version: "reviewed_metrics_host_route_measurement_v2.0.0", candidate_commit: authority.candidate_commit, authority_hash: authorityHash, role: entry.role, nonce: entry.nonce, invocation_id: entry.invocation_id, surface_inventory_digest: actorValue.surface_inventory_digest, canonical_physical_host_id: inventory.canonical_physical_host_id, requested_root: actorValue.route, canonical_root: physical.canonicalRoot, existing_ancestor: physical.existingAncestor, ancestor_device: physical.stat.dev, ancestor_inode: physical.stat.ino, measured_at: measuredAt, stage_id: entry.stage_id };
-    const receipt: J = { schema_version: "reviewed_metrics_coordinator_route_receipt_v2.0.0", surface_id: actorValue.surface_id, surface_inventory_digest: actorValue.surface_inventory_digest, canonical_physical_host_id: inventory.canonical_physical_host_id, candidate_commit: authority.candidate_commit, authority_hash: authorityHash, nonce: entry.nonce, invocation_id: entry.invocation_id, role: entry.role, requested_root: actorValue.route, canonical_root: physical.canonicalRoot, existing_ancestor: physical.existingAncestor, ancestor_device: physical.stat.dev, ancestor_inode: physical.stat.ino, measured_at: measuredAt, measurement_sha256: hash(routeMeasurementPayload(measurement)), role_event_started_at: issuedAt, role_event_ended_at: expiresAt, issued_at: issuedAt, expires_at: expiresAt, stage_id: entry.stage_id, signature_base64: "" };
-    receipt.signature_base64 = crypto.sign(null, routeReceiptPayload(receipt), SYNTHETIC_COORDINATOR_KEYS.privateKey).toString("base64");
-    const key = hash(`gate-h2-stage-ledger-v3\n${authority.candidate_commit}\n${authorityHash}\n${entry.stage_id}`);
-    const begin = { schema_version: "reviewed_metrics_stage_begin_v3.0.0", status: "begun", candidate_commit: authority.candidate_commit, authority_hash: authorityHash, stage_id: entry.stage_id, role: entry.role, surface_id: actorValue.surface_id, physical_host_id: inventory.canonical_physical_host_id, invocation_id: entry.invocation_id, nonce: entry.nonce, receipt_sha256: hash(Buffer.from(pretty(receipt))), route_receipt: receipt, command_started_at: startedAt };
+    const attemptId = crypto.randomUUID();
+    const begin = { schema_version: "reviewed_metrics_stage_begin_v4.0.0", status: "begun", candidate_commit: authority.candidate_commit, authority_hash: authorityHash, stage_id: entry.stage_id, attempt_id: attemptId, role: entry.role, surface_id: actorValue.surface_id, physical_host_commitment: hash(`gate-h2-public-stage-host-v4\0${inventory.canonical_physical_host_id}`), invocation_commitment: hash(`gate-h2-public-stage-invocation-v4\0${entry.invocation_id}`), nonce_commitment: hash(`gate-h2-public-stage-nonce-v4\0${entry.nonce}`), receipt_sha256: hash(`synthetic-receipt:${entry.stage_id}`), receipt_signature_sha256: hash(`synthetic-receipt-signature:${entry.stage_id}`), command_started_at: startedAt };
     const beginRaw = Buffer.from(pretty(begin));
-    fs.writeFileSync(path.join(authority.stage_execution.ledger_root, `${key}.started.json`), beginRaw, { flag: "wx", mode: 0o400 });
     const outputs = entry.outputs.map((output: J) => { const raw = fs.readFileSync(output.path); return { artifact_role: output.artifact_role, sha256: hash(raw), bytes: raw.length }; });
-    const completion = { schema_version: "reviewed_metrics_stage_completion_v3.0.0", status: "completed", candidate_commit: authority.candidate_commit, authority_hash: authorityHash, stage_id: entry.stage_id, role: entry.role, surface_id: actorValue.surface_id, physical_host_id: inventory.canonical_physical_host_id, invocation_id: entry.invocation_id, nonce: entry.nonce, receipt_sha256: begin.receipt_sha256, begin_marker_sha256: hash(beginRaw), command_started_at: startedAt, command_completed_at: completedAt, outputs };
-    fs.writeFileSync(path.join(authority.stage_execution.ledger_root, `${key}.completed.json`), pretty(completion), { flag: "wx", mode: 0o400 });
+    const completion = { schema_version: "reviewed_metrics_stage_completion_v4.0.0", status: "completed", candidate_commit: authority.candidate_commit, authority_hash: authorityHash, stage_id: entry.stage_id, attempt_id: attemptId, role: entry.role, surface_id: actorValue.surface_id, physical_host_commitment: begin.physical_host_commitment, invocation_commitment: begin.invocation_commitment, nonce_commitment: begin.nonce_commitment, receipt_sha256: begin.receipt_sha256, begin_sha256: hash(beginRaw), command_started_at: startedAt, command_completed_at: completedAt, outputs };
+    await ledger.appendAttempt({ candidate_commit: authority.candidate_commit, authority_hash: authorityHash, stage_id: entry.stage_id }, attemptId, startedAt, hash(beginRaw));
+    await ledger.claimBegin({ candidate_commit: authority.candidate_commit, authority_hash: authorityHash, stage_id: entry.stage_id }, attemptId, startedAt, pretty(begin), hash(beginRaw));
+    await ledger.appendCompletion({ candidate_commit: authority.candidate_commit, authority_hash: authorityHash, stage_id: entry.stage_id }, attemptId, completedAt, pretty(completion), hash(Buffer.from(pretty(completion))));
   }
-  fsyncDirectory(authority.stage_execution.ledger_root);
-  return completedStageLedgerEvidence(authority);
+  return completedStageLedgerEvidence(authority, true, { [INTERNAL_SYNTHETIC_CAPABILITY]: true });
 }
 function syntheticExecutionAuthority(bundle: string): J {
   const v1 = load(path.join(V1, "independent-task-review-v1.json")).reviewer;
@@ -10353,10 +10462,16 @@ function syntheticExecutionAuthority(bundle: string): J {
       signing_public_key_pem: SYNTHETIC_EVALUATOR_KEYS.publicKey.export({ type: "spki", format: "pem" }).toString(),
     },
     stage_execution: {
-      ledger_root: SYNTHETIC_STAGE_LEDGER_ROOT,
-      ledger_canonical_root: fs.realpathSync(SYNTHETIC_STAGE_LEDGER_ROOT),
-      ledger_device: fs.statSync(SYNTHETIC_STAGE_LEDGER_ROOT).dev,
-      ledger_inode: fs.statSync(SYNTHETIC_STAGE_LEDGER_ROOT).ino,
+      ledger: {
+        provider: "cloudflare_d1",
+        api_contract: "cloudflare_v4_d1_query_insert_select_v1",
+        account_capability_digest: hash("gate-h2-synthetic-ledger-account"),
+        database_uuid_digest: hash("gate-h2-synthetic-ledger-database"),
+        namespace_digest: hash(`gate-h2-synthetic-ledger-namespace:${crypto.randomUUID()}`),
+        table_schema_sha256: "0".repeat(64),
+        table_schema_bytes: 1,
+        coordinator_signer_sha256: "0".repeat(64),
+      },
       stages: STAGE_IDS.map((stageId) => ({
         stage_id: stageId,
         role: STAGE_ROLES[stageId],
@@ -10484,20 +10599,27 @@ async function main(): Promise<void> {
   const internalCapability: InternalSyntheticCapability | undefined = internalAuthority ? { [INTERNAL_SYNTHETIC_CAPABILITY]: true } : undefined;
   const runAttestedStage = async <T>(stageId: StageId, operation: () => T | Promise<T>): Promise<T> => {
     const authority = internalAuthority ?? executionAuthority();
-    const consumption = beginStageConsumption(
+    const consumption = await beginStageConsumption(
       authority,
       path.resolve(assertString(o["stage-receipt"], "--stage-receipt required")),
       stageId,
       () => new Date(),
       internalCapability,
     );
+    const ledgerEnvironmentNames = ["GATE_H2_LEDGER_ACCOUNT_ID", "GATE_H2_LEDGER_DATABASE_ID", "GATE_H2_LEDGER_API_TOKEN"] as const;
+    const coordinatorLedgerEnvironment = new Map<string, string>();
+    for (const name of ledgerEnvironmentNames) {
+      const value = process.env[name];
+      if (value !== undefined) coordinatorLedgerEnvironment.set(name, value);
+      delete process.env[name];
+    }
     try {
       const value = await operation();
-      completeStageConsumption(consumption);
+      await completeStageConsumption(consumption);
       return value;
-    } catch (error) {
-      try { fs.closeSync(consumption.ledgerFd); } catch {}
-      throw error;
+    } finally {
+      for (const name of ledgerEnvironmentNames) delete process.env[name];
+      for (const [name, value] of coordinatorLedgerEnvironment) process.env[name] = value;
     }
   };
   let result: J;
@@ -10534,19 +10656,17 @@ async function main(): Promise<void> {
   } else if (command === "stage-run") {
     const stageId = assertString(o.stage, "--stage required") as StageId;
     codedAssert(STAGE_ROLES[stageId] !== undefined, "H2_ROUTE_STAGE_ROLE", "unknown exact production stage");
-    result = await runAttestedStage(stageId, () => {
-      const authority = internalAuthority ?? executionAuthority();
-      const operation = stageManifestEntry(authority, stageId).operation;
-      codedAssert(operation?.kind === "external_command" && path.isAbsolute(operation.executable) && path.normalize(operation.executable) === operation.executable && Array.isArray(operation.args) && operation.args.every((arg: unknown) => typeof arg === "string") && path.isAbsolute(operation.cwd) && path.normalize(operation.cwd) === operation.cwd, "H2_STAGE_OPERATION_DECLARATION", "external stage operation is not exactly authority-precommitted");
-      const executable = fs.realpathSync(operation.executable);
-      const executableStat = fs.statSync(executable);
-      codedAssert(executable === operation.executable && executableStat.isFile() && [0, process.getuid!()].includes(executableStat.uid) && (executableStat.mode & 0o022) === 0, "H2_STAGE_OPERATION_DECLARATION", "external stage executable is replaced or writable by other users");
-      execFileSync(executable, operation.args, { cwd: operation.cwd, stdio: "inherit", env: process.env });
-      return { status: "external_stage_operation_completed", stage_id: stageId };
-    });
+    const authority = internalAuthority ?? executionAuthority();
+    const operation = stageManifestEntry(authority, stageId).operation;
+    const exact = externalOperationPreflight(operation, stageManifestEntry(authority, stageId).outputs);
+    const consumption = await beginStageConsumption(authority, path.resolve(assertString(o["stage-receipt"], "--stage-receipt required")), stageId, () => new Date(), internalCapability);
+    execFileSync(exact.executable, operation.argv, { cwd: operation.cwd, stdio: "inherit", env: exact.env });
+    assertOperationSnapshotsUnchanged(exact.snapshots);
+    await completeStageConsumption(consumption);
+    result = { status: "external_stage_operation_completed", stage_id: stageId };
   } else if (command === "seal-stage-ledger") {
     const authority = internalAuthority ?? executionAuthority();
-    const evidence = completedStageLedgerEvidence(authority);
+    const evidence = await completedStageLedgerEvidence(authority, true, internalCapability, o["signing-key"] ? path.resolve(o["signing-key"]) : undefined);
     const output = physicalPathSafety(path.resolve(assertString(o.output, "--output required")));
     fs.writeFileSync(output, pretty(evidence), { flag: "wx", mode: 0o600 });
     result = { status: "stage_execution_ledger_evidence_sealed", stage_count: evidence.stage_count, evidence_sha256: hash(Buffer.from(pretty(evidence))) };
@@ -10673,18 +10793,16 @@ async function main(): Promise<void> {
       };
     })();
   } else if (command === "publish")
-    result = await runAttestedStage("publication", () => {
+    result = await runAttestedStage("publication_assembly_plan", () => {
       const authority = internalAuthority ?? executionAuthority();
-      const operation = stageManifestEntry(authority, "publication").operation;
-      codedAssert(operation?.kind === "external_command" && path.isAbsolute(operation.executable) && path.normalize(operation.executable) === operation.executable && Array.isArray(operation.args) && operation.args.every((arg: unknown) => typeof arg === "string") && path.isAbsolute(operation.cwd) && path.normalize(operation.cwd) === operation.cwd, "H2_STAGE_OPERATION_DECLARATION", "publication operation must be exactly authority-precommitted");
-      const executable = fs.realpathSync(operation.executable);
-      const executableStat = fs.statSync(executable);
-      codedAssert(executable === operation.executable && executableStat.isFile() && [0, process.getuid!()].includes(executableStat.uid) && (executableStat.mode & 0o022) === 0, "H2_STAGE_OPERATION_DECLARATION", "publication executable is replaced or writable by other users");
-      execFileSync(executable, operation.args, { cwd: operation.cwd, stdio: "inherit", env: process.env });
-      return { status: "publication_stage_completed" };
+      const operation = stageManifestEntry(authority, "publication_assembly_plan").operation;
+      const exact = externalOperationPreflight(operation, stageManifestEntry(authority, "publication_assembly_plan").outputs);
+      execFileSync(exact.executable, operation.argv, { cwd: operation.cwd, stdio: "inherit", env: exact.env });
+      assertOperationSnapshotsUnchanged(exact.snapshots);
+      return { status: "publication_assembly_plan_completed" };
     });
   else if (command === "self-test") result = await selfTest();
-  else if (command === "security-self-test") result = await securityHelperSelfTest();
+  else if (command === "security-self-test") result = { cloudflare_r2: await securityHelperSelfTest(), cloudflare_d1_ledger: await stageLedgerProductionContractSelfTest(ROOT), status: "security_helper_self_test_passed" };
   else if (command === "integration-test") result = await integrationTest();
   else throw new Error(`unknown command: ${command}`);
   process.stdout.write(`${JSON.stringify(result)}\n`);

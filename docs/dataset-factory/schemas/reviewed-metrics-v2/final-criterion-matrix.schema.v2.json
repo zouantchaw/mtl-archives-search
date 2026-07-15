@@ -36,11 +36,14 @@
     },
     "issue_69_complete": {
       "type": "boolean"
+    },
+    "stage_execution_ledger": {
+      "oneOf": [{"type": "null"}, {"$ref": "#/$defs/pin"}]
     }
   },
   "allOf": [
-    {"if": {"properties": {"status": {"const": "candidate_open"}}}, "then": {"properties": {"issue_92_complete": {"const": false}, "issue_69_complete": {"const": false}}}},
-    {"if": {"properties": {"status": {"const": "final"}}}, "then": {"properties": {"rows": {"minItems": 9, "maxItems": 9}, "issue_92_complete": {"const": true}, "issue_69_complete": {"const": true}}}}
+    {"if": {"properties": {"status": {"const": "candidate_open"}}}, "then": {"properties": {"issue_92_complete": {"const": false}, "issue_69_complete": {"const": false}, "stage_execution_ledger": {"type": "null"}}}},
+    {"if": {"properties": {"status": {"const": "final"}}}, "then": {"required": ["stage_execution_ledger"], "properties": {"rows": {"minItems": 9, "maxItems": 9}, "issue_92_complete": {"const": true}, "issue_69_complete": {"const": true}, "stage_execution_ledger": {"$ref": "#/$defs/pin"}}}}
   ],
   "$defs": {
     "pin": {

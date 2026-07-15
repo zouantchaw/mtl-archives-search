@@ -80,7 +80,7 @@
   },
   "allOf": [
     {"if": {"properties": {"status": {"const": "candidate_only"}}}, "then": {"properties": {"candidate_commit": {"type": "null"}, "required_publication_members": {"maxItems": 0}}}},
-    {"if": {"properties": {"status": {"const": "published"}}}, "then": {"required": ["required_publication_members", "publisher"], "properties": {"artifact_id": {"const": "dfv0_reviewed_metrics_v2_publication"}, "candidate_commit": {"type": "string", "pattern": "^[a-f0-9]{40}$"}, "publisher": {"$ref": "#/$defs/publisher"}, "required_publication_members": {"minItems": 16, "maxItems": 16}, "completion": {"properties": {"candidate_complete": {"const": true}, "issue_92_complete": {"const": true}, "issue_69_complete": {"const": true}, "publication_exists": {"const": true}}}, "predecessors": {"required": ["phase_d", "v1_tasks", "v1_receipt", "v1_descriptor", "gate_e_promotion", "gate_f_review", "gate_g_descriptor", "ground_input", "ground_records", "reviewed_visual_transcriptions", "candidate", "input_authority", "execution_authorization", "prediction_output", "prediction_freeze", "gold_review", "private_score_receipt", "results", "source_search_bundle", "source_search_prediction", "source_search_freeze", "search_task", "criterion_matrix", "task_review", "stage_execution_ledger"]}}}}
+    {"if": {"properties": {"status": {"const": "published"}}}, "then": {"required": ["required_publication_members", "publisher"], "properties": {"artifact_id": {"const": "dfv0_reviewed_metrics_v2_publication"}, "candidate_commit": {"type": "string", "pattern": "^[a-f0-9]{40}$"}, "publisher": {"$ref": "#/$defs/publisher"}, "required_publication_members": {"minItems": 17, "maxItems": 17}, "completion": {"properties": {"candidate_complete": {"const": true}, "issue_92_complete": {"const": true}, "issue_69_complete": {"const": true}, "publication_exists": {"const": true}}}, "predecessors": {"required": ["phase_d", "v1_tasks", "v1_receipt", "v1_descriptor", "gate_e_promotion", "gate_f_review", "gate_g_descriptor", "ground_input", "ground_records", "reviewed_visual_transcriptions", "candidate", "input_authority", "execution_authorization", "prediction_output", "prediction_freeze", "gold_review", "private_score_receipt", "results", "source_search_bundle", "source_search_prediction", "source_search_freeze", "search_task", "criterion_matrix", "task_review", "stage_execution_ledger", "publication_assembly_plan"]}}}}
   ],
   "$defs": {
     "pin": {
@@ -204,7 +204,8 @@
         "search_task": {"$ref": "#/$defs/pin"},
         "criterion_matrix": {"$ref": "#/$defs/pin"},
         "task_review": {"$ref": "#/$defs/pin"},
-        "stage_execution_ledger": {"$ref": "#/$defs/pin"}
+        "stage_execution_ledger": {"$ref": "#/$defs/pin"},
+        "publication_assembly_plan": {"$ref": "#/$defs/pin"}
       }
     },
     "publisher": {"type": "object", "additionalProperties": false, "required": ["principal", "session_id", "model", "role", "published_at"], "properties": {"principal": {"type": "string", "minLength": 1}, "session_id": {"type": "string", "minLength": 1}, "model": {"type": "string", "minLength": 1}, "role": {"const": "publisher"}, "published_at": {"type": "string", "format": "date-time"}}},
