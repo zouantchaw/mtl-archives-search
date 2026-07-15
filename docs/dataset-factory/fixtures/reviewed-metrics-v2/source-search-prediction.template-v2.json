@@ -1,8 +1,7 @@
 {
   "schema_version": "reviewed_metrics_source_search_prediction_v2.0.0",
   "status": "blank_no_prediction",
-  "candidate_id": "dfv0_reviewed_metrics_v2_candidate_20260715",
-  "task_id": "gate-h-v2:official-source-search:c0-rpcq",
+  "task_id": "task-7b1d4f0c9a2e6d83",
   "public_bundle": null,
   "session": null,
   "answer": null,

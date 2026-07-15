@@ -3,12 +3,11 @@
   "$id": "source-search-prediction.schema.v2.json",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "status", "candidate_id", "task_id", "public_bundle", "session", "answer", "evidence", "attestations"],
+  "required": ["schema_version", "status", "task_id", "public_bundle", "session", "answer", "evidence", "attestations"],
   "properties": {
     "schema_version": {"const": "reviewed_metrics_source_search_prediction_v2.0.0"},
     "status": {"enum": ["blank_no_prediction", "completed"]},
-    "candidate_id": {"const": "dfv0_reviewed_metrics_v2_candidate_20260715"},
-    "task_id": {"const": "gate-h-v2:official-source-search:c0-rpcq"},
+    "task_id": {"const": "task-7b1d4f0c9a2e6d83"},
     "public_bundle": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/pin"}]},
     "session": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/session"}]},
     "answer": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/answer"}]},
@@ -18,7 +17,7 @@
   "$defs": {
     "pin": {"type": "object", "additionalProperties": false, "required": ["path", "sha256", "bytes"], "properties": {"path": {"const": "source-search-bundle-v2.json"}, "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "bytes": {"type": "integer", "minimum": 1}}},
     "session": {"type": "object", "additionalProperties": false, "required": ["principal", "session_id", "model", "reasoning_effort", "route", "started_at", "ended_at"], "properties": {"principal": {"type": "string", "minLength": 1}, "session_id": {"type": "string", "minLength": 1}, "model": {"type": "string", "minLength": 1}, "reasoning_effort": {"type": "string", "minLength": 1}, "route": {"type": "string", "minLength": 1}, "started_at": {"type": "string", "format": "date-time"}, "ended_at": {"type": "string", "format": "date-time"}}},
-    "answer": {"type": "object", "additionalProperties": false, "required": ["year", "civic_number", "street", "place", "official_url", "source_id", "source_representation_id"], "properties": {"year": {"type": "string", "pattern": "^[0-9]{4}$"}, "civic_number": {"type": "string", "pattern": "^[0-9]+$"}, "street": {"type": "string", "minLength": 1, "maxLength": 120}, "place": {"type": "string", "minLength": 1, "maxLength": 120}, "official_url": {"type": "string", "format": "uri"}, "source_id": {"type": "string", "minLength": 1}, "source_representation_id": {"type": "string", "minLength": 1}}},
-    "evidence": {"type": "object", "additionalProperties": false, "required": ["official_url", "source_id", "source_representation_id", "paraphrase"], "properties": {"official_url": {"type": "string", "format": "uri"}, "source_id": {"type": "string", "minLength": 1}, "source_representation_id": {"type": "string", "minLength": 1}, "paraphrase": {"type": "string", "minLength": 1, "maxLength": 240}}}
+    "answer": {"type": "object", "additionalProperties": false, "required": ["year", "civic_number", "street", "place", "official_url"], "properties": {"year": {"type": "string", "pattern": "^[0-9]{4}$"}, "civic_number": {"type": "string", "pattern": "^[0-9]+$"}, "street": {"type": "string", "minLength": 1, "maxLength": 120}, "place": {"type": "string", "minLength": 1, "maxLength": 120}, "official_url": {"type": "string", "format": "uri"}}},
+    "evidence": {"type": "object", "additionalProperties": false, "required": ["official_url", "paraphrase"], "properties": {"official_url": {"type": "string", "format": "uri"}, "paraphrase": {"type": "string", "minLength": 1, "maxLength": 240}}}
   }
 }

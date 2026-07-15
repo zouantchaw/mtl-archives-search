@@ -199,6 +199,7 @@
     "dataset-factory:reviewed-metrics-integration-test-v1": "tsx src/dataset-factory/reviewed-metrics-v1.ts integration-test",
     "dataset-factory:reviewed-metrics-build-v2": "tsx src/dataset-factory/reviewed-metrics-v2.ts build",
     "dataset-factory:reviewed-metrics-build-blind-bundle-v2": "tsx src/dataset-factory/reviewed-metrics-v2.ts build-blind-bundle",
+    "dataset-factory:reviewed-metrics-build-source-search-bundle-v2": "tsx src/dataset-factory/reviewed-metrics-v2.ts build-source-search-bundle",
     "dataset-factory:reviewed-metrics-validate-prediction-v2": "tsx src/dataset-factory/reviewed-metrics-v2.ts validate-prediction",
     "dataset-factory:reviewed-metrics-freeze-prediction-v2": "tsx src/dataset-factory/reviewed-metrics-v2.ts freeze-prediction",
     "dataset-factory:reviewed-metrics-validate-source-search-prediction-v2": "tsx src/dataset-factory/reviewed-metrics-v2.ts validate-source-search-prediction",

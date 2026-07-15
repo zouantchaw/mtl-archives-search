@@ -26,9 +26,11 @@
     "source_search_started_at": {"type": "string", "format": "date-time"},
     "source_search_ended_at": {"type": "string", "format": "date-time"},
     "source_search_freeze_at": {"type": "string", "format": "date-time"},
+    "source_dossier_authored_at": {"type": "string", "format": "date-time"},
+    "private_envelope_sealed_at": {"type": "string", "format": "date-time"},
     "expires_at": {"type": "string", "format": "date-time"}
   },
-  "allOf": [{"if": {"properties": {"schema_version": {"const": "reviewed_metrics_execution_authorization_v2.1.0"}}}, "then": {"required": ["search_predictor", "private_evaluator", "source_search_started_at", "source_search_ended_at", "source_search_freeze_at"]}}],
+  "allOf": [{"if": {"properties": {"schema_version": {"const": "reviewed_metrics_execution_authorization_v2.1.0"}}}, "then": {"required": ["search_predictor", "private_evaluator", "source_search_started_at", "source_search_ended_at", "source_search_freeze_at", "source_dossier_authored_at", "private_envelope_sealed_at"]}}],
   "$defs": {
     "actor": {
       "type": "object", "additionalProperties": false,

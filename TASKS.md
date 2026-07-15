@@ -149,7 +149,7 @@ New archive source is `archivesdemontreal.ica-atom.org`; ingest safely before fu
 - [x] Weekly funnel baseline instrumented (`order_mode_entered -> cart_item_added -> checkout_clicked -> order_completed`).
 
 ### Core platform + performance
-- [x] Issue #96 Reviewed Metrics v2 candidate contracts prove parent-relative unified authority-only activation, distinct visual/search identities and chronology, exact raw-byte freezes, a domain-separated salted private expected envelope, deterministic private scoring plus non-leaking public receipt, receipt-only place metrics, independent task review, canonical input-authority byte binding, exact Gate E/RPCQ provenance, and exact commit-last publication membership; real authority/prediction/envelope/score/publication remain intentionally absent.
+- [x] Issue #96 Reviewed Metrics v2 candidate contracts prove parent-relative authority-only activation; pairwise-distinct visual/search/evaluator/gold/task/publisher routes; a repo-denied, portable pre-freeze public task with no duplicated expected/internal fields; post-freeze dossier/envelope authorship; CSPRNG-attested 32-byte salt controls; dynamic joins to tracked/readable Gate E history; deterministic private scoring and receipt-only place metrics; canonical input-authority binding; and exact commit-last publication membership. The commitment protects integrity/workflow blinding rather than secrecy from Gate E history readers; real authority/prediction/envelope/score/publication remain absent.
 - [x] Sitemap 404 fix for Clerk middleware/public routes.
 - [x] D1 cost stabilization package (Cache API, offset sampling, semantic fallback, AbortController).
 - [x] Vercel Image Optimization migration and 20MB image cap.

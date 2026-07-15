@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema", "$id": "source-search-freeze.schema.v2.json", "type": "object", "additionalProperties": false,
   "required": ["schema_version", "status", "candidate_id", "candidate_commit", "task_id", "public_bundle", "prediction", "principal", "session_id", "model", "reasoning_effort", "route", "started_at", "ended_at", "authorized_at", "frozen_at"],
   "properties": {
-    "schema_version": {"const": "reviewed_metrics_source_search_freeze_v2.0.0"}, "status": {"const": "frozen"}, "candidate_id": {"const": "dfv0_reviewed_metrics_v2_candidate_20260715"}, "candidate_commit": {"type": "string", "pattern": "^[a-f0-9]{40}$"}, "task_id": {"const": "gate-h-v2:official-source-search:c0-rpcq"},
+    "schema_version": {"const": "reviewed_metrics_source_search_freeze_v2.0.0"}, "status": {"const": "frozen"}, "candidate_id": {"const": "dfv0_reviewed_metrics_v2_candidate_20260715"}, "candidate_commit": {"type": "string", "pattern": "^[a-f0-9]{40}$"}, "task_id": {"const": "task-7b1d4f0c9a2e6d83"},
     "public_bundle": {"$ref": "#/$defs/pin"}, "prediction": {"$ref": "#/$defs/hashBytes"},
     "principal": {"type": "string", "minLength": 1}, "session_id": {"type": "string", "minLength": 1}, "model": {"type": "string", "minLength": 1}, "reasoning_effort": {"type": "string", "minLength": 1}, "route": {"type": "string", "minLength": 1},
     "started_at": {"type": "string", "format": "date-time"}, "ended_at": {"type": "string", "format": "date-time"}, "authorized_at": {"type": "string", "format": "date-time"}, "frozen_at": {"type": "string", "format": "date-time"}
