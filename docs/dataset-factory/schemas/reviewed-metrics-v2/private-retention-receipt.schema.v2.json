@@ -3,14 +3,19 @@
   "$id": "private-retention-receipt.schema.v2.json",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "candidate_id", "provider_capability", "objects", "issued_at", "signer", "signature"],
+  "required": ["schema_version", "candidate_id", "candidate_commit", "authority_hash", "finalization_id", "scored_at", "provider_capability", "objects", "issued_at", "evaluator", "signer", "signature"],
   "properties": {
-    "schema_version": {"const": "reviewed_metrics_private_retention_receipt_v2.0.0"},
+    "schema_version": {"const": "reviewed_metrics_private_retention_receipt_v2.1.0"},
     "candidate_id": {"const": "dfv0_reviewed_metrics_v2_candidate_20260715"},
-    "provider_capability": {"type":"object","additionalProperties":false,"required":["provider","bucket_capability_id"],"properties":{"provider":{"enum":["cloudflare_r2","synthetic_in_memory"]},"bucket_capability_id":{"type":"string","pattern":"^[a-f0-9]{64}$"}}},
-    "objects": {"type":"array","minItems":2,"maxItems":2,"items":{"type":"object","additionalProperties":false,"required":["artifact_role","object_key_sha256","version_id","etag","sha256","bytes","written_at","readback_at","no_public_acl","readback_verified"],"properties":{"artifact_role":{"enum":["private_expected_envelope","private_score_detail"]},"object_key_sha256":{"type":"string","pattern":"^[a-f0-9]{64}$"},"version_id":{"type":["string","null"]},"etag":{"type":["string","null"]},"sha256":{"type":"string","pattern":"^[a-f0-9]{64}$"},"bytes":{"type":"integer","minimum":1},"written_at":{"type":"string","format":"date-time"},"readback_at":{"type":"string","format":"date-time"},"no_public_acl":{"const":true},"readback_verified":{"const":true}}}},
+    "candidate_commit": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+    "authority_hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "finalization_id": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "scored_at": {"type": "string", "format": "date-time"},
+    "provider_capability": {"type":"object","additionalProperties":false,"required":["provider","bucket_capability_id"],"properties":{"provider":{"enum":["cloudflare_r2_private","synthetic_in_memory"]},"bucket_capability_id":{"type":"string","pattern":"^[a-f0-9]{64}$"}}},
+    "objects": {"type":"array","minItems":2,"maxItems":2,"items":{"type":"object","additionalProperties":false,"required":["artifact_role","object_key_sha256","version_id","etag","sha256","bytes","written_at","readback_at","no_public_acl","readback_verified"],"properties":{"artifact_role":{"enum":["private_expected_envelope","private_score_detail"]},"object_key_sha256":{"type":"string","pattern":"^[a-f0-9]{64}$"},"version_id":{"type":["string","null"],"minLength":1},"etag":{"type":"string","minLength":1},"sha256":{"type":"string","pattern":"^[a-f0-9]{64}$"},"bytes":{"type":"integer","minimum":1},"written_at":{"type":"string","format":"date-time"},"readback_at":{"type":"string","format":"date-time"},"no_public_acl":{"const":true},"readback_verified":{"const":true}}}},
     "issued_at": {"type":"string","format":"date-time"},
-    "signer": {"type":"object","additionalProperties":false,"required":["authority_role","public_key_sha256"],"properties":{"authority_role":{"enum":["private_evaluator","coordinator"]},"public_key_sha256":{"type":"string","pattern":"^[a-f0-9]{64}$"}}},
+    "evaluator": {"type":"object","additionalProperties":false,"required":["principal","session_id","surface_id"],"properties":{"principal":{"type":"string","minLength":1},"session_id":{"type":"string","minLength":1},"surface_id":{"type":"string","pattern":"^[a-f0-9]{64}$"}}},
+    "signer": {"type":"object","additionalProperties":false,"required":["authority_role","public_key_sha256"],"properties":{"authority_role":{"const":"private_evaluator"},"public_key_sha256":{"type":"string","pattern":"^[a-f0-9]{64}$"}}},
     "signature": {"type":"object","additionalProperties":false,"required":["algorithm","signature_base64"],"properties":{"algorithm":{"const":"ed25519"},"signature_base64":{"type":"string","minLength":80,"maxLength":100}}}
   }
 }

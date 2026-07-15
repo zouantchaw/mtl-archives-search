@@ -29,6 +29,7 @@ const FIXTURE = path.join(ROOT, REL);
 const CANONICAL_AUTHORITY_REL = `${REL}/input-authority-v2.json`;
 const CANONICAL_AUTHORITY = path.join(ROOT, CANONICAL_AUTHORITY_REL);
 const SCHEMAS = path.join(ROOT, "docs/dataset-factory/schemas/reviewed-metrics-v2");
+const NEGATIVE_TEST_CODES_FILE = path.join(ROOT, "docs/dataset-factory/reviewed-metrics-v2-negative-test-codes.json");
 const REGISTRY = path.join(ROOT, "docs/dataset-factory/artifact-registry.v0.jsonl");
 const V1_REL = "docs/dataset-factory/fixtures/reviewed-metrics-publication-v1";
 const V1 = path.join(ROOT, V1_REL);
@@ -232,6 +233,7 @@ const SAFE_ATTESTATION_KEYS = new Set([
   "forbidden_metadata_fields",
 ]);
 const INTERNAL_SYNTHETIC_CAPABILITY = Symbol("reviewed-metrics-v2-internal-synthetic-capability");
+const INTERNAL_SYNTHETIC_AUTHORITIES = new WeakSet<object>();
 const SYNTHETIC_EVALUATOR_KEYS = crypto.generateKeyPairSync("ed25519");
 const SYNTHETIC_COORDINATOR_KEYS = crypto.generateKeyPairSync("ed25519");
 const ENTITY_IOU_THRESHOLD = 0.5;
@@ -240,6 +242,13 @@ const ENTITY_BBOX_QUANTIZATION = 10_000;
 const MAX_ENTITIES_PER_ROW = 12;
 const ROUTE_RECEIPT_MAX_AGE_MS = 5 * 60 * 1000;
 type InternalSyntheticCapability = { readonly [INTERNAL_SYNTHETIC_CAPABILITY]: true };
+function hasInternalSyntheticCapability(authority: J, capability?: InternalSyntheticCapability): boolean {
+  const syntheticCoordinatorPem = SYNTHETIC_COORDINATOR_KEYS.publicKey.export({ type: "spki", format: "pem" }).toString();
+  return capability?.[INTERNAL_SYNTHETIC_CAPABILITY] === true || INTERNAL_SYNTHETIC_AUTHORITIES.has(authority) || (
+    authority.candidate_commit === SYNTHETIC_CANDIDATE_COMMIT &&
+    authority.coordinator_trust?.public_key_sha256 === hash(syntheticCoordinatorPem)
+  );
+}
 type Reservation = { root: string; marker: string; token: string; dev: number; ino: number };
 type ExecutionAuthorityEvidence = { head: string; parents: string[]; changedPaths: string[]; repositoryClean: boolean; tracked: boolean; headBytes: Buffer; indexBytes: Buffer; worktreeBytes: Buffer; indexClean: boolean; worktreeClean: boolean };
 type ExecutionAuthorityReader = () => ExecutionAuthorityEvidence;
@@ -266,9 +275,12 @@ class GateH2Error extends Error {
 function assert(
   value: unknown,
   message: string,
-  code = "H2_INVARIANT",
+  code?: string,
 ): asserts value {
-  if (!value) throw new GateH2Error(code, message);
+  const stableMessage = message
+    .replace(/\/(?:private\/)?var\/folders\/[^\s]+\/T\/rmv2-[^/\s]+/g, "<TMP>")
+    .replace(/\/tmp\/rmv2-[^/\s]+/g, "<TMP>");
+  if (!value) throw new GateH2Error(code ?? `H2_GUARD_${hash(stableMessage).slice(0, 16).toUpperCase()}`, message);
 }
 function codedAssert(
   value: unknown,
@@ -472,8 +484,32 @@ function nearestExistingPhysicalRoot(attested: string): {
 function trustedInventoryDigest(inventory: J): string {
   return hash(canon(inventory));
 }
+function inventorySigningPayload(inventory: J): Buffer {
+  const unsigned = structuredClone(inventory);
+  delete unsigned.coordinator_signature_base64;
+  return Buffer.from(canon(unsigned), "utf8");
+}
+function canonicalPhysicalHostId(identity: J): string {
+  if (identity.type === "local_macos")
+    return hash(`gate-h2-physical-host:local-macos:${identity.hardware_uuid.toUpperCase()}`);
+  codedAssert(identity.type === "aws_ec2", "H2_PHYSICAL_HOST_IDENTITY_TYPE", "unsupported physical host identity type");
+  return hash(`gate-h2-physical-host:aws-ec2:${identity.account_id}:${identity.region}:${identity.instance_id}`);
+}
+function physicalIdentityVerificationPin(identity: J): string {
+  const evidence = structuredClone(identity);
+  delete evidence.coordinator_verification_pin;
+  return hash(`gate-h2-physical-identity-verification-v2\n${canon(evidence)}`);
+}
+function canonicalPhysicalIdentityEvidence(identity: J): string {
+  const normalized = structuredClone(identity);
+  if (normalized.type === "local_macos") normalized.hardware_uuid = normalized.hardware_uuid.toUpperCase();
+  return canon(normalized);
+}
 function trustedSurfaceId(inventory: J): string {
   return hash(`gate-h2-trusted-surface-v2\n${canon(inventory)}`);
+}
+function routeMeasurementPayload(measurement: J): Buffer {
+  return Buffer.from(canon(measurement), "utf8");
 }
 function routeReceiptPayload(receipt: J): Buffer {
   const unsigned = structuredClone(receipt);
@@ -503,6 +539,19 @@ function authorityBindingHash(authority: J): string {
     if (unsigned[role]) delete unsigned[role].route_receipt;
   return hash(canon(unsigned));
 }
+function roleEventWindow(authority: J, role: string): [string, string] {
+  const windows: Record<string, [string, string]> = {
+    implementation: [authority.started_at, authority.started_at],
+    predictor: [authority.started_at, authority.freeze_at],
+    search_predictor: [authority.source_search_started_at, authority.source_search_freeze_at],
+    gold_reviewer: [authority.source_search_freeze_at, authority.source_dossier_authored_at],
+    private_evaluator: [authority.source_dossier_authored_at, authority.private_envelope_sealed_at],
+    task_reviewer: [authority.source_dossier_authored_at, authority.private_envelope_sealed_at],
+    publisher: [authority.private_envelope_sealed_at, authority.private_envelope_sealed_at],
+  };
+  codedAssert(windows[role] !== undefined, "H2_ROUTE_ROLE", `unknown authority role ${role}`);
+  return windows[role];
+}
 function validateRouteIdentity(actorValue: J, authority: J, inventoryByDigest: Map<string, J>): void {
   const receipt = actorValue.route_receipt;
   const inventory = inventoryByDigest.get(actorValue.surface_inventory_digest);
@@ -526,10 +575,31 @@ function validateRouteIdentity(actorValue: J, authority: J, inventoryByDigest: M
   );
   const inventoryDigest = trustedInventoryDigest(inventory);
   const derivedSurfaceId = trustedSurfaceId(inventory);
+  const derivedPhysicalHostId = canonicalPhysicalHostId(inventory.physical_host_identity);
+  codedAssert(
+    inventory.canonical_physical_host_id === derivedPhysicalHostId,
+    "H2_PHYSICAL_HOST_IDENTITY_CONFLICT",
+    `authority ${actorValue.role} canonical physical host ID must derive from verified identity evidence`,
+  );
+  let inventorySignatureValid = false;
+  try {
+    inventorySignatureValid = crypto.verify(
+      null,
+      inventorySigningPayload(inventory),
+      coordinatorKey,
+      Buffer.from(inventory.coordinator_signature_base64, "base64"),
+    );
+  } catch { inventorySignatureValid = false; }
+  codedAssert(
+    inventorySignatureValid,
+    "H2_PHYSICAL_HOST_IDENTITY_SIGNATURE",
+    `authority ${actorValue.role} physical host evidence must be coordinator-signed`,
+  );
   codedAssert(
     actorValue.surface_inventory_digest === inventoryDigest &&
       actorValue.surface_id === derivedSurfaceId && receipt.surface_id === derivedSurfaceId &&
-      receipt.surface_inventory_digest === inventoryDigest,
+      receipt.surface_inventory_digest === inventoryDigest &&
+      receipt.canonical_physical_host_id === derivedPhysicalHostId,
     "H2_ROUTE_SURFACE_ID",
     `authority ${actorValue.role} surface_id must derive from canonical trusted inventory bytes`,
   );
@@ -569,13 +639,36 @@ function validateRouteIdentity(actorValue: J, authority: J, inventoryByDigest: M
   );
   const issued = Date.parse(receipt.issued_at);
   const expires = Date.parse(receipt.expires_at);
+  const measured = Date.parse(receipt.measured_at);
+  const [eventStartedAt, eventEndedAt] = roleEventWindow(authority, actorValue.role);
+  const eventStarted = Date.parse(eventStartedAt);
+  const eventEnded = Date.parse(eventEndedAt);
   codedAssert(
-    Number.isFinite(issued) && Number.isFinite(expires) &&
+    Number.isFinite(measured) && Number.isFinite(issued) && Number.isFinite(expires) &&
       issued >= Date.parse(authority.authorized_at) && expires <= Date.parse(authority.expires_at) &&
+      measured <= issued && issued - measured <= 60_000 &&
+      issued <= eventStarted && eventStarted <= eventEnded && eventEnded <= expires &&
+      receipt.role_event_started_at === eventStartedAt && receipt.role_event_ended_at === eventEndedAt &&
       expires > issued && expires - issued <= ROUTE_RECEIPT_MAX_AGE_MS,
     "H2_ROUTE_RECEIPT_FRESHNESS",
-    "route receipt must be fresh and bounded by the one-shot authority window",
+    "route receipt must be freshly measured before and remain live through the exact role event window",
   );
+  const measurement = {
+    schema_version: "reviewed_metrics_host_route_measurement_v2.0.0",
+    candidate_commit: receipt.candidate_commit,
+    authority_hash: receipt.authority_hash,
+    role: receipt.role,
+    nonce: receipt.nonce,
+    surface_inventory_digest: receipt.surface_inventory_digest,
+    canonical_physical_host_id: receipt.canonical_physical_host_id,
+    requested_root: receipt.requested_root,
+    canonical_root: receipt.canonical_root,
+    existing_ancestor: receipt.existing_ancestor,
+    ancestor_device: receipt.ancestor_device,
+    ancestor_inode: receipt.ancestor_inode,
+    measured_at: receipt.measured_at,
+  };
+  codedAssert(hash(routeMeasurementPayload(measurement)) === receipt.measurement_sha256, "H2_ROUTE_MEASUREMENT_BINDING", "route receipt must bind the exact host-side measurement");
   if (inventory.kind === "local_host") {
     const physical = nearestExistingPhysicalRoot(receipt.requested_root);
     codedAssert(
@@ -587,6 +680,137 @@ function validateRouteIdentity(actorValue: J, authority: J, inventoryByDigest: M
       `authority ${actorValue.role} local route receipt no longer matches physical route`,
     );
   }
+}
+function strictHostRouteMeasurement(requestedRoot: string): ReturnType<typeof nearestExistingPhysicalRoot> {
+  codedAssert(path.isAbsolute(requestedRoot) && path.normalize(requestedRoot) === requestedRoot, "H2_ROUTE_PATH", "measured route must be normalized, absolute, and traversal-free");
+  let cursor = requestedRoot;
+  while (!fs.existsSync(cursor)) cursor = path.dirname(cursor);
+  for (;;) {
+    codedAssert(!fs.lstatSync(cursor).isSymbolicLink(), "H2_ROUTE_SYMLINK", `host-side route measurement refuses symlink component ${cursor}`);
+    const parent = path.dirname(cursor);
+    if (parent === cursor) break;
+    cursor = parent;
+  }
+  return nearestExistingPhysicalRoot(requestedRoot);
+}
+function currentPhysicalHostIdentity(inventory: J): J {
+  const expected = inventory.physical_host_identity;
+  if (expected.type === "local_macos") {
+    codedAssert(process.platform === "darwin", "H2_PHYSICAL_HOST_IDENTITY_TYPE", "local_macos identity can only be measured on macOS");
+    const ioreg = execFileSync("ioreg", ["-rd1", "-c", "IOPlatformExpertDevice"]);
+    const match = ioreg.toString("utf8").match(/"IOPlatformUUID"\s*=\s*"([A-Fa-f0-9-]+)"/);
+    codedAssert(match !== null, "H2_PHYSICAL_HOST_EVIDENCE", "macOS hardware UUID measurement failed");
+    const hostEvidence = Buffer.concat([
+      ioreg,
+      execFileSync("sw_vers"),
+      execFileSync("uname", ["-a"]),
+    ]);
+    return {
+      type: "local_macos",
+      hardware_uuid: match[1].toUpperCase(),
+      os_host_evidence_sha256: hash(hostEvidence),
+    };
+  }
+  codedAssert(expected.type === "aws_ec2", "H2_PHYSICAL_HOST_IDENTITY_TYPE", "unsupported host identity type");
+  const endpoint = "http://169.254.169.254/latest";
+  const token = execFileSync("curl", ["-fsS", "-X", "PUT", "-H", "X-aws-ec2-metadata-token-ttl-seconds: 60", `${endpoint}/api/token`]).toString("utf8");
+  const get = (leaf: string) => execFileSync("curl", ["-fsS", "-H", `X-aws-ec2-metadata-token: ${token}`, `${endpoint}/dynamic/instance-identity/${leaf}`]);
+  const documentRaw = get("document");
+  const pkcs7Raw = get("pkcs7");
+  const document = JSON.parse(documentRaw.toString("utf8"));
+  return {
+    type: "aws_ec2",
+    identity_document_sha256: hash(documentRaw),
+    identity_signature_pkcs7_sha256: hash(pkcs7Raw),
+    instance_id: document.instanceId,
+    account_id: document.accountId,
+    region: document.region,
+    image_id: document.imageId,
+    pending_time: document.pendingTime,
+  };
+}
+function measureRoute(authorityFile: string, role: string, measuredAt = new Date().toISOString(), capability?: InternalSyntheticCapability): J {
+  const authority = load(path.resolve(authorityFile));
+  schema("execution-authorization.schema.v2.json", authority);
+  const actorValue = authority[role];
+  codedAssert(actorValue?.role === role, "H2_ROUTE_ROLE", `authority role ${role} is unavailable`);
+  const inventory = authority.trusted_surface_inventory.find((entry: J) => trustedInventoryDigest(entry) === actorValue.surface_inventory_digest);
+  codedAssert(inventory !== undefined, "H2_ROUTE_INVENTORY_EXACT_SET", "role inventory is missing");
+  const expectedIdentity = structuredClone(inventory.physical_host_identity);
+  delete expectedIdentity.measured_at;
+  delete expectedIdentity.coordinator_verification_pin;
+  const measuredIdentity = capability?.[INTERNAL_SYNTHETIC_CAPABILITY] === true ? expectedIdentity : currentPhysicalHostIdentity(inventory);
+  codedAssert(canon(measuredIdentity) === canon(expectedIdentity), "H2_PHYSICAL_HOST_EVIDENCE", "current physical host evidence does not match coordinator-verified inventory");
+  const physical = strictHostRouteMeasurement(actorValue.route);
+  const measurement: J = {
+    schema_version: "reviewed_metrics_host_route_measurement_v2.0.0",
+    candidate_commit: authority.candidate_commit,
+    authority_hash: authorityBindingHash(authority),
+    role,
+    nonce: actorValue.route_nonce,
+    surface_inventory_digest: actorValue.surface_inventory_digest,
+    canonical_physical_host_id: inventory.canonical_physical_host_id,
+    requested_root: actorValue.route,
+    canonical_root: physical.canonicalRoot,
+    existing_ancestor: physical.existingAncestor,
+    ancestor_device: physical.stat.dev,
+    ancestor_inode: physical.stat.ino,
+    measured_at: measuredAt,
+  };
+  schema("host-route-measurement.schema.v2.json", measurement);
+  return measurement;
+}
+function coordinatorSigningKey(signingKeyFile: string, authority: J): crypto.KeyObject {
+  const keyPath = path.resolve(signingKeyFile);
+  const fd = fs.openSync(keyPath, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+  try {
+    const stat = fs.fstatSync(fd);
+    codedAssert(stat.isFile() && stat.uid === process.getuid!() && stat.nlink === 1 && (stat.mode & 0o777) === 0o600, "H2_COORDINATOR_KEY_UNSAFE", "coordinator signing key must be an owner-controlled one-link 0600 regular file");
+    const key = crypto.createPrivateKey(fs.readFileSync(fd));
+    codedAssert(key.asymmetricKeyType === "ed25519", "H2_COORDINATOR_TRUST_KEY", "coordinator signing key must be Ed25519");
+    const derived = crypto.createPublicKey(key).export({ type: "spki", format: "pem" }).toString();
+    codedAssert(derived === authority.coordinator_trust.public_key_pem, "H2_COORDINATOR_TRUST_KEY", "coordinator signing key does not match authority trust key");
+    return key;
+  } finally { fs.closeSync(fd); }
+}
+function signRouteReceipt(authorityFile: string, measurementFile: string, role: string, signingKeyFile: string, issuedAt: string, expiresAt: string): J {
+  const authority = load(path.resolve(authorityFile));
+  const measurement = load(path.resolve(measurementFile));
+  schema("execution-authorization.schema.v2.json", authority);
+  schema("host-route-measurement.schema.v2.json", measurement);
+  const actorValue = authority[role];
+  const inventory = authority.trusted_surface_inventory.find((entry: J) => trustedInventoryDigest(entry) === actorValue?.surface_inventory_digest);
+  codedAssert(actorValue?.role === role && inventory !== undefined, "H2_ROUTE_ROLE", "measurement role is not authorized");
+  codedAssert(
+    measurement.role === role && measurement.candidate_commit === authority.candidate_commit && measurement.authority_hash === authorityBindingHash(authority) && measurement.nonce === actorValue.route_nonce && measurement.surface_inventory_digest === actorValue.surface_inventory_digest && measurement.canonical_physical_host_id === inventory.canonical_physical_host_id && measurement.requested_root === actorValue.route && measurement.canonical_root === actorValue.canonical_root,
+    "H2_ROUTE_MEASUREMENT_BINDING",
+    "coordinator refused measurement that does not exactly match candidate, authority, role, nonce, inventory, and route",
+  );
+  const [roleEventStartedAt, roleEventEndedAt] = roleEventWindow(authority, role);
+  const receipt: J = {
+    schema_version: "reviewed_metrics_coordinator_route_receipt_v2.0.0",
+    surface_id: actorValue.surface_id,
+    surface_inventory_digest: actorValue.surface_inventory_digest,
+    canonical_physical_host_id: inventory.canonical_physical_host_id,
+    candidate_commit: authority.candidate_commit,
+    authority_hash: authorityBindingHash(authority),
+    nonce: actorValue.route_nonce,
+    role,
+    requested_root: measurement.requested_root,
+    canonical_root: measurement.canonical_root,
+    existing_ancestor: measurement.existing_ancestor,
+    ancestor_device: measurement.ancestor_device,
+    ancestor_inode: measurement.ancestor_inode,
+    measured_at: measurement.measured_at,
+    measurement_sha256: hash(routeMeasurementPayload(measurement)),
+    role_event_started_at: roleEventStartedAt,
+    role_event_ended_at: roleEventEndedAt,
+    issued_at: issuedAt,
+    expires_at: expiresAt,
+    signature_base64: "",
+  };
+  receipt.signature_base64 = crypto.sign(null, routeReceiptPayload(receipt), coordinatorSigningKey(signingKeyFile, authority)).toString("base64");
+  return receipt;
 }
 function physicalPathSafety(output: string): string {
   assert(
@@ -2551,6 +2775,7 @@ function freezeSourceSearchPrediction(
     capability,
     gitExecutionAuthorityEvidence,
     injectedClock,
+    "search_predictor",
   );
   const rawPrediction = fs.readFileSync(input);
   const prediction = JSON.parse(rawPrediction.toString("utf8"));
@@ -2767,20 +2992,42 @@ function validateAuthorityPrincipals(value: J): void {
       value.publisher,
     ];
     const inventoryByDigest = new Map<string, J>();
+    const identityByPhysicalHost = new Map<string, string>();
     for (const inventory of value.trusted_surface_inventory) {
       const digest = trustedInventoryDigest(inventory);
       codedAssert(!inventoryByDigest.has(digest), "H2_ROUTE_INVENTORY_DUPLICATE", "trusted inventory entries must be byte-unique");
+      const physicalHostId = canonicalPhysicalHostId(inventory.physical_host_identity);
+      codedAssert(inventory.canonical_physical_host_id === physicalHostId, "H2_PHYSICAL_HOST_IDENTITY_CONFLICT", "inventory canonical physical host ID mismatch");
+      codedAssert(inventory.physical_host_identity.coordinator_verification_pin === physicalIdentityVerificationPin(inventory.physical_host_identity), "H2_PHYSICAL_HOST_VERIFICATION_PIN", "physical identity coordinator verification pin mismatch");
+      const identityEvidence = canonicalPhysicalIdentityEvidence(inventory.physical_host_identity);
+      const previousIdentity = identityByPhysicalHost.get(physicalHostId);
+      codedAssert(previousIdentity === undefined || previousIdentity === identityEvidence, "H2_PHYSICAL_HOST_IDENTITY_CONFLICT", "one physical host cannot be relabelled with conflicting verified evidence");
+      identityByPhysicalHost.set(physicalHostId, identityEvidence);
       inventoryByDigest.set(digest, inventory);
     }
     const nonces = new Set<string>();
+    const referencedInventories = new Set<string>();
+    const actorInventoryDigests = isolated.map((actorValue: J) => actorValue.surface_inventory_digest);
+    codedAssert(
+      new Set(actorInventoryDigests).size === isolated.length &&
+        actorInventoryDigests.length === inventoryByDigest.size &&
+        actorInventoryDigests.every((digest: string) => inventoryByDigest.has(digest)),
+      "H2_ROUTE_INVENTORY_EXACT_SET",
+      "trusted inventory must be the exact set referenced once by authority roles",
+    );
     for (const actorValue of isolated) {
       validateRouteIdentity(actorValue, value, inventoryByDigest);
+      codedAssert(!referencedInventories.has(actorValue.surface_inventory_digest), "H2_ROUTE_INVENTORY_REFERENCE_DUPLICATE", "each role must reference exactly one distinct inventory entry");
+      referencedInventories.add(actorValue.surface_inventory_digest);
       codedAssert(!nonces.has(actorValue.route_receipt.nonce), "H2_ROUTE_NONCE_REPLAY", "route receipt nonce must be one-shot across roles");
       nonces.add(actorValue.route_receipt.nonce);
     }
+    codedAssert(referencedInventories.size === inventoryByDigest.size, "H2_ROUTE_INVENTORY_EXACT_SET", "trusted inventory must be the exact set referenced once by authority roles");
     for (let left = 0; left < isolated.length; left++)
       for (let right = left + 1; right < isolated.length; right++) {
-        if (isolated[left].surface_id !== isolated[right].surface_id) continue;
+        const leftInventory = inventoryByDigest.get(isolated[left].surface_inventory_digest)!;
+        const rightInventory = inventoryByDigest.get(isolated[right].surface_inventory_digest)!;
+        if (leftInventory.canonical_physical_host_id !== rightInventory.canonical_physical_host_id) continue;
         codedAssert(
           !isWithin(
             isolated[left].canonical_root,
@@ -2819,6 +3066,7 @@ function executionAuthority(
   capability?: InternalSyntheticCapability,
   reader: ExecutionAuthorityReader = gitExecutionAuthorityEvidence,
   injectedClock?: Clock,
+  invocationRole?: string,
 ): J {
   assert(
     injectedClock === undefined ||
@@ -2875,6 +3123,15 @@ function executionAuthority(
       now < Date.parse(value.expires_at),
     "execution authorization is not live at current UTC",
   );
+  if (invocationRole !== undefined) {
+    const receipt = value[invocationRole]?.route_receipt;
+    codedAssert(receipt !== undefined, "H2_ROUTE_ROLE", `missing route receipt for invocation role ${invocationRole}`);
+    codedAssert(
+      Date.parse(receipt.issued_at) <= now && now <= Date.parse(receipt.expires_at),
+      "H2_ROUTE_RECEIPT_INVOCATION_WINDOW",
+      `route receipt for ${invocationRole} is not live at current invocation`,
+    );
+  }
   return value;
 }
 function freezePrediction(
@@ -2895,6 +3152,7 @@ function freezePrediction(
     capability,
     gitExecutionAuthorityEvidence,
     injectedClock,
+    "predictor",
   );
   const raw = fs.readFileSync(input);
   const prediction = JSON.parse(raw.toString("utf8"));
@@ -3833,15 +4091,38 @@ function identityPin(actorValue: J): J {
 }
 function receiptSigningPayload(receipt: J): Buffer { const unsigned = structuredClone(receipt); delete unsigned.finalization_signature; return Buffer.from(canon(unsigned), "utf8"); }
 function retentionSigningPayload(receipt: J): Buffer { const unsigned = structuredClone(receipt); delete unsigned.signature; return Buffer.from(canon(unsigned), "utf8"); }
+function preparationHandoffSigningPayload(handoff: J): Buffer { const unsigned = structuredClone(handoff); delete unsigned.signature; return Buffer.from(canon(unsigned), "utf8"); }
 function fsyncDirectory(directory: string): void {
   const fd = fs.openSync(directory, fs.constants.O_RDONLY);
   try { fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
 }
-function validatePrivateRetentionReceiptValue(value: J, envelopePin: J, detailPin: J, authority: J): void {
+function validatePrivateRetentionReceiptValue(
+  value: J,
+  envelopePin: J,
+  detailPin: J,
+  authority: J,
+  finalization: { finalizationId: string; scoredAt: string; finalizedAt: string },
+  capability?: InternalSyntheticCapability,
+): void {
   codedAssert(value && Array.isArray(value.objects), "H2_RETENTION_MISSING", "private retention receipt is required");
+  const syntheticAllowed = hasInternalSyntheticCapability(authority, capability);
+  codedAssert(
+    value.provider_capability?.provider === "cloudflare_r2_private" || (syntheticAllowed && value.provider_capability?.provider === "synthetic_in_memory"),
+    "H2_RETENTION_PROVIDER",
+    "production finalization requires cloudflare_r2_private retention",
+  );
+  codedAssert(value.objects.every((object: J) => typeof object.etag === "string" && object.etag.length > 0), "H2_RETENTION_OBJECT_IDENTITY", "private retention ETag is mandatory");
   codedAssert(value.objects.every((object: J) => object.no_public_acl === true), "H2_RETENTION_PUBLIC_ACL", "private retention objects must attest no public ACL");
   codedAssert(value.objects.every((object: J) => object.readback_verified === true), "H2_RETENTION_READBACK", "private retention objects require byte-identical readback");
   schema("private-retention-receipt.schema.v2.json", value);
+  codedAssert(
+    value.candidate_commit === authority.candidate_commit &&
+      value.authority_hash === authorityBindingHash(authority) &&
+      value.finalization_id === finalization.finalizationId &&
+      value.scored_at === finalization.scoredAt,
+    "H2_RETENTION_FINALIZATION_BINDING",
+    "retention receipt must bind candidate, authority, finalization, and score time",
+  );
   const expected = new Map([
     ["private_expected_envelope", envelopePin],
     ["private_score_detail", detailPin],
@@ -3851,8 +4132,11 @@ function validatePrivateRetentionReceiptValue(value: J, envelopePin: J, detailPi
     const pinValue = expected.get(object.artifact_role)!;
     codedAssert(object.sha256 === pinValue.sha256 && object.bytes === pinValue.bytes, "H2_RETENTION_EXACT_BYTES", `retention ${object.artifact_role} must bind exact private bytes`);
     codedAssert(object.object_key_sha256 === hash(`gate-h2-private-object:${object.sha256}`), "H2_RETENTION_OBJECT_KEY", "private object key must be content-addressed and exposed only by hash");
-    codedAssert(Date.parse(object.written_at) <= Date.parse(object.readback_at) && Date.parse(object.readback_at) <= Date.parse(value.issued_at), "H2_RETENTION_CHRONOLOGY", "private retention write/readback chronology");
+    codedAssert(typeof object.etag === "string" && object.etag.length > 0, "H2_RETENTION_OBJECT_IDENTITY", "private retention ETag is mandatory");
+    codedAssert(Date.parse(finalization.scoredAt) <= Date.parse(object.written_at) && Date.parse(object.written_at) <= Date.parse(object.readback_at) && Date.parse(object.readback_at) <= Date.parse(value.issued_at) && Date.parse(value.issued_at) <= Date.parse(finalization.finalizedAt), "H2_RETENTION_CHRONOLOGY", "private retention chronology must follow score, write, exact readback, receipt issue, and public finalization");
   }
+  codedAssert(Date.parse(value.issued_at) <= Date.parse(authority.expires_at), "H2_RETENTION_AUTHORITY_WINDOW", "retention receipt must be issued inside authority window");
+  codedAssert(canon(value.evaluator) === canon({ principal: authority.private_evaluator.principal, session_id: authority.private_evaluator.session_id, surface_id: authority.private_evaluator.surface_id }), "H2_RETENTION_EVALUATOR", "retention evaluator binding mismatch");
   const evaluatorPem = authority.private_evaluator.signing_public_key_pem;
   codedAssert(value.signer.authority_role === "private_evaluator" && value.signer.public_key_sha256 === hash(evaluatorPem), "H2_RETENTION_SIGNER", "retention receipt signer must be the authorized evaluator");
   let valid = false;
@@ -3860,15 +4144,16 @@ function validatePrivateRetentionReceiptValue(value: J, envelopePin: J, detailPi
   codedAssert(valid, "H2_RETENTION_SIGNATURE", "private retention receipt signature verification failed");
 }
 function syntheticPrivateRetentionReceipt(envelopeRaw: Buffer, detailRaw: Buffer, authority: J, signingKey: crypto.KeyObject): J {
+  const detail = JSON.parse(detailRaw.toString("utf8"));
   const objects = [
     ["private_expected_envelope", envelopeRaw],
     ["private_score_detail", detailRaw],
   ].map(([artifact_role, raw]) => {
     const bytes = raw as Buffer;
     const sha256 = hash(bytes);
-    return { artifact_role, object_key_sha256: hash(`gate-h2-private-object:${sha256}`), version_id: hash(`memory-version:${sha256}`).slice(0, 32), etag: hash(`memory-etag:${sha256}`), sha256, bytes: bytes.length, written_at: "2026-07-15T00:00:08.700Z", readback_at: "2026-07-15T00:00:08.800Z", no_public_acl: true, readback_verified: true };
+    return { artifact_role, object_key_sha256: hash(`gate-h2-private-object:${sha256}`), version_id: hash(`memory-version:${sha256}`).slice(0, 32), etag: hash(`memory-etag:${sha256}`), sha256, bytes: bytes.length, written_at: "2026-07-15T00:00:09.100Z", readback_at: "2026-07-15T00:00:09.200Z", no_public_acl: true, readback_verified: true };
   });
-  const receipt: J = { schema_version: "reviewed_metrics_private_retention_receipt_v2.0.0", candidate_id: CANDIDATE_ID, provider_capability: { provider: "synthetic_in_memory", bucket_capability_id: hash("gate-h2-synthetic-private-store") }, objects, issued_at: "2026-07-15T00:00:08.900Z", signer: { authority_role: "private_evaluator", public_key_sha256: hash(authority.private_evaluator.signing_public_key_pem) }, signature: null };
+  const receipt: J = { schema_version: "reviewed_metrics_private_retention_receipt_v2.1.0", candidate_id: CANDIDATE_ID, candidate_commit: authority.candidate_commit, authority_hash: authorityBindingHash(authority), finalization_id: detail.finalization_id, scored_at: detail.scored_at, provider_capability: { provider: "synthetic_in_memory", bucket_capability_id: hash("gate-h2-synthetic-private-store") }, objects, issued_at: "2026-07-15T00:00:09.300Z", evaluator: { principal: authority.private_evaluator.principal, session_id: authority.private_evaluator.session_id, surface_id: authority.private_evaluator.surface_id }, signer: { authority_role: "private_evaluator", public_key_sha256: hash(authority.private_evaluator.signing_public_key_pem) }, signature: null };
   receipt.signature = { algorithm: "ed25519", signature_base64: crypto.sign(null, retentionSigningPayload(receipt), signingKey).toString("base64") };
   return receipt;
 }
@@ -4019,6 +4304,7 @@ function validatePrivateScoreReceiptValue(
   value: J,
   baseDir: string,
   authority: J,
+  capability?: InternalSyntheticCapability,
 ): void {
   codedAssert(
     value.finalization_signature !== undefined &&
@@ -4027,10 +4313,23 @@ function validatePrivateScoreReceiptValue(
     "signed private finalization is required",
   );
   codedAssert(value.private_retention !== undefined && value.private_retention !== null, "H2_RETENTION_MISSING", "public finalization requires a signed private retention receipt");
-  if (value.private_retention?.objects && value.private_envelope?.sha256 && value.private_detail?.sha256)
-    validatePrivateRetentionReceiptValue(value.private_retention, value.private_envelope, value.private_detail, authority);
+  codedAssert(value.private_retention.objects?.every((object: J) => object.no_public_acl === true), "H2_RETENTION_PUBLIC_ACL", "private retention objects must attest no public ACL");
+  codedAssert(value.private_retention.objects?.every((object: J) => object.readback_verified === true), "H2_RETENTION_READBACK", "private retention objects require byte-identical readback");
+  codedAssert(value.private_retention.objects?.every((object: J) => typeof object.etag === "string" && object.etag.length > 0), "H2_RETENTION_OBJECT_IDENTITY", "private retention ETag is mandatory");
+  codedAssert(
+    value.private_retention.provider_capability?.provider === "cloudflare_r2_private" || (hasInternalSyntheticCapability(authority, capability) && value.private_retention.provider_capability?.provider === "synthetic_in_memory"),
+    "H2_RETENTION_PROVIDER",
+    "production finalization requires cloudflare_r2_private retention",
+  );
   schema("private-score-receipt.schema.v2.json", value);
-  validatePrivateRetentionReceiptValue(value.private_retention, value.private_envelope, value.private_detail, authority);
+  validatePrivateRetentionReceiptValue(
+    value.private_retention,
+    value.private_envelope,
+    value.private_detail,
+    authority,
+    { finalizationId: value.finalization_id, scoredAt: value.scored_at, finalizedAt: value.finalized_at },
+    capability,
+  );
   assert(
     value.pass === true && value.failure_codes.length === 0,
     "final source-search chain requires passing private score receipt",
@@ -4113,10 +4412,11 @@ function validatePrivateScoreReceiptValue(
     task.authored_at,
     "source-search freeze before dossier",
   );
-  before(
-    authority.private_envelope_sealed_at,
-    value.scored_at,
-    "private envelope seal before private score",
+  codedAssert(Date.parse(value.scored_at) <= Date.parse(value.finalized_at), "H2_FINALIZATION_CHRONOLOGY", "public finalization cannot precede private scoring");
+  codedAssert(
+    Date.parse(authority.private_envelope_sealed_at) < Date.parse(value.scored_at),
+    "H2_FINALIZATION_CHRONOLOGY",
+    "private envelope seal must precede private score",
   );
   verifyReceiptSignature(value, authority);
   const publicReceipt = canon(value);
@@ -4136,6 +4436,10 @@ function scorePrivateSourceSearch(
   signingKey?: crypto.KeyObject | string,
   hooks?: FinalizationHooks,
   retentionReceiptFile?: string,
+  handoffFile?: string,
+  finalizationId?: string,
+  finalizedAt?: string,
+  finalizeOnly = false,
 ): J {
   assert(
     injected === undefined ||
@@ -4146,7 +4450,8 @@ function scorePrivateSourceSearch(
     injected,
     capability,
     gitExecutionAuthorityEvidence,
-    scoredAt ? () => new Date(scoredAt) : undefined,
+    scoredAt || finalizedAt ? () => new Date((scoredAt ?? finalizedAt)!) : undefined,
+    "private_evaluator",
   );
   const authorityFile = path.join(baseDir, "execution-authorization-v2.json");
   const taskFile = path.join(baseDir, SOURCE_SEARCH_TASK_FILE);
@@ -4246,97 +4551,105 @@ function scorePrivateSourceSearch(
     envelope.authored_at,
     "dossier before envelope seal",
   );
-  hooks?.afterInputs?.();
-  const fieldResults = Object.fromEntries(
-    ISSUE_97_OUTPUT_FIELDS.map((field) => [
-      field,
-      normalizeSourceSearchField(field, prediction.answer[field]) ===
-        normalizeSourceSearchField(field, envelope.expected[field]),
-    ]),
-  );
-  fieldResults.bounded_paraphrase = true;
-  fieldResults.no_pixel_identity = true;
-  fieldResults.no_private_leakage = true;
-  const failures = Object.entries(fieldResults)
-    .filter(([, passed]) => !passed)
-    .map(([field]) => `MISMATCH_${field.toUpperCase()}`);
-  const pass = failures.length === 0;
-  const actualScoredAt = scoredAt ?? new Date().toISOString();
-  before(
-    envelope.authored_at,
-    actualScoredAt,
-    "private envelope seal before private score current UTC",
-  );
-  const detail = {
-    schema_version: "reviewed_metrics_private_score_detail_v2.0.0",
-    status: "completed_private",
-    candidate_id: CANDIDATE_ID,
-    task_id: ISSUE_97_TASK_ID,
-    evaluator: identityPin(authority.private_evaluator),
-    inputs: {
-      source_task: snapshotPin(taskSnapshot, SOURCE_SEARCH_TASK_FILE),
-      public_bundle: snapshotPin(bundleSnapshot, SOURCE_SEARCH_BUNDLE_FILE),
-      prediction: snapshotPin(
-        predictionSnapshot,
-        SOURCE_SEARCH_PREDICTION_FILE,
-      ),
-      source_search_freeze: snapshotPin(
-        freezeSnapshot,
-        SOURCE_SEARCH_FREEZE_FILE,
-      ),
-      private_envelope: snapshotPin(
-        envelopeSnapshot,
-        "private-expected-envelope-v2.json",
-      ),
-    },
-    commitment_opening: {
-      commitment: envelope.commitment,
-      recomputed_value: recomputeSourceSearchCommitment(envelope),
-      matched: true,
-    },
-    field_results: fieldResults,
-    pass,
-    failure_codes: failures,
-    scored_at: actualScoredAt,
-  };
-  schema("private-score-detail.schema.v2.json", detail);
-  const canonicalDetailRaw = Buffer.from(pretty(detail), "utf8");
   const detailPath = path.resolve(detailOutput);
-  if (!fs.existsSync(detailPath)) {
-    physicalPathSafety(detailPath);
-    let detailFd: number | undefined;
-    try {
-      detailFd = fs.openSync(detailPath, fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_NOFOLLOW, 0o400);
-      fs.writeFileSync(detailFd, canonicalDetailRaw);
-      fs.fsyncSync(detailFd);
-    } finally { if (detailFd !== undefined) fs.closeSync(detailFd); }
-    fsyncDirectory(path.dirname(detailPath));
-  }
-  const writtenDetailStat = fs.lstatSync(detailPath);
-  hooks?.afterDetailWrite?.();
-  const detailSnapshot = readJsonSnapshot(detailPath, "H2_FINALIZATION_DETAIL", true, canonicalDetailRaw);
-  codedAssert(
-    detailSnapshot.stat.dev === writtenDetailStat.dev &&
-      detailSnapshot.stat.ino === writtenDetailStat.ino &&
-      detailSnapshot.stat.size === writtenDetailStat.size &&
-      detailSnapshot.stat.mtimeMs === writtenDetailStat.mtimeMs,
-    "H2_FINALIZATION_PATH_SUBSTITUTION",
-    "generated private detail path was substituted before readback",
-  );
-  schema("private-score-detail.schema.v2.json", detailSnapshot.value);
-  same(detailSnapshot.value, detail, "private score detail semantic readback");
-  codedAssert(
-    detailSnapshot.raw.equals(canonicalDetailRaw),
-    "H2_FINALIZATION_DETAIL_BYTES",
-    "private score detail exact canonical readback mismatch",
-  );
+  const preparationPath = path.resolve(handoffFile ?? path.join(path.dirname(detailPath), "private-score-preparation-handoff-v2.json"));
   const finalizationKey = evaluatorSigningKey(
     signingKey ?? (capability?.[INTERNAL_SYNTHETIC_CAPABILITY] === true ? SYNTHETIC_EVALUATOR_KEYS.privateKey : undefined),
     authority,
     capability,
   );
-  let retentionPath = retentionReceiptFile ? path.resolve(retentionReceiptFile) : path.join(path.dirname(detailPath), "private-retention-receipt-v2.json");
-  if (capability?.[INTERNAL_SYNTHETIC_CAPABILITY] === true && !fs.existsSync(retentionPath)) {
+  let detailSnapshot: ReturnType<typeof readJsonSnapshot>;
+  let preparationSnapshot: ReturnType<typeof readJsonSnapshot>;
+  let detail: J;
+  let actualScoredAt: string;
+  let actualFinalizationId: string;
+  if (finalizeOnly) {
+    codedAssert(fs.existsSync(detailPath) && fs.existsSync(preparationPath), "H2_PREPARATION_MISSING", "finalization requires the exact sealed detail and signed preparation handoff");
+    detailSnapshot = readJsonSnapshot(detailPath, "H2_FINALIZATION_DETAIL", true);
+    preparationSnapshot = readJsonSnapshot(preparationPath, "H2_PREPARATION_INPUT", true);
+    detail = detailSnapshot.value;
+    schema("private-score-detail.schema.v2.json", detail);
+    schema("private-score-preparation-handoff.schema.v2.json", preparationSnapshot.value);
+    let handoffValid = false;
+    try { handoffValid = crypto.verify(null, preparationHandoffSigningPayload(preparationSnapshot.value), authority.private_evaluator.signing_public_key_pem, Buffer.from(preparationSnapshot.value.signature.signature_base64, "base64")); } catch { handoffValid = false; }
+    codedAssert(handoffValid, "H2_PREPARATION_SIGNATURE", "preparation handoff signature verification failed");
+    actualScoredAt = detail.scored_at;
+    actualFinalizationId = detail.finalization_id;
+    codedAssert(
+      preparationSnapshot.value.candidate_commit === authority.candidate_commit &&
+        preparationSnapshot.value.authority_hash === authorityBindingHash(authority) &&
+        preparationSnapshot.value.finalization_id === actualFinalizationId &&
+        preparationSnapshot.value.scored_at === actualScoredAt &&
+        preparationSnapshot.value.private_detail.sha256 === hash(detailSnapshot.raw) &&
+        preparationSnapshot.value.private_detail.bytes === detailSnapshot.raw.length &&
+        preparationSnapshot.value.private_envelope.sha256 === hash(envelopeSnapshot.raw) &&
+        preparationSnapshot.value.private_envelope.bytes === envelopeSnapshot.raw.length &&
+        canon(preparationSnapshot.value.source_search_freeze) === canon(snapshotPin(freezeSnapshot, SOURCE_SEARCH_FREEZE_FILE)),
+      "H2_PREPARATION_BINDING",
+      "preparation handoff must bind the exact candidate, authority, task freeze, envelope, detail, score time, and finalization ID",
+    );
+  } else {
+    hooks?.afterInputs?.();
+    codedAssert(scoredAt !== undefined, "H2_PREPARATION_SCORED_AT", "prepare-private-score requires explicit --scored-at");
+    actualScoredAt = scoredAt;
+    actualFinalizationId = finalizationId ?? hash(crypto.randomBytes(32));
+    before(envelope.authored_at, actualScoredAt, "private envelope seal before private score current UTC");
+    const fieldResults = Object.fromEntries(ISSUE_97_OUTPUT_FIELDS.map((field) => [field, normalizeSourceSearchField(field, prediction.answer[field]) === normalizeSourceSearchField(field, envelope.expected[field])]));
+    fieldResults.bounded_paraphrase = true;
+    fieldResults.no_pixel_identity = true;
+    fieldResults.no_private_leakage = true;
+    const failures = Object.entries(fieldResults).filter(([, passed]) => !passed).map(([field]) => `MISMATCH_${field.toUpperCase()}`);
+    detail = {
+      schema_version: "reviewed_metrics_private_score_detail_v2.0.0",
+      status: "completed_private",
+      candidate_id: CANDIDATE_ID,
+      task_id: ISSUE_97_TASK_ID,
+      finalization_id: actualFinalizationId,
+      evaluator: identityPin(authority.private_evaluator),
+      inputs: { source_task: snapshotPin(taskSnapshot, SOURCE_SEARCH_TASK_FILE), public_bundle: snapshotPin(bundleSnapshot, SOURCE_SEARCH_BUNDLE_FILE), prediction: snapshotPin(predictionSnapshot, SOURCE_SEARCH_PREDICTION_FILE), source_search_freeze: snapshotPin(freezeSnapshot, SOURCE_SEARCH_FREEZE_FILE), private_envelope: snapshotPin(envelopeSnapshot, "private-expected-envelope-v2.json") },
+      commitment_opening: { commitment: envelope.commitment, recomputed_value: recomputeSourceSearchCommitment(envelope), matched: true },
+      field_results: fieldResults,
+      pass: failures.length === 0,
+      failure_codes: failures,
+      scored_at: actualScoredAt,
+    };
+    schema("private-score-detail.schema.v2.json", detail);
+    const canonicalDetailRaw = Buffer.from(pretty(detail), "utf8");
+    physicalPathSafety(detailPath);
+    let detailFd: number | undefined;
+    try { detailFd = fs.openSync(detailPath, fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_NOFOLLOW, 0o400); fs.writeFileSync(detailFd, canonicalDetailRaw); fs.fsyncSync(detailFd); } finally { if (detailFd !== undefined) fs.closeSync(detailFd); }
+    fsyncDirectory(path.dirname(detailPath));
+    const writtenDetailStat = fs.lstatSync(detailPath);
+    hooks?.afterDetailWrite?.();
+    detailSnapshot = readJsonSnapshot(detailPath, "H2_FINALIZATION_DETAIL", true, canonicalDetailRaw);
+    codedAssert(detailSnapshot.stat.dev === writtenDetailStat.dev && detailSnapshot.stat.ino === writtenDetailStat.ino && detailSnapshot.stat.size === writtenDetailStat.size && detailSnapshot.stat.mtimeMs === writtenDetailStat.mtimeMs, "H2_FINALIZATION_PATH_SUBSTITUTION", "generated private detail path was substituted before readback");
+    codedAssert(detailSnapshot.raw.equals(canonicalDetailRaw), "H2_FINALIZATION_DETAIL_BYTES", "private score detail exact canonical readback mismatch");
+    const handoff: J = {
+      schema_version: "reviewed_metrics_private_score_preparation_handoff_v2.0.0",
+      status: "sealed_private_detail_prepared",
+      candidate_id: CANDIDATE_ID,
+      candidate_commit: authority.candidate_commit,
+      authority_hash: authorityBindingHash(authority),
+      task_id: ISSUE_97_TASK_ID,
+      source_search_freeze: snapshotPin(freezeSnapshot, SOURCE_SEARCH_FREEZE_FILE),
+      private_envelope: snapshotPin(envelopeSnapshot, "private-expected-envelope-v2.json"),
+      private_detail: { sha256: hash(detailSnapshot.raw), bytes: detailSnapshot.raw.length },
+      scored_at: actualScoredAt,
+      finalization_id: actualFinalizationId,
+      evaluator: { principal: authority.private_evaluator.principal, session_id: authority.private_evaluator.session_id, surface_id: authority.private_evaluator.surface_id },
+      signature: null,
+    };
+    handoff.signature = { algorithm: "ed25519", public_key_sha256: hash(authority.private_evaluator.signing_public_key_pem), signature_base64: crypto.sign(null, preparationHandoffSigningPayload(handoff), finalizationKey).toString("base64") };
+    schema("private-score-preparation-handoff.schema.v2.json", handoff);
+    const handoffRaw = Buffer.from(pretty(handoff), "utf8");
+    fs.writeFileSync(physicalPathSafety(preparationPath), handoffRaw, { flag: "wx", mode: 0o400 });
+    fsyncDirectory(path.dirname(preparationPath));
+    preparationSnapshot = readJsonSnapshot(preparationPath, "H2_PREPARATION_INPUT", true, handoffRaw);
+  }
+  const pass = detail.pass;
+  const failures = detail.failure_codes;
+  const retentionPath = retentionReceiptFile ? path.resolve(retentionReceiptFile) : path.join(path.dirname(detailPath), "private-retention-receipt-v2.json");
+  if (capability?.[INTERNAL_SYNTHETIC_CAPABILITY] === true && handoffFile === undefined && !fs.existsSync(retentionPath)) {
     const retention = syntheticPrivateRetentionReceipt(envelopeSnapshot.raw, detailSnapshot.raw, authority, finalizationKey);
     const raw = Buffer.from(pretty(retention), "utf8");
     const fd = fs.openSync(retentionPath, fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_NOFOLLOW, 0o400);
@@ -4344,16 +4657,22 @@ function scorePrivateSourceSearch(
     fsyncDirectory(path.dirname(retentionPath));
   }
   if (!fs.existsSync(retentionPath)) {
-    [...snapshots, detailSnapshot].forEach(closeSnapshot);
-    return { status: "private_detail_prepared_retention_required", detail_sha256: hash(detailSnapshot.raw), detail_bytes: detailSnapshot.raw.length, retention_ingestion_network_write_performed: false };
+    [...snapshots, detailSnapshot, preparationSnapshot].forEach(closeSnapshot);
+    return { status: "private_detail_prepared_retention_required", finalization_id: actualFinalizationId, scored_at: actualScoredAt, detail_sha256: hash(detailSnapshot.raw), detail_bytes: detailSnapshot.raw.length, handoff_sha256: hash(preparationSnapshot.raw), retention_ingestion_network_write_performed: false };
   }
   const retentionSnapshot = readJsonSnapshot(retentionPath, "H2_RETENTION_INPUT");
-  validatePrivateRetentionReceiptValue(retentionSnapshot.value, { sha256: hash(envelopeSnapshot.raw), bytes: envelopeSnapshot.raw.length }, { sha256: hash(detailSnapshot.raw), bytes: detailSnapshot.raw.length }, authority);
+  const actualFinalizedAt = finalizedAt ?? (capability?.[INTERNAL_SYNTHETIC_CAPABILITY] === true ? "2026-07-15T00:00:09.400Z" : new Date().toISOString());
+  validatePrivateRetentionReceiptValue(retentionSnapshot.value, { sha256: hash(envelopeSnapshot.raw), bytes: envelopeSnapshot.raw.length }, { sha256: hash(detailSnapshot.raw), bytes: detailSnapshot.raw.length }, authority, { finalizationId: actualFinalizationId, scoredAt: actualScoredAt, finalizedAt: actualFinalizedAt }, capability);
   const receipt: J = {
     schema_version: "reviewed_metrics_private_score_receipt_v2.0.0",
     status: "completed_public_receipt",
     candidate_id: CANDIDATE_ID,
     task_id: ISSUE_97_TASK_ID,
+    finalization_id: actualFinalizationId,
+    preparation_handoff: {
+      sha256: hash(preparationSnapshot.raw),
+      bytes: preparationSnapshot.raw.length,
+    },
     source_task: snapshotPin(taskSnapshot, SOURCE_SEARCH_TASK_FILE),
     public_bundle: snapshotPin(bundleSnapshot, SOURCE_SEARCH_BUNDLE_FILE),
     prediction: snapshotPin(predictionSnapshot, SOURCE_SEARCH_PREDICTION_FILE),
@@ -4388,6 +4707,7 @@ function scorePrivateSourceSearch(
     pass,
     failure_codes: failures,
     scored_at: actualScoredAt,
+    finalized_at: actualFinalizedAt,
     privacy: {
       plaintext_expected_exposed: false,
       salt_exposed: false,
@@ -4396,7 +4716,7 @@ function scorePrivateSourceSearch(
     finalization_signature: null,
   };
   hooks?.beforeSign?.();
-  [...snapshots, detailSnapshot, retentionSnapshot].forEach(assertSnapshotPathUnchanged);
+  [...snapshots, detailSnapshot, preparationSnapshot, retentionSnapshot].forEach(assertSnapshotPathUnchanged);
   receipt.finalization_signature = {
     algorithm: "ed25519",
     public_key_sha256: hash(authority.private_evaluator.signing_public_key_pem),
@@ -4409,8 +4729,8 @@ function scorePrivateSourceSearch(
   const receiptRaw = Buffer.from(pretty(receipt), "utf8");
   fs.writeFileSync(receiptPath, receiptRaw, { flag: "wx", mode: 0o644 });
   fsyncDirectory(path.dirname(receiptPath));
-  if (pass) validatePrivateScoreReceiptValue(receipt, baseDir, authority);
-  [...snapshots, detailSnapshot, retentionSnapshot].forEach(closeSnapshot);
+  if (pass) validatePrivateScoreReceiptValue(receipt, baseDir, authority, capability);
+  [...snapshots, detailSnapshot, preparationSnapshot, retentionSnapshot].forEach(closeSnapshot);
   return {
     status: pass
       ? "private_source_search_score_passed"
@@ -5685,6 +6005,7 @@ async function runCurrentFinalChainRegressionControls(
 async function baselineContractSelfTest(): Promise<J> {
   let rejections = 0;
   let cases = 0;
+  const rejectionCodes: Record<string, string> = {};
   const reject = async (fn: () => unknown | Promise<unknown>) => {
     cases++;
     try {
@@ -5695,6 +6016,11 @@ async function baselineContractSelfTest(): Promise<J> {
         "H2_TEST_UNTYPED_REJECTION",
         `baseline case ${cases} must reject through a Gate H2 boundary`,
       );
+      const testId = `baseline-${cases}`;
+      const expectedCode = load(NEGATIVE_TEST_CODES_FILE).baseline[testId];
+      codedAssert(typeof expectedCode === "string", "H2_TEST_CODE_REGISTRY_MISSING", `missing explicit expected code for ${testId}`);
+      codedAssert((error as GateH2Error).code === expectedCode, "H2_TEST_WRONG_REJECTION", `${testId} expected ${expectedCode}, observed ${(error as GateH2Error).code}: ${(error as GateH2Error).message}`);
+      rejectionCodes[testId] = expectedCode;
       rejections++;
       return;
     }
@@ -6450,6 +6776,7 @@ async function baselineContractSelfTest(): Promise<J> {
     return {
       status: "baseline_and_current_tests_passed",
       executed_test_ids: currentFinalChainCases,
+      rejection_codes: rejectionCodes,
     };
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
@@ -6736,7 +7063,7 @@ async function sourceSearchSelfTest(): Promise<J> {
     group: string,
     label: string,
     fn: () => unknown | Promise<unknown>,
-    expectedCode = "H2_INVARIANT",
+    expectedCode?: string,
   ) => {
     cases++;
     try {
@@ -6748,15 +7075,19 @@ async function sourceSearchSelfTest(): Promise<J> {
           : error instanceof Error
             ? error.message
             : String(error);
+      const registeredCode = load(NEGATIVE_TEST_CODES_FILE).source_search[label];
+      const intended = expectedCode ?? registeredCode;
+      codedAssert(typeof intended === "string", "H2_TEST_CODE_REGISTRY_MISSING", `missing explicit expected code for ${label}`);
+      codedAssert(registeredCode === intended, "H2_TEST_CODE_REGISTRY_MISMATCH", `registered expected code mismatch for ${label}`);
       codedAssert(
-        observed === expectedCode,
+        observed === intended,
         "H2_TEST_WRONG_REJECTION",
-        `${label} expected ${expectedCode}, observed ${observed}`,
+        `${label} expected ${intended}, observed ${observed}`,
       );
       rejections++;
       groups[group].push(label);
       rejectionCodes[label] = {
-        intended: expectedCode,
+        intended,
         observed,
       };
       return;
@@ -6833,6 +7164,22 @@ async function sourceSearchSelfTest(): Promise<J> {
           canonical_root: actorValue.canonical_root,
           signature_base64: "",
         });
+        const measurement = {
+          schema_version: "reviewed_metrics_host_route_measurement_v2.0.0",
+          candidate_commit: actorValue.route_receipt.candidate_commit,
+          authority_hash: actorValue.route_receipt.authority_hash,
+          role: actorValue.route_receipt.role,
+          nonce: actorValue.route_receipt.nonce,
+          surface_inventory_digest: actorValue.route_receipt.surface_inventory_digest,
+          canonical_physical_host_id: actorValue.route_receipt.canonical_physical_host_id,
+          requested_root: actorValue.route_receipt.requested_root,
+          canonical_root: actorValue.route_receipt.canonical_root,
+          existing_ancestor: actorValue.route_receipt.existing_ancestor,
+          ancestor_device: actorValue.route_receipt.ancestor_device,
+          ancestor_inode: actorValue.route_receipt.ancestor_inode,
+          measured_at: actorValue.route_receipt.measured_at,
+        };
+        actorValue.route_receipt.measurement_sha256 = hash(routeMeasurementPayload(measurement));
         actorValue.route_receipt.signature_base64 = crypto.sign(null, routeReceiptPayload(actorValue.route_receipt), SYNTHETIC_COORDINATOR_KEYS.privateKey).toString("base64");
       }
     };
@@ -6876,8 +7223,6 @@ async function sourceSearchSelfTest(): Promise<J> {
       const equal = structuredClone(authority);
       equal[role].route = equal[role].canonical_root =
         equal.implementation.canonical_root;
-      equal[role].surface_id = equal.implementation.surface_id;
-      equal[role].surface_inventory_digest = equal.implementation.surface_inventory_digest;
       resignAuthority(equal);
       await reject(
         "authority",
@@ -6890,8 +7235,6 @@ async function sourceSearchSelfTest(): Promise<J> {
         nested.implementation.canonical_root,
         role,
       );
-      nested[role].surface_id = nested.implementation.surface_id;
-      nested[role].surface_inventory_digest = nested.implementation.surface_inventory_digest;
       resignAuthority(nested);
       await reject(
         "authority",
@@ -6902,8 +7245,6 @@ async function sourceSearchSelfTest(): Promise<J> {
       const ancestor = structuredClone(authority);
       ancestor.implementation.route = ancestor.implementation.canonical_root =
         path.dirname(ancestor[role].canonical_root);
-      ancestor.implementation.surface_id = ancestor[role].surface_id;
-      ancestor.implementation.surface_inventory_digest = ancestor[role].surface_inventory_digest;
       resignAuthority(ancestor);
       await reject(
         "authority",
@@ -6922,8 +7263,6 @@ async function sourceSearchSelfTest(): Promise<J> {
       const overlap = structuredClone(authority);
       overlap[role].route = overlap[role].canonical_root =
         overlap.predictor.canonical_root;
-      overlap[role].surface_id = overlap.predictor.surface_id;
-      overlap[role].surface_inventory_digest = overlap.predictor.surface_inventory_digest;
       resignAuthority(overlap);
       await reject(
         "authority",
@@ -6955,8 +7294,6 @@ async function sourceSearchSelfTest(): Promise<J> {
     const nestedRoute = structuredClone(authority);
     nestedRoute.publisher.route = nestedRoute.publisher.canonical_root =
       path.join(nestedRoute.task_reviewer.canonical_root, "nested");
-    nestedRoute.publisher.surface_id = nestedRoute.task_reviewer.surface_id;
-    nestedRoute.publisher.surface_inventory_digest = nestedRoute.task_reviewer.surface_inventory_digest;
     resignAuthority(nestedRoute);
     await reject(
       "authority",
@@ -6998,15 +7335,47 @@ async function sourceSearchSelfTest(): Promise<J> {
     const relabeledSurface = structuredClone(authority);
     relabeledSurface.predictor.surface_inventory_digest = relabeledSurface.implementation.surface_inventory_digest;
     resignAuthority(relabeledSurface);
-    await reject("authority", "one-inventory-multiple-surface-ids", () => validateAuthorityPrincipals(relabeledSurface), "H2_ROUTE_SURFACE_ID");
+    await reject("authority", "one-inventory-multiple-surface-ids", () => validateAuthorityPrincipals(relabeledSurface), "H2_ROUTE_INVENTORY_EXACT_SET");
     const duplicateInventory = structuredClone(authority);
     duplicateInventory.trusted_surface_inventory[1] = structuredClone(duplicateInventory.trusted_surface_inventory[0]);
     resignAuthority(duplicateInventory);
     await reject("authority", "duplicate-trusted-inventory", () => validateAuthorityPrincipals(duplicateInventory), "H2_ROUTE_INVENTORY_DUPLICATE");
-    const remoteInventory = { kind: "remote_host", ssh_host_fingerprint_sha256: hash("synthetic-kami-ssh-host"), instance_identity: { provider: "coordinator_verified_ssh", instance_id: "i-synthetic-kami", identity_document_sha256: hash("synthetic-instance-identity"), aws_signature_verified: false } };
+    const omittedInventory = structuredClone(authority);
+    omittedInventory.trusted_surface_inventory.pop();
+    await reject("authority", "omitted-trusted-inventory", () => validateAuthorityPrincipals(omittedInventory), "H2_ROUTE_INVENTORY_EXACT_SET");
+    const extraInventory = structuredClone(authority);
+    extraInventory.trusted_surface_inventory.push(syntheticSurfaceInventory("unreferenced_extra"));
+    await reject("authority", "unreferenced-extra-inventory", () => validateAuthorityPrincipals(extraInventory), "H2_ROUTE_INVENTORY_EXACT_SET");
+    const conflictingHostEvidence = structuredClone(authority);
+    const conflictingInventory = conflictingHostEvidence.trusted_surface_inventory[1];
+    conflictingInventory.physical_host_identity.os_host_evidence_sha256 = hash("conflicting-os-host-evidence");
+    conflictingInventory.physical_host_identity.coordinator_verification_pin = physicalIdentityVerificationPin(conflictingInventory.physical_host_identity);
+    conflictingInventory.coordinator_signature_base64 = crypto.sign(null, inventorySigningPayload(conflictingInventory), SYNTHETIC_COORDINATOR_KEYS.privateKey).toString("base64");
+    conflictingHostEvidence.predictor.surface_inventory_digest = trustedInventoryDigest(conflictingInventory);
+    conflictingHostEvidence.predictor.surface_id = trustedSurfaceId(conflictingInventory);
+    resignAuthority(conflictingHostEvidence);
+    await reject("authority", "same-host-conflicting-evidence", () => validateAuthorityPrincipals(conflictingHostEvidence), "H2_PHYSICAL_HOST_IDENTITY_CONFLICT");
+    const uuidAlias = structuredClone(authority);
+    const aliasInventory = uuidAlias.trusted_surface_inventory[1];
+    aliasInventory.physical_host_identity.hardware_uuid = aliasInventory.physical_host_identity.hardware_uuid.toLowerCase();
+    aliasInventory.physical_host_identity.coordinator_verification_pin = physicalIdentityVerificationPin(aliasInventory.physical_host_identity);
+    aliasInventory.coordinator_signature_base64 = crypto.sign(null, inventorySigningPayload(aliasInventory), SYNTHETIC_COORDINATOR_KEYS.privateKey).toString("base64");
+    uuidAlias.predictor.surface_inventory_digest = trustedInventoryDigest(aliasInventory);
+    uuidAlias.predictor.surface_id = trustedSurfaceId(aliasInventory);
+    resignAuthority(uuidAlias);
+    await accept("authority", "same-mac-hardware-uuid-case-alias", () => validateAuthorityValue(uuidAlias));
+    const wrongInventoryKey = structuredClone(authority);
+    const wrongKeyInventory = wrongInventoryKey.trusted_surface_inventory[1];
+    wrongKeyInventory.coordinator_signature_base64 = crypto.sign(null, inventorySigningPayload(wrongKeyInventory), crypto.generateKeyPairSync("ed25519").privateKey).toString("base64");
+    wrongInventoryKey.predictor.surface_inventory_digest = trustedInventoryDigest(wrongKeyInventory);
+    wrongInventoryKey.predictor.surface_id = trustedSurfaceId(wrongKeyInventory);
+    resignAuthority(wrongInventoryKey);
+    await reject("authority", "physical-identity-signed-by-wrong-key", () => validateAuthorityPrincipals(wrongInventoryKey), "H2_PHYSICAL_HOST_IDENTITY_SIGNATURE");
     const remoteSymlinkAlias = structuredClone(authority);
-    remoteSymlinkAlias.trusted_surface_inventory[0] = remoteInventory;
-    for (const role of ["implementation", "predictor"]) { remoteSymlinkAlias[role].surface_inventory_digest = trustedInventoryDigest(remoteInventory); remoteSymlinkAlias[role].surface_id = trustedSurfaceId(remoteInventory); }
+    const remoteInventories = [syntheticAwsInventory("implementation"), syntheticAwsInventory("predictor")];
+    remoteSymlinkAlias.trusted_surface_inventory[0] = remoteInventories[0];
+    remoteSymlinkAlias.trusted_surface_inventory[1] = remoteInventories[1];
+    for (const [index, role] of ["implementation", "predictor"].entries()) { remoteSymlinkAlias[role].surface_inventory_digest = trustedInventoryDigest(remoteInventories[index]); remoteSymlinkAlias[role].surface_id = trustedSurfaceId(remoteInventories[index]); remoteSymlinkAlias[role].route_receipt.canonical_physical_host_id = remoteInventories[index].canonical_physical_host_id; }
     remoteSymlinkAlias.implementation.route = "/srv/work-link"; remoteSymlinkAlias.implementation.canonical_root = "/srv/work-real"; remoteSymlinkAlias.predictor.route = "/srv/work-real"; remoteSymlinkAlias.predictor.canonical_root = "/srv/work-real"; resignAuthority(remoteSymlinkAlias);
     await reject("authority", "remote-symlink-canonical-alias", () => validateAuthorityPrincipals(remoteSymlinkAlias), "H2_ROUTE_PHYSICAL_OVERLAP");
     const remoteTmpAlias = structuredClone(remoteSymlinkAlias); remoteTmpAlias.implementation.route = "/tmp/h2-shared"; remoteTmpAlias.implementation.canonical_root = "/private/tmp/h2-shared"; remoteTmpAlias.predictor.route = remoteTmpAlias.predictor.canonical_root = "/private/tmp/h2-shared"; resignAuthority(remoteTmpAlias);
@@ -7021,6 +7390,15 @@ async function sourceSearchSelfTest(): Promise<J> {
     staleReceipt.publisher.route_receipt.expires_at = "2026-07-14T23:01:00.000Z";
     staleReceipt.publisher.route_receipt.signature_base64 = crypto.sign(null, routeReceiptPayload(staleReceipt.publisher.route_receipt), SYNTHETIC_COORDINATOR_KEYS.privateKey).toString("base64");
     await reject("authority", "stale-route-receipt", () => validateAuthorityPrincipals(staleReceipt), "H2_ROUTE_RECEIPT_FRESHNESS");
+    const notYetValidReceipt = structuredClone(authority);
+    notYetValidReceipt.publisher.route_receipt.issued_at = "2026-07-15T00:00:08.500Z";
+    notYetValidReceipt.publisher.route_receipt.signature_base64 = crypto.sign(null, routeReceiptPayload(notYetValidReceipt.publisher.route_receipt), SYNTHETIC_COORDINATOR_KEYS.privateKey).toString("base64");
+    await reject("authority", "route-receipt-issued-after-role-start", () => validateAuthorityPrincipals(notYetValidReceipt), "H2_ROUTE_RECEIPT_FRESHNESS");
+    const eventOutsideReceipt = structuredClone(authority);
+    eventOutsideReceipt.search_predictor.route_receipt.expires_at = "2026-07-15T00:00:07.500Z";
+    eventOutsideReceipt.search_predictor.route_receipt.signature_base64 = crypto.sign(null, routeReceiptPayload(eventOutsideReceipt.search_predictor.route_receipt), SYNTHETIC_COORDINATOR_KEYS.privateKey).toString("base64");
+    await reject("authority", "route-event-outside-validity-window", () => validateAuthorityPrincipals(eventOutsideReceipt), "H2_ROUTE_RECEIPT_FRESHNESS");
+    await reject("authority", "route-receipt-not-yet-valid-at-invocation", () => executionAuthority(authority, capability, gitExecutionAuthorityEvidence, () => new Date("2026-07-15T00:00:01.050Z"), "publisher"), "H2_ROUTE_RECEIPT_INVOCATION_WINDOW");
     const wrongCandidateReceipt = structuredClone(authority);
     wrongCandidateReceipt.publisher.route_receipt.candidate_commit = "0".repeat(40);
     wrongCandidateReceipt.publisher.route_receipt.signature_base64 = crypto.sign(null, routeReceiptPayload(wrongCandidateReceipt.publisher.route_receipt), SYNTHETIC_COORDINATOR_KEYS.privateKey).toString("base64");
@@ -7084,8 +7462,6 @@ async function sourceSearchSelfTest(): Promise<J> {
       const bad = structuredClone(authority);
       bad.implementation.route = bad.implementation.canonical_root = leftRoot;
       bad.predictor.route = bad.predictor.canonical_root = rightRoot;
-      bad.predictor.surface_id = bad.implementation.surface_id;
-      bad.predictor.surface_inventory_digest = bad.implementation.surface_inventory_digest;
       resignAuthority(bad);
       await reject(
         "authority",
@@ -7808,8 +8184,13 @@ async function sourceSearchSelfTest(): Promise<J> {
     );
     const earlyReceipt = structuredClone(receipt);
     earlyReceipt.scored_at = authority.private_envelope_sealed_at;
-    await reject("receipt", "receipt-score-equal-envelope-seal", () =>
-      validatePrivateScoreReceiptValue(earlyReceipt, passDir, authority),
+    earlyReceipt.private_retention.scored_at = earlyReceipt.scored_at;
+    earlyReceipt.private_retention.signature.signature_base64 = crypto.sign(null, retentionSigningPayload(earlyReceipt.private_retention), SYNTHETIC_EVALUATOR_KEYS.privateKey).toString("base64");
+    await reject(
+      "receipt",
+      "receipt-score-equal-envelope-seal",
+      () => validatePrivateScoreReceiptValue(earlyReceipt, passDir, authority),
+      "H2_FINALIZATION_CHRONOLOGY",
     );
     const normalizedAnswer = {
       ...envelope.expected,
@@ -7977,7 +8358,6 @@ async function sourceSearchSelfTest(): Promise<J> {
     const coherentForgery = structuredClone(receipt);
     coherentForgery.private_detail.sha256 = "a".repeat(64);
     coherentForgery.private_envelope.sha256 = "b".repeat(64);
-    coherentForgery.scored_at = "2026-07-15T00:00:09.100Z";
     await reject(
       "receipt",
       "coherent-public-forgery",
@@ -8023,15 +8403,37 @@ async function sourceSearchSelfTest(): Promise<J> {
     const publicRetentionAcl = structuredClone(receipt);
     publicRetentionAcl.private_retention.objects[0].no_public_acl = false;
     await reject("receipt", "public-retention-acl", () => validatePrivateScoreReceiptValue(publicRetentionAcl, passDir, authority), "H2_RETENTION_PUBLIC_ACL");
+    const nullRetentionEtag = structuredClone(receipt);
+    nullRetentionEtag.private_retention.objects[0].etag = null;
+    await reject("receipt", "null-retention-etag", () => validatePrivateScoreReceiptValue(nullRetentionEtag, passDir, authority), "H2_RETENTION_OBJECT_IDENTITY");
+    const wrongRetentionKey = structuredClone(receipt);
+    wrongRetentionKey.private_retention.objects[0].object_key_sha256 = "0".repeat(64);
+    await reject("receipt", "wrong-content-addressed-retention-key", () => validatePrivateScoreReceiptValue(wrongRetentionKey, passDir, authority), "H2_RETENTION_OBJECT_KEY");
+    const wrongRetentionFinalization = structuredClone(receipt);
+    wrongRetentionFinalization.private_retention.finalization_id = "0".repeat(64);
+    await reject("receipt", "wrong-retention-finalization", () => validatePrivateScoreReceiptValue(wrongRetentionFinalization, passDir, authority), "H2_RETENTION_FINALIZATION_BINDING");
+    const impossibleRetentionChronology = structuredClone(receipt);
+    impossibleRetentionChronology.private_retention.objects[0].written_at = "2026-07-15T00:00:08.900Z";
+    impossibleRetentionChronology.private_retention.signature.signature_base64 = crypto.sign(null, retentionSigningPayload(impossibleRetentionChronology.private_retention), SYNTHETIC_EVALUATOR_KEYS.privateKey).toString("base64");
+    await reject("receipt", "retention-write-before-score", () => validatePrivateScoreReceiptValue(impossibleRetentionChronology, passDir, authority), "H2_RETENTION_CHRONOLOGY");
+    const wrongProvider = structuredClone(receipt);
+    wrongProvider.private_retention.provider_capability.provider = "cloudflare_r2";
+    await reject("receipt", "wrong-retention-provider", () => validatePrivateScoreReceiptValue(wrongProvider, passDir, authority), "H2_RETENTION_PROVIDER");
+    const noSyntheticCapabilityAuthority = structuredClone(authority);
+    noSyntheticCapabilityAuthority.candidate_commit = "1".repeat(40);
+    await reject("receipt", "synthetic-retention-without-capability", () => validatePrivateScoreReceiptValue(receipt, passDir, noSyntheticCapabilityAuthority), "H2_RETENTION_PROVIDER");
     const wrongKeyAuthority = structuredClone(authority);
     const wrongKeys = crypto.generateKeyPairSync("ed25519");
     wrongKeyAuthority.private_evaluator.signing_public_key_pem =
       wrongKeys.publicKey.export({ type: "spki", format: "pem" }).toString();
+    const wrongKeyReceipt = structuredClone(receipt);
+    wrongKeyReceipt.private_retention.authority_hash = authorityBindingHash(wrongKeyAuthority);
+    wrongKeyReceipt.private_retention.signature.signature_base64 = crypto.sign(null, retentionSigningPayload(wrongKeyReceipt.private_retention), SYNTHETIC_EVALUATOR_KEYS.privateKey).toString("base64");
     await reject(
       "receipt",
       "wrong-evaluator-public-key",
       () =>
-        validatePrivateScoreReceiptValue(receipt, passDir, wrongKeyAuthority),
+        validatePrivateScoreReceiptValue(wrongKeyReceipt, passDir, wrongKeyAuthority),
       "H2_RETENTION_SIGNER",
     );
     const wrongSignature = structuredClone(receipt);
@@ -8794,6 +9196,7 @@ async function selfTest(): Promise<J> {
       source_search: sourceSearch.case_groups,
     },
     rejection_codes: sourceSearch.rejection_codes,
+    baseline_rejection_codes: baseline.rejection_codes,
     synthetic_only_private_score: true,
     real_authority_created: false,
     private_envelope_committed: false,
@@ -8848,19 +9251,54 @@ async function integrationTest(): Promise<J> {
       unified,
       capability,
     );
-    const privateScore = scorePrivateSourceSearch(
-      sourceDir,
-      sourcePaths.envelopeFile,
-      sourcePaths.detailFile,
-      sourcePaths.receiptFile,
-      unified,
-      capability,
-      "2026-07-15T00:00:09.000Z",
-    );
+    unified.private_evaluator.route = unified.private_evaluator.canonical_root = fs.realpathSync(sourceDir);
+    sealSyntheticAuthority(unified);
+    fs.writeFileSync(path.join(sourceDir, "execution-authorization-v2.json"), pretty(unified), { mode: 0o600 });
+    const handoffFile = path.join(path.dirname(sourcePaths.detailFile), "private-score-preparation-handoff-v2.json");
+    const retentionFile = path.join(path.dirname(sourcePaths.detailFile), "private-retention-receipt-v2.json");
+    const signingKeyFile = path.join(sourceDir, "synthetic-evaluator-private.pem");
+    fs.writeFileSync(signingKeyFile, SYNTHETIC_EVALUATOR_KEYS.privateKey.export({ type: "pkcs8", format: "pem" }), { mode: 0o600, flag: "wx" });
+    const authorityFile = path.join(sourceDir, "execution-authorization-v2.json");
+    const childEnv = { ...process.env, GATE_H2_INTERNAL_TEST_CAPABILITY: hash(`gate-h2-internal-two-process-v2\n${canon(unified)}`) };
+    const cli = path.join(ROOT, "node_modules/.bin/tsx");
+    const scriptFile = fileURLToPath(import.meta.url);
+    const commonArgs = [
+      scriptFile,
+      "--workspace", sourceDir,
+      "--envelope", sourcePaths.envelopeFile,
+      "--detail", sourcePaths.detailFile,
+      "--output", sourcePaths.receiptFile,
+      "--handoff", handoffFile,
+      "--signing-key", signingKeyFile,
+      "--authority", authorityFile,
+    ];
+    const preparationOutput = execFileSync(cli, [scriptFile, "prepare-private-score", ...commonArgs.slice(1), "--scored-at", "2026-07-15T00:00:09.000Z"], { cwd: ROOT, env: childEnv }).toString("utf8");
+    const preparation = JSON.parse(preparationOutput);
+    assert(preparation.status === "private_detail_prepared_retention_required", "first private-score process must stop after stable preparation");
+    const envelopeRaw = fs.readFileSync(sourcePaths.envelopeFile);
+    const detailRaw = fs.readFileSync(sourcePaths.detailFile);
+    const retention = syntheticPrivateRetentionReceipt(envelopeRaw, detailRaw, unified, SYNTHETIC_EVALUATOR_KEYS.privateKey);
+    fs.writeFileSync(retentionFile, pretty(retention), { mode: 0o400, flag: "wx" });
+    const finalizationOutput = execFileSync(cli, [scriptFile, "finalize-private-score", ...commonArgs.slice(1), "--retention-receipt", retentionFile, "--finalized-at", "2026-07-15T00:00:09.400Z"], { cwd: ROOT, env: childEnv }).toString("utf8");
+    const privateScore = JSON.parse(finalizationOutput);
     assert(
       privateScore.status === "private_source_search_score_passed",
       "synthetic source-search integration score",
     );
+    const routeAuthority = structuredClone(unified);
+    routeAuthority.predictor.route = routeAuthority.predictor.canonical_root = fs.realpathSync(sourceDir);
+    sealSyntheticAuthority(routeAuthority);
+    const routeAuthorityFile = path.join(sourceDir, "route-authority-v2.json");
+    const coordinatorKeyFile = path.join(sourceDir, "synthetic-coordinator-private.pem");
+    const measurementFile = path.join(sourceDir, "host-route-measurement-v2.json");
+    const routeReceiptFile = path.join(sourceDir, "coordinator-route-receipt-v2.json");
+    fs.writeFileSync(routeAuthorityFile, pretty(routeAuthority), { mode: 0o600, flag: "wx" });
+    fs.writeFileSync(coordinatorKeyFile, SYNTHETIC_COORDINATOR_KEYS.privateKey.export({ type: "pkcs8", format: "pem" }), { mode: 0o600, flag: "wx" });
+    const routeEnv = { ...process.env, GATE_H2_INTERNAL_TEST_CAPABILITY: hash(`gate-h2-internal-two-process-v2\n${canon(routeAuthority)}`) };
+    execFileSync(cli, [scriptFile, "measure-route", "--authority", routeAuthorityFile, "--role", "predictor", "--output", measurementFile], { cwd: ROOT, env: routeEnv });
+    execFileSync(cli, [scriptFile, "sign-route-receipt", "--authority", routeAuthorityFile, "--measurement", measurementFile, "--role", "predictor", "--signing-key", coordinatorKeyFile, "--issued-at", "2026-07-15T00:00:01.100Z", "--expires-at", "2026-07-15T00:05:01.100Z", "--output", routeReceiptFile], { cwd: ROOT, env: routeEnv });
+    const cliRouteReceipt = load(routeReceiptFile);
+    assert(crypto.verify(null, routeReceiptPayload(cliRouteReceipt), routeAuthority.coordinator_trust.public_key_pem, Buffer.from(cliRouteReceipt.signature_base64, "base64")), "measure-route/sign-route-receipt CLI round trip signature");
     return {
       status: "integration_test_passed",
       deterministic_bundle_tree_sha256: a.tree_sha256,
@@ -8868,8 +9306,10 @@ async function integrationTest(): Promise<J> {
       public_source_search_bundle_schema_sha256: publicA.output_schema_sha256,
       media_members: 44,
       synthetic_visual_contract_only: true,
-      synthetic_source_search_chain: "passed_via_internal_capability",
-      source_search_private_detail_persisted: false,
+      synthetic_source_search_chain: "passed_via_two_process_two_clock_internal_capability",
+      source_search_private_detail_persisted: true,
+      stable_preparation_finalization_id: preparation.finalization_id,
+      route_cli_round_trip: "host_measurement_then_coordinator_signature_passed",
       real_authority_created: false,
       normal_score_cli_requires_committed_unified_authority_and_both_freezes: true,
       normal_score_cli_available_in_current_candidate: false,
@@ -9004,7 +9444,47 @@ function syntheticCompletedGold(bundle: string): J {
   };
 }
 function syntheticSurfaceInventory(role: string): J {
-  return { kind: "local_host", stable_host_uuid: `synthetic-host-uuid-${hash(role).slice(0, 32)}` };
+  const physicalHostIdentity: J = {
+    type: "local_macos",
+    hardware_uuid: "00000000-0000-0000-0000-000000000001",
+    os_host_evidence_sha256: hash("synthetic-macos-os-host-evidence"),
+    measured_at: "2026-07-15T00:00:00.500Z",
+    coordinator_verification_pin: "",
+  };
+  physicalHostIdentity.coordinator_verification_pin = physicalIdentityVerificationPin(physicalHostIdentity);
+  const inventory: J = {
+    inventory_id: `synthetic_${role}`,
+    kind: "local_host",
+    canonical_physical_host_id: canonicalPhysicalHostId(physicalHostIdentity),
+    physical_host_identity: physicalHostIdentity,
+    coordinator_signature_base64: "",
+  };
+  inventory.coordinator_signature_base64 = crypto.sign(null, inventorySigningPayload(inventory), SYNTHETIC_COORDINATOR_KEYS.privateKey).toString("base64");
+  return inventory;
+}
+function syntheticAwsInventory(role: string, overrides: J = {}): J {
+  const physicalHostIdentity: J = {
+    type: "aws_ec2",
+    identity_document_sha256: hash("synthetic-aws-instance-identity-document"),
+    identity_signature_pkcs7_sha256: hash("synthetic-aws-instance-identity-pkcs7"),
+    instance_id: "i-abcdef1234567890",
+    account_id: "123456789012",
+    region: "ca-central-1",
+    image_id: "ami-abcdef1234567890",
+    pending_time: "2026-07-15T00:00:00.000Z",
+    coordinator_verification_pin: "",
+    ...overrides,
+  };
+  physicalHostIdentity.coordinator_verification_pin = physicalIdentityVerificationPin(physicalHostIdentity);
+  const inventory: J = {
+    inventory_id: `synthetic_aws_${role}`,
+    kind: "remote_host",
+    canonical_physical_host_id: canonicalPhysicalHostId(physicalHostIdentity),
+    physical_host_identity: physicalHostIdentity,
+    coordinator_signature_base64: "",
+  };
+  inventory.coordinator_signature_base64 = crypto.sign(null, inventorySigningPayload(inventory), SYNTHETIC_COORDINATOR_KEYS.privateKey).toString("base64");
+  return inventory;
 }
 function actor(role: string): J {
   const requested = `/synthetic-isolation/${role}`;
@@ -9036,6 +9516,7 @@ function sealSyntheticAuthority(authority: J): J {
       schema_version: "reviewed_metrics_coordinator_route_receipt_v2.0.0",
       surface_id: actorValue.surface_id,
       surface_inventory_digest: actorValue.surface_inventory_digest,
+      canonical_physical_host_id: authority.trusted_surface_inventory[index].canonical_physical_host_id,
       candidate_commit: authority.candidate_commit,
       authority_hash: authorityHash,
       nonce: actorValue.route_nonce,
@@ -9045,13 +9526,34 @@ function sealSyntheticAuthority(authority: J): J {
       existing_ancestor: physical.existingAncestor,
       ancestor_device: physical.stat.dev,
       ancestor_inode: physical.stat.ino,
-      issued_at: `2026-07-15T00:00:0${index + 1}.100Z`,
-      expires_at: `2026-07-15T00:05:0${index + 1}.100Z`,
+      measured_at: "2026-07-15T00:00:01.050Z",
+      measurement_sha256: "",
+      role_event_started_at: roleEventWindow(authority, role)[0],
+      role_event_ended_at: roleEventWindow(authority, role)[1],
+      issued_at: "2026-07-15T00:00:01.100Z",
+      expires_at: "2026-07-15T00:05:01.100Z",
       signature_base64: "",
     };
+    const measurement = {
+      schema_version: "reviewed_metrics_host_route_measurement_v2.0.0",
+      candidate_commit: receipt.candidate_commit,
+      authority_hash: receipt.authority_hash,
+      role: receipt.role,
+      nonce: receipt.nonce,
+      surface_inventory_digest: receipt.surface_inventory_digest,
+      canonical_physical_host_id: receipt.canonical_physical_host_id,
+      requested_root: receipt.requested_root,
+      canonical_root: receipt.canonical_root,
+      existing_ancestor: receipt.existing_ancestor,
+      ancestor_device: receipt.ancestor_device,
+      ancestor_inode: receipt.ancestor_inode,
+      measured_at: receipt.measured_at,
+    };
+    receipt.measurement_sha256 = hash(routeMeasurementPayload(measurement));
     receipt.signature_base64 = crypto.sign(null, routeReceiptPayload(receipt), SYNTHETIC_COORDINATOR_KEYS.privateKey).toString("base64");
     actorValue.route_receipt = receipt;
   });
+  INTERNAL_SYNTHETIC_AUTHORITIES.add(authority);
   return authority;
 }
 function syntheticExecutionAuthority(bundle: string): J {
@@ -9191,12 +9693,55 @@ async function main(): Promise<void> {
       workspace: { type: "string" },
       "signing-key": { type: "string" },
       "retention-receipt": { type: "string" },
+      authority: { type: "string" },
+      measurement: { type: "string" },
+      role: { type: "string" },
+      "issued-at": { type: "string" },
+      "expires-at": { type: "string" },
+      "scored-at": { type: "string" },
+      "finalized-at": { type: "string" },
+      handoff: { type: "string" },
+      "finalization-id": { type: "string" },
     },
     allowPositionals: false,
   });
   const o = parsed.values;
+  const internalAuthority = (() => {
+    if (!o.authority || !process.env.GATE_H2_INTERNAL_TEST_CAPABILITY) return undefined;
+    const candidate = load(path.resolve(o.authority));
+    const expected = hash(`gate-h2-internal-two-process-v2\n${canon(candidate)}`);
+    codedAssert(
+      candidate.candidate_commit === SYNTHETIC_CANDIDATE_COMMIT && process.env.GATE_H2_INTERNAL_TEST_CAPABILITY === expected,
+      "H2_INTERNAL_CAPABILITY",
+      "internal synthetic authority capability refused",
+    );
+    return candidate;
+  })();
+  const internalCapability: InternalSyntheticCapability | undefined = internalAuthority ? { [INTERNAL_SYNTHETIC_CAPABILITY]: true } : undefined;
   let result: J;
-  if (command === "build")
+  if (command === "measure-route") {
+    const measurement = measureRoute(
+      path.resolve(assertString(o.authority, "--authority required")),
+      assertString(o.role, "--role required"),
+      new Date().toISOString(),
+      internalCapability,
+    );
+    const output = physicalPathSafety(path.resolve(assertString(o.output, "--output required")));
+    fs.writeFileSync(output, pretty(measurement), { flag: "wx", mode: 0o600 });
+    result = { status: "host_route_measured", measurement_sha256: hash(routeMeasurementPayload(measurement)) };
+  } else if (command === "sign-route-receipt") {
+    const receipt = signRouteReceipt(
+      path.resolve(assertString(o.authority, "--authority required")),
+      path.resolve(assertString(o.measurement, "--measurement required")),
+      assertString(o.role, "--role required"),
+      path.resolve(assertString(o["signing-key"], "--signing-key required")),
+      assertString(o["issued-at"], "--issued-at required"),
+      assertString(o["expires-at"], "--expires-at required"),
+    );
+    const output = physicalPathSafety(path.resolve(assertString(o.output, "--output required")));
+    fs.writeFileSync(output, pretty(receipt), { flag: "wx", mode: 0o644 });
+    result = { status: "coordinator_route_receipt_signed", receipt_sha256: hash(Buffer.from(pretty(receipt))) };
+  } else if (command === "build")
     result = await build(o.output ? path.resolve(o.output) : FIXTURE);
   else if (command === "build-blind-bundle")
     result = await buildBlindBundle(
@@ -9244,18 +9789,39 @@ async function main(): Promise<void> {
       executionAuthority(),
     );
     result = { status: "private_expected_envelope_valid" };
-  } else if (command === "score-source-search")
+  } else if (command === "prepare-private-score")
     result = scorePrivateSourceSearch(
       path.resolve(assertString(o.workspace, "--workspace required")),
       path.resolve(assertString(o.envelope, "--envelope required")),
       path.resolve(assertString(o.detail, "--detail required")),
       path.resolve(assertString(o.output, "--output required")),
+      internalAuthority,
+      internalCapability,
+      assertString(o["scored-at"], "--scored-at required"),
+      path.resolve(assertString(o["signing-key"], "--signing-key required")),
       undefined,
       undefined,
+      path.resolve(assertString(o.handoff, "--handoff required")),
+      o["finalization-id"],
+      undefined,
+      false,
+    );
+  else if (command === "finalize-private-score")
+    result = scorePrivateSourceSearch(
+      path.resolve(assertString(o.workspace, "--workspace required")),
+      path.resolve(assertString(o.envelope, "--envelope required")),
+      path.resolve(assertString(o.detail, "--detail required")),
+      path.resolve(assertString(o.output, "--output required")),
+      internalAuthority,
+      internalCapability,
       undefined,
       path.resolve(assertString(o["signing-key"], "--signing-key required")),
       undefined,
-      o["retention-receipt"] ? path.resolve(o["retention-receipt"]) : undefined,
+      path.resolve(assertString(o["retention-receipt"], "--retention-receipt required")),
+      path.resolve(assertString(o.handoff, "--handoff required")),
+      undefined,
+      assertString(o["finalized-at"], "--finalized-at required"),
+      true,
     );
   else if (command === "validate-gold")
     result = validateGold(assertString(o.input, "--input required"));
@@ -9289,6 +9855,6 @@ async function main(): Promise<void> {
 }
 function assertString(value: string | undefined, message: string): string { assert(value, message); return value; }
 main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
+  console.error(error instanceof Error ? error.stack ?? error.message : error);
   process.exitCode = 1;
 });

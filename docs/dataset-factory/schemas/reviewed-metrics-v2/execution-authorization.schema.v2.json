@@ -136,8 +136,8 @@
     },
     "surfaceInventory": {
       "oneOf": [
-        {"type":"object","additionalProperties":false,"required":["kind","stable_host_uuid"],"properties":{"kind":{"const":"local_host"},"stable_host_uuid":{"type":"string","minLength":16}}},
-        {"type":"object","additionalProperties":false,"required":["kind","ssh_host_fingerprint_sha256","instance_identity"],"properties":{"kind":{"const":"remote_host"},"ssh_host_fingerprint_sha256":{"type":"string","pattern":"^[a-f0-9]{64}$"},"instance_identity":{"type":"object","additionalProperties":false,"required":["provider","instance_id","identity_document_sha256","aws_signature_verified"],"properties":{"provider":{"enum":["aws_ec2","coordinator_verified_ssh"]},"instance_id":{"type":"string","minLength":1},"identity_document_sha256":{"type":"string","pattern":"^[a-f0-9]{64}$"},"aws_signature_verified":{"type":"boolean"}}}}}
+        {"type":"object","additionalProperties":false,"required":["inventory_id","kind","canonical_physical_host_id","physical_host_identity","coordinator_signature_base64"],"properties":{"inventory_id":{"type":"string","pattern":"^[a-z0-9_-]+$"},"kind":{"const":"local_host"},"canonical_physical_host_id":{"type":"string","pattern":"^[a-f0-9]{64}$"},"physical_host_identity":{"type":"object","additionalProperties":false,"required":["type","hardware_uuid","os_host_evidence_sha256","measured_at","coordinator_verification_pin"],"properties":{"type":{"const":"local_macos"},"hardware_uuid":{"type":"string","pattern":"^[A-Fa-f0-9-]{16,64}$"},"os_host_evidence_sha256":{"type":"string","pattern":"^[a-f0-9]{64}$"},"measured_at":{"type":"string","format":"date-time"},"coordinator_verification_pin":{"type":"string","pattern":"^[a-f0-9]{64}$"}}},"coordinator_signature_base64":{"type":"string","minLength":80,"maxLength":100}}},
+        {"type":"object","additionalProperties":false,"required":["inventory_id","kind","canonical_physical_host_id","physical_host_identity","coordinator_signature_base64"],"properties":{"inventory_id":{"type":"string","pattern":"^[a-z0-9_-]+$"},"kind":{"const":"remote_host"},"canonical_physical_host_id":{"type":"string","pattern":"^[a-f0-9]{64}$"},"physical_host_identity":{"type":"object","additionalProperties":false,"required":["type","identity_document_sha256","identity_signature_pkcs7_sha256","instance_id","account_id","region","image_id","pending_time","coordinator_verification_pin"],"properties":{"type":{"const":"aws_ec2"},"identity_document_sha256":{"type":"string","pattern":"^[a-f0-9]{64}$"},"identity_signature_pkcs7_sha256":{"type":"string","pattern":"^[a-f0-9]{64}$"},"instance_id":{"type":"string","pattern":"^i-[a-f0-9]+$"},"account_id":{"type":"string","pattern":"^[0-9]{12}$"},"region":{"type":"string","pattern":"^[a-z]{2}-[a-z]+-[0-9]+$"},"image_id":{"type":"string","pattern":"^ami-[a-f0-9]+$"},"pending_time":{"type":"string","format":"date-time"},"coordinator_verification_pin":{"type":"string","pattern":"^[a-f0-9]{64}$"}}},"coordinator_signature_base64":{"type":"string","minLength":80,"maxLength":100}}}
       ]
     },
     "routeReceipt": {
@@ -147,6 +147,7 @@
         "schema_version",
         "surface_id",
         "surface_inventory_digest",
+        "canonical_physical_host_id",
         "candidate_commit",
         "authority_hash",
         "nonce",
@@ -156,6 +157,10 @@
         "existing_ancestor",
         "ancestor_device",
         "ancestor_inode",
+        "measured_at",
+        "measurement_sha256",
+        "role_event_started_at",
+        "role_event_ended_at",
         "issued_at",
         "expires_at",
         "signature_base64"
@@ -166,6 +171,7 @@
         },
         "surface_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
         "surface_inventory_digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "canonical_physical_host_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
         "candidate_commit": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
         "authority_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
         "nonce": { "type": "string", "pattern": "^[a-f0-9]{32,128}$" },
@@ -175,6 +181,10 @@
         "existing_ancestor": { "type": "string", "pattern": "^/" },
         "ancestor_device": { "type": "integer", "minimum": 0 },
         "ancestor_inode": { "type": "integer", "minimum": 0 },
+        "measured_at": { "type": "string", "format": "date-time" },
+        "measurement_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "role_event_started_at": { "type": "string", "format": "date-time" },
+        "role_event_ended_at": { "type": "string", "format": "date-time" },
         "issued_at": { "type": "string", "format": "date-time" },
         "expires_at": { "type": "string", "format": "date-time" },
         "signature_base64": { "type": "string", "minLength": 1 }
