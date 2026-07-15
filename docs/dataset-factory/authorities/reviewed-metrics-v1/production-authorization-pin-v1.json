@@ -1,13 +1,29 @@
 {
   "schema_version": "reviewed_metrics_production_authorization_pin_v1.0.0",
   "authority_id": "gate-h-production-authorization-pin",
-  "state": "unconfigured",
+  "state": "active",
   "candidate_artifact_id": "dfv0_reviewed_metrics_v1_candidate_20260714",
-  "candidate_descriptor_sha256": null,
-  "authorization_file": null,
-  "approved_reviewer": null,
-  "authorizing_authority": null,
-  "authorized_at": null,
-  "permitted_output": null,
-  "scope_note": "Fail-closed Gate H production authorization pin. No reviewer, authorization bytes, output route, receipt, or publication is authorized."
+  "candidate_descriptor_sha256": "bfc9de67251d7b30eb4e5ea46ee8d84922c209544f6c6e5c1e23b755397052d5",
+  "authorization_file": {
+    "path": "docs/dataset-factory/authorities/reviewed-metrics-v1/reviewer-authorization-v1.json",
+    "sha256": "d66a969563878b6e02f46d965ab374cf7e186d8c518c8d62aa1e275adcd96dbc",
+    "bytes": 3265
+  },
+  "approved_reviewer": {
+    "reviewer_id": "sol-high-gate-h-task-reviewer:019f63c9-b9ff-7460-b541-b8b331c31021",
+    "session_id": "019f63c9-b9ff-7460-b541-b8b331c31021",
+    "model": "gpt-5.6-sol",
+    "reasoning_effort": "high"
+  },
+  "authorizing_authority": {
+    "identity": "codex-gate-h-coordinator",
+    "session_id": "codex-desktop-gate-h-coordinator-019f140c-41e3-7260-af87-991146faed5c",
+    "role": "gate_h_task_review_authority"
+  },
+  "authorized_at": "2026-07-15T03:19:01Z",
+  "permitted_output": {
+    "absolute_path": "/tmp/issue92-gate-h-publication-v1",
+    "basename": "issue92-gate-h-publication-v1"
+  },
+  "scope_note": "Active Gate H authorization for one exact reviewer route, all 32 candidate tasks, and the single pinned publication destination. No other reviewer or output is authorized."
 }
