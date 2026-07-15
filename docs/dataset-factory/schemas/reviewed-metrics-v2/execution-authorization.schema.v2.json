@@ -3,56 +3,215 @@
   "$id": "execution-authorization.schema.v2.json",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "status", "candidate_id", "implementation_base_commit", "candidate_commit", "bundle_tree_sha256", "implementation", "predictor", "gold_reviewer", "task_reviewer", "publisher", "forbidden_prior_reviewers", "authorized_at", "started_at", "ended_at", "freeze_at", "expires_at"],
+  "required": [
+    "schema_version",
+    "status",
+    "candidate_id",
+    "implementation_base_commit",
+    "candidate_commit",
+    "bundle_tree_sha256",
+    "implementation",
+    "predictor",
+    "gold_reviewer",
+    "task_reviewer",
+    "publisher",
+    "forbidden_prior_reviewers",
+    "authorized_at",
+    "started_at",
+    "ended_at",
+    "freeze_at",
+    "expires_at"
+  ],
   "properties": {
-    "schema_version": {"enum": ["reviewed_metrics_execution_authorization_v2.0.0", "reviewed_metrics_execution_authorization_v2.1.0"]},
-    "status": {"const": "activated_exact_one_shot"},
-    "candidate_id": {"const": "dfv0_reviewed_metrics_v2_candidate_20260715"},
-    "implementation_base_commit": {"const": "5fe4dfbe51a320a51f1f126b4a2d8cf0722be5dc"},
-    "candidate_commit": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
-    "bundle_tree_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
-    "implementation": {"$ref": "#/$defs/implementationActor"},
-    "predictor": {"$ref": "#/$defs/predictorActor"},
-    "search_predictor": {"$ref": "#/$defs/searchPredictorActor"},
-    "private_evaluator": {"$ref": "#/$defs/privateEvaluatorActor"},
-    "gold_reviewer": {"$ref": "#/$defs/goldActor"},
-    "task_reviewer": {"$ref": "#/$defs/taskActor"},
-    "publisher": {"$ref": "#/$defs/publisherActor"},
-    "forbidden_prior_reviewers": {"type": "array", "minItems": 4, "maxItems": 4, "uniqueItems": true, "items": {"$ref": "#/$defs/forbiddenActor"}},
-    "authorized_at": {"type": "string", "format": "date-time"},
-    "started_at": {"type": "string", "format": "date-time"},
-    "ended_at": {"type": "string", "format": "date-time"},
-    "freeze_at": {"type": "string", "format": "date-time"},
-    "source_search_started_at": {"type": "string", "format": "date-time"},
-    "source_search_ended_at": {"type": "string", "format": "date-time"},
-    "source_search_freeze_at": {"type": "string", "format": "date-time"},
-    "source_dossier_authored_at": {"type": "string", "format": "date-time"},
-    "private_envelope_sealed_at": {"type": "string", "format": "date-time"},
-    "expires_at": {"type": "string", "format": "date-time"}
+    "schema_version": {
+      "enum": [
+        "reviewed_metrics_execution_authorization_v2.0.0",
+        "reviewed_metrics_execution_authorization_v2.1.0"
+      ]
+    },
+    "status": { "const": "activated_exact_one_shot" },
+    "candidate_id": { "const": "dfv0_reviewed_metrics_v2_candidate_20260715" },
+    "implementation_base_commit": {
+      "const": "5fe4dfbe51a320a51f1f126b4a2d8cf0722be5dc"
+    },
+    "candidate_commit": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "bundle_tree_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "implementation": { "$ref": "#/$defs/implementationActor" },
+    "predictor": { "$ref": "#/$defs/predictorActor" },
+    "search_predictor": { "$ref": "#/$defs/searchPredictorActor" },
+    "private_evaluator": { "$ref": "#/$defs/privateEvaluatorActor" },
+    "gold_reviewer": { "$ref": "#/$defs/goldActor" },
+    "task_reviewer": { "$ref": "#/$defs/taskActor" },
+    "publisher": { "$ref": "#/$defs/publisherActor" },
+    "forbidden_prior_reviewers": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/forbiddenActor" }
+    },
+    "authorized_at": { "type": "string", "format": "date-time" },
+    "started_at": { "type": "string", "format": "date-time" },
+    "ended_at": { "type": "string", "format": "date-time" },
+    "freeze_at": { "type": "string", "format": "date-time" },
+    "source_search_started_at": { "type": "string", "format": "date-time" },
+    "source_search_ended_at": { "type": "string", "format": "date-time" },
+    "source_search_freeze_at": { "type": "string", "format": "date-time" },
+    "source_dossier_authored_at": { "type": "string", "format": "date-time" },
+    "private_envelope_sealed_at": { "type": "string", "format": "date-time" },
+    "expires_at": { "type": "string", "format": "date-time" }
   },
-  "allOf": [{"if": {"properties": {"schema_version": {"const": "reviewed_metrics_execution_authorization_v2.1.0"}}}, "then": {"required": ["search_predictor", "private_evaluator", "source_search_started_at", "source_search_ended_at", "source_search_freeze_at", "source_dossier_authored_at", "private_envelope_sealed_at"]}}],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "schema_version": {
+            "const": "reviewed_metrics_execution_authorization_v2.1.0"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "search_predictor",
+          "private_evaluator",
+          "source_search_started_at",
+          "source_search_ended_at",
+          "source_search_freeze_at",
+          "source_dossier_authored_at",
+          "private_envelope_sealed_at"
+        ]
+      }
+    }
+  ],
   "$defs": {
     "actor": {
-      "type": "object", "additionalProperties": false,
-      "required": ["principal", "session_id", "model", "reasoning_effort", "route", "surface_id", "canonical_root", "role"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "principal",
+        "session_id",
+        "model",
+        "reasoning_effort",
+        "route",
+        "surface_id",
+        "surface_identity",
+        "route_receipt",
+        "canonical_root",
+        "role"
+      ],
       "properties": {
-        "principal": {"type": "string", "minLength": 1}, "session_id": {"type": "string", "minLength": 1},
-        "model": {"type": "string", "minLength": 1}, "reasoning_effort": {"type": "string", "minLength": 1},
-        "route": {"type": "string", "minLength": 1}, "surface_id": {"type": "string", "minLength": 1},
-        "canonical_root": {"type": "string", "pattern": "^/"}, "signing_public_key_pem": {"type": "string", "pattern": "^-----BEGIN PUBLIC KEY-----"},
-        "role": {"type": "string", "minLength": 1}
+        "principal": { "type": "string", "minLength": 1 },
+        "session_id": { "type": "string", "minLength": 1 },
+        "model": { "type": "string", "minLength": 1 },
+        "reasoning_effort": { "type": "string", "minLength": 1 },
+        "route": { "type": "string", "minLength": 1 },
+        "surface_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "surface_identity": { "$ref": "#/$defs/surfaceIdentity" },
+        "route_receipt": { "$ref": "#/$defs/routeReceipt" },
+        "canonical_root": { "type": "string", "pattern": "^/" },
+        "signing_public_key_pem": {
+          "type": "string",
+          "pattern": "^-----BEGIN PUBLIC KEY-----"
+        },
+        "role": { "type": "string", "minLength": 1 }
       }
     },
-    "implementationActor": {"allOf": [{"$ref": "#/$defs/actor"}, {"properties": {"role": {"const": "implementation"}}}]},
-    "predictorActor": {"allOf": [{"$ref": "#/$defs/actor"}, {"properties": {"role": {"const": "predictor"}}}]},
-    "searchPredictorActor": {"allOf": [{"$ref": "#/$defs/actor"}, {"properties": {"role": {"const": "search_predictor"}}}]},
-    "privateEvaluatorActor": {"allOf": [{"$ref": "#/$defs/actor"}, {"properties": {"role": {"const": "private_evaluator"}}}]},
-    "goldActor": {"allOf": [{"$ref": "#/$defs/actor"}, {"properties": {"role": {"const": "gold_reviewer"}}}]},
-    "taskActor": {"allOf": [{"$ref": "#/$defs/actor"}, {"properties": {"role": {"const": "task_reviewer"}}}]},
-    "publisherActor": {"allOf": [{"$ref": "#/$defs/actor"}, {"properties": {"role": {"const": "publisher"}}}]},
+    "surfaceIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "value", "public_key_pem", "public_key_sha256"],
+      "properties": {
+        "kind": { "enum": ["local_host", "remote_host"] },
+        "value": { "type": "string", "minLength": 1 },
+        "public_key_pem": {
+          "type": "string",
+          "pattern": "^-----BEGIN PUBLIC KEY-----"
+        },
+        "public_key_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "routeReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "surface_id",
+        "role",
+        "requested_root",
+        "canonical_root",
+        "existing_ancestor",
+        "ancestor_device",
+        "ancestor_inode",
+        "issued_at",
+        "signature_base64"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "reviewed_metrics_host_route_receipt_v2.0.0"
+        },
+        "surface_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "role": { "type": "string", "minLength": 1 },
+        "requested_root": { "type": "string", "pattern": "^/" },
+        "canonical_root": { "type": "string", "pattern": "^/" },
+        "existing_ancestor": { "type": "string", "pattern": "^/" },
+        "ancestor_device": { "type": "integer", "minimum": 0 },
+        "ancestor_inode": { "type": "integer", "minimum": 0 },
+        "issued_at": { "type": "string", "format": "date-time" },
+        "signature_base64": { "type": "string", "minLength": 1 }
+      }
+    },
+    "implementationActor": {
+      "allOf": [
+        { "$ref": "#/$defs/actor" },
+        { "properties": { "role": { "const": "implementation" } } }
+      ]
+    },
+    "predictorActor": {
+      "allOf": [
+        { "$ref": "#/$defs/actor" },
+        { "properties": { "role": { "const": "predictor" } } }
+      ]
+    },
+    "searchPredictorActor": {
+      "allOf": [
+        { "$ref": "#/$defs/actor" },
+        { "properties": { "role": { "const": "search_predictor" } } }
+      ]
+    },
+    "privateEvaluatorActor": {
+      "allOf": [
+        { "$ref": "#/$defs/actor" },
+        { "properties": { "role": { "const": "private_evaluator" } } }
+      ]
+    },
+    "goldActor": {
+      "allOf": [
+        { "$ref": "#/$defs/actor" },
+        { "properties": { "role": { "const": "gold_reviewer" } } }
+      ]
+    },
+    "taskActor": {
+      "allOf": [
+        { "$ref": "#/$defs/actor" },
+        { "properties": { "role": { "const": "task_reviewer" } } }
+      ]
+    },
+    "publisherActor": {
+      "allOf": [
+        { "$ref": "#/$defs/actor" },
+        { "properties": { "role": { "const": "publisher" } } }
+      ]
+    },
     "forbiddenActor": {
-      "type": "object", "additionalProperties": false, "required": ["principal", "session_id", "model", "role"],
-      "properties": {"principal": {"type": "string", "minLength": 1}, "session_id": {"type": "string", "minLength": 1}, "model": {"type": "string", "minLength": 1}, "role": {"const": "forbidden_prior_reviewer"}}
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["principal", "session_id", "model", "role"],
+      "properties": {
+        "principal": { "type": "string", "minLength": 1 },
+        "session_id": { "type": "string", "minLength": 1 },
+        "model": { "type": "string", "minLength": 1 },
+        "role": { "const": "forbidden_prior_reviewer" }
+      }
     }
   }
 }

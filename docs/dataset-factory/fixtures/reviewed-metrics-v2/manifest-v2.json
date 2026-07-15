@@ -4,7 +4,7 @@
   "members": [
     {
       "path": "blind-bundle-descriptor.template-v2.json",
-      "sha256": "3ab4dde445310152a286f48fd672a04f743604b9f5f29d2b36d38cb2ef276d50",
+      "sha256": "574560f6ad00d04eff1556bcea0ff64ac258233bb38c948de320ec19c8f7b9aa",
       "bytes": 810
     },
     {
@@ -58,7 +58,7 @@
       "bytes": 1056
     }
   ],
-  "content_sha256": "50b06b638c78a72ef73b7c5762d3c84556da8d2fcc2328dbceecb393fa9153b1",
+  "content_sha256": "811037b41829330ec2aeaf65ea1566278fc3c200b7bc827a25296d913f00e50f",
   "counts": {
     "files_before_manifest_and_descriptor": 11,
     "bytes_before_manifest_and_descriptor": 67515

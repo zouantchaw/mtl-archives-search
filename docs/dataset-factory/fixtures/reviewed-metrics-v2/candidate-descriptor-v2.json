@@ -8,7 +8,7 @@
   "members_before_descriptor": [
     {
       "path": "blind-bundle-descriptor.template-v2.json",
-      "sha256": "3ab4dde445310152a286f48fd672a04f743604b9f5f29d2b36d38cb2ef276d50",
+      "sha256": "574560f6ad00d04eff1556bcea0ff64ac258233bb38c948de320ec19c8f7b9aa",
       "bytes": 810
     },
     {
@@ -33,7 +33,7 @@
     },
     {
       "path": "manifest-v2.json",
-      "sha256": "f81afa0cd720e128873d72db23bcad8f4c6b8fa9e62cf17db72e68ad34746112",
+      "sha256": "497c1e61615fc68c7b02537be8de53d3d5a7763f1d4ee93d29d666c872face56",
       "bytes": 2198
     },
     {
@@ -67,7 +67,7 @@
       "bytes": 1056
     }
   ],
-  "tree_before_descriptor_sha256": "74afa253966c3f61d7f377298739ba4f747c6828b6dd6b4bda7631726715f19b",
+  "tree_before_descriptor_sha256": "8e0301d0b5f1b09243457e9741499396f7256fd373af6f383e7d10b8cb3c7b2f",
   "counts": {
     "files_before_descriptor": 12,
     "bytes_before_descriptor": 69713,

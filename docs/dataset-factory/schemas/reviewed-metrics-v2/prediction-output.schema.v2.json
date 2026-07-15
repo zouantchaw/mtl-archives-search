@@ -18,19 +18,13 @@
       "const": "reviewed_metrics_prediction_output_v2.0.0"
     },
     "status": {
-      "enum": [
-        "blank_no_prediction",
-        "completed"
-      ]
+      "enum": ["blank_no_prediction", "completed"]
     },
     "candidate_id": {
       "const": "dfv0_reviewed_metrics_v2_candidate_20260715"
     },
     "bundle_tree_sha256": {
-      "type": [
-        "string",
-        "null"
-      ],
+      "type": ["string", "null"],
       "pattern": "^[a-f0-9]{64}$"
     },
     "session": {
@@ -65,8 +59,29 @@
     }
   },
   "allOf": [
-    {"if": {"properties": {"status": {"const": "blank_no_prediction"}}}, "then": {"properties": {"bundle_tree_sha256": {"type": "null"}, "session": {"type": "null"}, "outputs": {"maxItems": 0}}}},
-    {"if": {"properties": {"status": {"const": "completed"}}}, "then": {"properties": {"bundle_tree_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "session": {"$ref": "#/$defs/session"}, "outputs": {"minItems": 44, "maxItems": 44}}}}
+    {
+      "if": { "properties": { "status": { "const": "blank_no_prediction" } } },
+      "then": {
+        "properties": {
+          "bundle_tree_sha256": { "type": "null" },
+          "session": { "type": "null" },
+          "outputs": { "maxItems": 0 }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "status": { "const": "completed" } } },
+      "then": {
+        "properties": {
+          "bundle_tree_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "session": { "$ref": "#/$defs/session" },
+          "outputs": { "minItems": 44, "maxItems": 44 }
+        }
+      }
+    }
   ],
   "$defs": {
     "session": {
@@ -98,7 +113,7 @@
           "type": "string",
           "minLength": 1
         },
-        "route": {"type": "string", "minLength": 1},
+        "route": { "type": "string", "minLength": 1 },
         "started_at": {
           "format": "date-time",
           "type": "string"
@@ -122,10 +137,12 @@
       ],
       "properties": {
         "entity_id": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         },
         "surface": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         },
         "bbox": {
           "type": "array",
@@ -138,20 +155,21 @@
           }
         },
         "type": {
-          "enum": ["organization", "brand", "person", "building", "street", "place", "other"]
+          "enum": [
+            "organization",
+            "brand",
+            "person",
+            "building",
+            "street",
+            "place",
+            "other"
+          ]
         },
         "identity_decision": {
-          "enum": [
-            "surface_only",
-            "linked",
-            "abstain"
-          ]
+          "enum": ["surface_only", "linked", "abstain"]
         },
         "identity": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         }
       }
     },
@@ -159,6 +177,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "opportunity_id",
         "civic_number",
         "street",
         "place",
@@ -166,29 +185,21 @@
         "abstained"
       ],
       "properties": {
+        "opportunity_id": {
+          "type": "string",
+          "minLength": 1
+        },
         "civic_number": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "street": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "place": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "official_url": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "uri"
         },
         "abstained": {
@@ -199,19 +210,13 @@
     "abstention": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "abstained",
-        "reason"
-      ],
+      "required": ["abstained", "reason"],
       "properties": {
         "abstained": {
           "type": "boolean"
         },
         "reason": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         }
       }
     },
@@ -233,13 +238,17 @@
           "type": "string"
         },
         "image_mode": {
-          "enum": ["ground_street", "aerial_vertical", "aerial_oblique", "document_map", "low_information", null]
+          "enum": [
+            "ground_street",
+            "aerial_vertical",
+            "aerial_oblique",
+            "document_map",
+            "low_information",
+            null
+          ]
         },
         "ocr": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "entities": {
           "type": "array",
