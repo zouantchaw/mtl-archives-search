@@ -44,8 +44,8 @@
     },
     {
       "path": "source-search-bundle.template-v2.json",
-      "sha256": "2a12a1c76321d79c366f68e8e6812bc309bea411362dc5265edc05145b7ebd1c",
-      "bytes": 446
+      "sha256": "fe30e00c8e88b886b2fa72aba0fdc3d04c979d5807b92a1be087ddc35f677cf2",
+      "bytes": 911
     },
     {
       "path": "source-search-prediction.template-v2.json",
@@ -58,9 +58,9 @@
       "bytes": 1056
     }
   ],
-  "content_sha256": "f3fcd32d6f078443749ee1017ea066a5204f900b567149938d57818c3441a89a",
+  "content_sha256": "50b06b638c78a72ef73b7c5762d3c84556da8d2fcc2328dbceecb393fa9153b1",
   "counts": {
     "files_before_manifest_and_descriptor": 11,
-    "bytes_before_manifest_and_descriptor": 67050
+    "bytes_before_manifest_and_descriptor": 67515
   }
 }

@@ -33,7 +33,7 @@
     },
     {
       "path": "manifest-v2.json",
-      "sha256": "fccae65f7849fdb649d6dd1e4ed07f221addaa1e62af685843c623cb08f28c78",
+      "sha256": "f81afa0cd720e128873d72db23bcad8f4c6b8fa9e62cf17db72e68ad34746112",
       "bytes": 2198
     },
     {
@@ -53,8 +53,8 @@
     },
     {
       "path": "source-search-bundle.template-v2.json",
-      "sha256": "2a12a1c76321d79c366f68e8e6812bc309bea411362dc5265edc05145b7ebd1c",
-      "bytes": 446
+      "sha256": "fe30e00c8e88b886b2fa72aba0fdc3d04c979d5807b92a1be087ddc35f677cf2",
+      "bytes": 911
     },
     {
       "path": "source-search-prediction.template-v2.json",
@@ -67,10 +67,10 @@
       "bytes": 1056
     }
   ],
-  "tree_before_descriptor_sha256": "10b382bc55311d8ae56eae6cb901feff1c893c32cd4c99b9c4d2187078ca1086",
+  "tree_before_descriptor_sha256": "74afa253966c3f61d7f377298739ba4f747c6828b6dd6b4bda7631726715f19b",
   "counts": {
     "files_before_descriptor": 12,
-    "bytes_before_descriptor": 69248,
+    "bytes_before_descriptor": 69713,
     "unique_sources": 44,
     "task_memberships": 78
   },

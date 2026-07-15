@@ -2,7 +2,19 @@
   "schema_version": "reviewed_metrics_source_search_bundle_v2.0.0",
   "status": "template_no_bundle",
   "task_id": "task-7b1d4f0c9a2e6d83",
-  "prompt": "Locate the matching official Quebec cultural-heritage record and return the normalized public fields required by the bundled output schema with one bounded paraphrase.",
+  "prompt": "Locate the official Quebec cultural-heritage record for the public query subject. Return the required public fields under the normalization contract with one bounded paraphrase.",
+  "query_subject": {
+    "kind": "organization_name",
+    "value": "The Gazette"
+  },
+  "normalization_contract": {
+    "unicode": "NFKC",
+    "whitespace": "trim_and_collapse",
+    "text_comparison": "casefold_strip_diacritics_and_punctuation",
+    "street_designators": "normalize_common_french_english_designators",
+    "numeric_fields": "ascii_digits_without_leading_zeroes",
+    "official_url": "https_lowercase_host_remove_fragment_sort_query"
+  },
   "official_domain_policy": {
     "scheme": "https",
     "hostname_suffix": ".gouv.qc.ca"

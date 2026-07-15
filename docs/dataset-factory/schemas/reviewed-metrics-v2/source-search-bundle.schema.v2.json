@@ -3,12 +3,24 @@
   "$id": "source-search-bundle.schema.v2.json",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "status", "task_id", "prompt", "official_domain_policy", "output_schema"],
+  "required": ["schema_version", "status", "task_id", "prompt", "query_subject", "normalization_contract", "official_domain_policy", "output_schema"],
   "properties": {
     "schema_version": {"const": "reviewed_metrics_source_search_bundle_v2.0.0"},
     "status": {"enum": ["template_no_bundle", "sealed_public_bundle"]},
     "task_id": {"const": "task-7b1d4f0c9a2e6d83"},
     "prompt": {"type": "string", "minLength": 1},
+    "query_subject": {"type": "object", "additionalProperties": false, "required": ["kind", "value"], "properties": {
+      "kind": {"const": "organization_name"},
+      "value": {"type": "string", "minLength": 2, "maxLength": 120, "pattern": "^[^/\\\\]+$"}
+    }},
+    "normalization_contract": {"type": "object", "additionalProperties": false, "required": ["unicode", "whitespace", "text_comparison", "street_designators", "numeric_fields", "official_url"], "properties": {
+      "unicode": {"const": "NFKC"},
+      "whitespace": {"const": "trim_and_collapse"},
+      "text_comparison": {"const": "casefold_strip_diacritics_and_punctuation"},
+      "street_designators": {"const": "normalize_common_french_english_designators"},
+      "numeric_fields": {"const": "ascii_digits_without_leading_zeroes"},
+      "official_url": {"const": "https_lowercase_host_remove_fragment_sort_query"}
+    }},
     "official_domain_policy": {"type": "object", "additionalProperties": false, "required": ["scheme", "hostname_suffix"], "properties": {
       "scheme": {"const": "https"},
       "hostname_suffix": {"const": ".gouv.qc.ca"}
