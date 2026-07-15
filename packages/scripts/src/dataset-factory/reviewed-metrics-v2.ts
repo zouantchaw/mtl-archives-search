@@ -3,11 +3,13 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { execFileSync, spawn } from "node:child_process";
+import { builtinModules, createRequire } from "node:module";
 import { parseArgs } from "node:util";
 import { fileURLToPath } from "node:url";
 import Ajv2020Import from "ajv/dist/2020.js";
 import addFormatsImport from "ajv-formats";
 import sharp from "sharp";
+import ts from "typescript";
 import {
   CloudflareR2PrivateStore,
   GateH2SecurityError,
@@ -310,9 +312,11 @@ class GateH2Error extends Error {
   constructor(
     readonly code: string,
     message: string,
+    cause?: unknown,
   ) {
     super(`${code}: ${message}`);
     this.name = "GateH2Error";
+    if (cause !== undefined) this.cause = cause;
   }
 }
 function assert(
@@ -1178,14 +1182,17 @@ function stableStageOutputPin(file: string, artifactRole: string): J {
 }
 type OperationSnapshot = { pin: J; fd: number; raw: Buffer; stat: fs.Stats };
 function validateScalarValue(value: string, scalarType: string, allowedValues?: J): void {
-  const enumToken = /^[A-Za-z0-9][A-Za-z0-9_-]*(?::[A-Za-z0-9][A-Za-z0-9_-]*)*$/;
+  // Scalars exist only inside the wrapper's typed --fixed-scalar grammar. Bare
+  // operation argv/env strings are never scalars because any basename can be
+  // resolved relative to cwd by the child or one of its libraries.
+  const enumToken = /^(?:allow|deny|strict|readonly|offline|enabled|disabled)$/;
   let valid = false;
   if (scalarType === "enum") valid = Array.isArray(allowedValues) && allowedValues.length > 0 && allowedValues.every((item) => typeof item === "string" && enumToken.test(item)) && allowedValues.includes(value);
   else if (scalarType === "integer") valid = /^(?:0|[1-9][0-9]{0,15})$/.test(value) && Number.isSafeInteger(Number(value));
   else if (scalarType === "sha256") valid = /^[a-f0-9]{64}$/.test(value);
   else if (scalarType === "identifier") valid = /^id_[a-z0-9][a-z0-9_-]{0,62}$/.test(value);
   else if (scalarType === "boolean") valid = value === "true" || value === "false";
-  codedAssert(valid, "H2_STAGE_SCALAR_SYNTAX", "literal value is not an explicitly typed non-path scalar");
+  codedAssert(valid, "H2_STAGE_SCALAR_SYNTAX", "fixed wrapper value is not in the closed non-path scalar grammar");
 }
 function snapshotOperationFile(pinValue: J, label: string): OperationSnapshot {
   codedAssert(path.isAbsolute(pinValue.path) && path.normalize(pinValue.path) === pinValue.path && fs.realpathSync(pinValue.path) === pinValue.realpath, "H2_STAGE_OPERATION_ARTIFACT", `${label} physical path differs from authority`);
@@ -1207,6 +1214,44 @@ function assertOperationSnapshotsUnchanged(snapshots: OperationSnapshot[]): void
 function dependencyTreeBytes(resolutionContract: J, roots: J[], members: J[]): Buffer {
   return Buffer.from(`${canon({ resolution_contract: resolutionContract, physical_roots: roots, members })}\n`);
 }
+function staticModuleResolution(entrypoint: OperationSnapshot, members: J[], code = "H2_STAGE_DEPENDENCY_TREE", retained?: Map<string, OperationSnapshot>): J[] {
+  const builtins = new Set([...builtinModules, ...builtinModules.map((name) => `node:${name}`)]);
+  const queue = [entrypoint.pin.realpath]; const visited = new Set<string>(); const edges: J[] = [];
+  while (queue.length > 0) {
+    const importer = queue.shift()!; if (visited.has(importer)) continue; visited.add(importer);
+    let temporary: OperationSnapshot | undefined; let snapshot = retained?.get(importer) ?? (importer === entrypoint.pin.realpath ? entrypoint : undefined);
+    if (!snapshot) { const member = members.find((candidate: J) => candidate.realpath === importer); codedAssert(member, code, `derived importer is absent from retained members: ${importer}`); temporary = snapshotOperationFile(member, "derived module member"); snapshot = temporary; }
+    try {
+      const source = ts.createSourceFile(importer, snapshot.raw.toString("utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.JS); const specifiers: string[] = []; let dynamic = false;
+      const addLiteral = (node: ts.Expression | undefined): void => { if (node && (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node))) specifiers.push(node.text); else dynamic = true; };
+      const visit = (node: ts.Node): void => {
+        if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) { if (node.moduleSpecifier) addLiteral(node.moduleSpecifier as ts.Expression); }
+        else if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference)) addLiteral(node.moduleReference.expression);
+        else if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) dynamic = true;
+        else if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "require") addLiteral(node.arguments[0]);
+        ts.forEachChild(node, visit);
+      };
+      visit(source); codedAssert(!dynamic, code, `actual module contains an unresolved or dynamic import: ${importer}`);
+      const requireFromImporter = createRequire(importer);
+      for (const specifier of [...new Set(specifiers)].sort().filter((value) => !builtins.has(value))) {
+        let resolved: string; try { resolved = fs.realpathSync(requireFromImporter.resolve(specifier)); } catch { throw new GateH2Error(code, `actual module import is unresolved: ${importer} -> ${specifier}`); }
+        const member = members.find((candidate: J) => candidate.realpath === resolved); codedAssert(member !== undefined, code, `resolved import is outside retained closure: ${importer} -> ${specifier}`);
+        codedAssert(!resolved.endsWith(".node"), code, "native Node addons are forbidden by the static executable closure");
+        edges.push({ importer_realpath: importer, specifier, resolved_realpath: resolved, resolution_kind: specifier.startsWith(".") ? "file" : "package_main" });
+        if (/\.(?:cjs|mjs|js|jsx|ts|tsx)$/.test(resolved)) queue.push(resolved);
+      }
+    } finally { if (temporary) fs.closeSync(temporary.fd); }
+  }
+  return edges.sort((a: J, b: J) => canon(a).localeCompare(canon(b)));
+}
+function assertStaticElf(snapshot: OperationSnapshot, role: string): void {
+  const raw = snapshot.raw;
+  codedAssert(raw.length >= 64 && raw.subarray(0, 4).equals(Buffer.from([0x7f, 0x45, 0x4c, 0x46])) && raw[4] === 2 && raw[5] === 1, "H2_STAGE_STATIC_EXECUTABLE", `${role} must be an ELF64 little-endian executable`);
+  const programOffset = Number(raw.readBigUInt64LE(32)); const entrySize = raw.readUInt16LE(54); const count = raw.readUInt16LE(56);
+  codedAssert(entrySize >= 56 && programOffset + entrySize * count <= raw.length, "H2_STAGE_STATIC_EXECUTABLE", `${role} ELF program headers are invalid`);
+  const types = Array.from({ length: count }, (_, index) => raw.readUInt32LE(programOffset + index * entrySize));
+  codedAssert(!types.includes(2) && !types.includes(3), "H2_STAGE_STATIC_EXECUTABLE", `${role} has a dynamic segment or interpreter and could escape the immutable closure`);
+}
 function validateResolutionClosure(contract: J, roots: J[], members: J[], code = "H2_STAGE_DEPENDENCY_TREE"): void {
   codedAssert(contract?.version === "gate_h2_runtime_resolution_closure_v1" && contract.closure_complete === true, code, "runtime dependency closure is not explicitly complete");
   codedAssert(contract.root_derivation === "node_runtime_package_manager_native_resolver_v1" && contract.module_resolution?.kind === "node_cjs_esm_static_plus_runtime_trace_v1" && contract.native_resolution?.kind === "linux_elf_ld_so_closure_v1", code, "runtime roots were not derived by the exact runtime/package-manager/native-library resolution contract");
@@ -1214,11 +1259,13 @@ function validateResolutionClosure(contract: J, roots: J[], members: J[], code =
   codedAssert(contract.native_resolution.runtime_linkage === "static" ? contract.native_resolution.physical_roots.length === 0 && contract.native_resolution.edges.length === 0 : contract.native_resolution.physical_roots.length > 0 && contract.native_resolution.edges.length > 0, code, "runtime linkage and native-library roots/edges differ");
   codedAssert(canon(contract.package_manager.resolved_package_roots) === canon(contract.module_resolution.physical_roots), code, "package-manager installed roots differ from module-resolution roots");
   codedAssert(canon(contract.physical_roots) === canon(roots), code, "resolution-derived physical roots differ from the enumerated roots");
-  const exactDerivedRoots = [contract.runtime, ...contract.entrypoints, contract.package_manager.lockfile, contract.package_manager.package_manifest].map((pinValue: J) => ({ path: pinValue.path, realpath: pinValue.realpath, discovery_rule: "recursive_regular_files_no_symlinks_v1" })).concat(contract.module_resolution.physical_roots, contract.native_resolution.physical_roots).sort((a: J, b: J) => a.realpath.localeCompare(b.realpath));
+  const derivedRootMap = new Map<string, J>();
+  for (const rootValue of [contract.wrapper, contract.runtime, ...contract.entrypoints, contract.package_manager.lockfile, contract.package_manager.package_manifest].map((pinValue: J) => ({ path: pinValue.path, realpath: pinValue.realpath, discovery_rule: "recursive_regular_files_no_symlinks_v1" })).concat(contract.module_resolution.physical_roots, contract.native_resolution.physical_roots)) derivedRootMap.set(rootValue.realpath, rootValue);
+  const exactDerivedRoots = [...derivedRootMap.values()].sort((a: J, b: J) => a.realpath.localeCompare(b.realpath));
   codedAssert(canon(roots) === canon(exactDerivedRoots) && new Set(roots.map((root: J) => root.realpath)).size === roots.length, code, "physical roots are not exactly derived from runtime, entrypoint, package-manager, and native-library resolution outputs");
   const memberPaths = members.map((member: J) => member.realpath);
   codedAssert(canon(contract.resolved_member_realpaths) === canon(memberPaths) && new Set(memberPaths).size === memberPaths.length, code, "resolution closure member set differs from exact installed members");
-  const required = [contract.runtime.realpath, ...contract.entrypoints.map((entry: J) => entry.realpath), contract.package_manager.lockfile.realpath, contract.package_manager.package_manifest.realpath];
+  const required = [contract.wrapper.realpath, contract.runtime.realpath, ...contract.entrypoints.map((entry: J) => entry.realpath), contract.package_manager.lockfile.realpath, contract.package_manager.package_manifest.realpath];
   codedAssert(required.every((realpath: string) => memberPaths.includes(realpath)), code, "runtime, entrypoint, lockfile, or package manifest is outside the complete closure");
   for (const edge of contract.module_resolution.edges) codedAssert(memberPaths.includes(edge.importer_realpath) && memberPaths.includes(edge.resolved_realpath), code, "resolved module edge points outside the signed member set");
   for (const edge of contract.native_resolution.edges) codedAssert(memberPaths.includes(edge.consumer_realpath) && memberPaths.includes(edge.resolved_realpath), code, "resolved native edge points outside the signed member set");
@@ -1227,10 +1274,15 @@ function validateResolutionClosure(contract: J, roots: J[], members: J[], code =
   const payload = structuredClone(contract); delete payload.closure_sha256;
   codedAssert(contract.roots_sha256 === hash(canon(roots)) && contract.closure_sha256 === hash(canon(payload)), code, "resolution closure root or semantic digest differs");
 }
-function makeSyntheticResolutionClosure(runtime: J, entrypoint: J, lockfile: J, packageManifest: J, roots: J[], members: J[]): J {
-  const seedPaths = new Set([runtime.realpath, entrypoint.realpath, lockfile.realpath, packageManifest.realpath]); const moduleRoots = roots.filter((root: J) => !seedPaths.has(root.realpath));
-  const moduleEdges = moduleRoots.map((rootValue: J) => { const resolved = members.find((member: J) => member.realpath === rootValue.realpath || member.realpath.startsWith(`${rootValue.realpath}${path.sep}`)); codedAssert(resolved, "H2_STAGE_DEPENDENCY_TREE", "synthetic module root has no exact member"); return { importer_realpath: entrypoint.realpath, specifier: path.basename(rootValue.realpath), resolved_realpath: resolved.realpath, resolution_kind: "package_main" }; });
-  const value: J = { version: "gate_h2_runtime_resolution_closure_v1", root_derivation: "node_runtime_package_manager_native_resolver_v1", runtime, entrypoints: [entrypoint], package_manager: { kind: "npm_lockfile_v3", installed_layout: "node_modules_v1", lockfile, package_manifest: packageManifest, resolved_package_roots: moduleRoots, proof_sha256: hash("synthetic-package-manager-resolution-proof-not-production") }, module_resolution: { kind: "node_cjs_esm_static_plus_runtime_trace_v1", dynamic_specifiers: "forbidden", unresolved_specifiers: [], physical_roots: moduleRoots, edges: moduleEdges, proof_sha256: hash("synthetic-module-resolution-proof-not-production") }, native_resolution: { kind: "linux_elf_ld_so_closure_v1", runtime_linkage: "static", unresolved_libraries: [], physical_roots: [], edges: [], proof_sha256: hash("synthetic-native-resolution-proof-not-production") }, physical_roots: [...roots].sort((a: J, b: J) => a.realpath.localeCompare(b.realpath)), resolved_member_realpaths: members.map((member: J) => member.realpath), roots_sha256: hash(canon([...roots].sort((a: J, b: J) => a.realpath.localeCompare(b.realpath)))), closure_complete: true, closure_sha256: "" };
+function makeSyntheticResolutionClosure(wrapper: J, runtime: J, entrypoint: J, lockfile: J, packageManifest: J, roots: J[], members: J[], proofRoot: string): J {
+  const seedPaths = new Set([wrapper.realpath, runtime.realpath, entrypoint.realpath, lockfile.realpath, packageManifest.realpath]); const moduleRoots = roots.filter((root: J) => !seedPaths.has(root.realpath));
+  const entrySnapshot = snapshotOperationFile(entrypoint, "synthetic closure entrypoint"); let moduleEdges: J[];
+  try { moduleEdges = moduleRoots.length > 0 ? staticModuleResolution(entrySnapshot, members) : []; } finally { fs.closeSync(entrySnapshot.fd); }
+  const writeProof = (name: string, payload: J): J => { const file = path.join(proofRoot, name); fs.writeFileSync(file, pretty(payload), { mode: 0o600 }); const raw = fs.readFileSync(file); return { path: file, realpath: fs.realpathSync(file), sha256: hash(raw), bytes: raw.length, version: "canonical-proof-v1" }; };
+  const packageProof = writeProof("package-resolution-proof.json", { schema_version: "gate_h2_package_resolution_proof_v1", runtime_sha256: runtime.sha256, entrypoint_sha256: entrypoint.sha256, lockfile_sha256: lockfile.sha256, package_manifest_sha256: packageManifest.sha256, resolved_package_roots: moduleRoots });
+  const moduleProof = writeProof("module-resolution-proof.json", { schema_version: "gate_h2_module_resolution_proof_v1", entrypoint_sha256: entrypoint.sha256, edges: moduleEdges, dynamic_imports: [], unresolved_specifiers: [] });
+  const nativeProof = writeProof("native-resolution-proof.json", { schema_version: "gate_h2_native_resolution_proof_v1", wrapper_sha256: wrapper.sha256, runtime_sha256: runtime.sha256, runtime_linkage: "static", unresolved_libraries: [] });
+  const value: J = { version: "gate_h2_runtime_resolution_closure_v1", root_derivation: "node_runtime_package_manager_native_resolver_v1", wrapper, runtime, entrypoints: [entrypoint], package_manager: { kind: "npm_lockfile_v3", installed_layout: "node_modules_v1", lockfile, package_manifest: packageManifest, resolved_package_roots: moduleRoots, proof: packageProof, proof_sha256: packageProof.sha256 }, module_resolution: { kind: "node_cjs_esm_static_plus_runtime_trace_v1", dynamic_specifiers: "forbidden", unresolved_specifiers: [], physical_roots: moduleRoots, edges: moduleEdges, proof: moduleProof, proof_sha256: moduleProof.sha256 }, native_resolution: { kind: "linux_elf_ld_so_closure_v1", runtime_linkage: "static", unresolved_libraries: [], physical_roots: [], edges: [], proof: nativeProof, proof_sha256: nativeProof.sha256 }, physical_roots: [...roots].sort((a: J, b: J) => a.realpath.localeCompare(b.realpath)), resolved_member_realpaths: members.map((member: J) => member.realpath), roots_sha256: hash(canon([...roots].sort((a: J, b: J) => a.realpath.localeCompare(b.realpath)))), closure_complete: true, closure_sha256: "" };
   const payload = structuredClone(value); delete payload.closure_sha256; value.closure_sha256 = hash(canon(payload)); return value;
 }
 function enumerateDependencyRoot(rootValue: J): J[] {
@@ -1252,6 +1304,10 @@ function installedDependencyTreeSnapshots(manifestPin: J): { snapshots: Operatio
     const sorted = [...value.members].sort((a: J, b: J) => a.realpath.localeCompare(b.realpath));
     codedAssert(canon(value.members) === canon(sorted) && value.member_count === sorted.length, "H2_STAGE_DEPENDENCY_TREE", "installed dependency tree must be complete, sorted, and exact");
     validateResolutionClosure(value.resolution_contract, value.physical_roots, sorted);
+    for (const [label, section] of [["package", value.resolution_contract.package_manager], ["module", value.resolution_contract.module_resolution], ["native", value.resolution_contract.native_resolution]] as [string, J][]) {
+      const proof = snapshotOperationFile(section.proof, `${label} resolution proof`); snapshots.push(proof);
+      codedAssert(section.proof_sha256 === proof.pin.sha256 && hash(proof.raw) === section.proof_sha256, "H2_STAGE_DEPENDENCY_PROOF", `${label} proof digest does not resolve to retained proof bytes`);
+    }
     const discovered = value.physical_roots.flatMap(enumerateDependencyRoot).sort((a: J, b: J) => a.realpath.localeCompare(b.realpath));
     codedAssert(canon(discovered.map(({ realpath, sha256, bytes }: J) => ({ realpath, sha256, bytes }))) === canon(sorted.map(({ realpath, sha256, bytes }: J) => ({ realpath, sha256, bytes }))), "H2_STAGE_DEPENDENCY_TREE", "installed dependency manifest omits, adds, or substitutes a physically discoverable runtime/module member");
     const bytes = dependencyTreeBytes(value.resolution_contract, value.physical_roots, sorted);
@@ -1259,6 +1315,29 @@ function installedDependencyTreeSnapshots(manifestPin: J): { snapshots: Operatio
     for (const member of sorted) snapshots.push(snapshotOperationFile(member, "installed runtime/module dependency"));
     return { snapshots, manifest: value };
   } catch (error) { for (const snapshot of snapshots) { try { fs.closeSync(snapshot.fd); } catch { /* failed preflight releases all retained descriptors */ } } throw error; }
+}
+function validateDerivedResolutionClosure(operation: J, dependencyTree: { snapshots: OperationSnapshot[]; manifest: J }, syntheticBoundary: boolean): void {
+  const contract = dependencyTree.manifest.resolution_contract;
+  codedAssert(canon(contract.wrapper) === canon(operation.execution_boundary.wrapper), "H2_STAGE_DEPENDENCY_JOIN", "executed wrapper differs from the retained resolution closure");
+  codedAssert(canon(contract.runtime) === canon(operation.runtime), "H2_STAGE_DEPENDENCY_JOIN", "executed runtime differs from the retained resolution closure");
+  codedAssert(contract.entrypoints.length === 1 && canon(contract.entrypoints[0]) === canon(operation.script), "H2_STAGE_DEPENDENCY_JOIN", "executed script is not the exact retained closure entrypoint");
+  codedAssert(canon(contract.package_manager.lockfile) === canon(operation.dependency_lock), "H2_STAGE_DEPENDENCY_JOIN", "executed operation lockfile differs from the package-manager closure");
+  const byPath = new Map(dependencyTree.snapshots.map((snapshot): [string, OperationSnapshot] => [snapshot.pin.realpath, snapshot]));
+  const proofValue = (section: J): J => JSON.parse(byPath.get(section.proof.realpath)!.raw.toString("utf8"));
+  const packageProof = proofValue(contract.package_manager);
+  codedAssert(canon(packageProof) === canon({ schema_version: "gate_h2_package_resolution_proof_v1", runtime_sha256: operation.runtime.sha256, entrypoint_sha256: operation.script.sha256, lockfile_sha256: operation.dependency_lock.sha256, package_manifest_sha256: contract.package_manager.package_manifest.sha256, resolved_package_roots: contract.package_manager.resolved_package_roots }), "H2_STAGE_DEPENDENCY_PROOF", "package proof does not independently join the executed runtime/script/lock and exact roots");
+  const lock = JSON.parse(byPath.get(operation.dependency_lock.realpath)!.raw.toString("utf8"));
+  codedAssert(lock.lockfileVersion === 3, "H2_STAGE_DEPENDENCY_PROOF", "retained operation lock is not npm lockfile v3");
+  const entrypoint = byPath.get(operation.script.realpath)!;
+  const derivedEdges = staticModuleResolution(entrypoint, dependencyTree.manifest.members, "H2_STAGE_DEPENDENCY_TREE", byPath);
+  const moduleProof = proofValue(contract.module_resolution);
+  codedAssert(canon(derivedEdges) === canon(contract.module_resolution.edges) && canon(moduleProof) === canon({ schema_version: "gate_h2_module_resolution_proof_v1", entrypoint_sha256: operation.script.sha256, edges: derivedEdges, dynamic_imports: [], unresolved_specifiers: [] }), "H2_STAGE_DEPENDENCY_PROOF", "module edges do not derive exactly from retained entrypoint bytes and Node resolution");
+  const nativeProof = proofValue(contract.native_resolution);
+  codedAssert(canon(nativeProof) === canon({ schema_version: "gate_h2_native_resolution_proof_v1", wrapper_sha256: operation.execution_boundary.wrapper.sha256, runtime_sha256: operation.runtime.sha256, runtime_linkage: "static", unresolved_libraries: [] }), "H2_STAGE_DEPENDENCY_PROOF", "native proof does not join the exact executed wrapper/runtime");
+  if (!syntheticBoundary) {
+    assertStaticElf(byPath.get(operation.execution_boundary.wrapper.realpath)!, "sandbox wrapper");
+    assertStaticElf(byPath.get(operation.runtime.realpath)!, "stage runtime");
+  }
 }
 function immutableCopyPath(root: string, realpath: string): string {
   codedAssert(path.isAbsolute(realpath) && path.normalize(realpath) === realpath, "H2_STAGE_IMMUTABLE_TREE", "immutable source path must be canonical absolute");
@@ -1271,6 +1350,20 @@ function materializeImmutableSnapshot(root: string, snapshot: OperationSnapshot,
   return target;
 }
 type ExternalPreflight = { executable: string; argv: string[]; env: NodeJS.ProcessEnv; snapshots: OperationSnapshot[]; sourceCwd: string; cwd: string; outputPaths: string[]; immutableRoot: string; dependencyManifest: J };
+function removeImmutableTreeVerified(immutableRoot: string, primary?: unknown, syntheticBoundary = false): void {
+  let cleanupError: unknown;
+  try {
+    if (syntheticBoundary && process.env.GATE_H2_INTERNAL_CLEANUP_FAIL_ONCE === "1") throw new Error("internal deterministic cleanup failure");
+    fs.rmSync(immutableRoot, { recursive: true, force: true });
+  } catch (error) {
+    cleanupError = error;
+    // Recovery is best effort only to avoid leaving test material behind. The
+    // first failure remains fatal even when recovery succeeds.
+    try { fs.rmSync(immutableRoot, { recursive: true, force: true }); } catch (recoveryError) { cleanupError = { cleanupError, recoveryError }; }
+  }
+  if (fs.existsSync(immutableRoot)) cleanupError ??= new Error("immutable tree remains after cleanup");
+  if (cleanupError !== undefined) throw new GateH2Error("H2_STAGE_IMMUTABLE_CLEANUP", `immutable execution tree cleanup failed${primary instanceof GateH2Error ? ` after ${primary.code}` : primary ? " after the primary stage failure" : ""}`, { primary, cleanupError });
+}
 function externalOperationPreflight(operation: J, outputs: J[], syntheticBoundary = false): ExternalPreflight {
   const snapshots: OperationSnapshot[] = []; let immutableRoot: string | undefined;
   try {
@@ -1279,6 +1372,7 @@ function externalOperationPreflight(operation: J, outputs: J[], syntheticBoundar
   const pins = [operation.execution_boundary.wrapper, operation.runtime, operation.script, operation.dependency_lock, operation.installed_dependency_tree, ...artifactPins];
   for (let index = 0; index < pins.length; index += 1) snapshots.push(snapshotOperationFile(pins[index], `operation artifact ${index}`));
   const dependencyTree = installedDependencyTreeSnapshots(operation.installed_dependency_tree); snapshots.push(...dependencyTree.snapshots);
+  validateDerivedResolutionClosure(operation, dependencyTree, syntheticBoundary);
   codedAssert(fs.realpathSync(operation.cwd) === operation.cwd, "H2_STAGE_OPERATION_CWD", "stage cwd must be its exact physical realpath");
   const git = trustedExecutable("git");
   const gitTree = execFileSync(git, ["-C", operation.cwd, "rev-parse", "HEAD^{tree}"], { encoding: "utf8", env: {} }).trim();
@@ -1296,7 +1390,7 @@ function externalOperationPreflight(operation: J, outputs: J[], syntheticBoundar
   const rewrittenArgv: string[] = [];
   for (let index = 0; index < operation.argv.length; index += 1) {
     const binding = operation.argv_bindings[index]; const value = operation.argv[index]; codedAssert(binding.index === index && binding.value_sha256 === hash(value), "H2_STAGE_OPERATION_ARGV", "argv binding index or value hash differs");
-    if (binding.artifact_role === "literal") { validateScalarValue(value, binding.scalar_type, binding.allowed_values); rewrittenArgv.push(value); continue; }
+    codedAssert(binding.artifact_role !== "literal", "H2_STAGE_SCALAR_SYNTAX", "operation argv literals are forbidden; every value must bind to an immutable artifact role");
     const pinValue = binding.artifact_role === "script" ? operation.script : operation.artifacts.find((artifact: J) => artifact.artifact_role === binding.artifact_role)?.pin;
     codedAssert(pinValue?.realpath === value, "H2_STAGE_OPERATION_ARGV", "argv readable input is not joined to an artifact role"); rewrittenArgv.push(immutableCopyPath(immutableRoot, pinValue.realpath));
   }
@@ -1318,23 +1412,19 @@ function externalOperationPreflight(operation: J, outputs: J[], syntheticBoundar
     codedAssert(attestation.output_mounts.length === operation.declared_output_paths.length && canon(attestation.output_mounts.map((mount: J) => mount.host_path).sort()) === canon([...operation.declared_output_paths].sort()) && attestation.output_mounts.every((mount: J) => mount.mode === "rw"), "H2_STAGE_SANDBOX_MOUNTS", "declared outputs are not the exact signed writable mount set");
   }
   const forbidden = new Set(["PATH", "NODE_OPTIONS", "PYTHONPATH", "HOME", "XDG_CONFIG_HOME", "CODEX_HOME", "CLAUDE_CONFIG_DIR", "AWS_PROFILE", "AWS_SHARED_CREDENTIALS_FILE", "GOOGLE_APPLICATION_CREDENTIALS", "GATE_H2_LEDGER_ACCOUNT_ID", "GATE_H2_LEDGER_DATABASE_ID", "GATE_H2_LEDGER_API_TOKEN"]);
-  const forbiddenSecret = new Set(["PATH", "NODE_OPTIONS", "PYTHONPATH", "GATE_H2_LEDGER_ACCOUNT_ID", "GATE_H2_LEDGER_DATABASE_ID", "GATE_H2_LEDGER_API_TOKEN"]);
   const credentialName = /(TOKEN|SECRET|PASSWORD|CREDENTIAL|AUTH|COOKIE|PRIVATE_KEY|ACCESS_KEY)/;
   const env: NodeJS.ProcessEnv = {};
   const names: string[] = [];
   for (const item of operation.environment.public) {
     const artifact = operation.artifacts.find((candidate: J) => candidate.artifact_role === item.artifact_role);
     codedAssert(!forbidden.has(item.name) && !credentialName.test(item.name) && hash(item.value) === item.value_sha256, "H2_STAGE_OPERATION_ENV", "public environment entry is forbidden or hash-mismatched");
-    if (item.binding === "literal") { validateScalarValue(item.value, item.scalar_type, item.allowed_values); env[item.name] = item.value; }
-    else if (item.binding === "declared_output") { codedAssert(operation.declared_output_paths.includes(item.value), "H2_STAGE_OPERATION_ENV", "output environment value is undeclared"); env[item.name] = item.value; }
+    codedAssert(item.binding !== "literal", "H2_STAGE_SCALAR_SYNTAX", "operation environment literals are forbidden; values must bind to an immutable artifact or declared output role");
+    if (item.binding === "declared_output") { codedAssert(operation.declared_output_paths.includes(item.value), "H2_STAGE_OPERATION_ENV", "output environment value is undeclared"); env[item.name] = item.value; }
     else { codedAssert(item.binding === "artifact" && artifact?.pin.realpath === item.value, "H2_STAGE_OPERATION_ENV", "environment readable input is not joined to an artifact role"); env[item.name] = immutableCopyPath(immutableRoot, artifact.pin.realpath); }
     names.push(item.name);
   }
-  for (const item of operation.environment.secret_capability_ids) {
-    const value = process.env[item.name];
-    codedAssert(!forbiddenSecret.has(item.name) && typeof value === "string" && hash(`gate-h2-stage-secret-capability-v1\0${item.name}\0${value}`) === item.capability_id, "H2_STAGE_OPERATION_ENV", "secret environment capability is absent or differs");
-    env[item.name] = value; names.push(item.name);
-  }
+  codedAssert(operation.environment.secret_capability_ids.length === 0, "H2_STAGE_SECRET_ENV", "raw secret-capability values cannot enter child env; a future attested wrapper capability broker is required");
+  if (syntheticBoundary && process.env.GATE_H2_INTERNAL_POSTSPAWN_SPEC) env.GATE_H2_INTERNAL_POSTSPAWN_SPEC = process.env.GATE_H2_INTERNAL_POSTSPAWN_SPEC;
   codedAssert(new Set(names).size === names.length, "H2_STAGE_OPERATION_ENV", "stage environment variable names must be unique");
   codedAssert(operation.network_policy === "deny_all" ? operation.network_capability_ids.length === 0 : operation.network_capability_ids.length > 0, "H2_STAGE_NETWORK_POLICY", "network policy and capability IDs differ");
   const renderedPrefix = operation.execution_boundary.argv_prefix.map((argument: string) => argument.replaceAll("${IMMUTABLE_ROOT}", immutableRoot!));
@@ -1342,12 +1432,14 @@ function externalOperationPreflight(operation: J, outputs: J[], syntheticBoundar
   return { executable: syntheticBoundary ? immutableRuntime : immutableWrapper, argv: syntheticBoundary ? [immutableWrapper, immutableRuntime, ...rewrittenArgv] : [...renderedPrefix, immutableRuntime, ...rewrittenArgv], env, snapshots, sourceCwd: operation.cwd, cwd: immutableCwd, outputPaths: operation.declared_output_paths, immutableRoot, dependencyManifest: dependencyTree.manifest };
   } catch (error) {
     for (const snapshot of snapshots) { try { fs.closeSync(snapshot.fd); } catch { /* failed preflight releases all retained descriptors */ } }
-    if (immutableRoot) { try { fs.rmSync(immutableRoot, { recursive: true, force: true }); } catch { /* cleanup cannot make a rejected preflight executable */ } }
+    if (immutableRoot) removeImmutableTreeVerified(immutableRoot, error, syntheticBoundary);
     throw error;
   }
 }
 function assertExternalOperationPostflight(exact: ReturnType<typeof externalOperationPreflight>): void {
   assertOperationSnapshotsUnchanged(exact.snapshots);
+  const rediscovered = exact.dependencyManifest.physical_roots.flatMap(enumerateDependencyRoot).sort((a: J, b: J) => a.realpath.localeCompare(b.realpath));
+  codedAssert(canon(rediscovered.map(({ realpath, sha256, bytes }: J) => ({ realpath, sha256, bytes }))) === canon(exact.dependencyManifest.members.map(({ realpath, sha256, bytes }: J) => ({ realpath, sha256, bytes }))), "H2_STAGE_DEPENDENCY_TREE", "dependency closure changed while immutable child was running");
   const dirty = execFileSync(trustedExecutable("git"), ["-C", exact.sourceCwd, "status", "--porcelain=v1", "--untracked-files=all"], { encoding: "utf8", env: {} }).trim().split("\n").filter(Boolean);
   const allowed = new Set(exact.outputPaths.map((file) => path.relative(exact.sourceCwd, path.join(fs.realpathSync(path.dirname(file)), path.basename(file)))));
   codedAssert(dirty.every((line) => line.startsWith("?? ") && allowed.has(line.slice(3))), "H2_STAGE_UNDECLARED_WRITE", `sandbox produced an undeclared write or modified tracked content: ${canon(dirty)}`);
@@ -1355,6 +1447,8 @@ function assertExternalOperationPostflight(exact: ReturnType<typeof externalOper
 function executeExternalStageOperation(operation: J, outputs: J[], syntheticBoundary = false, beforeChild?: () => void | (() => void)): ReturnType<typeof externalOperationPreflight> {
   const exact = externalOperationPreflight(operation, outputs, syntheticBoundary);
   let undo: void | (() => void) = undefined;
+  let result: ReturnType<typeof externalOperationPreflight> | undefined;
+  let primary: unknown;
   try {
     undo = beforeChild?.();
     assertOperationSnapshotsUnchanged(exact.snapshots);
@@ -1362,12 +1456,24 @@ function executeExternalStageOperation(operation: J, outputs: J[], syntheticBoun
     codedAssert(canon(rediscovered.map(({ realpath, sha256, bytes }: J) => ({ realpath, sha256, bytes }))) === canon(exact.dependencyManifest.members.map(({ realpath, sha256, bytes }: J) => ({ realpath, sha256, bytes }))), "H2_STAGE_DEPENDENCY_TREE", "dependency closure changed after immutable materialization");
     execFileSync(exact.executable, exact.argv, { cwd: exact.cwd, stdio: "inherit", env: exact.env });
     assertExternalOperationPostflight(exact);
-    return exact;
+    result = exact;
+  } catch (error) {
+    primary = error;
   } finally {
-    try { undo?.(); } catch { /* internal race cleanup cannot turn a rejection into completion */ }
+    try { undo?.(); } catch (error) { primary ??= new GateH2Error("H2_STAGE_INTERNAL_RACE_CLEANUP", "internal race restoration failed", error); }
     for (const snapshot of exact.snapshots) { try { fs.closeSync(snapshot.fd); } catch { /* retained bytes have completed their authority role */ } }
-    if (exact.immutableRoot) { try { fs.rmSync(exact.immutableRoot, { recursive: true, force: true }); } catch { /* cleanup is not semantic validation */ } }
+    if (primary !== undefined) for (const outputPath of exact.outputPaths) {
+      try { fs.rmSync(outputPath, { force: true }); }
+      catch (error) { primary = new GateH2Error("H2_STAGE_OUTPUT_CLEANUP", "rejected stage output cleanup failed", { primary, cleanupError: error }); }
+    }
+    try { removeImmutableTreeVerified(exact.immutableRoot, primary, syntheticBoundary); }
+    catch (cleanupError) {
+      for (const outputPath of exact.outputPaths) { try { fs.rmSync(outputPath, { force: true }); } catch { /* cleanup error remains the fatal stage result */ } }
+      throw cleanupError;
+    }
   }
+  if (primary !== undefined) throw primary;
+  return result!;
 }
 function internalStageRaceHook(operation: J, capability?: InternalSyntheticCapability): (() => void | (() => void)) | undefined {
   const race = process.env.GATE_H2_INTERNAL_STAGE_RACE; if (!race) return undefined;
@@ -1383,18 +1489,20 @@ function externalOperationContractSelfTest(): J {
   const git = trustedExecutable("git");
   const expect = (code: string, operation: () => unknown): void => { let observed = ""; try { operation(); } catch (error) { observed = error instanceof GateH2Error ? error.code : ""; } codedAssert(observed === code, "H2_EXTERNAL_TEST_CODE", `expected ${code}, observed ${observed || "none"}`); };
   try {
+    validateScalarValue("strict", "enum", ["strict", "offline"]); validateScalarValue("17", "integer"); validateScalarValue(hash("fixed"), "sha256"); validateScalarValue("id_exact", "identifier"); validateScalarValue("false", "boolean");
+    for (const probe of ["package-lock", "node_modules", "prompt", "etc", "tmp", ".env", "package.json", "file:tmp", "file:package-lock", "https:example", "--input=tmp", "../tmp", "a/b", "a\\b"]) expect("H2_STAGE_SCALAR_SYNTAX", () => validateScalarValue(probe, "enum", [probe]));
     execFileSync(git, ["init", "-q", "-b", "gate-h2-test"], { cwd: root, env: {} });
     const script = path.join(root, "stage.cjs"); const prompt = path.join(root, "prompt.txt"); const lock = path.join(root, "package-lock.json"); const packageManifest = path.join(root, "package.json"); const dependencyRoot = path.join(root, "node_modules/exact-test-runtime"); const dependencyMember = path.join(dependencyRoot, "index.js"); const dependencies = path.join(root, "installed-dependencies.json"); const wrapper = path.join(root, "sandbox-wrapper.sh"); const output = path.join(root, "output.json");
     const filePin = (file: string, version = "sha256-pinned-v1") => { const raw = fs.readFileSync(file); return { path: file, realpath: fs.realpathSync(file), sha256: hash(raw), bytes: raw.length, version }; };
     fs.writeFileSync(script, "const fs=require('node:fs');if(require('exact-test-runtime')!=='exact'||fs.readFileSync(process.argv[2],'utf8')!=='sanitized prompt\\n')process.exit(9);fs.writeFileSync(process.env.OUT,JSON.stringify(Object.keys(process.env).sort()));if(process.env.UNDECLARED)fs.writeFileSync(process.env.UNDECLARED,'forbidden');\n", { mode: 0o600 });
     fs.mkdirSync(dependencyRoot, { recursive: true }); fs.writeFileSync(dependencyMember, "module.exports='exact';\n", { mode: 0o400 });
     fs.writeFileSync(prompt, "sanitized prompt\n", { mode: 0o600 }); fs.writeFileSync(lock, "{\"lockfileVersion\":3}\n", { mode: 0o600 }); fs.writeFileSync(packageManifest, "{\"name\":\"gate-h2-test\",\"private\":true}\n", { mode: 0o600 }); fs.writeFileSync(wrapper, `#!${process.execPath}\nconst {spawnSync}=require('node:child_process');const r=spawnSync(process.argv[2],process.argv.slice(3),{stdio:'inherit',env:process.env});process.exit(r.status??1);\n`, { mode: 0o500 });
-    const roots = [process.execPath, script, lock, packageManifest, dependencyRoot].map((file) => ({ path: file, realpath: fs.realpathSync(file), discovery_rule: "recursive_regular_files_no_symlinks_v1" })).sort((a, b) => a.realpath.localeCompare(b.realpath));
-    const members = roots.flatMap(enumerateDependencyRoot).sort((a: J, b: J) => a.realpath.localeCompare(b.realpath)); const resolutionContract = makeSyntheticResolutionClosure(filePin(process.execPath, process.version), filePin(script), filePin(lock), filePin(packageManifest), roots, members); const treeBytes = dependencyTreeBytes(resolutionContract, roots, members);
-    fs.writeFileSync(dependencies, pretty({ schema_version: "reviewed_metrics_installed_dependency_tree_v2.2.0", enumeration_contract: "sorted_physical_regular_files_path_sha256_bytes_v2", resolution_contract: resolutionContract, physical_roots: roots, members, tree_sha256: hash(treeBytes), tree_bytes: treeBytes.length, member_count: members.length }), { mode: 0o600 });
-    execFileSync(git, ["add", "stage.cjs", "prompt.txt", "package-lock.json", "package.json", "node_modules", "installed-dependencies.json", "sandbox-wrapper.sh"], { cwd: root, env: {} });
+    const roots = [wrapper, process.execPath, script, lock, packageManifest, dependencyRoot].map((file) => ({ path: file, realpath: fs.realpathSync(file), discovery_rule: "recursive_regular_files_no_symlinks_v1" })).sort((a, b) => a.realpath.localeCompare(b.realpath));
+    const members = roots.flatMap(enumerateDependencyRoot).sort((a: J, b: J) => a.realpath.localeCompare(b.realpath)); const resolutionContract = makeSyntheticResolutionClosure(filePin(wrapper), filePin(process.execPath, process.version), filePin(script), filePin(lock), filePin(packageManifest), roots, members, root); const treeBytes = dependencyTreeBytes(resolutionContract, roots, members);
+    fs.writeFileSync(dependencies, pretty({ schema_version: "reviewed_metrics_installed_dependency_tree_v2.3.0", enumeration_contract: "sorted_physical_regular_files_path_sha256_bytes_v2", resolution_contract: resolutionContract, physical_roots: roots, members, tree_sha256: hash(treeBytes), tree_bytes: treeBytes.length, member_count: members.length }), { mode: 0o600 });
+    execFileSync(git, ["add", "stage.cjs", "prompt.txt", "package-lock.json", "package.json", "node_modules", "installed-dependencies.json", "sandbox-wrapper.sh", "package-resolution-proof.json", "module-resolution-proof.json", "native-resolution-proof.json"], { cwd: root, env: {} });
     execFileSync(git, ["-c", "user.name=Gate H2 Test", "-c", "user.email=gate-h2@example.invalid", "commit", "-q", "-m", "fixture"], { cwd: root, env: {} });
-    const publicEnvironment = [{ name: "OUT", value: output, value_sha256: hash(output), binding: "declared_output" }, ...(process.platform === "darwin" ? [{ name: "__CF_USER_TEXT_ENCODING", value: "id_0x0_0x0_0x0", value_sha256: hash("id_0x0_0x0_0x0"), binding: "literal", scalar_type: "identifier", allowed_values: [] }] : [])];
+    const publicEnvironment = [{ name: "OUT", value: output, value_sha256: hash(output), binding: "declared_output" }];
     const repoTree = hash(execFileSync(git, ["rev-parse", "HEAD^{tree}"], { cwd: root, encoding: "utf8", env: {} }).trim());
     const dependencyValue = load(dependencies); const boundaryPayload: J = { kind: "linux_sandbox_attestation_v1", platform: "linux", wrapper: filePin(wrapper), argv_prefix: [], image_identity_kind: "oci_manifest", image_immutable_identity: "synthetic.invalid/gate-h2@sha256", image_digest: `sha256:${hash("synthetic-linux-image")}`, resolution_contract: dependencyValue.resolution_contract, dependency_tree_sha256: dependencyValue.tree_sha256, network_policy: "deny_all", network_capability_ids: [], writable_paths: [output], repo_tree_sha256: repoTree };
     const operation: J = { kind: "external_command", execution_boundary: { ...boundaryPayload, attestation_sha256: hash(canon(boundaryPayload)) }, runtime: filePin(process.execPath, process.version), script: filePin(script), artifacts: [{ artifact_role: "sanitized_prompt", pin: filePin(prompt) }], dependency_lock: filePin(lock), installed_dependency_tree: filePin(dependencies), repo_tree_sha256: repoTree, cwd: fs.realpathSync(root), argv: [fs.realpathSync(script), fs.realpathSync(prompt)], argv_bindings: [{ index: 0, artifact_role: "script", value_sha256: hash(fs.realpathSync(script)) }, { index: 1, artifact_role: "sanitized_prompt", value_sha256: hash(fs.realpathSync(prompt)) }], declared_output_paths: [output], network_policy: "deny_all", network_capability_ids: [], environment: { public: publicEnvironment, secret_capability_ids: [] } };
@@ -1403,16 +1511,19 @@ function externalOperationContractSelfTest(): J {
     executeExternalStageOperation(operation, [{ path: output }], true);
     const childEnvironmentNames = JSON.parse(fs.readFileSync(output, "utf8"));
     codedAssert(canon(childEnvironmentNames) === canon(publicEnvironment.map((item) => item.name).sort()), "H2_STAGE_OPERATION_ENV", `clean child environment differs: ${canon(childEnvironmentNames)}`); fs.unlinkSync(output);
-    const undeclaredFile = path.join(root, "undeclared.json"); process.env.UNDECLARED = undeclaredFile; const writesExtra = structuredClone(operation); writesExtra.environment.secret_capability_ids.push({ name: "UNDECLARED", capability_id: hash(`gate-h2-stage-secret-capability-v1\0UNDECLARED\0${undeclaredFile}`) }); expect("H2_STAGE_UNDECLARED_WRITE", () => executeExternalStageOperation(writesExtra, [{ path: output }], true)); delete process.env.UNDECLARED; fs.unlinkSync(output); fs.unlinkSync(undeclaredFile);
+    const undeclaredFile = path.join(root, "undeclared.json"); process.env.UNDECLARED = undeclaredFile; const writesExtra = structuredClone(operation); writesExtra.environment.secret_capability_ids.push({ name: "UNDECLARED", capability_id: hash(`gate-h2-stage-secret-capability-v1\0UNDECLARED\0${undeclaredFile}`) }); expect("H2_STAGE_SECRET_ENV", () => executeExternalStageOperation(writesExtra, [{ path: output }], true)); delete process.env.UNDECLARED;
     const run = (candidate: J) => executeExternalStageOperation(candidate, [{ path: output }], true);
+    const runtimeJoin = structuredClone(operation); runtimeJoin.runtime = structuredClone(runtimeJoin.script); expect("H2_STAGE_DEPENDENCY_JOIN", () => run(runtimeJoin));
+    const scriptJoin = structuredClone(operation); scriptJoin.script = structuredClone(scriptJoin.artifacts[0].pin); scriptJoin.argv[0] = scriptJoin.script.realpath; scriptJoin.argv_bindings[0].value_sha256 = hash(scriptJoin.argv[0]); expect("H2_STAGE_DEPENDENCY_JOIN", () => run(scriptJoin));
+    const lockJoin = structuredClone(operation); lockJoin.dependency_lock = structuredClone(lockJoin.script); expect("H2_STAGE_DEPENDENCY_JOIN", () => run(lockJoin));
+    expect("H2_STAGE_STATIC_EXECUTABLE", () => executeExternalStageOperation(operation, [{ path: output }], false));
     for (const name of ["PATH", "NODE_OPTIONS", "PYTHONPATH", "HOME", "CODEX_HOME", "AUTH_TOKEN"]) { const bad = structuredClone(operation); bad.environment.public.push({ name, value: "bad", value_sha256: hash("bad"), binding: "literal" }); expect("H2_STAGE_OPERATION_ENV", () => run(bad)); }
-    const secretHome = structuredClone(operation); secretHome.environment.secret_capability_ids = [{ name: "HOME", capability_id: hash(`gate-h2-stage-secret-capability-v1\0HOME\0${process.env.HOME}`) }]; run(secretHome); fs.unlinkSync(output);
-    const missing = structuredClone(operation); missing.environment.secret_capability_ids = [{ name: "MISSING_SECRET", capability_id: "0".repeat(64) }]; expect("H2_STAGE_OPERATION_ENV", () => run(missing));
+    for (const [name, value] of [["HOME", process.env.HOME ?? "/tmp"], ["AUTH_FILE", "secret.pem"], ["FILE_URI", "file:tmp"], ["CONFIG", "package.json"]]) { process.env[name] = value; const secret = structuredClone(operation); secret.environment.secret_capability_ids = [{ name, capability_id: hash(`gate-h2-stage-secret-capability-v1\0${name}\0${value}`) }]; expect("H2_STAGE_SECRET_ENV", () => run(secret)); delete process.env[name]; }
     const unpinned = structuredClone(operation); unpinned.declared_output_paths = [path.join(root, "other.json")]; expect("H2_STAGE_OUTPUT_DECLARATION", () => run(unpinned));
     const argvBad = structuredClone(operation); argvBad.argv.push(prompt); expect("H2_STAGE_OPERATION_ARGV", () => run(argvBad));
     const argvLiteralPath = structuredClone(operation); argvLiteralPath.argv_bindings[0] = { ...argvLiteralPath.argv_bindings[0], artifact_role: "literal", scalar_type: "enum", allowed_values: [script] }; expect("H2_STAGE_SCALAR_SYNTAX", () => run(argvLiteralPath));
     const envLiteralPath = structuredClone(operation); envLiteralPath.environment.public.push({ name: "INPUT_PATH", value: prompt, value_sha256: hash(prompt), binding: "literal", scalar_type: "enum", allowed_values: [prompt] }); expect("H2_STAGE_SCALAR_SYNTAX", () => run(envLiteralPath));
-    for (const literal of ["relative/input.json", "file:///tmp/input.json", "https://example.invalid/input", "--input=relative.json", "--input=../escape.json", "..\\escape.json", ".env", "package.json", "config.json", "secret.pem"]) {
+    for (const literal of ["relative/input.json", "file:///tmp/input.json", "file:tmp", "file:package-lock", "https:example", "https://example.invalid/input", "--input=relative.json", "--input=../escape.json", "..\\escape.json", ".env", "package.json", "package-lock", "node_modules", "prompt", "etc", "tmp", "config.json", "secret.pem"]) {
       const badArgv = structuredClone(operation); badArgv.argv.push(literal); badArgv.argv_bindings.push({ index: badArgv.argv.length - 1, artifact_role: "literal", value_sha256: hash(literal), scalar_type: "enum", allowed_values: [literal] }); expect("H2_STAGE_SCALAR_SYNTAX", () => run(badArgv));
       const badEnv = structuredClone(operation); badEnv.environment.public.push({ name: `BAD_INPUT_${hash(literal).slice(0, 8).toUpperCase()}`, value: literal, value_sha256: hash(literal), binding: "literal", scalar_type: "enum", allowed_values: [literal] }); expect("H2_STAGE_SCALAR_SYNTAX", () => run(badEnv));
     }
@@ -1421,6 +1532,7 @@ function externalOperationContractSelfTest(): J {
     const originalScript = fs.readFileSync(script); fs.appendFileSync(script, "// replaced\n"); expect("H2_STAGE_OPERATION_ARTIFACT", () => run(operation)); fs.writeFileSync(script, originalScript);
     const originalLock = fs.readFileSync(lock); fs.appendFileSync(lock, " "); expect("H2_STAGE_OPERATION_ARTIFACT", () => run(operation)); fs.writeFileSync(lock, originalLock);
     const originalDependencies = fs.readFileSync(dependencies); fs.appendFileSync(dependencies, " "); expect("H2_STAGE_OPERATION_ARTIFACT", () => run(operation)); fs.writeFileSync(dependencies, originalDependencies);
+    const proofFile = resolutionContract.module_resolution.proof.realpath; const originalProof = fs.readFileSync(proofFile); fs.writeFileSync(proofFile, Buffer.alloc(originalProof.length, 0x70)); expect("H2_STAGE_OPERATION_ARTIFACT", () => run(operation)); fs.writeFileSync(proofFile, originalProof);
     const race = (code: string, mutate: () => void, restore: () => void): void => { expect(code, () => executeExternalStageOperation(operation, [{ path: output }], true, mutate)); codedAssert(!fs.existsSync(output), "H2_STAGE_IMMUTABLE_RACE_TEST", "rejected source race produced child output"); restore(); };
     const originalPrompt = fs.readFileSync(prompt); race("H2_STAGE_OPERATION_ARTIFACT", () => fs.writeFileSync(prompt, Buffer.alloc(originalPrompt.length, 0x78)), () => fs.writeFileSync(prompt, originalPrompt));
     const originalMember = fs.readFileSync(dependencyMember); race("H2_STAGE_OPERATION_ARTIFACT", () => { fs.chmodSync(dependencyMember, 0o600); fs.writeFileSync(dependencyMember, Buffer.alloc(originalMember.length, 0x79)); }, () => { fs.writeFileSync(dependencyMember, originalMember); fs.chmodSync(dependencyMember, 0o400); });
@@ -1428,7 +1540,12 @@ function externalOperationContractSelfTest(): J {
     fs.writeFileSync(path.join(root, "untracked-loader.cjs"), "module.exports=1\n"); expect("H2_STAGE_OPERATION_REPO_TREE", () => run(operation)); fs.unlinkSync(path.join(root, "untracked-loader.cjs"));
     const replacedRuntime = structuredClone(operation); replacedRuntime.runtime.sha256 = "0".repeat(64); expect("H2_STAGE_OPERATION_ARTIFACT", () => run(replacedRuntime));
     const alias = `${root}-alias`; fs.symlinkSync(root, alias); const aliasOperation = structuredClone(operation); aliasOperation.cwd = alias; expect("H2_STAGE_OPERATION_CWD", () => run(aliasOperation)); fs.unlinkSync(alias);
-    return { status: "external_operation_contract_self_test_passed_synthetic_boundary_only", production_ready: false, real_linux_wrapper_test_satisfied: false, cases: ["clean_environment", "path_injection", "node_options_injection", "pythonpath_injection", "home_auth_public_injection", "secret_home_capability", "extra_environment", "missing_environment", "replaced_executable", "replaced_script", "complete_runtime_module_native_closure", "replaced_imported_dependency_tree", "inserted_import_candidate", "source_artifact_race_before_child", "dirty_untracked_cwd", "argv_substitution", "basename_and_dotfile_literal_rejection", "path_bearing_literal_argv", "path_bearing_literal_env", "network_policy_escape", "undeclared_write_actual_child", "missing_sandbox_attestation", "cwd_alias", "unpinned_output", "private_immutable_tree_execution"] };
+    const dynamicFile = path.join(root, "dynamic-import-test.cjs"); fs.writeFileSync(dynamicFile, "const name='x';require(name);\n", { mode: 0o600 }); const dynamicPin = filePin(dynamicFile); const dynamicSnapshot = snapshotOperationFile(dynamicPin, "dynamic import test"); try { expect("H2_STAGE_DEPENDENCY_TREE", () => staticModuleResolution(dynamicSnapshot, [dynamicPin])); } finally { fs.closeSync(dynamicSnapshot.fd); fs.unlinkSync(dynamicFile); }
+    process.env.GATE_H2_INTERNAL_CLEANUP_FAIL_ONCE = "1"; expect("H2_STAGE_IMMUTABLE_CLEANUP", () => run(operation)); delete process.env.GATE_H2_INTERNAL_CLEANUP_FAIL_ONCE; codedAssert(!fs.existsSync(output), "H2_STAGE_IMMUTABLE_CLEANUP", "cleanup-failure rejection left an output");
+    process.env.GATE_H2_INTERNAL_CLEANUP_FAIL_ONCE = "1"; let cleanupWithPrimary: unknown; try { executeExternalStageOperation(operation, [{ path: output }], true, () => { throw new GateH2Error("H2_TEST_PRIMARY", "synthetic primary stage failure"); }); } catch (error) { cleanupWithPrimary = error; } finally { delete process.env.GATE_H2_INTERNAL_CLEANUP_FAIL_ONCE; }
+    codedAssert(cleanupWithPrimary instanceof GateH2Error && cleanupWithPrimary.code === "H2_STAGE_IMMUTABLE_CLEANUP" && (cleanupWithPrimary.cause as J)?.primary?.code === "H2_TEST_PRIMARY" && cleanupWithPrimary.message.includes("H2_TEST_PRIMARY") && !fs.existsSync(output), "H2_STAGE_IMMUTABLE_CLEANUP", "cleanup failure did not retain the primary error as auditable cause");
+    codedAssert(fs.readdirSync(os.tmpdir()).every((name) => !name.startsWith("rmv2-immutable-operation-")), "H2_STAGE_IMMUTABLE_CLEANUP", "external operation test leaked an immutable tree");
+    return { status: "external_operation_contract_self_test_passed_synthetic_boundary_only", production_ready: false, real_linux_wrapper_test_satisfied: false, cases: ["clean_environment", "closed_scalar_grammar", "path_injection", "node_options_injection", "pythonpath_injection", "home_auth_public_injection", "raw_secret_capabilities_rejected", "replaced_executable", "replaced_script", "derived_runtime_module_native_closure", "retained_resolution_proof_bytes", "replaced_imported_dependency_tree", "inserted_import_candidate", "source_artifact_race_before_child", "dirty_untracked_cwd", "argv_substitution", "basename_dotfile_colon_uri_literal_rejection", "network_policy_escape", "missing_sandbox_attestation", "cwd_alias", "unpinned_output", "verified_fatal_immutable_tree_cleanup", "private_immutable_tree_execution"] };
   } finally { delete process.env.NODE_OPTIONS; delete process.env.PYTHONPATH; delete process.env.EXTRA_AMBIENT; fs.rmSync(root, { recursive: true, force: true }); }
 }
 function consequentialGitPathShadowSelfTest(): J {
@@ -10458,8 +10575,14 @@ function stageRunSubprocessSelfTest(root: string): J {
   const work = path.join(root, "stage-run-work"); fs.mkdirSync(work); const git = trustedExecutable("git"); execFileSync(git, ["init", "-q", "-b", "stage-run-test"], { cwd: work, env: {} });
   const script = path.join(work, "stage.cjs"); const wrapper = path.join(work, "wrapper.sh"); const prompt = path.join(work, "prompt.txt"); const lock = path.join(work, "package-lock.json"); const packageManifest = path.join(work, "package.json"); const dependencyRoot = path.join(work, "node_modules/stage-runtime"); const dependencyMember = path.join(dependencyRoot, "index.js"); const dependencies = path.join(work, "dependencies.json"); const output = path.join(work, "output.json");
   const filePin = (file: string, version = "pinned-v1") => { const raw = fs.readFileSync(file); return { path: file, realpath: fs.realpathSync(file), sha256: hash(raw), bytes: raw.length, version }; };
-  fs.mkdirSync(dependencyRoot, { recursive: true }); fs.writeFileSync(dependencyMember, "module.exports='stage';\n", { mode: 0o400 }); fs.writeFileSync(script, "const fs=require('node:fs');if(require('stage-runtime')!=='stage'||fs.readFileSync(process.argv[2],'utf8')!=='opaque input\\n')process.exit(9);fs.writeFileSync(process.env.OUT,'{}\\n');\n", { mode: 0o600 }); fs.writeFileSync(wrapper, `#!${process.execPath}\nconst {spawnSync}=require('node:child_process');const r=spawnSync(process.argv[2],process.argv.slice(3),{stdio:'inherit',env:process.env});process.exit(r.status??1);\n`, { mode: 0o500 }); fs.writeFileSync(prompt, "opaque input\n", { mode: 0o600 }); fs.writeFileSync(lock, "{\"lockfileVersion\":3}\n", { mode: 0o600 }); fs.writeFileSync(packageManifest, "{\"name\":\"stage-run-test\",\"private\":true}\n", { mode: 0o600 });
-  const roots = [process.execPath, script, lock, packageManifest, dependencyRoot].map((file) => ({ path: file, realpath: fs.realpathSync(file), discovery_rule: "recursive_regular_files_no_symlinks_v1" })).sort((a, b) => a.realpath.localeCompare(b.realpath)); const members = roots.flatMap(enumerateDependencyRoot).sort((a: J, b: J) => a.realpath.localeCompare(b.realpath)); const resolutionContract = makeSyntheticResolutionClosure(filePin(process.execPath, process.version), filePin(script), filePin(lock), filePin(packageManifest), roots, members); const treeBytes = dependencyTreeBytes(resolutionContract, roots, members); fs.writeFileSync(dependencies, pretty({ schema_version: "reviewed_metrics_installed_dependency_tree_v2.2.0", enumeration_contract: "sorted_physical_regular_files_path_sha256_bytes_v2", resolution_contract: resolutionContract, physical_roots: roots, members, tree_sha256: hash(treeBytes), tree_bytes: treeBytes.length, member_count: members.length }), { mode: 0o600 });
+  fs.mkdirSync(dependencyRoot, { recursive: true }); fs.writeFileSync(dependencyMember, "module.exports='stage';\n", { mode: 0o400 }); fs.writeFileSync(script, `const fs=require('node:fs');
+const spec=process.env.GATE_H2_INTERNAL_POSTSPAWN_SPEC?JSON.parse(Buffer.from(process.env.GATE_H2_INTERNAL_POSTSPAWN_SPEC,'base64url').toString('utf8')):null;
+if(spec){fs.writeFileSync(spec.ready,'ready',{flag:'wx'});while(!fs.existsSync(spec.continue))Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,10);}
+const dependency=require('stage-runtime');const prompt=fs.readFileSync(process.argv[2],'utf8');const late=fs.existsSync(require.resolve('stage-runtime').replace(/index\\.js$/,'late-candidate.cjs'));
+if(spec)console.error('H2_CHILD_OBSERVATION:'+JSON.stringify({dependency,prompt,late,script:__filename,argv:process.argv.slice(1)}));
+if(dependency!=='stage'||prompt!=='opaque input\\n'||late)process.exit(9);fs.writeFileSync(process.env.OUT,'{}\\n');
+`, { mode: 0o600 }); fs.writeFileSync(wrapper, `#!${process.execPath}\nconst {spawnSync}=require('node:child_process');const r=spawnSync(process.argv[2],process.argv.slice(3),{stdio:'inherit',env:process.env});process.exit(r.status??1);\n`, { mode: 0o500 }); fs.writeFileSync(prompt, "opaque input\n", { mode: 0o600 }); fs.writeFileSync(lock, "{\"lockfileVersion\":3}\n", { mode: 0o600 }); fs.writeFileSync(packageManifest, "{\"name\":\"stage-run-test\",\"private\":true}\n", { mode: 0o600 });
+  const roots = [wrapper, process.execPath, script, lock, packageManifest, dependencyRoot].map((file) => ({ path: file, realpath: fs.realpathSync(file), discovery_rule: "recursive_regular_files_no_symlinks_v1" })).sort((a, b) => a.realpath.localeCompare(b.realpath)); const members = roots.flatMap(enumerateDependencyRoot).sort((a: J, b: J) => a.realpath.localeCompare(b.realpath)); const resolutionContract = makeSyntheticResolutionClosure(filePin(wrapper), filePin(process.execPath, process.version), filePin(script), filePin(lock), filePin(packageManifest), roots, members, work); const treeBytes = dependencyTreeBytes(resolutionContract, roots, members); fs.writeFileSync(dependencies, pretty({ schema_version: "reviewed_metrics_installed_dependency_tree_v2.3.0", enumeration_contract: "sorted_physical_regular_files_path_sha256_bytes_v2", resolution_contract: resolutionContract, physical_roots: roots, members, tree_sha256: hash(treeBytes), tree_bytes: treeBytes.length, member_count: members.length }), { mode: 0o600 });
   execFileSync(git, ["add", "."], { cwd: work, env: {} }); execFileSync(git, ["-c", "user.name=Gate H2", "-c", "user.email=gate-h2@example.invalid", "commit", "-q", "-m", "fixture"], { cwd: work, env: {} });
   const repoTree = hash(execFileSync(git, ["rev-parse", "HEAD^{tree}"], { cwd: work, encoding: "utf8", env: {} }).trim());
   const dependencyValue = load(dependencies); const boundaryPayload = { kind: "linux_sandbox_attestation_v1", platform: "linux", wrapper: filePin(wrapper), argv_prefix: [], image_identity_kind: "oci_manifest", image_immutable_identity: "synthetic.invalid/stage-run@sha256", image_digest: `sha256:${hash("local-stage-run-boundary")}`, resolution_contract: dependencyValue.resolution_contract, dependency_tree_sha256: dependencyValue.tree_sha256, network_policy: "deny_all", network_capability_ids: [], writable_paths: [output], repo_tree_sha256: repoTree };
@@ -10471,13 +10594,27 @@ function stageRunSubprocessSelfTest(root: string): J {
     const candidate = structuredClone(authority); mutate?.(candidate); sealSyntheticAuthority(candidate, true); const authorityFile = path.join(root, `stage-run-${label}-authority.json`); fs.writeFileSync(authorityFile, pretty(candidate), { mode: 0o600 });
     const measurementFile = path.join(root, `stage-run-${label}-measurement.json`); writeJson(measurementFile, measureRoute(authorityFile, "predictor", new Date().toISOString(), { [INTERNAL_SYNTHETIC_CAPABILITY]: true }, "visual_predict")); const receiptFile = path.join(root, `stage-run-${label}-receipt.json`); fs.writeFileSync(receiptFile, pretty(signRouteReceipt(authorityFile, measurementFile, "predictor", keyFile, at(90_000), "visual_predict", new Date().toISOString(), { [INTERNAL_SYNTHETIC_CAPABILITY]: true })), { mode: 0o600 });
     const fixtureFile = path.join(root, `stage-run-${label}-d1.json`); fs.writeFileSync(fixtureFile, pretty({ schema_version: "gate_h2_internal_d1_fetch_fixture_v1", synthetic: true, account_id: account, database_id: database, api_token: "stage-run-token", schema_rows: gateH2LedgerSchemaAttestation(ROOT).rows, readback: { attempts: [], claims: [], completions: [] } }), { mode: 0o600 }); const capability = hash(`gate-h2-internal-two-process-v2\n${canon(candidate)}`);
-    try { execFileSync(cli, [scriptFile, "stage-run", "--authority", authorityFile, "--stage", "visual_predict", "--stage-receipt", receiptFile], { cwd: ROOT, env: { ...process.env, GATE_H2_INTERNAL_TEST_CAPABILITY: capability, GATE_H2_INTERNAL_D1_FIXTURE: fixtureFile, ...(race ? { GATE_H2_INTERNAL_STAGE_RACE: race } : {}) }, stdio: ["ignore", "pipe", "pipe"] }); return { ok: true, stderr: "", fixture: load(fixtureFile) }; }
+    let postspawn: { ready: string; continue: string } | undefined; let mutator: ReturnType<typeof spawn> | undefined; let restore: (() => void) | undefined;
+    if (race?.startsWith("postspawn_")) {
+      postspawn = { ready: path.join(root, `${label}-ready`), continue: path.join(root, `${label}-continue`) };
+      const target = race === "postspawn_artifact" ? prompt : race === "postspawn_dependency" ? dependencyMember : path.join(dependencyRoot, "late-candidate.cjs");
+      const original = fs.existsSync(target) ? fs.readFileSync(target) : undefined; const originalMode = fs.existsSync(target) ? fs.statSync(target).mode & 0o777 : undefined;
+      restore = () => { if (original) { fs.chmodSync(target, 0o600); fs.writeFileSync(target, original); fs.chmodSync(target, originalMode!); } else fs.rmSync(target, { force: true }); };
+      const mutation = race === "postspawn_artifact" ? "const replacement=target+'.postspawn-replacement';fs.writeFileSync(replacement,Buffer.alloc(fs.statSync(target).size,0x71),{mode:0o600});fs.renameSync(replacement,target)" : race === "postspawn_dependency" ? "const replacement=target+'.postspawn-replacement';fs.writeFileSync(replacement,Buffer.alloc(fs.statSync(target).size,0x72),{mode:0o400});fs.renameSync(replacement,target)" : "fs.writeFileSync(target,\"module.exports='late';\\n\",{mode:0o400})";
+      mutator = spawn(process.execPath, ["-e", `const fs=require('node:fs');const [ready,go,target]=process.argv.slice(1);while(!fs.existsSync(ready))Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,10);${mutation};fs.writeFileSync(go,'go',{flag:'wx'});`, postspawn.ready, postspawn.continue, target], { stdio: "ignore" });
+    }
+    const env = { ...process.env, GATE_H2_INTERNAL_TEST_CAPABILITY: capability, GATE_H2_INTERNAL_D1_FIXTURE: fixtureFile, ...(race && !race.startsWith("postspawn_") && race !== "cleanup_failure" ? { GATE_H2_INTERNAL_STAGE_RACE: race } : {}), ...(race === "cleanup_failure" ? { GATE_H2_INTERNAL_CLEANUP_FAIL_ONCE: "1" } : {}), ...(postspawn ? { GATE_H2_INTERNAL_POSTSPAWN_SPEC: Buffer.from(canon(postspawn)).toString("base64url") } : {}) };
+    try { execFileSync(cli, [scriptFile, "stage-run", "--authority", authorityFile, "--stage", "visual_predict", "--stage-receipt", receiptFile], { cwd: ROOT, env, stdio: ["ignore", "pipe", "pipe"] }); return { ok: true, stderr: "", fixture: load(fixtureFile) }; }
     catch (error) { return { ok: false, stderr: (error as { stderr?: Buffer }).stderr?.toString("utf8") ?? "", fixture: load(fixtureFile) }; }
+    finally { mutator?.kill(); restore?.(); if (postspawn) { fs.rmSync(postspawn.ready, { force: true }); fs.rmSync(postspawn.continue, { force: true }); } }
   };
   const success = invoke("success"); codedAssert(success.ok && success.fixture.readback.attempts.length === 1 && success.fixture.readback.claims.length === 1 && success.fixture.readback.completions.length === 1 && fs.existsSync(output), "H2_STAGE_RUN_CLI_TEST", "actual stage-run CLI did not complete through production-shaped D1 adapter"); fs.unlinkSync(output);
   const bad = invoke("path-literal", (candidate) => { const binding = candidate.stage_execution.stages.find((entry: J) => entry.stage_id === "visual_predict").operation.argv_bindings[0]; binding.artifact_role = "literal"; binding.scalar_type = "enum"; binding.allowed_values = [candidate.stage_execution.stages.find((entry: J) => entry.stage_id === "visual_predict").operation.argv[0]]; }); codedAssert(!bad.ok && bad.stderr.includes("H2_STAGE_SCALAR_SYNTAX") && bad.fixture.readback.attempts.length === 1 && bad.fixture.readback.claims.length === 1 && bad.fixture.readback.completions.length === 0 && !fs.existsSync(output), "H2_STAGE_RUN_CLI_TEST", "actual stage-run path-bearing argv rejection did not preserve auditable begin without completion");
   for (const [label, race, code] of [["artifact-race", "replace_artifact", "H2_STAGE_OPERATION_ARTIFACT"], ["dependency-race", "replace_dependency", "H2_STAGE_OPERATION_ARTIFACT"], ["import-candidate-race", "insert_import_candidate", "H2_STAGE_DEPENDENCY_TREE"]]) { const result = invoke(label, undefined, race); codedAssert(!result.ok && result.stderr.includes(code) && result.fixture.readback.attempts.length === 1 && result.fixture.readback.claims.length === 1 && result.fixture.readback.completions.length === 0 && !fs.existsSync(output), "H2_STAGE_RUN_CLI_TEST", `${label} did not fail before child output/completion`); }
-  return { status: "actual_stage_run_cli_synthetic_boundary_passed", production_ready: false, real_linux_wrapper_test_satisfied: false, cases: ["success_with_production_shaped_d1", "path_bearing_literal_after_auditable_begin", "artifact_replacement_after_preflight", "dependency_replacement_after_preflight", "import_candidate_insertion_after_preflight"] };
+  for (const [label, race, code] of [["postspawn-artifact", "postspawn_artifact", "H2_STAGE_OPERATION_ARTIFACT"], ["postspawn-dependency", "postspawn_dependency", "H2_STAGE_OPERATION_ARTIFACT"], ["postspawn-import", "postspawn_import", "H2_STAGE_DEPENDENCY_TREE"]]) { const result = invoke(label, undefined, race); codedAssert(!result.ok && result.stderr.includes(code) && result.stderr.includes('H2_CHILD_OBSERVATION:{"dependency":"stage","prompt":"opaque input\\n","late":false') && result.stderr.includes("rmv2-immutable-operation-") && result.fixture.readback.attempts.length === 1 && result.fixture.readback.claims.length === 1 && result.fixture.readback.completions.length === 0 && !fs.existsSync(output), "H2_STAGE_RUN_CLI_TEST", `${label} did not prove immutable post-spawn consumption followed by source-change rejection: ${result.stderr}`); }
+  const cleanup = invoke("cleanup-failure", undefined, "cleanup_failure"); codedAssert(!cleanup.ok && cleanup.stderr.includes("H2_STAGE_IMMUTABLE_CLEANUP") && cleanup.fixture.readback.completions.length === 0 && !fs.existsSync(output), "H2_STAGE_RUN_CLI_TEST", `cleanup failure did not prevent stage completion: ${cleanup.stderr}`);
+  codedAssert(fs.readdirSync(os.tmpdir()).every((name) => !name.startsWith("rmv2-immutable-operation-")), "H2_STAGE_RUN_CLI_TEST", "stage-run subprocess tests leaked an immutable tree");
+  return { status: "actual_stage_run_cli_synthetic_boundary_passed", production_ready: false, real_linux_wrapper_test_satisfied: false, cases: ["success_with_production_shaped_d1", "path_bearing_literal_after_auditable_begin", "artifact_replacement_after_preflight", "dependency_replacement_after_preflight", "import_candidate_insertion_after_preflight", "postspawn_artifact_observed_immutable_copy", "postspawn_dependency_observed_immutable_copy", "postspawn_late_import_absent_from_immutable_copy", "cleanup_failure_no_completion_no_leak"] };
 }
 async function preActivationFailClosedSelfTest(root: string): Promise<J> {
   const keys = [crypto.generateKeyPairSync("ed25519"), crypto.generateKeyPairSync("ed25519"), crypto.generateKeyPairSync("ed25519")]; const observedAt = new Date(Date.now() - 1_000).toISOString(); const verifiedAt = new Date(Date.now() - 500).toISOString();
@@ -10487,7 +10624,7 @@ async function preActivationFailClosedSelfTest(root: string): Promise<J> {
   const d1: J = sign({ schema_version: "reviewed_metrics_d1_live_attestation_v2.1.0", status: "observed_live_append_only", synthetic: false, provider: "cloudflare_d1", api_contract: "cloudflare_v4_d1_query_select_v1", account_capability_digest: hash("account-capability-alpha"), database_uuid_digest: hash("database-capability-alpha"), namespace_digest: hash("namespace-alpha"), deployed_schema: { canonical_rows: schemaEvidence.rows, canonical_schema_sha256: schemaEvidence.sha256, canonical_schema_bytes: schemaEvidence.bytes, migration_sha256: hash(migration), migration_bytes: migration.length }, observation: { observed_at: observedAt, principal: d1Identity.principal, session_id: d1Identity.session_id, route: d1Identity.route, physical_route_identity_sha256: d1Identity.physical_route_identity_sha256 }, signer: d1Identity, signature_base64: "" }, 0);
   const wrapper = filePinForAttestation(process.execPath, process.version); const sandboxIdentity = identity(1, "attestor-bravo"); const output = path.join(root, "preactivation-output");
   const runtimeScript = filePinForAttestation(fileURLToPath(import.meta.url), "gate-h2-script-v2"); const runtimeLock = filePinForAttestation(path.join(ROOT, "package-lock.json"), "npm-lock-v3"); const runtimePackage = filePinForAttestation(path.join(ROOT, "package.json"), "npm-package-v1");
-  const runtimeMembers = [wrapper, runtimeScript, runtimeLock, runtimePackage].sort((a: J, b: J) => a.realpath.localeCompare(b.realpath)); const runtimeRoots = runtimeMembers.map((member: J) => ({ path: member.path, realpath: member.realpath, discovery_rule: "recursive_regular_files_no_symlinks_v1" })); const runtimeResolution = makeSyntheticResolutionClosure(wrapper, runtimeScript, runtimeLock, runtimePackage, runtimeRoots, runtimeMembers); const runtimeBytes = dependencyTreeBytes(runtimeResolution, runtimeRoots, runtimeMembers);
+  const runtimeMembers = [wrapper, runtimeScript, runtimeLock, runtimePackage].sort((a: J, b: J) => a.realpath.localeCompare(b.realpath)); const runtimeRoots = runtimeMembers.map((member: J) => ({ path: member.path, realpath: member.realpath, discovery_rule: "recursive_regular_files_no_symlinks_v1" })); const runtimeResolution = makeSyntheticResolutionClosure(wrapper, wrapper, runtimeScript, runtimeLock, runtimePackage, runtimeRoots, runtimeMembers, root); const runtimeBytes = dependencyTreeBytes(runtimeResolution, runtimeRoots, runtimeMembers);
   const sandbox: J = { schema_version: "reviewed_metrics_linux_sandbox_attestation_v2.2.0", status: "observed_live_enforced", synthetic: false, platform: "linux", wrapper, image: { identity_kind: "oci_manifest", immutable_identity: "registry.local/gate-h2@sha256", digest: `sha256:${hash("image-alpha")}` }, runtime_tree: { runtime: wrapper, resolution_contract: runtimeResolution, physical_roots: runtimeRoots, members: runtimeMembers, complete_tree_sha256: hash(runtimeBytes), complete_tree_bytes: runtimeBytes.length, member_count: runtimeMembers.length, enumeration_contract: "sorted_physical_regular_files_path_sha256_bytes_v2" }, wrapper_grammar_version: "gate_h2_linux_wrapper_argv_v3", fixed_argument_allowlist: [], argv_prefix: [], mounts: { readable_inputs: [{ artifact_role: "runtime", host_path: wrapper.realpath, guest_path: "/runtime/node", mode: "ro", content_sha256: wrapper.sha256 }], output_mounts: [{ artifact_role: "stage_output", host_path: output, guest_path: "/output/result", mode: "rw", content_sha256: hash("empty-output-alpha") }] }, network: { namespace_identity_sha256: hash("network-namespace-alpha"), firewall_rules_sha256: hash("firewall-alpha"), policy: "deny_all", destination_capability_ids: [], observed_destinations_digest: hash("no-destinations-alpha") }, writable_confinement: { writable_paths: [output], read_only_root: true, pre_state_sha256: hash("pre-state-alpha"), post_state_sha256: hash("post-state-alpha"), enforcement_evidence_sha256: hash("enforcement-alpha") }, repo_tree_sha256: hash("repo-tree-alpha"), observation: { observed_at: observedAt, principal: sandboxIdentity.principal, session_id: sandboxIdentity.session_id, route: sandboxIdentity.route, physical_route_identity_sha256: sandboxIdentity.physical_route_identity_sha256 }, signer: sandboxIdentity, signature_base64: "" }; sandbox.argv_prefix = deriveSandboxArgvPrefix(sandbox); sign(sandbox, 1);
   const verifierIdentity = identity(2, "attestor-charlie"); const writeArtifact = (name: string, value: J): J => { const file = path.join(root, name); fs.writeFileSync(file, pretty(value), { mode: 0o600 }); return filePinForAttestation(file, value.schema_version); };
   const buildAuthority = (mutate?: (values: { authority: J; d1: J; sandbox: J; verification: J }) => void): J => {
