@@ -1,0 +1,268 @@
+{
+  "schema_version": "verified_dossiers_v1.0.0",
+  "dossier_id": "verified-dossier-candidate:45",
+  "state": "published_independently_verified",
+  "fully_verified": true,
+  "source_acquisition_only": false,
+  "publication_eligible": true,
+  "expected_review_disposition": "independent_review_required",
+  "record": {
+    "record_id": "mtl_archives_metadata_45.json",
+    "numeric_id": 45,
+    "component_id": "leakage-component:6b87b9505f46051f1ae07e76c39f9beb4b57b311236547f32e5a4ed40bbf0c63",
+    "split": "validation",
+    "phase_d_selection_index": 13,
+    "stratum": "ground"
+  },
+  "predecessors": {
+    "phase_d": {
+      "artifact_id": "dfv0_issue69_phase_d_scale_v1_20260713",
+      "descriptor": {
+        "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/descriptor-v1.json",
+        "sha256": "1e72fb1fd74ad12b99de878ad97da9386afccdf77e7f0926811775dd416c48ce",
+        "bytes": 4098
+      },
+      "selection": {
+        "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+        "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+        "bytes": 4243798
+      }
+    },
+    "gate_e": {
+      "artifact_id": "dfv0_reviewed_source_evidence_v1",
+      "descriptor": {
+        "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/descriptor-v1.json",
+        "sha256": "af25f11f922bbd230e7372c27c2fd4d925be9cc95ea7ce78baa245461fc4efd8",
+        "bytes": 4210
+      }
+    },
+    "gate_f": {
+      "artifact_id": "dfv0_aerial_source_evidence_authority_v1_publication",
+      "descriptor": {
+        "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/final-descriptor-v1.json",
+        "sha256": "ab0936be1728a54e36f0fe8ed9d2e308b11a8bf54e2a9d182c87ba2187952eae",
+        "bytes": 2530
+      }
+    },
+    "ground_rights": {
+      "artifact_id": "dfv0_verified_multimodal_batch_001_real_pilot_source_acquisition_v1",
+      "descriptor": {
+        "path": "docs/dataset-factory/fixtures/real-pilot-source-acquisition-v1/descriptor-v1.json",
+        "sha256": "4a091067c919c465c9c8940aa1dd5acc6f46e740f6ad6416acdfff101f63de10",
+        "bytes": 2561
+      }
+    },
+    "canonical_image_recovery": {
+      "artifact_id": "canonical_image_recovery_v1",
+      "descriptor": {
+        "path": "docs/dataset-factory/fixtures/canonical-image-recovery-v1/inspection-derivatives/manifest-v1.json",
+        "sha256": "be840314e48969e8652f7a175a6d5f7305b8f26c1dadcac92e0a8a96c933689f",
+        "bytes": 64535
+      }
+    }
+  },
+  "review_pixels": {
+    "path": "review-pixels/45.jpg",
+    "sha256": "938b33ec26ff76fecd5ddb6b7ba845fe7f3cdd8d631ea8415324ed22f04b6c4e",
+    "bytes": 119527,
+    "format": "jpeg",
+    "width": 1024,
+    "height": 706,
+    "full_decode_verified": true,
+    "evidence_declaration": "whole_image"
+  },
+  "rights": {
+    "license_id": "cc-by-4.0",
+    "attribution": "Ville de Montréal / Archives de la Ville de Montréal",
+    "commercial_use_allowed": true,
+    "complete": true,
+    "authority": "registered_dataset_wide_montreal_cc_by_4_0_rights",
+    "scope_note": "Rights-only authority: the official Montreal open-data license applies CC BY 4.0 to City open data/content, and the exact photographic-archive dataset page requires credit to Archives de la Ville de Montréal. It does not establish image identity, depicted location, date, history, OCR, brand, entity, land use, scale, or measurement.",
+    "evidence": {
+      "authority_artifact": {
+        "stable_id": "dfv0_verified_multimodal_batch_001_real_pilot_source_acquisition_v1",
+        "row_sha256": "f1a6df0ca503e03898f154192b664737f32eb9b4e8e6fd1d9e3a03441242ba24",
+        "content_digest": {
+          "algorithm": "sha256",
+          "value": "25e8d81348d0b9371af71329168bba8676115b800cdc88c9281accc7a907b2d3",
+          "scope": "sorted_tree_manifest"
+        },
+        "counts": {
+          "file_count": 25,
+          "byte_count": 318191
+        },
+        "rights_boundary": {
+          "license_id": "cc-by-4.0",
+          "attribution": "Ville de Montreal",
+          "commercial_use_allowed": true,
+          "notes": "Captured official license and canonical Creative Commons pages directly support CC BY 4.0 and attribution only. The aerial page supports collection-format and georeference limitations only. Source availability and six CSV bindings are verified; no selected-image historical, content, identity, geolocation, land-use, building, or brand claim is verified."
+        }
+      },
+      "descriptor": {
+        "path": "docs/dataset-factory/fixtures/real-pilot-source-acquisition-v1/descriptor-v1.json",
+        "sha256": "4a091067c919c465c9c8940aa1dd5acc6f46e740f6ad6416acdfff101f63de10",
+        "bytes": 2561
+      },
+      "source_ledger": {
+        "path": "docs/dataset-factory/fixtures/real-pilot-source-acquisition-v1/source-ledger-v1.json",
+        "sha256": "9b2f921cd157b3d93575e18d3549b65918d2a75c37fd632f98e9a39f3d403faa",
+        "bytes": 22975
+      },
+      "verification_run": {
+        "path": "docs/dataset-factory/fixtures/real-pilot-source-acquisition-v1/verification-run-v1.json",
+        "sha256": "95af3dba989a9b66ec6735c0c14de0672329b6eb57c8ca128911d697a8ac28b4",
+        "bytes": 1427
+      },
+      "evidence": {
+        "dataset_page": {
+          "evidence_id": "ground_page",
+          "requested_url": "https://donnees.montreal.ca/dataset/phototheque-archives",
+          "final_url": "https://donnees.montreal.ca/dataset/phototheque-archives",
+          "snapshot": {
+            "path": "snapshot/ground_page.html",
+            "sha256": "deaa62e3a1ad38ff525a8295301df2e0b82bedf25201b59faa66f3825d406466",
+            "bytes": 64525
+          },
+          "ledger_entry_sha256": "b181a48f3366c9d8d51f430c2758a776c4ef13c0265816693f6676eda24d3072"
+        },
+        "montreal_license_page": {
+          "evidence_id": "license_page",
+          "requested_url": "https://donnees.montreal.ca/pages/licence-d-utilisation",
+          "final_url": "https://donnees.montreal.ca/pages/licence-d-utilisation",
+          "snapshot": {
+            "path": "snapshot/license_page.html",
+            "sha256": "8d5838a3b7490fae99f7e2d353fcd5c16013dc0cd37434e76e76dd2c1bcaf810",
+            "bytes": 36694
+          },
+          "ledger_entry_sha256": "f0002386f0d07903bcc93d6ec1acb023ac12df02b8198611ee517f8c0e86d9c9"
+        },
+        "canonical_license_page": {
+          "evidence_id": "cc_by",
+          "requested_url": "https://creativecommons.org/licenses/by/4.0/",
+          "final_url": "https://creativecommons.org/licenses/by/4.0/",
+          "snapshot": {
+            "path": "snapshot/cc_by.html",
+            "sha256": "231a5dac65bbf135ba27145969a63cd289faadc172f1512c4810a6c60ba91036",
+            "bytes": 32178
+          },
+          "ledger_entry_sha256": "fcb3574e9e1b18d34c1e763841cd7b0b78f4bb00cfa4cf687b69d51792b8b55e"
+        }
+      },
+      "supported_facts": {
+        "dataset": "Archives photographiques (sélection)",
+        "license": "Creative Commons Attribution 4.0 International",
+        "dataset_credit": "Archives de la Ville de Montréal",
+        "license_attribution_party": "Ville de Montréal"
+      }
+    }
+  },
+  "archive_metadata": {
+    "evidence_class": "archive_metadata_report",
+    "name": "Caserne de pompiers no 30 (ancien hôtel de ville de Saint-Louis - 5, rue Laurier Ouest)",
+    "date": "Décennie 1930",
+    "cote": "VM94,SY,SS1,SSS17,D92",
+    "source_urls": [
+      "http://depot.ville.montreal.qc.ca/phototheque-archives/jpeg/VM94-Z93-B.jpg"
+    ],
+    "disclaimer": "Reported archive metadata; not asserted as independent historical truth."
+  },
+  "visual_claims": [
+    {
+      "claim_id": "visual:45:image-mode",
+      "statement": "The reviewed pixels are classified as image mode ground_street.",
+      "predicate": "image_mode",
+      "value": "ground_street",
+      "evidence": {
+        "declaration": "whole_image",
+        "normalized_bbox": null,
+        "review_row_sha256": "e2eed2548f5a5e31ac4849ba0c54bcefd063ae6a4b778d4d926cb5eaaea03863",
+        "target": "image_mode"
+      },
+      "boundary": "Visual classification only; no identity, place, date, land-use, scale, measurement, OCR, brand, or entity claim."
+    }
+  ],
+  "external_claims": [],
+  "alternatives": {
+    "held": [
+      {
+        "proposition": "archive-reported identity, date, and location",
+        "reason": "Archive metadata is reported but not independently established by this dossier."
+      }
+    ],
+    "rejected": [
+      {
+        "proposition": "unreviewed OCR, brand, entity, or place promotion",
+        "reason": "No such promotion is allowed from candidate pixels or metadata."
+      }
+    ],
+    "abstained": [
+      {
+        "category": "identity",
+        "reason": "No accepted dossier-level evidence establishes this category."
+      },
+      {
+        "category": "location",
+        "reason": "No accepted dossier-level evidence establishes this category."
+      },
+      {
+        "category": "georef",
+        "reason": "No accepted dossier-level evidence establishes this category."
+      },
+      {
+        "category": "scale",
+        "reason": "No accepted dossier-level evidence establishes this category."
+      },
+      {
+        "category": "land_use",
+        "reason": "No accepted dossier-level evidence establishes this category."
+      },
+      {
+        "category": "measurement",
+        "reason": "No accepted dossier-level evidence establishes this category."
+      }
+    ]
+  },
+  "contradictions": [],
+  "uncertainty": {
+    "statement": "Candidate claims are limited to accepted/adjudicated visual classifications and reported metadata labels.",
+    "unresolved": [
+      "historical identity",
+      "exact location",
+      "georeference",
+      "scale",
+      "land use",
+      "measurement"
+    ]
+  },
+  "author": {
+    "identity": "codex-sol-medium-gate-g-implementation",
+    "session_id": "issue91-gate-g-implementation-20260714",
+    "role": "candidate_dossier_author_and_implementation"
+  },
+  "independent_review": {
+    "required": true,
+    "completed": true,
+    "reviewer": {
+      "reviewer_id": "sol-high-gate-g-dossier-reviewer:019f6216-987e-7000-95f0-9b9a054fedfa",
+      "session_id": "019f6216-987e-7000-95f0-9b9a054fedfa",
+      "model": "gpt-5.6-sol",
+      "reasoning_effort": "high",
+      "reviewed_at": "2026-07-14T20:44:08Z",
+      "independence_attestations": {
+        "no_author_overlap": true,
+        "no_gate_e_source_review_overlap": true,
+        "no_gate_f_source_review_overlap": true,
+        "no_implementation_overlap": true
+      }
+    },
+    "disposition": "accepted",
+    "approvals": {
+      "visual_evidence": true,
+      "metadata_labeling": true,
+      "rights_attribution": true,
+      "uncertainty": true,
+      "projection_fidelity": true
+    },
+    "rationale": "Accepted. Whole-image review supports only the bounded image-mode claim ground_street; archive fields are explicitly reported metadata; registered_dataset_wide_montreal_cc_by_4_0_rights binds CC BY 4.0 and required attribution; identity, location, georef, scale, land-use, measurement, OCR, brand, and entity promotion remain held/rejected/abstained; packet and JSON/HTML/overlay/pixel projections match the exact authorized hashes."
+  }
+}

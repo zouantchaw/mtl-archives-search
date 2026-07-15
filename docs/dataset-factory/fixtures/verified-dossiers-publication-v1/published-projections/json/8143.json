@@ -1,0 +1,253 @@
+{
+  "schema_version": "verified_dossiers_v1.0.0",
+  "dossier_id": "verified-dossier-candidate:8143",
+  "state": "retained_held",
+  "fully_verified": false,
+  "source_acquisition_only": false,
+  "publication_eligible": false,
+  "expected_review_disposition": "held",
+  "record": {
+    "record_id": "mtl_archives_metadata_8143.json",
+    "numeric_id": 8143,
+    "component_id": "leakage-component:684d8b2fc563a5c4a2cc153379f2915ad6d02733d9f7c7ca24f0c9d57bb1f667",
+    "split": "train",
+    "phase_d_selection_index": 10,
+    "stratum": "aerial"
+  },
+  "predecessors": {
+    "phase_d": {
+      "artifact_id": "dfv0_issue69_phase_d_scale_v1_20260713",
+      "descriptor": {
+        "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/descriptor-v1.json",
+        "sha256": "1e72fb1fd74ad12b99de878ad97da9386afccdf77e7f0926811775dd416c48ce",
+        "bytes": 4098
+      },
+      "selection": {
+        "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+        "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+        "bytes": 4243798
+      }
+    },
+    "gate_e": {
+      "artifact_id": "dfv0_reviewed_source_evidence_v1",
+      "descriptor": {
+        "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/descriptor-v1.json",
+        "sha256": "af25f11f922bbd230e7372c27c2fd4d925be9cc95ea7ce78baa245461fc4efd8",
+        "bytes": 4210
+      }
+    },
+    "gate_f": {
+      "artifact_id": "dfv0_aerial_source_evidence_authority_v1_publication",
+      "descriptor": {
+        "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/final-descriptor-v1.json",
+        "sha256": "ab0936be1728a54e36f0fe8ed9d2e308b11a8bf54e2a9d182c87ba2187952eae",
+        "bytes": 2530
+      }
+    },
+    "ground_rights": {
+      "artifact_id": "dfv0_verified_multimodal_batch_001_real_pilot_source_acquisition_v1",
+      "descriptor": {
+        "path": "docs/dataset-factory/fixtures/real-pilot-source-acquisition-v1/descriptor-v1.json",
+        "sha256": "4a091067c919c465c9c8940aa1dd5acc6f46e740f6ad6416acdfff101f63de10",
+        "bytes": 2561
+      }
+    },
+    "canonical_image_recovery": {
+      "artifact_id": "canonical_image_recovery_v1",
+      "descriptor": {
+        "path": "docs/dataset-factory/fixtures/canonical-image-recovery-v1/inspection-derivatives/manifest-v1.json",
+        "sha256": "be840314e48969e8652f7a175a6d5f7305b8f26c1dadcac92e0a8a96c933689f",
+        "bytes": 64535
+      }
+    }
+  },
+  "review_pixels": {
+    "path": "review-pixels/8143.jpg",
+    "sha256": "45413db7d70cc5c99d103f6592154c97d51ae87a7d4d96866668d8f9b7a2520b",
+    "bytes": 23068,
+    "format": "jpeg",
+    "width": 256,
+    "height": 256,
+    "full_decode_verified": true,
+    "evidence_declaration": "whole_image"
+  },
+  "rights": {
+    "license_id": "cc-by-4.0",
+    "attribution": "Archives de la Ville de Montréal",
+    "commercial_use_allowed": true,
+    "complete": true,
+    "authority": "gate_f_independently_accepted_source_media_rights_attribution",
+    "scope_note": "Gate F authority is limited to the exact record/media identity, source family, CC BY 4.0 license, and required credit propositions. It does not establish depicted location, georeference, scale, land use, or measurement.",
+    "evidence": {
+      "authority_receipt": {
+        "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/independent-source-authority-receipt-v1.json",
+        "sha256": "784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383",
+        "bytes": 46295
+      },
+      "review_ledger": {
+        "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+        "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+        "bytes": 17017
+      },
+      "evidence_ledger": {
+        "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/evidence-ledger-v1.json",
+        "sha256": "ddcfa31a319ddafca533b83eb9e86c0afdc83235f8ab697f5c57db0f6fac5fd2",
+        "bytes": 134881
+      },
+      "source_body_evidence": {
+        "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/source-body-evidence-v1.json",
+        "sha256": "c48f99dda2da5ee10265da73151fbb6d85649cae8122512571cb89f19e4d14eb",
+        "bytes": 55003
+      },
+      "disposition_sha256": "50aefbcfcaaa807dd50b6c44d5814482dda45b930bb257684603ef315d6364b4",
+      "disposition": {
+        "numeric_id": 8143,
+        "evidence_disposition": "accepted",
+        "accepted_proposition_ids": [
+          "8143:record-media-identity",
+          "vertical-1958-1975:collection",
+          "vertical-1958-1975:credit",
+          "vertical-1958-1975:license"
+        ],
+        "location": "abstained",
+        "georef": "abstained",
+        "scale": "abstained",
+        "land_use": "abstained",
+        "measurement": "abstained",
+        "georeference_proposal": null,
+        "accepted_claims": 0,
+        "verified_dossiers": 0,
+        "tasks": 0,
+        "rationale": "Accepted only the exact bound record/media identity and applicable collection, license, and credit propositions; unsupported semantic authority remains abstained."
+      },
+      "accepted_proposition_ids": [
+        "8143:record-media-identity",
+        "vertical-1958-1975:collection",
+        "vertical-1958-1975:credit",
+        "vertical-1958-1975:license"
+      ],
+      "source_family": {
+        "source_family_id": "archives-montreal-vertical-1958-1975",
+        "source_id": "ckan-package-6555c320-77bf-4478-a3d2-c29733a7046c",
+        "requested_url": "https://donnees.montreal.ca/api/3/action/package_show?id=6555c320-77bf-4478-a3d2-c29733a7046c",
+        "private_body": {
+          "path": "package-vertical-1958-1975.json",
+          "bytes": 60433,
+          "sha256": "227f3cfc8d09946218566b21fee78472c5ca354f467cf5bcec0193d68ec9fb24"
+        }
+      },
+      "record_media_identity": {
+        "proposition_id": "8143:record-media-identity",
+        "proposition_sha256": "b65b18d219c231efaaeb5e3ca1f34e08d5777dcbf08f73e289aa881a9dfe2aa2",
+        "media_sha256": "8ace22de80fcf88c1fd5cda0e0cf6c3e83be15a7009973e28d9c5d3dd76659c1",
+        "source_row_sha256": "00e6c547b96a4dc934ff6b01f1465001286eb9e17a19a28042666ea0f0413abf",
+        "resource_id": "9ab0c8c1-f4f3-4ea9-b6d5-d10018cebda2"
+      },
+      "license": {
+        "proposition_id": "vertical-1958-1975:license",
+        "text_sha256": "3d12f1b51d9506f1767e0cc1e77a99f66fa8e675a9cf7bd762f0ae0c82e02991",
+        "exact_text": "cc-by|Creative Commons Attribution 4.0 International"
+      },
+      "credit": {
+        "proposition_id": "vertical-1958-1975:credit",
+        "text_sha256": "85d7fd224f388ae091e08dd8dba7ccd32d184815317e7c63055e1e3cf38ad96f",
+        "exact_text": "Archives de la Ville de Montréal"
+      }
+    }
+  },
+  "archive_metadata": {
+    "evidence_class": "archive_metadata_report",
+    "name": "VM97,S3,D02,P12-097",
+    "date": "1958",
+    "cote": "",
+    "source_urls": [
+      "http://depot.ville.montreal.qc.ca/vues-aeriennes-1958/VM97-3_02_12-097.TIF"
+    ],
+    "disclaimer": "Reported archive metadata; not asserted as independent historical truth."
+  },
+  "visual_claims": [],
+  "external_claims": [],
+  "alternatives": {
+    "held": [
+      {
+        "proposition": "archive-reported identity, date, and location",
+        "reason": "Archive metadata is reported but not independently established by this dossier."
+      }
+    ],
+    "rejected": [
+      {
+        "proposition": "unreviewed OCR, brand, entity, or place promotion",
+        "reason": "No such promotion is allowed from candidate pixels or metadata."
+      }
+    ],
+    "abstained": [
+      {
+        "category": "identity",
+        "reason": "No accepted dossier-level evidence establishes this category."
+      },
+      {
+        "category": "location",
+        "reason": "No accepted dossier-level evidence establishes this category."
+      },
+      {
+        "category": "georef",
+        "reason": "No accepted dossier-level evidence establishes this category."
+      },
+      {
+        "category": "scale",
+        "reason": "No accepted dossier-level evidence establishes this category."
+      },
+      {
+        "category": "land_use",
+        "reason": "No accepted dossier-level evidence establishes this category."
+      },
+      {
+        "category": "measurement",
+        "reason": "No accepted dossier-level evidence establishes this category."
+      }
+    ]
+  },
+  "contradictions": [],
+  "uncertainty": {
+    "statement": "Phase D Gold evidence is held; this dossier is categorically ineligible for acceptance or fully_verified publication.",
+    "unresolved": [
+      "historical identity",
+      "exact location",
+      "georeference",
+      "scale",
+      "land use",
+      "measurement"
+    ]
+  },
+  "author": {
+    "identity": "codex-sol-medium-gate-g-implementation",
+    "session_id": "issue91-gate-g-implementation-20260714",
+    "role": "candidate_dossier_author_and_implementation"
+  },
+  "independent_review": {
+    "required": true,
+    "completed": true,
+    "reviewer": {
+      "reviewer_id": "sol-high-gate-g-dossier-reviewer:019f6216-987e-7000-95f0-9b9a054fedfa",
+      "session_id": "019f6216-987e-7000-95f0-9b9a054fedfa",
+      "model": "gpt-5.6-sol",
+      "reasoning_effort": "high",
+      "reviewed_at": "2026-07-14T20:44:08Z",
+      "independence_attestations": {
+        "no_author_overlap": true,
+        "no_gate_e_source_review_overlap": true,
+        "no_gate_f_source_review_overlap": true,
+        "no_implementation_overlap": true
+      }
+    },
+    "disposition": "held",
+    "approvals": {
+      "visual_evidence": false,
+      "metadata_labeling": false,
+      "rights_attribution": false,
+      "uncertainty": false,
+      "projection_fidelity": false
+    },
+    "rationale": "Held. This Phase D Gold pilot is categorically ineligible under the committed authorization and has no promoted visual claim; archive fields remain reported metadata, Gate F rights/attribution and packet/projection hashes were checked, and all semantic categories remain abstained. It cannot count as fully_verified."
+  }
+}

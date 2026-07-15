@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "sha": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "forbidden": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identities", "sessions", "excluded_roles"],
+      "properties": {
+        "identities": {
+          "type": "array",
+          "minItems": 3,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "sessions": {
+          "type": "array",
+          "minItems": 3,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "excluded_roles": {
+          "type": "array",
+          "minItems": 4,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "artifact_id",
+    "candidate_descriptor_sha256",
+    "packet_manifest_sha256",
+    "review_scope",
+    "approved_reviewer",
+    "authorizing_authority",
+    "authorized_at",
+    "forbidden_principals"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "verified_dossiers_reviewer_authorization_v1.0.0"
+    },
+    "status": { "const": "authorized" },
+    "artifact_id": { "type": "string" },
+    "candidate_descriptor_sha256": { "$ref": "#/$defs/sha" },
+    "packet_manifest_sha256": { "$ref": "#/$defs/sha" },
+    "review_scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scope_id",
+        "dossier_ids",
+        "allowed_dispositions",
+        "categorically_ineligible_numeric_ids",
+        "minimum_eligible_acceptances"
+      ],
+      "properties": {
+        "scope_id": { "type": "string", "minLength": 1 },
+        "dossier_ids": {
+          "type": "array",
+          "minItems": 36,
+          "maxItems": 36,
+          "uniqueItems": true,
+          "items": { "type": "string" }
+        },
+        "allowed_dispositions": { "const": ["accepted", "held", "rejected"] },
+        "categorically_ineligible_numeric_ids": {
+          "const": [8132, 8134, 8139, 8143]
+        },
+        "minimum_eligible_acceptances": { "const": 25 }
+      }
+    },
+    "approved_reviewer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reviewer_id", "session_id", "model", "reasoning_effort"],
+      "properties": {
+        "reviewer_id": { "type": "string", "minLength": 1 },
+        "session_id": { "type": "string", "minLength": 1 },
+        "model": { "const": "gpt-5.6-sol" },
+        "reasoning_effort": { "const": "high" }
+      }
+    },
+    "authorizing_authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity", "session_id", "role"],
+      "properties": {
+        "identity": { "type": "string", "minLength": 1 },
+        "session_id": { "type": "string", "minLength": 1 },
+        "role": { "const": "gate_g_review_authority" }
+      }
+    },
+    "authorized_at": { "type": "string", "format": "date-time" },
+    "forbidden_principals": { "$ref": "#/$defs/forbidden" }
+  }
+}

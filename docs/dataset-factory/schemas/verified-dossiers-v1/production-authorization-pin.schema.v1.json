@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "sha": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "authorizationFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "bytes"],
+      "properties": {
+        "path": {
+          "const": "docs/dataset-factory/authorities/verified-dossiers-v1/reviewer-authorization-v1.json"
+        },
+        "sha256": { "$ref": "#/$defs/sha" },
+        "bytes": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "reviewer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reviewer_id", "session_id", "model", "reasoning_effort"],
+      "properties": {
+        "reviewer_id": { "type": "string", "minLength": 1 },
+        "session_id": { "type": "string", "minLength": 1 },
+        "model": { "const": "gpt-5.6-sol" },
+        "reasoning_effort": { "const": "high" }
+      }
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity", "session_id", "role"],
+      "properties": {
+        "identity": { "type": "string", "minLength": 1 },
+        "session_id": { "type": "string", "minLength": 1 },
+        "role": { "const": "gate_g_review_authority" }
+      }
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "authority_id",
+    "state",
+    "candidate_artifact_id",
+    "candidate_descriptor_sha256",
+    "authorization_file",
+    "approved_reviewer",
+    "authorizing_authority",
+    "authorized_at",
+    "scope_note"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "verified_dossiers_production_authorization_pin_v1.0.0"
+    },
+    "authority_id": { "const": "gate-g-production-authorization-pin" },
+    "state": { "enum": ["unconfigured", "active"] },
+    "candidate_artifact_id": {
+      "const": "dfv0_verified_dossiers_v1_candidate_20260714"
+    },
+    "candidate_descriptor_sha256": {
+      "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/sha" }]
+    },
+    "authorization_file": {
+      "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/authorizationFile" }]
+    },
+    "approved_reviewer": {
+      "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/reviewer" }]
+    },
+    "authorizing_authority": {
+      "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/authority" }]
+    },
+    "authorized_at": {
+      "oneOf": [{ "type": "null" }, { "type": "string", "format": "date-time" }]
+    },
+    "scope_note": { "type": "string", "minLength": 40 }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "state": { "const": "unconfigured" } } },
+      "then": {
+        "properties": {
+          "candidate_descriptor_sha256": { "type": "null" },
+          "authorization_file": { "type": "null" },
+          "approved_reviewer": { "type": "null" },
+          "authorizing_authority": { "type": "null" },
+          "authorized_at": { "type": "null" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "state": { "const": "active" } } },
+      "then": {
+        "properties": {
+          "candidate_descriptor_sha256": { "$ref": "#/$defs/sha" },
+          "authorization_file": { "$ref": "#/$defs/authorizationFile" },
+          "approved_reviewer": { "$ref": "#/$defs/reviewer" },
+          "authorizing_authority": { "$ref": "#/$defs/authority" },
+          "authorized_at": { "type": "string", "format": "date-time" }
+        }
+      }
+    }
+  ]
+}

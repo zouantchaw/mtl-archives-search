@@ -1,0 +1,607 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "sha": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "pin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "bytes"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/sha" },
+        "bytes": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "descriptor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_id", "descriptor"],
+      "properties": {
+        "artifact_id": { "type": "string", "minLength": 1 },
+        "descriptor": { "$ref": "#/$defs/pin" }
+      }
+    },
+    "predecessors": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "phase_d",
+        "gate_e",
+        "gate_f",
+        "ground_rights",
+        "canonical_image_recovery"
+      ],
+      "properties": {
+        "phase_d": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["artifact_id", "descriptor", "selection"],
+          "properties": {
+            "artifact_id": { "type": "string", "minLength": 1 },
+            "descriptor": { "$ref": "#/$defs/pin" },
+            "selection": { "$ref": "#/$defs/pin" }
+          }
+        },
+        "gate_e": { "$ref": "#/$defs/descriptor" },
+        "gate_f": { "$ref": "#/$defs/descriptor" },
+        "ground_rights": { "$ref": "#/$defs/descriptor" },
+        "canonical_image_recovery": { "$ref": "#/$defs/descriptor" }
+      }
+    },
+    "rights": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "license_id",
+        "attribution",
+        "commercial_use_allowed",
+        "complete",
+        "authority",
+        "scope_note",
+        "evidence"
+      ],
+      "properties": {
+        "license_id": { "const": "cc-by-4.0" },
+        "attribution": { "type": "string", "minLength": 1 },
+        "commercial_use_allowed": { "const": true },
+        "complete": { "const": true },
+        "authority": {
+          "enum": [
+            "registered_dataset_wide_montreal_cc_by_4_0_rights",
+            "gate_f_independently_accepted_source_media_rights_attribution"
+          ]
+        },
+        "scope_note": { "type": "string", "minLength": 40 },
+        "evidence": {
+          "oneOf": [
+            { "$ref": "#/$defs/groundEvidence" },
+            { "$ref": "#/$defs/aerialEvidence" }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "authority": {
+                "const": "registered_dataset_wide_montreal_cc_by_4_0_rights"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "attribution": {
+                "const": "Ville de Montréal / Archives de la Ville de Montréal"
+              },
+              "evidence": { "$ref": "#/$defs/groundEvidence" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "authority": {
+                "const": "gate_f_independently_accepted_source_media_rights_attribution"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "attribution": { "const": "Archives de la Ville de Montréal" },
+              "evidence": { "$ref": "#/$defs/aerialEvidence" }
+            }
+          }
+        }
+      ]
+    },
+    "registryAuthority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stable_id",
+        "row_sha256",
+        "content_digest",
+        "counts",
+        "rights_boundary"
+      ],
+      "properties": {
+        "stable_id": {
+          "const": "dfv0_verified_multimodal_batch_001_real_pilot_source_acquisition_v1"
+        },
+        "row_sha256": { "$ref": "#/$defs/sha" },
+        "content_digest": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["algorithm", "value", "scope"],
+          "properties": {
+            "algorithm": { "const": "sha256" },
+            "value": { "$ref": "#/$defs/sha" },
+            "scope": { "const": "sorted_tree_manifest" }
+          }
+        },
+        "counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["file_count", "byte_count"],
+          "properties": {
+            "file_count": { "type": "integer", "minimum": 1 },
+            "byte_count": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "rights_boundary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "license_id",
+            "attribution",
+            "commercial_use_allowed",
+            "notes"
+          ],
+          "properties": {
+            "license_id": { "const": "cc-by-4.0" },
+            "attribution": { "const": "Ville de Montreal" },
+            "commercial_use_allowed": { "const": true },
+            "notes": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "sourcePage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_id",
+        "requested_url",
+        "final_url",
+        "snapshot",
+        "ledger_entry_sha256"
+      ],
+      "properties": {
+        "evidence_id": { "enum": ["ground_page", "license_page", "cc_by"] },
+        "requested_url": { "type": "string", "format": "uri" },
+        "final_url": { "type": "string", "format": "uri" },
+        "snapshot": { "$ref": "#/$defs/pin" },
+        "ledger_entry_sha256": { "$ref": "#/$defs/sha" }
+      }
+    },
+    "groundEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "authority_artifact",
+        "descriptor",
+        "source_ledger",
+        "verification_run",
+        "evidence",
+        "supported_facts"
+      ],
+      "properties": {
+        "authority_artifact": { "$ref": "#/$defs/registryAuthority" },
+        "descriptor": { "$ref": "#/$defs/pin" },
+        "source_ledger": { "$ref": "#/$defs/pin" },
+        "verification_run": { "$ref": "#/$defs/pin" },
+        "evidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "dataset_page",
+            "montreal_license_page",
+            "canonical_license_page"
+          ],
+          "properties": {
+            "dataset_page": { "$ref": "#/$defs/sourcePage" },
+            "montreal_license_page": { "$ref": "#/$defs/sourcePage" },
+            "canonical_license_page": { "$ref": "#/$defs/sourcePage" }
+          }
+        },
+        "supported_facts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "dataset",
+            "license",
+            "dataset_credit",
+            "license_attribution_party"
+          ],
+          "properties": {
+            "dataset": { "const": "Archives photographiques (sélection)" },
+            "license": {
+              "const": "Creative Commons Attribution 4.0 International"
+            },
+            "dataset_credit": { "const": "Archives de la Ville de Montréal" },
+            "license_attribution_party": { "const": "Ville de Montréal" }
+          }
+        }
+      }
+    },
+    "proposition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["proposition_id", "text_sha256", "exact_text"],
+      "properties": {
+        "proposition_id": { "type": "string", "minLength": 1 },
+        "text_sha256": { "$ref": "#/$defs/sha" },
+        "exact_text": { "type": "string", "minLength": 1 }
+      }
+    },
+    "gateFDisposition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "numeric_id",
+        "evidence_disposition",
+        "accepted_proposition_ids",
+        "location",
+        "georef",
+        "scale",
+        "land_use",
+        "measurement",
+        "georeference_proposal",
+        "accepted_claims",
+        "verified_dossiers",
+        "tasks",
+        "rationale"
+      ],
+      "properties": {
+        "numeric_id": { "type": "integer" },
+        "evidence_disposition": { "const": "accepted" },
+        "accepted_proposition_ids": {
+          "type": "array",
+          "minItems": 4,
+          "uniqueItems": true,
+          "items": { "type": "string" }
+        },
+        "location": { "const": "abstained" },
+        "georef": { "const": "abstained" },
+        "scale": { "const": "abstained" },
+        "land_use": { "const": "abstained" },
+        "measurement": { "const": "abstained" },
+        "georeference_proposal": { "type": "null" },
+        "accepted_claims": { "const": 0 },
+        "verified_dossiers": { "const": 0 },
+        "tasks": { "const": 0 },
+        "rationale": { "type": "string", "minLength": 1 }
+      }
+    },
+    "aerialEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "authority_receipt",
+        "review_ledger",
+        "evidence_ledger",
+        "source_body_evidence",
+        "disposition_sha256",
+        "disposition",
+        "accepted_proposition_ids",
+        "source_family",
+        "record_media_identity",
+        "license",
+        "credit"
+      ],
+      "properties": {
+        "authority_receipt": { "$ref": "#/$defs/pin" },
+        "review_ledger": { "$ref": "#/$defs/pin" },
+        "evidence_ledger": { "$ref": "#/$defs/pin" },
+        "source_body_evidence": { "$ref": "#/$defs/pin" },
+        "disposition_sha256": { "$ref": "#/$defs/sha" },
+        "disposition": { "$ref": "#/$defs/gateFDisposition" },
+        "accepted_proposition_ids": {
+          "type": "array",
+          "minItems": 4,
+          "uniqueItems": true,
+          "items": { "type": "string" }
+        },
+        "source_family": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "source_family_id",
+            "source_id",
+            "requested_url",
+            "private_body"
+          ],
+          "properties": {
+            "source_family_id": { "type": "string" },
+            "source_id": { "type": "string" },
+            "requested_url": { "type": "string", "format": "uri" },
+            "private_body": { "$ref": "#/$defs/pin" }
+          }
+        },
+        "record_media_identity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "proposition_id",
+            "proposition_sha256",
+            "media_sha256",
+            "source_row_sha256",
+            "resource_id"
+          ],
+          "properties": {
+            "proposition_id": { "type": "string" },
+            "proposition_sha256": { "$ref": "#/$defs/sha" },
+            "media_sha256": { "$ref": "#/$defs/sha" },
+            "source_row_sha256": { "$ref": "#/$defs/sha" },
+            "resource_id": { "type": "string" }
+          }
+        },
+        "license": { "$ref": "#/$defs/proposition" },
+        "credit": { "$ref": "#/$defs/proposition" }
+      }
+    },
+    "packet": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "dossier_id",
+        "state",
+        "fully_verified",
+        "source_acquisition_only",
+        "publication_eligible",
+        "expected_review_disposition",
+        "record",
+        "predecessors",
+        "review_pixels",
+        "rights",
+        "archive_metadata",
+        "visual_claims",
+        "external_claims",
+        "alternatives",
+        "contradictions",
+        "uncertainty",
+        "author",
+        "independent_review"
+      ],
+      "properties": {
+        "schema_version": { "const": "verified_dossiers_v1.0.0" },
+        "dossier_id": {
+          "type": "string",
+          "pattern": "^verified-dossier-candidate:[0-9]+$"
+        },
+        "state": { "const": "candidate_independent_review_required" },
+        "fully_verified": { "const": false },
+        "source_acquisition_only": { "const": false },
+        "publication_eligible": { "type": "boolean" },
+        "expected_review_disposition": {
+          "enum": ["held", "independent_review_required"]
+        },
+        "record": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "record_id",
+            "numeric_id",
+            "component_id",
+            "split",
+            "phase_d_selection_index",
+            "stratum"
+          ],
+          "properties": {
+            "record_id": { "type": "string", "minLength": 1 },
+            "numeric_id": { "type": "integer" },
+            "component_id": { "type": "string", "minLength": 1 },
+            "split": { "type": "string", "minLength": 1 },
+            "phase_d_selection_index": { "type": "integer", "minimum": 0 },
+            "stratum": { "enum": ["aerial", "ground"] }
+          }
+        },
+        "predecessors": { "$ref": "#/$defs/predecessors" },
+        "review_pixels": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "sha256",
+            "bytes",
+            "format",
+            "width",
+            "height",
+            "full_decode_verified",
+            "evidence_declaration"
+          ],
+          "properties": {
+            "path": {
+              "type": "string",
+              "pattern": "^review-pixels/[0-9]+\\.jpg$"
+            },
+            "sha256": { "$ref": "#/$defs/sha" },
+            "bytes": { "type": "integer", "minimum": 1 },
+            "format": { "const": "jpeg" },
+            "width": { "type": "integer", "minimum": 1 },
+            "height": { "type": "integer", "minimum": 1 },
+            "full_decode_verified": { "const": true },
+            "evidence_declaration": { "const": "whole_image" }
+          }
+        },
+        "rights": { "$ref": "#/$defs/rights" },
+        "archive_metadata": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "evidence_class",
+            "name",
+            "date",
+            "cote",
+            "source_urls",
+            "disclaimer"
+          ],
+          "properties": {
+            "evidence_class": { "const": "archive_metadata_report" },
+            "name": { "type": ["string", "null"] },
+            "date": { "type": ["string", "null"] },
+            "cote": { "type": ["string", "null"] },
+            "source_urls": { "type": "array", "items": { "type": "string" } },
+            "disclaimer": { "type": "string", "minLength": 1 }
+          }
+        },
+        "visual_claims": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "claim_id",
+              "statement",
+              "predicate",
+              "value",
+              "evidence",
+              "boundary"
+            ],
+            "properties": {
+              "claim_id": { "type": "string" },
+              "statement": { "type": "string" },
+              "predicate": { "const": "image_mode" },
+              "value": { "type": "string" },
+              "evidence": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "declaration",
+                  "normalized_bbox",
+                  "review_row_sha256",
+                  "target"
+                ],
+                "properties": {
+                  "declaration": { "const": "whole_image" },
+                  "normalized_bbox": { "type": "null" },
+                  "review_row_sha256": { "$ref": "#/$defs/sha" },
+                  "target": { "const": "image_mode" }
+                }
+              },
+              "boundary": { "type": "string" }
+            }
+          }
+        },
+        "external_claims": { "type": "array", "maxItems": 0 },
+        "alternatives": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["held", "rejected", "abstained"],
+          "properties": {
+            "held": { "$ref": "#/$defs/reasons" },
+            "rejected": { "$ref": "#/$defs/reasons" },
+            "abstained": {
+              "type": "array",
+              "minItems": 6,
+              "maxItems": 6,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["category", "reason"],
+                "properties": {
+                  "category": {
+                    "enum": [
+                      "identity",
+                      "location",
+                      "georef",
+                      "scale",
+                      "land_use",
+                      "measurement"
+                    ]
+                  },
+                  "reason": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "contradictions": { "type": "array" },
+        "uncertainty": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["statement", "unresolved"],
+          "properties": {
+            "statement": { "type": "string" },
+            "unresolved": {
+              "type": "array",
+              "minItems": 6,
+              "items": { "type": "string" }
+            }
+          }
+        },
+        "author": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["identity", "session_id", "role"],
+          "properties": {
+            "identity": { "type": "string" },
+            "session_id": { "type": "string" },
+            "role": { "type": "string" }
+          }
+        },
+        "independent_review": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "required",
+            "completed",
+            "reviewer",
+            "disposition",
+            "required_attestations"
+          ],
+          "properties": {
+            "required": { "const": true },
+            "completed": { "const": false },
+            "reviewer": { "type": "null" },
+            "disposition": { "type": "null" },
+            "required_attestations": {
+              "type": "array",
+              "minItems": 5,
+              "maxItems": 5,
+              "items": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "reasons": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["proposition", "reason"],
+        "properties": {
+          "proposition": { "type": "string" },
+          "reason": { "type": "string" }
+        }
+      }
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "artifact_id", "state", "packets"],
+  "properties": {
+    "schema_version": { "const": "verified_dossiers_v1.0.0" },
+    "artifact_id": { "type": "string" },
+    "state": { "const": "candidate" },
+    "packets": {
+      "type": "array",
+      "minItems": 36,
+      "maxItems": 36,
+      "items": { "$ref": "#/$defs/packet" }
+    }
+  }
+}

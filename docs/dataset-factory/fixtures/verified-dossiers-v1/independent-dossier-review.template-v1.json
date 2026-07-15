@@ -1,0 +1,913 @@
+{
+  "schema_version": "verified_dossiers_independent_review_template_v1.0.0",
+  "status": "blank_independent_review_required",
+  "artifact_id": "dfv0_verified_dossiers_v1_candidate_20260714",
+  "candidate_descriptor_sha256": null,
+  "authorization_required": true,
+  "authorization_schema_version": "verified_dossiers_reviewer_authorization_v1.0.0",
+  "packet_manifest": {
+    "path": "packet-manifest-v1.json",
+    "sha256": "0ff6314da804b88778424cd87da337cbf4262c12c676be09f97bbb40c9ba60b4",
+    "bytes": 27273
+  },
+  "reviewer": {
+    "reviewer_id": "",
+    "session_id": "",
+    "model": "",
+    "reasoning_effort": "",
+    "reviewed_at": "",
+    "independence_attestations": {
+      "no_author_overlap": false,
+      "no_gate_e_source_review_overlap": false,
+      "no_gate_f_source_review_overlap": false,
+      "no_implementation_overlap": false
+    }
+  },
+  "forbidden_principals": {
+    "identities": [
+      "5bc4cfd0-0f60-47f6-a20d-af40f99c2267",
+      "codex-sol-medium-gate-g-implementation",
+      "sol-high-v7-reviewer:a2869a6c-7f23-4ec0-ab07-c031aae2bc54"
+    ],
+    "sessions": [
+      "5bc4cfd0-0f60-47f6-a20d-af40f99c2267",
+      "issue91-gate-g-implementation-20260714",
+      "sol-high-v7-session:cfabcb92-aa8e-4440-b564-55dccbe9877c"
+    ],
+    "excluded_roles": [
+      "candidate_dossier_author",
+      "gate_e_source_reviewer",
+      "gate_f_source_reviewer",
+      "implementation"
+    ]
+  },
+  "dispositions": [
+    {
+      "dossier_id": "verified-dossier-candidate:10",
+      "numeric_id": 10,
+      "packet_sha256": "d747ab5a7c897b55fff9b2ec1658172bf6ebcf69b250868d707e0235c882ba74",
+      "projection_json_sha256": "d747ab5a7c897b55fff9b2ec1658172bf6ebcf69b250868d707e0235c882ba74",
+      "projection_html_sha256": "b53f0e3ef9b8ba21aad315abe86ef1f38e6f4da962b90a1cec59e33a8275fe31",
+      "overlay_sha256": "daa7492d33ae029b0b08d090118c27253ed17e6ed06cb725d8fc96fe97cd65fb",
+      "review_pixel_sha256": "6fb771104a1cc60851fcfc12a892836aedbcfd5747a04a7f56df5a4337c6dd8f",
+      "publication_eligible": true,
+      "allowed_dispositions": [
+        "accepted",
+        "held",
+        "rejected"
+      ],
+      "disposition": null,
+      "approvals": {
+        "visual_evidence": false,
+        "metadata_labeling": false,
+        "rights_attribution": false,
+        "uncertainty": false,
+        "projection_fidelity": false
+      },
+      "rationale": ""
+    },
+    {
+      "dossier_id": "verified-dossier-candidate:11",
+      "numeric_id": 11,
+      "packet_sha256": "274f4229ffc21a1b7db4c60666dfa58a54e3b77ee2adfe4a827f6ae7c7463a91",
+      "projection_json_sha256": "274f4229ffc21a1b7db4c60666dfa58a54e3b77ee2adfe4a827f6ae7c7463a91",
+      "projection_html_sha256": "8ee328aee3975fb072b5244038d4c4d6f0adbb5ead83a137d1181509f5d4992c",
+      "overlay_sha256": "b3b6051aca2d4b71bce3cf44a6ec728fd3b6ef1e974849eacd44da61c5d59b74",
+      "review_pixel_sha256": "db8d062164db57362f1b2fc4aba372b555f6c543b6f679bc83e50e8e40237134",
+      "publication_eligible": true,
+      "allowed_dispositions": [
+        "accepted",
+        "held",
+        "rejected"
+      ],
+      "disposition": null,
+      "approvals": {
+        "visual_evidence": false,
+        "metadata_labeling": false,
+        "rights_attribution": false,
+        "uncertainty": false,
+        "projection_fidelity": false
+      },
+      "rationale": ""
+    },
+    {
+      "dossier_id": "verified-dossier-candidate:17",
+      "numeric_id": 17,
+      "packet_sha256": "6cbce53b9b82423e28333e10fc1fa0f1a1da28e532fd3aa079609810b237e603",
+      "projection_json_sha256": "6cbce53b9b82423e28333e10fc1fa0f1a1da28e532fd3aa079609810b237e603",
+      "projection_html_sha256": "16564a294ccf58685333ace8afab7b84be21777519d9cbbc9365143808295415",
+      "overlay_sha256": "85d10533a193cfc3134b4aa455b466ebf5f990553831bcc9c003c810606b621a",
+      "review_pixel_sha256": "1a917d65ca401909ccb3c9c09aa90abab7771752dbddb37a63f76a7da1f28e0d",
+      "publication_eligible": true,
+      "allowed_dispositions": [
+        "accepted",
+        "held",
+        "rejected"
+      ],
+      "disposition": null,
+      "approvals": {
+        "visual_evidence": false,
+        "metadata_labeling": false,
+        "rights_attribution": false,
+        "uncertainty": false,
+        "projection_fidelity": false
+      },
+      "rationale": ""
+    },
+    {
+      "dossier_id": "verified-dossier-candidate:30",
+      "numeric_id": 30,
+      "packet_sha256": "12958c4b9e5eb47f2a942fdece3b4ee421e4bc9c8224717a538cf712899c868a",
+      "projection_json_sha256": "12958c4b9e5eb47f2a942fdece3b4ee421e4bc9c8224717a538cf712899c868a",
+      "projection_html_sha256": "48e9584d570d402b49097f8c7c05fd3fb9b671946075b126bf3b37f46eb519f8",
+      "overlay_sha256": "d77f81dd35fa8ef140f3aa6daffec5ce0e33b8e7739fca28a2b56853ab12e799",
+      "review_pixel_sha256": "a0fa801644443dfea6adfbcc6ea43fbf183e1b1071ec138c3f513babee79e802",
+      "publication_eligible": true,
+      "allowed_dispositions": [
+        "accepted",
+        "held",
+        "rejected"
+      ],
+      "disposition": null,
+      "approvals": {
+        "visual_evidence": false,
+        "metadata_labeling": false,
+        "rights_attribution": false,
+        "uncertainty": false,
+        "projection_fidelity": false
+      },
+      "rationale": ""
+    },
+    {
+      "dossier_id": "verified-dossier-candidate:31",
+      "numeric_id": 31,
+      "packet_sha256": "19fd0112a76e132b9cf5a664e25379d2bc536be05a38d36ffa7cf4f2b61c48ab",
+      "projection_json_sha256": "19fd0112a76e132b9cf5a664e25379d2bc536be05a38d36ffa7cf4f2b61c48ab",
+      "projection_html_sha256": "4e0e7ba344a51aad16c7cff861e075acebd35cca159bf11fc17603d4a6e4a344",
+      "overlay_sha256": "70844c70bf363ae657af7a8dc2555c40424c475be6a9e62210b4d9863dc30a98",
+      "review_pixel_sha256": "d4a37eaca4bc88f2d2c477fa16fa20e867579826d864669536f97f48f3d801f7",
+      "publication_eligible": true,
+      "allowed_dispositions": [
+        "accepted",
+        "held",
+        "rejected"
+      ],
+      "disposition": null,
+      "approvals": {
+        "visual_evidence": false,
+        "metadata_labeling": false,
+        "rights_attribution": false,
+        "uncertainty": false,
+        "projection_fidelity": false
+      },
+      "rationale": ""
+    },
+    {
+      "dossier_id": "verified-dossier-candidate:33",
+      "numeric_id": 33,
+      "packet_sha256": "d344cd5ca2df674f1fd05b1dc8580b01a6377b36a523c6e478b1e091d4da00d1",
+      "projection_json_sha256": "d344cd5ca2df674f1fd05b1dc8580b01a6377b36a523c6e478b1e091d4da00d1",
+      "projection_html_sha256": "28fa64448934e8f043645513e3303fa740b53159442bf907eb7adaeefb0f080d",
+      "overlay_sha256": "0b9faeb5cb561f9e82f45e8d7bdc1fa17bc44c24c768acd0603a2ee2bcf8fe77",
+      "review_pixel_sha256": "7861e25264587635c4ee2cb6423a154f3825353f1cae7b03fb23fff6f6f5d4b4",
+      "publication_eligible": true,
+      "allowed_dispositions": [
+        "accepted",
+        "held",
+        "rejected"
+      ],
+      "disposition": null,
+      "approvals": {
+        "visual_evidence": false,
+        "metadata_labeling": false,
+        "rights_attribution": false,
+        "uncertainty": false,
+        "projection_fidelity": false
+      },
+      "rationale": ""
+    },
+    {
+      "dossier_id": "verified-dossier-candidate:45",
+      "numeric_id": 45,
+      "packet_sha256": "e0d5eecc91b2d453100af23636790c159777aa4176814ffe3628f292ad0d5162",
+      "projection_json_sha256": "e0d5eecc91b2d453100af23636790c159777aa4176814ffe3628f292ad0d5162",
+      "projection_html_sha256": "3b809b480b3e46b61492ddb69ad9b8f143bfd54bc585a7ea7e9e3e496f4327f3",
+      "overlay_sha256": "da5101508360175c75595d4b4794b34b6c06b5823a0644c95685e8f6d86a741d",
+      "review_pixel_sha256": "938b33ec26ff76fecd5ddb6b7ba845fe7f3cdd8d631ea8415324ed22f04b6c4e",
+      "publication_eligible": true,
+      "allowed_dispositions": [
+        "accepted",
+        "held",
+        "rejected"
+      ],
+      "disposition": null,
+      "approvals": {
+        "visual_evidence": false,
+        "metadata_labeling": false,
+        "rights_attribution": false,
+        "uncertainty": false,
+        "projection_fidelity": false
+      },
+      "rationale": ""
+    },
+    {
+      "dossier_id": "verified-dossier-candidate:54",
+      "numeric_id": 54,
+      "packet_sha256": "928ceca387732437a6133bbece1b7dafddce0935ae7f7dc37b7650bdc02bd7b8",
+      "projection_json_sha256": "928ceca387732437a6133bbece1b7dafddce0935ae7f7dc37b7650bdc02bd7b8",
+      "projection_html_sha256": "da5de5cbf64cd7c3a39e79e7a61ac09bcc0eb07292a244f8245bc5bd3e3d0272",
+      "overlay_sha256": "dc83242ffb2c9ce830c6d9e9996ef2cfffab8221995ebd624f8072f1ea0a5a97",
+      "review_pixel_sha256": "43a195867ff68a3aec4359c007c242a869d16010f05217941ccc0fd50913371f",
+      "publication_eligible": true,
+      "allowed_dispositions": [
+        "accepted",
+        "held",
+        "rejected"
+      ],
+      "disposition": null,
+      "approvals": {
+        "visual_evidence": false,
+        "metadata_labeling": false,
+        "rights_attribution": false,
+        "uncertainty": false,
+        "projection_fidelity": false
+      },
+      "rationale": ""
+    },
+    {
+      "dossier_id": "verified-dossier-candidate:58",
+      "numeric_id": 58,
+      "packet_sha256": "89f28df00678d8a23a62fedab301753d05fddffdd19d8a98e549351145af204b",
+      "projection_json_sha256": "89f28df00678d8a23a62fedab301753d05fddffdd19d8a98e549351145af204b",
+      "projection_html_sha256": "5e5c30fe4fc33e2e28bf045d9cebdc36e5bd71518548dfe2d92c275d7fbb071d",
+      "overlay_sha256": "aa90231341abe6e438b31b9a188c4d48c4ccf6aaa50086882949467baee5a5a3",
+      "review_pixel_sha256": "d7e992f857caf5f296d7e1c0d912f0288854b3ed87e175157d92155bc2e6d8d6",
+      "publication_eligible": true,
+      "allowed_dispositions": [
+        "accepted",
+        "held",
+        "rejected"
+      ],
+      "disposition": null,
+      "approvals": {
+        "visual_evidence": false,
+        "metadata_labeling": false,
+        "rights_attribution": false,
+        "uncertainty": false,
+        "projection_fidelity": false
+      },
+      "rationale": ""
+    },
+    {
+      "dossier_id": "verified-dossier-candidate:77",
+      "numeric_id": 77,
+      "packet_sha256": "de22ddf02388725a9e21809f2886883a656887c1bd4f12d424fcd0f588b19350",
+      "projection_json_sha256": "de22ddf02388725a9e21809f2886883a656887c1bd4f12d424fcd0f588b19350",
+      "projection_html_sha256": "276d39aa981159bc158f458c55e3be16ce74fe7cf1010ef8e80f7b44a22abdec",
+      "overlay_sha256": "1702e1ae1d99db5e9945478c5b6566ea10565c5f2be96ea3abeca7da5a9f1c43",
+      "review_pixel_sha256": "8a8055d240b5d4ee65fd4fc39b100bdf6719956c7a7dd18a3144d55ed5133b0f",
+      "publication_eligible": true,
+      "allowed_dispositions": [
+        "accepted",
+        "held",
+        "rejected"
+      ],
+      "disposition": null,
+      "approvals": {
+        "visual_evidence": false,
+        "metadata_labeling": false,
+        "rights_attribution": false,
+        "uncertainty": false,
+        "projection_fidelity": false
+      },
+      "rationale": ""
+    },
+    {
+      "dossier_id": "verified-dossier-candidate:88",
+      "numeric_id": 88,
+      "packet_sha256": "4342070f318384d37544fd75b632619fae0de25f1d5de966fd5ffdc2321fabe3",
+      "projection_json_sha256": "4342070f318384d37544fd75b632619fae0de25f1d5de966fd5ffdc2321fabe3",
+      "projection_html_sha256": "d464c26c47d024928582a6e23e813c7b8e1c2e89c35fb7572022c152dada7fe4",
+      "overlay_sha256": "c9283b6a71821e76ab917f1301d7824cc0424915279f39ad099471821c8bdc05",
+      "review_pixel_sha256": "2cb78ab9703f0df9f03343637c63d995a15ca41564fe13070ac0449dd31d1b42",
+      "publication_eligible": true,
+      "allowed_dispositions": [
+        "accepted",
+        "held",
+        "rejected"
+      ],
+      "disposition": null,
+      "approvals": {
+        "visual_evidence": false,
+        "metadata_labeling": false,
+        "rights_attribution": false,
+        "uncertainty": false,
+        "projection_fidelity": false
+      },
+      "rationale": ""
+    },
+    {
+      "dossier_id": "verified-dossier-candidate:100",
+      "numeric_id": 100,
+      "packet_sha256": "e1b622848ba382cc69f45e0717d3fd1f5dba8d22ba35602f17dd66b2afed91f4",
+      "projection_json_sha256": "e1b622848ba382cc69f45e0717d3fd1f5dba8d22ba35602f17dd66b2afed91f4",
+      "projection_html_sha256": "ec979c7bedd07310acba5f90eb39ea68af0012547dc66b1dc0d5680724836bf8",
+      "overlay_sha256": "adb5ff7b1cdd11a76d96482d2e8635a96067bd884a5e31b24143c4f5fa8c8ec5",
+      "review_pixel_sha256": "b847414b4c9d90a861a88eec9937c146f78452af771c93e0cfbddeb17f7bb15c",
+      "publication_eligible": true,
+      "allowed_dispositions": [
+        "accepted",
+        "held",
+        "rejected"
+      ],
+      "disposition": null,
+      "approvals": {
+        "visual_evidence": false,
+        "metadata_labeling": false,
+        "rights_attribution": false,
+        "uncertainty": false,
+        "projection_fidelity": false
+      },
+      "rationale": ""
+    },
+    {
+      "dossier_id": "verified-dossier-candidate:101",
+      "numeric_id": 101,
+      "packet_sha256": "6624e0b9dfd2522ad0599b5f38fc585e619471a3dca71c8190ea55a7a2380545",
+      "projection_json_sha256": "6624e0b9dfd2522ad0599b5f38fc585e619471a3dca71c8190ea55a7a2380545",
+      "projection_html_sha256": "8c41c87901e4d94f76e638deac033079e0dfddad50561c8810364e29f1a87c0d",
+      "overlay_sha256": "7421e21d119a4df3ae4e61c74d9692531d4c25916be59be8ea8bf13ca76da500",
+      "review_pixel_sha256": "b29c2f48ec8f27fd0b2ac6a2f7f5bcf143f8b2a40a5b2c06a2c7029ed303ebca",
+      "publication_eligible": true,
+      "allowed_dispositions": [
+        "accepted",
+        "held",
+        "rejected"
+      ],
+      "disposition": null,
+      "approvals": {
+        "visual_evidence": false,
+        "metadata_labeling": false,
+        "rights_attribution": false,
+        "uncertainty": false,
+        "projection_fidelity": false
+      },
+      "rationale": ""
+    },
+    {
+      "dossier_id": "verified-dossier-candidate:102",
+      "numeric_id": 102,
+      "packet_sha256": "d371f157e7af23c1dea95ffe21ca312d4eff5e2bd1f07a373e4b28becdd33fc0",
+      "projection_json_sha256": "d371f157e7af23c1dea95ffe21ca312d4eff5e2bd1f07a373e4b28becdd33fc0",
+      "projection_html_sha256": "42c8fd5cfc66b6484d5fd7f41007396e3c6ced12509e252576e2e9a783e57c4e",
+      "overlay_sha256": "edb35529896068d75ed9a9763c4eab2f109ee847c18ced0516ccdcf7ad107fcd",
+      "review_pixel_sha256": "aee115b5c8987a598b9f2cb081fb957918b249bc14fed0f90ec1e1507a2627c3",
+      "publication_eligible": true,
+      "allowed_dispositions": [
+        "accepted",
+        "held",
+        "rejected"
+      ],
+      "disposition": null,
+      "approvals": {
+        "visual_evidence": false,
+        "metadata_labeling": false,
+        "rights_attribution": false,
+        "uncertainty": false,
+        "projection_fidelity": false
+      },
+      "rationale": ""
+    },
+    {
+      "dossier_id": "verified-dossier-candidate:105",
+      "numeric_id": 105,
+      "packet_sha256": "69c3c4a63b7fde9f40a1b00057bf264dc48a4736dc068dd6a5604e6d67a6cb14",
+      "projection_json_sha256": "69c3c4a63b7fde9f40a1b00057bf264dc48a4736dc068dd6a5604e6d67a6cb14",
+      "projection_html_sha256": "7cb50cd4abe80a4921c23f8206907fd753a5a232565303fc89fd8e7b6dd95b5d",
+      "overlay_sha256": "f12e92e133ead8ee744befb10e3455b1152df59aa83cde36c4fcc66cc17ca538",
+      "review_pixel_sha256": "cdfc43ddeb238df7d228a42b3eb4bcec13be2a07f2eefac1823aa04b399cf7d2",
+      "publication_eligible": true,
+      "allowed_dispositions": [
+        "accepted",
+        "held",
+        "rejected"
+      ],
+      "disposition": null,
+      "approvals": {
+        "visual_evidence": false,
+        "metadata_labeling": false,
+        "rights_attribution": false,
+        "uncertainty": false,
+        "projection_fidelity": false
+      },
+      "rationale": ""
+    },
+    {
+      "dossier_id": "verified-dossier-candidate:106",
+      "numeric_id": 106,
+      "packet_sha256": "bcd59acae7c987e84e89146d0fedbf7aca96b50a840c63d1273043348f251556",
+      "projection_json_sha256": "bcd59acae7c987e84e89146d0fedbf7aca96b50a840c63d1273043348f251556",
+      "projection_html_sha256": "6ac0ca490a67537755c73641c0c5f822716e67831c2d454b2bbab513e07aaec3",
+      "overlay_sha256": "7d1fc726288f31416aa00439218b5fa56fe75d1ba8a15def57032322de973460",
+      "review_pixel_sha256": "fcca7067732d9cb3dbfaa489113f9cfc72cd387cc8627423caa437bbf5b13e9a",
+      "publication_eligible": true,
+      "allowed_dispositions": [
+        "accepted",
+        "held",
+        "rejected"
+      ],
+      "disposition": null,
+      "approvals": {
+        "visual_evidence": false,
+        "metadata_labeling": false,
+        "rights_attribution": false,
+        "uncertainty": false,
+        "projection_fidelity": false
+      },
+      "rationale": ""
+    },
+    {
+      "dossier_id": "verified-dossier-candidate:4501",
+      "numeric_id": 4501,
+      "packet_sha256": "8a6b237c5ae905aebe72fa9fb568ddebbf6f6a926d02ce7a18cbe7334bd7137d",
+      "projection_json_sha256": "8a6b237c5ae905aebe72fa9fb568ddebbf6f6a926d02ce7a18cbe7334bd7137d",
+      "projection_html_sha256": "56f23cb9357f09a21ce83e682b71fbdf94862d94456da36ce895b430525cb75b",
+      "overlay_sha256": "d721ed8efd8472389b83050f6541cf26efc00fd61a231f23428ad09a9f13701b",
+      "review_pixel_sha256": "bd8ca09aad6cb42694c2bac9a36f672c7b1804642d1dc7ff9108fb9dbae660fb",
+      "publication_eligible": true,
+      "allowed_dispositions": [
+        "accepted",
+        "held",
+        "rejected"
+      ],
+      "disposition": null,
+      "approvals": {
+        "visual_evidence": false,
+        "metadata_labeling": false,
+        "rights_attribution": false,
+        "uncertainty": false,
+        "projection_fidelity": false
+      },
+      "rationale": ""
+    },
+    {
+      "dossier_id": "verified-dossier-candidate:7929",
+      "numeric_id": 7929,
+      "packet_sha256": "f6985c409b864ade2fcad5b5c7f8ddf77f6134921bd09008bce767221bb4bf34",
+      "projection_json_sha256": "f6985c409b864ade2fcad5b5c7f8ddf77f6134921bd09008bce767221bb4bf34",
+      "projection_html_sha256": "1fe1b58b7c1e1bfe65e6ab05008879772ca3ae724bce999ac09920b761346aad",
+      "overlay_sha256": "19a5de821dc10f2dbacbf2f7c8348dcc5152b12a21ab9d7ab0dddfde090814ba",
+      "review_pixel_sha256": "c995996d4929c56ce4ddb87c62cb6f2e2aa57acf3f702754f3bd0ed957620efc",
+      "publication_eligible": true,
+      "allowed_dispositions": [
+        "accepted",
+        "held",
+        "rejected"
+      ],
+      "disposition": null,
+      "approvals": {
+        "visual_evidence": false,
+        "metadata_labeling": false,
+        "rights_attribution": false,
+        "uncertainty": false,
+        "projection_fidelity": false
+      },
+      "rationale": ""
+    },
+    {
+      "dossier_id": "verified-dossier-candidate:8132",
+      "numeric_id": 8132,
+      "packet_sha256": "220e7d246d94ea4bd52c9d8cbb587ae4810d2a685375a4ddc272056593508203",
+      "projection_json_sha256": "220e7d246d94ea4bd52c9d8cbb587ae4810d2a685375a4ddc272056593508203",
+      "projection_html_sha256": "db6f7a8b3f8b6820c0b581b99b357a359f2c3ae879b13f3f813479453911821f",
+      "overlay_sha256": "4775ccc92138cd9ced72b2f3af47bd61c4125e30a75ed7309ffddb03f1f5fcdb",
+      "review_pixel_sha256": "66a31b7c9cda6963710842b18218bc453a69193815198c2900384f5b9f709252",
+      "publication_eligible": false,
+      "allowed_dispositions": [
+        "held",
+        "rejected"
+      ],
+      "disposition": null,
+      "approvals": {
+        "visual_evidence": false,
+        "metadata_labeling": false,
+        "rights_attribution": false,
+        "uncertainty": false,
+        "projection_fidelity": false
+      },
+      "rationale": ""
+    },
+    {
+      "dossier_id": "verified-dossier-candidate:8134",
+      "numeric_id": 8134,
+      "packet_sha256": "e9760ae950ca12ebd7cb699cbd8bbc135a7536bd4df9347f3ca3296fc6780132",
+      "projection_json_sha256": "e9760ae950ca12ebd7cb699cbd8bbc135a7536bd4df9347f3ca3296fc6780132",
+      "projection_html_sha256": "effef1277b06d47e2beadf80b66c9e2ef5eb1acf09f6f1f54e7726f2deb521cc",
+      "overlay_sha256": "31deb64e4192b40e2f60f7b7e3990cbb311194249110188a40cec5a2c0922803",
+      "review_pixel_sha256": "9ba0f6bd5128ef67450a07e8fa85a31de84d9fb6e073bf443d3bbdbc5c21a1c8",
+      "publication_eligible": false,
+      "allowed_dispositions": [
+        "held",
+        "rejected"
+      ],
+      "disposition": null,
+      "approvals": {
+        "visual_evidence": false,
+        "metadata_labeling": false,
+        "rights_attribution": false,
+        "uncertainty": false,
+        "projection_fidelity": false
+      },
+      "rationale": ""
+    },
+    {
+      "dossier_id": "verified-dossier-candidate:8139",
+      "numeric_id": 8139,
+      "packet_sha256": "021607113abe5132f8c052de0320a7f6839ebf2fab54e7be1072cb8e99b28c93",
+      "projection_json_sha256": "021607113abe5132f8c052de0320a7f6839ebf2fab54e7be1072cb8e99b28c93",
+      "projection_html_sha256": "b7d81c580069a6ba198d65c857d74f55c856803f481cee751d619926063b820e",
+      "overlay_sha256": "b95a23a58c056b2819c5f31003877d3e8696d2c6a5879a2c3050c2cae2a42791",
+      "review_pixel_sha256": "40a590df43444a94b521ba2aa81f7c5eb558dde583830011b4869868aa2eb314",
+      "publication_eligible": false,
+      "allowed_dispositions": [
+        "held",
+        "rejected"
+      ],
+      "disposition": null,
+      "approvals": {
+        "visual_evidence": false,
+        "metadata_labeling": false,
+        "rights_attribution": false,
+        "uncertainty": false,
+        "projection_fidelity": false
+      },
+      "rationale": ""
+    },
+    {
+      "dossier_id": "verified-dossier-candidate:8143",
+      "numeric_id": 8143,
+      "packet_sha256": "d06f14acfb70e7824830e05a3693c9a4d99c3b6f077e922191e78f6590d6903d",
+      "projection_json_sha256": "d06f14acfb70e7824830e05a3693c9a4d99c3b6f077e922191e78f6590d6903d",
+      "projection_html_sha256": "eca6df41659f66670d7752fded4caa2dc30e14ea7cd6ffe066f32c75612b5204",
+      "overlay_sha256": "74fe637a152c0237437e8e9ee1b22aa9b4e956aa6cf067a7353fbdbd1851524e",
+      "review_pixel_sha256": "45413db7d70cc5c99d103f6592154c97d51ae87a7d4d96866668d8f9b7a2520b",
+      "publication_eligible": false,
+      "allowed_dispositions": [
+        "held",
+        "rejected"
+      ],
+      "disposition": null,
+      "approvals": {
+        "visual_evidence": false,
+        "metadata_labeling": false,
+        "rights_attribution": false,
+        "uncertainty": false,
+        "projection_fidelity": false
+      },
+      "rationale": ""
+    },
+    {
+      "dossier_id": "verified-dossier-candidate:8432",
+      "numeric_id": 8432,
+      "packet_sha256": "e40fcbe984cf133380951203fbc085576ed45d2a57b39d95a934045148d0b5e6",
+      "projection_json_sha256": "e40fcbe984cf133380951203fbc085576ed45d2a57b39d95a934045148d0b5e6",
+      "projection_html_sha256": "8dd21124bc099f69d0c5502b4b49d80a98c0b2bf361ad63e56629613338a4bd3",
+      "overlay_sha256": "664b15469148eba2ff8cf7f46d01a53b398fc242afc72f4005635f8d53ffadad",
+      "review_pixel_sha256": "bfb58d3b02ec52ace55644bc38fc0020929256e41785fe5d25a1778ef8e60eb6",
+      "publication_eligible": true,
+      "allowed_dispositions": [
+        "accepted",
+        "held",
+        "rejected"
+      ],
+      "disposition": null,
+      "approvals": {
+        "visual_evidence": false,
+        "metadata_labeling": false,
+        "rights_attribution": false,
+        "uncertainty": false,
+        "projection_fidelity": false
+      },
+      "rationale": ""
+    },
+    {
+      "dossier_id": "verified-dossier-candidate:9092",
+      "numeric_id": 9092,
+      "packet_sha256": "ca2786bc3b211df9619e1406df1ba9a73fcddd364e267ef39a2b9366e3b5b04d",
+      "projection_json_sha256": "ca2786bc3b211df9619e1406df1ba9a73fcddd364e267ef39a2b9366e3b5b04d",
+      "projection_html_sha256": "97ddafb8459c6b7b7c09461c0d86efded9c1ecddc4067f893859c3dbc4b84695",
+      "overlay_sha256": "e5a202481e0d21c9ccd762c44e0691e9cf4a6e43fdb0ca32bf0e0cd8798fb82e",
+      "review_pixel_sha256": "8c99ecf27297c903fdb7139cb72e69adf53b2a706cdc7bdf7802d620a8d81c06",
+      "publication_eligible": true,
+      "allowed_dispositions": [
+        "accepted",
+        "held",
+        "rejected"
+      ],
+      "disposition": null,
+      "approvals": {
+        "visual_evidence": false,
+        "metadata_labeling": false,
+        "rights_attribution": false,
+        "uncertainty": false,
+        "projection_fidelity": false
+      },
+      "rationale": ""
+    },
+    {
+      "dossier_id": "verified-dossier-candidate:9844",
+      "numeric_id": 9844,
+      "packet_sha256": "be6cb297fde244f3791e10867e1604bf9bf21fa7ba79fd2a69a7cb5b3ac6d523",
+      "projection_json_sha256": "be6cb297fde244f3791e10867e1604bf9bf21fa7ba79fd2a69a7cb5b3ac6d523",
+      "projection_html_sha256": "f503a3e68e921ff39cefff79bdaed680fddda7b18c80d8ea42414cc2a0d058b6",
+      "overlay_sha256": "7659a5806cc87b7a67a4fad8a5fee8b42a8eed91e83469e69f2655b0e89f2166",
+      "review_pixel_sha256": "24df0a50eb0618b819f4ea95cfe7b533dc1e795e9ebb336702a4de3a730c73e6",
+      "publication_eligible": true,
+      "allowed_dispositions": [
+        "accepted",
+        "held",
+        "rejected"
+      ],
+      "disposition": null,
+      "approvals": {
+        "visual_evidence": false,
+        "metadata_labeling": false,
+        "rights_attribution": false,
+        "uncertainty": false,
+        "projection_fidelity": false
+      },
+      "rationale": ""
+    },
+    {
+      "dossier_id": "verified-dossier-candidate:11836",
+      "numeric_id": 11836,
+      "packet_sha256": "6ad752200e544a9bfc5073969c0770dcd3e9ce0accfca38c23bb5de8add6eb69",
+      "projection_json_sha256": "6ad752200e544a9bfc5073969c0770dcd3e9ce0accfca38c23bb5de8add6eb69",
+      "projection_html_sha256": "c942993e9dec26e5bca18fb649a3a2281788111acb0572c98e0be002ff6247e8",
+      "overlay_sha256": "1eab9de934f9b5855cb21d50dbd2450034242cbf6c80aac5414b127fd658af27",
+      "review_pixel_sha256": "0424a937f99d294e3508d88682f4de3aa52a6b9837bebf56264106a14fc3c49c",
+      "publication_eligible": true,
+      "allowed_dispositions": [
+        "accepted",
+        "held",
+        "rejected"
+      ],
+      "disposition": null,
+      "approvals": {
+        "visual_evidence": false,
+        "metadata_labeling": false,
+        "rights_attribution": false,
+        "uncertainty": false,
+        "projection_fidelity": false
+      },
+      "rationale": ""
+    },
+    {
+      "dossier_id": "verified-dossier-candidate:11923",
+      "numeric_id": 11923,
+      "packet_sha256": "96775c639b76c03ef10a0fd149108a9f4a014448c934e9fa80c3d6749f02ed28",
+      "projection_json_sha256": "96775c639b76c03ef10a0fd149108a9f4a014448c934e9fa80c3d6749f02ed28",
+      "projection_html_sha256": "33b78befc3a5d19bd185501bb192569e6d12809432e923ff45e69f83259382c6",
+      "overlay_sha256": "386d24ffaa4250f270f96bd69103afe33f24ebc70569eebaeeae81a5d7232a84",
+      "review_pixel_sha256": "76b599ce88054df7182d14b304f0e1e141241c5c1b1b7c680af72a8a39011fcd",
+      "publication_eligible": true,
+      "allowed_dispositions": [
+        "accepted",
+        "held",
+        "rejected"
+      ],
+      "disposition": null,
+      "approvals": {
+        "visual_evidence": false,
+        "metadata_labeling": false,
+        "rights_attribution": false,
+        "uncertainty": false,
+        "projection_fidelity": false
+      },
+      "rationale": ""
+    },
+    {
+      "dossier_id": "verified-dossier-candidate:11993",
+      "numeric_id": 11993,
+      "packet_sha256": "df58e403379f74d7f06a20fb717bf8e1f5053a82ad8849184db3aa617d6e695c",
+      "projection_json_sha256": "df58e403379f74d7f06a20fb717bf8e1f5053a82ad8849184db3aa617d6e695c",
+      "projection_html_sha256": "bf778b82ab91f56cb83b0fd3e99739b0df9bee92fec43e1e6cc3a3d80403a346",
+      "overlay_sha256": "9b772d22a18d3c08be0ae1bc6d092cb6430525aef110bf83fd793c6a5b1ae00d",
+      "review_pixel_sha256": "ad677aa67026eeefc33505317f1dd5a9e8699b609a61addf1cb848c7964d71b8",
+      "publication_eligible": true,
+      "allowed_dispositions": [
+        "accepted",
+        "held",
+        "rejected"
+      ],
+      "disposition": null,
+      "approvals": {
+        "visual_evidence": false,
+        "metadata_labeling": false,
+        "rights_attribution": false,
+        "uncertainty": false,
+        "projection_fidelity": false
+      },
+      "rationale": ""
+    },
+    {
+      "dossier_id": "verified-dossier-candidate:12115",
+      "numeric_id": 12115,
+      "packet_sha256": "3d224826ccffb19aceedd1e62e4e39729c9bd0cc2a619868c08efb4441883400",
+      "projection_json_sha256": "3d224826ccffb19aceedd1e62e4e39729c9bd0cc2a619868c08efb4441883400",
+      "projection_html_sha256": "72f0b02f52520734de8e403863c9ffe51095713c8fcf6350229999916d88f3eb",
+      "overlay_sha256": "f87121274e89b73ed078eb0e911cb1b4c4f9dd55c9af4957a3c19eaa32dc11e4",
+      "review_pixel_sha256": "97ddc17238a86ed7293274f6f8e9e86cbd5559abba3e0df6919f49aac2776ad6",
+      "publication_eligible": true,
+      "allowed_dispositions": [
+        "accepted",
+        "held",
+        "rejected"
+      ],
+      "disposition": null,
+      "approvals": {
+        "visual_evidence": false,
+        "metadata_labeling": false,
+        "rights_attribution": false,
+        "uncertainty": false,
+        "projection_fidelity": false
+      },
+      "rationale": ""
+    },
+    {
+      "dossier_id": "verified-dossier-candidate:12117",
+      "numeric_id": 12117,
+      "packet_sha256": "7f2deb94291789b80d760587f968503d98b80be9408c3bf764e1ebb927d5c424",
+      "projection_json_sha256": "7f2deb94291789b80d760587f968503d98b80be9408c3bf764e1ebb927d5c424",
+      "projection_html_sha256": "3ce5400aaeff2a01e448101f3cfc69fc6d478afd6960d54edd7f75807abbf47e",
+      "overlay_sha256": "08725d8190593f0b7ac4b776b230b2a0351d9483638d4c8d27fbdd44edbbd717",
+      "review_pixel_sha256": "34ce06eb4bbd4b4628cf6a0c05229190820f737641bb1b6c3b9a0a1055b701ed",
+      "publication_eligible": true,
+      "allowed_dispositions": [
+        "accepted",
+        "held",
+        "rejected"
+      ],
+      "disposition": null,
+      "approvals": {
+        "visual_evidence": false,
+        "metadata_labeling": false,
+        "rights_attribution": false,
+        "uncertainty": false,
+        "projection_fidelity": false
+      },
+      "rationale": ""
+    },
+    {
+      "dossier_id": "verified-dossier-candidate:12623",
+      "numeric_id": 12623,
+      "packet_sha256": "118d5eca53ec1b856c64405de60c16cf6780021f3f77f975229e8e4cc8b3ba16",
+      "projection_json_sha256": "118d5eca53ec1b856c64405de60c16cf6780021f3f77f975229e8e4cc8b3ba16",
+      "projection_html_sha256": "1b44bbcab4ba3302be0680dd45f70ce57407351effb977d83d6c454cafa9a999",
+      "overlay_sha256": "55e241681372eb9c3633375b00f0dfdcb971c827a2353abd73be798a2dfb6572",
+      "review_pixel_sha256": "c5cb15a34eb5479471398781a5fc4e379e6cfc3295e734413d586c7b50086261",
+      "publication_eligible": true,
+      "allowed_dispositions": [
+        "accepted",
+        "held",
+        "rejected"
+      ],
+      "disposition": null,
+      "approvals": {
+        "visual_evidence": false,
+        "metadata_labeling": false,
+        "rights_attribution": false,
+        "uncertainty": false,
+        "projection_fidelity": false
+      },
+      "rationale": ""
+    },
+    {
+      "dossier_id": "verified-dossier-candidate:13272",
+      "numeric_id": 13272,
+      "packet_sha256": "2c7c100d6052c8d870922f20f2505603c4b8fa28c399f37a4ecb1cccd1da68f4",
+      "projection_json_sha256": "2c7c100d6052c8d870922f20f2505603c4b8fa28c399f37a4ecb1cccd1da68f4",
+      "projection_html_sha256": "5de079f51a36923dd0951676227595406927545b826175cf867806fe369d43c0",
+      "overlay_sha256": "21b74197f36162befdf024691422492b6ed3bcde1f60325d5575c1749c197fed",
+      "review_pixel_sha256": "a2047406c719d3acc14660a0d593eda223683dca9fb772c04ce611d024a6233e",
+      "publication_eligible": true,
+      "allowed_dispositions": [
+        "accepted",
+        "held",
+        "rejected"
+      ],
+      "disposition": null,
+      "approvals": {
+        "visual_evidence": false,
+        "metadata_labeling": false,
+        "rights_attribution": false,
+        "uncertainty": false,
+        "projection_fidelity": false
+      },
+      "rationale": ""
+    },
+    {
+      "dossier_id": "verified-dossier-candidate:13389",
+      "numeric_id": 13389,
+      "packet_sha256": "99aea792c66d1b198ef0892b5d8d476da808cf50cbacb086d6cbc489e1e2734d",
+      "projection_json_sha256": "99aea792c66d1b198ef0892b5d8d476da808cf50cbacb086d6cbc489e1e2734d",
+      "projection_html_sha256": "b572894872ae0dfe0b8eda687762241fb96bc2bd76f8f983322998f29aba1a48",
+      "overlay_sha256": "9708b6051118c681c43ac9277c8d05523f0a7dd8c5773e93bff66de1b4035aa5",
+      "review_pixel_sha256": "f2a1b69252dd252b342b70dbb062aa185364a58acbd266f4ef7079c321ca0c44",
+      "publication_eligible": true,
+      "allowed_dispositions": [
+        "accepted",
+        "held",
+        "rejected"
+      ],
+      "disposition": null,
+      "approvals": {
+        "visual_evidence": false,
+        "metadata_labeling": false,
+        "rights_attribution": false,
+        "uncertainty": false,
+        "projection_fidelity": false
+      },
+      "rationale": ""
+    },
+    {
+      "dossier_id": "verified-dossier-candidate:14135",
+      "numeric_id": 14135,
+      "packet_sha256": "500a23115da40a53fbebc6cf1ca2855c1edff44d7a9b41f9a6ce55d67b542aec",
+      "projection_json_sha256": "500a23115da40a53fbebc6cf1ca2855c1edff44d7a9b41f9a6ce55d67b542aec",
+      "projection_html_sha256": "ad1afb0bd17ed1c4c681265e380f0c9708ddbec07b62f47afbac18ac77f2ea42",
+      "overlay_sha256": "32cc040c914bad3c4a815498a66d3535eb497d28f6a478c435e00528953b0bf1",
+      "review_pixel_sha256": "aec0368d87f5aa7ffd3630eb8e6068d18e5e9d0140f67cbb062485a03e141056",
+      "publication_eligible": true,
+      "allowed_dispositions": [
+        "accepted",
+        "held",
+        "rejected"
+      ],
+      "disposition": null,
+      "approvals": {
+        "visual_evidence": false,
+        "metadata_labeling": false,
+        "rights_attribution": false,
+        "uncertainty": false,
+        "projection_fidelity": false
+      },
+      "rationale": ""
+    },
+    {
+      "dossier_id": "verified-dossier-candidate:14813",
+      "numeric_id": 14813,
+      "packet_sha256": "c0016fe786ba4a1189055dbd20e8ac18d40f61482bf6ed7ad789369e1039dfb4",
+      "projection_json_sha256": "c0016fe786ba4a1189055dbd20e8ac18d40f61482bf6ed7ad789369e1039dfb4",
+      "projection_html_sha256": "366cc0e00ab2f5b9e62f91535a2f05b807241ede6aa1caa6531c1d5dac740760",
+      "overlay_sha256": "8650fb63a132fbc4c1f835a311ba738877c09022d81ce5bfea05a89cd78d3825",
+      "review_pixel_sha256": "a00504708db4f71bb96bd232392fcd9c04892794fcc8fc695db06695bd92e682",
+      "publication_eligible": true,
+      "allowed_dispositions": [
+        "accepted",
+        "held",
+        "rejected"
+      ],
+      "disposition": null,
+      "approvals": {
+        "visual_evidence": false,
+        "metadata_labeling": false,
+        "rights_attribution": false,
+        "uncertainty": false,
+        "projection_fidelity": false
+      },
+      "rationale": ""
+    },
+    {
+      "dossier_id": "verified-dossier-candidate:14965",
+      "numeric_id": 14965,
+      "packet_sha256": "47a9c11795cafabcdc38cda5c6c52dc23dbf193c58f107cf0d9be11a64be8796",
+      "projection_json_sha256": "47a9c11795cafabcdc38cda5c6c52dc23dbf193c58f107cf0d9be11a64be8796",
+      "projection_html_sha256": "4ccee36ed59daa70631f2f72e02ace1750e2311a65761799251acb6ee2ce0664",
+      "overlay_sha256": "4f488009afa91246a30d07a1f358f18f899e1229206ef145f7de088f1e6a8dca",
+      "review_pixel_sha256": "d4914afd38a5aaca095d953d56ceaa67f46c2b41a2b5f206ca5e304e6e309f87",
+      "publication_eligible": true,
+      "allowed_dispositions": [
+        "accepted",
+        "held",
+        "rejected"
+      ],
+      "disposition": null,
+      "approvals": {
+        "visual_evidence": false,
+        "metadata_labeling": false,
+        "rights_attribution": false,
+        "uncertainty": false,
+        "projection_fidelity": false
+      },
+      "rationale": ""
+    }
+  ],
+  "counts": {
+    "candidates": 36,
+    "accepted": 0,
+    "held": 0,
+    "rejected": 0,
+    "fully_verified": 0
+  }
+}

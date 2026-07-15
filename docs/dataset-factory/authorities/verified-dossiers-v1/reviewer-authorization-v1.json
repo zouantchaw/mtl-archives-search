@@ -1,0 +1,90 @@
+{
+  "schema_version": "verified_dossiers_reviewer_authorization_v1.0.0",
+  "status": "authorized",
+  "artifact_id": "dfv0_verified_dossiers_v1_candidate_20260714",
+  "candidate_descriptor_sha256": "d799bbe84277fb666b78d5adbc1263d446a30d11baf8ddb408fff1170204e046",
+  "packet_manifest_sha256": "0ff6314da804b88778424cd87da337cbf4262c12c676be09f97bbb40c9ba60b4",
+  "review_scope": {
+    "scope_id": "gate-g-review-scope:98f62b669e94d07b17219ccf",
+    "dossier_ids": [
+      "verified-dossier-candidate:10",
+      "verified-dossier-candidate:11",
+      "verified-dossier-candidate:17",
+      "verified-dossier-candidate:30",
+      "verified-dossier-candidate:31",
+      "verified-dossier-candidate:33",
+      "verified-dossier-candidate:45",
+      "verified-dossier-candidate:54",
+      "verified-dossier-candidate:58",
+      "verified-dossier-candidate:77",
+      "verified-dossier-candidate:88",
+      "verified-dossier-candidate:100",
+      "verified-dossier-candidate:101",
+      "verified-dossier-candidate:102",
+      "verified-dossier-candidate:105",
+      "verified-dossier-candidate:106",
+      "verified-dossier-candidate:4501",
+      "verified-dossier-candidate:7929",
+      "verified-dossier-candidate:8132",
+      "verified-dossier-candidate:8134",
+      "verified-dossier-candidate:8139",
+      "verified-dossier-candidate:8143",
+      "verified-dossier-candidate:8432",
+      "verified-dossier-candidate:9092",
+      "verified-dossier-candidate:9844",
+      "verified-dossier-candidate:11836",
+      "verified-dossier-candidate:11923",
+      "verified-dossier-candidate:11993",
+      "verified-dossier-candidate:12115",
+      "verified-dossier-candidate:12117",
+      "verified-dossier-candidate:12623",
+      "verified-dossier-candidate:13272",
+      "verified-dossier-candidate:13389",
+      "verified-dossier-candidate:14135",
+      "verified-dossier-candidate:14813",
+      "verified-dossier-candidate:14965"
+    ],
+    "allowed_dispositions": [
+      "accepted",
+      "held",
+      "rejected"
+    ],
+    "categorically_ineligible_numeric_ids": [
+      8132,
+      8134,
+      8139,
+      8143
+    ],
+    "minimum_eligible_acceptances": 25
+  },
+  "approved_reviewer": {
+    "reviewer_id": "sol-high-gate-g-dossier-reviewer:019f6216-987e-7000-95f0-9b9a054fedfa",
+    "session_id": "019f6216-987e-7000-95f0-9b9a054fedfa",
+    "model": "gpt-5.6-sol",
+    "reasoning_effort": "high"
+  },
+  "authorizing_authority": {
+    "identity": "codex-gate-g-coordinator",
+    "session_id": "codex-desktop-gate-g-coordinator-20260714",
+    "role": "gate_g_review_authority"
+  },
+  "authorized_at": "2026-07-14T19:39:19Z",
+  "forbidden_principals": {
+    "identities": [
+      "5bc4cfd0-0f60-47f6-a20d-af40f99c2267",
+      "codex-sol-medium-gate-g-implementation",
+      "sol-high-v7-reviewer:a2869a6c-7f23-4ec0-ab07-c031aae2bc54"
+    ],
+    "sessions": [
+      "5bc4cfd0-0f60-47f6-a20d-af40f99c2267",
+      "issue91-gate-g-implementation-20260714",
+      "sol-high-v7-session:cfabcb92-aa8e-4440-b564-55dccbe9877c"
+    ],
+    "excluded_roles": [
+      "candidate_dossier_author",
+      "gate_e_source_reviewer",
+      "gate_f_source_reviewer",
+      "implementation"
+    ]
+  }
+}

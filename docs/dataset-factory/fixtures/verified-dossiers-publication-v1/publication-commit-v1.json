@@ -1,0 +1,32 @@
+{
+  "schema_version": "verified_dossiers_publication_commit_v1.0.0",
+  "state": "committed",
+  "inputs": [
+    {
+      "path": "reviewer-authorization-v1.json",
+      "sha256": "35cb1ab5ed91e1531646a669acc27cf33c06151ec541d49e89b4cdea9b51cbff",
+      "bytes": 3179
+    },
+    {
+      "path": "independent-dossier-review-v1.json",
+      "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc",
+      "bytes": 50658
+    },
+    {
+      "path": "published-dossiers-v1.json",
+      "sha256": "92cc7feff1704918883afc578c6393ca1eb708a6971bcf195f09e317044c8425",
+      "bytes": 434863
+    },
+    {
+      "path": "publication-status-v1.json",
+      "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
+      "bytes": 824
+    },
+    {
+      "path": "publication-descriptor-v1.json",
+      "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+      "bytes": 40954
+    }
+  ],
+  "committed_at": "2026-07-14T20:44:08Z"
+}
