@@ -4,13 +4,18 @@
   "candidate_id": "dfv0_reviewed_metrics_v2_candidate_20260715",
   "generator_version": "blind-png-v2",
   "members": [],
-  "tree": null,
-  "purpose": "blind visual prediction over fixed opaque inputs",
-  "output_schema": "prediction-output.schema.v2.json",
+  "media_tree": null,
+  "purpose": "uniform blind visual annotation over 44 opaque media inputs",
+  "output_schema": {
+    "path": "prediction-output.schema.v2.json",
+    "sha256": "18e6f45c82fae5c8501f576a0b01d457f0915128913f4d5900b0acb030f27e2d",
+    "bytes": 6658
+  },
   "scans": {
     "denylisted_keys": 0,
     "denylisted_text": 0,
-    "metadata_fields": 0,
+    "forbidden_metadata_fields": 0,
+    "ancillary_png_chunks": 0,
     "extra_files": 0
   },
   "attestations": {

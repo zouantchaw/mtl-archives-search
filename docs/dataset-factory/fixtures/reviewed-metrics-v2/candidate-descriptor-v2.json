@@ -8,8 +8,8 @@
   "members_before_descriptor": [
     {
       "path": "blind-bundle-descriptor.template-v2.json",
-      "sha256": "50e8b02651de8952aade54c834ad209a17e66c36ae7fbd7bb3c68ba7ae7fd5b6",
-      "bytes": 633
+      "sha256": "3ab4dde445310152a286f48fd672a04f743604b9f5f29d2b36d38cb2ef276d50",
+      "bytes": 810
     },
     {
       "path": "candidate-criterion-matrix-v2.json",
@@ -28,12 +28,12 @@
     },
     {
       "path": "input-authority-v2.json",
-      "sha256": "6548a3ca8018fc0cd73f2d7c2cd863d25a6b4aa5c93960dbe4c92c2920fe8223",
-      "bytes": 55000
+      "sha256": "34be01a2750894eab27ad8882acb79a0366f1de9b6c85fb96bb84e95ecfd81fa",
+      "bytes": 56908
     },
     {
       "path": "manifest-v2.json",
-      "sha256": "4b97298d86f148517cdfaf875af3deb41e032e64c639ff2976d21ababf6a15e3",
+      "sha256": "55fd6835466ec879e337d702075eac5aa175e64967a35e944baf36738da75f83",
       "bytes": 1852
     },
     {
@@ -57,10 +57,10 @@
       "bytes": 1056
     }
   ],
-  "tree_before_descriptor_sha256": "b36b84f12a9660491e3ca51d15737f378f05e6baf9086a067e26fd4aee6b8e2a",
+  "tree_before_descriptor_sha256": "2104550fef6e7d47367df08c5cdb614e16775c218334506204e6b3179b11fe49",
   "counts": {
     "files_before_descriptor": 10,
-    "bytes_before_descriptor": 65830,
+    "bytes_before_descriptor": 67915,
     "unique_sources": 44,
     "task_memberships": 78
   },
@@ -104,6 +104,16 @@
       "path": "docs/dataset-factory/fixtures/ground-originals-v1/independent-review-input-v1.json",
       "sha256": "c263eef97d3cd1662954a50748b3f9fadab5cf65ff79ac33ba80b909969699b3",
       "bytes": 2470
+    },
+    "ground_records": {
+      "path": "docs/dataset-factory/fixtures/ground-originals-v1/records-v1.json",
+      "sha256": "55bca29de2bf7d5a41c031835db87a0b2d7f7627db360d63aaaab17a43806ad4",
+      "bytes": 19460
+    },
+    "reviewed_visual_transcriptions": {
+      "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+      "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+      "bytes": 1907
     }
   },
   "completion": {

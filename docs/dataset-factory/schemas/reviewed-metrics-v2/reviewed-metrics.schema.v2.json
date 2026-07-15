@@ -12,6 +12,10 @@
     "criterion_matrix": {"$ref": "#/$defs/matrix"},
     "limitations": {"type": "array", "items": {"type": "string"}}
   },
+  "allOf": [
+    {"if": {"properties": {"status": {"const": "synthetic_test_only"}}}, "then": {"properties": {"metrics": {"maxItems": 0}}}},
+    {"if": {"properties": {"status": {"const": "completed"}}}, "then": {"properties": {"metrics": {"minItems": 8, "maxItems": 8}}}}
+  ],
   "$defs": {
     "exclusion": {"type": "object", "additionalProperties": false, "required": ["opaque_id", "reason", "fixed_before_scoring"], "properties": {"opaque_id": {"type": "string"}, "reason": {"type": "string"}, "fixed_before_scoring": {"const": true}}},
     "counts": {"type": "object", "additionalProperties": false, "required": ["tp", "fp", "fn", "tn", "edits", "support"], "properties": {"tp": {"type": ["integer", "null"], "minimum": 0}, "fp": {"type": ["integer", "null"], "minimum": 0}, "fn": {"type": ["integer", "null"], "minimum": 0}, "tn": {"type": ["integer", "null"], "minimum": 0}, "edits": {"type": ["integer", "null"], "minimum": 0}, "support": {"type": ["integer", "null"], "minimum": 0}}},

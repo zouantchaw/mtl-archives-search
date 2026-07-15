@@ -70,8 +70,17 @@
     },
     "mutations": {
       "$ref": "#/$defs/mutations"
+    },
+    "required_publication_members": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
     }
   },
+  "allOf": [
+    {"if": {"properties": {"status": {"const": "candidate_only"}}}, "then": {"properties": {"candidate_commit": {"type": "null"}, "required_publication_members": {"maxItems": 0}}}},
+    {"if": {"properties": {"status": {"const": "published"}}}, "then": {"required": ["required_publication_members"], "properties": {"artifact_id": {"const": "dfv0_reviewed_metrics_v2_publication"}, "candidate_commit": {"type": "string", "pattern": "^[a-f0-9]{40}$"}, "required_publication_members": {"minItems": 1}, "completion": {"properties": {"candidate_complete": {"const": true}, "issue_92_complete": {"const": true}, "issue_69_complete": {"const": true}, "publication_exists": {"const": true}}}, "predecessors": {"required": ["candidate", "execution_authorization", "prediction_freeze", "gold_review", "results", "criterion_matrix"]}}}}
+  ],
   "$defs": {
     "pin": {
       "type": "object",
@@ -144,6 +153,8 @@
         "gate_f_review",
         "gate_g_descriptor",
         "ground_input"
+        ,"ground_records"
+        ,"reviewed_visual_transcriptions"
       ],
       "properties": {
         "phase_d": {
@@ -170,15 +181,20 @@
         "ground_input": {
           "$ref": "#/$defs/pin"
         },
+        "ground_records": {"$ref": "#/$defs/pin"},
+        "reviewed_visual_transcriptions": {"$ref": "#/$defs/pin"},
         "candidate": {
           "$ref": "#/$defs/pin"
         },
+        "execution_authorization": {"$ref": "#/$defs/pin"},
         "prediction_freeze": {
           "$ref": "#/$defs/pin"
         },
         "gold_review": {
           "$ref": "#/$defs/pin"
-        }
+        },
+        "results": {"$ref": "#/$defs/pin"},
+        "criterion_matrix": {"$ref": "#/$defs/pin"}
       }
     },
     "completion": {

@@ -64,6 +64,10 @@
       "$ref": "#/$defs/attestations"
     }
   },
+  "allOf": [
+    {"if": {"properties": {"status": {"const": "blank_no_prediction"}}}, "then": {"properties": {"bundle_tree_sha256": {"type": "null"}, "session": {"type": "null"}, "outputs": {"maxItems": 0}}}},
+    {"if": {"properties": {"status": {"const": "completed"}}}, "then": {"properties": {"bundle_tree_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "session": {"$ref": "#/$defs/session"}, "outputs": {"minItems": 44, "maxItems": 44}}}}
+  ],
   "$defs": {
     "session": {
       "type": "object",
@@ -73,6 +77,7 @@
         "session_id",
         "model",
         "reasoning_effort",
+        "route",
         "started_at",
         "ended_at"
       ],
@@ -93,6 +98,7 @@
           "type": "string",
           "minLength": 1
         },
+        "route": {"type": "string", "minLength": 1},
         "started_at": {
           "format": "date-time",
           "type": "string"
@@ -132,7 +138,7 @@
           }
         },
         "type": {
-          "type": "string"
+          "enum": ["organization", "brand", "person", "building", "street", "place", "other"]
         },
         "identity_decision": {
           "enum": [
@@ -182,7 +188,8 @@
           "type": [
             "string",
             "null"
-          ]
+          ],
+          "format": "uri"
         },
         "abstained": {
           "type": "boolean"
@@ -226,10 +233,7 @@
           "type": "string"
         },
         "image_mode": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "enum": ["ground_street", "aerial_vertical", "aerial_oblique", "document_map", "low_information", null]
         },
         "ocr": {
           "type": [

@@ -1070,7 +1070,12 @@
       },
       "predecessor": {
         "ground_input_sha256": "c263eef97d3cd1662954a50748b3f9fadab5cf65ff79ac33ba80b909969699b3",
-        "neutral_crop_id": "ground-crop-01"
+        "ground_records_sha256": "55bca29de2bf7d5a41c031835db87a0b2d7f7627db360d63aaaab17a43806ad4",
+        "reviewed_visual_transcriptions_sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+        "neutral_crop_id": "ground-crop-01",
+        "parent_neutral_id": "ground-review-06",
+        "numeric_id": 105,
+        "region_id": "white-rose"
       },
       "purposes": [
         "ocr"
@@ -1098,7 +1103,12 @@
       },
       "predecessor": {
         "ground_input_sha256": "c263eef97d3cd1662954a50748b3f9fadab5cf65ff79ac33ba80b909969699b3",
-        "neutral_crop_id": "ground-crop-02"
+        "ground_records_sha256": "55bca29de2bf7d5a41c031835db87a0b2d7f7627db360d63aaaab17a43806ad4",
+        "reviewed_visual_transcriptions_sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+        "neutral_crop_id": "ground-crop-02",
+        "parent_neutral_id": "ground-review-06",
+        "numeric_id": 105,
+        "region_id": "catelli-egg-noodles"
       },
       "purposes": [
         "ocr"
@@ -1126,7 +1136,9 @@
       },
       "predecessor": {
         "ground_input_sha256": "c263eef97d3cd1662954a50748b3f9fadab5cf65ff79ac33ba80b909969699b3",
-        "neutral_scene_id": "ground-review-01"
+        "ground_records_sha256": "55bca29de2bf7d5a41c031835db87a0b2d7f7627db360d63aaaab17a43806ad4",
+        "neutral_scene_id": "ground-review-01",
+        "numeric_id": 0
       },
       "purposes": [
         "entity_place"
@@ -1154,7 +1166,9 @@
       },
       "predecessor": {
         "ground_input_sha256": "c263eef97d3cd1662954a50748b3f9fadab5cf65ff79ac33ba80b909969699b3",
-        "neutral_scene_id": "ground-review-02"
+        "ground_records_sha256": "55bca29de2bf7d5a41c031835db87a0b2d7f7627db360d63aaaab17a43806ad4",
+        "neutral_scene_id": "ground-review-02",
+        "numeric_id": 10
       },
       "purposes": [
         "entity_place"
@@ -1182,7 +1196,9 @@
       },
       "predecessor": {
         "ground_input_sha256": "c263eef97d3cd1662954a50748b3f9fadab5cf65ff79ac33ba80b909969699b3",
-        "neutral_scene_id": "ground-review-03"
+        "ground_records_sha256": "55bca29de2bf7d5a41c031835db87a0b2d7f7627db360d63aaaab17a43806ad4",
+        "neutral_scene_id": "ground-review-03",
+        "numeric_id": 100
       },
       "purposes": [
         "entity_place"
@@ -1210,7 +1226,9 @@
       },
       "predecessor": {
         "ground_input_sha256": "c263eef97d3cd1662954a50748b3f9fadab5cf65ff79ac33ba80b909969699b3",
-        "neutral_scene_id": "ground-review-04"
+        "ground_records_sha256": "55bca29de2bf7d5a41c031835db87a0b2d7f7627db360d63aaaab17a43806ad4",
+        "neutral_scene_id": "ground-review-04",
+        "numeric_id": 101
       },
       "purposes": [
         "entity_place"
@@ -1238,7 +1256,9 @@
       },
       "predecessor": {
         "ground_input_sha256": "c263eef97d3cd1662954a50748b3f9fadab5cf65ff79ac33ba80b909969699b3",
-        "neutral_scene_id": "ground-review-05"
+        "ground_records_sha256": "55bca29de2bf7d5a41c031835db87a0b2d7f7627db360d63aaaab17a43806ad4",
+        "neutral_scene_id": "ground-review-05",
+        "numeric_id": 102
       },
       "purposes": [
         "entity_place"
@@ -1266,7 +1286,9 @@
       },
       "predecessor": {
         "ground_input_sha256": "c263eef97d3cd1662954a50748b3f9fadab5cf65ff79ac33ba80b909969699b3",
-        "neutral_scene_id": "ground-review-06"
+        "ground_records_sha256": "55bca29de2bf7d5a41c031835db87a0b2d7f7627db360d63aaaab17a43806ad4",
+        "neutral_scene_id": "ground-review-06",
+        "numeric_id": 105
       },
       "purposes": [
         "entity_place"
@@ -1412,6 +1434,16 @@
       "path": "docs/dataset-factory/fixtures/ground-originals-v1/independent-review-input-v1.json",
       "sha256": "c263eef97d3cd1662954a50748b3f9fadab5cf65ff79ac33ba80b909969699b3",
       "bytes": 2470
+    },
+    "ground_records": {
+      "path": "docs/dataset-factory/fixtures/ground-originals-v1/records-v1.json",
+      "sha256": "55bca29de2bf7d5a41c031835db87a0b2d7f7627db360d63aaaab17a43806ad4",
+      "bytes": 19460
+    },
+    "reviewed_visual_transcriptions": {
+      "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+      "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+      "bytes": 1907
     }
   },
   "mutations": {

@@ -38,6 +38,10 @@
       "type": "boolean"
     }
   },
+  "allOf": [
+    {"if": {"properties": {"status": {"const": "candidate_open"}}}, "then": {"properties": {"issue_92_complete": {"const": false}, "issue_69_complete": {"const": false}}}},
+    {"if": {"properties": {"status": {"const": "final"}}}, "then": {"properties": {"rows": {"minItems": 9, "maxItems": 9}, "issue_92_complete": {"const": true}, "issue_69_complete": {"const": true}}}}
+  ],
   "$defs": {
     "pin": {
       "type": "object",
@@ -103,8 +107,7 @@
           "type": "boolean"
         },
         "verdict": {
-          "type": "string",
-          "minLength": 1
+          "enum": ["pending", "satisfied_candidate", "satisfied_local_untracked_sources", "satisfied"]
         },
         "result_ids": {
           "type": "array",

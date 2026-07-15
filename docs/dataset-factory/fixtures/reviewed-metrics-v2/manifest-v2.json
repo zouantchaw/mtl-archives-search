@@ -4,8 +4,8 @@
   "members": [
     {
       "path": "blind-bundle-descriptor.template-v2.json",
-      "sha256": "50e8b02651de8952aade54c834ad209a17e66c36ae7fbd7bb3c68ba7ae7fd5b6",
-      "bytes": 633
+      "sha256": "3ab4dde445310152a286f48fd672a04f743604b9f5f29d2b36d38cb2ef276d50",
+      "bytes": 810
     },
     {
       "path": "candidate-criterion-matrix-v2.json",
@@ -24,8 +24,8 @@
     },
     {
       "path": "input-authority-v2.json",
-      "sha256": "6548a3ca8018fc0cd73f2d7c2cd863d25a6b4aa5c93960dbe4c92c2920fe8223",
-      "bytes": 55000
+      "sha256": "34be01a2750894eab27ad8882acb79a0366f1de9b6c85fb96bb84e95ecfd81fa",
+      "bytes": 56908
     },
     {
       "path": "prediction-output.template-v2.json",
@@ -48,9 +48,9 @@
       "bytes": 1056
     }
   ],
-  "content_sha256": "c2e4d480e81a392af1c29f765c05ac8f7d314c4ad9ac8e933e5585b3849ea2a8",
+  "content_sha256": "3969fb0e4bad6f785c9ade13a711787a687eca0894e0c9f002aeadbc2c4db448",
   "counts": {
     "files_before_manifest_and_descriptor": 9,
-    "bytes_before_manifest_and_descriptor": 63978
+    "bytes_before_manifest_and_descriptor": 66063
   }
 }

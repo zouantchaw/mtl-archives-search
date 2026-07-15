@@ -178,13 +178,20 @@
         {
           "required": [
             "ground_input_sha256",
-            "neutral_crop_id"
+            "ground_records_sha256",
+            "reviewed_visual_transcriptions_sha256",
+            "neutral_crop_id",
+            "parent_neutral_id",
+            "numeric_id",
+            "region_id"
           ]
         },
         {
           "required": [
             "ground_input_sha256",
-            "neutral_scene_id"
+            "ground_records_sha256",
+            "neutral_scene_id",
+            "numeric_id"
           ]
         }
       ],
@@ -207,6 +214,11 @@
           "type": "string",
           "pattern": "^[a-f0-9]{64}$"
         },
+        "ground_records_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "reviewed_visual_transcriptions_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "parent_neutral_id": {"type": "string", "minLength": 1},
+        "numeric_id": {"type": "integer", "minimum": 0},
+        "region_id": {"type": "string", "minLength": 1},
         "neutral_crop_id": {
           "type": "string"
         },
@@ -227,6 +239,8 @@
         "gate_f_review",
         "gate_g_descriptor",
         "ground_input"
+        ,"ground_records"
+        ,"reviewed_visual_transcriptions"
       ],
       "properties": {
         "phase_d": {
@@ -251,6 +265,12 @@
           "$ref": "#/$defs/pin"
         },
         "ground_input": {
+          "$ref": "#/$defs/pin"
+        },
+        "ground_records": {
+          "$ref": "#/$defs/pin"
+        },
+        "reviewed_visual_transcriptions": {
           "$ref": "#/$defs/pin"
         }
       }
