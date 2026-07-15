@@ -1,0 +1,121 @@
+{
+  "schema_version": "reviewed_metrics_candidate_descriptor_v2.0.0",
+  "artifact_id": "dfv0_reviewed_metrics_v2_candidate_20260715",
+  "status": "candidate_only",
+  "created_at": "2026-07-15T00:00:00.000Z",
+  "implementation_base_commit": "5fe4dfbe51a320a51f1f126b4a2d8cf0722be5dc",
+  "candidate_commit": null,
+  "members_before_descriptor": [
+    {
+      "path": "blind-bundle-descriptor.template-v2.json",
+      "sha256": "50e8b02651de8952aade54c834ad209a17e66c36ae7fbd7bb3c68ba7ae7fd5b6",
+      "bytes": 633
+    },
+    {
+      "path": "candidate-criterion-matrix-v2.json",
+      "sha256": "6087baa6aa2f79f181149925e50394984b0d0a0779150ba74bc956e48ea6ae25",
+      "bytes": 3707
+    },
+    {
+      "path": "candidate-status-v2.json",
+      "sha256": "10f664b3f3e7de7f3a3164e25bb0b2c719138d90e161773c325765f5f36343eb",
+      "bytes": 703
+    },
+    {
+      "path": "gold-review.template-v2.json",
+      "sha256": "ebc3d48e45c12da55514f9cc3772e631747b209227617818bc293c2ef66a779c",
+      "bytes": 1049
+    },
+    {
+      "path": "input-authority-v2.json",
+      "sha256": "6548a3ca8018fc0cd73f2d7c2cd863d25a6b4aa5c93960dbe4c92c2920fe8223",
+      "bytes": 55000
+    },
+    {
+      "path": "manifest-v2.json",
+      "sha256": "4b97298d86f148517cdfaf875af3deb41e032e64c639ff2976d21ababf6a15e3",
+      "bytes": 1852
+    },
+    {
+      "path": "prediction-output.template-v2.json",
+      "sha256": "7bf94ba1ece5893b5f94f48b09ed477df204cfbb44acaa68f9f57d98ab890f37",
+      "bytes": 1075
+    },
+    {
+      "path": "search-task-candidate-v2.json",
+      "sha256": "ea8c0a352f46575c5cc7f531bc8f3752d44ef4e11189cd647ccd76fb6053b72b",
+      "bytes": 408
+    },
+    {
+      "path": "search-task-review.template-v2.json",
+      "sha256": "f441347e7e734dff2645c05561dae92c6fa2bd13efc2796497b9ba24a0846815",
+      "bytes": 347
+    },
+    {
+      "path": "supersession-candidate-notice-v2.json",
+      "sha256": "0dcd0cc6df2a95890ba9043113a73b21f9f5b20d82177e8a7ee37917d445b1b8",
+      "bytes": 1056
+    }
+  ],
+  "tree_before_descriptor_sha256": "b36b84f12a9660491e3ca51d15737f378f05e6baf9086a067e26fd4aee6b8e2a",
+  "counts": {
+    "files_before_descriptor": 10,
+    "bytes_before_descriptor": 65830,
+    "unique_sources": 44,
+    "task_memberships": 78
+  },
+  "predecessors": {
+    "phase_d": {
+      "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+      "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+      "bytes": 4243798
+    },
+    "v1_tasks": {
+      "path": "docs/dataset-factory/fixtures/reviewed-metrics-publication-v1/candidate-benchmark-tasks-v1.json",
+      "sha256": "c715c411d37f0d6bde756cf68b0b3a2db59de2336fe2c55752744e3514cf6a66",
+      "bytes": 337705
+    },
+    "v1_receipt": {
+      "path": "docs/dataset-factory/fixtures/reviewed-metrics-publication-v1/independent-task-review-v1.json",
+      "sha256": "422cd4d3faab3e233af0241ca11dd82cc9a26e75c0af08961698bc342b97552a",
+      "bytes": 27037
+    },
+    "v1_descriptor": {
+      "path": "docs/dataset-factory/fixtures/reviewed-metrics-publication-v1/final-descriptor-v1.json",
+      "sha256": "e44ca758c7d17d2256b974e714b15795a637d634eb29253a7f7ecee6347c0b93",
+      "bytes": 3741
+    },
+    "gate_e_promotion": {
+      "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+      "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+      "bytes": 1000
+    },
+    "gate_f_review": {
+      "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+      "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+      "bytes": 17017
+    },
+    "gate_g_descriptor": {
+      "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+      "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+      "bytes": 40954
+    },
+    "ground_input": {
+      "path": "docs/dataset-factory/fixtures/ground-originals-v1/independent-review-input-v1.json",
+      "sha256": "c263eef97d3cd1662954a50748b3f9fadab5cf65ff79ac33ba80b909969699b3",
+      "bytes": 2470
+    }
+  },
+  "completion": {
+    "candidate_complete": false,
+    "issue_92_complete": false,
+    "issue_69_complete": false,
+    "publication_exists": false
+  },
+  "mutations": {
+    "production": false,
+    "search_index": false,
+    "private_object_store_write": false,
+    "paid_gpu": false
+  }
+}

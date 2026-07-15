@@ -1,0 +1,363 @@
+import crypto from "node:crypto";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { parseArgs } from "node:util";
+import { fileURLToPath } from "node:url";
+import Ajv2020Import from "ajv/dist/2020.js";
+import addFormatsImport from "ajv-formats";
+import sharp from "sharp";
+
+type J = any;
+type Source = {
+  source_key: string;
+  source_ref: string;
+  local_path: string;
+  sha256: string;
+  bytes: number;
+  width: number;
+  height: number;
+  component_id: string;
+  split: string;
+  rights: J;
+  predecessor: J;
+  purposes: string[];
+};
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
+const REL = "docs/dataset-factory/fixtures/reviewed-metrics-v2";
+const FIXTURE = path.join(ROOT, REL);
+const SCHEMAS = path.join(ROOT, "docs/dataset-factory/schemas/reviewed-metrics-v2");
+const REGISTRY = path.join(ROOT, "docs/dataset-factory/artifact-registry.v0.jsonl");
+const V1_REL = "docs/dataset-factory/fixtures/reviewed-metrics-publication-v1";
+const V1 = path.join(ROOT, V1_REL);
+const V1_TASKS = path.join(V1, "candidate-benchmark-tasks-v1.json");
+const PHASE_D = path.join(ROOT, "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json");
+const GROUND_INPUT = path.join(ROOT, "docs/dataset-factory/fixtures/ground-originals-v1/independent-review-input-v1.json");
+const GROUND_ROOT = path.dirname(GROUND_INPUT);
+const CANDIDATE_ID = "dfv0_reviewed_metrics_v2_candidate_20260715";
+const PUBLICATION_ID = "dfv0_reviewed_metrics_v2_publication";
+const CREATED = "2026-07-15T00:00:00.000Z";
+const IMPLEMENTATION_BASE_COMMIT = "5fe4dfbe51a320a51f1f126b4a2d8cf0722be5dc";
+const V1_EXPECTED = {
+  files: 19,
+  bytes: 1_005_718,
+  tree_sha256: "1e61ba2d92b6ee59f6eb6221b8274ef9a6bcbf56299274da7a5525b1e14974a1",
+  final_descriptor_sha256: "e44ca758c7d17d2256b974e714b15795a637d634eb29253a7f7ecee6347c0b93",
+  receipt_sha256: "422cd4d3faab3e233af0241ca11dd82cc9a26e75c0af08961698bc342b97552a",
+  authorization_sha256: "d66a969563878b6e02f46d965ab374cf7e186d8c518c8d62aa1e275adcd96dbc",
+} as const;
+const CONTROL_SOURCES = [
+  { id: 10145, token: "gold-batch-control:0099:first-view", file: "glb002-0099-0.jpg", sha256: "8c97cfd0b01d8baefd3e122a3d630ef85d535878024f73113e53bdc9a5421ee0", bytes: 145410, width: 1024, height: 662 },
+  { id: 8465, token: "gold-batch-control:0001:first-view", file: "glb002-0001-0.jpg", sha256: "0ab54c10ed1a3ea564678232d9fb4a632bb8aeb2a9410b6278dd8b77e1b427b5", bytes: 118212, width: 1024, height: 622 },
+  { id: 6059, token: "gold-batch-control:0126:first-view", file: "glb002-0126-0.jpg", sha256: "e620dbbce90fe373f198196adbba431de1ce574cffb230e64195d78def202a5d", bytes: 352794, width: 982, height: 1024 },
+] as const;
+const IMAGE_IDS = [10,11,17,30,31,33,45,54,58,77,88,100,101,102,105,106,4501,7929,8432,9092,9844,11836,11923,11993,12115,12117,12623,13272,13389,14135,14813,14965,10145,8465,11118,6059];
+const AERIAL_IDS = [4501,7929,8432,9092,9844,11836,11923,11993,12115,12117,12623,13272,13389,14135,14813,14965];
+const ABSTENTION_IDS = [...AERIAL_IDS, 11118, 6059];
+const SCENE_IDS = [0,10,100,101,102,105];
+const EXPECTED_FILES = [
+  "blind-bundle-descriptor.template-v2.json", "candidate-criterion-matrix-v2.json",
+  "candidate-descriptor-v2.json", "candidate-status-v2.json", "gold-review.template-v2.json",
+  "input-authority-v2.json", "manifest-v2.json", "prediction-output.template-v2.json",
+  "search-task-candidate-v2.json", "search-task-review.template-v2.json",
+  "supersession-candidate-notice-v2.json",
+].sort();
+const DENY_KEYS = /(?:^|_)(?:class|claim_id|claim|disposition|gold|expected|answer|answers|label|labels|metadata|reviewer|reviewer_material|record|record_id|record_ids|source|source_path|mapping|repo|repository_path|locator|private|component|split|rights)(?:$|_)/i;
+const DENY_TEXT = /(?:mtl_archives_metadata_[0-9]+|(?:^|[^a-z])record[_ -]?id(?:[^a-z]|$)|(?:^|[^a-z])claim[_ -]?id(?:[^a-z]|$)|gold[_ -]?(?:label|answer)|expected[_ -]?answer|reviewer[_ -]?material|(?:^|[\s"'])(?:docs|data|packages)\/|\/Users\/|(?:r2|s3|file):\/\/|private[_ -]?(?:locator|route|path)|artifact[s]?\/mtl-archives)/i;
+const SAFE_ATTESTATION_KEYS = new Set(["zero_labels", "zero_answers", "zero_reviewer_material", "zero_source_metadata", "metadata_fields", "repository_not_mounted", "private_routes_not_mounted", "coordinator_authority_not_present", "mappings_not_present"]);
+const INTERNAL_SYNTHETIC_CAPABILITY = Symbol("reviewed-metrics-v2-internal-synthetic-capability");
+type InternalSyntheticCapability = { readonly [INTERNAL_SYNTHETIC_CAPABILITY]: true };
+const Ajv2020 = Ajv2020Import as unknown as new (options: J) => J;
+const addFormats = addFormatsImport as unknown as (ajv: J) => void;
+
+function assert(value: unknown, message: string): asserts value { if (!value) throw new Error(message); }
+function hash(value: Buffer | string): string { return crypto.createHash("sha256").update(value).digest("hex"); }
+function canon(value: J): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(canon).join(",")}]`;
+  return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canon(value[key])}`).join(",")}}`;
+}
+function pretty(value: J): string { return `${JSON.stringify(value, null, 2)}\n`; }
+function load(file: string): J { return JSON.parse(fs.readFileSync(file, "utf8")); }
+function writeJson(file: string, value: J): void { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, pretty(value)); }
+function rel(file: string): string { return path.relative(ROOT, file).split(path.sep).join("/"); }
+function pin(file: string, shownPath = rel(file)): J { const b = fs.readFileSync(file); return { path: shownPath, sha256: hash(b), bytes: b.length }; }
+function files(root: string, current = root): string[] {
+  return fs.readdirSync(current, { withFileTypes: true }).flatMap((entry) => {
+    const absolute = path.join(current, entry.name);
+    assert(!entry.isSymbolicLink(), `symlink refused: ${absolute}`);
+    if (entry.isDirectory()) return files(root, absolute);
+    assert(entry.isFile(), `unexpected filesystem member: ${absolute}`);
+    return [path.relative(root, absolute).split(path.sep).join("/")];
+  }).sort();
+}
+function tree(root: string, members = files(root)): J {
+  const pins = members.map((member) => pin(path.join(root, member), member));
+  return { members: pins, sha256: hash(`${pins.map((x) => `${x.path}\t${x.sha256}\t${x.bytes}`).join("\n")}\n`), bytes: pins.reduce((n, x) => n + x.bytes, 0) };
+}
+function same(a: J, b: J, label: string): void { assert(canon(a) === canon(b), `${label} differs`); }
+function unique<T>(xs: T[], label: string): void { assert(new Set(xs).size === xs.length, `duplicate ${label}`); }
+function schema(name: string, value: J): void {
+  const ajv = new Ajv2020({ allErrors: true, strict: false }); addFormats(ajv);
+  for (const file of fs.readdirSync(SCHEMAS).filter((x) => x.endsWith(".json"))) ajv.addSchema(load(path.join(SCHEMAS, file)), file);
+  const validate = ajv.getSchema(name); assert(validate && validate(value), `${name}: ${JSON.stringify(validate?.errors)}`);
+}
+function phaseRow(id: number): J {
+  const row = load(PHASE_D).records.find((x: J) => x.numeric_id === id);
+  assert(row, `Phase D row missing: ${id}`); return row;
+}
+function sourceFacts(file: string, expected: { sha256: string; bytes: number; width: number; height: number }): void {
+  assert(fs.existsSync(file), `required registered control unavailable: ${expected.sha256}`);
+  const b = fs.readFileSync(file); assert(hash(b) === expected.sha256 && b.length === expected.bytes, `control bytes drift: ${expected.sha256}`);
+}
+async function decoded(file: string): Promise<{ hash: string; width: number; height: number; channels: number }> {
+  const { data, info } = await sharp(file).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  return { hash: hash(data), width: info.width, height: info.height, channels: info.channels };
+}
+function predecessorPins(): J {
+  return {
+    phase_d: pin(PHASE_D),
+    v1_tasks: pin(V1_TASKS),
+    v1_receipt: pin(path.join(V1, "independent-task-review-v1.json")),
+    v1_descriptor: pin(path.join(V1, "final-descriptor-v1.json")),
+    gate_e_promotion: pin(path.join(ROOT, "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json")),
+    gate_f_review: pin(path.join(ROOT, "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json")),
+    gate_g_descriptor: pin(path.join(ROOT, "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json")),
+    ground_input: pin(GROUND_INPUT),
+  };
+}
+async function sources(): Promise<Source[]> {
+  const v1 = load(V1_TASKS).tasks as J[];
+  assert(v1.length === 32, "v1 task count drift");
+  const byId = new Map(v1.map((task) => [task.record.numeric_id, task]));
+  const out: Source[] = [];
+  for (const id of IMAGE_IDS) {
+    const task = byId.get(id); const row = phaseRow(id); let input: J; let sourceRef: string; let localPath: string; let rights: J;
+    if (task) { input = task.input; sourceRef = input.path; localPath = path.join(ROOT, input.path); rights = task.rights; }
+    else if (id === 11118) {
+      input = row.pixel_evidence.views[0]; sourceRef = input.path; localPath = path.join(ROOT, input.path); rights = row.rights;
+    } else {
+      const c = CONTROL_SOURCES.find((x) => x.id === id)!;
+      localPath = path.join(ROOT, "data/mtl_archives/reports/gold_label_batch_002/packets/views", c.file);
+      sourceFacts(localPath, c); input = c; sourceRef = c.token; rights = row.rights;
+    }
+    const b = fs.readFileSync(localPath); assert(hash(b) === input.sha256 && b.length === input.bytes, `source pin drift: ${id}`);
+    const d = await decoded(localPath); assert(d.width === input.width && d.height === input.height, `source dimensions drift: ${id}`);
+    out.push({ source_key: `image:${id}`, source_ref: sourceRef, local_path: localPath, sha256: input.sha256, bytes: input.bytes, width: input.width, height: input.height, component_id: row.component_id, split: row.split, rights, predecessor: task ? { v1_task_id: task.task_id, v1_task_sha256: hash(canon(task)) } : { phase_d_row_sha256: hash(canon(row)), registered_artifact_id: id === 11118 ? "canonical_image_recovery_v1" : "dfv0_gold_label_batch_002_final_r2_archive" }, purposes: ["image_mode"] });
+  }
+  const ground = load(GROUND_INPUT);
+  for (let i = 0; i < ground.crops.length; i++) {
+    const crop = ground.crops[i]; const file = path.join(GROUND_ROOT, crop.crop_path); const d = await decoded(file);
+    assert(hash(fs.readFileSync(file)) === crop.crop_sha256 && d.width === crop.width && d.height === crop.height, "OCR crop drift");
+    const parent = phaseRow(105);
+    out.push({ source_key: `ocr:${i + 1}`, source_ref: rel(file), local_path: file, sha256: crop.crop_sha256, bytes: fs.statSync(file).size, width: crop.width, height: crop.height, component_id: parent.component_id, split: parent.split, rights: parent.rights, predecessor: { ground_input_sha256: pin(GROUND_INPUT).sha256, neutral_crop_id: crop.neutral_crop_id }, purposes: ["ocr"] });
+  }
+  for (let i = 0; i < ground.scenes.length; i++) {
+    const scene = ground.scenes[i]; const id = SCENE_IDS[i]; const file = path.join(GROUND_ROOT, scene.review_path); const d = await decoded(file); const row = phaseRow(id);
+    assert(hash(fs.readFileSync(file)) === scene.review_sha256 && d.width === scene.width && d.height === scene.height, `scene drift: ${id}`);
+    out.push({ source_key: `scene:${id}`, source_ref: rel(file), local_path: file, sha256: scene.review_sha256, bytes: fs.statSync(file).size, width: scene.width, height: scene.height, component_id: row.component_id, split: row.split, rights: row.rights, predecessor: { ground_input_sha256: pin(GROUND_INPUT).sha256, neutral_scene_id: scene.neutral_id }, purposes: ["entity_place"] });
+  }
+  for (const source of out) if (source.source_key.startsWith("image:")) {
+    const id = Number(source.source_key.split(":")[1]);
+    if (AERIAL_IDS.includes(id)) source.purposes.push("aerial_land_use");
+    if (ABSTENTION_IDS.includes(id)) source.purposes.push("abstention");
+  }
+  unique(out.map((x) => x.source_key), "source key"); unique(out.map((x) => x.sha256), "source payload hash");
+  assert(out.length === 44, `unique source count drift: ${out.length}`); return out;
+}
+function taskMembership(sourceRows: Source[]): J {
+  const key = new Set(sourceRows.map((x) => x.source_key));
+  const subsets = {
+    image_mode: IMAGE_IDS.map((id) => `image:${id}`), ocr: ["ocr:1", "ocr:2"],
+    entity_place: SCENE_IDS.map((id) => `scene:${id}`), aerial_land_use: AERIAL_IDS.map((id) => `image:${id}`),
+    abstention: ABSTENTION_IDS.map((id) => `image:${id}`),
+  };
+  same(Object.fromEntries(Object.entries(subsets).map(([k, v]) => [k, v.length])), { image_mode: 36, ocr: 2, entity_place: 6, aerial_land_use: 16, abstention: 18 }, "fixed subset counts");
+  for (const id of Object.values(subsets).flat()) assert(key.has(id), `membership source missing: ${id}`);
+  return subsets;
+}
+function publicSource(source: Source, index: number, pixel: J): J {
+  return {
+    opaque_id: `v2-${String(index + 1).padStart(4, "0")}`,
+    source_key: source.source_key, source_ref: source.source_ref,
+    source: { sha256: source.sha256, bytes: source.bytes, width: source.width, height: source.height, normalized_pixel_sha256: pixel.hash, sanitized_normalized_pixel_sha256: pixel.hash },
+    component_id: source.component_id, split: source.split,
+    rights: { license_id: source.rights.license_id ?? null, attribution: source.rights.attribution ?? null, commercial_use_allowed: source.rights.commercial_use_allowed ?? null, complete: source.rights.complete ?? null },
+    predecessor: source.predecessor, purposes: source.purposes,
+  };
+}
+function blankPrediction(ids: string[]): J { return { schema_version: "reviewed_metrics_prediction_output_v2.0.0", status: "blank_no_prediction", candidate_id: CANDIDATE_ID, bundle_tree_sha256: null, session: null, outputs: [], required_opaque_ids: ids, attestations: { no_gold_received: true, no_expected_answers_received: true, no_repo_access: true, one_run_only: true } }; }
+function blankGold(ids: string[]): J { return { schema_version: "reviewed_metrics_gold_review_authority_v2.0.0", status: "blank_external_review_required", candidate_id: CANDIDATE_ID, bundle_tree_sha256: null, reviewer: null, reviews: [], required_opaque_ids: ids, reviewed_exclusions: [], source_task_dossier_decision: null, private_expected_commitment: null }; }
+function blankTaskReview(): J { return { schema_version: "reviewed_metrics_search_task_review_v2.0.0", status: "placeholder_issue_97_no_review", candidate_id: CANDIDATE_ID, task_pin: null, prediction_freeze_pin: null, score_commitment_pin: null, reviewer: null, checks: null, disposition: null, rationale: null }; }
+async function candidateDocuments(output: string): Promise<Map<string, J>> {
+  const raw = await sources(); const pixels = await Promise.all(raw.map((x) => decoded(x.local_path)));
+  const inputs = raw.map((x, i) => publicSource(x, i, pixels[i])); const membership = taskMembership(raw); const ids = inputs.map((x) => x.opaque_id);
+  const authority = { schema_version: "reviewed_metrics_input_authority_v2.0.0", artifact_id: CANDIDATE_ID, status: "fixed_membership_candidate_no_execution_authority", created_at: CREATED, implementation_base_commit: IMPLEMENTATION_BASE_COMMIT, candidate_commit: null, inputs, subsets: membership, counts: { unique_sources: 44, task_memberships: 78, image_mode: 36, ocr: 2, entity_place: 6, aerial_land_use: 16, abstention: 18 }, predecessors: predecessorPins(), mutations: { production: false, search_index: false, private_object_store_write: false, paid_gpu: false } };
+  const blindTemplate = { schema_version: "reviewed_metrics_blind_bundle_descriptor_v2.0.0", status: "template_no_bundle_built", candidate_id: CANDIDATE_ID, generator_version: "blind-png-v2", members: [], tree: null, purpose: "blind visual prediction over fixed opaque inputs", output_schema: "prediction-output.schema.v2.json", scans: { denylisted_keys: 0, denylisted_text: 0, metadata_fields: 0, extra_files: 0 }, attestations: { zero_labels: true, zero_answers: true, zero_reviewer_material: true, zero_source_metadata: true } };
+  const matrix = { schema_version: "reviewed_metrics_final_criterion_matrix_v2.0.0", status: "candidate_open", candidate_id: CANDIDATE_ID, rows: [
+    { criterion_id: "96.fixed_memberships", required: true, verdict: "satisfied_candidate", result_ids: ["input-authority-v2"], evidence: [pin(V1_TASKS), pin(PHASE_D)], limitations: [] },
+    { criterion_id: "96.controls_recovered", required: true, verdict: "satisfied_local_untracked_sources", result_ids: ["input-authority-v2"], evidence: CONTROL_SOURCES.map((x) => ({ registered_artifact_id: "dfv0_gold_label_batch_002_final_r2_archive", source_sha256: x.sha256, bytes: x.bytes })), limitations: ["Source payloads remain ignored and are not duplicated in the candidate."] },
+    ...["blind_prediction", "independent_gold", "reviewed_metrics", "authority_chronology", "publication", "issue_92_close", "issue_69_close"].map((id) => ({ criterion_id: `96.${id}`, required: true, verdict: "pending", result_ids: [], evidence: [], limitations: ["Not executed by issue #96 candidate construction."] })),
+  ], issue_92_complete: false, issue_69_complete: false };
+  const search = { schema_version: "reviewed_metrics_search_task_v2.0.0", status: "placeholder_issue_97_no_task_authority", candidate_id: CANDIDATE_ID, internal_provenance: null, public_projection: null, source_only_boundary: true, private_expected_commitment: null, rights_policy: null, component: null, split: null, review_state: "not_started" };
+  const status = { schema_version: "reviewed_metrics_candidate_status_v2.0.0", artifact_id: CANDIDATE_ID, status: "candidate_ready_no_execution_authority", counts: authority.counts, issue_92_complete: false, issue_69_complete: false, candidate_complete: false, publication_exists: false, prediction_exists: false, gold_exists: false, mutations: authority.mutations, stop_conditions: [] };
+  const supersession = { schema_version: "reviewed_metrics_supersession_candidate_notice_v2.0.0", status: "candidate_notice_v2_does_not_yet_exist", v2_publication_exists: false, current_close_authority: null, v1_historical_publication: { tree_sha256: V1_EXPECTED.tree_sha256, final_descriptor_sha256: V1_EXPECTED.final_descriptor_sha256, receipt_sha256: V1_EXPECTED.receipt_sha256, authorization_sha256: V1_EXPECTED.authorization_sha256 }, proposed_superseded_claims: ["v1 issue_complete=true as current close authority", "v1 69.reviewed_metrics satisfied_with_unavailable_denominators", "v1 satisfied task rows pointing to a blank template", "task acceptance alone proves all issue criteria"], preserved_claims: ["32 independently accepted v1 image-mode tasks and their exact receipt"], issue_92_complete: false, issue_69_complete: false };
+  const map = new Map<string, J>([
+    ["input-authority-v2.json", authority], ["blind-bundle-descriptor.template-v2.json", blindTemplate],
+    ["prediction-output.template-v2.json", blankPrediction(ids)], ["gold-review.template-v2.json", blankGold(ids)],
+    ["search-task-candidate-v2.json", search], ["search-task-review.template-v2.json", blankTaskReview()],
+    ["candidate-criterion-matrix-v2.json", matrix], ["candidate-status-v2.json", status],
+    ["supersession-candidate-notice-v2.json", supersession],
+  ]);
+  for (const [name, value] of map) writeJson(path.join(output, name), value);
+  const preManifest = tree(output);
+  const manifest = { schema_version: "reviewed_metrics_candidate_manifest_v2.0.0", artifact_id: CANDIDATE_ID, members: preManifest.members, content_sha256: preManifest.sha256, counts: { files_before_manifest_and_descriptor: preManifest.members.length, bytes_before_manifest_and_descriptor: preManifest.bytes } };
+  writeJson(path.join(output, "manifest-v2.json"), manifest); map.set("manifest-v2.json", manifest);
+  const beforeDescriptor = tree(output);
+  const descriptor = { schema_version: "reviewed_metrics_candidate_descriptor_v2.0.0", artifact_id: CANDIDATE_ID, status: "candidate_only", created_at: CREATED, implementation_base_commit: IMPLEMENTATION_BASE_COMMIT, candidate_commit: null, members_before_descriptor: beforeDescriptor.members, tree_before_descriptor_sha256: beforeDescriptor.sha256, counts: { files_before_descriptor: beforeDescriptor.members.length, bytes_before_descriptor: beforeDescriptor.bytes, unique_sources: 44, task_memberships: 78 }, predecessors: predecessorPins(), completion: { candidate_complete: false, issue_92_complete: false, issue_69_complete: false, publication_exists: false }, mutations: authority.mutations };
+  writeJson(path.join(output, "candidate-descriptor-v2.json"), descriptor); map.set("candidate-descriptor-v2.json", descriptor); return map;
+}
+async function build(output = FIXTURE): Promise<J> {
+  assert(path.resolve(output) !== V1, "v1 output route refused"); fs.rmSync(output, { recursive: true, force: true }); fs.mkdirSync(output, { recursive: true });
+  await candidateDocuments(output); const result = await verifyCandidate(output, false); return { status: "candidate_built", ...result };
+}
+function validateDenylist(value: J, where = "$"): number {
+  let scans = 1;
+  if (Array.isArray(value)) { value.forEach((x, i) => { scans += validateDenylist(x, `${where}[${i}]`); }); return scans; }
+  if (value && typeof value === "object") for (const [key, child] of Object.entries(value)) { assert(SAFE_ATTESTATION_KEYS.has(key) || !DENY_KEYS.test(key), `denylisted key at ${where}.${key}`); scans += validateDenylist(child, `${where}.${key}`); }
+  else if (typeof value === "string") assert(where.endsWith(".schema_version") || where.endsWith(".output_schema") || where.endsWith(".candidate_id") || !DENY_TEXT.test(value), `denylisted text at ${where}`);
+  return scans;
+}
+function assertSanitizedMetadata(metadata: J): void {
+  const unexpected = ["exif", "icc", "iptc", "xmp", "comments", "comment", "profiles", "thumbnail"].filter((key) => metadata[key] != null);
+  assert(unexpected.length === 0, `unexpected metadata/profile/comment: ${unexpected.join(",")}`);
+}
+async function buildBlindBundle(output: string, authorityFile = path.join(FIXTURE, "input-authority-v2.json")): Promise<J> {
+  assert(output && path.isAbsolute(output), "caller-supplied absolute blind bundle route required");
+  const resolved = path.resolve(output); assert(!resolved.startsWith(`${ROOT}${path.sep}`), "blind route must be outside repository"); assert(!resolved.includes(".."), "blind route traversal refused");
+  assert(!fs.existsSync(resolved), "blind route substitution/existing route refused");
+  const authority = load(authorityFile); schema("input-authority.schema.v2.json", authority); assert(authority.artifact_id === CANDIDATE_ID, "authority substitution");
+  const raw = await sources(); const byKey = new Map(raw.map((x) => [x.source_key, x])); fs.mkdirSync(path.join(resolved, "media"), { recursive: true });
+  const members: J[] = [];
+  for (const input of authority.inputs) {
+    const source = byKey.get(input.source_key); assert(source && source.sha256 === input.source.sha256, "source authority substitution");
+    const filename = `${input.opaque_id}.png`; assert(/^v2-[0-9]{4}\.png$/.test(filename), "opaque filename invalid");
+    const target = path.join(resolved, "media", filename);
+    await sharp(source.local_path).removeAlpha().png({ compressionLevel: 9, adaptiveFiltering: false, palette: false }).toFile(target);
+    const before = await decoded(source.local_path); const after = await decoded(target); same(after, before, `normalized pixel drift ${input.opaque_id}`);
+    assert(input.source.normalized_pixel_sha256 === before.hash && input.source.sanitized_normalized_pixel_sha256 === after.hash, `authority normalized-pixel binding drift ${input.opaque_id}`);
+    const metadata = await sharp(target).metadata();
+    assertSanitizedMetadata(metadata);
+    members.push({ opaque_id: input.opaque_id, filename: `media/${filename}`, sha256: hash(fs.readFileSync(target)), bytes: fs.statSync(target).size, width: after.width, height: after.height, purposes: input.purposes });
+  }
+  unique(members.map((x) => x.opaque_id), "opaque ID"); unique(members.map((x) => x.sha256), "sanitized hash");
+  const instructions = { schema_version: "reviewed_metrics_blind_instructions_v2.0.0", purpose: "Predict only the requested visual/OCR/entity/place/aerial/abstention outputs for each opaque input.", output_schema: "prediction-output.schema.v2.json", required_member_ids: members.map((x) => x.opaque_id), constraints: ["Return one output per required opaque ID.", "Explicitly abstain when evidence is insufficient.", "Do not access any route outside this bundle and the assigned output route."] };
+  validateDenylist(instructions); writeJson(path.join(resolved, "instructions.json"), instructions);
+  const visualTree = tree(path.join(resolved, "media"));
+  const descriptor = { schema_version: "reviewed_metrics_blind_bundle_descriptor_v2.0.0", status: "sealed_sanitized_bundle", candidate_id: CANDIDATE_ID, generator_version: "blind-png-v2", members, tree: visualTree, purpose: "blind visual prediction over fixed opaque inputs", output_schema: "prediction-output.schema.v2.json", scans: { denylisted_keys: 0, denylisted_text: 0, metadata_fields: 0, extra_files: 0 }, attestations: { zero_labels: true, zero_answers: true, zero_reviewer_material: true, zero_source_metadata: true } };
+  validateDenylist(descriptor); schema("blind-bundle-descriptor.schema.v2.json", descriptor); writeJson(path.join(resolved, "blind-bundle-descriptor-v2.json"), descriptor);
+  const access = { schema_version: "reviewed_metrics_blind_access_receipt_v2.0.0", candidate_id: CANDIDATE_ID, bundle_tree_sha256: visualTree.sha256, allowed_roots: ["bundle", "assigned-output"], prohibited_access_attempts: 0, contents: { media_files: members.length, instruction_files: 1, descriptor_files: 1 }, attestations: { repository_not_mounted: true, private_routes_not_mounted: true, coordinator_authority_not_present: true, mappings_not_present: true } };
+  validateDenylist(access); writeJson(path.join(resolved, "access-and-contents-receipt-v2.json"), access);
+  return verifyBlindBundle(resolved, authorityFile);
+}
+async function verifyBlindBundle(root: string, authorityFile: string): Promise<J> {
+  const expected = ["access-and-contents-receipt-v2.json", "blind-bundle-descriptor-v2.json", "instructions.json", ...fs.readdirSync(path.join(root, "media")).map((x) => `media/${x}`)].sort();
+  same(files(root), expected, "blind bundle members"); const descriptor = load(path.join(root, "blind-bundle-descriptor-v2.json")); schema("blind-bundle-descriptor.schema.v2.json", descriptor);
+  const instructions = load(path.join(root, "instructions.json"));
+  const access = load(path.join(root, "access-and-contents-receipt-v2.json"));
+  const scans = validateDenylist({ descriptor, instructions, access });
+  assert(access.prohibited_access_attempts === 0 && access.contents.media_files === 44 && access.attestations.repository_not_mounted === true && access.attestations.private_routes_not_mounted === true && access.attestations.coordinator_authority_not_present === true && access.attestations.mappings_not_present === true, "blind access receipt failure");
+  const authority = load(authorityFile); assert(descriptor.members.length === authority.inputs.length && descriptor.members.length === 44, "blind membership drift");
+  unique(descriptor.members.map((x: J) => x.opaque_id), "blind opaque ID");
+  unique(descriptor.members.map((x: J) => x.sha256), "blind sanitized hash");
+  for (const member of descriptor.members) { assert(!member.filename.includes("..") && /^media\/v2-[0-9]{4}\.png$/.test(member.filename), "blind traversal/filename"); const file = path.join(root, member.filename); const actual = pin(file, member.filename); assert(actual.sha256 === member.sha256 && actual.bytes === member.bytes, "blind member drift"); const metadata = await sharp(file).metadata(); assert(metadata.format === "png", "blind media format drift"); assertSanitizedMetadata(metadata); }
+  same(tree(path.join(root, "media")), descriptor.tree, "blind media tree");
+  return { status: "blind_bundle_verified", files: files(root).length, media_members: 44, bytes: tree(root).bytes, tree_sha256: tree(root).sha256, media_tree_sha256: descriptor.tree.sha256, denylist_nodes_scanned: scans, metadata_members_scanned: 44 };
+}
+async function verifyCandidate(root = FIXTURE, registry = true): Promise<J> {
+  same(files(root), EXPECTED_FILES, "candidate files");
+  const schemas: [string, string][] = [["input-authority-v2.json", "input-authority.schema.v2.json"], ["blind-bundle-descriptor.template-v2.json", "blind-bundle-descriptor.schema.v2.json"], ["prediction-output.template-v2.json", "prediction-output.schema.v2.json"], ["gold-review.template-v2.json", "gold-review-authority.schema.v2.json"], ["search-task-candidate-v2.json", "search-task.schema.v2.json"], ["search-task-review.template-v2.json", "search-task-review.schema.v2.json"], ["candidate-criterion-matrix-v2.json", "final-criterion-matrix.schema.v2.json"], ["candidate-descriptor-v2.json", "publication-descriptor.schema.v2.json"]];
+  for (const [file, schemaName] of schemas) schema(schemaName, load(path.join(root, file)));
+  const authority = load(path.join(root, "input-authority-v2.json")); assert(authority.counts.image_mode === 36 && authority.counts.ocr === 2 && authority.counts.entity_place === 6 && authority.counts.aerial_land_use === 16 && authority.counts.abstention === 18 && authority.counts.unique_sources === 44 && authority.counts.task_memberships === 78, "candidate count drift");
+  assert(load(path.join(root, "candidate-status-v2.json")).issue_92_complete === false && load(path.join(root, "candidate-status-v2.json")).issue_69_complete === false, "candidate completion must be false");
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "rmv2-replay-")); await candidateDocuments(tmp); for (const file of EXPECTED_FILES) same(fs.readFileSync(path.join(root, file)), fs.readFileSync(path.join(tmp, file)), `candidate replay ${file}`); fs.rmSync(tmp, { recursive: true, force: true });
+  if (registry) verifyRegistryRow(CANDIDATE_ID, root, REL);
+  const facts = tree(root); return { files: facts.members.length, bytes: facts.bytes, tree_sha256: facts.sha256, unique_sources: 44, task_memberships: 78, issue_92_complete: false, issue_69_complete: false };
+}
+function registryRows(): J[] { return fs.readFileSync(REGISTRY, "utf8").trim().split("\n").map((x) => JSON.parse(x)); }
+function verifyRegistryRow(id: string, root: string, locator: string): void {
+  const rows = registryRows().filter((x) => x.stable_id === id); assert(rows.length === 1, `registry row count: ${id}`); const row = rows[0]; const facts = tree(root);
+  assert(row.storage.locator === locator && row.counts.file_count === facts.members.length && row.counts.byte_count === facts.bytes && row.content_digest.scope === "sorted_tree_manifest" && row.content_digest.value === facts.sha256, `file-backed registry drift: ${id}`);
+}
+function verifyV1Tracked(): J {
+  const facts = tree(V1); assert(facts.members.length === V1_EXPECTED.files && facts.bytes === V1_EXPECTED.bytes && facts.sha256 === V1_EXPECTED.tree_sha256, "v1 immutable tree drift");
+  assert(pin(path.join(V1, "final-descriptor-v1.json")).sha256 === V1_EXPECTED.final_descriptor_sha256 && pin(path.join(V1, "independent-task-review-v1.json")).sha256 === V1_EXPECTED.receipt_sha256 && pin(path.join(ROOT, "docs/dataset-factory/authorities/reviewed-metrics-v1/reviewer-authorization-v1.json")).sha256 === V1_EXPECTED.authorization_sha256, "v1 immutable authority drift");
+  verifyRegistryRow("dfv0_reviewed_metrics_v1_publication", V1, V1_REL);
+  return { historical_publication_verified: true, current_close_authority: false, supersession_status: "candidate_notice_only_v2_does_not_yet_exist", files: facts.members.length, bytes: facts.bytes, tree_sha256: facts.sha256, receipt_sha256: V1_EXPECTED.receipt_sha256, authorization_sha256: V1_EXPECTED.authorization_sha256, historical_issue_complete_byte_preserved: true };
+}
+function validatePrediction(file: string): J {
+  const value = load(file); schema("prediction-output.schema.v2.json", value);
+  const walk = (x: J, at = "$"): void => { if (Array.isArray(x)) x.forEach((v, i) => walk(v, `${at}[${i}]`)); else if (x && typeof x === "object") for (const [key, child] of Object.entries(x)) { assert(["no_gold_received", "no_expected_answers_received"].includes(key) || !/(?:expected|gold|reviewer)/i.test(key), `prediction leaks authority field at ${at}.${key}`); walk(child, `${at}.${key}`); } };
+  walk(value); return { status: "prediction_schema_valid", outputs: value.outputs.length };
+}
+function validateGold(file: string): J { const value = load(file); schema("gold-review-authority.schema.v2.json", value); return { status: "gold_schema_valid", reviews: value.reviews.length }; }
+function freezePrediction(): never {
+  throw new Error("prediction freeze is unavailable in the issue #96 candidate: a later reviewed tracked execution authority and candidate-commit binding are required");
+}
+function scoreSynthetic(prediction: string, gold: string, output: string, capability: InternalSyntheticCapability): J {
+  assert(capability[INTERNAL_SYNTHETIC_CAPABILITY] === true, "internal synthetic capability required"); validatePrediction(prediction); validateGold(gold);
+  const result = { schema_version: "reviewed_metrics_results_v2.0.0", status: "synthetic_test_only", candidate_id: CANDIDATE_ID, metrics: [], criterion_matrix: { required_rows: 0, satisfied_rows: 0 }, limitations: ["Synthetic contract integration only; not evaluation evidence."] };
+  schema("reviewed-metrics.schema.v2.json", result); writeJson(output, result); return { status: "synthetic_score_written", metrics: 0 };
+}
+async function selfTest(): Promise<J> {
+  let rejections = 0; const reject = async (fn: () => unknown | Promise<unknown>) => { try { await fn(); } catch { rejections++; return; } throw new Error("adversarial case accepted"); };
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "rmv2-self-")); const candidate = path.join(root, "candidate"); await build(candidate);
+  const deniedKeyCases = ["class", "claim_id", "disposition", "labels", "metadata", "answers", "reviewer_material", "record_id", "mapping"];
+  for (const key of deniedKeyCases) await reject(() => validateDenylist({ [key]: "x" }));
+  const deniedTextCases = ["mtl_archives_metadata_10145", "docs/private.json", "/Users/example/repo/input.png", "r2://private-bucket/object", "private_locator"];
+  for (const value of deniedTextCases) await reject(() => validateDenylist({ purpose: value }));
+  await reject(() => assertSanitizedMetadata({ icc: Buffer.from("profile") }));
+  await reject(() => assertSanitizedMetadata({ comments: ["leak"] }));
+  await reject(() => freezePrediction());
+  await reject(() => buildBlindBundle(path.join(ROOT, ".blind"), path.join(candidate, "input-authority-v2.json")));
+  const bundle = path.join(root, "bundle"); await buildBlindBundle(bundle, path.join(candidate, "input-authority-v2.json"));
+  await reject(() => buildBlindBundle(bundle, path.join(candidate, "input-authority-v2.json")));
+  fs.writeFileSync(path.join(bundle, "extra.txt"), "x"); await reject(() => verifyBlindBundle(bundle, path.join(candidate, "input-authority-v2.json"))); fs.rmSync(path.join(bundle, "extra.txt"));
+  fs.symlinkSync("instructions.json", path.join(bundle, "link.json")); await reject(() => verifyBlindBundle(bundle, path.join(candidate, "input-authority-v2.json"))); fs.rmSync(path.join(bundle, "link.json"));
+  const accessFile = path.join(bundle, "access-and-contents-receipt-v2.json"); const access = load(accessFile); access.attestations.repository_not_mounted = false; writeJson(accessFile, access); await reject(() => verifyBlindBundle(bundle, path.join(candidate, "input-authority-v2.json"))); access.attestations.repository_not_mounted = true; writeJson(accessFile, access);
+  const media = path.join(bundle, "media/v2-0001.png"); const original = fs.readFileSync(media); await sharp(media).withMetadata().png({ compressionLevel: 9 }).toFile(`${media}.tampered`); fs.renameSync(`${media}.tampered`, media); await reject(() => verifyBlindBundle(bundle, path.join(candidate, "input-authority-v2.json"))); fs.writeFileSync(media, original);
+  await sharp(media).negate().png({ compressionLevel: 9 }).toFile(`${media}.tampered`); fs.renameSync(`${media}.tampered`, media); await reject(() => verifyBlindBundle(bundle, path.join(candidate, "input-authority-v2.json"))); fs.writeFileSync(media, original);
+  const descriptorFile = path.join(bundle, "blind-bundle-descriptor-v2.json"); const descriptor = load(descriptorFile);
+  const originalName = descriptor.members[0].filename; descriptor.members[0].filename = "../escape.png"; writeJson(descriptorFile, descriptor); await reject(() => verifyBlindBundle(bundle, path.join(candidate, "input-authority-v2.json"))); descriptor.members[0].filename = originalName;
+  const originalHash = descriptor.members[0].sha256; descriptor.members[0].sha256 = descriptor.members[1].sha256; writeJson(descriptorFile, descriptor); await reject(() => verifyBlindBundle(bundle, path.join(candidate, "input-authority-v2.json"))); descriptor.members[0].sha256 = originalHash;
+  const originalId = descriptor.members[0].opaque_id; descriptor.members[0].opaque_id = descriptor.members[1].opaque_id; writeJson(descriptorFile, descriptor); await reject(() => verifyBlindBundle(bundle, path.join(candidate, "input-authority-v2.json"))); descriptor.members[0].opaque_id = originalId; writeJson(descriptorFile, descriptor);
+  fs.rmSync(root, { recursive: true, force: true }); assert(rejections === 27, `self-test rejection count drift: ${rejections}`); return { status: "self_test_passed", cases: 31, adversarial_rejections: rejections, denylisted_key_cases: deniedKeyCases.length, denylisted_text_cases: deniedTextCases.length, filesystem_route_metadata_pixel_and_freeze_cases: 13 };
+}
+async function integrationTest(): Promise<J> {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "rmv2-int-")); const candidate = path.join(root, "candidate"); await build(candidate); const one = path.join(root, "bundle-a"); const two = path.join(root, "bundle-b"); const a = await buildBlindBundle(one, path.join(candidate, "input-authority-v2.json")); const b = await buildBlindBundle(two, path.join(candidate, "input-authority-v2.json"));
+  const normalized = (dir: string) => tree(dir).members.map((x: J) => ({ ...x, path: x.path })); same(normalized(one), normalized(two), "blind deterministic replay"); assert(a.tree_sha256 === b.tree_sha256, "blind tree nondeterminism");
+  const templateP = path.join(candidate, "prediction-output.template-v2.json"); const templateG = path.join(candidate, "gold-review.template-v2.json"); const score = path.join(root, "synthetic-score.json"); scoreSynthetic(templateP, templateG, score, { [INTERNAL_SYNTHETIC_CAPABILITY]: true }); fs.rmSync(root, { recursive: true, force: true }); return { status: "integration_test_passed", deterministic_bundle_tree_sha256: a.tree_sha256, media_members: 44, synthetic_prediction_gold_only: true, normal_score_cli_available: false };
+}
+
+async function main(): Promise<void> {
+  const command = process.argv[2] ?? "verify"; const parsed = parseArgs({ args: process.argv.slice(3), options: { output: { type: "string" }, authority: { type: "string" }, input: { type: "string" }, gold: { type: "string" } }, allowPositionals: true }); const o = parsed.values;
+  let result: J;
+  if (command === "build") result = await build(o.output ? path.resolve(o.output) : FIXTURE);
+  else if (command === "build-blind-bundle") result = await buildBlindBundle(path.resolve(assertString(o.output, "--output required")), o.authority ? path.resolve(o.authority) : path.join(FIXTURE, "input-authority-v2.json"));
+  else if (command === "verify") result = await verifyCandidate(o.output ? path.resolve(o.output) : FIXTURE);
+  else if (command === "verify-tracked") result = { status: "tracked_candidates_verified", v1: verifyV1Tracked(), v2: await verifyCandidate(FIXTURE, true), publication: { artifact_id: PUBLICATION_ID, exists: false, verified: false, required_for_issue_close: true } };
+  else if (command === "validate-prediction") result = validatePrediction(assertString(o.input, "--input required"));
+  else if (command === "freeze-prediction") result = freezePrediction();
+  else if (command === "validate-gold") result = validateGold(assertString(o.input, "--input required"));
+  else if (command === "score") throw new Error("normal scoring is unavailable in the issue #96 candidate; synthetic scoring is internal integration-only");
+  else if (command === "validate-task-review") { const file = assertString(o.input, "--input required"); schema("search-task-review.schema.v2.json", load(file)); result = { status: "task_review_schema_valid_placeholder_only" }; }
+  else if (command === "publish") throw new Error("v2 publication is issue #97 scope and requires completed external authorities");
+  else if (command === "self-test") result = await selfTest();
+  else if (command === "integration-test") result = await integrationTest();
+  else throw new Error(`unknown command: ${command}`);
+  process.stdout.write(`${JSON.stringify(result)}\n`);
+}
+function assertString(value: string | undefined, message: string): string { assert(value, message); return value; }
+
+main().catch((error) => { console.error(error instanceof Error ? error.message : error); process.exitCode = 1; });

@@ -1,0 +1,128 @@
+{
+  "schema_version": "reviewed_metrics_final_criterion_matrix_v2.0.0",
+  "status": "candidate_open",
+  "candidate_id": "dfv0_reviewed_metrics_v2_candidate_20260715",
+  "rows": [
+    {
+      "criterion_id": "96.fixed_memberships",
+      "required": true,
+      "verdict": "satisfied_candidate",
+      "result_ids": [
+        "input-authority-v2"
+      ],
+      "evidence": [
+        {
+          "path": "docs/dataset-factory/fixtures/reviewed-metrics-publication-v1/candidate-benchmark-tasks-v1.json",
+          "sha256": "c715c411d37f0d6bde756cf68b0b3a2db59de2336fe2c55752744e3514cf6a66",
+          "bytes": 337705
+        },
+        {
+          "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+          "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+          "bytes": 4243798
+        }
+      ],
+      "limitations": []
+    },
+    {
+      "criterion_id": "96.controls_recovered",
+      "required": true,
+      "verdict": "satisfied_local_untracked_sources",
+      "result_ids": [
+        "input-authority-v2"
+      ],
+      "evidence": [
+        {
+          "registered_artifact_id": "dfv0_gold_label_batch_002_final_r2_archive",
+          "source_sha256": "8c97cfd0b01d8baefd3e122a3d630ef85d535878024f73113e53bdc9a5421ee0",
+          "bytes": 145410
+        },
+        {
+          "registered_artifact_id": "dfv0_gold_label_batch_002_final_r2_archive",
+          "source_sha256": "0ab54c10ed1a3ea564678232d9fb4a632bb8aeb2a9410b6278dd8b77e1b427b5",
+          "bytes": 118212
+        },
+        {
+          "registered_artifact_id": "dfv0_gold_label_batch_002_final_r2_archive",
+          "source_sha256": "e620dbbce90fe373f198196adbba431de1ce574cffb230e64195d78def202a5d",
+          "bytes": 352794
+        }
+      ],
+      "limitations": [
+        "Source payloads remain ignored and are not duplicated in the candidate."
+      ]
+    },
+    {
+      "criterion_id": "96.blind_prediction",
+      "required": true,
+      "verdict": "pending",
+      "result_ids": [],
+      "evidence": [],
+      "limitations": [
+        "Not executed by issue #96 candidate construction."
+      ]
+    },
+    {
+      "criterion_id": "96.independent_gold",
+      "required": true,
+      "verdict": "pending",
+      "result_ids": [],
+      "evidence": [],
+      "limitations": [
+        "Not executed by issue #96 candidate construction."
+      ]
+    },
+    {
+      "criterion_id": "96.reviewed_metrics",
+      "required": true,
+      "verdict": "pending",
+      "result_ids": [],
+      "evidence": [],
+      "limitations": [
+        "Not executed by issue #96 candidate construction."
+      ]
+    },
+    {
+      "criterion_id": "96.authority_chronology",
+      "required": true,
+      "verdict": "pending",
+      "result_ids": [],
+      "evidence": [],
+      "limitations": [
+        "Not executed by issue #96 candidate construction."
+      ]
+    },
+    {
+      "criterion_id": "96.publication",
+      "required": true,
+      "verdict": "pending",
+      "result_ids": [],
+      "evidence": [],
+      "limitations": [
+        "Not executed by issue #96 candidate construction."
+      ]
+    },
+    {
+      "criterion_id": "96.issue_92_close",
+      "required": true,
+      "verdict": "pending",
+      "result_ids": [],
+      "evidence": [],
+      "limitations": [
+        "Not executed by issue #96 candidate construction."
+      ]
+    },
+    {
+      "criterion_id": "96.issue_69_close",
+      "required": true,
+      "verdict": "pending",
+      "result_ids": [],
+      "evidence": [],
+      "limitations": [
+        "Not executed by issue #96 candidate construction."
+      ]
+    }
+  ],
+  "issue_92_complete": false,
+  "issue_69_complete": false
+}

@@ -1,0 +1,216 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "blind-bundle-descriptor.schema.v2.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "candidate_id",
+    "generator_version",
+    "members",
+    "tree",
+    "purpose",
+    "output_schema",
+    "scans",
+    "attestations"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "reviewed_metrics_blind_bundle_descriptor_v2.0.0"
+    },
+    "status": {
+      "enum": [
+        "template_no_bundle_built",
+        "sealed_sanitized_bundle"
+      ]
+    },
+    "candidate_id": {
+      "const": "dfv0_reviewed_metrics_v2_candidate_20260715"
+    },
+    "generator_version": {
+      "const": "blind-png-v2"
+    },
+    "members": {
+      "type": "array",
+      "maxItems": 44,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/member"
+      }
+    },
+    "tree": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/tree"
+        }
+      ]
+    },
+    "purpose": {
+      "const": "blind visual prediction over fixed opaque inputs"
+    },
+    "output_schema": {
+      "const": "prediction-output.schema.v2.json"
+    },
+    "scans": {
+      "$ref": "#/$defs/scans"
+    },
+    "attestations": {
+      "$ref": "#/$defs/attestations"
+    }
+  },
+  "$defs": {
+    "pin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256",
+        "bytes"
+      ],
+      "properties": {
+        "path": {
+          "pattern": "^v2-[0-9]{4}\\.png$",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "member": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "opaque_id",
+        "filename",
+        "sha256",
+        "bytes",
+        "width",
+        "height",
+        "purposes"
+      ],
+      "properties": {
+        "opaque_id": {
+          "pattern": "^v2-[0-9]{4}$",
+          "type": "string"
+        },
+        "filename": {
+          "pattern": "^media/v2-[0-9]{4}\\.png$",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "purposes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "image_mode",
+              "ocr",
+              "entity_place",
+              "aerial_land_use",
+              "abstention"
+            ]
+          }
+        }
+      }
+    },
+    "tree": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "members",
+        "sha256",
+        "bytes"
+      ],
+      "properties": {
+        "members": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/pin"
+          }
+        },
+        "sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "scans": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "denylisted_keys",
+        "denylisted_text",
+        "metadata_fields",
+        "extra_files"
+      ],
+      "properties": {
+        "denylisted_keys": {
+          "const": 0
+        },
+        "denylisted_text": {
+          "const": 0
+        },
+        "metadata_fields": {
+          "const": 0
+        },
+        "extra_files": {
+          "const": 0
+        }
+      }
+    },
+    "attestations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "zero_labels",
+        "zero_answers",
+        "zero_reviewer_material",
+        "zero_source_metadata"
+      ],
+      "properties": {
+        "zero_labels": {
+          "const": true
+        },
+        "zero_answers": {
+          "const": true
+        },
+        "zero_reviewer_material": {
+          "const": true
+        },
+        "zero_source_metadata": {
+          "const": true
+        }
+      }
+    }
+  }
+}

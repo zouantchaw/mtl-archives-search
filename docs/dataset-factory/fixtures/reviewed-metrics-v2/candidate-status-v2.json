@@ -1,0 +1,27 @@
+{
+  "schema_version": "reviewed_metrics_candidate_status_v2.0.0",
+  "artifact_id": "dfv0_reviewed_metrics_v2_candidate_20260715",
+  "status": "candidate_ready_no_execution_authority",
+  "counts": {
+    "unique_sources": 44,
+    "task_memberships": 78,
+    "image_mode": 36,
+    "ocr": 2,
+    "entity_place": 6,
+    "aerial_land_use": 16,
+    "abstention": 18
+  },
+  "issue_92_complete": false,
+  "issue_69_complete": false,
+  "candidate_complete": false,
+  "publication_exists": false,
+  "prediction_exists": false,
+  "gold_exists": false,
+  "mutations": {
+    "production": false,
+    "search_index": false,
+    "private_object_store_write": false,
+    "paid_gpu": false
+  },
+  "stop_conditions": []
+}

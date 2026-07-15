@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "search-task.schema.v2.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "candidate_id", "internal_provenance", "public_projection", "source_only_boundary", "private_expected_commitment", "rights_policy", "component", "split", "review_state"],
+  "properties": {
+    "schema_version": {"const": "reviewed_metrics_search_task_v2.0.0"},
+    "status": {"enum": ["placeholder_issue_97_no_task_authority", "candidate", "published"]},
+    "candidate_id": {"const": "dfv0_reviewed_metrics_v2_candidate_20260715"},
+    "internal_provenance": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/provenance"}]},
+    "public_projection": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/projection"}]},
+    "source_only_boundary": {"const": true},
+    "private_expected_commitment": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/commitment"}]},
+    "rights_policy": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/rights"}]},
+    "component": {"type": ["string", "null"]},
+    "split": {"type": ["string", "null"], "enum": ["train", "validation", "test", null]},
+    "review_state": {"enum": ["not_started", "pending", "accepted", "held", "rejected"]}
+  },
+  "$defs": {
+    "pin": {"type": "object", "additionalProperties": false, "required": ["sha256", "bytes"], "properties": {"sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "bytes": {"type": "integer", "minimum": 1}}},
+    "provenance": {"type": "object", "additionalProperties": false, "required": ["internal_task_id", "accepted_claim_id", "promotion_ledger", "review_receipt", "source_representation", "no_pixel_identity_claim"], "properties": {"internal_task_id": {"type": "string"}, "accepted_claim_id": {"type": "string"}, "promotion_ledger": {"$ref": "#/$defs/pin"}, "review_receipt": {"$ref": "#/$defs/pin"}, "source_representation": {"$ref": "#/$defs/pin"}, "no_pixel_identity_claim": {"const": true}}},
+    "projection": {"type": "object", "additionalProperties": false, "required": ["prompt", "official_origins", "output_fields", "scoring_version"], "properties": {"prompt": {"type": "string", "minLength": 1}, "official_origins": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "format": "uri"}}, "output_fields": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}}, "scoring_version": {"type": "string"}}},
+    "commitment": {"type": "object", "additionalProperties": false, "required": ["algorithm", "domain", "value"], "properties": {"algorithm": {"const": "sha256"}, "domain": {"const": "gate-h-v2-search-expected"}, "value": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}},
+    "rights": {"type": "object", "additionalProperties": false, "required": ["citation_only", "private_body_redistribution_allowed", "bounded_paraphrase_required"], "properties": {"citation_only": {"const": true}, "private_body_redistribution_allowed": {"const": false}, "bounded_paraphrase_required": {"const": true}}}
+  }
+}

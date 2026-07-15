@@ -1,0 +1,233 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "publication-descriptor.schema.v2.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "status",
+    "created_at",
+    "implementation_base_commit",
+    "candidate_commit",
+    "members_before_descriptor",
+    "tree_before_descriptor_sha256",
+    "counts",
+    "predecessors",
+    "completion",
+    "mutations"
+  ],
+  "properties": {
+    "schema_version": {
+      "enum": [
+        "reviewed_metrics_candidate_descriptor_v2.0.0",
+        "reviewed_metrics_publication_descriptor_v2.0.0"
+      ]
+    },
+    "artifact_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "enum": [
+        "candidate_only",
+        "published"
+      ]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "implementation_base_commit": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "candidate_commit": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "members_before_descriptor": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/pin"
+      }
+    },
+    "tree_before_descriptor_sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "counts": {
+      "$ref": "#/$defs/counts"
+    },
+    "predecessors": {
+      "$ref": "#/$defs/predecessors"
+    },
+    "completion": {
+      "$ref": "#/$defs/completion"
+    },
+    "mutations": {
+      "$ref": "#/$defs/mutations"
+    }
+  },
+  "$defs": {
+    "pin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256",
+        "bytes"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "files_before_descriptor",
+        "bytes_before_descriptor",
+        "unique_sources",
+        "task_memberships"
+      ],
+      "properties": {
+        "files_before_descriptor": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "bytes_before_descriptor": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unique_sources": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "task_memberships": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "published_members": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "accepted_tasks": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "predecessors": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "phase_d",
+        "v1_tasks",
+        "v1_receipt",
+        "v1_descriptor",
+        "gate_e_promotion",
+        "gate_f_review",
+        "gate_g_descriptor",
+        "ground_input"
+      ],
+      "properties": {
+        "phase_d": {
+          "$ref": "#/$defs/pin"
+        },
+        "v1_tasks": {
+          "$ref": "#/$defs/pin"
+        },
+        "v1_receipt": {
+          "$ref": "#/$defs/pin"
+        },
+        "v1_descriptor": {
+          "$ref": "#/$defs/pin"
+        },
+        "gate_e_promotion": {
+          "$ref": "#/$defs/pin"
+        },
+        "gate_f_review": {
+          "$ref": "#/$defs/pin"
+        },
+        "gate_g_descriptor": {
+          "$ref": "#/$defs/pin"
+        },
+        "ground_input": {
+          "$ref": "#/$defs/pin"
+        },
+        "candidate": {
+          "$ref": "#/$defs/pin"
+        },
+        "prediction_freeze": {
+          "$ref": "#/$defs/pin"
+        },
+        "gold_review": {
+          "$ref": "#/$defs/pin"
+        }
+      }
+    },
+    "completion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidate_complete",
+        "issue_92_complete",
+        "issue_69_complete",
+        "publication_exists"
+      ],
+      "properties": {
+        "candidate_complete": {
+          "type": "boolean"
+        },
+        "issue_92_complete": {
+          "type": "boolean"
+        },
+        "issue_69_complete": {
+          "type": "boolean"
+        },
+        "publication_exists": {
+          "type": "boolean"
+        }
+      }
+    },
+    "mutations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "production",
+        "search_index",
+        "private_object_store_write",
+        "paid_gpu"
+      ],
+      "properties": {
+        "production": {
+          "const": false
+        },
+        "search_index": {
+          "const": false
+        },
+        "private_object_store_write": {
+          "const": false
+        },
+        "paid_gpu": {
+          "const": false
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "prediction-freeze.schema.v2.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "implementation_base_commit",
+    "candidate_commit",
+    "bundle_tree_sha256",
+    "prediction",
+    "principal",
+    "model",
+    "reasoning_effort",
+    "route",
+    "started_at",
+    "ended_at",
+    "frozen_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "reviewed_metrics_prediction_freeze_v2.0.0"
+    },
+    "status": {
+      "const": "frozen"
+    },
+    "implementation_base_commit": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "candidate_commit": {
+      "pattern": "^[a-f0-9]{40}$",
+      "type": "string"
+    },
+    "bundle_tree_sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "prediction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sha256",
+        "bytes"
+      ],
+      "properties": {
+        "sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "principal": {
+      "type": "string",
+      "minLength": 1
+    },
+    "model": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reasoning_effort": {
+      "type": "string",
+      "minLength": 1
+    },
+    "route": {
+      "type": "string",
+      "minLength": 1
+    },
+    "started_at": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "ended_at": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "frozen_at": {
+      "format": "date-time",
+      "type": "string"
+    }
+  }
+}

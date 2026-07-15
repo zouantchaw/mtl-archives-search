@@ -1,0 +1,22 @@
+{
+  "schema_version": "reviewed_metrics_blind_bundle_descriptor_v2.0.0",
+  "status": "template_no_bundle_built",
+  "candidate_id": "dfv0_reviewed_metrics_v2_candidate_20260715",
+  "generator_version": "blind-png-v2",
+  "members": [],
+  "tree": null,
+  "purpose": "blind visual prediction over fixed opaque inputs",
+  "output_schema": "prediction-output.schema.v2.json",
+  "scans": {
+    "denylisted_keys": 0,
+    "denylisted_text": 0,
+    "metadata_fields": 0,
+    "extra_files": 0
+  },
+  "attestations": {
+    "zero_labels": true,
+    "zero_answers": true,
+    "zero_reviewer_material": true,
+    "zero_source_metadata": true
+  }
+}

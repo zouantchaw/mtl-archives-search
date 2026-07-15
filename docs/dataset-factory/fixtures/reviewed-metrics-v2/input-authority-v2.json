@@ -1,0 +1,1423 @@
+{
+  "schema_version": "reviewed_metrics_input_authority_v2.0.0",
+  "artifact_id": "dfv0_reviewed_metrics_v2_candidate_20260715",
+  "status": "fixed_membership_candidate_no_execution_authority",
+  "created_at": "2026-07-15T00:00:00.000Z",
+  "implementation_base_commit": "5fe4dfbe51a320a51f1f126b4a2d8cf0722be5dc",
+  "candidate_commit": null,
+  "inputs": [
+    {
+      "opaque_id": "v2-0001",
+      "source_key": "image:10",
+      "source_ref": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/review-pixels/10.jpg",
+      "source": {
+        "sha256": "6fb771104a1cc60851fcfc12a892836aedbcfd5747a04a7f56df5a4337c6dd8f",
+        "bytes": 100226,
+        "width": 1024,
+        "height": 756,
+        "normalized_pixel_sha256": "a3f45547bda1feecb266d947f32b88b424fc00b9efa2ea2d5f6e28663d97e4e8",
+        "sanitized_normalized_pixel_sha256": "a3f45547bda1feecb266d947f32b88b424fc00b9efa2ea2d5f6e28663d97e4e8"
+      },
+      "component_id": "leakage-component:a38d5cd6c6139ecb70932d0a668246b3962611e46399066082444a67487b82b1",
+      "split": "train",
+      "rights": {
+        "license_id": "cc-by-4.0",
+        "attribution": "Ville de Montréal / Archives de la Ville de Montréal",
+        "commercial_use_allowed": true,
+        "complete": true
+      },
+      "predecessor": {
+        "v1_task_id": "gate-h:image-mode:10",
+        "v1_task_sha256": "c7e20d111dfe804bdea31a968a11a2bfe45085391feaaee541b1b19635077337"
+      },
+      "purposes": [
+        "image_mode"
+      ]
+    },
+    {
+      "opaque_id": "v2-0002",
+      "source_key": "image:11",
+      "source_ref": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/review-pixels/11.jpg",
+      "source": {
+        "sha256": "db8d062164db57362f1b2fc4aba372b555f6c543b6f679bc83e50e8e40237134",
+        "bytes": 145792,
+        "width": 1024,
+        "height": 747,
+        "normalized_pixel_sha256": "67a5791b55eebf8d7d780f05434ca42ab61139f595af7720e47a65729decc1c8",
+        "sanitized_normalized_pixel_sha256": "67a5791b55eebf8d7d780f05434ca42ab61139f595af7720e47a65729decc1c8"
+      },
+      "component_id": "leakage-component:f88f165c7f4bf77580f4399630fe892adce3190c70c1a178a039bbf3f20950e1",
+      "split": "validation",
+      "rights": {
+        "license_id": "cc-by-4.0",
+        "attribution": "Ville de Montréal / Archives de la Ville de Montréal",
+        "commercial_use_allowed": true,
+        "complete": true
+      },
+      "predecessor": {
+        "v1_task_id": "gate-h:image-mode:11",
+        "v1_task_sha256": "061c4409280a46cafb1d0780f62180016abc525df89285ab75cfdfb1dc7f152d"
+      },
+      "purposes": [
+        "image_mode"
+      ]
+    },
+    {
+      "opaque_id": "v2-0003",
+      "source_key": "image:17",
+      "source_ref": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/review-pixels/17.jpg",
+      "source": {
+        "sha256": "1a917d65ca401909ccb3c9c09aa90abab7771752dbddb37a63f76a7da1f28e0d",
+        "bytes": 96621,
+        "width": 747,
+        "height": 1024,
+        "normalized_pixel_sha256": "3ebcac6373fb3b6115fca3363cf4169d61564bd159ee9494b7c14bd4bc70d386",
+        "sanitized_normalized_pixel_sha256": "3ebcac6373fb3b6115fca3363cf4169d61564bd159ee9494b7c14bd4bc70d386"
+      },
+      "component_id": "leakage-component:3b25be5e337a09ab8658070f721923104dd0205e0f285be19d8e1deb8ffde486",
+      "split": "validation",
+      "rights": {
+        "license_id": "cc-by-4.0",
+        "attribution": "Ville de Montréal / Archives de la Ville de Montréal",
+        "commercial_use_allowed": true,
+        "complete": true
+      },
+      "predecessor": {
+        "v1_task_id": "gate-h:image-mode:17",
+        "v1_task_sha256": "1d16ae7a654e1e75f2e7ae94123e6084aeb1c752b1fe5fce0c0f2ab3c932fd23"
+      },
+      "purposes": [
+        "image_mode"
+      ]
+    },
+    {
+      "opaque_id": "v2-0004",
+      "source_key": "image:30",
+      "source_ref": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/review-pixels/30.jpg",
+      "source": {
+        "sha256": "a0fa801644443dfea6adfbcc6ea43fbf183e1b1071ec138c3f513babee79e802",
+        "bytes": 142876,
+        "width": 1024,
+        "height": 709,
+        "normalized_pixel_sha256": "d1ae5ca0df89472c11db12574d358b1681d4e14350284db39d1abad5df179b9b",
+        "sanitized_normalized_pixel_sha256": "d1ae5ca0df89472c11db12574d358b1681d4e14350284db39d1abad5df179b9b"
+      },
+      "component_id": "leakage-component:a06b022ca6283d065b12b8b7e0f8adaa0df64cdeba1154aa0fd3342397cdcfc7",
+      "split": "test",
+      "rights": {
+        "license_id": "cc-by-4.0",
+        "attribution": "Ville de Montréal / Archives de la Ville de Montréal",
+        "commercial_use_allowed": true,
+        "complete": true
+      },
+      "predecessor": {
+        "v1_task_id": "gate-h:image-mode:30",
+        "v1_task_sha256": "eabbdadcd64c30678fc4a23b731c8839d8566bf638e72456d9b627b526d9fd34"
+      },
+      "purposes": [
+        "image_mode"
+      ]
+    },
+    {
+      "opaque_id": "v2-0005",
+      "source_key": "image:31",
+      "source_ref": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/review-pixels/31.jpg",
+      "source": {
+        "sha256": "d4a37eaca4bc88f2d2c477fa16fa20e867579826d864669536f97f48f3d801f7",
+        "bytes": 112340,
+        "width": 1024,
+        "height": 716,
+        "normalized_pixel_sha256": "3ac6c1c023c5cf07a36e8a004d1f09a68b3f67c5d9f0b8b6288d6e01b19300d8",
+        "sanitized_normalized_pixel_sha256": "3ac6c1c023c5cf07a36e8a004d1f09a68b3f67c5d9f0b8b6288d6e01b19300d8"
+      },
+      "component_id": "leakage-component:e820987fd365047fbe4bc7858de17b9b8062f424f4138c0328e972aeef44c133",
+      "split": "train",
+      "rights": {
+        "license_id": "cc-by-4.0",
+        "attribution": "Ville de Montréal / Archives de la Ville de Montréal",
+        "commercial_use_allowed": true,
+        "complete": true
+      },
+      "predecessor": {
+        "v1_task_id": "gate-h:image-mode:31",
+        "v1_task_sha256": "645f9b7cf0aa6add760e56ae5f3cc4dabc3c9f116d6002fb190ddea348ccddff"
+      },
+      "purposes": [
+        "image_mode"
+      ]
+    },
+    {
+      "opaque_id": "v2-0006",
+      "source_key": "image:33",
+      "source_ref": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/review-pixels/33.jpg",
+      "source": {
+        "sha256": "7861e25264587635c4ee2cb6423a154f3825353f1cae7b03fb23fff6f6f5d4b4",
+        "bytes": 114420,
+        "width": 723,
+        "height": 1024,
+        "normalized_pixel_sha256": "7a2eb0d52d095229ca038ae986c42b5d3e9b39793d8e6a66d65e3e922b29f616",
+        "sanitized_normalized_pixel_sha256": "7a2eb0d52d095229ca038ae986c42b5d3e9b39793d8e6a66d65e3e922b29f616"
+      },
+      "component_id": "leakage-component:39bb74d836836a387605d2f448b2efdb8ceb37471ff68411a9a20c14219aabf8",
+      "split": "train",
+      "rights": {
+        "license_id": "cc-by-4.0",
+        "attribution": "Ville de Montréal / Archives de la Ville de Montréal",
+        "commercial_use_allowed": true,
+        "complete": true
+      },
+      "predecessor": {
+        "v1_task_id": "gate-h:image-mode:33",
+        "v1_task_sha256": "b16d08abd06aae29110da5fdb62711c89ad5c30a2e4b12f4edfad90073674457"
+      },
+      "purposes": [
+        "image_mode"
+      ]
+    },
+    {
+      "opaque_id": "v2-0007",
+      "source_key": "image:45",
+      "source_ref": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/review-pixels/45.jpg",
+      "source": {
+        "sha256": "938b33ec26ff76fecd5ddb6b7ba845fe7f3cdd8d631ea8415324ed22f04b6c4e",
+        "bytes": 119527,
+        "width": 1024,
+        "height": 706,
+        "normalized_pixel_sha256": "264956e866891936f87dd54d4c0d795af49f5c5d056bc5e74ba92c651a7d9d90",
+        "sanitized_normalized_pixel_sha256": "264956e866891936f87dd54d4c0d795af49f5c5d056bc5e74ba92c651a7d9d90"
+      },
+      "component_id": "leakage-component:6b87b9505f46051f1ae07e76c39f9beb4b57b311236547f32e5a4ed40bbf0c63",
+      "split": "validation",
+      "rights": {
+        "license_id": "cc-by-4.0",
+        "attribution": "Ville de Montréal / Archives de la Ville de Montréal",
+        "commercial_use_allowed": true,
+        "complete": true
+      },
+      "predecessor": {
+        "v1_task_id": "gate-h:image-mode:45",
+        "v1_task_sha256": "5aeda6c3b5476af9783eb8c3cb095a00c41b30252e51102c54af96a69f9dc7cd"
+      },
+      "purposes": [
+        "image_mode"
+      ]
+    },
+    {
+      "opaque_id": "v2-0008",
+      "source_key": "image:54",
+      "source_ref": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/review-pixels/54.jpg",
+      "source": {
+        "sha256": "43a195867ff68a3aec4359c007c242a869d16010f05217941ccc0fd50913371f",
+        "bytes": 98646,
+        "width": 720,
+        "height": 1024,
+        "normalized_pixel_sha256": "5c078d1e2cfc18a21111a1bf07f20815f4b742f362f92444c02214ee7366da56",
+        "sanitized_normalized_pixel_sha256": "5c078d1e2cfc18a21111a1bf07f20815f4b742f362f92444c02214ee7366da56"
+      },
+      "component_id": "leakage-component:4d29cfd376c50e8dfa5f782cc8759832e48d1c7f83fd9bfc888980ff41018d3d",
+      "split": "train",
+      "rights": {
+        "license_id": "cc-by-4.0",
+        "attribution": "Ville de Montréal / Archives de la Ville de Montréal",
+        "commercial_use_allowed": true,
+        "complete": true
+      },
+      "predecessor": {
+        "v1_task_id": "gate-h:image-mode:54",
+        "v1_task_sha256": "ad8d7c8b24ddd7cd539efbbba389b376ed14c54073dff1d26de25a4da2b43f12"
+      },
+      "purposes": [
+        "image_mode"
+      ]
+    },
+    {
+      "opaque_id": "v2-0009",
+      "source_key": "image:58",
+      "source_ref": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/review-pixels/58.jpg",
+      "source": {
+        "sha256": "d7e992f857caf5f296d7e1c0d912f0288854b3ed87e175157d92155bc2e6d8d6",
+        "bytes": 121003,
+        "width": 721,
+        "height": 1024,
+        "normalized_pixel_sha256": "e3f1ebe1edc804550220c9218951cdc8e524d977e3d61bd54b6de810b7c73cfa",
+        "sanitized_normalized_pixel_sha256": "e3f1ebe1edc804550220c9218951cdc8e524d977e3d61bd54b6de810b7c73cfa"
+      },
+      "component_id": "leakage-component:1ec96d15501a87727c0e9ecd1c72c27ed6510cef290b2bfd369ea5c8d49535e2",
+      "split": "train",
+      "rights": {
+        "license_id": "cc-by-4.0",
+        "attribution": "Ville de Montréal / Archives de la Ville de Montréal",
+        "commercial_use_allowed": true,
+        "complete": true
+      },
+      "predecessor": {
+        "v1_task_id": "gate-h:image-mode:58",
+        "v1_task_sha256": "7202cb3d5712ab2aefb63dd0d751926350e7be33bb832572ae00e3f090f43841"
+      },
+      "purposes": [
+        "image_mode"
+      ]
+    },
+    {
+      "opaque_id": "v2-0010",
+      "source_key": "image:77",
+      "source_ref": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/review-pixels/77.jpg",
+      "source": {
+        "sha256": "8a8055d240b5d4ee65fd4fc39b100bdf6719956c7a7dd18a3144d55ed5133b0f",
+        "bytes": 123797,
+        "width": 674,
+        "height": 1024,
+        "normalized_pixel_sha256": "1dc59fa3214172a38fc843bf0023296b5b014fb9718d707c205bfc5dca9ff442",
+        "sanitized_normalized_pixel_sha256": "1dc59fa3214172a38fc843bf0023296b5b014fb9718d707c205bfc5dca9ff442"
+      },
+      "component_id": "leakage-component:96937f0db35fa9fe47a369b5854fde9f6eecd419da1d16292ff0462f9aae3846",
+      "split": "train",
+      "rights": {
+        "license_id": "cc-by-4.0",
+        "attribution": "Ville de Montréal / Archives de la Ville de Montréal",
+        "commercial_use_allowed": true,
+        "complete": true
+      },
+      "predecessor": {
+        "v1_task_id": "gate-h:image-mode:77",
+        "v1_task_sha256": "3958351d5def289644c958e930e46b7a280281be72ba40d79980972be77569ea"
+      },
+      "purposes": [
+        "image_mode"
+      ]
+    },
+    {
+      "opaque_id": "v2-0011",
+      "source_key": "image:88",
+      "source_ref": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/review-pixels/88.jpg",
+      "source": {
+        "sha256": "2cb78ab9703f0df9f03343637c63d995a15ca41564fe13070ac0449dd31d1b42",
+        "bytes": 113900,
+        "width": 1024,
+        "height": 714,
+        "normalized_pixel_sha256": "5bd775dfe2cde50aa0f6650f65c8a79a33027952ce7298e2c67f5d84e5c679da",
+        "sanitized_normalized_pixel_sha256": "5bd775dfe2cde50aa0f6650f65c8a79a33027952ce7298e2c67f5d84e5c679da"
+      },
+      "component_id": "leakage-component:7a28fd7e6ce9330f07fc1d65a97a3c8690a8780161ecaa11e29ddb609c26806a",
+      "split": "train",
+      "rights": {
+        "license_id": "cc-by-4.0",
+        "attribution": "Ville de Montréal / Archives de la Ville de Montréal",
+        "commercial_use_allowed": true,
+        "complete": true
+      },
+      "predecessor": {
+        "v1_task_id": "gate-h:image-mode:88",
+        "v1_task_sha256": "aaa3e24d9b6bfcc2ad8e788a3ca9514cfe448d1b125bc852af1a16dd5539151e"
+      },
+      "purposes": [
+        "image_mode"
+      ]
+    },
+    {
+      "opaque_id": "v2-0012",
+      "source_key": "image:100",
+      "source_ref": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/review-pixels/100.jpg",
+      "source": {
+        "sha256": "b847414b4c9d90a861a88eec9937c146f78452af771c93e0cfbddeb17f7bb15c",
+        "bytes": 167057,
+        "width": 684,
+        "height": 1024,
+        "normalized_pixel_sha256": "1cf7fea42c93345a1fb9545df5ed00c19737abc2c8c34e1147856055190d9e9c",
+        "sanitized_normalized_pixel_sha256": "1cf7fea42c93345a1fb9545df5ed00c19737abc2c8c34e1147856055190d9e9c"
+      },
+      "component_id": "leakage-component:6e73b5cddd2a8f81d6a1c553c1942eecbda0cc7b2f0cbd56f40d096f87ddc9b4",
+      "split": "train",
+      "rights": {
+        "license_id": "cc-by-4.0",
+        "attribution": "Ville de Montréal / Archives de la Ville de Montréal",
+        "commercial_use_allowed": true,
+        "complete": true
+      },
+      "predecessor": {
+        "v1_task_id": "gate-h:image-mode:100",
+        "v1_task_sha256": "65ad74fe1bbf4766256c4192dfed663c8322826d0bc1057adc605cb793172d48"
+      },
+      "purposes": [
+        "image_mode"
+      ]
+    },
+    {
+      "opaque_id": "v2-0013",
+      "source_key": "image:101",
+      "source_ref": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/review-pixels/101.jpg",
+      "source": {
+        "sha256": "b29c2f48ec8f27fd0b2ac6a2f7f5bcf143f8b2a40a5b2c06a2c7029ed303ebca",
+        "bytes": 92720,
+        "width": 1024,
+        "height": 738,
+        "normalized_pixel_sha256": "2f1e8648e73db580744277b5194eb992ad54db32c3deacf454c75c10c4da1a32",
+        "sanitized_normalized_pixel_sha256": "2f1e8648e73db580744277b5194eb992ad54db32c3deacf454c75c10c4da1a32"
+      },
+      "component_id": "leakage-component:4e3d176d9144aa74fb9bfd32e4f61b33a760cd57efaba5a1aade602704738fba",
+      "split": "train",
+      "rights": {
+        "license_id": "cc-by-4.0",
+        "attribution": "Ville de Montréal / Archives de la Ville de Montréal",
+        "commercial_use_allowed": true,
+        "complete": true
+      },
+      "predecessor": {
+        "v1_task_id": "gate-h:image-mode:101",
+        "v1_task_sha256": "0cca55ff8d1edc74d8f827dc674a43bcf501cbb76834bd077d12247dec322db9"
+      },
+      "purposes": [
+        "image_mode"
+      ]
+    },
+    {
+      "opaque_id": "v2-0014",
+      "source_key": "image:102",
+      "source_ref": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/review-pixels/102.jpg",
+      "source": {
+        "sha256": "aee115b5c8987a598b9f2cb081fb957918b249bc14fed0f90ec1e1507a2627c3",
+        "bytes": 188216,
+        "width": 1024,
+        "height": 727,
+        "normalized_pixel_sha256": "b98cc24c18de9594dba6d1ec193cc3079fe310b6b5cb68c246c531893d64386a",
+        "sanitized_normalized_pixel_sha256": "b98cc24c18de9594dba6d1ec193cc3079fe310b6b5cb68c246c531893d64386a"
+      },
+      "component_id": "leakage-component:72622a8e6f7691f38267951d34b7e1ddd215e82ac5d4f81ab0d2ba1540f18628",
+      "split": "train",
+      "rights": {
+        "license_id": "cc-by-4.0",
+        "attribution": "Ville de Montréal / Archives de la Ville de Montréal",
+        "commercial_use_allowed": true,
+        "complete": true
+      },
+      "predecessor": {
+        "v1_task_id": "gate-h:image-mode:102",
+        "v1_task_sha256": "c449d3739b3b3ef896a5a3be2acef0ec441fd188320df41242af77d2cc19e537"
+      },
+      "purposes": [
+        "image_mode"
+      ]
+    },
+    {
+      "opaque_id": "v2-0015",
+      "source_key": "image:105",
+      "source_ref": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/review-pixels/105.jpg",
+      "source": {
+        "sha256": "cdfc43ddeb238df7d228a42b3eb4bcec13be2a07f2eefac1823aa04b399cf7d2",
+        "bytes": 101234,
+        "width": 1024,
+        "height": 728,
+        "normalized_pixel_sha256": "663e555b5dc8746bb25adbc9a9af3adcf497ccfb4bc9062588d2e15848fb1013",
+        "sanitized_normalized_pixel_sha256": "663e555b5dc8746bb25adbc9a9af3adcf497ccfb4bc9062588d2e15848fb1013"
+      },
+      "component_id": "leakage-component:ce6e61f9411f46da048ad2257255f2ef37aca020973fcfad205f6a9d5032460b",
+      "split": "train",
+      "rights": {
+        "license_id": "cc-by-4.0",
+        "attribution": "Ville de Montréal / Archives de la Ville de Montréal",
+        "commercial_use_allowed": true,
+        "complete": true
+      },
+      "predecessor": {
+        "v1_task_id": "gate-h:image-mode:105",
+        "v1_task_sha256": "a53cd5a1a190573244b55b65c41e72c31cf816913ec980d7bf3cc33214ee79a6"
+      },
+      "purposes": [
+        "image_mode"
+      ]
+    },
+    {
+      "opaque_id": "v2-0016",
+      "source_key": "image:106",
+      "source_ref": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/review-pixels/106.jpg",
+      "source": {
+        "sha256": "fcca7067732d9cb3dbfaa489113f9cfc72cd387cc8627423caa437bbf5b13e9a",
+        "bytes": 164735,
+        "width": 1024,
+        "height": 740,
+        "normalized_pixel_sha256": "7ea14c919ee39e467cb09903bb0f945335ae6865097fa702fdc1e74a05e1c6b4",
+        "sanitized_normalized_pixel_sha256": "7ea14c919ee39e467cb09903bb0f945335ae6865097fa702fdc1e74a05e1c6b4"
+      },
+      "component_id": "leakage-component:71ac1e1f4110a18c956db595b77021e911fab66618e053ad07333048d475ed6c",
+      "split": "train",
+      "rights": {
+        "license_id": "cc-by-4.0",
+        "attribution": "Ville de Montréal / Archives de la Ville de Montréal",
+        "commercial_use_allowed": true,
+        "complete": true
+      },
+      "predecessor": {
+        "v1_task_id": "gate-h:image-mode:106",
+        "v1_task_sha256": "c1775d2cfe3259cde1fcb4579cb5765832ee066783bbcaca1e8792da423e2519"
+      },
+      "purposes": [
+        "image_mode"
+      ]
+    },
+    {
+      "opaque_id": "v2-0017",
+      "source_key": "image:4501",
+      "source_ref": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/review-pixels/4501.jpg",
+      "source": {
+        "sha256": "bd8ca09aad6cb42694c2bac9a36f672c7b1804642d1dc7ff9108fb9dbae660fb",
+        "bytes": 335458,
+        "width": 999,
+        "height": 1024,
+        "normalized_pixel_sha256": "e485ba64ad358ba2fe183db58ceb8fcce72241d1e79b62df5a0bc0e9b39a8288",
+        "sanitized_normalized_pixel_sha256": "e485ba64ad358ba2fe183db58ceb8fcce72241d1e79b62df5a0bc0e9b39a8288"
+      },
+      "component_id": "leakage-component:e2bbfa0058996ddba793edf95f40cc6562bba6c91bc01b3e21c512d6deccbbc5",
+      "split": "train",
+      "rights": {
+        "license_id": "cc-by-4.0",
+        "attribution": "Archives de la Ville de Montréal",
+        "commercial_use_allowed": true,
+        "complete": true
+      },
+      "predecessor": {
+        "v1_task_id": "gate-h:image-mode:4501",
+        "v1_task_sha256": "0fc9bef593eba6bead81e96f3404282190180e9bcc18cc6a8eff598df38b19ed"
+      },
+      "purposes": [
+        "image_mode",
+        "aerial_land_use",
+        "abstention"
+      ]
+    },
+    {
+      "opaque_id": "v2-0018",
+      "source_key": "image:7929",
+      "source_ref": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/review-pixels/7929.jpg",
+      "source": {
+        "sha256": "c995996d4929c56ce4ddb87c62cb6f2e2aa57acf3f702754f3bd0ed957620efc",
+        "bytes": 237907,
+        "width": 966,
+        "height": 1024,
+        "normalized_pixel_sha256": "75139d5e941205bf93547ace8b18f52d6039fc4a70fa19093586328754fbc95e",
+        "sanitized_normalized_pixel_sha256": "75139d5e941205bf93547ace8b18f52d6039fc4a70fa19093586328754fbc95e"
+      },
+      "component_id": "leakage-component:7916b23f9d26c3b3b28eae503a8f524131dc2eaa122bce7fe4b2661d8bd07350",
+      "split": "validation",
+      "rights": {
+        "license_id": "cc-by-4.0",
+        "attribution": "Archives de la Ville de Montréal",
+        "commercial_use_allowed": true,
+        "complete": true
+      },
+      "predecessor": {
+        "v1_task_id": "gate-h:image-mode:7929",
+        "v1_task_sha256": "36a5d97ae694dd234e2ebb505072748ceb761d765e79c60a9d170c76e0516f69"
+      },
+      "purposes": [
+        "image_mode",
+        "aerial_land_use",
+        "abstention"
+      ]
+    },
+    {
+      "opaque_id": "v2-0019",
+      "source_key": "image:8432",
+      "source_ref": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/review-pixels/8432.jpg",
+      "source": {
+        "sha256": "bfb58d3b02ec52ace55644bc38fc0020929256e41785fe5d25a1778ef8e60eb6",
+        "bytes": 191353,
+        "width": 1023,
+        "height": 1024,
+        "normalized_pixel_sha256": "fa96b47f2308a7ee3f3ed74bafd79e86033379eb3f81276417dc4355cd98d41c",
+        "sanitized_normalized_pixel_sha256": "fa96b47f2308a7ee3f3ed74bafd79e86033379eb3f81276417dc4355cd98d41c"
+      },
+      "component_id": "leakage-component:0a110b48dcb3d606be54363427c4832b82df67cfb9baf1864b5b308df937224a",
+      "split": "train",
+      "rights": {
+        "license_id": "cc-by-4.0",
+        "attribution": "Archives de la Ville de Montréal",
+        "commercial_use_allowed": true,
+        "complete": true
+      },
+      "predecessor": {
+        "v1_task_id": "gate-h:image-mode:8432",
+        "v1_task_sha256": "45a2063c4e7dad2d95d98881cdf32863e354b244c28dcb6dde9dc4bbfc11eb4b"
+      },
+      "purposes": [
+        "image_mode",
+        "aerial_land_use",
+        "abstention"
+      ]
+    },
+    {
+      "opaque_id": "v2-0020",
+      "source_key": "image:9092",
+      "source_ref": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/review-pixels/9092.jpg",
+      "source": {
+        "sha256": "8c99ecf27297c903fdb7139cb72e69adf53b2a706cdc7bdf7802d620a8d81c06",
+        "bytes": 180885,
+        "width": 1024,
+        "height": 1024,
+        "normalized_pixel_sha256": "12120f2aec394660077bf446f01eedfbc3fdee17eecaa4aa33ffe05246b4c0de",
+        "sanitized_normalized_pixel_sha256": "12120f2aec394660077bf446f01eedfbc3fdee17eecaa4aa33ffe05246b4c0de"
+      },
+      "component_id": "leakage-component:7d14fcd9227779157d78b817dcd51f93685a62f6307a77658764a05c1909279e",
+      "split": "train",
+      "rights": {
+        "license_id": "cc-by-4.0",
+        "attribution": "Archives de la Ville de Montréal",
+        "commercial_use_allowed": true,
+        "complete": true
+      },
+      "predecessor": {
+        "v1_task_id": "gate-h:image-mode:9092",
+        "v1_task_sha256": "d714d9b28233686a32c9a3c80a6c809c4e596d6f1a611216388b45fda23ae186"
+      },
+      "purposes": [
+        "image_mode",
+        "aerial_land_use",
+        "abstention"
+      ]
+    },
+    {
+      "opaque_id": "v2-0021",
+      "source_key": "image:9844",
+      "source_ref": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/review-pixels/9844.jpg",
+      "source": {
+        "sha256": "24df0a50eb0618b819f4ea95cfe7b533dc1e795e9ebb336702a4de3a730c73e6",
+        "bytes": 129123,
+        "width": 947,
+        "height": 1024,
+        "normalized_pixel_sha256": "259aeb1e833761ccd96a7f08edd473b666e58d7332e195b285f519748478ca8b",
+        "sanitized_normalized_pixel_sha256": "259aeb1e833761ccd96a7f08edd473b666e58d7332e195b285f519748478ca8b"
+      },
+      "component_id": "leakage-component:01168d5e0c09490c4f8448fc1db1fe1ebbe4c0675e99c86b24b527393aebc091",
+      "split": "train",
+      "rights": {
+        "license_id": "cc-by-4.0",
+        "attribution": "Archives de la Ville de Montréal",
+        "commercial_use_allowed": true,
+        "complete": true
+      },
+      "predecessor": {
+        "v1_task_id": "gate-h:image-mode:9844",
+        "v1_task_sha256": "d85c4c41f9918567aa8cf93be7b5ad147f8533403aeb4a990bbd2b02dfdcae66"
+      },
+      "purposes": [
+        "image_mode",
+        "aerial_land_use",
+        "abstention"
+      ]
+    },
+    {
+      "opaque_id": "v2-0022",
+      "source_key": "image:11836",
+      "source_ref": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/review-pixels/11836.jpg",
+      "source": {
+        "sha256": "0424a937f99d294e3508d88682f4de3aa52a6b9837bebf56264106a14fc3c49c",
+        "bytes": 262229,
+        "width": 1024,
+        "height": 802,
+        "normalized_pixel_sha256": "f191719d9bb1b960a34cc7032869864cc40b6a7fadf520b7f1916fbe14a33807",
+        "sanitized_normalized_pixel_sha256": "f191719d9bb1b960a34cc7032869864cc40b6a7fadf520b7f1916fbe14a33807"
+      },
+      "component_id": "leakage-component:c01f14e92aa40f5333f91f62ec30742e00e658f94a4f7137e1553803ed43cde5",
+      "split": "train",
+      "rights": {
+        "license_id": "cc-by-4.0",
+        "attribution": "Archives de la Ville de Montréal",
+        "commercial_use_allowed": true,
+        "complete": true
+      },
+      "predecessor": {
+        "v1_task_id": "gate-h:image-mode:11836",
+        "v1_task_sha256": "b59ca91dc56a420ccdb152157ab492ed907a7929cc25b3ffb3b79285807770e4"
+      },
+      "purposes": [
+        "image_mode",
+        "aerial_land_use",
+        "abstention"
+      ]
+    },
+    {
+      "opaque_id": "v2-0023",
+      "source_key": "image:11923",
+      "source_ref": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/review-pixels/11923.jpg",
+      "source": {
+        "sha256": "76b599ce88054df7182d14b304f0e1e141241c5c1b1b7c680af72a8a39011fcd",
+        "bytes": 232082,
+        "width": 1024,
+        "height": 660,
+        "normalized_pixel_sha256": "9f744d75fc2b702256ea0fa6346514a4a3d9de08edf21d88317b5d338da91fdb",
+        "sanitized_normalized_pixel_sha256": "9f744d75fc2b702256ea0fa6346514a4a3d9de08edf21d88317b5d338da91fdb"
+      },
+      "component_id": "leakage-component:3297cf51c3dadbbc2808324f5dc7015b8110e88d4dfb64b7f1bd41b74ae4b90a",
+      "split": "train",
+      "rights": {
+        "license_id": "cc-by-4.0",
+        "attribution": "Archives de la Ville de Montréal",
+        "commercial_use_allowed": true,
+        "complete": true
+      },
+      "predecessor": {
+        "v1_task_id": "gate-h:image-mode:11923",
+        "v1_task_sha256": "2d685469da3b95622eafe4e543faa18fcf1ae6c1c9466946617fdc829e7f4003"
+      },
+      "purposes": [
+        "image_mode",
+        "aerial_land_use",
+        "abstention"
+      ]
+    },
+    {
+      "opaque_id": "v2-0024",
+      "source_key": "image:11993",
+      "source_ref": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/review-pixels/11993.jpg",
+      "source": {
+        "sha256": "ad677aa67026eeefc33505317f1dd5a9e8699b609a61addf1cb848c7964d71b8",
+        "bytes": 272989,
+        "width": 1020,
+        "height": 1024,
+        "normalized_pixel_sha256": "24903f418760da0cca04bb542d8561108373f826421636d7887d02ad8e7ee57c",
+        "sanitized_normalized_pixel_sha256": "24903f418760da0cca04bb542d8561108373f826421636d7887d02ad8e7ee57c"
+      },
+      "component_id": "leakage-component:48f9b95ea4279603b882708733a2763803540591356b69b6fdee3e88cbe0e6ed",
+      "split": "train",
+      "rights": {
+        "license_id": "cc-by-4.0",
+        "attribution": "Archives de la Ville de Montréal",
+        "commercial_use_allowed": true,
+        "complete": true
+      },
+      "predecessor": {
+        "v1_task_id": "gate-h:image-mode:11993",
+        "v1_task_sha256": "21e4a68309260619794a607df023d89e73d7bd97e46a5a967ade593190eb4382"
+      },
+      "purposes": [
+        "image_mode",
+        "aerial_land_use",
+        "abstention"
+      ]
+    },
+    {
+      "opaque_id": "v2-0025",
+      "source_key": "image:12115",
+      "source_ref": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/review-pixels/12115.jpg",
+      "source": {
+        "sha256": "97ddc17238a86ed7293274f6f8e9e86cbd5559abba3e0df6919f49aac2776ad6",
+        "bytes": 235035,
+        "width": 1000,
+        "height": 1024,
+        "normalized_pixel_sha256": "f5b72520e951e6c4567998ff814c1e5e5070f58fd11db6cec638f5c43360b2d7",
+        "sanitized_normalized_pixel_sha256": "f5b72520e951e6c4567998ff814c1e5e5070f58fd11db6cec638f5c43360b2d7"
+      },
+      "component_id": "leakage-component:8bb7fb27dcbb37ef64b3b6a7facd8ee0c0ecf2e89470940c27a1292a2e3d9f33",
+      "split": "train",
+      "rights": {
+        "license_id": "cc-by-4.0",
+        "attribution": "Archives de la Ville de Montréal",
+        "commercial_use_allowed": true,
+        "complete": true
+      },
+      "predecessor": {
+        "v1_task_id": "gate-h:image-mode:12115",
+        "v1_task_sha256": "4a5066fb10ba52ec4ef52bd8a3c326d82d85ace1dbc1026b89ddc154101954f0"
+      },
+      "purposes": [
+        "image_mode",
+        "aerial_land_use",
+        "abstention"
+      ]
+    },
+    {
+      "opaque_id": "v2-0026",
+      "source_key": "image:12117",
+      "source_ref": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/review-pixels/12117.jpg",
+      "source": {
+        "sha256": "34ce06eb4bbd4b4628cf6a0c05229190820f737641bb1b6c3b9a0a1055b701ed",
+        "bytes": 194447,
+        "width": 1022,
+        "height": 1024,
+        "normalized_pixel_sha256": "0aa303944090e63db337047f16891e093f965bae12b391e990b374e1557e9247",
+        "sanitized_normalized_pixel_sha256": "0aa303944090e63db337047f16891e093f965bae12b391e990b374e1557e9247"
+      },
+      "component_id": "leakage-component:aa925a324bcd8d2fb2b424faead1ef711cff33e996cc4cb98507d81bb390910e",
+      "split": "train",
+      "rights": {
+        "license_id": "cc-by-4.0",
+        "attribution": "Archives de la Ville de Montréal",
+        "commercial_use_allowed": true,
+        "complete": true
+      },
+      "predecessor": {
+        "v1_task_id": "gate-h:image-mode:12117",
+        "v1_task_sha256": "77163f2728a38297d3062e2a3ea59224fab60295c7bb9900f1ce485bcc403283"
+      },
+      "purposes": [
+        "image_mode",
+        "aerial_land_use",
+        "abstention"
+      ]
+    },
+    {
+      "opaque_id": "v2-0027",
+      "source_key": "image:12623",
+      "source_ref": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/review-pixels/12623.jpg",
+      "source": {
+        "sha256": "c5cb15a34eb5479471398781a5fc4e379e6cfc3295e734413d586c7b50086261",
+        "bytes": 212897,
+        "width": 1012,
+        "height": 1024,
+        "normalized_pixel_sha256": "33e9e3ca2bac2926869253551a650c8628b4476b41f4b793e7658ff813c18ac8",
+        "sanitized_normalized_pixel_sha256": "33e9e3ca2bac2926869253551a650c8628b4476b41f4b793e7658ff813c18ac8"
+      },
+      "component_id": "leakage-component:53b6f68fffa9c5ebd16a62a17f9fa97a8272632700e9723183f867d2570905bc",
+      "split": "train",
+      "rights": {
+        "license_id": "cc-by-4.0",
+        "attribution": "Archives de la Ville de Montréal",
+        "commercial_use_allowed": true,
+        "complete": true
+      },
+      "predecessor": {
+        "v1_task_id": "gate-h:image-mode:12623",
+        "v1_task_sha256": "3b8b970feadbf9f6512e9e89f7aa75e905feb535240416ce6596a2beebaba740"
+      },
+      "purposes": [
+        "image_mode",
+        "aerial_land_use",
+        "abstention"
+      ]
+    },
+    {
+      "opaque_id": "v2-0028",
+      "source_key": "image:13272",
+      "source_ref": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/review-pixels/13272.jpg",
+      "source": {
+        "sha256": "a2047406c719d3acc14660a0d593eda223683dca9fb772c04ce611d024a6233e",
+        "bytes": 214287,
+        "width": 1024,
+        "height": 986,
+        "normalized_pixel_sha256": "c5988a6525372c6d1cc5d8555fc06c5d73e054c6c5510f81af383bc21a0539a1",
+        "sanitized_normalized_pixel_sha256": "c5988a6525372c6d1cc5d8555fc06c5d73e054c6c5510f81af383bc21a0539a1"
+      },
+      "component_id": "leakage-component:9cdedd854553248660b9011cadcf86de2b49a92e4982bf55809264aa0d181ab0",
+      "split": "train",
+      "rights": {
+        "license_id": "cc-by-4.0",
+        "attribution": "Archives de la Ville de Montréal",
+        "commercial_use_allowed": true,
+        "complete": true
+      },
+      "predecessor": {
+        "v1_task_id": "gate-h:image-mode:13272",
+        "v1_task_sha256": "8e35804ff453739e990456bf2273947846cb92064006535315a864c9315d4421"
+      },
+      "purposes": [
+        "image_mode",
+        "aerial_land_use",
+        "abstention"
+      ]
+    },
+    {
+      "opaque_id": "v2-0029",
+      "source_key": "image:13389",
+      "source_ref": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/review-pixels/13389.jpg",
+      "source": {
+        "sha256": "f2a1b69252dd252b342b70dbb062aa185364a58acbd266f4ef7079c321ca0c44",
+        "bytes": 271602,
+        "width": 1003,
+        "height": 1024,
+        "normalized_pixel_sha256": "8e06e73466d3fe2d4115e900ff4d53142f59b165b03ca699efe74d3d974206c0",
+        "sanitized_normalized_pixel_sha256": "8e06e73466d3fe2d4115e900ff4d53142f59b165b03ca699efe74d3d974206c0"
+      },
+      "component_id": "leakage-component:6a012f553e61787f4195f602369e28c9abcd0512e25b6c38cbc212c413a364ec",
+      "split": "train",
+      "rights": {
+        "license_id": "cc-by-4.0",
+        "attribution": "Archives de la Ville de Montréal",
+        "commercial_use_allowed": true,
+        "complete": true
+      },
+      "predecessor": {
+        "v1_task_id": "gate-h:image-mode:13389",
+        "v1_task_sha256": "1d57fa3a1fd593c8d412bfa2b974d4a20d65a4c453431615f0dd616b503c3335"
+      },
+      "purposes": [
+        "image_mode",
+        "aerial_land_use",
+        "abstention"
+      ]
+    },
+    {
+      "opaque_id": "v2-0030",
+      "source_key": "image:14135",
+      "source_ref": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/review-pixels/14135.jpg",
+      "source": {
+        "sha256": "aec0368d87f5aa7ffd3630eb8e6068d18e5e9d0140f67cbb062485a03e141056",
+        "bytes": 172055,
+        "width": 1017,
+        "height": 1024,
+        "normalized_pixel_sha256": "6aa4d010f4178d672079deec6028310bb5b1b060cd298fb29c97f0a83d07c3c0",
+        "sanitized_normalized_pixel_sha256": "6aa4d010f4178d672079deec6028310bb5b1b060cd298fb29c97f0a83d07c3c0"
+      },
+      "component_id": "leakage-component:c0b6337713bf7ab60cff872ffdd261df920926ed6103e26a2674a8f57e8f9d17",
+      "split": "train",
+      "rights": {
+        "license_id": "cc-by-4.0",
+        "attribution": "Archives de la Ville de Montréal",
+        "commercial_use_allowed": true,
+        "complete": true
+      },
+      "predecessor": {
+        "v1_task_id": "gate-h:image-mode:14135",
+        "v1_task_sha256": "142e9a07c4982f5a0e563abe74678b56379fcee491dd759d0e9bc87d64e2c5fa"
+      },
+      "purposes": [
+        "image_mode",
+        "aerial_land_use",
+        "abstention"
+      ]
+    },
+    {
+      "opaque_id": "v2-0031",
+      "source_key": "image:14813",
+      "source_ref": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/review-pixels/14813.jpg",
+      "source": {
+        "sha256": "a00504708db4f71bb96bd232392fcd9c04892794fcc8fc695db06695bd92e682",
+        "bytes": 190994,
+        "width": 1007,
+        "height": 1024,
+        "normalized_pixel_sha256": "0e6dad4164c2736b118a6e38875e12ad3fe2d2af87b33aa075b56742db392633",
+        "sanitized_normalized_pixel_sha256": "0e6dad4164c2736b118a6e38875e12ad3fe2d2af87b33aa075b56742db392633"
+      },
+      "component_id": "leakage-component:e17c81ee8a1cbe58134e7e543e302d3691a9e8c0dfb86f914de8fb4454bd3222",
+      "split": "train",
+      "rights": {
+        "license_id": "cc-by-4.0",
+        "attribution": "Archives de la Ville de Montréal",
+        "commercial_use_allowed": true,
+        "complete": true
+      },
+      "predecessor": {
+        "v1_task_id": "gate-h:image-mode:14813",
+        "v1_task_sha256": "7ed1c029120e3a3c1213cb998292c8a923abea37b28c9c3c3e109d2305f07c1c"
+      },
+      "purposes": [
+        "image_mode",
+        "aerial_land_use",
+        "abstention"
+      ]
+    },
+    {
+      "opaque_id": "v2-0032",
+      "source_key": "image:14965",
+      "source_ref": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/review-pixels/14965.jpg",
+      "source": {
+        "sha256": "d4914afd38a5aaca095d953d56ceaa67f46c2b41a2b5f206ca5e304e6e309f87",
+        "bytes": 259145,
+        "width": 1024,
+        "height": 1021,
+        "normalized_pixel_sha256": "a06f7a43628c6efdaf4c6cb23ce3221f4afb05cdf2eff280057a9214ed792961",
+        "sanitized_normalized_pixel_sha256": "a06f7a43628c6efdaf4c6cb23ce3221f4afb05cdf2eff280057a9214ed792961"
+      },
+      "component_id": "leakage-component:5b82f4df709840311677bf7d0007b95e4dfbe8533f064b5ce44e99b1d7b13ace",
+      "split": "train",
+      "rights": {
+        "license_id": "cc-by-4.0",
+        "attribution": "Archives de la Ville de Montréal",
+        "commercial_use_allowed": true,
+        "complete": true
+      },
+      "predecessor": {
+        "v1_task_id": "gate-h:image-mode:14965",
+        "v1_task_sha256": "3a9054757a7d3d5e9d99fe83137e130864cb38980d8dd96beeb32a22e4514418"
+      },
+      "purposes": [
+        "image_mode",
+        "aerial_land_use",
+        "abstention"
+      ]
+    },
+    {
+      "opaque_id": "v2-0033",
+      "source_key": "image:10145",
+      "source_ref": "gold-batch-control:0099:first-view",
+      "source": {
+        "sha256": "8c97cfd0b01d8baefd3e122a3d630ef85d535878024f73113e53bdc9a5421ee0",
+        "bytes": 145410,
+        "width": 1024,
+        "height": 662,
+        "normalized_pixel_sha256": "fdc6535ee2bf8a7ba3a42ce10fc8775b5613c4b4f7a620192605e8409cf157ce",
+        "sanitized_normalized_pixel_sha256": "fdc6535ee2bf8a7ba3a42ce10fc8775b5613c4b4f7a620192605e8409cf157ce"
+      },
+      "component_id": "leakage-component:6446fc98e08480223e2c1be7e30511226ca87e0fe7a078f325d9f52149c026d6",
+      "split": "train",
+      "rights": {
+        "license_id": "cc-by-4.0-derived",
+        "attribution": "Archives de la Ville de Montréal",
+        "commercial_use_allowed": null,
+        "complete": true
+      },
+      "predecessor": {
+        "phase_d_row_sha256": "50a707c97e125bc83184c6654c2c463db7de1b3a29e04bd248afeddc1141b974",
+        "registered_artifact_id": "dfv0_gold_label_batch_002_final_r2_archive"
+      },
+      "purposes": [
+        "image_mode"
+      ]
+    },
+    {
+      "opaque_id": "v2-0034",
+      "source_key": "image:8465",
+      "source_ref": "gold-batch-control:0001:first-view",
+      "source": {
+        "sha256": "0ab54c10ed1a3ea564678232d9fb4a632bb8aeb2a9410b6278dd8b77e1b427b5",
+        "bytes": 118212,
+        "width": 1024,
+        "height": 622,
+        "normalized_pixel_sha256": "12048c1a558d0696711f9fd37f65e8ddff9bfb34d6b771753f9da5b0a556bacf",
+        "sanitized_normalized_pixel_sha256": "12048c1a558d0696711f9fd37f65e8ddff9bfb34d6b771753f9da5b0a556bacf"
+      },
+      "component_id": "leakage-component:f9c99c36962b073da59add7e6ef79b7a16cea0a84f4274daafbe1f4e8663dd59",
+      "split": "train",
+      "rights": {
+        "license_id": "cc-by-4.0-derived",
+        "attribution": "Archives de la Ville de Montréal",
+        "commercial_use_allowed": null,
+        "complete": true
+      },
+      "predecessor": {
+        "phase_d_row_sha256": "96d3b581862850d50c932fc9fcc99a563824af295e48a41f67ee23b708348344",
+        "registered_artifact_id": "dfv0_gold_label_batch_002_final_r2_archive"
+      },
+      "purposes": [
+        "image_mode"
+      ]
+    },
+    {
+      "opaque_id": "v2-0035",
+      "source_key": "image:11118",
+      "source_ref": "docs/dataset-factory/fixtures/canonical-image-recovery-v1/inspection-derivatives/mtl_archives_metadata_11118.jpg",
+      "source": {
+        "sha256": "ecbedbbb7b2d5f7cf2aec55ad43dbba3cbd8ca8f712fe8e838fbbc998dd90778",
+        "bytes": 9324,
+        "width": 256,
+        "height": 256,
+        "normalized_pixel_sha256": "2eeae88d6f150c7899e4e7e38d3fba8272dda75be47dd79e3d4eccc4fd785321",
+        "sanitized_normalized_pixel_sha256": "2eeae88d6f150c7899e4e7e38d3fba8272dda75be47dd79e3d4eccc4fd785321"
+      },
+      "component_id": "leakage-component:5bd94395a16ebfa5f6552af46822f76c6cba9310964a8b8c6b586ee527fb9885",
+      "split": "train",
+      "rights": {
+        "license_id": "cc-by-4.0",
+        "attribution": "Ville de Montréal",
+        "commercial_use_allowed": true,
+        "complete": true
+      },
+      "predecessor": {
+        "phase_d_row_sha256": "74116e7fcd1038d6cc595770129ab279a32c80850ec7bb69e831337bad7d754a",
+        "registered_artifact_id": "canonical_image_recovery_v1"
+      },
+      "purposes": [
+        "image_mode",
+        "abstention"
+      ]
+    },
+    {
+      "opaque_id": "v2-0036",
+      "source_key": "image:6059",
+      "source_ref": "gold-batch-control:0126:first-view",
+      "source": {
+        "sha256": "e620dbbce90fe373f198196adbba431de1ce574cffb230e64195d78def202a5d",
+        "bytes": 352794,
+        "width": 982,
+        "height": 1024,
+        "normalized_pixel_sha256": "92d2e3ab33b768cc166b774676c6b94d599bcfaae55ea1179a80e8b43e49b76f",
+        "sanitized_normalized_pixel_sha256": "92d2e3ab33b768cc166b774676c6b94d599bcfaae55ea1179a80e8b43e49b76f"
+      },
+      "component_id": "leakage-component:484a658ad584b382454b7a34857de47930362209756047b64d15562ae37678fc",
+      "split": "train",
+      "rights": {
+        "license_id": "cc-by-4.0-derived",
+        "attribution": "Archives de la Ville de Montréal",
+        "commercial_use_allowed": null,
+        "complete": true
+      },
+      "predecessor": {
+        "phase_d_row_sha256": "3552f5e5ed9287ecd43974faefdf440a14193000940a6663521783e2e8c72334",
+        "registered_artifact_id": "dfv0_gold_label_batch_002_final_r2_archive"
+      },
+      "purposes": [
+        "image_mode",
+        "abstention"
+      ]
+    },
+    {
+      "opaque_id": "v2-0037",
+      "source_key": "ocr:1",
+      "source_ref": "docs/dataset-factory/fixtures/ground-originals-v1/crops/ground-crop-01.jpg",
+      "source": {
+        "sha256": "2315a3d890263177bdc6b76dcca67a8cd79f17ac8f3287bf937f95d316a26bc0",
+        "bytes": 28722,
+        "width": 787,
+        "height": 318,
+        "normalized_pixel_sha256": "544c03ee6aab8908c26111f2540a4f8123795755bf0c230a6e9457a59e981c15",
+        "sanitized_normalized_pixel_sha256": "544c03ee6aab8908c26111f2540a4f8123795755bf0c230a6e9457a59e981c15"
+      },
+      "component_id": "leakage-component:ce6e61f9411f46da048ad2257255f2ef37aca020973fcfad205f6a9d5032460b",
+      "split": "train",
+      "rights": {
+        "license_id": "cc-by-4.0-derived",
+        "attribution": "Archives de la Ville de Montréal",
+        "commercial_use_allowed": null,
+        "complete": true
+      },
+      "predecessor": {
+        "ground_input_sha256": "c263eef97d3cd1662954a50748b3f9fadab5cf65ff79ac33ba80b909969699b3",
+        "neutral_crop_id": "ground-crop-01"
+      },
+      "purposes": [
+        "ocr"
+      ]
+    },
+    {
+      "opaque_id": "v2-0038",
+      "source_key": "ocr:2",
+      "source_ref": "docs/dataset-factory/fixtures/ground-originals-v1/crops/ground-crop-02.jpg",
+      "source": {
+        "sha256": "04c8232ecdeb0f04319aa4c1344dd233b595e8cf200639a8741a0cd6674c4742",
+        "bytes": 8665,
+        "width": 399,
+        "height": 165,
+        "normalized_pixel_sha256": "ebb0096c01080380cb61ba2a1741e229983b152ff54d85eefda2ff48f62bc917",
+        "sanitized_normalized_pixel_sha256": "ebb0096c01080380cb61ba2a1741e229983b152ff54d85eefda2ff48f62bc917"
+      },
+      "component_id": "leakage-component:ce6e61f9411f46da048ad2257255f2ef37aca020973fcfad205f6a9d5032460b",
+      "split": "train",
+      "rights": {
+        "license_id": "cc-by-4.0-derived",
+        "attribution": "Archives de la Ville de Montréal",
+        "commercial_use_allowed": null,
+        "complete": true
+      },
+      "predecessor": {
+        "ground_input_sha256": "c263eef97d3cd1662954a50748b3f9fadab5cf65ff79ac33ba80b909969699b3",
+        "neutral_crop_id": "ground-crop-02"
+      },
+      "purposes": [
+        "ocr"
+      ]
+    },
+    {
+      "opaque_id": "v2-0039",
+      "source_key": "scene:0",
+      "source_ref": "docs/dataset-factory/fixtures/ground-originals-v1/review/ground-review-01.jpg",
+      "source": {
+        "sha256": "a1dbae3d9ab24e35322bac95e2f9653b339cdd2ca29fdc40c5463f4858aece8f",
+        "bytes": 145126,
+        "width": 1600,
+        "height": 1150,
+        "normalized_pixel_sha256": "a74c468d8b6b3a0cdcfd8496ec973563d267e8446e08bc27bd5f1dafdfbebef3",
+        "sanitized_normalized_pixel_sha256": "a74c468d8b6b3a0cdcfd8496ec973563d267e8446e08bc27bd5f1dafdfbebef3"
+      },
+      "component_id": "leakage-component:50e304537b4401e4c38874b3d16bf4871fbbbe14bfa879bd1e44a1049c3e1466",
+      "split": "train",
+      "rights": {
+        "license_id": "cc-by-4.0",
+        "attribution": "Ville de Montréal",
+        "commercial_use_allowed": true,
+        "complete": true
+      },
+      "predecessor": {
+        "ground_input_sha256": "c263eef97d3cd1662954a50748b3f9fadab5cf65ff79ac33ba80b909969699b3",
+        "neutral_scene_id": "ground-review-01"
+      },
+      "purposes": [
+        "entity_place"
+      ]
+    },
+    {
+      "opaque_id": "v2-0040",
+      "source_key": "scene:10",
+      "source_ref": "docs/dataset-factory/fixtures/ground-originals-v1/review/ground-review-02.jpg",
+      "source": {
+        "sha256": "a98bd04c95d0884971f7d452f3328a997aa3f20fad78a9ba5eb2f07f1ebd6bb8",
+        "bytes": 161534,
+        "width": 1600,
+        "height": 1181,
+        "normalized_pixel_sha256": "a22a026e1566eb93c780ff9c4e677a493088ed46661bf780bf65c20246e85ea8",
+        "sanitized_normalized_pixel_sha256": "a22a026e1566eb93c780ff9c4e677a493088ed46661bf780bf65c20246e85ea8"
+      },
+      "component_id": "leakage-component:a38d5cd6c6139ecb70932d0a668246b3962611e46399066082444a67487b82b1",
+      "split": "train",
+      "rights": {
+        "license_id": "cc-by-4.0-derived",
+        "attribution": "Archives de la Ville de Montréal",
+        "commercial_use_allowed": null,
+        "complete": true
+      },
+      "predecessor": {
+        "ground_input_sha256": "c263eef97d3cd1662954a50748b3f9fadab5cf65ff79ac33ba80b909969699b3",
+        "neutral_scene_id": "ground-review-02"
+      },
+      "purposes": [
+        "entity_place"
+      ]
+    },
+    {
+      "opaque_id": "v2-0041",
+      "source_key": "scene:100",
+      "source_ref": "docs/dataset-factory/fixtures/ground-originals-v1/review/ground-review-03.jpg",
+      "source": {
+        "sha256": "526c617c5de73be66fa41e0588c9ab13a3236a727918d70e8425fbbf6e967f82",
+        "bytes": 158546,
+        "width": 1069,
+        "height": 1600,
+        "normalized_pixel_sha256": "f6f54f61bc0d63020a2fe61cd0b61595e30d5d1133a2308ec2ba14f2422cd463",
+        "sanitized_normalized_pixel_sha256": "f6f54f61bc0d63020a2fe61cd0b61595e30d5d1133a2308ec2ba14f2422cd463"
+      },
+      "component_id": "leakage-component:6e73b5cddd2a8f81d6a1c553c1942eecbda0cc7b2f0cbd56f40d096f87ddc9b4",
+      "split": "train",
+      "rights": {
+        "license_id": "cc-by-4.0-derived",
+        "attribution": "Archives de la Ville de Montréal",
+        "commercial_use_allowed": null,
+        "complete": true
+      },
+      "predecessor": {
+        "ground_input_sha256": "c263eef97d3cd1662954a50748b3f9fadab5cf65ff79ac33ba80b909969699b3",
+        "neutral_scene_id": "ground-review-03"
+      },
+      "purposes": [
+        "entity_place"
+      ]
+    },
+    {
+      "opaque_id": "v2-0042",
+      "source_key": "scene:101",
+      "source_ref": "docs/dataset-factory/fixtures/ground-originals-v1/review/ground-review-04.jpg",
+      "source": {
+        "sha256": "909a00d92504d715ef895c132b1f5613ad990dfdcbe8129ac885e7a77bec5c47",
+        "bytes": 159082,
+        "width": 1600,
+        "height": 1153,
+        "normalized_pixel_sha256": "411ef2ce0a9bc0ec175a37423d8cac09b87d44de91026bd22223140d2f0764bc",
+        "sanitized_normalized_pixel_sha256": "411ef2ce0a9bc0ec175a37423d8cac09b87d44de91026bd22223140d2f0764bc"
+      },
+      "component_id": "leakage-component:4e3d176d9144aa74fb9bfd32e4f61b33a760cd57efaba5a1aade602704738fba",
+      "split": "train",
+      "rights": {
+        "license_id": "cc-by-4.0-derived",
+        "attribution": "Archives de la Ville de Montréal",
+        "commercial_use_allowed": null,
+        "complete": true
+      },
+      "predecessor": {
+        "ground_input_sha256": "c263eef97d3cd1662954a50748b3f9fadab5cf65ff79ac33ba80b909969699b3",
+        "neutral_scene_id": "ground-review-04"
+      },
+      "purposes": [
+        "entity_place"
+      ]
+    },
+    {
+      "opaque_id": "v2-0043",
+      "source_key": "scene:102",
+      "source_ref": "docs/dataset-factory/fixtures/ground-originals-v1/review/ground-review-05.jpg",
+      "source": {
+        "sha256": "1fbd155f21fe3c55b9df72acc6f91c06dc1298061d9db2ff3fabe777c70e54e2",
+        "bytes": 158606,
+        "width": 1600,
+        "height": 1137,
+        "normalized_pixel_sha256": "667493e7005bca63ec3e845a5cbf35d92251a01bf05c63cdc74f988c101cb2d9",
+        "sanitized_normalized_pixel_sha256": "667493e7005bca63ec3e845a5cbf35d92251a01bf05c63cdc74f988c101cb2d9"
+      },
+      "component_id": "leakage-component:72622a8e6f7691f38267951d34b7e1ddd215e82ac5d4f81ab0d2ba1540f18628",
+      "split": "train",
+      "rights": {
+        "license_id": "cc-by-4.0-derived",
+        "attribution": "Archives de la Ville de Montréal",
+        "commercial_use_allowed": null,
+        "complete": true
+      },
+      "predecessor": {
+        "ground_input_sha256": "c263eef97d3cd1662954a50748b3f9fadab5cf65ff79ac33ba80b909969699b3",
+        "neutral_scene_id": "ground-review-05"
+      },
+      "purposes": [
+        "entity_place"
+      ]
+    },
+    {
+      "opaque_id": "v2-0044",
+      "source_key": "scene:105",
+      "source_ref": "docs/dataset-factory/fixtures/ground-originals-v1/review/ground-review-06.jpg",
+      "source": {
+        "sha256": "a5e7964dbb545810f19f2ed74858c44e42ab32be1c16d96a3608e757af8d046e",
+        "bytes": 173904,
+        "width": 1600,
+        "height": 1137,
+        "normalized_pixel_sha256": "981a0548603ace980add46d345e124a1ba0622d8a4c211294d1541fa34197e7b",
+        "sanitized_normalized_pixel_sha256": "981a0548603ace980add46d345e124a1ba0622d8a4c211294d1541fa34197e7b"
+      },
+      "component_id": "leakage-component:ce6e61f9411f46da048ad2257255f2ef37aca020973fcfad205f6a9d5032460b",
+      "split": "train",
+      "rights": {
+        "license_id": "cc-by-4.0-derived",
+        "attribution": "Archives de la Ville de Montréal",
+        "commercial_use_allowed": null,
+        "complete": true
+      },
+      "predecessor": {
+        "ground_input_sha256": "c263eef97d3cd1662954a50748b3f9fadab5cf65ff79ac33ba80b909969699b3",
+        "neutral_scene_id": "ground-review-06"
+      },
+      "purposes": [
+        "entity_place"
+      ]
+    }
+  ],
+  "subsets": {
+    "image_mode": [
+      "image:10",
+      "image:11",
+      "image:17",
+      "image:30",
+      "image:31",
+      "image:33",
+      "image:45",
+      "image:54",
+      "image:58",
+      "image:77",
+      "image:88",
+      "image:100",
+      "image:101",
+      "image:102",
+      "image:105",
+      "image:106",
+      "image:4501",
+      "image:7929",
+      "image:8432",
+      "image:9092",
+      "image:9844",
+      "image:11836",
+      "image:11923",
+      "image:11993",
+      "image:12115",
+      "image:12117",
+      "image:12623",
+      "image:13272",
+      "image:13389",
+      "image:14135",
+      "image:14813",
+      "image:14965",
+      "image:10145",
+      "image:8465",
+      "image:11118",
+      "image:6059"
+    ],
+    "ocr": [
+      "ocr:1",
+      "ocr:2"
+    ],
+    "entity_place": [
+      "scene:0",
+      "scene:10",
+      "scene:100",
+      "scene:101",
+      "scene:102",
+      "scene:105"
+    ],
+    "aerial_land_use": [
+      "image:4501",
+      "image:7929",
+      "image:8432",
+      "image:9092",
+      "image:9844",
+      "image:11836",
+      "image:11923",
+      "image:11993",
+      "image:12115",
+      "image:12117",
+      "image:12623",
+      "image:13272",
+      "image:13389",
+      "image:14135",
+      "image:14813",
+      "image:14965"
+    ],
+    "abstention": [
+      "image:4501",
+      "image:7929",
+      "image:8432",
+      "image:9092",
+      "image:9844",
+      "image:11836",
+      "image:11923",
+      "image:11993",
+      "image:12115",
+      "image:12117",
+      "image:12623",
+      "image:13272",
+      "image:13389",
+      "image:14135",
+      "image:14813",
+      "image:14965",
+      "image:11118",
+      "image:6059"
+    ]
+  },
+  "counts": {
+    "unique_sources": 44,
+    "task_memberships": 78,
+    "image_mode": 36,
+    "ocr": 2,
+    "entity_place": 6,
+    "aerial_land_use": 16,
+    "abstention": 18
+  },
+  "predecessors": {
+    "phase_d": {
+      "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+      "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+      "bytes": 4243798
+    },
+    "v1_tasks": {
+      "path": "docs/dataset-factory/fixtures/reviewed-metrics-publication-v1/candidate-benchmark-tasks-v1.json",
+      "sha256": "c715c411d37f0d6bde756cf68b0b3a2db59de2336fe2c55752744e3514cf6a66",
+      "bytes": 337705
+    },
+    "v1_receipt": {
+      "path": "docs/dataset-factory/fixtures/reviewed-metrics-publication-v1/independent-task-review-v1.json",
+      "sha256": "422cd4d3faab3e233af0241ca11dd82cc9a26e75c0af08961698bc342b97552a",
+      "bytes": 27037
+    },
+    "v1_descriptor": {
+      "path": "docs/dataset-factory/fixtures/reviewed-metrics-publication-v1/final-descriptor-v1.json",
+      "sha256": "e44ca758c7d17d2256b974e714b15795a637d634eb29253a7f7ecee6347c0b93",
+      "bytes": 3741
+    },
+    "gate_e_promotion": {
+      "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+      "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+      "bytes": 1000
+    },
+    "gate_f_review": {
+      "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+      "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+      "bytes": 17017
+    },
+    "gate_g_descriptor": {
+      "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+      "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+      "bytes": 40954
+    },
+    "ground_input": {
+      "path": "docs/dataset-factory/fixtures/ground-originals-v1/independent-review-input-v1.json",
+      "sha256": "c263eef97d3cd1662954a50748b3f9fadab5cf65ff79ac33ba80b909969699b3",
+      "bytes": 2470
+    }
+  },
+  "mutations": {
+    "production": false,
+    "search_index": false,
+    "private_object_store_write": false,
+    "paid_gpu": false
+  }
+}

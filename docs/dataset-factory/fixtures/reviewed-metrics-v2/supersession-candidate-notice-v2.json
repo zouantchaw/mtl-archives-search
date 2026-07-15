@@ -1,0 +1,23 @@
+{
+  "schema_version": "reviewed_metrics_supersession_candidate_notice_v2.0.0",
+  "status": "candidate_notice_v2_does_not_yet_exist",
+  "v2_publication_exists": false,
+  "current_close_authority": null,
+  "v1_historical_publication": {
+    "tree_sha256": "1e61ba2d92b6ee59f6eb6221b8274ef9a6bcbf56299274da7a5525b1e14974a1",
+    "final_descriptor_sha256": "e44ca758c7d17d2256b974e714b15795a637d634eb29253a7f7ecee6347c0b93",
+    "receipt_sha256": "422cd4d3faab3e233af0241ca11dd82cc9a26e75c0af08961698bc342b97552a",
+    "authorization_sha256": "d66a969563878b6e02f46d965ab374cf7e186d8c518c8d62aa1e275adcd96dbc"
+  },
+  "proposed_superseded_claims": [
+    "v1 issue_complete=true as current close authority",
+    "v1 69.reviewed_metrics satisfied_with_unavailable_denominators",
+    "v1 satisfied task rows pointing to a blank template",
+    "task acceptance alone proves all issue criteria"
+  ],
+  "preserved_claims": [
+    "32 independently accepted v1 image-mode tasks and their exact receipt"
+  ],
+  "issue_92_complete": false,
+  "issue_69_complete": false
+}

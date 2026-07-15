@@ -1,0 +1,12 @@
+{
+  "schema_version": "reviewed_metrics_search_task_review_v2.0.0",
+  "status": "placeholder_issue_97_no_review",
+  "candidate_id": "dfv0_reviewed_metrics_v2_candidate_20260715",
+  "task_pin": null,
+  "prediction_freeze_pin": null,
+  "score_commitment_pin": null,
+  "reviewer": null,
+  "checks": null,
+  "disposition": null,
+  "rationale": null
+}

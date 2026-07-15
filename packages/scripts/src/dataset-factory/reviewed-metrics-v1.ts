@@ -1218,6 +1218,26 @@ function verifyRegistry(root: string): void {
     "Gate H candidate registry drift",
   );
 }
+function verifyPublicationRegistry(root: string): void {
+  const rows = fs
+    .readFileSync(REGISTRY, "utf8")
+    .trim()
+    .split("\n")
+    .map((line) => JSON.parse(line))
+    .filter((value: J) => value.stable_id === FINAL_PUBLICATION_ID);
+  assert(rows.length === 1, "Gate H publication registry row missing or duplicated");
+  const row = rows[0];
+  const facts = tree(root);
+  assert(
+    row.storage.locator === FINAL_PUBLICATION_REL &&
+      row.content_digest.algorithm === "sha256" &&
+      row.content_digest.scope === "sorted_tree_manifest" &&
+      row.counts.file_count === facts.members.length &&
+      row.counts.byte_count === facts.bytes &&
+      row.content_digest.value === facts.sha256,
+    "Gate H publication file-backed registry drift",
+  );
+}
 function verifyMetricSemantics(metrics: J): void {
   for (const row of metrics.metrics) {
     const source = row.source_subset;
@@ -2099,13 +2119,17 @@ function verifyTrackedPublication(): J {
         FINAL_PUBLICATION_EXPECTED.authorization_sha256,
     "tracked publication authority pins drift",
   );
+  verifyPublicationRegistry(FINAL_PUBLICATION);
   return {
     ...result,
     registry_artifact_id: FINAL_PUBLICATION_ID,
     final_descriptor_sha256: FINAL_PUBLICATION_EXPECTED.final_descriptor_sha256,
     review_receipt_sha256: FINAL_PUBLICATION_EXPECTED.receipt_sha256,
     authorization_sha256: FINAL_PUBLICATION_EXPECTED.authorization_sha256,
-    issue_complete: true,
+    historical_issue_complete_byte_preserved: true,
+    historical_publication_verified: true,
+    current_close_authority: false,
+    supersession_status: "candidate_notice_only_v2_does_not_yet_exist",
     search_index_mutation: false,
   };
 }

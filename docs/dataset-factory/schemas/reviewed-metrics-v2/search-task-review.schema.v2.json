@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "search-task-review.schema.v2.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "candidate_id", "task_pin", "prediction_freeze_pin", "score_commitment_pin", "reviewer", "checks", "disposition", "rationale"],
+  "properties": {
+    "schema_version": {"const": "reviewed_metrics_search_task_review_v2.0.0"},
+    "status": {"enum": ["placeholder_issue_97_no_review", "completed"]},
+    "candidate_id": {"const": "dfv0_reviewed_metrics_v2_candidate_20260715"},
+    "task_pin": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/pin"}]},
+    "prediction_freeze_pin": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/pin"}]},
+    "score_commitment_pin": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/pin"}]},
+    "reviewer": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/reviewer"}]},
+    "checks": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/checks"}]},
+    "disposition": {"type": ["string", "null"], "enum": ["accepted", "held", "rejected", null]},
+    "rationale": {"type": ["string", "null"]}
+  },
+  "$defs": {
+    "pin": {"type": "object", "additionalProperties": false, "required": ["sha256", "bytes"], "properties": {"sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "bytes": {"type": "integer", "minimum": 1}}},
+    "reviewer": {"type": "object", "additionalProperties": false, "required": ["identity", "session_id", "model", "reasoning_effort", "reviewed_at", "independent"], "properties": {"identity": {"type": "string"}, "session_id": {"type": "string"}, "model": {"type": "string"}, "reasoning_effort": {"type": "string"}, "reviewed_at": {"type": "string", "format": "date-time"}, "independent": {"const": true}}},
+    "checks": {"type": "object", "additionalProperties": false, "required": ["source_dossier_approved", "accepted_source_claim", "private_score_passed", "rights_passed", "no_leak_passed", "component_split_pinned", "separate_reviewer"], "properties": {"source_dossier_approved": {"const": true}, "accepted_source_claim": {"const": true}, "private_score_passed": {"const": true}, "rights_passed": {"const": true}, "no_leak_passed": {"const": true}, "component_split_pinned": {"const": true}, "separate_reviewer": {"const": true}}}
+  }
+}
