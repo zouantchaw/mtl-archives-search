@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "executor-semantics-attestation.schema.v2.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "synthetic", "production_eligible", "capability_derivation", "subject", "test_universe", "test_results", "capability_id", "observation", "signer", "signature_base64"],
+  "properties": {
+    "schema_version": { "const": "reviewed_metrics_executor_semantics_attestation_v2.0.0" },
+    "status": { "enum": ["observed_real_linux_conformant", "synthetic_nonproduction_fixture"] },
+    "synthetic": { "type": "boolean" },
+    "production_eligible": { "type": "boolean" },
+    "capability_derivation": { "const": "sha256_domain_gate_h2_executor_semantics_capability_v2_canonical_subject_tests" },
+    "subject": {
+      "type": "object", "additionalProperties": false,
+      "required": ["wrapper", "runtime", "executor", "stage_program", "stage_program_schema", "action_semantics", "mount_output_behavior", "loader_contract", "immutable_copy_contract"],
+      "properties": {
+        "wrapper": { "$ref": "#/$defs/filePin" }, "runtime": { "$ref": "#/$defs/filePin" }, "executor": { "$ref": "#/$defs/filePin" }, "stage_program": { "$ref": "#/$defs/filePin" },
+        "stage_program_schema": { "$ref": "#/$defs/bytePin" },
+        "action_semantics": { "type": "object", "additionalProperties": false, "required": ["version", "action", "input_resolution", "output_resolution", "network_resolution", "failure_behavior"], "properties": { "version": { "const": "gate_h2_invoke_attested_capability_semantics_v1" }, "action": { "const": "invoke_attested_capability" }, "input_resolution": { "const": "exact_ordered_read_only_artifact_roles_v1" }, "output_resolution": { "const": "exact_ordered_declared_output_indexes_v1" }, "network_resolution": { "const": "exact_sorted_destination_capability_commitments_v1" }, "failure_behavior": { "const": "nonzero_or_contract_drift_produces_no_accepted_output_or_completion_v1" } } },
+        "mount_output_behavior": { "type": "object", "additionalProperties": false, "required": ["readable_mounts", "output_mounts", "writable_paths", "declared_outputs_only", "outputs_never_readable"], "properties": { "readable_mounts": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/mount" } }, "output_mounts": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/mount" } }, "writable_paths": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "^/" } }, "declared_outputs_only": { "const": true }, "outputs_never_readable": { "const": true } } },
+        "loader_contract": { "type": "object", "additionalProperties": false, "required": ["version", "module_loader", "native_loader", "dynamic_linker", "interpreter", "eval_or_reflection", "undeclared_dependencies"], "properties": { "version": { "const": "gate_h2_zero_loader_native_surface_v1" }, "module_loader": { "const": "absent" }, "native_loader": { "const": "absent" }, "dynamic_linker": { "const": "absent" }, "interpreter": { "const": "absent" }, "eval_or_reflection": { "const": "absent" }, "undeclared_dependencies": { "const": "forbidden" } } },
+        "immutable_copy_contract": { "type": "object", "additionalProperties": false, "required": ["version", "source_consumption_after_preflight", "execution_source", "pre_and_post_source_revalidation", "cleanup_before_completion"], "properties": { "version": { "const": "gate_h2_private_immutable_copy_execution_v1" }, "source_consumption_after_preflight": { "const": "forbidden" }, "execution_source": { "const": "owner_only_retained_exact_copies" }, "pre_and_post_source_revalidation": { "const": true }, "cleanup_before_completion": { "const": true } } }
+      }
+    },
+    "test_universe": { "type": "object", "additionalProperties": false, "required": ["version", "cases", "universe_sha256"], "properties": { "version": { "const": "gate_h2_real_linux_executor_adversarial_universe_v1" }, "cases": { "type": "array", "minItems": 12, "maxItems": 12, "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z0-9_]+$" } }, "universe_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" } } },
+    "test_results": { "type": "object", "additionalProperties": false, "required": ["platform", "immutable_image_digest", "cases", "all_passed", "results_sha256"], "properties": { "platform": { "const": "linux" }, "immutable_image_digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }, "cases": { "type": "array", "minItems": 12, "maxItems": 12, "uniqueItems": true, "items": { "type": "object", "additionalProperties": false, "required": ["name", "result", "evidence_sha256"], "properties": { "name": { "type": "string", "pattern": "^[a-z0-9_]+$" }, "result": { "const": "pass" }, "evidence_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" } } } }, "all_passed": { "const": true }, "results_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" } } },
+    "capability_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "observation": { "$ref": "#/$defs/observation" }, "signer": { "$ref": "#/$defs/signer" }, "signature_base64": { "type": "string", "minLength": 80, "maxLength": 100 }
+  },
+  "$defs": {
+    "bytePin": { "type": "object", "additionalProperties": false, "required": ["sha256", "bytes"], "properties": { "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "bytes": { "type": "integer", "minimum": 1 } } },
+    "filePin": { "type": "object", "additionalProperties": false, "required": ["path", "realpath", "sha256", "bytes", "version"], "properties": { "path": { "type": "string", "pattern": "^/" }, "realpath": { "type": "string", "pattern": "^/" }, "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "bytes": { "type": "integer", "minimum": 1 }, "version": { "type": "string", "minLength": 1 } } },
+    "mount": { "type": "object", "additionalProperties": false, "required": ["artifact_role", "host_path", "guest_path", "mode", "content_sha256"], "properties": { "artifact_role": { "type": "string", "pattern": "^[a-z0-9_]+$" }, "host_path": { "type": "string", "pattern": "^/" }, "guest_path": { "type": "string", "pattern": "^/" }, "mode": { "enum": ["ro", "rw"] }, "content_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" } } },
+    "observation": { "type": "object", "additionalProperties": false, "required": ["observed_at", "principal", "session_id", "route", "physical_route_identity_sha256"], "properties": { "observed_at": { "type": "string", "format": "date-time" }, "principal": { "type": "string", "minLength": 1 }, "session_id": { "type": "string", "minLength": 1 }, "route": { "type": "string", "pattern": "^/" }, "physical_route_identity_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" } } },
+    "signer": { "type": "object", "additionalProperties": false, "required": ["principal", "session_id", "route", "physical_route_identity_sha256", "public_key_pem", "public_key_sha256"], "properties": { "principal": { "type": "string", "minLength": 1 }, "session_id": { "type": "string", "minLength": 1 }, "route": { "type": "string", "pattern": "^/" }, "physical_route_identity_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "public_key_pem": { "type": "string", "pattern": "^-----BEGIN PUBLIC KEY-----" }, "public_key_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" } } }
+  }
+}
