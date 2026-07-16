@@ -8,36 +8,44 @@
     "schema_version": { "const": "reviewed_metrics_pre_activation_attestor_admission_v2.0.0" },
     "status": { "const": "independently_reviewed_and_admitted" },
     "synthetic": { "const": false },
-    "evidence_kind": { "enum": ["d1_live", "linux_sandbox", "pre_activation_verifier"] },
+    "evidence_kind": { "enum": ["executor_semantics_attestor", "executor_conformance_reviewer", "d1_live", "linux_sandbox", "pre_activation_verifier"] },
     "subject": { "$ref": "#/$defs/identity" },
     "reviewed_at": { "type": "string", "format": "date-time" },
     "reviewer": { "$ref": "#/$defs/reviewer" },
-    "signature_base64": { "type": "string", "minLength": 80, "maxLength": 100 }
+    "signature_base64": { "type": "string", "pattern": "^[A-Za-z0-9+/]{86}==$" }
   },
   "$defs": {
     "identity": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["principal", "session_id", "logical_route", "physical_route_identity_sha256", "public_key_sha256"],
-      "properties": {
-        "principal": { "type": "string", "minLength": 1 },
-        "session_id": { "type": "string", "minLength": 1 },
-        "logical_route": { "type": "string", "pattern": "^/" },
-        "physical_route_identity_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
-        "public_key_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
-      }
-    },
-    "reviewer": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["principal", "session_id", "logical_route", "physical_route_identity_sha256", "public_key_sha256", "public_key_pem"],
+      "required": ["principal", "session_id", "logical_route", "physical_route_identity_sha256", "public_key_sha256", "surface_id", "surface_inventory_digest", "canonical_physical_host_id", "trusted_surface_inventory"],
       "properties": {
         "principal": { "type": "string", "minLength": 1 },
         "session_id": { "type": "string", "minLength": 1 },
         "logical_route": { "type": "string", "pattern": "^/" },
         "physical_route_identity_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
         "public_key_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
-        "public_key_pem": { "type": "string", "pattern": "^-----BEGIN PUBLIC KEY-----" }
+        "surface_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "surface_inventory_digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "canonical_physical_host_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "trusted_surface_inventory": { "$ref": "execution-authorization.schema.v2.json#/$defs/surfaceInventory" }
+      }
+    },
+    "reviewer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["principal", "session_id", "logical_route", "physical_route_identity_sha256", "public_key_sha256", "public_key_pem", "surface_id", "surface_inventory_digest", "canonical_physical_host_id", "trusted_surface_inventory"],
+      "properties": {
+        "principal": { "type": "string", "minLength": 1 },
+        "session_id": { "type": "string", "minLength": 1 },
+        "logical_route": { "type": "string", "pattern": "^/" },
+        "physical_route_identity_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "public_key_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "public_key_pem": { "type": "string", "pattern": "^-----BEGIN PUBLIC KEY-----" },
+        "surface_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "surface_inventory_digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "canonical_physical_host_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "trusted_surface_inventory": { "$ref": "execution-authorization.schema.v2.json#/$defs/surfaceInventory" }
       }
     }
   }

@@ -14,7 +14,7 @@
     "attempts": { "type": "array", "minItems": 12, "maxItems": 12, "uniqueItems": true, "items": { "type": "object", "additionalProperties": false, "required": ["stage_id", "attempt_id", "attempted_at", "request_sha256"], "properties": { "stage_id": { "enum": ["visual_predict", "visual_freeze", "source_predict", "source_freeze", "gold_review", "gold_envelope_authoring", "private_prepare", "r2_retain", "private_finalize", "task_review", "metrics_score", "publication_assembly_plan"] }, "attempt_id": { "type": "string", "format": "uuid" }, "attempted_at": { "type": "string", "format": "date-time" }, "request_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" } } } },
     "sealed_at": { "type": "string", "format": "date-time" },
     "coordinator_signer_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
-    "signature_base64": { "type": "string", "minLength": 80 },
+    "signature_base64": { "type": "string", "pattern": "^[A-Za-z0-9+/]{86}==$" },
     "stage_count": { "const": 12 },
     "stages": {
       "type": "array",

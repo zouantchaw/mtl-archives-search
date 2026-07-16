@@ -11,7 +11,7 @@
     "executor_attestation": { "$ref": "#/$defs/bytePin" }, "capability_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
     "test_universe_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "test_results_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
     "decision": { "const": "exact_semantics_and_real_linux_results_conform" }, "reviewed_at": { "type": "string", "format": "date-time" },
-    "reviewer": { "$ref": "#/$defs/signer" }, "signature_base64": { "type": "string", "minLength": 80, "maxLength": 100 }
+    "reviewer": { "$ref": "#/$defs/signer" }, "signature_base64": { "type": "string", "pattern": "^[A-Za-z0-9+/]{86}==$" }
   },
   "$defs": {
     "bytePin": { "type": "object", "additionalProperties": false, "required": ["sha256", "bytes"], "properties": { "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "bytes": { "type": "integer", "minimum": 1 } } },

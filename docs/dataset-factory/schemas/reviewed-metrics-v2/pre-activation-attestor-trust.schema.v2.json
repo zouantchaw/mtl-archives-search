@@ -17,21 +17,25 @@
     {
       "if": { "properties": { "status": { "const": "blocked_no_real_attestors_admitted" } } },
       "then": { "properties": { "attestors": { "maxItems": 0 } } },
-      "else": { "properties": { "attestors": { "minItems": 3, "maxItems": 3 } } }
+      "else": { "properties": { "attestors": { "minItems": 5, "maxItems": 5 } } }
     }
   ],
   "$defs": {
     "attestor": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["evidence_kind", "principal", "session_id", "logical_route", "physical_route_identity_sha256", "public_key_sha256", "admission_commit", "admission_receipt"],
+      "required": ["evidence_kind", "principal", "session_id", "logical_route", "physical_route_identity_sha256", "public_key_sha256", "surface_id", "surface_inventory_digest", "canonical_physical_host_id", "trusted_surface_inventory", "admission_commit", "admission_receipt"],
       "properties": {
-        "evidence_kind": { "enum": ["d1_live", "linux_sandbox", "pre_activation_verifier"] },
+        "evidence_kind": { "enum": ["executor_semantics_attestor", "executor_conformance_reviewer", "d1_live", "linux_sandbox", "pre_activation_verifier"] },
         "principal": { "type": "string", "minLength": 1 },
         "session_id": { "type": "string", "minLength": 1 },
         "logical_route": { "type": "string", "pattern": "^/" },
         "physical_route_identity_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
         "public_key_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "surface_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "surface_inventory_digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "canonical_physical_host_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "trusted_surface_inventory": { "$ref": "execution-authorization.schema.v2.json#/$defs/surfaceInventory" },
         "admission_commit": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
         "admission_receipt": { "$ref": "#/$defs/repositoryPin" }
       }

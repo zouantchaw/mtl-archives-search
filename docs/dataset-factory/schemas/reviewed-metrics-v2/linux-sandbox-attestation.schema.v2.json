@@ -22,7 +22,7 @@
     "repo_tree_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
     "observation": { "$ref": "#/$defs/identity" },
     "signer": { "$ref": "#/$defs/signer" },
-    "signature_base64": { "type": "string", "minLength": 80, "maxLength": 100 }
+    "signature_base64": { "type": "string", "pattern": "^[A-Za-z0-9+/]{86}==$" }
   },
   "$defs": {
     "filePin": { "type": "object", "additionalProperties": false, "required": ["path", "realpath", "sha256", "bytes", "version"], "properties": { "path": { "type": "string", "pattern": "^/" }, "realpath": { "type": "string", "pattern": "^/" }, "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "bytes": { "type": "integer", "minimum": 1 }, "version": { "type": "string", "minLength": 1 } } },
