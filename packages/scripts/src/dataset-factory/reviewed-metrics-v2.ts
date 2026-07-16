@@ -260,8 +260,24 @@ const INTERNAL_SYNTHETIC_AUTHORITIES = new WeakSet<object>();
 let internalSyntheticProcessAuthorized = false;
 const SYNTHETIC_EVALUATOR_KEYS = crypto.generateKeyPairSync("ed25519");
 const SYNTHETIC_COORDINATOR_KEYS = crypto.generateKeyPairSync("ed25519");
-const SYNTHETIC_STAGE_LEDGER_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), "rmv2-stage-ledger-"));
-const SYNTHETIC_STAGE_OUTPUT_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), "rmv2-stage-outputs-"));
+const SYNTHETIC_PROCESS_TEMP_NONCE = crypto.randomBytes(24).toString("hex");
+const SYNTHETIC_PROCESS_TEMP_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), `rmv2-owned-${SYNTHETIC_PROCESS_TEMP_NONCE.slice(0, 16)}-`));
+const SYNTHETIC_PROCESS_TEMP_STAT = fs.lstatSync(SYNTHETIC_PROCESS_TEMP_ROOT);
+const SYNTHETIC_PROCESS_TEMP_MANIFEST = path.join(SYNTHETIC_PROCESS_TEMP_ROOT, "owner.json");
+fs.writeFileSync(SYNTHETIC_PROCESS_TEMP_MANIFEST, `${canon({ schema_version: "gate_h2_synthetic_process_temp_owner_v1", nonce: SYNTHETIC_PROCESS_TEMP_NONCE, pid: process.pid, root: SYNTHETIC_PROCESS_TEMP_ROOT, dev: SYNTHETIC_PROCESS_TEMP_STAT.dev, ino: SYNTHETIC_PROCESS_TEMP_STAT.ino })}\n`, { flag: "wx", mode: 0o400 });
+const SYNTHETIC_STAGE_LEDGER_ROOT = path.join(SYNTHETIC_PROCESS_TEMP_ROOT, "stage-ledger");
+const SYNTHETIC_STAGE_OUTPUT_ROOT = path.join(SYNTHETIC_PROCESS_TEMP_ROOT, "stage-outputs");
+fs.mkdirSync(SYNTHETIC_STAGE_LEDGER_ROOT, { mode: 0o700 }); fs.mkdirSync(SYNTHETIC_STAGE_OUTPUT_ROOT, { mode: 0o700 });
+function cleanupSyntheticProcessTempRoot(): void {
+  if (!fs.existsSync(SYNTHETIC_PROCESS_TEMP_ROOT)) return;
+  try {
+    const rootStat = fs.lstatSync(SYNTHETIC_PROCESS_TEMP_ROOT); const manifestStat = fs.lstatSync(SYNTHETIC_PROCESS_TEMP_MANIFEST);
+    const manifest = JSON.parse(fs.readFileSync(SYNTHETIC_PROCESS_TEMP_MANIFEST, "utf8"));
+    if (!rootStat.isDirectory() || rootStat.isSymbolicLink() || rootStat.dev !== SYNTHETIC_PROCESS_TEMP_STAT.dev || rootStat.ino !== SYNTHETIC_PROCESS_TEMP_STAT.ino || !manifestStat.isFile() || manifestStat.isSymbolicLink() || manifestStat.nlink !== 1 || manifest.nonce !== SYNTHETIC_PROCESS_TEMP_NONCE || manifest.pid !== process.pid || manifest.root !== SYNTHETIC_PROCESS_TEMP_ROOT || manifest.dev !== rootStat.dev || manifest.ino !== rootStat.ino) return;
+    fs.chmodSync(SYNTHETIC_PROCESS_TEMP_MANIFEST, 0o600); fs.rmSync(SYNTHETIC_PROCESS_TEMP_ROOT, { recursive: true, force: true });
+  } catch { /* ownership mismatch fails closed and never removes an unattributed path */ }
+}
+process.once("exit", cleanupSyntheticProcessTempRoot);
 const ENTITY_IOU_THRESHOLD = 0.5;
 const ENTITY_DUPLICATE_IOU_THRESHOLD = 0.98;
 const ENTITY_BBOX_QUANTIZATION = 10_000;
@@ -1364,6 +1380,14 @@ function removeImmutableTreeVerified(immutableRoot: string, primary?: unknown, s
   if (fs.existsSync(immutableRoot)) cleanupError ??= new Error("immutable tree remains after cleanup");
   if (cleanupError !== undefined) throw new GateH2Error("H2_STAGE_IMMUTABLE_CLEANUP", `immutable execution tree cleanup failed${primary instanceof GateH2Error ? ` after ${primary.code}` : primary ? " after the primary stage failure" : ""}`, { primary, cleanupError });
 }
+function syntheticInProcessWrapperSource(): string {
+  return `#!${process.execPath}
+const prefix='--gate-h2-clean-env=';const encoded=process.argv[2];if(!encoded||!encoded.startsWith(prefix))process.exit(97);
+const names=JSON.parse(Buffer.from(encoded.slice(prefix.length),'base64url').toString('utf8'));if(!Array.isArray(names)||new Set(names).size!==names.length||!names.every((name)=>/^[A-Z_][A-Z0-9_]*$/.test(name)))process.exit(98);
+const clean=Object.fromEntries(names.map((name)=>[name,process.env[name]]));for(const name of Object.keys(process.env))delete process.env[name];for(const [name,value] of Object.entries(clean)){if(value===undefined)process.exit(99);process.env[name]=value;}
+const runtime=process.argv[3];const script=process.argv[4];process.argv=[runtime,script,...process.argv.slice(5)];require(script);
+`;
+}
 function externalOperationPreflight(operation: J, outputs: J[], syntheticBoundary = false): ExternalPreflight {
   const snapshots: OperationSnapshot[] = []; let immutableRoot: string | undefined;
   try {
@@ -1429,7 +1453,8 @@ function externalOperationPreflight(operation: J, outputs: J[], syntheticBoundar
   codedAssert(operation.network_policy === "deny_all" ? operation.network_capability_ids.length === 0 : operation.network_capability_ids.length > 0, "H2_STAGE_NETWORK_POLICY", "network policy and capability IDs differ");
   const renderedPrefix = operation.execution_boundary.argv_prefix.map((argument: string) => argument.replaceAll("${IMMUTABLE_ROOT}", immutableRoot!));
   codedAssert(renderedPrefix.every((argument: string) => ![operation.execution_boundary.wrapper.realpath, operation.runtime.realpath, operation.script.realpath, ...operation.artifacts.map((artifact: J) => artifact.pin.realpath)].some((source: string) => argument === source)), "H2_STAGE_IMMUTABLE_TREE", "wrapper arguments retain a consumable original source path");
-  return { executable: syntheticBoundary ? immutableRuntime : immutableWrapper, argv: syntheticBoundary ? [immutableWrapper, immutableRuntime, ...rewrittenArgv] : [...renderedPrefix, immutableRuntime, ...rewrittenArgv], env, snapshots, sourceCwd: operation.cwd, cwd: immutableCwd, outputPaths: operation.declared_output_paths, immutableRoot, dependencyManifest: dependencyTree.manifest };
+  const syntheticEnvironmentArgument = `--gate-h2-clean-env=${Buffer.from(canon(Object.keys(env).sort())).toString("base64url")}`;
+  return { executable: syntheticBoundary ? immutableRuntime : immutableWrapper, argv: syntheticBoundary ? [immutableWrapper, syntheticEnvironmentArgument, immutableRuntime, ...rewrittenArgv] : [...renderedPrefix, immutableRuntime, ...rewrittenArgv], env, snapshots, sourceCwd: operation.cwd, cwd: immutableCwd, outputPaths: operation.declared_output_paths, immutableRoot, dependencyManifest: dependencyTree.manifest };
   } catch (error) {
     for (const snapshot of snapshots) { try { fs.closeSync(snapshot.fd); } catch { /* failed preflight releases all retained descriptors */ } }
     if (immutableRoot) removeImmutableTreeVerified(immutableRoot, error, syntheticBoundary);
@@ -1496,7 +1521,7 @@ function externalOperationContractSelfTest(): J {
     const filePin = (file: string, version = "sha256-pinned-v1") => { const raw = fs.readFileSync(file); return { path: file, realpath: fs.realpathSync(file), sha256: hash(raw), bytes: raw.length, version }; };
     fs.writeFileSync(script, "const fs=require('node:fs');if(require('exact-test-runtime')!=='exact'||fs.readFileSync(process.argv[2],'utf8')!=='sanitized prompt\\n')process.exit(9);fs.writeFileSync(process.env.OUT,JSON.stringify(Object.keys(process.env).sort()));if(process.env.UNDECLARED)fs.writeFileSync(process.env.UNDECLARED,'forbidden');\n", { mode: 0o600 });
     fs.mkdirSync(dependencyRoot, { recursive: true }); fs.writeFileSync(dependencyMember, "module.exports='exact';\n", { mode: 0o400 });
-    fs.writeFileSync(prompt, "sanitized prompt\n", { mode: 0o600 }); fs.writeFileSync(lock, "{\"lockfileVersion\":3}\n", { mode: 0o600 }); fs.writeFileSync(packageManifest, "{\"name\":\"gate-h2-test\",\"private\":true}\n", { mode: 0o600 }); fs.writeFileSync(wrapper, `#!${process.execPath}\nconst {spawnSync}=require('node:child_process');const r=spawnSync(process.argv[2],process.argv.slice(3),{stdio:'inherit',env:process.env});process.exit(r.status??1);\n`, { mode: 0o500 });
+    fs.writeFileSync(prompt, "sanitized prompt\n", { mode: 0o600 }); fs.writeFileSync(lock, "{\"lockfileVersion\":3}\n", { mode: 0o600 }); fs.writeFileSync(packageManifest, "{\"name\":\"gate-h2-test\",\"private\":true}\n", { mode: 0o600 }); fs.writeFileSync(wrapper, syntheticInProcessWrapperSource(), { mode: 0o500 });
     const roots = [wrapper, process.execPath, script, lock, packageManifest, dependencyRoot].map((file) => ({ path: file, realpath: fs.realpathSync(file), discovery_rule: "recursive_regular_files_no_symlinks_v1" })).sort((a, b) => a.realpath.localeCompare(b.realpath));
     const members = roots.flatMap(enumerateDependencyRoot).sort((a: J, b: J) => a.realpath.localeCompare(b.realpath)); const resolutionContract = makeSyntheticResolutionClosure(filePin(wrapper), filePin(process.execPath, process.version), filePin(script), filePin(lock), filePin(packageManifest), roots, members, root); const treeBytes = dependencyTreeBytes(resolutionContract, roots, members);
     fs.writeFileSync(dependencies, pretty({ schema_version: "reviewed_metrics_installed_dependency_tree_v2.3.0", enumeration_contract: "sorted_physical_regular_files_path_sha256_bytes_v2", resolution_contract: resolutionContract, physical_roots: roots, members, tree_sha256: hash(treeBytes), tree_bytes: treeBytes.length, member_count: members.length }), { mode: 0o600 });
@@ -10581,7 +10606,7 @@ if(spec){fs.writeFileSync(spec.ready,'ready',{flag:'wx'});while(!fs.existsSync(s
 const dependency=require('stage-runtime');const prompt=fs.readFileSync(process.argv[2],'utf8');const late=fs.existsSync(require.resolve('stage-runtime').replace(/index\\.js$/,'late-candidate.cjs'));
 if(spec)console.error('H2_CHILD_OBSERVATION:'+JSON.stringify({dependency,prompt,late,script:__filename,argv:process.argv.slice(1)}));
 if(dependency!=='stage'||prompt!=='opaque input\\n'||late)process.exit(9);fs.writeFileSync(process.env.OUT,'{}\\n');
-`, { mode: 0o600 }); fs.writeFileSync(wrapper, `#!${process.execPath}\nconst {spawnSync}=require('node:child_process');const r=spawnSync(process.argv[2],process.argv.slice(3),{stdio:'inherit',env:process.env});process.exit(r.status??1);\n`, { mode: 0o500 }); fs.writeFileSync(prompt, "opaque input\n", { mode: 0o600 }); fs.writeFileSync(lock, "{\"lockfileVersion\":3}\n", { mode: 0o600 }); fs.writeFileSync(packageManifest, "{\"name\":\"stage-run-test\",\"private\":true}\n", { mode: 0o600 });
+`, { mode: 0o600 }); fs.writeFileSync(wrapper, syntheticInProcessWrapperSource(), { mode: 0o500 }); fs.writeFileSync(prompt, "opaque input\n", { mode: 0o600 }); fs.writeFileSync(lock, "{\"lockfileVersion\":3}\n", { mode: 0o600 }); fs.writeFileSync(packageManifest, "{\"name\":\"stage-run-test\",\"private\":true}\n", { mode: 0o600 });
   const roots = [wrapper, process.execPath, script, lock, packageManifest, dependencyRoot].map((file) => ({ path: file, realpath: fs.realpathSync(file), discovery_rule: "recursive_regular_files_no_symlinks_v1" })).sort((a, b) => a.realpath.localeCompare(b.realpath)); const members = roots.flatMap(enumerateDependencyRoot).sort((a: J, b: J) => a.realpath.localeCompare(b.realpath)); const resolutionContract = makeSyntheticResolutionClosure(filePin(wrapper), filePin(process.execPath, process.version), filePin(script), filePin(lock), filePin(packageManifest), roots, members, work); const treeBytes = dependencyTreeBytes(resolutionContract, roots, members); fs.writeFileSync(dependencies, pretty({ schema_version: "reviewed_metrics_installed_dependency_tree_v2.3.0", enumeration_contract: "sorted_physical_regular_files_path_sha256_bytes_v2", resolution_contract: resolutionContract, physical_roots: roots, members, tree_sha256: hash(treeBytes), tree_bytes: treeBytes.length, member_count: members.length }), { mode: 0o600 });
   execFileSync(git, ["add", "."], { cwd: work, env: {} }); execFileSync(git, ["-c", "user.name=Gate H2", "-c", "user.email=gate-h2@example.invalid", "commit", "-q", "-m", "fixture"], { cwd: work, env: {} });
   const repoTree = hash(execFileSync(git, ["rev-parse", "HEAD^{tree}"], { cwd: work, encoding: "utf8", env: {} }).trim());
