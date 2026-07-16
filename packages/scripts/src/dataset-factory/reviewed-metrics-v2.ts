@@ -406,6 +406,7 @@ function verifyEmbeddedSignature(value: J, identityField: "signer" | "reviewer",
   codedAssert(valid, code, `executor ${identityField} signature or canonical public key is invalid`);
 }
 function validateExecutorSemanticsBundle(bundle: J, boundary: J, allowSynthetic = false, trust?: J): void {
+  canonicalLogicalRoute(bundle?.attestation?.observation?.route); canonicalLogicalRoute(bundle?.attestation?.signer?.route); canonicalLogicalRoute(bundle?.conformance_receipt?.reviewer?.route); if (boundary?.signer) canonicalLogicalRoute(boundary.signer.route);
   schema("executor-semantics-attestation.schema.v2.json", bundle.attestation); schema("executor-conformance-receipt.schema.v2.json", bundle.conformance_receipt);
   const attestation = bundle.attestation; const receipt = bundle.conformance_receipt;
   codedAssert(canon(bundle.attestation_pin) === canon(canonicalEmbeddedPin(attestation, "executor-semantics-attestation.schema.v2.json")) && canon(bundle.receipt_pin) === canon(canonicalEmbeddedPin(receipt, "executor-conformance-receipt.schema.v2.json")), "H2_EXECUTOR_SEMANTICS_PIN", "executor attestation or conformance receipt canonical bytes/schema pin differ");
@@ -448,16 +449,41 @@ function syntheticExecutorSemanticsBundle(input: { wrapper: J; runtime: J; stage
   return { capability_id: attestation.capability_id, attestation, attestation_pin: attestationPin, conformance_receipt: receipt, receipt_pin: canonicalEmbeddedPin(receipt, "executor-conformance-receipt.schema.v2.json"), reviewed_predecessor: { commit: "1".repeat(40), repository_path: "docs/dataset-factory/authorities/reviewed-metrics-v2/executor-receipts/internal-nonproduction.json" } };
 }
 const PREACTIVATION_EVIDENCE_KINDS = ["executor_semantics_attestor", "executor_conformance_reviewer", "d1_live", "linux_sandbox", "pre_activation_verifier"] as const;
+const PREACTIVATION_ADMISSION_VALIDITY_POLICY = Object.freeze({
+  version: "gate_h2_pre_activation_admission_validity_v1",
+  admission_max_age_seconds: 86_400,
+  host_inventory_max_age_seconds: 86_400,
+  clock_skew_seconds: 60,
+});
 function attestorIdentity(identity: J): J {
-  return { principal: identity.principal, session_id: identity.session_id, logical_route: identity.route ?? identity.logical_route, physical_route_identity_sha256: identity.physical_route_identity_sha256, public_key_sha256: identity.public_key_sha256 };
+  return { principal: identity.principal, session_id: identity.session_id, logical_route: canonicalLogicalRoute(identity.route ?? identity.logical_route), physical_route_identity_sha256: identity.physical_route_identity_sha256, public_key_sha256: identity.public_key_sha256 };
 }
 function admittedSubject(entry: J): J {
   return { ...attestorIdentity(entry), surface_id: entry.surface_id, surface_inventory_digest: entry.surface_inventory_digest, canonical_physical_host_id: entry.canonical_physical_host_id, trusted_surface_inventory: entry.trusted_surface_inventory };
 }
+function canonicalLogicalRoute(route: unknown): string {
+  codedAssert(typeof route === "string" && route.length > 1 && /^[\x20-\x7e]+$/.test(route), "H2_LOGICAL_ROUTE_CANONICAL", "logical route must be a non-root absolute ASCII route");
+  codedAssert(!route.includes("\\") && !route.includes("%") && !route.includes("\0"), "H2_LOGICAL_ROUTE_CANONICAL", "logical route forbids platform, percent-encoding, and NUL aliases");
+  const segments = route.slice(1).split("/");
+  codedAssert(route.startsWith("/") && segments.every((segment) => segment.length > 0 && segment !== "." && segment !== ".." && /^[A-Za-z0-9._-]+$/.test(segment)), "H2_LOGICAL_ROUTE_CANONICAL", "logical route must contain only canonical nonempty POSIX segments");
+  const canonical = `/${segments.join("/")}`;
+  codedAssert(path.posix.normalize(route) === canonical && route === canonical, "H2_LOGICAL_ROUTE_CANONICAL", "submitted logical route must equal its canonical POSIX form");
+  return canonical;
+}
 function logicalRoutesOverlap(left: string, right: string): boolean {
-  return left === right || isWithin(left, right) || isWithin(right, left);
+  const canonicalLeft = canonicalLogicalRoute(left); const canonicalRight = canonicalLogicalRoute(right);
+  return canonicalLeft === canonicalRight || canonicalLeft.startsWith(`${canonicalRight}/`) || canonicalRight.startsWith(`${canonicalLeft}/`);
 }
 function admissionPayload(value: J): Buffer { const unsigned = structuredClone(value); delete unsigned.signature_base64; return Buffer.from(canon(unsigned)); }
+function admissionEvidenceTime(inventory: J): number {
+  const value = inventory?.physical_host_identity?.measured_at ?? inventory?.physical_host_identity?.pending_time;
+  const parsed = Date.parse(value);
+  codedAssert(typeof value === "string" && Number.isFinite(parsed) && new Date(parsed).toISOString() === value, "H2_PREACTIVATION_ADMISSION_FRESHNESS", "trusted host inventory time must be canonical UTC");
+  return parsed;
+}
+function assertAdmissionValidityPolicy(value: J, code = "H2_PREACTIVATION_ADMISSION_FRESHNESS"): void {
+  codedAssert(canon(value) === canon(PREACTIVATION_ADMISSION_VALIDITY_POLICY), code, "admission validity policy/version differs from the reviewed contract");
+}
 function validateAdmittedSurface(subject: J, coordinatorTrust: J): void {
   const inventory = subject.trusted_surface_inventory;
   const coordinatorKey = parseEd25519PublicKey(coordinatorTrust.public_key_pem, "H2_COORDINATOR_TRUST_KEY");
@@ -466,9 +492,11 @@ function validateAdmittedSurface(subject: J, coordinatorTrust: J): void {
   codedAssert(inventory.physical_host_identity.coordinator_verification_pin === physicalIdentityVerificationPin(inventory.physical_host_identity), "H2_PREACTIVATION_ADMISSION_SURFACE", "admitted physical host verification pin differs");
   codedAssert(crypto.verify(null, inventorySigningPayload(inventory), coordinatorKey, decodeEd25519SignatureBase64(inventory.coordinator_signature_base64, "H2_PREACTIVATION_ADMISSION_SURFACE")), "H2_PREACTIVATION_ADMISSION_SURFACE", "admitted trusted host inventory signature is invalid");
 }
-function validateAdmissionReceipt(receipt: J, entry: J, raw: Buffer, coordinatorTrust: J): void {
+function validateAdmissionReceipt(receipt: J, entry: J, raw: Buffer, coordinatorTrust: J, nowMs: number): void {
+  canonicalLogicalRoute(receipt?.subject?.logical_route); canonicalLogicalRoute(receipt?.reviewer?.logical_route);
   schema("pre-activation-attestor-admission.schema.v2.json", receipt);
   rejectPlaceholderEvidence(receipt);
+  assertAdmissionValidityPolicy(receipt.validity_policy);
   codedAssert(raw.equals(Buffer.from(pretty(receipt))), "H2_PREACTIVATION_ADMISSION", "admission receipt is not canonical JSON");
   codedAssert(receipt.evidence_kind === entry.evidence_kind && canon(receipt.subject) === canon(admittedSubject(entry)), "H2_PREACTIVATION_ADMISSION", "admission receipt subject differs from the registry");
   for (const field of ["principal", "session_id", "physical_route_identity_sha256", "public_key_sha256", "surface_id", "surface_inventory_digest", "canonical_physical_host_id"])
@@ -477,16 +505,19 @@ function validateAdmissionReceipt(receipt: J, entry: J, raw: Buffer, coordinator
   validateAdmittedSurface(receipt.subject, coordinatorTrust); validateAdmittedSurface(receipt.reviewer, coordinatorTrust);
   const key = parseEd25519PublicKey(receipt.reviewer.public_key_pem);
   codedAssert(receipt.reviewer.public_key_sha256 === hash(receipt.reviewer.public_key_pem) && receipt.reviewer.public_key_pem === key.export({ type: "spki", format: "pem" }).toString() && crypto.verify(null, admissionPayload(receipt), key, decodeEd25519SignatureBase64(receipt.signature_base64, "H2_PREACTIVATION_ADMISSION")), "H2_PREACTIVATION_ADMISSION", "admission receipt signature or reviewer key is invalid");
-  const reviewed = Date.parse(receipt.reviewed_at); const subjectMeasured = Date.parse(receipt.subject.trusted_surface_inventory.physical_host_identity.measured_at ?? receipt.subject.trusted_surface_inventory.physical_host_identity.pending_time); const reviewerMeasured = Date.parse(receipt.reviewer.trusted_surface_inventory.physical_host_identity.measured_at ?? receipt.reviewer.trusted_surface_inventory.physical_host_identity.pending_time);
-  codedAssert(Number.isFinite(reviewed) && Number.isFinite(subjectMeasured) && Number.isFinite(reviewerMeasured) && subjectMeasured <= reviewed && reviewerMeasured <= reviewed, "H2_PREACTIVATION_ADMISSION_FRESHNESS", "admission review must follow both trusted host inventory observations");
+  const reviewed = Date.parse(receipt.reviewed_at); const subjectMeasured = admissionEvidenceTime(receipt.subject.trusted_surface_inventory); const reviewerMeasured = admissionEvidenceTime(receipt.reviewer.trusted_surface_inventory);
+  const { admission_max_age_seconds: admissionAge, host_inventory_max_age_seconds: hostAge, clock_skew_seconds: skew } = PREACTIVATION_ADMISSION_VALIDITY_POLICY;
+  codedAssert(Number.isFinite(reviewed) && new Date(reviewed).toISOString() === receipt.reviewed_at && subjectMeasured <= reviewed && reviewerMeasured <= reviewed, "H2_PREACTIVATION_ADMISSION_FRESHNESS", "admission review must strictly follow canonical trusted host inventory observations");
+  codedAssert(reviewed <= nowMs + skew * 1000 && nowMs - reviewed <= admissionAge * 1000, "H2_PREACTIVATION_ADMISSION_FRESHNESS", "admission review is stale or future-dated beyond allowed clock skew");
+  codedAssert(nowMs - subjectMeasured <= hostAge * 1000 && nowMs - reviewerMeasured <= hostAge * 1000 && subjectMeasured <= nowMs + skew * 1000 && reviewerMeasured <= nowMs + skew * 1000, "H2_PREACTIVATION_ADMISSION_FRESHNESS", "trusted host inventory evidence is stale or future-dated beyond allowed clock skew");
 }
-function committedFileAt(commit: string, repositoryPath: string): Buffer {
+function committedFileAt(commit: string, repositoryPath: string, repositoryRoot = ROOT): Buffer {
   const git = trustedExecutable("git");
   try {
-    execFileSync(git, ["cat-file", "-e", `${commit}^{commit}`], { cwd: ROOT, env: {}, stdio: "ignore" });
-    execFileSync(git, ["merge-base", "--is-ancestor", commit, "HEAD"], { cwd: ROOT, env: {}, stdio: "ignore" });
-    codedAssert(commit !== execFileSync(git, ["rev-parse", "HEAD"], { cwd: ROOT, env: {}, encoding: "utf8" }).trim(), "H2_PREACTIVATION_ADMISSION_COMMIT", "admission commit must be a reviewed strict ancestor, not the current commit");
-    return execFileSync(git, ["show", `${commit}:${repositoryPath}`], { cwd: ROOT, env: {}, maxBuffer: 16 * 1024 * 1024 });
+    execFileSync(git, ["cat-file", "-e", `${commit}^{commit}`], { cwd: repositoryRoot, env: {}, stdio: "ignore" });
+    execFileSync(git, ["merge-base", "--is-ancestor", commit, "HEAD"], { cwd: repositoryRoot, env: {}, stdio: "ignore" });
+    codedAssert(commit !== execFileSync(git, ["rev-parse", "HEAD"], { cwd: repositoryRoot, env: {}, encoding: "utf8" }).trim(), "H2_PREACTIVATION_ADMISSION_COMMIT", "admission commit must be a reviewed strict ancestor, not the current commit");
+    return execFileSync(git, ["show", `${commit}:${repositoryPath}`], { cwd: repositoryRoot, env: {}, maxBuffer: 16 * 1024 * 1024 });
   } catch (error) {
     if (error instanceof GateH2Error) throw error;
     throw new GateH2Error("H2_PREACTIVATION_ADMISSION_COMMIT", "admission commit is nonexistent, not an ancestor, or does not contain the pinned receipt");
@@ -494,6 +525,7 @@ function committedFileAt(commit: string, repositoryPath: string): Buffer {
 }
 function validatePreActivationTrustIdentitySet(trust: J): void {
   codedAssert(trust && Array.isArray(trust.attestors), "H2_PREACTIVATION_TRUST", "pre-activation trust registry structure is missing");
+  assertAdmissionValidityPolicy(trust.admission_validity_policy, "H2_PREACTIVATION_TRUST");
   if (trust.status !== "reviewed_real_attestors_admitted") {
     schema("pre-activation-attestor-trust.schema.v2.json", trust);
     codedAssert(trust.attestors.length === 0, "H2_PREACTIVATION_TRUST", "blocked trust registry must not contain attestors");
@@ -501,6 +533,7 @@ function validatePreActivationTrustIdentitySet(trust: J): void {
   }
   codedAssert(trust.attestors.length === 5, "H2_PREACTIVATION_TRUST", "reviewed trust registry requires exactly five entries");
   codedAssert(canon(trust.attestors.map((entry: J) => entry.evidence_kind)) === canon(PREACTIVATION_EVIDENCE_KINDS), "H2_PREACTIVATION_TRUST_KIND", "pre-activation trust registry requires the exact ordered five evidence kinds");
+  for (const entry of trust.attestors) canonicalLogicalRoute(entry.logical_route);
   schema("pre-activation-attestor-trust.schema.v2.json", trust);
   for (const entry of trust.attestors) {
     const inventory = entry.trusted_surface_inventory;
@@ -511,29 +544,36 @@ function validatePreActivationTrustIdentitySet(trust: J): void {
   for (let left = 0; left < trust.attestors.length; left++) for (let right = left + 1; right < trust.attestors.length; right++)
     codedAssert(!logicalRoutesOverlap(trust.attestors[left].logical_route, trust.attestors[right].logical_route), "H2_PREACTIVATION_INDEPENDENCE", "admitted logical routes must not equal, contain, or descend from each other");
 }
-function validatePreActivationTrustRegistry(trust: J, coordinatorTrust?: J): Map<string, J> {
+function validatePreActivationTrustRegistry(trust: J, coordinatorTrust?: J, options: { now?: number; repositoryRoot?: string } = {}): Map<string, J> {
   validatePreActivationTrustIdentitySet(trust);
   const admissions = new Map<string, J>();
   if (trust.status !== "reviewed_real_attestors_admitted") return admissions;
   codedAssert(coordinatorTrust !== undefined, "H2_COORDINATOR_TRUST_KEY", "active attestor registry requires the exact coordinator trust key");
+  const nowMs = options.now ?? Date.now(); codedAssert(Number.isFinite(nowMs), "H2_PREACTIVATION_ADMISSION_FRESHNESS", "registry consumption time must be finite");
   for (const entry of trust.attestors) {
-    const raw = committedFileAt(entry.admission_commit, entry.admission_receipt.path);
+    const raw = committedFileAt(entry.admission_commit, entry.admission_receipt.path, options.repositoryRoot ?? ROOT);
     codedAssert(raw.length === entry.admission_receipt.bytes && hash(raw) === entry.admission_receipt.sha256, "H2_PREACTIVATION_ADMISSION", "committed admission receipt differs from the reviewed registry pin");
     let receipt: J; try { receipt = JSON.parse(raw.toString("utf8")); } catch { throw new GateH2Error("H2_PREACTIVATION_ADMISSION", "committed admission receipt is not JSON"); }
-    validateAdmissionReceipt(receipt, entry, raw, coordinatorTrust); admissions.set(entry.evidence_kind, receipt);
+    validateAdmissionReceipt(receipt, entry, raw, coordinatorTrust, nowMs); admissions.set(entry.evidence_kind, receipt);
   }
   return admissions;
 }
+function validateAdmissionEvidenceUse(admissions: Map<string, J>, kind: string, usedAt: string, nowMs: number): void {
+  const receipt = admissions.get(kind); codedAssert(receipt !== undefined, "H2_PREACTIVATION_ADMISSION_FRESHNESS", `${kind} admission receipt is unavailable at evidence use`);
+  assertAdmissionValidityPolicy(receipt.validity_policy);
+  const reviewed = Date.parse(receipt.reviewed_at); const used = Date.parse(usedAt); const { admission_max_age_seconds: maxAge, clock_skew_seconds: skew } = PREACTIVATION_ADMISSION_VALIDITY_POLICY;
+  codedAssert(Number.isFinite(used) && new Date(used).toISOString() === usedAt && reviewed <= used && used <= nowMs + skew * 1000 && used - reviewed <= maxAge * 1000, "H2_PREACTIVATION_ADMISSION_FRESHNESS", `${kind} evidence use must chronologically follow a still-valid admission and not postdate consumption beyond clock skew`);
+}
 function trustedPreActivationIdentity(trust: J, kind: string, identity: J): boolean {
   const expected = { evidence_kind: kind, ...attestorIdentity(identity) };
-  return trust.attestors.some((entry: J) => Object.entries(expected).every(([field, value]) => entry[field] === value));
+  return trust.attestors.some((entry: J) => Object.entries(expected).every(([field, value]) => field === "logical_route" ? canonicalLogicalRoute(entry[field]) === value : entry[field] === value));
 }
 function assertAdmittedAuthorityIndependence(trust: J, authority: J): void {
   const authorityRoles = ["implementation", "predictor", "search_predictor", "private_evaluator", "gold_reviewer", "task_reviewer", "publisher"];
   const actorIdentities = authorityRoles.map((role) => {
     const actor = authority[role]; const inventory = authority.trusted_surface_inventory.find((candidate: J) => trustedInventoryDigest(candidate) === actor.surface_inventory_digest);
     codedAssert(inventory !== undefined, "H2_ROUTE_INVENTORY_EXACT_SET", `authority ${role} inventory is missing during admission independence validation`);
-    return { role, principal: actor.principal, session_id: actor.session_id, logical_route: actor.route, surface_id: actor.surface_id, surface_inventory_digest: actor.surface_inventory_digest, canonical_physical_host_id: inventory.canonical_physical_host_id, public_key_sha256: actor.signing_public_key_pem ? hash(actor.signing_public_key_pem) : undefined };
+    return { role, principal: actor.principal, session_id: actor.session_id, logical_route: canonicalLogicalRoute(actor.route), surface_id: actor.surface_id, surface_inventory_digest: actor.surface_inventory_digest, canonical_physical_host_id: inventory.canonical_physical_host_id, public_key_sha256: actor.signing_public_key_pem ? hash(actor.signing_public_key_pem) : undefined };
   });
   for (const admitted of trust.attestors) {
     codedAssert(admitted.public_key_sha256 !== authority.coordinator_trust.public_key_sha256, "H2_PREACTIVATION_INDEPENDENCE", `${admitted.evidence_kind} key overlaps coordinator authority`);
@@ -564,6 +604,7 @@ function reviewedTrustSnapshot(coordinatorTrust?: J): FileSnapshot {
   }
 }
 function validateD1LiveAttestation(value: J): void {
+  canonicalLogicalRoute(value?.observation?.route); canonicalLogicalRoute(value?.signer?.route);
   validateSignedAttestation(value, "d1-live-attestation.schema.v2.json");
   const canonicalRows = [...value.deployed_schema.canonical_rows].sort((a: J, b: J) => `${a.type}\0${a.name}`.localeCompare(`${b.type}\0${b.name}`));
   const schemaBytes = Buffer.from(`${canon(canonicalRows)}\n`);
@@ -573,6 +614,7 @@ function validateD1LiveAttestation(value: J): void {
   codedAssert(value.deployed_schema.canonical_schema_sha256 === expected.sha256 && value.deployed_schema.canonical_schema_bytes === expected.bytes && canon(canonicalRows) === canon(expected.rows) && value.deployed_schema.migration_sha256 === hash(migration) && value.deployed_schema.migration_bytes === migration.length, "H2_PREACTIVATION_D1_SCHEMA", "live D1 attestation differs from the exact repository migration tables/indexes/triggers");
 }
 function validateLinuxSandboxAttestation(value: J, allowSyntheticExecutorSemantics = false, trust?: J): void {
+  canonicalLogicalRoute(value?.observation?.route); canonicalLogicalRoute(value?.signer?.route);
   validateSignedAttestation(value, "linux-sandbox-attestation.schema.v2.json", allowSyntheticExecutorSemantics);
   codedAssert(value.wrapper_grammar_version === "gate_h2_linux_wrapper_argv_v3" && canon(value.argv_prefix) === canon(deriveSandboxArgvPrefix(value)), "H2_PREACTIVATION_SANDBOX_ARGV", "sandbox argv prefix is not the exact typed grammar derived from signed image, mounts, network, runtime, capabilities, and fixed allowlist");
   codedAssert(value.network.policy === "deny_all" ? value.network.destination_capability_ids.length === 0 : value.network.destination_capability_ids.length > 0, "H2_PREACTIVATION_SANDBOX_NETWORK", "sandbox network policy and destination capabilities differ");
@@ -4248,7 +4290,7 @@ function validatePreActivationAuthority(authority: J, allowSyntheticExecutorSema
     const observed = Date.parse(attestation.observation.observed_at); const authorized = Date.parse(authority.authorized_at);
     codedAssert(Number.isFinite(observed) && observed <= authorized && authorized - observed <= pins.max_age_seconds * 1000, "H2_PREACTIVATION_STALE", `${name} attestation is stale or postdates authority activation`);
   }
-  schema("pre-activation-verification.schema.v2.json", verification); rejectPlaceholderEvidence(verification);
+  canonicalLogicalRoute(verification?.verifier?.route); schema("pre-activation-verification.schema.v2.json", verification); rejectPlaceholderEvidence(verification); assertAdmissionValidityPolicy(verification.admission_validity_policy);
   const verificationKey = parseEd25519PublicKey(verification.verifier.public_key_pem); let verificationValid = false;
   try { verificationValid = crypto.verify(null, unsignedAttestationPayload(verification), verificationKey, decodeEd25519SignatureBase64(verification.signature_base64, "H2_PREACTIVATION_VERIFICATION")); } catch (error) { if (error instanceof GateH2Error) throw error; verificationValid = false; }
   codedAssert(verification.synthetic === false && verificationValid && verification.verifier.public_key_pem === verificationKey.export({ type: "spki", format: "pem" }).toString() && verification.verifier.public_key_sha256 === hash(verification.verifier.public_key_pem), "H2_PREACTIVATION_VERIFICATION", "pre-activation live verification receipt signature is invalid");
@@ -4265,6 +4307,7 @@ function validatePreActivationAuthority(authority: J, allowSyntheticExecutorSema
   for (const use of admittedUses) {
     const reviewed = Date.parse(admissions.get(use.kind)?.reviewed_at); const used = Date.parse(use.used_at);
     codedAssert(Number.isFinite(reviewed) && Number.isFinite(used) && reviewed <= used && used <= authorized, "H2_PREACTIVATION_ADMISSION_FRESHNESS", `${use.kind} admission must predate evidence use and authority activation`);
+    validateAdmissionEvidenceUse(admissions, use.kind, use.used_at, authorized);
   }
   codedAssert(d1.account_capability_digest === authority.stage_execution.ledger.account_capability_digest && d1.database_uuid_digest === authority.stage_execution.ledger.database_uuid_digest && d1.namespace_digest === authority.stage_execution.ledger.namespace_digest && d1.deployed_schema.canonical_schema_sha256 === authority.stage_execution.ledger.table_schema_sha256 && d1.deployed_schema.canonical_schema_bytes === authority.stage_execution.ledger.table_schema_bytes, "H2_PREACTIVATION_D1_BINDING", "authority D1 ledger differs from live signed attestation");
   for (const entry of authority.stage_execution.stages.filter((candidate: J) => candidate.operation.kind === "external_command")) {
@@ -10880,7 +10923,7 @@ async function preActivationFailClosedSelfTest(root: string): Promise<J> {
     const values = { authority: syntheticExecutionAuthority(hash("preactivation-bundle-alpha")), d1: structuredClone(d1), sandbox: structuredClone(sandbox), verification: {} as J };
     values.authority.schema_version = "reviewed_metrics_execution_authorization_v2.4.0"; values.authority.authorized_at = new Date(Date.now()).toISOString(); values.authority.stage_execution.ledger = { ...values.authority.stage_execution.ledger, account_capability_digest: d1.account_capability_digest, database_uuid_digest: d1.database_uuid_digest, namespace_digest: d1.namespace_digest, table_schema_sha256: schemaEvidence.sha256, table_schema_bytes: schemaEvidence.bytes };
     const d1Pin = writeArtifact(`d1-${crypto.randomUUID()}.json`, values.d1); const sandboxPin = writeArtifact(`sandbox-${crypto.randomUUID()}.json`, values.sandbox);
-    values.verification = sign({ schema_version: "reviewed_metrics_pre_activation_verification_v2.1.0", status: "live_prerequisites_verified", synthetic: false, d1_attestation: { sha256: d1Pin.sha256, bytes: d1Pin.bytes }, sandbox_attestation: { sha256: sandboxPin.sha256, bytes: sandboxPin.bytes }, live_d1_schema_sha256: schemaEvidence.sha256, executor_capability_ids: values.sandbox.executor_semantics.map((bundle: J) => bundle.capability_id).sort(), verified_at: verifiedAt, verifier: verifierIdentity, signature_base64: "" }, 2);
+    values.verification = sign({ schema_version: "reviewed_metrics_pre_activation_verification_v2.2.0", status: "live_prerequisites_verified", synthetic: false, d1_attestation: { sha256: d1Pin.sha256, bytes: d1Pin.bytes }, sandbox_attestation: { sha256: sandboxPin.sha256, bytes: sandboxPin.bytes }, live_d1_schema_sha256: schemaEvidence.sha256, executor_capability_ids: values.sandbox.executor_semantics.map((bundle: J) => bundle.capability_id).sort(), admission_validity_policy: PREACTIVATION_ADMISSION_VALIDITY_POLICY, verified_at: verifiedAt, verifier: verifierIdentity, signature_base64: "" }, 2);
     mutate?.(values);
     const finalD1Pin = writeArtifact(`d1-final-${crypto.randomUUID()}.json`, values.d1); const finalSandboxPin = writeArtifact(`sandbox-final-${crypto.randomUUID()}.json`, values.sandbox); values.verification.d1_attestation = { sha256: finalD1Pin.sha256, bytes: finalD1Pin.bytes }; values.verification.sandbox_attestation = { sha256: finalSandboxPin.sha256, bytes: finalSandboxPin.bytes }; values.verification.signature_base64 = crypto.sign(null, unsignedAttestationPayload(values.verification), keys[2].privateKey).toString("base64"); const verificationPin = writeArtifact(`verification-${crypto.randomUUID()}.json`, values.verification);
     const attestationPin = (artifact: J, schemaName: string, signer: J) => ({ artifact, schema_sha256: schemaFilePin(schemaName).sha256, attestor_principal: signer.principal, attestor_session_id: signer.session_id, attestor_route: signer.route, attestor_physical_route_identity_sha256: signer.physical_route_identity_sha256, signer_public_key_sha256: signer.public_key_sha256 });
@@ -10907,13 +10950,15 @@ async function preActivationFailClosedSelfTest(root: string): Promise<J> {
   const raceAuthorityFile = path.join(root, "preactivation-race-authority.json"); fs.writeFileSync(raceAuthorityFile, pretty(raceAuthority), { mode: 0o600 });
   const raceD1 = raceAuthority.pre_activation_attestations.d1.artifact.path; const raceSandbox = raceAuthority.pre_activation_attestations.sandbox.artifact.path;
   const trustEntry = (kind: string, identityValue: J, index: number): J => { const instanceSuffix = (index + 1).toString(16).padStart(2, "0"); const inventory = syntheticAwsInventory(`admitted_${index + 1}`, { instance_id: `i-abcdef12345678${instanceSuffix}`, identity_document_sha256: hash(`admitted-iid-${index}`), identity_signature_pkcs7_sha256: hash(`admitted-pkcs7-${index}`) }); return { evidence_kind: kind, ...attestorIdentity(identityValue), surface_id: trustedSurfaceId(inventory), surface_inventory_digest: trustedInventoryDigest(inventory), canonical_physical_host_id: inventory.canonical_physical_host_id, trusted_surface_inventory: inventory, admission_commit: String(index + 1).repeat(40), admission_receipt: { path: `docs/dataset-factory/authorities/reviewed-metrics-v2/admissions/internal-${index + 1}.json`, sha256: hash(`internal-admission-${index}`), bytes: 100 + index } }; };
-  const trustValue = { schema_version: "reviewed_metrics_pre_activation_attestor_trust_v2.1.0", status: "reviewed_real_attestors_admitted", attestors: [trustEntry("executor_semantics_attestor", executorSemantics.attestation.signer, 0), trustEntry("executor_conformance_reviewer", executorSemantics.conformance_receipt.reviewer, 1), trustEntry("d1_live", d1Identity, 2), trustEntry("linux_sandbox", sandboxIdentity, 3), trustEntry("pre_activation_verifier", verifierIdentity, 4)] };
+  const trustValue = { schema_version: "reviewed_metrics_pre_activation_attestor_trust_v2.2.0", status: "reviewed_real_attestors_admitted", admission_validity_policy: PREACTIVATION_ADMISSION_VALIDITY_POLICY, attestors: [trustEntry("executor_semantics_attestor", executorSemantics.attestation.signer, 0), trustEntry("executor_conformance_reviewer", executorSemantics.conformance_receipt.reviewer, 1), trustEntry("d1_live", d1Identity, 2), trustEntry("linux_sandbox", sandboxIdentity, 3), trustEntry("pre_activation_verifier", verifierIdentity, 4)] };
   const expectAuthorityIndependence = (label: string, mutate: (trustCandidate: J, authorityCandidate: J) => void): void => { const trustCandidate = structuredClone(trustValue); const authorityCandidate = structuredClone(raceAuthority); mutate(trustCandidate, authorityCandidate); let observed = ""; try { assertAdmittedAuthorityIndependence(trustCandidate, authorityCandidate); } catch (error) { observed = error instanceof GateH2Error ? error.code : ""; } codedAssert(observed === "H2_PREACTIVATION_INDEPENDENCE", "H2_PREACTIVATION_TRUST_TEST", `${label} did not reject authority-controlled identity route/surface`); };
   expectAuthorityIndependence("two-keys-claimed-executor-attestor-on-authority-route", (trustCandidate, authorityCandidate) => { authorityCandidate.implementation.route = trustCandidate.attestors[0].logical_route; });
   expectAuthorityIndependence("two-keys-claimed-executor-reviewer-on-authority-surface", (trustCandidate, authorityCandidate) => { const inventory = authorityCandidate.trusted_surface_inventory.find((entry: J) => trustedInventoryDigest(entry) === authorityCandidate.implementation.surface_inventory_digest); trustCandidate.attestors[1].surface_id = authorityCandidate.implementation.surface_id; trustCandidate.attestors[1].surface_inventory_digest = authorityCandidate.implementation.surface_inventory_digest; trustCandidate.attestors[1].canonical_physical_host_id = inventory.canonical_physical_host_id; trustCandidate.attestors[1].trusted_surface_inventory = structuredClone(inventory); });
   const expectTrust = (field: string, code: string, mutate: (candidate: J) => void): void => { const candidate = structuredClone(trustValue); mutate(candidate); let observed = ""; try { validatePreActivationTrustIdentitySet(candidate); } catch (error) { observed = error instanceof GateH2Error ? error.code : ""; } codedAssert(observed === code, "H2_PREACTIVATION_TRUST_TEST", `${field} expected ${code}, observed ${observed || "none"}`); };
   for (const field of ["principal", "session_id", "logical_route", "physical_route_identity_sha256", "public_key_sha256"]) expectTrust(field, "H2_PREACTIVATION_INDEPENDENCE", (candidate) => { candidate.attestors[1][field] = candidate.attestors[0][field]; });
   expectTrust("logical-route-ancestor", "H2_PREACTIVATION_INDEPENDENCE", (candidate) => { candidate.attestors[1].logical_route = `${candidate.attestors[0].logical_route}/descendant`; });
+  const routeAliases = ["/opt/gate/b/../a", "/opt/gate//a", "/opt/gate/a/", "/opt/gate/./a", "\\opt\\gate\\a", "/opt/gate/%61", "/opt/gate/a\u0301", "/opt/gate/a\0alias", "opt/gate/a"];
+  for (const [index, alias] of routeAliases.entries()) expectTrust(`logical-route-alias-${index}`, "H2_LOGICAL_ROUTE_CANONICAL", (candidate) => { candidate.attestors[0].logical_route = "/opt/gate/a"; candidate.attestors[1].logical_route = alias; });
   expectTrust("same-trusted-surface", "H2_PREACTIVATION_INDEPENDENCE", (candidate) => { for (const field of ["surface_id", "surface_inventory_digest", "canonical_physical_host_id", "trusted_surface_inventory"]) candidate.attestors[1][field] = structuredClone(candidate.attestors[0][field]); });
   expectTrust("substituted-host-inventory", "H2_PREACTIVATION_ADMISSION_SURFACE", (candidate) => { candidate.attestors[0].trusted_surface_inventory = structuredClone(candidate.attestors[1].trusted_surface_inventory); });
   expectTrust("omitted-executor-reviewer-admission", "H2_PREACTIVATION_TRUST", (candidate) => { candidate.attestors.splice(1, 1); });
@@ -10933,26 +10978,95 @@ async function preActivationFailClosedSelfTest(root: string): Promise<J> {
   expectTrustSubprocess("wrong-kind", (candidate) => { candidate.attestors[1].evidence_kind = "d1_live"; }, "H2_PREACTIVATION_TRUST_KIND");
   expectTrustSubprocess("nonexistent-commit", () => {}, "H2_PREACTIVATION_ADMISSION_COMMIT", true);
   const currentCommit = execFileSync(trustedExecutable("git"), ["rev-parse", "HEAD"], { cwd: ROOT, env: {}, encoding: "utf8" }).trim(); expectTrustSubprocess("non-prior-current-commit", (candidate) => { candidate.attestors[0].admission_commit = currentCommit; }, "H2_PREACTIVATION_ADMISSION_COMMIT", true);
+  const admissionRepository = path.join(root, "admission-git-repository"); fs.mkdirSync(admissionRepository);
+  const git = trustedExecutable("git"); const gitRun = (args: string[], encoding?: BufferEncoding): string => execFileSync(git, args, { cwd: admissionRepository, env: {}, encoding: encoding ?? "utf8" }).trim();
+  gitRun(["init", "--quiet"]); gitRun(["config", "user.name", "Gate H2 Test"]); gitRun(["config", "user.email", "gate-h2-test@example.invalid"]);
+  const admissionNow = Date.parse("2026-07-15T00:30:00.000Z"); const coordinatorTrust = syntheticExecutionAuthority(hash("admission-coordinator")).coordinator_trust;
+  const admissionReviewerKeys: ReturnType<typeof crypto.generateKeyPairSync>[] = []; const admissionReceipts: J[] = []; const admissionEntries: J[] = [];
+  for (let index = 0; index < PREACTIVATION_EVIDENCE_KINDS.length; index++) {
+    const subjectKeys = crypto.generateKeyPairSync("ed25519"); const subjectPem = subjectKeys.publicKey.export({ type: "spki", format: "pem" }).toString();
+    const subjectInventory = syntheticAwsInventory(`subject_${index}`, { instance_id: `i-abcdef12345678${(index + 1).toString(16).padStart(2, "0")}`, identity_document_sha256: hash(`subject-iid-${index}`), identity_signature_pkcs7_sha256: hash(`subject-pkcs7-${index}`) });
+    subjectInventory.inventory_id = `admitted_subject_host_${index}`; subjectInventory.coordinator_signature_base64 = crypto.sign(null, inventorySigningPayload(subjectInventory), SYNTHETIC_COORDINATOR_KEYS.privateKey).toString("base64");
+    const subjectRoute = `/evidence/gate-h2/subject-${index}`;
+    const sourceEntry = { evidence_kind: PREACTIVATION_EVIDENCE_KINDS[index], principal: `admitted-subject-${index}`, session_id: `admitted-subject-session-${index}`, logical_route: subjectRoute, physical_route_identity_sha256: hash(`subject-route-${index}`), public_key_sha256: hash(subjectPem), surface_id: trustedSurfaceId(subjectInventory), surface_inventory_digest: trustedInventoryDigest(subjectInventory), canonical_physical_host_id: subjectInventory.canonical_physical_host_id, trusted_surface_inventory: subjectInventory };
+    const reviewerKeys = crypto.generateKeyPairSync("ed25519"); admissionReviewerKeys.push(reviewerKeys);
+    const reviewerPem = reviewerKeys.publicKey.export({ type: "spki", format: "pem" }).toString();
+    const reviewerInventory = syntheticAwsInventory(`admission_reviewer_${index}`, { instance_id: `i-fedcba98765432${(index + 1).toString(16).padStart(2, "0")}`, identity_document_sha256: hash(`reviewer-iid-${index}`), identity_signature_pkcs7_sha256: hash(`reviewer-pkcs7-${index}`) }); reviewerInventory.inventory_id = `admission_reviewer_host_${index}`; reviewerInventory.coordinator_signature_base64 = crypto.sign(null, inventorySigningPayload(reviewerInventory), SYNTHETIC_COORDINATOR_KEYS.privateKey).toString("base64");
+    const reviewer = { principal: `admission-reviewer-${index}`, session_id: `admission-reviewer-session-${index}`, logical_route: `/review/gate-h2/admission-${index}`, physical_route_identity_sha256: hash(`reviewer-route-${index}`), public_key_sha256: hash(reviewerPem), public_key_pem: reviewerPem, surface_id: trustedSurfaceId(reviewerInventory), surface_inventory_digest: trustedInventoryDigest(reviewerInventory), canonical_physical_host_id: reviewerInventory.canonical_physical_host_id, trusted_surface_inventory: reviewerInventory };
+    const receipt: J = { schema_version: "reviewed_metrics_pre_activation_attestor_admission_v2.1.0", status: "independently_reviewed_and_admitted", synthetic: false, evidence_kind: sourceEntry.evidence_kind, subject: admittedSubject(sourceEntry), reviewed_at: new Date(Date.parse("2026-07-15T00:10:00.000Z") + index * 1000).toISOString(), validity_policy: PREACTIVATION_ADMISSION_VALIDITY_POLICY, reviewer, signature_base64: "" };
+    receipt.signature_base64 = crypto.sign(null, admissionPayload(receipt), reviewerKeys.privateKey).toString("base64"); const raw = Buffer.from(pretty(receipt));
+    const repositoryPath = `docs/dataset-factory/authorities/reviewed-metrics-v2/admissions/admission-${index}.json`; const absolutePath = path.join(admissionRepository, repositoryPath); fs.mkdirSync(path.dirname(absolutePath), { recursive: true }); fs.writeFileSync(absolutePath, raw);
+    gitRun(["add", repositoryPath]); gitRun(["commit", "--quiet", "-m", `admission ${index}`]);
+    const entry = { ...sourceEntry, admission_commit: gitRun(["rev-parse", "HEAD"]), admission_receipt: { path: repositoryPath, sha256: hash(raw), bytes: raw.length } };
+    admissionReceipts.push(receipt); admissionEntries.push(entry);
+  }
+  const acceptedTrust = { schema_version: "reviewed_metrics_pre_activation_attestor_trust_v2.2.0", status: "reviewed_real_attestors_admitted", admission_validity_policy: PREACTIVATION_ADMISSION_VALIDITY_POLICY, attestors: admissionEntries };
+  const registryPath = "docs/dataset-factory/authorities/reviewed-metrics-v2/pre-activation-attestor-trust-v2.json"; const registryAbsolute = path.join(admissionRepository, registryPath); fs.writeFileSync(registryAbsolute, pretty(acceptedTrust)); gitRun(["add", registryPath]); gitRun(["commit", "--quiet", "-m", "exact admission registry descendant"]);
+  const acceptedAdmissions = validatePreActivationTrustRegistry(acceptedTrust, coordinatorTrust, { now: admissionNow, repositoryRoot: admissionRepository });
+  codedAssert(acceptedAdmissions.size === 5 && execFileSync(git, ["show", `HEAD:${registryPath}`], { cwd: admissionRepository, env: {} }).equals(Buffer.from(pretty(acceptedTrust))), "H2_PREACTIVATION_TRUST_TEST", "real temporary Git DAG did not accept exact five signed strict-ancestor admissions and registry descendant");
+  const expectRegistryReject = (label: string, candidate: J, code: string, now = admissionNow): void => { let observed = ""; try { validatePreActivationTrustRegistry(candidate, coordinatorTrust, { now, repositoryRoot: admissionRepository }); } catch (error) { observed = error instanceof GateH2Error ? error.code : "schema"; } codedAssert(observed === code, "H2_PREACTIVATION_TRUST_TEST", `${label} expected ${code}, observed ${observed || "none"}`); };
+  const alteredReceiptPin = structuredClone(acceptedTrust); alteredReceiptPin.attestors[0].admission_receipt.sha256 = hash("altered-receipt"); expectRegistryReject("git-dag-altered-receipt", alteredReceiptPin, "H2_PREACTIVATION_ADMISSION");
+  const alteredCommit = structuredClone(acceptedTrust); alteredCommit.attestors[0].admission_commit = gitRun(["rev-parse", "HEAD"]); expectRegistryReject("git-dag-altered-commit", alteredCommit, "H2_PREACTIVATION_ADMISSION_COMMIT");
+  const alteredRoute = structuredClone(acceptedTrust); alteredRoute.attestors[1].logical_route = `${alteredRoute.attestors[0].logical_route}/../${path.posix.basename(alteredRoute.attestors[1].logical_route)}`; expectRegistryReject("git-dag-altered-route-alias", alteredRoute, "H2_LOGICAL_ROUTE_CANONICAL");
+  const resignAdmissionAt = (index: number, reviewedAt: string): { receipt: J; raw: Buffer } => { const receipt = structuredClone(admissionReceipts[index]); receipt.reviewed_at = reviewedAt; receipt.signature_base64 = crypto.sign(null, admissionPayload(receipt), admissionReviewerKeys[index].privateKey).toString("base64"); return { receipt, raw: Buffer.from(pretty(receipt)) }; };
+  const expectSignedTime = (label: string, reviewedAt: string, now: number, accepted: boolean): void => { const candidate = resignAdmissionAt(0, reviewedAt); let observed = ""; try { validateAdmissionReceipt(candidate.receipt, admissionEntries[0], candidate.raw, coordinatorTrust, now); } catch (error) { observed = error instanceof GateH2Error ? error.code : "schema"; } codedAssert(accepted ? observed === "" : observed === "H2_PREACTIVATION_ADMISSION_FRESHNESS", "H2_PREACTIVATION_TRUST_TEST", `${label} signed admission boundary result was ${observed || "accepted"}`); };
+  const exactBoundaryReview = "2026-07-15T00:00:00.000Z"; const exactBoundaryNow = Date.parse("2026-07-16T00:00:00.000Z");
+  expectSignedTime("signed-exact-max-age-boundary", exactBoundaryReview, exactBoundaryNow, true);
+  expectSignedTime("signed-stale-over-boundary", exactBoundaryReview, exactBoundaryNow + 1, false);
+  expectSignedTime("signed-exact-future-skew-boundary", new Date(admissionNow + PREACTIVATION_ADMISSION_VALIDITY_POLICY.clock_skew_seconds * 1000).toISOString(), admissionNow, true);
+  expectSignedTime("signed-future-over-boundary", new Date(admissionNow + PREACTIVATION_ADMISSION_VALIDITY_POLICY.clock_skew_seconds * 1000 + 1).toISOString(), admissionNow, false);
+  const staleCommitted = resignAdmissionAt(0, exactBoundaryReview); const staleReceiptPath = admissionEntries[0].admission_receipt.path; fs.writeFileSync(path.join(admissionRepository, staleReceiptPath), staleCommitted.raw); gitRun(["add", staleReceiptPath]); gitRun(["commit", "--quiet", "-m", "adversarial stale signed admission"]);
+  const staleCommittedTrust = structuredClone(acceptedTrust); staleCommittedTrust.attestors[0].admission_commit = gitRun(["rev-parse", "HEAD"]); staleCommittedTrust.attestors[0].admission_receipt = { path: staleReceiptPath, sha256: hash(staleCommitted.raw), bytes: staleCommitted.raw.length };
+  fs.writeFileSync(registryAbsolute, pretty(staleCommittedTrust)); gitRun(["add", registryPath]); gitRun(["commit", "--quiet", "-m", "adversarial stale registry descendant"]); expectRegistryReject("git-dag-altered-signed-time", staleCommittedTrust, "H2_PREACTIVATION_ADMISSION_FRESHNESS", exactBoundaryNow + 1);
   const untrustedKeys = crypto.generateKeyPairSync("ed25519"); const untrustedPem = untrustedKeys.publicKey.export({ type: "spki", format: "pem" }).toString(); const untrustedD1 = structuredClone(load(raceD1)); untrustedD1.signer = { ...untrustedD1.signer, principal: "untrusted-attestor", session_id: "untrusted-session", route: "/opt/gate-h2/untrusted-attestor", physical_route_identity_sha256: physicalRouteIdentitySha256("/opt/gate-h2/untrusted-attestor"), public_key_pem: untrustedPem, public_key_sha256: hash(untrustedPem) }; untrustedD1.observation = { ...untrustedD1.observation, principal: untrustedD1.signer.principal, session_id: untrustedD1.signer.session_id, route: untrustedD1.signer.route, physical_route_identity_sha256: untrustedD1.signer.physical_route_identity_sha256 }; untrustedD1.signature_base64 = crypto.sign(null, unsignedAttestationPayload(untrustedD1), untrustedKeys.privateKey).toString("base64"); const untrustedD1File = path.join(root, "correctly-signed-untrusted-d1.json"); fs.writeFileSync(untrustedD1File, pretty(untrustedD1), { mode: 0o600 }); const untrustedOutput = path.join(root, "untrusted-receipt.json"); const untrustedArgs = baseVerifierArgs(untrustedOutput); untrustedArgs[untrustedArgs.indexOf(raceD1)] = untrustedD1File; let untrustedStderr = ""; try { execFileSync(cli, untrustedArgs, { cwd: ROOT, env: { ...process.env, GATE_H2_INTERNAL_TEST_CAPABILITY: capability, GATE_H2_INTERNAL_PREACTIVATION_TRUST: trustFile, GATE_H2_INTERNAL_D1_FIXTURE: fixtureFile }, stdio: ["ignore", "ignore", "pipe"] }); } catch (error) { untrustedStderr = (error as { stderr?: Buffer }).stderr?.toString("utf8") ?? ""; } codedAssert(untrustedStderr.includes("H2_PREACTIVATION_TRUST") && !fs.existsSync(untrustedOutput), "H2_PREACTIVATION_TRUST_TEST", "correctly signed untrusted attestation subprocess did not fail closed without receipt");
+  const childStatus = (child: ReturnType<typeof spawn>): string | undefined => child.exitCode !== null || child.signalCode !== null ? `code=${child.exitCode} signal=${child.signalCode}` : undefined;
+  const terminateAndReapChild = async (child: ReturnType<typeof spawn>, graceMs = 500): Promise<string> => {
+    const observed = childStatus(child); if (observed) return observed;
+    return await new Promise<string>((resolve) => {
+      let settled = false; let killTimer: NodeJS.Timeout | undefined;
+      const finish = (status: string) => { if (settled) return; settled = true; if (killTimer) clearTimeout(killTimer); child.off("close", onClose); child.off("error", onError); resolve(status); };
+      const onClose = (code: number | null, signal: NodeJS.Signals | null) => finish(`code=${code} signal=${signal}`);
+      const onError = (error: Error) => { if (child.pid === undefined) finish(`spawn_error=${error.message}`); };
+      child.once("close", onClose); child.once("error", onError);
+      const racedStatus = childStatus(child); if (racedStatus) { finish(racedStatus); return; }
+      child.kill("SIGTERM");
+      killTimer = setTimeout(() => { if (!childStatus(child)) child.kill("SIGKILL"); }, graceMs);
+    });
+  };
   const waitForChildMarker = async (child: ReturnType<typeof spawn>, marker: string, output: () => string, timeoutMs = 15_000): Promise<void> => {
     codedAssert(timeoutMs >= 5_000 && timeoutMs <= 30_000, "H2_PREACTIVATION_RACE_TEST", "child marker timeout must remain within the bounded test range");
     const deadline = process.hrtime.bigint() + BigInt(timeoutMs) * 1_000_000n;
     await new Promise<void>((resolve, reject) => {
+      let settled = false; let timer: NodeJS.Timeout;
       const cleanup = () => { clearInterval(timer); child.off("error", onError); child.off("close", onClose); };
-      const fail = (message: string) => { cleanup(); reject(new GateH2Error("H2_PREACTIVATION_RACE_TEST", `${message}; output=${output().slice(0, 1000)}`)); };
+      const fail = (message: string) => { if (settled) return; settled = true; cleanup(); reject(new GateH2Error("H2_PREACTIVATION_RACE_TEST", `${message}; output=${output().slice(0, 1000)}`)); };
       const onError = (error: Error) => fail(`child error before marker: ${error.message}`);
       const onClose = (code: number | null, signal: NodeJS.Signals | null) => fail(`child exited before marker: code=${code} signal=${signal}`);
       const check = () => {
-        if (fs.existsSync(marker)) { cleanup(); resolve(); return; }
-        if (process.hrtime.bigint() >= deadline) fail(`timed out after ${timeoutMs}ms waiting for child marker`);
+        if (settled) return;
+        const observed = childStatus(child); if (observed) { fail(`child exited before marker: ${observed}`); return; }
+        if (fs.existsSync(marker)) { settled = true; cleanup(); resolve(); return; }
+        if (process.hrtime.bigint() >= deadline) {
+          settled = true; cleanup();
+          void terminateAndReapChild(child).then((status) => reject(new GateH2Error("H2_PREACTIVATION_RACE_TEST", `timed out after ${timeoutMs}ms waiting for child marker; reaped ${status}; output=${output().slice(0, 1000)}`)), (error) => reject(error));
+        }
       };
-      const timer = setInterval(check, 20); child.once("error", onError); child.once("close", onClose); check();
+      const beforeListeners = childStatus(child); if (beforeListeners) { fail(`child exited before marker: ${beforeListeners}`); return; }
+      timer = setInterval(check, 20); child.once("error", onError); child.once("close", onClose); check();
     });
   };
   const early = spawn(process.execPath, ["-e", "process.stdout.write('early-out');process.stderr.write('early-err');process.exit(23)"], { stdio: ["ignore", "pipe", "pipe"] });
   let earlyOutput = ""; early.stdout.on("data", (chunk) => { earlyOutput += chunk.toString(); }); early.stderr.on("data", (chunk) => { earlyOutput += chunk.toString(); });
   let earlyDiagnostic = ""; try { await waitForChildMarker(early, path.join(root, "never-created-early-marker"), () => earlyOutput); } catch (error) { earlyDiagnostic = error instanceof Error ? error.message : String(error); }
   codedAssert(earlyDiagnostic.includes("code=23") && earlyDiagnostic.includes("early-out") && earlyDiagnostic.includes("early-err"), "H2_PREACTIVATION_RACE_TEST", `early child exit diagnostic omitted status or output: ${earlyDiagnostic}`);
+  const timeoutTemp = path.join(root, "sigterm-ignoring-child.tmp");
+  const timeoutChild = spawn(process.execPath, ["-e", `const fs=require('fs');fs.writeFileSync(${JSON.stringify(timeoutTemp)},String(process.pid));process.stdout.write('timeout-child-ready');process.on('SIGTERM',()=>process.stderr.write('ignored-sigterm'));setInterval(()=>{},1000)`], { stdio: ["ignore", "pipe", "pipe"] });
+  const timeoutPid = timeoutChild.pid; let timeoutOutput = ""; timeoutChild.stdout.on("data", (chunk) => { timeoutOutput += chunk.toString(); }); timeoutChild.stderr.on("data", (chunk) => { timeoutOutput += chunk.toString(); });
+  while (!fs.existsSync(timeoutTemp)) await new Promise((resolve) => setTimeout(resolve, 10));
+  let timeoutDiagnostic = ""; try { await waitForChildMarker(timeoutChild, path.join(root, "never-created-timeout-marker"), () => timeoutOutput, 5_000); } catch (error) { timeoutDiagnostic = error instanceof Error ? error.message : String(error); }
+  let timeoutProcessAlive = false; if (timeoutPid !== undefined) try { process.kill(timeoutPid, 0); timeoutProcessAlive = true; } catch (error) { codedAssert((error as NodeJS.ErrnoException).code === "ESRCH", "H2_PREACTIVATION_RACE_TEST", `unexpected timeout child process probe error: ${String(error)}`); }
+  fs.rmSync(timeoutTemp, { force: true });
+  codedAssert(timeoutDiagnostic.includes("timed out after 5000ms") && timeoutDiagnostic.includes("signal=SIGKILL") && timeoutDiagnostic.includes("timeout-child-ready") && timeoutDiagnostic.includes("ignored-sigterm") && timeoutChild.signalCode === "SIGKILL" && !timeoutProcessAlive && !fs.existsSync(timeoutTemp), "H2_PREACTIVATION_RACE_TEST", `timeout child was not killed, reaped, diagnosed, and cleaned before fixture restoration: ${timeoutDiagnostic}`);
   const race = async (label: string, target: string, mutate: (file: string, raw: Buffer, backup: string) => void, expectedCode: string, startupDelayMs = 0): Promise<void> => {
     const raw = fs.readFileSync(target); const backup = `${target}.${label}.backup`; const pending = path.join(root, `${label}.pending`); const outputReceipt = path.join(root, `${label}.receipt.json`);
     const child = spawn(cli, baseVerifierArgs(outputReceipt), { cwd: ROOT, env: { ...process.env, GATE_H2_INTERNAL_TEST_CAPABILITY: capability, GATE_H2_INTERNAL_PREACTIVATION_TRUST: trustFile, GATE_H2_INTERNAL_D1_FIXTURE: fixtureFile, GATE_H2_INTERNAL_D1_PENDING_FILE: pending, GATE_H2_INTERNAL_D1_DELAY_MS: "300", GATE_H2_INTERNAL_PREACTIVATION_START_DELAY_MS: String(startupDelayMs) }, stdio: ["ignore", "pipe", "pipe"] });
@@ -10962,7 +11076,7 @@ async function preActivationFailClosedSelfTest(root: string): Promise<J> {
       const exitCode = await new Promise<number | null>((resolve, reject) => { child.once("error", reject); child.once("close", resolve); });
       codedAssert(exitCode !== 0 && stderr.includes(expectedCode) && !fs.existsSync(outputReceipt), "H2_PREACTIVATION_RACE_TEST", `${label} did not reject ${expectedCode} without a receipt: stdout=${stdout.slice(0, 300)} stderr=${stderr.slice(0, 700)}`);
     } finally {
-      if (child.exitCode === null && child.signalCode === null) { child.kill("SIGTERM"); await new Promise((resolve) => { const timer = setTimeout(() => { child.kill("SIGKILL"); resolve(undefined); }, 1_000); child.once("close", () => { clearTimeout(timer); resolve(undefined); }); }); }
+      if (child.exitCode === null && child.signalCode === null) await terminateAndReapChild(child, 1_000);
       if (fs.existsSync(target)) fs.rmSync(target, { force: true }); if (fs.existsSync(backup)) fs.renameSync(backup, target); else fs.writeFileSync(target, raw, { mode: 0o600 });
       fs.rmSync(pending, { force: true }); fs.rmSync(outputReceipt, { force: true });
     }
@@ -10971,7 +11085,7 @@ async function preActivationFailClosedSelfTest(root: string): Promise<J> {
   await race("symlink", raceSandbox, (file, _raw, backup) => { fs.renameSync(file, backup); fs.symlinkSync(backup, file); }, "H2_FINALIZATION_PATH_SUBSTITUTION");
   await race("same-size", raceD1, (file, raw) => { const changed = Buffer.from(raw); changed[Math.floor(changed.length / 2)] ^= 1; fs.writeFileSync(file, changed); }, "H2_FINALIZATION_EXACT_BYTES");
   await race("valid-alternate", raceSandbox, (file, _raw, backup) => { const alternate = structuredClone(sandbox); alternate.network.observed_destinations_digest = hash("valid-alternate-observation"); alternate.signature_base64 = crypto.sign(null, unsignedAttestationPayload(alternate), keys[1].privateKey).toString("base64"); fs.renameSync(file, backup); fs.writeFileSync(file, pretty(alternate), { mode: 0o600 }); }, "H2_FINALIZATION_PATH_SUBSTITUTION");
-  return { status: "pre_activation_fail_closed_contract_passed", production_ready: false, real_attestors_admitted: false, cases: ["missing", "synthetic", "stale", "self_authored", "executor_attestor_authority_role_overlap", "placeholder", "unsigned", "wrong_principal_session_route", "mismatched_evidence", "mismatched_executor_capability_receipt", "caller_selected_executor_capability", "empty_trust_registry", "canonical_signature_encoding_matrix", "five_role_route_host_key_independence", "executor_admission_omission_and_inventory_substitution", "distinct_claimed_keys_on_authority_route_and_surface", "subprocess_pairwise_principal_session_logical_physical_route_key", "subprocess_wrong_kind", "subprocess_nonexistent_or_nonprior_commit", "subprocess_correctly_signed_untrusted_artifact", "subprocess_child_early_exit_diagnostics", "subprocess_delayed_start_beyond_one_second", "subprocess_rename_race", "subprocess_symlink_race", "subprocess_same_size_race", "subprocess_valid_alternate_race"] };
+  return { status: "pre_activation_fail_closed_contract_passed", production_ready: false, real_attestors_admitted: false, cases: ["missing", "synthetic", "stale", "self_authored", "executor_attestor_authority_role_overlap", "placeholder", "unsigned", "wrong_principal_session_route", "mismatched_evidence", "mismatched_executor_capability_receipt", "caller_selected_executor_capability", "empty_trust_registry", "canonical_signature_encoding_matrix", "five_role_route_host_key_independence", "executor_admission_omission_and_inventory_substitution", "distinct_claimed_keys_on_authority_route_and_surface", "subprocess_pairwise_principal_session_logical_physical_route_key", "subprocess_wrong_kind", "subprocess_nonexistent_or_nonprior_commit", "subprocess_correctly_signed_untrusted_artifact", "subprocess_child_early_exit_diagnostics", "subprocess_timeout_kill_reap_diagnostics", "subprocess_delayed_start_beyond_one_second", "subprocess_rename_race", "subprocess_symlink_race", "subprocess_same_size_race", "subprocess_valid_alternate_race"] };
 }
 function filePinForAttestation(file: string, version: string): J { const raw = fs.readFileSync(file); return { path: file, realpath: fs.realpathSync(file), sha256: hash(raw), bytes: raw.length, version }; }
 async function integrationTest(): Promise<J> {
@@ -11738,32 +11852,37 @@ async function main(): Promise<void> {
       const trustSnapshot = internalTrustFile ? readJsonSnapshot(internalTrustFile, "H2_PREACTIVATION_TRUST") : reviewedTrustSnapshot(authority.coordinator_trust); retained.push(trustSnapshot);
       const keySnapshot = readRawSnapshot(keyFile, "H2_PREACTIVATION_SIGNING_KEY"); retained.push(keySnapshot);
       const d1 = d1Snapshot.value; const sandbox = sandboxSnapshot.value; const trust = trustSnapshot.value;
-      if (internalTrustFile) process.env.GATE_H2_INTERNAL_VALIDATE_ADMISSIONS === "1" ? validatePreActivationTrustRegistry(trust, authority.coordinator_trust) : validatePreActivationTrustIdentitySet(trust);
+      const internalNow = internalCapability && process.env.GATE_H2_INTERNAL_NOW ? Date.parse(process.env.GATE_H2_INTERNAL_NOW) : undefined;
+      codedAssert(internalNow === undefined || Number.isFinite(internalNow), "H2_PREACTIVATION_ADMISSION_FRESHNESS", "internal controlled now must be canonical date-time");
+      const now = internalNow ?? Date.now();
+      const admissions = internalTrustFile && process.env.GATE_H2_INTERNAL_VALIDATE_ADMISSIONS !== "1" ? (validatePreActivationTrustIdentitySet(trust), new Map<string, J>()) : validatePreActivationTrustRegistry(trust, authority.coordinator_trust, { now });
       validateD1LiveAttestation(d1); validateLinuxSandboxAttestation(sandbox, internalCapability !== undefined, trust);
       codedAssert(trust.status === "reviewed_real_attestors_admitted" && trust.attestors.length === 5, "H2_PREACTIVATION_TRUST", "pre-activation verification is blocked until exactly five independently reviewed executor, D1, sandbox, and verifier identities are admitted");
       codedAssert(trustedPreActivationIdentity(trust, "d1_live", d1.signer) && trustedPreActivationIdentity(trust, "linux_sandbox", sandbox.signer) && sandbox.executor_semantics.every((bundle: J) => trustedPreActivationIdentity(trust, "executor_semantics_attestor", bundle.attestation.signer) && trustedPreActivationIdentity(trust, "executor_conformance_reviewer", bundle.conformance_receipt.reviewer)), "H2_PREACTIVATION_TRUST", "executor, D1, or sandbox full identity is not admitted");
       assertAdmittedAuthorityIndependence(trust, authority);
       const maxAgeSeconds = Number(assertString(o["max-age-seconds"], "--max-age-seconds required"));
       codedAssert(Number.isInteger(maxAgeSeconds) && maxAgeSeconds > 0 && maxAgeSeconds <= 86400, "H2_PREACTIVATION_STALE", "pre-activation maximum age must be 1..86400 seconds");
-      const now = Date.now();
       for (const attestation of [d1, sandbox]) codedAssert(Date.parse(attestation.observation.observed_at) <= now && now - Date.parse(attestation.observation.observed_at) <= maxAgeSeconds * 1000, "H2_PREACTIVATION_STALE", "pre-activation attestation is stale or future-dated");
       const privateKey = crypto.createPrivateKey(keySnapshot.raw);
       codedAssert(privateKey.asymmetricKeyType === "ed25519", "H2_PREACTIVATION_VERIFICATION", "pre-activation verifier key must be Ed25519");
       const publicKeyPem = crypto.createPublicKey(privateKey).export({ type: "spki", format: "pem" }).toString();
-      const verifierRoute = path.resolve(assertString(o["verifier-route"], "--verifier-route required"));
+      const verifierRoute = canonicalLogicalRoute(assertString(o["verifier-route"], "--verifier-route required"));
       const verifier = { principal: assertString(o["verifier-principal"], "--verifier-principal required"), session_id: assertString(o["verifier-session"], "--verifier-session required"), route: verifierRoute, physical_route_identity_sha256: physicalRouteIdentitySha256(verifierRoute), public_key_pem: publicKeyPem, public_key_sha256: hash(publicKeyPem) };
       codedAssert(trustedPreActivationIdentity(trust, "pre_activation_verifier", verifier), "H2_PREACTIVATION_TRUST", "verifier full identity is not admitted");
       const identities = sandbox.executor_semantics.flatMap((bundle: J) => [bundle.attestation.signer, bundle.conformance_receipt.reviewer]).concat([d1.signer, sandbox.signer, verifier]);
       for (const field of ["principal", "session_id", "route", "physical_route_identity_sha256", "public_key_sha256"])
         codedAssert(new Set(identities.map((identity: J) => identity[field])).size === identities.length, "H2_PREACTIVATION_INDEPENDENCE", `executor, D1, sandbox, and verifier identities must have pairwise distinct ${field}`);
       for (let left = 0; left < identities.length; left++) for (let right = left + 1; right < identities.length; right++) codedAssert(!logicalRoutesOverlap(identities[left].route, identities[right].route), "H2_PREACTIVATION_INDEPENDENCE", "executor, D1, sandbox, and verifier logical routes must not overlap by ancestry");
+      if (admissions.size > 0) {
+        for (const use of sandbox.executor_semantics.flatMap((bundle: J) => [{ kind: "executor_semantics_attestor", usedAt: bundle.attestation.observation.observed_at }, { kind: "executor_conformance_reviewer", usedAt: bundle.conformance_receipt.reviewed_at }]).concat([{ kind: "d1_live", usedAt: d1.observation.observed_at }, { kind: "linux_sandbox", usedAt: sandbox.observation.observed_at }, { kind: "pre_activation_verifier", usedAt: new Date(now).toISOString() }])) validateAdmissionEvidenceUse(admissions, use.kind, use.usedAt, now);
+      }
       const internalFixture = internalCapability && process.env.GATE_H2_INTERNAL_D1_FIXTURE ? internalD1FixtureAdapter(internalAuthority, path.resolve(process.env.GATE_H2_INTERNAL_D1_FIXTURE), internalCapability) : undefined;
       const adapter = internalFixture ?? CloudflareD1StageLedger.fromEnvironment({ account_capability_digest: d1.account_capability_digest, database_uuid_digest: d1.database_uuid_digest });
       try { await adapter.attestSchema({ table_schema_sha256: d1.deployed_schema.canonical_schema_sha256, table_schema_bytes: d1.deployed_schema.canonical_schema_bytes }); }
       catch (error) { if (error instanceof StageLedgerContractError) throw new GateH2Error(error.code, error.message); throw error; }
       for (const snapshot of retained) assertSnapshotPathUnchanged(snapshot);
       codedAssert(internalCapability === undefined, "H2_PREACTIVATION_SYNTHETIC", "internal pre-activation fixtures can exercise retention and D1 orchestration but can never issue an activation receipt");
-      const receipt: J = { schema_version: "reviewed_metrics_pre_activation_verification_v2.1.0", status: "live_prerequisites_verified", synthetic: false, d1_attestation: { sha256: hash(d1Snapshot.raw), bytes: d1Snapshot.raw.length }, sandbox_attestation: { sha256: hash(sandboxSnapshot.raw), bytes: sandboxSnapshot.raw.length }, live_d1_schema_sha256: d1.deployed_schema.canonical_schema_sha256, executor_capability_ids: sandbox.executor_semantics.map((bundle: J) => bundle.capability_id).sort(), verified_at: new Date().toISOString(), verifier, signature_base64: "" };
+      const receipt: J = { schema_version: "reviewed_metrics_pre_activation_verification_v2.2.0", status: "live_prerequisites_verified", synthetic: false, d1_attestation: { sha256: hash(d1Snapshot.raw), bytes: d1Snapshot.raw.length }, sandbox_attestation: { sha256: hash(sandboxSnapshot.raw), bytes: sandboxSnapshot.raw.length }, live_d1_schema_sha256: d1.deployed_schema.canonical_schema_sha256, executor_capability_ids: sandbox.executor_semantics.map((bundle: J) => bundle.capability_id).sort(), admission_validity_policy: PREACTIVATION_ADMISSION_VALIDITY_POLICY, verified_at: new Date(now).toISOString(), verifier, signature_base64: "" };
       rejectPlaceholderEvidence(receipt); receipt.signature_base64 = crypto.sign(null, unsignedAttestationPayload(receipt), privateKey).toString("base64"); schema("pre-activation-verification.schema.v2.json", receipt);
       for (const snapshot of retained) assertSnapshotPathUnchanged(snapshot);
       writeOwnedExclusive(output, Buffer.from(pretty(receipt)), "H2_PREACTIVATION_VERIFICATION");

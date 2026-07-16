@@ -3,14 +3,15 @@
   "$id": "pre-activation-attestor-admission.schema.v2.json",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "status", "synthetic", "evidence_kind", "subject", "reviewed_at", "reviewer", "signature_base64"],
+  "required": ["schema_version", "status", "synthetic", "evidence_kind", "subject", "reviewed_at", "validity_policy", "reviewer", "signature_base64"],
   "properties": {
-    "schema_version": { "const": "reviewed_metrics_pre_activation_attestor_admission_v2.0.0" },
+    "schema_version": { "const": "reviewed_metrics_pre_activation_attestor_admission_v2.1.0" },
     "status": { "const": "independently_reviewed_and_admitted" },
     "synthetic": { "const": false },
     "evidence_kind": { "enum": ["executor_semantics_attestor", "executor_conformance_reviewer", "d1_live", "linux_sandbox", "pre_activation_verifier"] },
     "subject": { "$ref": "#/$defs/identity" },
     "reviewed_at": { "type": "string", "format": "date-time" },
+    "validity_policy": { "$ref": "#/$defs/validityPolicy" },
     "reviewer": { "$ref": "#/$defs/reviewer" },
     "signature_base64": { "type": "string", "pattern": "^[A-Za-z0-9+/]{86}==$" }
   },
@@ -22,7 +23,7 @@
       "properties": {
         "principal": { "type": "string", "minLength": 1 },
         "session_id": { "type": "string", "minLength": 1 },
-        "logical_route": { "type": "string", "pattern": "^/" },
+        "logical_route": { "$ref": "#/$defs/logicalRoute" },
         "physical_route_identity_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
         "public_key_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
         "surface_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
@@ -38,7 +39,7 @@
       "properties": {
         "principal": { "type": "string", "minLength": 1 },
         "session_id": { "type": "string", "minLength": 1 },
-        "logical_route": { "type": "string", "pattern": "^/" },
+        "logical_route": { "$ref": "#/$defs/logicalRoute" },
         "physical_route_identity_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
         "public_key_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
         "public_key_pem": { "type": "string", "pattern": "^-----BEGIN PUBLIC KEY-----" },
@@ -46,6 +47,18 @@
         "surface_inventory_digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
         "canonical_physical_host_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
         "trusted_surface_inventory": { "$ref": "execution-authorization.schema.v2.json#/$defs/surfaceInventory" }
+      }
+    },
+    "logicalRoute": { "type": "string", "pattern": "^/[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$" },
+    "validityPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "admission_max_age_seconds", "host_inventory_max_age_seconds", "clock_skew_seconds"],
+      "properties": {
+        "version": { "const": "gate_h2_pre_activation_admission_validity_v1" },
+        "admission_max_age_seconds": { "const": 86400 },
+        "host_inventory_max_age_seconds": { "const": 86400 },
+        "clock_skew_seconds": { "const": 60 }
       }
     }
   }
