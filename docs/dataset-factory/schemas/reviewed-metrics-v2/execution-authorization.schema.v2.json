@@ -206,7 +206,7 @@
         "operation": {
           "oneOf": [
             { "type": "object", "additionalProperties": false, "required": ["kind"], "properties": { "kind": { "const": "builtin" } } },
-            { "type": "object", "additionalProperties": false, "required": ["kind", "execution_boundary", "runtime", "script", "artifacts", "dependency_lock", "installed_dependency_tree", "repo_tree_sha256", "cwd", "argv", "argv_bindings", "declared_output_paths", "network_policy", "network_capability_ids", "environment"], "properties": {
+            { "type": "object", "additionalProperties": false, "required": ["kind", "execution_boundary", "runtime", "script", "artifacts", "dependency_lock", "installed_dependency_tree", "repo_tree_sha256", "cwd", "argv", "argv_bindings", "declared_output_paths", "execution_capability_ids", "network_policy", "network_capability_ids", "environment"], "properties": {
               "kind": { "const": "external_command" },
               "execution_boundary": { "$ref": "#/$defs/executionBoundary" },
               "runtime": { "$ref": "#/$defs/filePin" },
@@ -219,6 +219,7 @@
               "argv": { "type": "array", "minItems": 1, "items": { "type": "string" } },
               "argv_bindings": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "object", "additionalProperties": false, "required": ["index", "artifact_role", "value_sha256"], "properties": { "index": { "type": "integer", "minimum": 0 }, "artifact_role": { "type": "string", "pattern": "^[a-z0-9_]+$" }, "scalar_type": { "enum": ["enum", "integer", "sha256", "identifier", "boolean"] }, "allowed_values": { "type": "array", "uniqueItems": true, "items": { "type": "string" } }, "value_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" } } } },
               "declared_output_paths": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "^/" } },
+              "execution_capability_ids": { "type": "array", "minItems": 1, "maxItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-f0-9]{64}$" } },
               "network_policy": { "enum": ["deny_all", "allow_capabilities_only"] },
               "network_capability_ids": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-f0-9]{64}$" } },
               "environment": { "type": "object", "additionalProperties": false, "required": ["public", "secret_capability_ids"], "properties": {
