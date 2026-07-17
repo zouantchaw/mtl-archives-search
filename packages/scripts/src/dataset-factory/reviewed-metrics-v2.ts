@@ -1813,6 +1813,10 @@ function executeProductionExternalStageOperation(authority: J, stageId: StageId,
   return executeExternalStageOperationInternal(entry.operation, entry.outputs, false, beforeChild, authorityContext);
 }
 function executeReviewedProductionStageOperation(authority: J, stageId: StageId, beforeChild?: () => void | (() => void)): ReturnType<typeof externalOperationPreflight> {
+  if (stageId === "publication_assembly_plan") {
+    codedAssert(beforeChild === undefined, "H2_STAGE_INTERNAL_RACE", "publication assembly production dispatch forbids internal race hooks");
+    return executeReviewedPublicationAssemblyPlanExternalOperation(authority);
+  }
   const trustSnapshot = reviewedTrustSnapshot(authority.coordinator_trust);
   try {
     const authorityContext = externalOperationAuthorityContext(authority, stageId, trustSnapshot.value);
@@ -1820,6 +1824,13 @@ function executeReviewedProductionStageOperation(authority: J, stageId: StageId,
     assertSnapshotPathUnchanged(trustSnapshot);
     return result;
   } finally { closeSnapshot(trustSnapshot); }
+}
+function executeStageRunExternalOperation(authority: J, stageId: StageId, capability?: InternalSyntheticCapability): ReturnType<typeof externalOperationPreflight> {
+  const entry = stageManifestEntry(authority, stageId);
+  const raceHook = internalStageRaceHook(entry.operation, capability);
+  if (stageId === "publication_assembly_plan") return executeReviewedProductionStageOperation(authority, stageId, raceHook);
+  if (capability !== undefined) return executeSyntheticExternalStageOperation(entry.operation, entry.outputs, raceHook);
+  return executeReviewedProductionStageOperation(authority, stageId, raceHook);
 }
 function executePublicationAssemblyPlanExternalOperation(authority: J, reviewedTrust: J, authorityContext: ExternalOperationAuthorityContext): ReturnType<typeof externalOperationPreflight> {
   codedAssert(authority?.schema_version === "reviewed_metrics_execution_authorization_v2.5.0", "H2_STAGE_AUTHORITY_CONTEXT", "publication assembly external operation requires exact execution authorization v2.5");
@@ -1963,6 +1974,39 @@ export function externalOperationContractSelfTest(): J {
     expect("H2_HTTPS_MANIFEST", () => executeReviewedPublicationAssemblyPlanExternalOperation(sourceStageMismatch));
     fs.writeFileSync(successorManifestFile, publicationManifestRaw); successorAuthority.https_exchange_authority.manifest = publicationManifestPin;
     expect("H2_EXECUTOR_SEMANTICS_SYNTHETIC", () => executeReviewedPublicationAssemblyPlanExternalOperation(successorAuthority));
+    const publicationStageRunKey = path.join(root, "publication-stage-run-key.pem");
+    fs.writeFileSync(publicationStageRunKey, SYNTHETIC_COORDINATOR_KEYS.privateKey.export({ type: "pkcs8", format: "pem" }), { mode: 0o600 });
+    const runPublicationStageRoute = (label: string, mutate: (candidate: J) => void, expectedCode: string): void => {
+      const candidate = structuredClone(successorAuthority);
+      const now = Date.now(); const at = (offset: number) => new Date(now + offset).toISOString();
+      candidate.authorized_at = at(-5_000); candidate.started_at = at(-4_000); candidate.ended_at = at(-3_000); candidate.freeze_at = at(-2_500); candidate.source_search_started_at = at(-2_000); candidate.source_search_ended_at = at(-1_500); candidate.source_search_freeze_at = at(-1_000); candidate.source_dossier_authored_at = at(-750); candidate.private_envelope_sealed_at = at(-500); candidate.expires_at = at(120_000);
+      candidate.publisher.route = candidate.publisher.canonical_root = fs.realpathSync(root);
+      const account = `publication-stage-run-${label}-account`; const database = `publication-stage-run-${label}-database`;
+      candidate.stage_execution.ledger.account_capability_digest = hash(`gate-h2-d1-account-capability-v1\0${account}`);
+      candidate.stage_execution.ledger.database_uuid_digest = hash(`gate-h2-d1-database-uuid-v1\0${database}`);
+      mutate(candidate); sealSyntheticAuthority(candidate, true);
+      const authorityFile = path.join(root, `publication-stage-run-${label}-authority.json`); fs.writeFileSync(authorityFile, pretty(candidate), { mode: 0o600 });
+      const entry = stageManifestEntry(candidate, "publication_assembly_plan"); const actorValue = candidate.publisher;
+      const inventory = candidate.trusted_surface_inventory.find((item: J) => trustedInventoryDigest(item) === actorValue.surface_inventory_digest); codedAssert(inventory, "H2_STAGE_RUN_CLI_TEST", "publication route fixture lacks publisher inventory");
+      const physical = strictHostRouteMeasurement(actorValue.route); const issuedAt = at(0); const expiresAt = at(60_000); const measuredAt = at(-50);
+      const receipt: J = { schema_version: "reviewed_metrics_coordinator_route_receipt_v2.0.0", surface_id: actorValue.surface_id, surface_inventory_digest: actorValue.surface_inventory_digest, canonical_physical_host_id: inventory.canonical_physical_host_id, candidate_commit: candidate.candidate_commit, authority_hash: authorityBindingHash(candidate), nonce: entry.nonce, invocation_id: entry.invocation_id, role: "publisher", stage_id: "publication_assembly_plan", requested_root: actorValue.route, canonical_root: physical.canonicalRoot, existing_ancestor: physical.existingAncestor, ancestor_device: physical.stat.dev, ancestor_inode: physical.stat.ino, measured_at: measuredAt, measurement_sha256: "", role_event_started_at: issuedAt, role_event_ended_at: expiresAt, issued_at: issuedAt, expires_at: expiresAt, signature_base64: "" };
+      const measurement = { schema_version: "reviewed_metrics_host_route_measurement_v2.0.0", candidate_commit: receipt.candidate_commit, authority_hash: receipt.authority_hash, role: receipt.role, stage_id: receipt.stage_id, nonce: receipt.nonce, invocation_id: receipt.invocation_id, surface_inventory_digest: receipt.surface_inventory_digest, canonical_physical_host_id: receipt.canonical_physical_host_id, requested_root: receipt.requested_root, canonical_root: receipt.canonical_root, existing_ancestor: receipt.existing_ancestor, ancestor_device: receipt.ancestor_device, ancestor_inode: receipt.ancestor_inode, measured_at: receipt.measured_at };
+      receipt.measurement_sha256 = hash(routeMeasurementPayload(measurement)); receipt.signature_base64 = crypto.sign(null, routeReceiptPayload(receipt), SYNTHETIC_COORDINATOR_KEYS.privateKey).toString("base64");
+      const receiptFile = path.join(root, `publication-stage-run-${label}-receipt.json`); fs.writeFileSync(receiptFile, pretty(receipt), { mode: 0o600 });
+      const fixtureFile = path.join(root, `publication-stage-run-${label}-d1.json`); fs.writeFileSync(fixtureFile, pretty({ schema_version: "gate_h2_internal_d1_fetch_fixture_v1", synthetic: true, account_id: account, database_id: database, api_token: "publication-stage-run-token", schema_rows: gateH2LedgerSchemaAttestation(ROOT).rows, readback: { attempts: [], claims: [], completions: [] } }), { mode: 0o600 });
+      const capability = hash(`gate-h2-internal-two-process-v2\n${canon(candidate)}`); const cli = path.join(ROOT, "node_modules/.bin/tsx"); const scriptFile = fileURLToPath(import.meta.url); const env: NodeJS.ProcessEnv = { ...process.env, GATE_H2_INTERNAL_TEST_CAPABILITY: capability, GATE_H2_INTERNAL_D1_FIXTURE: fixtureFile };
+      delete env.NODE_OPTIONS; delete env.PYTHONPATH; delete env.EXTRA_AMBIENT;
+      let stderr = ""; try { execFileSync(cli, [scriptFile, "stage-run", "--authority", authorityFile, "--stage", "publication_assembly_plan", "--stage-receipt", receiptFile], { cwd: ROOT, env, stdio: ["ignore", "pipe", "pipe"] }); } catch (error) { stderr = (error as { stderr?: Buffer }).stderr?.toString("utf8") ?? ""; }
+      const fixture = load(fixtureFile); codedAssert(stderr.includes(expectedCode) && fixture.readback.attempts.length === 1 && fixture.readback.claims.length === 1 && fixture.readback.completions.length === 0, "H2_STAGE_RUN_CLI_TEST", `publication stage-run ${label} did not fail at ${expectedCode} without completion: ${stderr}`);
+      const sealFile = path.join(root, `publication-stage-run-${label}-seal.json`); let sealSucceeded = false; try { execFileSync(cli, [scriptFile, "seal-stage-ledger", "--authority", authorityFile, "--signing-key", publicationStageRunKey, "--output", sealFile], { cwd: ROOT, env, stdio: ["ignore", "pipe", "pipe"] }); sealSucceeded = true; } catch { /* incomplete failed preflight must remain unsealable */ }
+      codedAssert(!sealSucceeded && !fs.existsSync(sealFile), "H2_STAGE_RUN_CLI_TEST", `publication stage-run ${label} permitted an incomplete ledger seal`);
+      for (const file of [authorityFile, receiptFile, fixtureFile, sealFile]) fs.rmSync(file, { force: true });
+    };
+    runPublicationStageRoute("legacy-v2.4-no-binding", (candidate) => { candidate.schema_version = "reviewed_metrics_execution_authorization_v2.4.0"; delete candidate.https_exchange_authority; }, "H2_STAGE_AUTHORITY_CONTEXT");
+    runPublicationStageRoute("missing-binding", (candidate) => { candidate.https_exchange_authority.stage_bindings = []; }, "H2_STAGE_AUTHORITY_CONTEXT");
+    runPublicationStageRoute("wrong-binding", (candidate) => { candidate.https_exchange_authority.stage_bindings[0].stage_id = "source_predict"; }, "H2_STAGE_AUTHORITY_CONTEXT");
+    runPublicationStageRoute("valid-v2.5-production-ineligible", () => undefined, "H2_EXECUTOR_SEMANTICS_SYNTHETIC");
+    fs.rmSync(publicationStageRunKey, { force: true });
     const expectSuccessorSchemaReject = (candidate: J): void => { let rejected = false; try { executionAuthorizationSchema(candidate); } catch { rejected = true; } codedAssert(rejected, "H2_SUCCESSOR_AUTHORITY_SCHEMA_TEST", "v2.5 authority schema accepted a legacy cross-version substitution"); };
     const legacySemanticsAuthority = structuredClone(successorAuthority); legacySemanticsAuthority.stage_execution.stages.find((entry: J) => entry.stage_id === "publication_assembly_plan").operation.execution_boundary.executor_semantics = semantics; expectSuccessorSchemaReject(legacySemanticsAuthority);
     const legacyProgramAuthority = structuredClone(successorAuthority); legacyProgramAuthority.stage_execution.stages.find((entry: J) => entry.stage_id === "publication_assembly_plan").operation.script.version = "reviewed_metrics_stage_program_v2.1.0"; expectSuccessorSchemaReject(legacyProgramAuthority);
@@ -2014,7 +2058,7 @@ export function externalOperationContractSelfTest(): J {
     codedAssert(cleanupWithPrimary instanceof GateH2Error && cleanupWithPrimary.code === "H2_STAGE_IMMUTABLE_CLEANUP" && (cleanupWithPrimary.cause as J)?.primary?.code === "H2_TEST_PRIMARY" && cleanupWithPrimary.message.includes("H2_TEST_PRIMARY") && !fs.existsSync(output), "H2_STAGE_IMMUTABLE_CLEANUP", "cleanup failure did not retain the primary error as auditable cause");
     codedAssert(fs.readdirSync(os.tmpdir()).every((name) => !name.startsWith("rmv2-immutable-operation-")), "H2_STAGE_IMMUTABLE_CLEANUP", "external operation test leaked an immutable tree");
     const stageRouteSchema = stageRouteReceiptSchemaContractSelfTest();
-    return { status: "external_operation_contract_self_test_passed_synthetic_boundary_only", production_ready: false, real_linux_wrapper_test_satisfied: false, stage_route_schema: stageRouteSchema, cases: ["clean_environment", "closed_scalar_grammar", "production_canonical_stage_program_only", "successor_authority_preflight_context", "actual_publication_stage_context_omission_and_substitution_rejected_before_nonproduction_boundary", "exact_12_stage_route_receipt_schema", "successor_v2_1_program_v2_0_semantics_and_context_substitution_rejected", "alternate_javascript_native_loader_probes_rejected", "host_node_resolution_nonproduction_only", "derived_executor_semantic_capability", "signed_semantics_and_independent_conformance_receipt", "semantic_program_schema_executor_mount_test_result_capability_substitution_rejected", "stale_self_reviewed_synthetic_production_rejected", "host_runtime_semantics_nonproduction_only", "production_zero_npm_dependency_subset", "retained_package_manifest_lock_installed_identity_proof", "lock_top_level_name_version_required_and_exact", "empty_lock_missing_root_missing_package_version_installed_identity_extra_lock_rejected", "path_injection", "node_options_injection", "pythonpath_injection", "home_auth_public_injection", "raw_secret_capabilities_rejected", "replaced_executable", "replaced_script", "retained_resolution_proof_bytes", "replaced_imported_dependency_tree", "inserted_import_candidate", "source_artifact_race_before_child", "dirty_untracked_cwd", "argv_substitution", "basename_dotfile_colon_uri_literal_rejection", "network_policy_escape", "missing_sandbox_attestation", "cwd_alias", "unpinned_output", "verified_fatal_immutable_tree_cleanup", "private_immutable_tree_execution"] };
+    return { status: "external_operation_contract_self_test_passed_synthetic_boundary_only", production_ready: false, real_linux_wrapper_test_satisfied: false, stage_route_schema: stageRouteSchema, cases: ["clean_environment", "closed_scalar_grammar", "production_canonical_stage_program_only", "successor_authority_preflight_context", "actual_publication_stage_context_omission_and_substitution_rejected_before_nonproduction_boundary", "actual_generic_publication_stage_run_v2_4_no_binding_rejected", "actual_generic_publication_stage_run_missing_binding_rejected", "actual_generic_publication_stage_run_wrong_binding_rejected", "actual_generic_publication_stage_run_valid_v2_5_reaches_production_ineligible_boundary", "failed_generic_publication_preflight_has_no_completion_or_seal", "exact_12_stage_route_receipt_schema", "successor_v2_1_program_v2_0_semantics_and_context_substitution_rejected", "alternate_javascript_native_loader_probes_rejected", "host_node_resolution_nonproduction_only", "derived_executor_semantic_capability", "signed_semantics_and_independent_conformance_receipt", "semantic_program_schema_executor_mount_test_result_capability_substitution_rejected", "stale_self_reviewed_synthetic_production_rejected", "host_runtime_semantics_nonproduction_only", "production_zero_npm_dependency_subset", "retained_package_manifest_lock_installed_identity_proof", "lock_top_level_name_version_required_and_exact", "empty_lock_missing_root_missing_package_version_installed_identity_extra_lock_rejected", "path_injection", "node_options_injection", "pythonpath_injection", "home_auth_public_injection", "raw_secret_capabilities_rejected", "replaced_executable", "replaced_script", "retained_resolution_proof_bytes", "replaced_imported_dependency_tree", "inserted_import_candidate", "source_artifact_race_before_child", "dirty_untracked_cwd", "argv_substitution", "basename_dotfile_colon_uri_literal_rejection", "network_policy_escape", "missing_sandbox_attestation", "cwd_alias", "unpinned_output", "verified_fatal_immutable_tree_cleanup", "private_immutable_tree_execution"] };
   } finally { delete process.env.NODE_OPTIONS; delete process.env.PYTHONPATH; delete process.env.EXTRA_AMBIENT; fs.rmSync(root, { recursive: true, force: true }); }
 }
 function consequentialGitPathShadowSelfTest(): J {
@@ -12241,10 +12285,8 @@ async function main(): Promise<void> {
     const stageId = assertString(o.stage, "--stage required") as StageId;
     codedAssert(STAGE_ROLES[stageId] !== undefined, "H2_ROUTE_STAGE_ROLE", "unknown exact production stage");
     const authority = internalAuthority ?? executionAuthority();
-    const operation = stageManifestEntry(authority, stageId).operation;
     const consumption = await beginStageConsumption(authority, path.resolve(assertString(o["stage-receipt"], "--stage-receipt required")), stageId, () => new Date(), internalCapability);
-    if (internalCapability !== undefined) executeSyntheticExternalStageOperation(operation, stageManifestEntry(authority, stageId).outputs, internalStageRaceHook(operation, internalCapability));
-    else executeReviewedProductionStageOperation(authority, stageId, internalStageRaceHook(operation));
+    executeStageRunExternalOperation(authority, stageId, internalCapability);
     await completeStageConsumption(consumption);
     result = { status: "external_stage_operation_completed", stage_id: stageId };
   } else if (command === "seal-stage-ledger") {
