@@ -1,0 +1,43 @@
+{
+  "schema_version": "gate_h2_broker_runtime_source_descriptor_v1.0.0",
+  "issue": 99,
+  "source_root": "crates/gate-h2-broker",
+  "source_tree": {
+    "algorithm": "sha256",
+    "scope": "sorted_tree_manifest",
+    "sha256": "bcb36d7d0d71db4e5176efebcd2efef84161c8f5358d8b00d756ef383de01cdb",
+    "file_count": 20,
+    "byte_count": 105145,
+    "members": [
+      ".gitignore",
+      "Cargo.lock",
+      "Cargo.toml",
+      "README.md",
+      "oci/Containerfile",
+      "oci/rootfs-inventory.expected.txt",
+      "scripts/build-stage-oci.sh",
+      "scripts/check-local.sh",
+      "scripts/generate-metadata.mjs",
+      "src/bin/broker.rs",
+      "src/bin/stage_runtime.rs",
+      "src/broker.rs",
+      "src/credential.rs",
+      "src/evidence.rs",
+      "src/lib.rs",
+      "src/model.rs",
+      "src/network.rs",
+      "src/policy.rs",
+      "src/uds.rs",
+      "tests/broker_adversarial.rs"
+    ]
+  },
+  "contract_dependency_id": "dfv0_gate_h2_https_exchange_contract_v1_20260716",
+  "verification_command": "npm run gate-h2:broker-self-test",
+  "production_transport_enabled": false,
+  "production_authority_activated": false,
+  "network_fixture_policy": "deterministic_injected_observations_only",
+  "linux_static_reproducibility": "pending_issue_101",
+  "oci_reproducibility": "pending_issue_101",
+  "real_tls_pkix_conformance": "pending_issue_101",
+  "created_at": "2026-07-17T00:00:00.000Z"
+}

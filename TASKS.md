@@ -191,3 +191,8 @@ Geography: Montreal 57%, rest of QC 24%, US 14%, International 5%.
 - Next: run 300 primary visual labels and 300 independent blind labels with disjoint reviewer IDs.
 - Then: adjudicate all 300 records and all 49 silver search tasks; validate class support, agreement, changes, and promotion policy.
 - Do not call the batch complete or upload a final evidence bundle before those gates pass.
+# Gate H2 HTTPS Broker (#99)
+
+- [x] Add an inactive memory-safe Rust broker core, exact UDS state machine, owner-only socket lifecycle, inherited-FD secret handling, deterministic fixture transport, fsynced hash-only events, transcript sealing, and static stage runtime source.
+- [x] Add locked offline format/clippy/adversarial commands plus fail-closed `FROM scratch` OCI, rootfs inventory, SBOM, provenance, and two-build verification definitions.
+- [ ] Issue #101: independently prove real Rust TLS/SNI/PKIX/connect pinning, sealed Linux memfd handling, Linux static linkage, two-clean-build binary/OCI identity, sandbox flags, and an approved successor transcript binding for D1 attempt/begin and runtime/trust pins before enabling the production launcher.

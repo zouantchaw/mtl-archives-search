@@ -1,0 +1,24 @@
+import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+
+const [root, output, target, trustRootsSha256] = process.argv.slice(2);
+if (!root || !output || !target || !/^[a-f0-9]{64}$/.test(trustRootsSha256 ?? "")) throw new Error("invalid metadata arguments");
+mkdirSync(output, { recursive: true });
+const tree = execFileSync("cargo", ["tree", "--manifest-path", join(root, "Cargo.toml"), "--locked", "--offline", "--target", target, "--edges", "normal", "--prefix", "none", "--format", "{p}\t{l}"], { cwd: root, encoding: "utf8" });
+const byPurl = new Map();
+for (const line of tree.trim().split("\n")) {
+  const [display, license = ""] = line.split("\t");
+  const match = /^([^ ]+) v([^ ]+)/.exec(display);
+  if (!match) throw new Error(`unexpected cargo tree package line: ${display}`);
+  const [, name, version] = match;
+  const purl = `pkg:cargo/${name}@${version}`;
+  byPurl.set(purl, { type: name === "gate-h2-broker" ? "application" : "library", name, version, licenses: license ? [{ expression: license.replace(/ \(\*\)$/, "") }] : [], purl });
+}
+const components = [...byPurl.values()].sort((a, b) => a.purl.localeCompare(b.purl));
+const lock = readFileSync(join(root, "Cargo.lock"));
+const sbom = { bomFormat: "CycloneDX", specVersion: "1.5", version: 1, metadata: { component: { type: "application", name: "gate-h2-stage-runtime", version: "0.1.0" } }, components };
+const provenance = { schema_version: "gate_h2_stage_build_provenance_v1.0.0", source_date_epoch: 0, target, cargo_lock_sha256: createHash("sha256").update(lock).digest("hex"), trust_roots_sha256: trustRootsSha256, network_policy: "offline_build_and_podman_network_none", reproducibility_status: "pending_two_clean_linux_builds", production_authority_activated: false };
+writeFileSync(join(output, "sbom.cdx.json"), `${JSON.stringify(sbom)}\n`, { mode: 0o444 });
+writeFileSync(join(output, "provenance.json"), `${JSON.stringify(provenance)}\n`, { mode: 0o444 });

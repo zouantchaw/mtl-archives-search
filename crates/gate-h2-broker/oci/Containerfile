@@ -1,0 +1,4 @@
+FROM scratch
+COPY rootfs /
+USER 65532:65532
+ENTRYPOINT ["/usr/local/bin/gate-h2-stage-runtime"]

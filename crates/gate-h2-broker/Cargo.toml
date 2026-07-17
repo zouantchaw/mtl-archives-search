@@ -1,0 +1,38 @@
+[package]
+name = "gate-h2-broker"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+
+[lib]
+name = "gate_h2_broker"
+
+[[bin]]
+name = "gate-h2-broker"
+path = "src/bin/broker.rs"
+
+[[bin]]
+name = "gate-h2-stage-runtime"
+path = "src/bin/stage_runtime.rs"
+
+[dependencies]
+hex = "=0.4.3"
+hmac = "=0.12.1"
+httparse = "=1.10.1"
+libc = "=0.2.186"
+serde = { version = "=1.0.228", features = ["derive"] }
+serde_json = "=1.0.150"
+sha2 = "=0.10.9"
+subtle = "=2.6.1"
+thiserror = "=2.0.18"
+
+[dev-dependencies]
+tempfile = "=3.27.0"
+
+[profile.release]
+codegen-units = 1
+lto = "fat"
+opt-level = "z"
+panic = "abort"
+strip = "symbols"

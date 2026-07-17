@@ -392,9 +392,17 @@ mtl-archives-search/
 │   └── vlm/                      # VLM captioning scripts
 ├── infrastructure/
 │   └── d1/migrations/            # D1 schema migrations
+├── crates/
+│   └── gate-h2-broker/            # Inactive exact-HTTPS broker/runtime implementation
 ├── docs/                         # Documentation, including dataset-factory schemas/fixtures
 └── data/                         # Local data (gitignored)
 ```
+
+## Gate H2 exact HTTPS boundary
+
+`crates/gate-h2-broker` is a separate locked Rust package. A stage remains `--network none` and can send only schema-defined requests over one owner-only Unix socket. The host broker admits an exact schema-bound capability in ordinal order, verifies token/peer/request pins before upstream I/O, inserts only the reviewed typed auth header from an inherited descriptor, commits raw output on the host, fsyncs hash-only lifecycle events, and seals a signed transcript. There is no URL, destination, arbitrary-header, proxy, `CONNECT`, redirect, retry, or decompression input in the stage protocol.
+
+The network client trait exists for deterministic local fixtures. The production constructor is separate, non-injectable, and currently fails closed because this no-network macOS implementation pass could not acquire or prove pinned Rust TLS/PKIX and Linux static dependencies. `crates/gate-h2-broker/scripts/build-stage-oci.sh` retains the clean Linux/musl/two-build/Podman/rootfs/SBOM/provenance checks as issue #101 gates. No runtime or image from this tree is production-authorized.
 
 ## Search Modes Comparison
 

@@ -1,0 +1,2 @@
+/etc/ssl/certs/ca-certificates.crt 0444
+/usr/local/bin/gate-h2-stage-runtime 0555
