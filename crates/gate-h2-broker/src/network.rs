@@ -12,6 +12,7 @@ use thiserror::Error;
 
 use crate::{
     credential::SecretBytes,
+    model::FilePin,
     policy::{is_forbidden, validate_dns_answers, verify_connected_peer},
 };
 
@@ -117,18 +118,20 @@ pub struct ProductionNetworkClient {
     resolver: Arc<dyn Resolver>,
     tls_config: Arc<ClientConfig>,
     allow_loopback_fixture: bool,
-    trust_root_sha256: String,
+    trust_root_pin: FilePin,
 }
 
+const TRUST_ROOT_VERSION: &str = "rustls-native-certs-0.8.2:length-prefixed-der-v1";
+
 impl ProductionNetworkClient {
-    pub fn new(expected_trust_root_sha256: &str) -> Result<Self, NetworkFailure> {
+    pub fn new(expected_trust_root_pin: &FilePin) -> Result<Self, NetworkFailure> {
         let native = rustls_native_certs::load_native_certs();
         if !native.errors.is_empty() || native.certs.is_empty() {
             return Err(NetworkFailure::Tls);
         }
         Self::from_roots(
             native.certs,
-            expected_trust_root_sha256,
+            expected_trust_root_pin,
             Arc::new(SystemResolver),
             false,
         )
@@ -136,13 +139,16 @@ impl ProductionNetworkClient {
 
     fn from_roots(
         mut roots: Vec<CertificateDer<'static>>,
-        expected_trust_root_sha256: &str,
+        expected_trust_root_pin: &FilePin,
         resolver: Arc<dyn Resolver>,
         allow_loopback_fixture: bool,
     ) -> Result<Self, NetworkFailure> {
         roots.sort_by(|left, right| left.as_ref().cmp(right.as_ref()));
-        let actual_pin = trust_root_pin(&roots);
-        if actual_pin != expected_trust_root_sha256 {
+        let actual_pin = trust_root_file_pin(&roots);
+        if actual_pin.sha256 != expected_trust_root_pin.sha256
+            || actual_pin.bytes != expected_trust_root_pin.bytes
+            || actual_pin.version != expected_trust_root_pin.version
+        {
             return Err(NetworkFailure::Tls);
         }
         let mut store = RootCertStore::empty();
@@ -162,12 +168,12 @@ impl ProductionNetworkClient {
             resolver,
             tls_config: Arc::new(tls_config),
             allow_loopback_fixture,
-            trust_root_sha256: actual_pin,
+            trust_root_pin: actual_pin,
         })
     }
 
-    pub fn trust_root_sha256(&self) -> &str {
-        &self.trust_root_sha256
+    pub fn trust_root_pin(&self) -> &FilePin {
+        &self.trust_root_pin
     }
 }
 
@@ -338,6 +344,9 @@ fn read_response(
     if body_length > cap {
         return Err(NetworkFailure::Overflow);
     }
+    if bytes.len() > header_end + body_length {
+        return Err(NetworkFailure::Framing);
+    }
     while bytes.len() < header_end + body_length {
         set_deadlines(&stream.sock, started, deadline)?;
         let read = stream.read(&mut chunk).map_err(map_tls_io)?;
@@ -439,14 +448,20 @@ fn parse_response_headers(bytes: &[u8]) -> Result<ParsedHeaders, NetworkFailure>
     })
 }
 
-fn trust_root_pin(roots: &[CertificateDer<'_>]) -> String {
+fn trust_root_file_pin(roots: &[CertificateDer<'_>]) -> FilePin {
     let mut hash = Sha256::new();
     hash.update(b"gate-h2-native-trust-roots-v1\0");
+    let mut bytes = 0_u64;
     for root in roots {
         hash.update((root.as_ref().len() as u64).to_be_bytes());
         hash.update(root.as_ref());
+        bytes += 8 + root.as_ref().len() as u64;
     }
-    hex::encode(hash.finalize())
+    FilePin {
+        sha256: hex::encode(hash.finalize()),
+        bytes,
+        version: TRUST_ROOT_VERSION.into(),
+    }
 }
 
 fn certificate_chain_pin(chain: &[CertificateDer<'_>]) -> String {
@@ -535,6 +550,68 @@ mod tests {
         }
     }
 
+    fn fixture_exchange(
+        response: Vec<u8>,
+        delay: Duration,
+        response_cap: u64,
+        deadline: Duration,
+    ) -> Result<NetworkResponse, NetworkFailure> {
+        let rcgen::CertifiedKey { cert, signing_key } =
+            rcgen::generate_simple_self_signed(vec!["fixture.example".into()]).unwrap();
+        let certificate = cert.der().clone();
+        let private_key =
+            PrivateKeyDer::Pkcs8(PrivatePkcs8KeyDer::from(signing_key.serialize_der()));
+        let provider = rustls::crypto::aws_lc_rs::default_provider();
+        let mut server_config = ServerConfig::builder_with_provider(Arc::new(provider))
+            .with_protocol_versions(&[&rustls::version::TLS13])
+            .unwrap()
+            .with_no_client_auth()
+            .with_single_cert(vec![certificate.clone()], private_key)
+            .unwrap();
+        server_config.alpn_protocols = vec![b"http/1.1".to_vec()];
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let server = thread::spawn(move || {
+            let (tcp, _) = listener.accept().unwrap();
+            let connection = ServerConnection::new(Arc::new(server_config)).unwrap();
+            let mut tls = StreamOwned::new(connection, tcp);
+            let mut request = Vec::new();
+            let mut chunk = [0_u8; 1024];
+            while !request.windows(4).any(|window| window == b"\r\n\r\n") {
+                match tls.read(&mut chunk) {
+                    Ok(0) | Err(_) => return,
+                    Ok(read) => request.extend_from_slice(&chunk[..read]),
+                }
+            }
+            thread::sleep(delay);
+            let _ = tls.write_all(&response);
+            tls.conn.send_close_notify();
+            let _ = tls.flush();
+        });
+        let roots = vec![certificate];
+        let pin = trust_root_file_pin(&roots);
+        let client = ProductionNetworkClient::from_roots(
+            roots,
+            &pin,
+            Arc::new(FixtureResolver(vec!["127.0.0.1".parse().unwrap()])),
+            true,
+        )
+        .unwrap();
+        let result = client.exchange(NetworkRequest {
+            hostname: "fixture.example",
+            port,
+            method: "GET",
+            path_query: "/",
+            auth: None,
+            body: b"",
+            connect_deadline: Duration::from_secs(2),
+            exchange_deadline: deadline,
+            response_byte_cap: response_cap,
+        });
+        server.join().unwrap();
+        result
+    }
+
     #[test]
     fn whole_dns_answer_set_is_rejected_before_connect() {
         assert!(
@@ -551,8 +628,8 @@ mod tests {
         let a = CertificateDer::from(vec![1, 2, 3]);
         let b = CertificateDer::from(vec![4, 5]);
         assert_eq!(
-            trust_root_pin(&[a.clone(), b.clone()]),
-            trust_root_pin(&[a, b])
+            trust_root_file_pin(&[a.clone(), b.clone()]).sha256,
+            trust_root_file_pin(&[a, b]).sha256
         );
         let _ = FixtureResolver(vec![IpAddr::V4(std::net::Ipv4Addr::LOCALHOST)]);
     }
@@ -560,7 +637,40 @@ mod tests {
     #[test]
     fn production_constructor_rejects_an_unpinned_native_root_set() {
         assert!(matches!(
-            ProductionNetworkClient::new(&"0".repeat(64)),
+            ProductionNetworkClient::new(&FilePin {
+                sha256: "0".repeat(64),
+                bytes: 0,
+                version: TRUST_ROOT_VERSION.into(),
+            }),
+            Err(NetworkFailure::Tls)
+        ));
+    }
+
+    #[test]
+    fn trust_root_file_pin_rejects_byte_count_and_version_substitution() {
+        let rcgen::CertifiedKey { cert, .. } =
+            rcgen::generate_simple_self_signed(vec!["fixture.example".into()]).unwrap();
+        let roots = vec![cert.der().clone()];
+        let mut pin = trust_root_file_pin(&roots);
+        pin.bytes += 1;
+        assert!(matches!(
+            ProductionNetworkClient::from_roots(
+                roots.clone(),
+                &pin,
+                Arc::new(FixtureResolver(vec!["127.0.0.1".parse().unwrap()])),
+                true,
+            ),
+            Err(NetworkFailure::Tls)
+        ));
+        pin = trust_root_file_pin(&roots);
+        pin.version = "substituted-root-serialization".into();
+        assert!(matches!(
+            ProductionNetworkClient::from_roots(
+                roots,
+                &pin,
+                Arc::new(FixtureResolver(vec!["127.0.0.1".parse().unwrap()])),
+                true,
+            ),
             Err(NetworkFailure::Tls)
         ));
     }
@@ -604,7 +714,7 @@ mod tests {
             tls.flush().unwrap();
         });
         let roots = vec![certificate];
-        let pin = trust_root_pin(&roots);
+        let pin = trust_root_file_pin(&roots);
         let client = ProductionNetworkClient::from_roots(
             roots,
             &pin,
@@ -658,7 +768,7 @@ mod tests {
             let _ = connection.complete_io(&mut tcp);
         });
         let roots = vec![certificate];
-        let pin = trust_root_pin(&roots);
+        let pin = trust_root_file_pin(&roots);
         let client = ProductionNetworkClient::from_roots(
             roots,
             &pin,
@@ -679,5 +789,99 @@ mod tests {
         });
         assert!(matches!(result, Err(NetworkFailure::Tls)));
         server.join().unwrap();
+    }
+
+    #[test]
+    fn production_transport_exposes_policy_headers_without_following_or_decoding() {
+        let redirect = fixture_exchange(
+            b"HTTP/1.1 302 Found\r\ncontent-type: application/json\r\nlocation: https://other.example/\r\ncontent-length: 2\r\nconnection: close\r\n\r\n{}".to_vec(),
+            Duration::ZERO,
+            32,
+            Duration::from_secs(2),
+        )
+        .unwrap();
+        assert_eq!(redirect.status, 302);
+        assert_eq!(redirect.location.as_deref(), Some("https://other.example/"));
+
+        let encoded = fixture_exchange(
+            b"HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-encoding: gzip\r\ntransfer-encoding: chunked\r\ncontent-length: 2\r\nconnection: close\r\n\r\n{}".to_vec(),
+            Duration::ZERO,
+            32,
+            Duration::from_secs(2),
+        )
+        .unwrap();
+        assert_eq!(encoded.content_encoding.as_deref(), Some("gzip"));
+        assert_eq!(encoded.transfer_encoding.as_deref(), Some("chunked"));
+        assert_eq!(encoded.body, b"{}");
+    }
+
+    #[test]
+    fn production_transport_rejects_ambiguous_or_malformed_raw_framing() {
+        let cases = [
+            b"HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: 2\r\ncontent-length: 2\r\n\r\n{}".to_vec(),
+            b"HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: x\r\n\r\n{}".to_vec(),
+            b"HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: 5\r\n\r\n{}".to_vec(),
+            b"HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: 2\r\n\r\n{}x".to_vec(),
+            b"NOT-HTTP\r\n\r\n".to_vec(),
+        ];
+        for (index, response) in cases.into_iter().enumerate() {
+            let result = fixture_exchange(response, Duration::ZERO, 32, Duration::from_secs(2));
+            assert!(
+                matches!(result, Err(NetworkFailure::Framing)),
+                "raw framing case {index} returned {result:?}"
+            );
+        }
+        assert!(matches!(
+            fixture_exchange(
+                b"HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: 3\r\n\r\n{}x".to_vec(),
+                Duration::ZERO,
+                2,
+                Duration::from_secs(2)
+            ),
+            Err(NetworkFailure::Overflow)
+        ));
+    }
+
+    #[test]
+    fn production_transport_enforces_deadline_and_dns_answer_set_before_connect() {
+        assert!(matches!(
+            fixture_exchange(
+                b"HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: 2\r\n\r\n{}"
+                    .to_vec(),
+                Duration::from_millis(100),
+                32,
+                Duration::from_millis(20)
+            ),
+            Err(NetworkFailure::Deadline)
+        ));
+
+        let rcgen::CertifiedKey { cert, .. } =
+            rcgen::generate_simple_self_signed(vec!["fixture.example".into()]).unwrap();
+        let roots = vec![cert.der().clone()];
+        let pin = trust_root_file_pin(&roots);
+        let client = ProductionNetworkClient::from_roots(
+            roots,
+            &pin,
+            Arc::new(FixtureResolver(vec![
+                "127.0.0.1".parse().unwrap(),
+                "169.254.169.254".parse().unwrap(),
+            ])),
+            true,
+        )
+        .unwrap();
+        assert!(matches!(
+            client.exchange(NetworkRequest {
+                hostname: "fixture.example",
+                port: 443,
+                method: "GET",
+                path_query: "/",
+                auth: None,
+                body: b"",
+                connect_deadline: Duration::from_millis(10),
+                exchange_deadline: Duration::from_millis(10),
+                response_byte_cap: 1,
+            }),
+            Err(NetworkFailure::DnsForbidden)
+        ));
     }
 }

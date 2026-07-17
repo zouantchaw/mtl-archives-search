@@ -136,6 +136,7 @@ pub struct ExchangeRequest {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ExchangeResponse {
     pub schema_version: String,
     pub message_type: String,
@@ -148,6 +149,7 @@ pub struct ExchangeResponse {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct OutputArtifact {
     pub artifact_role: String,
     pub sha256: String,

@@ -18,7 +18,7 @@ use crate::{
 };
 
 const CONFIG_DOMAIN: &[u8] = b"gate-h2-production-launch-config-v1\0";
-const ADMITTED_CONFIG_ID: Option<&str> = option_env!("GATE_H2_ADMITTED_CONFIG_ID");
+const ADMITTED_CODE_ID: Option<&str> = option_env!("GATE_H2_ADMITTED_CODE_ID");
 const MAX_CONFIG_BYTES: usize = 2 * 1024 * 1024;
 const MAX_REQUEST_BYTES: usize = 16 * 1024 * 1024;
 
@@ -27,6 +27,7 @@ const MAX_REQUEST_BYTES: usize = 16 * 1024 * 1024;
 struct LaunchConfig {
     schema_version: String,
     admission_id: String,
+    broker_code_identity_sha256: String,
     authority_state: String,
     manifest: Manifest,
     expected_uid: u32,
@@ -120,9 +121,12 @@ pub fn run_from_config_fd(fd: RawFd) -> Result<(), Box<dyn std::error::Error>> {
         request_bodies.push(read_inherited_fd(fd, MAX_REQUEST_BYTES)?);
     }
 
-    let network = ProductionNetworkClient::new(&config.trust_roots.sha256)?;
-    if network.trust_root_sha256() != config.trust_roots.sha256 {
-        return Err("native trust root pin mismatch".into());
+    let network = ProductionNetworkClient::new(&config.trust_roots)?;
+    if network.trust_root_pin().sha256 != config.trust_roots.sha256
+        || network.trust_root_pin().bytes != config.trust_roots.bytes
+        || network.trust_root_pin().version != config.trust_roots.version
+    {
+        return Err("native trust root FilePin mismatch".into());
     }
     let evidence = EvidenceWriter::new(
         config.evidence_directory,
@@ -176,8 +180,14 @@ fn validate_admission(
     if compute_admission_id(value)? != config.admission_id {
         return Err("launch config admission ID mismatch".into());
     }
-    if ADMITTED_CONFIG_ID != Some(config.admission_id.as_str()) {
-        return Err("this binary was not built for the admitted launch config".into());
+    if config.broker_code_identity_sha256.len() != 64
+        || !config
+            .broker_code_identity_sha256
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+        || ADMITTED_CODE_ID != Some(config.broker_code_identity_sha256.as_str())
+    {
+        return Err("this binary was not built from the admitted reviewed code identity".into());
     }
     let mut fds = vec![config.run_token_fd, config.signing_key_fd];
     fds.extend(config.request_body_fds.iter().copied());
@@ -256,22 +266,30 @@ mod tests {
     use super::*;
 
     #[test]
-    fn launch_admission_id_binds_exact_config_bytes() {
+    fn launch_admission_id_binds_exact_config_bytes_without_binary_fixed_point() {
         let first = serde_json::json!({
             "admission_id": "ignored",
+            "broker_code_identity_sha256": "a".repeat(64),
+            "broker_binary": {"sha256":"b".repeat(64),"bytes":123,"version":"broker-v1"},
             "authority_state": "admitted_gate_h2_broker_v1",
             "schema_version": "gate_h2_production_launch_config_v1.0.0"
         });
         let mut second = first.clone();
         second["authority_state"] = serde_json::json!("changed");
         assert_ne!(
-            compute_admission_id(first).unwrap(),
+            compute_admission_id(first.clone()).unwrap(),
             compute_admission_id(second).unwrap()
+        );
+        let mut third = first.clone();
+        third["broker_binary"]["sha256"] = serde_json::json!("c".repeat(64));
+        assert_ne!(
+            compute_admission_id(first).unwrap(),
+            compute_admission_id(third).unwrap()
         );
     }
 
     #[test]
     fn ordinary_build_has_no_production_authority() {
-        assert!(ADMITTED_CONFIG_ID.is_none());
+        assert!(ADMITTED_CODE_ID.is_none());
     }
 }

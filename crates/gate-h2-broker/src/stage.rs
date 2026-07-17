@@ -48,6 +48,8 @@ struct StageAuthority {
     capability_ids: Vec<String>,
     input_artifact_roles: Vec<String>,
     output_indexes: Vec<u64>,
+    output_artifact_roles: Vec<String>,
+    allowed_response_statuses: Vec<Vec<u16>>,
 }
 
 pub fn run_fixed() -> Result<(), Box<dyn std::error::Error>> {
@@ -92,27 +94,55 @@ pub fn run(stage_path: &Path, run_path: &Path) -> Result<(), Box<dyn std::error:
             &authority.capability_ids[ordinal],
             &request,
         )?;
-        if response.outcome != "accepted" || !response.exchange_consumed {
-            return Err("broker exchange failed closed".into());
-        }
-        let output = response
-            .output_artifact
-            .as_ref()
-            .ok_or("missing output artifact")?;
-        if !valid_role(&output.artifact_role)
-            || output.sha256.len() != 64
-            || !output.sha256.bytes().all(is_lower_hex)
-            || output.media_type != "application/json"
-            || output.bytes == 0
-        {
-            return Err("invalid broker output artifact".into());
-        }
+        let retained = stage.read_nested(
+            "outputs",
+            &format!("{}.json", authority.output_artifact_roles[ordinal]),
+            MAX_INPUT_BYTES,
+        )?;
+        validate_accepted_response(
+            &response,
+            &request,
+            &authority.output_artifact_roles[ordinal],
+            &authority.allowed_response_statuses[ordinal],
+            &retained,
+        )?;
         let receipt = serde_json::to_vec(&response)?;
         stage.commit_nested(
             "outputs",
             &format!("{}.receipt.json", program.output_indexes[ordinal]),
             &receipt,
         )?;
+    }
+    Ok(())
+}
+
+fn validate_accepted_response(
+    response: &ExchangeResponse,
+    request: &ExchangeRequest,
+    expected_role: &str,
+    allowed_statuses: &[u16],
+    retained: &[u8],
+) -> Result<(), Box<dyn std::error::Error>> {
+    let output = response
+        .output_artifact
+        .as_ref()
+        .ok_or("missing output artifact")?;
+    if response.schema_version != crate::PROTOCOL_VERSION
+        || response.message_type != "exchange_response"
+        || response.request_id != request.request_id
+        || response.outcome != "accepted"
+        || !response.exchange_consumed
+        || response.failure_code.is_some()
+        || output.artifact_role != expected_role
+        || output.sha256.len() != 64
+        || !output.sha256.bytes().all(is_lower_hex)
+        || output.media_type != "application/json"
+        || output.bytes == 0
+        || !allowed_statuses.contains(&output.status)
+        || retained.len() as u64 != output.bytes
+        || hex::encode(Sha256::digest(retained)) != output.sha256
+    {
+        return Err("broker response is not bound to the requested retained output".into());
     }
     Ok(())
 }
@@ -153,6 +183,22 @@ fn validate_program(
         || has_duplicates(&authority.capability_ids)
         || authority.input_artifact_roles != program.input_artifact_roles
         || authority.output_indexes != program.output_indexes
+        || authority.output_artifact_roles.len() != count
+        || authority
+            .output_artifact_roles
+            .iter()
+            .any(|role| !valid_role(role))
+        || has_duplicates(&authority.output_artifact_roles)
+        || authority.allowed_response_statuses.len() != count
+        || authority.allowed_response_statuses.iter().any(|statuses| {
+            statuses.is_empty()
+                || statuses.len() > 16
+                || statuses.iter().any(|status| !(200..=599).contains(status))
+                || {
+                    let mut seen = std::collections::HashSet::new();
+                    statuses.iter().any(|status| !seen.insert(status))
+                }
+        })
     {
         return Err("invalid or unauthorized stage program".into());
     }
@@ -458,7 +504,9 @@ mod tests {
             "manifest_id":"b".repeat(64),
             "capability_ids":[capability_id],
             "input_artifact_roles":["reviewed_request_body"],
-            "output_indexes":[0,1]
+            "output_indexes":[0,1],
+            "output_artifact_roles":["raw_https_response"],
+            "allowed_response_statuses":[[200]]
         });
         fs::write(
             run_root.join("stage-authority.json"),
@@ -472,6 +520,7 @@ mod tests {
             fs::Permissions::from_mode(0o600),
         )
         .unwrap();
+        let server_stage = stage.clone();
         let server = thread::spawn(move || {
             let (mut stream, _) = listener.accept().unwrap();
             stream
@@ -480,6 +529,12 @@ mod tests {
             let mut request = Vec::new();
             stream.read_to_end(&mut request).unwrap();
             assert!(request.starts_with(b"POST /v1/exchange/"));
+            let retained = br#"{"ok":true}"#;
+            fs::write(
+                server_stage.join("outputs/raw_https_response.json"),
+                retained,
+            )
+            .unwrap();
             let response = serde_json::json!({
                 "schema_version":crate::PROTOCOL_VERSION,
                 "message_type":"exchange_response",
@@ -488,7 +543,7 @@ mod tests {
                 "exchange_consumed":true,
                 "output_artifact":{
                     "artifact_role":"raw_https_response",
-                    "sha256":"c".repeat(64),
+                    "sha256":hex::encode(Sha256::digest(retained)),
                     "bytes":11,
                     "media_type":"application/json",
                     "status":200
@@ -517,5 +572,72 @@ mod tests {
         assert!(valid_role("reviewed_request_body"));
         assert!(!valid_role("../escape"));
         assert!(!valid_component("../escape"));
+
+        let unknown = br#"{"schema_version":"gate_h2_https_exchange_uds_v1.0.0","message_type":"exchange_response","request_id":"00000000000000000000000000000000","outcome":"rejected","exchange_consumed":true,"output_artifact":null,"failure_code":"protocol_error","extra":true}"#;
+        let mut framed = format!(
+            "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n",
+            unknown.len()
+        )
+        .into_bytes();
+        framed.extend_from_slice(unknown);
+        assert!(parse_response(&framed).is_err());
+    }
+
+    #[test]
+    fn accepted_response_must_join_request_role_status_and_retained_bytes() {
+        let retained = br#"{"ok":true}"#;
+        let request = ExchangeRequest {
+            schema_version: crate::PROTOCOL_VERSION.into(),
+            message_type: "exchange_request".into(),
+            request_id: "0".repeat(32),
+            run_token: "A".repeat(43),
+            capability_handle: "h2h_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA".into(),
+            request_artifact_role: "request".into(),
+            request_artifact_sha256: "a".repeat(64),
+            request_artifact_bytes: 1,
+        };
+        let response = ExchangeResponse {
+            schema_version: crate::PROTOCOL_VERSION.into(),
+            message_type: "exchange_response".into(),
+            request_id: request.request_id.clone(),
+            outcome: "accepted".into(),
+            exchange_consumed: true,
+            output_artifact: Some(crate::model::OutputArtifact {
+                artifact_role: "raw_https_response".into(),
+                sha256: hex::encode(Sha256::digest(retained)),
+                bytes: retained.len() as u64,
+                media_type: "application/json".into(),
+                status: 200,
+            }),
+            failure_code: None,
+        };
+        assert!(
+            validate_accepted_response(&response, &request, "raw_https_response", &[200], retained)
+                .is_ok()
+        );
+        let mut stale = response;
+        stale.request_id = "f".repeat(32);
+        assert!(
+            validate_accepted_response(&stale, &request, "raw_https_response", &[200], retained)
+                .is_err()
+        );
+        stale.request_id = request.request_id.clone();
+        assert!(
+            validate_accepted_response(&stale, &request, "other_role", &[200], retained).is_err()
+        );
+        assert!(
+            validate_accepted_response(&stale, &request, "raw_https_response", &[201], retained)
+                .is_err()
+        );
+        assert!(
+            validate_accepted_response(
+                &stale,
+                &request,
+                "raw_https_response",
+                &[200],
+                b"substituted"
+            )
+            .is_err()
+        );
     }
 }

@@ -572,14 +572,42 @@ fn uds_serve_runs_end_to_end_and_seals_terminal_evidence() {
 }
 
 #[test]
+fn terminal_acceptance_is_not_released_when_sealing_fails() {
+    let root = tempfile::tempdir().unwrap();
+    let broker = broker(root.path());
+    let manifest = broker.manifest().clone();
+    let body = serde_json::to_vec(&request(&manifest)).unwrap();
+    let directory = root.path().join("socket_seal_failure");
+    let (listener, guard) = crate::uds::bind_owner_only(&directory).unwrap();
+    let server = std::thread::spawn(move || {
+        crate::uds::serve_with_seal_error_for_test(listener, Arc::new(Mutex::new(broker)))
+    });
+    let mut stream =
+        std::os::unix::net::UnixStream::connect(directory.join("broker.sock")).unwrap();
+    write!(
+        stream,
+        "POST /v1/exchange/{} HTTP/1.1\r\nhost: gate-h2\r\ncontent-type: application/json\r\nconnection: close\r\ncontent-length: {}\r\n\r\n",
+        manifest.capabilities[0].capability_id,
+        body.len()
+    )
+    .unwrap();
+    stream.write_all(&body).unwrap();
+    stream.shutdown(std::net::Shutdown::Write).unwrap();
+    let mut response = Vec::new();
+    stream.read_to_end(&mut response).unwrap();
+    assert!(server.join().unwrap().is_err());
+    assert!(response.is_empty());
+    drop(guard);
+}
+
+#[test]
 fn malformed_uds_attempt_seals_a_valid_failed_lifecycle() {
     let root = tempfile::tempdir().unwrap();
     let broker = broker(root.path());
     let directory = root.path().join("socket_bad");
     let (listener, guard) = crate::uds::bind_owner_only(&directory).unwrap();
-    let server = std::thread::spawn(move || {
-        crate::uds::serve(listener, Arc::new(Mutex::new(broker))).unwrap()
-    });
+    let server =
+        std::thread::spawn(move || crate::uds::serve(listener, Arc::new(Mutex::new(broker))));
     let mut stream =
         std::os::unix::net::UnixStream::connect(directory.join("broker.sock")).unwrap();
     stream
@@ -588,7 +616,7 @@ fn malformed_uds_attempt_seals_a_valid_failed_lifecycle() {
     stream.shutdown(std::net::Shutdown::Write).unwrap();
     let mut response = Vec::new();
     stream.read_to_end(&mut response).unwrap();
-    server.join().unwrap();
+    assert!(server.join().unwrap().is_err());
     let transcript: serde_json::Value = serde_json::from_slice(
         &std::fs::read(root.path().join("evidence/transcript.v1.json")).unwrap(),
     )
@@ -597,4 +625,81 @@ fn malformed_uds_attempt_seals_a_valid_failed_lifecycle() {
     assert_eq!(transcript["events"][0]["event_type"], "handle_consumed");
     assert_eq!(transcript["events"][1]["event_type"], "exchange_failed");
     drop(guard);
+}
+
+fn assert_failed_terminal_evidence(root: &std::path::Path, code: &str) {
+    let transcript: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(root.join("evidence/transcript.v1.json")).unwrap())
+            .unwrap();
+    assert_eq!(transcript["final_outcome"], "failed_closed");
+    assert_eq!(transcript["events"][1]["evidence"]["failure_code"], code);
+    assert!(root.join("evidence/transcript.authority.v2.json").is_file());
+}
+
+#[test]
+fn accept_deadline_without_a_stream_consumes_and_seals_failed_evidence() {
+    let root = tempfile::tempdir().unwrap();
+    let directory = root.path().join("socket_deadline");
+    let (listener, guard) = crate::uds::bind_owner_only(&directory).unwrap();
+    assert!(
+        crate::uds::serve_with_timeout_for_test(
+            listener,
+            Arc::new(Mutex::new(broker(root.path()))),
+            Duration::from_millis(1),
+        )
+        .is_err()
+    );
+    assert_failed_terminal_evidence(root.path(), "deadline_exceeded");
+    drop(guard);
+}
+
+#[test]
+fn wrong_peer_and_peer_credential_failure_seal_before_rejection() {
+    type ServeFn = fn(std::os::unix::net::UnixListener, Arc<Mutex<Broker>>) -> std::io::Result<()>;
+    for (name, serve, expected) in [
+        (
+            "wrong",
+            crate::uds::serve_with_wrong_peer_for_test as ServeFn,
+            "wrong_peer",
+        ),
+        (
+            "peer_error",
+            crate::uds::serve_with_peer_error_for_test as ServeFn,
+            "protocol_error",
+        ),
+        (
+            "configure_error",
+            crate::uds::serve_with_configure_error_for_test as ServeFn,
+            "protocol_error",
+        ),
+        (
+            "accept_error",
+            crate::uds::serve_with_accept_error_for_test as ServeFn,
+            "protocol_error",
+        ),
+    ] {
+        let root = tempfile::tempdir().unwrap();
+        let directory = root.path().join(format!("socket_{name}"));
+        let (listener, guard) = crate::uds::bind_owner_only(&directory).unwrap();
+        let server = std::thread::spawn({
+            let state = Arc::new(Mutex::new(broker(root.path())));
+            move || serve(listener, state)
+        });
+        let mut stream =
+            std::os::unix::net::UnixStream::connect(directory.join("broker.sock")).unwrap();
+        let mut response = Vec::new();
+        let read_result = stream.read_to_end(&mut response);
+        assert!(server.join().unwrap().is_err());
+        assert_failed_terminal_evidence(root.path(), expected);
+        if name == "accept_error" {
+            assert!(read_result.is_err() || response.is_empty());
+        } else if name != "configure_error" {
+            read_result.unwrap();
+            assert!(response.starts_with(b"HTTP/1.1 200 OK\r\n"));
+        } else {
+            read_result.unwrap();
+            assert!(response.is_empty());
+        }
+        drop(guard);
+    }
 }

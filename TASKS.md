@@ -193,7 +193,7 @@ Geography: Montreal 57%, rest of QC 24%, US 14%, International 5%.
 - Do not call the batch complete or upload a final evidence bundle before those gates pass.
 # Gate H2 HTTPS Broker (#99)
 
-- [x] Implement the inactive production broker and launcher with resolve-once whole-set policy, exact peer pinning, rustls TLS 1.3 SNI/PKIX, strict HTTP/UDS framing and deadlines, sealed inherited secrets, descriptor-safe stage access, and terminal v1 evidence on every consumed handle.
+- [x] Implement the inactive production broker and constructible code/config admission with resolve-once whole-set policy, exact peer pinning, rustls TLS 1.3 SNI/PKIX, full trust-root `FilePin` validation, strict HTTP/UDS framing and deadlines, safe-integer parity, sealed inherited secrets, descriptor-safe stage access, retained-output response joins, and terminal v1 evidence on every consumed handle.
 - [x] Preserve the #98 v1 transcript and add the Ed25519 v2 authority envelope binding D1 begin/attempt, session, exact broker/runtime/root bytes, socket/token commitments, manifest, signer trust entry, events, outputs, times, and outcome. Validate emitted artifacts through the #98 production oracle.
-- [x] Define truthful independent-source static ELF/rootfs/OCI byte comparison, SBOM, and success-only provenance scripts without claiming they ran on macOS.
-- [ ] Issue #101 evidence only: independently prove Linux `SO_PEERCRED`, mandatory sealed memfds, static linkage, sandbox flags, and two-clean-source binary/rootfs/OCI byte identity before admitting a production launch configuration.
+- [x] Define a checked exact build-tool identity lock plus truthful independent-source static ELF/rootfs/OCI byte comparison, SBOM, and success-only provenance scripts without claiming they ran on macOS.
+- [ ] Issue #101 evidence only: independently prove Linux `SO_PEERCRED`, mandatory sealed memfds, static linkage, sandbox flags, external TLS conformance, and two-clean-source binary/rootfs/OCI byte identity before admitting a production launch configuration.

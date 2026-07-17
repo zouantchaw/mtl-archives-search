@@ -78,42 +78,228 @@ pub fn bind_owner_only(directory: &Path) -> io::Result<(UnixListener, SocketGuar
 }
 
 pub fn serve(listener: UnixListener, broker: Arc<Mutex<Broker>>) -> io::Result<()> {
+    serve_with_hooks(
+        listener,
+        broker,
+        ACCEPT_TIMEOUT,
+        accept_stream,
+        configure_stream,
+        peer_uid,
+        seal_broker,
+    )
+}
+
+fn serve_with_hooks(
+    listener: UnixListener,
+    broker: Arc<Mutex<Broker>>,
+    accept_timeout: std::time::Duration,
+    accept: fn(&UnixListener) -> io::Result<(UnixStream, std::os::unix::net::SocketAddr)>,
+    configure: fn(&UnixStream) -> io::Result<()>,
+    identify_peer: fn(&UnixStream) -> io::Result<u32>,
+    seal: fn(&mut Broker) -> io::Result<()>,
+) -> io::Result<()> {
     loop {
-        wait_readable(listener.as_raw_fd(), ACCEPT_TIMEOUT)?;
-        let (mut stream, _) = listener.accept()?;
-        stream.set_read_timeout(Some(IO_TIMEOUT))?;
-        stream.set_write_timeout(Some(IO_TIMEOUT))?;
+        if let Err(error) = wait_readable(listener.as_raw_fd(), accept_timeout) {
+            terminate_and_seal(&broker, "deadline_exceeded")?;
+            return Err(error);
+        }
+        let (mut stream, _) = match accept(&listener) {
+            Ok(value) => value,
+            Err(error) => {
+                terminate_and_seal(&broker, "protocol_error")?;
+                return Err(error);
+            }
+        };
+        if let Err(error) = configure(&stream) {
+            terminate_and_seal(&broker, "protocol_error")?;
+            return Err(error);
+        }
         let expected_uid = broker
             .lock()
             .map_err(|_| io::Error::other("broker state poisoned"))?
             .expected_uid();
-        if peer_uid(&stream)? != expected_uid {
+        let (peer_matches, code) = match identify_peer(&stream) {
+            Ok(uid) => (uid == expected_uid, "wrong_peer"),
+            Err(_) => (false, "protocol_error"),
+        };
+        if !peer_matches {
+            terminate_and_seal(&broker, code)?;
             let _ = write_rejection(
                 &mut stream,
                 "00000000000000000000000000000000",
                 "protocol_error",
             );
-            return terminate_and_seal(&broker, "wrong_peer");
+            return Err(io::Error::new(io::ErrorKind::PermissionDenied, code));
         }
-        if handle_stream(&mut stream, &broker).is_err() {
-            let _ = write_rejection(
-                &mut stream,
-                "00000000000000000000000000000000",
-                "protocol_error",
-            );
-            return terminate_and_seal(&broker, "protocol_error");
-        }
-        let mut state = broker
+        let response = match handle_stream(&mut stream, &broker) {
+            Ok(response) => response,
+            Err(_) => {
+                terminate_and_seal(&broker, "protocol_error")?;
+                let _ = write_rejection(
+                    &mut stream,
+                    "00000000000000000000000000000000",
+                    "protocol_error",
+                );
+                return Err(io::Error::new(io::ErrorKind::InvalidData, "protocol_error"));
+            }
+        };
+        let terminal = broker
             .lock()
-            .map_err(|_| io::Error::other("broker state poisoned"))?;
-        if state.is_terminal() {
-            state
-                .seal_transcript()
-                .map_err(|_| io::Error::other("transcript seal failed"))?;
-            return Ok(());
+            .map_err(|_| io::Error::other("broker state poisoned"))?
+            .is_terminal();
+        if terminal {
+            let mut state = broker
+                .lock()
+                .map_err(|_| io::Error::other("broker state poisoned"))?;
+            seal(&mut state)?;
+            drop(state);
+            write_response(&mut stream, &response)?;
+            return if response.outcome == "accepted" {
+                Ok(())
+            } else {
+                Err(io::Error::other("exchange failed closed"))
+            };
         }
+        write_response(&mut stream, &response)?;
     }
 }
+
+fn configure_stream(stream: &UnixStream) -> io::Result<()> {
+    stream.set_read_timeout(Some(IO_TIMEOUT))?;
+    stream.set_write_timeout(Some(IO_TIMEOUT))
+}
+
+fn accept_stream(
+    listener: &UnixListener,
+) -> io::Result<(UnixStream, std::os::unix::net::SocketAddr)> {
+    listener.accept()
+}
+
+fn seal_broker(broker: &mut Broker) -> io::Result<()> {
+    broker
+        .seal_transcript()
+        .map(|_| ())
+        .map_err(|_| io::Error::other("transcript seal failed"))
+}
+
+#[cfg(test)]
+pub(crate) fn serve_with_timeout_for_test(
+    listener: UnixListener,
+    broker: Arc<Mutex<Broker>>,
+    timeout: std::time::Duration,
+) -> io::Result<()> {
+    serve_with_hooks(
+        listener,
+        broker,
+        timeout,
+        accept_stream,
+        configure_stream,
+        peer_uid,
+        seal_broker,
+    )
+}
+
+#[cfg(test)]
+pub(crate) fn serve_with_wrong_peer_for_test(
+    listener: UnixListener,
+    broker: Arc<Mutex<Broker>>,
+) -> io::Result<()> {
+    fn wrong_peer(_: &UnixStream) -> io::Result<u32> {
+        Ok(unsafe { libc::geteuid() }.wrapping_add(1))
+    }
+    serve_with_hooks(
+        listener,
+        broker,
+        ACCEPT_TIMEOUT,
+        accept_stream,
+        configure_stream,
+        wrong_peer,
+        seal_broker,
+    )
+}
+
+#[cfg(test)]
+pub(crate) fn serve_with_peer_error_for_test(
+    listener: UnixListener,
+    broker: Arc<Mutex<Broker>>,
+) -> io::Result<()> {
+    fn peer_error(_: &UnixStream) -> io::Result<u32> {
+        Err(io::Error::other("injected peer credential failure"))
+    }
+    serve_with_hooks(
+        listener,
+        broker,
+        ACCEPT_TIMEOUT,
+        accept_stream,
+        configure_stream,
+        peer_error,
+        seal_broker,
+    )
+}
+
+#[cfg(test)]
+pub(crate) fn serve_with_configure_error_for_test(
+    listener: UnixListener,
+    broker: Arc<Mutex<Broker>>,
+) -> io::Result<()> {
+    fn configure_error(_: &UnixStream) -> io::Result<()> {
+        Err(io::Error::other("injected timeout setup failure"))
+    }
+    serve_with_hooks(
+        listener,
+        broker,
+        ACCEPT_TIMEOUT,
+        accept_stream,
+        configure_error,
+        peer_uid,
+        seal_broker,
+    )
+}
+
+#[cfg(test)]
+pub(crate) fn serve_with_seal_error_for_test(
+    listener: UnixListener,
+    broker: Arc<Mutex<Broker>>,
+) -> io::Result<()> {
+    fn seal_error(_: &mut Broker) -> io::Result<()> {
+        Err(io::Error::other("injected seal failure"))
+    }
+    serve_with_hooks(
+        listener,
+        broker,
+        ACCEPT_TIMEOUT,
+        accept_stream,
+        configure_stream,
+        peer_uid,
+        seal_error,
+    )
+}
+
+#[cfg(test)]
+pub(crate) fn serve_with_accept_error_for_test(
+    listener: UnixListener,
+    broker: Arc<Mutex<Broker>>,
+) -> io::Result<()> {
+    fn accept_error(_: &UnixListener) -> io::Result<(UnixStream, std::os::unix::net::SocketAddr)> {
+        Err(io::Error::other("injected accept failure"))
+    }
+    serve_with_hooks(
+        listener,
+        broker,
+        ACCEPT_TIMEOUT,
+        accept_error,
+        configure_stream,
+        peer_uid,
+        seal_broker,
+    )
+}
+
+/*
+ * Before accept there is no peer stream to answer. The only admissible action is
+ * to consume the next capability, durably seal a failed transcript, and return
+ * an error/close to the launcher. Once a stream exists, rejection bytes are
+ * released only after that same terminal evidence is durable.
+ */
 
 fn terminate_and_seal(broker: &Arc<Mutex<Broker>>, code: &'static str) -> io::Result<()> {
     let mut state = broker
@@ -128,7 +314,10 @@ fn terminate_and_seal(broker: &Arc<Mutex<Broker>>, code: &'static str) -> io::Re
     Ok(())
 }
 
-fn handle_stream(stream: &mut UnixStream, broker: &Arc<Mutex<Broker>>) -> io::Result<()> {
+fn handle_stream(
+    stream: &mut UnixStream,
+    broker: &Arc<Mutex<Broker>>,
+) -> io::Result<ExchangeResponse> {
     let (path, body) = read_request(stream)?;
     let capability_id = path
         .strip_prefix("/v1/exchange/")
@@ -136,12 +325,11 @@ fn handle_stream(stream: &mut UnixStream, broker: &Arc<Mutex<Broker>>) -> io::Re
         .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "invalid exchange path"))?;
     let request: ExchangeRequest = serde_json::from_value(parse_strict_json(&body)?)
         .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "invalid protocol body"))?;
-    let response = broker
+    broker
         .lock()
         .map_err(|_| io::Error::other("broker state poisoned"))?
         .exchange(capability_id, request)
-        .map_err(|_| io::Error::other("exchange state failure"))?;
-    write_response(stream, &response)
+        .map_err(|_| io::Error::other("exchange state failure"))
 }
 
 pub(crate) fn parse_strict_json(bytes: &[u8]) -> io::Result<serde_json::Value> {
@@ -163,9 +351,15 @@ pub(crate) fn parse_strict_json(bytes: &[u8]) -> io::Result<serde_json::Value> {
             Ok(v.into())
         }
         fn visit_i64<E: Error>(self, v: i64) -> Result<Self::Value, E> {
+            if !(-9_007_199_254_740_991..=9_007_199_254_740_991).contains(&v) {
+                return Err(E::custom("JSON integer outside safe range"));
+            }
             Ok(v.into())
         }
         fn visit_u64<E: Error>(self, v: u64) -> Result<Self::Value, E> {
+            if v > 9_007_199_254_740_991 {
+                return Err(E::custom("JSON integer outside safe range"));
+            }
             Ok(v.into())
         }
         fn visit_str<E: Error>(self, v: &str) -> Result<Self::Value, E> {
@@ -462,5 +656,8 @@ mod tests {
         );
         assert!(parse(b"POST /v1/exchange/x HTTP/1.1\r\ntransfer-encoding: chunked\r\ncontent-length: 0\r\n\r\n").is_err());
         assert!(parse_strict_json(br#"{"x":1,"x":2}"#).is_err());
+        assert!(parse_strict_json(br#"{"x":9007199254740992}"#).is_err());
+        assert!(parse_strict_json(br#"{"x":-9007199254740992}"#).is_err());
+        assert!(parse_strict_json(br#"{"x":9007199254740991}"#).is_ok());
     }
 }

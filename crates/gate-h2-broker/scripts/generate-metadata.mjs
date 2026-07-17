@@ -3,8 +3,8 @@ import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-const [root, output, target, trustRootsSha256, sourceCommit, sourceTree, toolchainSha256, binarySha256, rootfsSha256, ociArchiveSha256, ociImageId] = process.argv.slice(2);
-const digests = [trustRootsSha256, sourceCommit, sourceTree, toolchainSha256, binarySha256, rootfsSha256, ociArchiveSha256];
+const [root, output, target, trustRootsSha256, sourceCommit, sourceTree, toolchainLockSha256, binarySha256, rootfsSha256, ociArchiveSha256, ociImageId] = process.argv.slice(2);
+const digests = [trustRootsSha256, sourceCommit, sourceTree, toolchainLockSha256, binarySha256, rootfsSha256, ociArchiveSha256];
 if (!root || !output || !target || digests.some((value) => !/^[a-f0-9]{40,64}$/.test(value ?? "")) || !/^sha256:[a-f0-9]{64}$/.test(ociImageId ?? "")) throw new Error("invalid verified metadata arguments");
 mkdirSync(output, { recursive: true });
 const tree = execFileSync("cargo", ["tree", "--manifest-path", join(root, "Cargo.toml"), "--locked", "--offline", "--target", target, "--edges", "normal", "--prefix", "none", "--format", "{p}\t{l}"], { cwd: root, encoding: "utf8" });
@@ -26,7 +26,8 @@ const provenance = {
   source_commit: sourceCommit,
   source_tree: sourceTree,
   target,
-  toolchain_sha256: toolchainSha256,
+  toolchain_lock_sha256: toolchainLockSha256,
+  toolchain_lock: JSON.parse(readFileSync(join(root, "oci/toolchain-lock.v1.json"))),
   cargo_lock_sha256: createHash("sha256").update(lock).digest("hex"),
   trust_roots_sha256: trustRootsSha256,
   binary_sha256: binarySha256,

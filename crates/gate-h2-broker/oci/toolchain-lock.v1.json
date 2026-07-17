@@ -1,0 +1,20 @@
+{
+  "schema_version": "gate_h2_build_toolchain_lock_v1.0.0",
+  "target": "x86_64-unknown-linux-musl",
+  "identity_basis": "exact_normalized_version_output_sha256",
+  "tools": [
+    { "name": "rustc", "identity": "rustc 1.97.0 (2d8144b78 2026-07-07)", "identity_sha256": "29202a956a35d3769de26573060ad28df43a336d526e856d6d8aecd934c60270" },
+    { "name": "cargo", "identity": "cargo 1.97.0 (c980f4866 2026-06-30)", "identity_sha256": "e5fa0d5f8098a50ad48136548fc413a8110956e57cdbd9e12cdebf8ff7d26fc3" },
+    { "name": "rustup", "identity": "rustup 1.28.2 (2025-04-28)", "identity_sha256": "9d6acd4ff894e38adb2d009d4fb62d02bb8defe1ef100c9bfba1384c8c069313" },
+    { "name": "x86_64-linux-musl-gcc", "identity": "x86_64-linux-musl-gcc|target=x86_64-linux-musl|version=14.2.0", "identity_sha256": "fdf0a5bbe4192b06dda51894537c4b9df4e7e4424d2db0012baa13b42e01e8b9" },
+    { "name": "podman", "identity": "podman version 5.6.2", "identity_sha256": "62ff55e10445d2ca834f909f3e37a56b514aed34c2989f80ef0a6decc8a06130" },
+    { "name": "tar", "identity": "tar (GNU tar) 1.35", "identity_sha256": "ca7a8c691eceaf743db5f61b9d81a131f81d922fb2c4ffc3dd31b2902b60e041" },
+    { "name": "readelf", "identity": "GNU readelf (GNU Binutils) 2.44", "identity_sha256": "ef1eedcb0e9eb0aaeb043954533eef5ab153270a418f26b3644a5b1da85244dc" },
+    { "name": "sha256sum", "identity": "sha256sum (GNU coreutils) 9.7", "identity_sha256": "f36dfc7d14fbdb469d76431ca913b918d7d1f7e7dacb3b54f97aeaa183f6c583" },
+    { "name": "git", "identity": "git version 2.50.1", "identity_sha256": "327ac2720f01e24f556be0f3c405dc13dc954b2eeb29554342351bee05fc86de" },
+    { "name": "node", "identity": "v22.22.0", "identity_sha256": "29031591925b80b0bc1621976551523d2dff743165c5e839883a6b87d8640200" },
+    { "name": "find", "identity": "find (GNU findutils) 4.10.0", "identity_sha256": "f9e721b314783a8d414f87e4479fccaa9eb118c523a9e5ed120415e01b956639" },
+    { "name": "cmp", "identity": "cmp (GNU diffutils) 3.10", "identity_sha256": "16bb701d6bb8904bea806e349d84b8673d2b99bda6dd57bdbe7b7be409c4cf21" },
+    { "name": "bash", "identity": "GNU bash, version 5.2.37(1)-release (x86_64-pc-linux-gnu)", "identity_sha256": "2694b84f6be656e3d9eb01e69dfe186e1f24655b07e879b5e9c4c58d7363de51" }
+  ]
+}

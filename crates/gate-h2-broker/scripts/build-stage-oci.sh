@@ -7,9 +7,11 @@ TARGET=x86_64-unknown-linux-musl
 OUT="${1:-$CRATE_ROOT/dist}"
 
 [[ "$(uname -s)" == Linux ]] || { echo "gate H2 OCI proof requires Linux; retain as issue #101 evidence gate" >&2; exit 78; }
-for command in cargo git podman readelf rustc rustup sha256sum tar; do
+for command in bash cargo cmp find git node podman readelf rustc rustup sha256sum tar x86_64-linux-musl-gcc; do
   command -v "$command" >/dev/null || { echo "$command is required" >&2; exit 78; }
 done
+TOOLCHAIN_LOCK="$CRATE_ROOT/oci/toolchain-lock.v1.json"
+TOOLCHAIN_LOCK_SHA256="$(node "$CRATE_ROOT/scripts/verify-toolchain-lock.mjs" "$TOOLCHAIN_LOCK")"
 [[ -z "$(git -C "$REPO_ROOT" status --porcelain=v1 --untracked-files=all)" ]] || { echo "source worktree must be clean" >&2; exit 65; }
 rustup target list --installed | grep -qx "$TARGET" || { echo "$TARGET is not installed" >&2; exit 78; }
 : "${GATE_H2_TRUST_ROOTS:?set GATE_H2_TRUST_ROOTS to reviewed PEM bytes}"
@@ -21,12 +23,9 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 SOURCE_COMMIT="$(git -C "$REPO_ROOT" rev-parse HEAD)"
 SOURCE_TREE="$(git -C "$REPO_ROOT" rev-parse HEAD^{tree})"
-rustc -vV > "$TMP/rustc-vV"
-cargo -vV > "$TMP/cargo-vV"
-TOOLCHAIN_SHA256="$(cat "$TMP/rustc-vV" "$TMP/cargo-vV" | sha256sum | cut -d' ' -f1)"
 export SOURCE_DATE_EPOCH=0 CARGO_NET_OFFLINE=true TZ=UTC LC_ALL=C
 export RUSTFLAGS="-C target-feature=+crt-static -C link-arg=-Wl,--build-id=none"
-unset GATE_H2_ADMITTED_CONFIG_ID
+unset GATE_H2_ADMITTED_CODE_ID
 
 for pass in 1 2; do
   mkdir -p "$TMP/source-$pass" "$TMP/cargo-home-$pass" "$TMP/target-$pass" "$TMP/rootfs-$pass"
@@ -69,14 +68,14 @@ OCI_ARCHIVE_SHA256="$(sha256sum "$TMP/stage-1.oci.tar" | cut -d' ' -f1)"
 mkdir -p "$TMP/output"
 CARGO_HOME="$TMP/cargo-home-1" node "$CRATE_ROOT/scripts/generate-metadata.mjs" \
   "$TMP/source-1/crates/gate-h2-broker" "$TMP/output" "$TARGET" \
-  "$GATE_H2_TRUST_ROOTS_SHA256" "$SOURCE_COMMIT" "$SOURCE_TREE" "$TOOLCHAIN_SHA256" \
+  "$GATE_H2_TRUST_ROOTS_SHA256" "$SOURCE_COMMIT" "$SOURCE_TREE" "$TOOLCHAIN_LOCK_SHA256" \
   "$BINARY_SHA256" "$ROOTFS_SHA256" "$OCI_ARCHIVE_SHA256" "$(cat "$TMP/image-1.id")"
 install -m 0444 "$TMP/stage-1.oci.tar" "$TMP/output/gate-h2-stage.oci.tar"
 install -m 0444 "$TMP/rootfs-1.tar" "$TMP/output/rootfs.tar"
 printf '%s\n' \
   "source_commit=$SOURCE_COMMIT" \
   "source_tree=$SOURCE_TREE" \
-  "toolchain_sha256=$TOOLCHAIN_SHA256" \
+  "toolchain_lock_sha256=$TOOLCHAIN_LOCK_SHA256" \
   "binary_sha256=$BINARY_SHA256" \
   "rootfs_sha256=$ROOTFS_SHA256" \
   "oci_archive_sha256=$OCI_ARCHIVE_SHA256" \
