@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https-exchange-uds-protocol.schema.v1.json",
+  "oneOf": [
+    { "$ref": "#/$defs/request" },
+    { "$ref": "#/$defs/response" }
+  ],
+  "$defs": {
+    "request": { "type": "object", "additionalProperties": false, "required": ["schema_version", "message_type", "request_id", "run_token", "capability_handle", "request_artifact_role", "request_artifact_sha256", "request_artifact_bytes"], "properties": { "schema_version": { "const": "gate_h2_https_exchange_uds_v1.0.0" }, "message_type": { "const": "exchange_request" }, "request_id": { "type": "string", "pattern": "^[a-f0-9]{32}$" }, "run_token": { "type": "string", "pattern": "^[A-Za-z0-9_-]{43}$" }, "capability_handle": { "type": "string", "pattern": "^h2h_[A-Za-z0-9_-]{32,86}$" }, "request_artifact_role": { "type": "string", "pattern": "^[a-z0-9_]+$" }, "request_artifact_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "request_artifact_bytes": { "type": "integer", "minimum": 0 } } },
+    "response": { "type": "object", "additionalProperties": false, "required": ["schema_version", "message_type", "request_id", "outcome", "exchange_consumed", "output_artifact"], "properties": { "schema_version": { "const": "gate_h2_https_exchange_uds_v1.0.0" }, "message_type": { "const": "exchange_response" }, "request_id": { "type": "string", "pattern": "^[a-f0-9]{32}$" }, "outcome": { "enum": ["accepted", "rejected", "failed_closed"] }, "exchange_consumed": { "const": true }, "output_artifact": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/outputArtifact" }] }, "failure_code": { "enum": ["invalid_token", "invalid_handle", "replay", "out_of_order", "request_artifact_mismatch", "dns_forbidden", "dns_rebinding", "tls_failure", "redirect_forbidden", "response_status_forbidden", "response_type_forbidden", "request_too_large", "response_too_large", "deadline_exceeded", "protocol_error"] } }, "allOf": [{ "if": { "properties": { "outcome": { "const": "accepted" } } }, "then": { "properties": { "output_artifact": { "$ref": "#/$defs/outputArtifact" } }, "not": { "required": ["failure_code"] } }, "else": { "required": ["failure_code"], "properties": { "output_artifact": { "type": "null" } } } }] },
+    "outputArtifact": { "type": "object", "additionalProperties": false, "required": ["artifact_role", "sha256", "bytes", "media_type", "status"], "properties": { "artifact_role": { "type": "string", "pattern": "^[a-z0-9_]+$" }, "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "bytes": { "type": "integer", "minimum": 0 }, "media_type": { "const": "application/json" }, "status": { "type": "integer", "minimum": 200, "maximum": 599 } } }
+  }
+}

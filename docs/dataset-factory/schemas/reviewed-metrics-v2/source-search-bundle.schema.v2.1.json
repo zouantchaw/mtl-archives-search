@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "source-search-bundle.schema.v2.1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "bundle_schema", "status", "task_id", "prompt", "query_subject", "normalization_contract", "official_domain_policy", "output_schema"],
+  "properties": {
+    "schema_version": { "const": "reviewed_metrics_source_search_bundle_v2.1.0" },
+    "bundle_schema": { "$ref": "#/$defs/schemaPin" },
+    "status": { "$ref": "source-search-bundle.schema.v2.json#/properties/status" },
+    "task_id": { "$ref": "source-search-bundle.schema.v2.json#/properties/task_id" },
+    "prompt": { "const": "Locate the official Quebec cultural-heritage record for the public query subject. Return the required public fields under the normalization contract with one bounded paraphrase." },
+    "query_subject": { "type": "object", "additionalProperties": false, "required": ["kind", "value"], "properties": { "kind": { "const": "organization_name" }, "value": { "const": "The Gazette" } } },
+    "normalization_contract": { "$ref": "source-search-bundle.schema.v2.json#/properties/normalization_contract" },
+    "official_domain_policy": { "$ref": "source-search-bundle.schema.v2.json#/properties/official_domain_policy" },
+    "output_schema": { "$ref": "source-search-bundle.schema.v2.json#/properties/output_schema" }
+  },
+  "$defs": {
+    "schemaPin": { "type": "object", "additionalProperties": false, "required": ["sha256", "bytes"], "properties": { "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "bytes": { "type": "integer", "minimum": 1 } } }
+  }
+}

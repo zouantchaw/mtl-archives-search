@@ -223,4 +223,12 @@ It should be very engaging to read; don't make it sound like boring technical do
 Make sure to keep it updated as the project evolves
 # Gold Label Batch 002 Worker Rule
 
+## Reviewed Metrics v2 Rule
+
+Do not create or activate the issue #96 execution authority, generate a real evaluator key, run either prediction, author private expected data/gold, score, or publish from candidate work. Reviewed Metrics v2 remains candidate-only. Every consequential production command requires a fresh stage-specific coordinator receipt, actual wall-clock validation, and an `O_EXCL`, fsynced durable start/completion marker pair that rejects replay before side effects.
+
+Private retention requires exact account/endpoint identity, a dedicated bucket, secret HMAC-keyed opaque addresses, exact metadata, conditional ETag/version readback, stable HEAD, and complete pre/post domain plus Worker-binding enumeration. Receipt issue occurs only after postflight and semantic validation. Security executables use verified absolute root-owned paths, never `PATH`.
+
+Place precision and coverage use only the opaque official-source-search task joined through Gate E acceptance, frozen source prediction, private retention, and signed finalization. Visual rows must contain zero place opportunities or links, preserve `no_pixel_identity_claim`, and cannot turn Gate E into scene support. Entity arrays are capped at 12 per row, reject quantized/IoU-near duplicates at `0.98`, and use deterministic polynomial min-cost assignment maximizing match count then integerized IoU with stable ties. Mask/geolocation remain prerequisite N/A; model/tool cost remains explicitly unavailable because no real usage receipt exists. No real trust/evaluator key, authority, route receipt, prediction, gold/private evidence, R2 write, score, publication, push, deploy, or production mutation exists. Task review must not author `private_score_passed`.
+
 For issue #68 pixel review, read only the assigned sealed packet, instruction file, neutral templates, and referenced orientation views. Do not inspect hidden inputs, record/source/licensing fields, metadata, acquisition scores, prior labels, VLM/taxonomy, components/splits, search tasks, lineage, or another pass. Use `gold_label_review_pass_v1.0.0`; record directly observed pixels or explicit abstention only. Never add inferred, metadata, verified, identity, date, or location claims.

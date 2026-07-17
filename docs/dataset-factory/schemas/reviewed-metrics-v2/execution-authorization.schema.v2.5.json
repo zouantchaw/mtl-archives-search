@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "execution-authorization.schema.v2.5.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "candidate_id", "implementation_base_commit", "candidate_commit", "bundle_tree_sha256", "coordinator_trust", "trusted_surface_inventory", "stage_execution", "pre_activation_attestations", "https_exchange_authority", "implementation", "predictor", "search_predictor", "private_evaluator", "gold_reviewer", "task_reviewer", "publisher", "forbidden_prior_reviewers", "authorized_at", "started_at", "ended_at", "freeze_at", "source_search_started_at", "source_search_ended_at", "source_search_freeze_at", "source_dossier_authored_at", "private_envelope_sealed_at", "expires_at"],
+  "properties": {
+    "schema_version": { "const": "reviewed_metrics_execution_authorization_v2.5.0" },
+    "status": { "const": "activated_exact_one_shot" },
+    "candidate_id": { "const": "dfv0_reviewed_metrics_v2_candidate_20260715" },
+    "implementation_base_commit": { "const": "5fe4dfbe51a320a51f1f126b4a2d8cf0722be5dc" },
+    "candidate_commit": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "bundle_tree_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "coordinator_trust": { "$ref": "execution-authorization.schema.v2.json#/$defs/coordinatorTrust" },
+    "trusted_surface_inventory": { "type": "array", "minItems": 7, "maxItems": 7, "uniqueItems": true, "items": { "$ref": "execution-authorization.schema.v2.json#/$defs/surfaceInventory" } },
+    "stage_execution": { "$ref": "#/$defs/stageExecutionV25" },
+    "pre_activation_attestations": { "$ref": "#/$defs/preActivationAttestationsV25" },
+    "https_exchange_authority": { "$ref": "#/$defs/httpsExchangeAuthority" },
+    "implementation": { "$ref": "execution-authorization.schema.v2.json#/$defs/implementationActor" },
+    "predictor": { "$ref": "execution-authorization.schema.v2.json#/$defs/predictorActor" },
+    "search_predictor": { "$ref": "execution-authorization.schema.v2.json#/$defs/searchPredictorActor" },
+    "private_evaluator": { "$ref": "execution-authorization.schema.v2.json#/$defs/privateEvaluatorActor" },
+    "gold_reviewer": { "$ref": "execution-authorization.schema.v2.json#/$defs/goldActor" },
+    "task_reviewer": { "$ref": "execution-authorization.schema.v2.json#/$defs/taskActor" },
+    "publisher": { "$ref": "execution-authorization.schema.v2.json#/$defs/publisherActor" },
+    "forbidden_prior_reviewers": { "type": "array", "minItems": 4, "maxItems": 4, "uniqueItems": true, "items": { "$ref": "execution-authorization.schema.v2.json#/$defs/forbiddenActor" } },
+    "authorized_at": { "$ref": "#/$defs/canonicalTimestamp" },
+    "started_at": { "$ref": "#/$defs/canonicalTimestamp" },
+    "ended_at": { "$ref": "#/$defs/canonicalTimestamp" },
+    "freeze_at": { "$ref": "#/$defs/canonicalTimestamp" },
+    "source_search_started_at": { "$ref": "#/$defs/canonicalTimestamp" },
+    "source_search_ended_at": { "$ref": "#/$defs/canonicalTimestamp" },
+    "source_search_freeze_at": { "$ref": "#/$defs/canonicalTimestamp" },
+    "source_dossier_authored_at": { "$ref": "#/$defs/canonicalTimestamp" },
+    "private_envelope_sealed_at": { "$ref": "#/$defs/canonicalTimestamp" },
+    "expires_at": { "$ref": "#/$defs/canonicalTimestamp" }
+  },
+  "$defs": {
+    "canonicalTimestamp": { "type": "string", "format": "date-time", "pattern": "^[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]\\.[0-9]{3}Z$" },
+    "stageExecutionV25": {
+      "type": "object", "additionalProperties": false, "required": ["ledger", "stages"],
+      "properties": {
+        "ledger": { "$ref": "execution-authorization.schema.v2.json#/$defs/stageExecution/properties/ledger" },
+        "stages": { "type": "array", "minItems": 12, "maxItems": 12, "uniqueItems": true, "items": { "$ref": "#/$defs/stageEntryV25" } }
+      }
+    },
+    "stageEntryV25": {
+      "type": "object", "additionalProperties": false, "required": ["stage_id", "role", "nonce", "invocation_id", "operation", "outputs"],
+      "properties": {
+        "stage_id": { "$ref": "execution-authorization.schema.v2.json#/$defs/stageEntry/properties/stage_id" },
+        "role": { "$ref": "execution-authorization.schema.v2.json#/$defs/stageEntry/properties/role" },
+        "nonce": { "$ref": "execution-authorization.schema.v2.json#/$defs/stageEntry/properties/nonce" },
+        "invocation_id": { "$ref": "execution-authorization.schema.v2.json#/$defs/stageEntry/properties/invocation_id" },
+        "operation": {
+          "oneOf": [
+            { "type": "object", "additionalProperties": false, "required": ["kind"], "properties": { "kind": { "const": "builtin" } } },
+            {
+              "type": "object", "additionalProperties": false,
+              "required": ["kind", "execution_boundary", "runtime", "script", "artifacts", "dependency_lock", "installed_dependency_tree", "repo_tree_sha256", "cwd", "argv", "argv_bindings", "declared_output_paths", "executor_capability_id", "network_policy", "network_capability_ids", "environment"],
+              "properties": {
+                "kind": { "const": "external_command" },
+                "execution_boundary": { "$ref": "#/$defs/executionBoundaryV25" },
+                "runtime": { "$ref": "execution-authorization.schema.v2.json#/$defs/filePin" },
+                "script": { "allOf": [{ "$ref": "execution-authorization.schema.v2.json#/$defs/filePin" }, { "properties": { "version": { "const": "reviewed_metrics_stage_program_v2.2.0" } } }] },
+                "artifacts": { "$ref": "execution-authorization.schema.v2.json#/$defs/stageEntry/properties/operation/oneOf/1/properties/artifacts" },
+                "dependency_lock": { "$ref": "execution-authorization.schema.v2.json#/$defs/filePin" },
+                "installed_dependency_tree": { "$ref": "execution-authorization.schema.v2.json#/$defs/filePin" },
+                "repo_tree_sha256": { "$ref": "execution-authorization.schema.v2.json#/$defs/stageEntry/properties/operation/oneOf/1/properties/repo_tree_sha256" },
+                "cwd": { "$ref": "execution-authorization.schema.v2.json#/$defs/stageEntry/properties/operation/oneOf/1/properties/cwd" },
+                "argv": { "$ref": "execution-authorization.schema.v2.json#/$defs/stageEntry/properties/operation/oneOf/1/properties/argv" },
+                "argv_bindings": { "$ref": "execution-authorization.schema.v2.json#/$defs/stageEntry/properties/operation/oneOf/1/properties/argv_bindings" },
+                "declared_output_paths": { "$ref": "execution-authorization.schema.v2.json#/$defs/stageEntry/properties/operation/oneOf/1/properties/declared_output_paths" },
+                "executor_capability_id": { "$ref": "execution-authorization.schema.v2.json#/$defs/stageEntry/properties/operation/oneOf/1/properties/executor_capability_id" },
+                "network_policy": { "const": "deny_all" },
+                "network_capability_ids": { "type": "array", "maxItems": 0 },
+                "environment": { "$ref": "execution-authorization.schema.v2.json#/$defs/stageEntry/properties/operation/oneOf/1/properties/environment" }
+              }
+            }
+          ]
+        },
+        "outputs": { "$ref": "execution-authorization.schema.v2.json#/$defs/stageEntry/properties/outputs" }
+      }
+    },
+    "executionBoundaryV25": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "platform", "wrapper", "wrapper_grammar_version", "fixed_argument_allowlist", "argv_prefix", "argv_prefix_bindings", "image_identity_kind", "image_immutable_identity", "image_digest", "resolution_contract", "dependency_tree_sha256", "dependency_tree_bytes", "dependency_tree_members", "executor_semantics", "network_policy", "network_capability_ids", "network_namespace_sha256", "firewall_rules_sha256", "writable_paths", "readable_mounts", "output_mounts", "repo_tree_sha256", "attestation_sha256", "attestation_artifact_sha256"],
+      "properties": {
+        "kind": { "$ref": "execution-authorization.schema.v2.json#/$defs/executionBoundary/properties/kind" },
+        "platform": { "$ref": "execution-authorization.schema.v2.json#/$defs/executionBoundary/properties/platform" },
+        "wrapper": { "$ref": "execution-authorization.schema.v2.json#/$defs/filePin" },
+        "wrapper_grammar_version": { "$ref": "execution-authorization.schema.v2.json#/$defs/executionBoundary/properties/wrapper_grammar_version" },
+        "fixed_argument_allowlist": { "$ref": "execution-authorization.schema.v2.json#/$defs/executionBoundary/properties/fixed_argument_allowlist" },
+        "argv_prefix": { "$ref": "execution-authorization.schema.v2.json#/$defs/executionBoundary/properties/argv_prefix" },
+        "argv_prefix_bindings": { "$ref": "execution-authorization.schema.v2.json#/$defs/executionBoundary/properties/argv_prefix_bindings" },
+        "image_identity_kind": { "$ref": "execution-authorization.schema.v2.json#/$defs/executionBoundary/properties/image_identity_kind" },
+        "image_immutable_identity": { "$ref": "execution-authorization.schema.v2.json#/$defs/executionBoundary/properties/image_immutable_identity" },
+        "image_digest": { "$ref": "execution-authorization.schema.v2.json#/$defs/executionBoundary/properties/image_digest" },
+        "resolution_contract": { "$ref": "execution-authorization.schema.v2.json#/$defs/executionBoundary/properties/resolution_contract" },
+        "dependency_tree_sha256": { "$ref": "execution-authorization.schema.v2.json#/$defs/executionBoundary/properties/dependency_tree_sha256" },
+        "dependency_tree_bytes": { "$ref": "execution-authorization.schema.v2.json#/$defs/executionBoundary/properties/dependency_tree_bytes" },
+        "dependency_tree_members": { "$ref": "execution-authorization.schema.v2.json#/$defs/executionBoundary/properties/dependency_tree_members" },
+        "executor_semantics": { "$ref": "#/$defs/executorSemanticsBundleV22" },
+        "network_policy": { "const": "deny_all" },
+        "network_capability_ids": { "type": "array", "maxItems": 0 },
+        "network_namespace_sha256": { "$ref": "execution-authorization.schema.v2.json#/$defs/executionBoundary/properties/network_namespace_sha256" },
+        "firewall_rules_sha256": { "$ref": "execution-authorization.schema.v2.json#/$defs/executionBoundary/properties/firewall_rules_sha256" },
+        "writable_paths": { "$ref": "execution-authorization.schema.v2.json#/$defs/executionBoundary/properties/writable_paths" },
+        "readable_mounts": { "$ref": "execution-authorization.schema.v2.json#/$defs/executionBoundary/properties/readable_mounts" },
+        "output_mounts": { "$ref": "execution-authorization.schema.v2.json#/$defs/executionBoundary/properties/output_mounts" },
+        "repo_tree_sha256": { "$ref": "execution-authorization.schema.v2.json#/$defs/executionBoundary/properties/repo_tree_sha256" },
+        "attestation_sha256": { "$ref": "execution-authorization.schema.v2.json#/$defs/executionBoundary/properties/attestation_sha256" },
+        "attestation_artifact_sha256": { "$ref": "execution-authorization.schema.v2.json#/$defs/executionBoundary/properties/attestation_artifact_sha256" }
+      }
+    },
+    "executorSemanticsBundleV22": {
+      "type": "object", "additionalProperties": false,
+      "required": ["capability_id", "attestation", "attestation_pin", "conformance_receipt", "receipt_pin", "reviewed_predecessor"],
+      "properties": {
+        "capability_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "attestation": { "$ref": "executor-semantics-attestation.schema.v2.2.json" },
+        "attestation_pin": { "$ref": "linux-sandbox-attestation.schema.v2.json#/$defs/bytePin" },
+        "conformance_receipt": { "$ref": "executor-conformance-receipt.schema.v2.2.json" },
+        "receipt_pin": { "$ref": "linux-sandbox-attestation.schema.v2.json#/$defs/bytePin" },
+        "reviewed_predecessor": { "$ref": "linux-sandbox-attestation.schema.v2.json#/$defs/executorSemanticsBundle/properties/reviewed_predecessor" }
+      }
+    },
+    "preActivationAttestationsV25": {
+      "type": "object", "additionalProperties": false, "required": ["contract_version", "max_age_seconds", "d1", "sandbox", "verification"],
+      "properties": {
+        "contract_version": { "const": "gate_h2_pre_activation_attestations_v1" },
+        "max_age_seconds": { "type": "integer", "minimum": 1, "maximum": 86400 },
+        "d1": { "$ref": "execution-authorization.schema.v2.json#/$defs/attestationPin" },
+        "sandbox": { "$ref": "#/$defs/sandboxAttestationPinV25" },
+        "verification": { "$ref": "execution-authorization.schema.v2.json#/$defs/attestationPin" }
+      }
+    },
+    "sandboxAttestationPinV25": {
+      "allOf": [
+        { "$ref": "execution-authorization.schema.v2.json#/$defs/attestationPin" },
+        { "properties": {
+          "artifact": { "allOf": [{ "$ref": "execution-authorization.schema.v2.json#/$defs/filePin" }, { "properties": { "version": { "const": "reviewed_metrics_linux_sandbox_attestation_v2.5.0" } } }] },
+          "schema_sha256": { "const": "6669a4d133056ad6a269ffc20f79dc7966aff40a70f27d06b4309cf0d9e5216c" }
+        } }
+      ]
+    },
+    "artifactPin": { "type": "object", "additionalProperties": false, "required": ["sha256", "bytes", "schema_version"], "properties": { "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "bytes": { "type": "integer", "minimum": 1 }, "schema_version": { "type": "string", "minLength": 1 } } },
+    "httpsExchangeAuthority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contract_version", "raw_network_policy", "manifest", "capability_schema", "manifest_schema", "uds_protocol_schema", "broker_event_schema", "broker_transcript_schema", "executor_semantics_schema", "executor_conformance_schema", "linux_sandbox_schema", "broker_socket_ownership", "stage_bindings", "transcript_output_role", "predictor_exclusions", "legacy_migration"],
+      "properties": {
+        "contract_version": { "const": "gate_h2_https_exchange_authority_v1" },
+        "raw_network_policy": { "const": "deny_all" },
+        "manifest": { "$ref": "#/$defs/manifestPin" },
+        "capability_schema": { "$ref": "#/$defs/artifactPin" },
+        "manifest_schema": { "$ref": "#/$defs/artifactPin" },
+        "uds_protocol_schema": { "$ref": "#/$defs/artifactPin" },
+        "broker_event_schema": { "$ref": "#/$defs/artifactPin" },
+        "broker_transcript_schema": { "$ref": "#/$defs/artifactPin" },
+        "executor_semantics_schema": { "$ref": "#/$defs/artifactPin" },
+        "executor_conformance_schema": { "$ref": "#/$defs/artifactPin" },
+        "linux_sandbox_schema": { "$ref": "#/$defs/artifactPin" },
+        "broker_socket_ownership": { "const": "owner_bound_unix_socket_one_stage_one_run" },
+        "stage_bindings": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "object", "additionalProperties": false, "required": ["stage_id", "manifest_id", "opaque_handle_count", "stage_program_version", "stage_program_sha256"], "properties": { "stage_id": { "type": "string", "pattern": "^[a-z0-9_]+$" }, "manifest_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "opaque_handle_count": { "type": "integer", "minimum": 1, "maximum": 16 }, "stage_program_version": { "const": "reviewed_metrics_stage_program_v2.2.0" }, "stage_program_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" } } } },
+        "transcript_output_role": { "const": "https_broker_transcript" },
+        "predictor_exclusions": { "const": ["destination_manifest", "provider_auth_material"] },
+        "legacy_migration": { "const": "explicit_reauthorization_required_no_automatic_allow_capabilities_migration" }
+      }
+    },
+    "manifestPin": { "type": "object", "additionalProperties": false, "required": ["path", "realpath", "sha256", "bytes", "schema_version", "manifest_id"], "properties": { "path": { "type": "string", "pattern": "^/" }, "realpath": { "type": "string", "pattern": "^/" }, "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "bytes": { "type": "integer", "minimum": 1 }, "schema_version": { "const": "gate_h2_https_exchange_manifest_v1.0.0" }, "manifest_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" } } }
+  }
+}

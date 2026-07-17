@@ -1,0 +1,313 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "prediction-output.schema.v2.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "candidate_id",
+    "bundle_tree_sha256",
+    "session",
+    "outputs",
+    "required_opaque_ids",
+    "attestations"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "reviewed_metrics_prediction_output_v2.0.0"
+    },
+    "status": {
+      "enum": ["blank_no_prediction", "completed"]
+    },
+    "candidate_id": {
+      "const": "dfv0_reviewed_metrics_v2_candidate_20260715"
+    },
+    "bundle_tree_sha256": {
+      "type": ["string", "null"],
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "session": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/session"
+        }
+      ]
+    },
+    "outputs": {
+      "type": "array",
+      "maxItems": 44,
+      "items": {
+        "$ref": "#/$defs/output"
+      }
+    },
+    "required_opaque_ids": {
+      "type": "array",
+      "minItems": 44,
+      "maxItems": 44,
+      "uniqueItems": true,
+      "items": {
+        "pattern": "^v2-[0-9]{4}$",
+        "type": "string"
+      }
+    },
+    "attestations": {
+      "$ref": "#/$defs/attestations"
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "blank_no_prediction" } } },
+      "then": {
+        "properties": {
+          "bundle_tree_sha256": { "type": "null" },
+          "session": { "type": "null" },
+          "outputs": { "maxItems": 0 }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "status": { "const": "completed" } } },
+      "then": {
+        "properties": {
+          "bundle_tree_sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "session": { "$ref": "#/$defs/session" },
+          "outputs": { "minItems": 44, "maxItems": 44 }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "session": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "principal",
+        "session_id",
+        "model",
+        "reasoning_effort",
+        "route",
+        "started_at",
+        "ended_at"
+      ],
+      "properties": {
+        "principal": {
+          "type": "string",
+          "minLength": 1
+        },
+        "session_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reasoning_effort": {
+          "type": "string",
+          "minLength": 1
+        },
+        "route": { "type": "string", "minLength": 1 },
+        "started_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "ended_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      }
+    },
+    "entity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entity_id",
+        "surface",
+        "bbox",
+        "type",
+        "identity_decision",
+        "identity"
+      ],
+      "properties": {
+        "entity_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "surface": {
+          "type": "string",
+          "minLength": 1
+        },
+        "bbox": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "type": {
+          "enum": [
+            "organization",
+            "brand",
+            "person",
+            "building",
+            "street",
+            "place",
+            "other"
+          ]
+        },
+        "identity_decision": {
+          "enum": ["surface_only", "linked", "abstain"]
+        },
+        "identity": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "place": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "opportunity_id",
+        "civic_number",
+        "street",
+        "place",
+        "official_url",
+        "abstained"
+      ],
+      "properties": {
+        "opportunity_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "civic_number": {
+          "type": ["string", "null"]
+        },
+        "street": {
+          "type": ["string", "null"]
+        },
+        "place": {
+          "type": ["string", "null"]
+        },
+        "official_url": {
+          "type": ["string", "null"],
+          "format": "uri"
+        },
+        "abstained": {
+          "type": "boolean"
+        }
+      }
+    },
+    "abstention": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["abstained", "reason"],
+      "properties": {
+        "abstained": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "opaque_id",
+        "image_mode",
+        "ocr",
+        "entities",
+        "place_links",
+        "aerial_labels",
+        "abstention"
+      ],
+      "properties": {
+        "opaque_id": {
+          "pattern": "^v2-[0-9]{4}$",
+          "type": "string"
+        },
+        "image_mode": {
+          "enum": [
+            "ground_street",
+            "aerial_vertical",
+            "aerial_oblique",
+            "document_map",
+            "low_information",
+            null
+          ]
+        },
+        "ocr": {
+          "type": ["string", "null"]
+        },
+        "entities": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "$ref": "#/$defs/entity"
+          }
+        },
+        "place_links": {
+          "type": "array",
+          "maxItems": 0,
+          "items": {
+            "$ref": "#/$defs/place"
+          }
+        },
+        "aerial_labels": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "farmland",
+              "residential",
+              "industrial",
+              "rail",
+              "waterfront",
+              "roads",
+              "parks_forest",
+              "mixed_urban"
+            ]
+          }
+        },
+        "abstention": {
+          "$ref": "#/$defs/abstention"
+        }
+      }
+    },
+    "attestations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "no_gold_received",
+        "no_expected_answers_received",
+        "no_repo_access",
+        "one_run_only"
+      ],
+      "properties": {
+        "no_gold_received": {
+          "const": true
+        },
+        "no_expected_answers_received": {
+          "const": true
+        },
+        "no_repo_access": {
+          "const": true
+        },
+        "one_run_only": {
+          "const": true
+        }
+      }
+    }
+  }
+}

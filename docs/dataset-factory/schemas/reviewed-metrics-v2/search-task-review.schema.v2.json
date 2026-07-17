@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "search-task-review.schema.v2.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "candidate_id", "task_pin", "source_search_freeze_pin", "public_score_receipt_pin", "private_score_detail", "expected_commitment", "source_dossier_pins", "authority_pins", "reviewer", "checks", "disposition", "rationale"],
+  "properties": {
+    "schema_version": {"const": "reviewed_metrics_search_task_review_v2.0.0"},
+    "status": {"enum": ["placeholder_issue_97_no_review", "completed"]},
+    "candidate_id": {"const": "dfv0_reviewed_metrics_v2_candidate_20260715"},
+    "task_pin": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/pin"}]},
+    "source_search_freeze_pin": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/pin"}]},
+    "public_score_receipt_pin": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/pin"}]},
+    "private_score_detail": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/hashBytes"}]},
+    "expected_commitment": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/commitment"}]},
+    "source_dossier_pins": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/dossierPins"}]},
+    "authority_pins": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/authorityPins"}]},
+    "reviewer": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/reviewer"}]},
+    "checks": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/checks"}]},
+    "disposition": {"type": ["string", "null"], "enum": ["accepted", "held", "rejected", null]},
+    "rationale": {"type": ["string", "null"]}
+  },
+  "allOf": [
+    {"if": {"properties": {"status": {"const": "completed"}}}, "then": {"properties": {"task_pin": {"$ref": "#/$defs/pin"}, "source_search_freeze_pin": {"$ref": "#/$defs/pin"}, "public_score_receipt_pin": {"$ref": "#/$defs/pin"}, "private_score_detail": {"$ref": "#/$defs/hashBytes"}, "expected_commitment": {"$ref": "#/$defs/commitment"}, "source_dossier_pins": {"$ref": "#/$defs/dossierPins"}, "authority_pins": {"$ref": "#/$defs/authorityPins"}, "reviewer": {"$ref": "#/$defs/reviewer"}, "checks": {"$ref": "#/$defs/checks"}, "disposition": {"const": "accepted"}, "rationale": {"type": "string", "minLength": 1}}}}
+  ],
+  "$defs": {
+    "pin": {"type": "object", "additionalProperties": false, "required": ["path", "sha256", "bytes"], "properties": {"path": {"type": "string", "minLength": 1}, "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "bytes": {"type": "integer", "minimum": 1}}},
+    "hashBytes": {"type": "object", "additionalProperties": false, "required": ["sha256", "bytes"], "properties": {"sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "bytes": {"type": "integer", "minimum": 1}}},
+    "commitment": {"type": "object", "additionalProperties": false, "required": ["algorithm", "domain", "canonicalization", "value"], "properties": {"algorithm": {"const": "sha256"}, "domain": {"const": "gate-h-v2-search-expected"}, "canonicalization": {"const": "rfc8785-compatible-canonical-json-v1"}, "value": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}},
+    "dossierPins": {"type": "object", "additionalProperties": false, "required": ["promotion_ledger", "review_receipt", "source_representation", "source_acquisition"], "properties": {"promotion_ledger": {"$ref": "#/$defs/pin"}, "review_receipt": {"$ref": "#/$defs/pin"}, "source_representation": {"$ref": "#/$defs/pin"}, "source_acquisition": {"$ref": "#/$defs/pin"}}},
+    "authorityPins": {"type": "object", "additionalProperties": false, "required": ["execution_authorization", "search_predictor", "private_evaluator", "task_reviewer"], "properties": {"execution_authorization": {"$ref": "#/$defs/pin"}, "search_predictor": {"$ref": "#/$defs/identityPin"}, "private_evaluator": {"$ref": "#/$defs/identityPin"}, "task_reviewer": {"$ref": "#/$defs/identityPin"}}},
+    "identityPin": {"type": "object", "additionalProperties": false, "required": ["principal", "session_id", "model", "reasoning_effort", "route", "surface_id", "canonical_root"], "properties": {"principal": {"type": "string", "minLength": 1}, "session_id": {"type": "string", "minLength": 1}, "model": {"type": "string", "minLength": 1}, "reasoning_effort": {"type": "string", "minLength": 1}, "route": {"type": "string", "minLength": 1}, "surface_id": {"type": "string", "minLength": 1}, "canonical_root": {"type": "string", "pattern": "^/"}}},
+    "reviewer": {"type": "object", "additionalProperties": false, "required": ["identity", "session_id", "model", "reasoning_effort", "reviewed_at", "independent"], "properties": {"identity": {"type": "string"}, "session_id": {"type": "string"}, "model": {"type": "string"}, "reasoning_effort": {"type": "string"}, "reviewed_at": {"type": "string", "format": "date-time"}, "independent": {"const": true}}},
+    "checks": {"type": "object", "additionalProperties": false, "required": ["source_dossier_approved", "accepted_source_claim", "rights_passed", "no_leak_passed", "component_split_pinned", "separate_reviewer"], "properties": {"source_dossier_approved": {"const": true}, "accepted_source_claim": {"const": true}, "rights_passed": {"const": true}, "no_leak_passed": {"const": true}, "component_split_pinned": {"const": true}, "separate_reviewer": {"const": true}}}
+  }
+}

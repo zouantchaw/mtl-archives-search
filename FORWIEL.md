@@ -60,6 +60,12 @@ The real-pilot selector yields 26 mechanically eligible candidates. A downstream
 
 ## Important Boundaries
 
+Reviewed Metrics v2 remains candidate-only for issue #96. Activation still requires the authority-only direct-child commit and exact clean-parent controls. Each consequential command uses a fresh stage-specific coordinator receipt, actual wall-clock validation, and an `O_EXCL`, fsynced durable start/completion marker pair that rejects cross-process replay before side effects.
+
+Private retention requires exact account/endpoint identity, a dedicated bucket, secret HMAC-keyed opaque addresses, exact metadata, conditional ETag/version readback, stable HEAD, and complete pre/post domain plus Worker-binding enumeration. Receipt issue occurs only after postflight and semantic validation. Security executables use verified absolute root-owned paths, never `PATH`.
+
+Place precision and coverage use only the opaque official-source-search task joined through Gate E acceptance, frozen source prediction, private retention, and signed finalization. Visual rows must contain zero place opportunities or links, preserve `no_pixel_identity_claim`, and cannot turn Gate E into scene support. Entity arrays are capped at 12 per row, reject quantized/IoU-near duplicates at `0.98`, and use deterministic polynomial min-cost assignment maximizing match count then integerized IoU with stable ties. Mask/geolocation remain prerequisite N/A; model/tool cost remains explicitly unavailable because no real usage receipt exists. No real trust/evaluator key, authority, route receipt, prediction, gold/private evidence, R2 write, score, publication, push, deploy, or production mutation exists.
+
 - No generated report tree should be committed just because a script produced it.
 - No `.env`, tokens, private keys, credentials, or signed URLs belong in docs, registries, fixtures, commits, or PR text.
 - Dataset Factory smoke does not deploy, publish, mutate D1/R2/Vectorize, call paid compute, or prove production ranking quality.

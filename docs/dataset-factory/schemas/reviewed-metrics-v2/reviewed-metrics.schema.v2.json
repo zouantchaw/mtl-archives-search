@@ -1,0 +1,185 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "reviewed-metrics.schema.v2.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "candidate_id",
+    "evidence",
+    "scoring",
+    "metrics",
+    "criterion_matrix",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": { "const": "reviewed_metrics_results_v2.0.0" },
+    "status": { "enum": ["synthetic_test_only", "completed"] },
+    "candidate_id": { "const": "dfv0_reviewed_metrics_v2_candidate_20260715" },
+    "evidence": {
+      "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/evidence" }]
+    },
+    "scoring": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/scoring" }] },
+    "metrics": { "type": "array", "items": { "$ref": "#/$defs/metric" } },
+    "criterion_matrix": { "$ref": "#/$defs/matrix" },
+    "limitations": { "type": "array", "items": { "type": "string" } }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "synthetic_test_only" } } },
+      "then": {
+        "properties": {
+          "evidence": { "type": "null" },
+          "scoring": { "type": "null" },
+          "metrics": { "maxItems": 0 }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "status": { "const": "completed" } } },
+      "then": {
+        "properties": {
+          "evidence": { "$ref": "#/$defs/evidence" },
+          "scoring": { "$ref": "#/$defs/scoring" },
+          "metrics": { "minItems": 63, "maxItems": 63 }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "pin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "bytes"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "bytes": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "execution_authorization",
+        "prediction",
+        "prediction_freeze",
+        "gold_review",
+        "source_task",
+        "private_score_receipt"
+      ],
+      "properties": {
+        "execution_authorization": { "$ref": "#/$defs/pin" },
+        "prediction": { "$ref": "#/$defs/pin" },
+        "prediction_freeze": { "$ref": "#/$defs/pin" },
+        "gold_review": { "$ref": "#/$defs/pin" },
+        "source_task": { "$ref": "#/$defs/pin" },
+        "private_score_receipt": { "$ref": "#/$defs/pin" }
+      }
+    },
+    "scoring": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "scored_at"],
+      "properties": {
+        "algorithm": {
+          "const": "reviewed-metrics-v2-deterministic-derivation-v1"
+        },
+        "scored_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "exclusion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["opaque_id", "reason", "fixed_before_scoring"],
+      "properties": {
+        "opaque_id": { "type": "string" },
+        "reason": { "type": "string" },
+        "fixed_before_scoring": { "const": true }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": { "type": ["number", "null"], "minimum": 0 }
+    },
+    "support": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fixed_universe", "denominator", "no_denominator_shrinkage"],
+      "properties": {
+        "fixed_universe": { "type": "integer", "minimum": 1 },
+        "denominator": { "type": "number", "minimum": 0 },
+        "no_denominator_shrinkage": { "const": true }
+      }
+    },
+    "metric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "metric_id",
+        "fixed_universe_ids",
+        "included_ids",
+        "excluded",
+        "raw_counts",
+        "numerator",
+        "denominator",
+        "status",
+        "value",
+        "undefined_or_na_reason",
+        "limitations",
+        "support",
+        "provenance"
+      ],
+      "properties": {
+        "metric_id": { "type": "string" },
+        "fixed_universe_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string" }
+        },
+        "included_ids": {
+          "type": "array",
+          "minItems": 0,
+          "uniqueItems": true,
+          "items": { "type": "string" }
+        },
+        "excluded": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/exclusion" }
+        },
+        "raw_counts": { "$ref": "#/$defs/counts" },
+        "numerator": { "type": ["number", "null"] },
+        "denominator": { "type": "number", "minimum": 0 },
+        "status": {
+          "enum": [
+            "observed",
+            "observed_undefined_zero_support",
+            "prerequisite_not_applicable",
+            "unavailable_no_real_usage_receipt"
+          ]
+        },
+        "value": { "type": ["number", "null"] },
+        "undefined_or_na_reason": { "type": ["string", "null"] },
+        "limitations": { "type": "array", "items": { "type": "string" } },
+        "support": { "$ref": "#/$defs/support" },
+        "provenance": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "matrix": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required_rows", "satisfied_rows"],
+      "properties": {
+        "required_rows": { "type": "integer", "minimum": 0 },
+        "satisfied_rows": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

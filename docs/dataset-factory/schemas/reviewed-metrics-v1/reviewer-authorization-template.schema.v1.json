@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "pin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "bytes"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "bytes": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task_ids",
+        "required_disposition",
+        "required_accepted_count"
+      ],
+      "properties": {
+        "task_ids": {
+          "type": "array",
+          "minItems": 32,
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "required_disposition": { "const": "accepted" },
+        "required_accepted_count": { "const": 32 }
+      }
+    },
+    "forbidden": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identities", "sessions"],
+      "properties": {
+        "identities": {
+          "type": "array",
+          "minItems": 5,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "sessions": {
+          "type": "array",
+          "minItems": 5,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["absolute_path", "basename"],
+      "properties": {
+        "absolute_path": { "type": "string", "pattern": "^/" },
+        "basename": { "type": "string", "minLength": 1 }
+      }
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "candidate_artifact_id",
+    "candidate_descriptor",
+    "candidate_tasks",
+    "review_template",
+    "review_scope",
+    "forbidden_principals",
+    "approved_reviewer",
+    "authorizing_authority",
+    "authorized_at",
+    "permitted_output",
+    "scope_note"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "reviewed_metrics_reviewer_authorization_template_v1.0.0"
+    },
+    "status": { "const": "blank_coordinator_authorization_required" },
+    "candidate_artifact_id": {
+      "const": "dfv0_reviewed_metrics_v1_candidate_20260714"
+    },
+    "candidate_descriptor": { "$ref": "#/$defs/pin" },
+    "candidate_tasks": { "$ref": "#/$defs/pin" },
+    "review_template": { "$ref": "#/$defs/pin" },
+    "review_scope": { "$ref": "#/$defs/scope" },
+    "forbidden_principals": { "$ref": "#/$defs/forbidden" },
+    "approved_reviewer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reviewer_id", "session_id", "model", "reasoning_effort"],
+      "properties": {
+        "reviewer_id": { "const": "" },
+        "session_id": { "const": "" },
+        "model": { "const": "gpt-5.6-sol" },
+        "reasoning_effort": { "const": "high" }
+      }
+    },
+    "authorizing_authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity", "session_id", "role"],
+      "properties": {
+        "identity": { "const": "" },
+        "session_id": { "const": "" },
+        "role": { "const": "gate_h_task_review_authority" }
+      }
+    },
+    "authorized_at": { "const": "" },
+    "permitted_output": { "$ref": "#/$defs/output" },
+    "scope_note": { "type": "string", "minLength": 40 }
+  }
+}

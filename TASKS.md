@@ -149,6 +149,7 @@ New archive source is `archivesdemontreal.ica-atom.org`; ingest safely before fu
 - [x] Weekly funnel baseline instrumented (`order_mode_entered -> cart_item_added -> checkout_clicked -> order_completed`).
 
 ### Core platform + performance
+- [x] Issue #96 Reviewed Metrics v2 candidate contracts now cover the exact 63-row metric universe with fixed IDs/denominators, raw counts, support/provenance, reviewed-scene place precision/coverage, explicit aerial reviewability exclusions, gold-support/stop gates, prerequisite N/A rows, actual operation timing, and receipt-only cost availability. Authority activation remains a direct-child-only candidate gate. Consequential commands require distinct stage receipts, actual wall-clock windows, and durable one-use markers. Private R2 retention binds one account/dedicated bucket, HMAC-opaque keys, exact metadata and conditional versioned readback, complete domain/Worker exposure enumeration, postflight-before-issuance chronology, and verified absolute security executables. Three-process real-clock and no-network provider mocks cover replay, races, exposure, and exact AWS region/fingerprint failures. Real key/authority/prediction/gold/private evidence/score/publication remain absent.
 - [x] Sitemap 404 fix for Clerk middleware/public routes.
 - [x] D1 cost stabilization package (Cache API, offset sampling, semantic fallback, AbortController).
 - [x] Vercel Image Optimization migration and 20MB image cap.

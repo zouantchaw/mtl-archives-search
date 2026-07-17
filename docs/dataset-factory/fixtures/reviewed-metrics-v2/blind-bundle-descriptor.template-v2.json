@@ -1,0 +1,27 @@
+{
+  "schema_version": "reviewed_metrics_blind_bundle_descriptor_v2.0.0",
+  "status": "template_no_bundle_built",
+  "candidate_id": "dfv0_reviewed_metrics_v2_candidate_20260715",
+  "generator_version": "blind-png-v2",
+  "members": [],
+  "media_tree": null,
+  "purpose": "uniform blind visual annotation over 44 opaque media inputs",
+  "output_schema": {
+    "path": "prediction-output.schema.v2.json",
+    "sha256": "3c1ba95950e31e874695dfbd5c2f01bc1ce82ac31fa2f64a311c1437b7ee0401",
+    "bytes": 6895
+  },
+  "scans": {
+    "denylisted_keys": 0,
+    "denylisted_text": 0,
+    "forbidden_metadata_fields": 0,
+    "ancillary_png_chunks": 0,
+    "extra_files": 0
+  },
+  "attestations": {
+    "zero_labels": true,
+    "zero_answers": true,
+    "zero_reviewer_material": true,
+    "zero_source_metadata": true
+  }
+}

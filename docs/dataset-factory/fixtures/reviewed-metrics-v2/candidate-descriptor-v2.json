@@ -1,0 +1,141 @@
+{
+  "schema_version": "reviewed_metrics_candidate_descriptor_v2.0.0",
+  "artifact_id": "dfv0_reviewed_metrics_v2_candidate_20260715",
+  "status": "candidate_only",
+  "created_at": "2026-07-15T00:00:00.000Z",
+  "implementation_base_commit": "5fe4dfbe51a320a51f1f126b4a2d8cf0722be5dc",
+  "candidate_commit": null,
+  "members_before_descriptor": [
+    {
+      "path": "blind-bundle-descriptor.template-v2.json",
+      "sha256": "80858edd1598c32de37d3d43d2b8907e6a5f92771129f02143a6b3e2d84e1b34",
+      "bytes": 810
+    },
+    {
+      "path": "candidate-criterion-matrix-v2.json",
+      "sha256": "6087baa6aa2f79f181149925e50394984b0d0a0779150ba74bc956e48ea6ae25",
+      "bytes": 3707
+    },
+    {
+      "path": "candidate-status-v2.json",
+      "sha256": "9b79c6c820169f73805fe0a2a1a43661311d1185dc8f1351cedf90ea179348df",
+      "bytes": 2149
+    },
+    {
+      "path": "gold-review.template-v2.json",
+      "sha256": "032bbcac89867f5769378dd5944bd9a8cc1d98b138291a73ffd6703082afd192",
+      "bytes": 970
+    },
+    {
+      "path": "input-authority-v2.json",
+      "sha256": "34be01a2750894eab27ad8882acb79a0366f1de9b6c85fb96bb84e95ecfd81fa",
+      "bytes": 56908
+    },
+    {
+      "path": "manifest-v2.json",
+      "sha256": "7c6f5da9150af6f71e1713e326824192614af908c4388bc2dcb2db4810c85969",
+      "bytes": 2199
+    },
+    {
+      "path": "prediction-output.template-v2.json",
+      "sha256": "7bf94ba1ece5893b5f94f48b09ed477df204cfbb44acaa68f9f57d98ab890f37",
+      "bytes": 1075
+    },
+    {
+      "path": "search-task-candidate-v2.json",
+      "sha256": "fc0b45213718f7e37a52e6166475dd3bed180c77bf28c45288eb763471e37783",
+      "bytes": 486
+    },
+    {
+      "path": "search-task-review.template-v2.json",
+      "sha256": "0c7dc53a3f179f0e343aa5242349874c7ee56e1c05e43d6764c1ecac3a17b8f9",
+      "bytes": 474
+    },
+    {
+      "path": "source-search-bundle.template-v2.json",
+      "sha256": "fe30e00c8e88b886b2fa72aba0fdc3d04c979d5807b92a1be087ddc35f677cf2",
+      "bytes": 911
+    },
+    {
+      "path": "source-search-prediction.template-v2.json",
+      "sha256": "1971482ed0c8b23daa367c5d163db5285bb4418acef2147252cc03d6e6642e76",
+      "bytes": 415
+    },
+    {
+      "path": "supersession-candidate-notice-v2.json",
+      "sha256": "0dcd0cc6df2a95890ba9043113a73b21f9f5b20d82177e8a7ee37917d445b1b8",
+      "bytes": 1056
+    }
+  ],
+  "tree_before_descriptor_sha256": "261d0f23a9d0eae74dd8cbcaf1af87498850bb792d449efea318fdbbbcf43e0a",
+  "counts": {
+    "files_before_descriptor": 12,
+    "bytes_before_descriptor": 71160,
+    "unique_sources": 44,
+    "task_memberships": 78
+  },
+  "predecessors": {
+    "phase_d": {
+      "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json",
+      "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d",
+      "bytes": 4243798
+    },
+    "v1_tasks": {
+      "path": "docs/dataset-factory/fixtures/reviewed-metrics-publication-v1/candidate-benchmark-tasks-v1.json",
+      "sha256": "c715c411d37f0d6bde756cf68b0b3a2db59de2336fe2c55752744e3514cf6a66",
+      "bytes": 337705
+    },
+    "v1_receipt": {
+      "path": "docs/dataset-factory/fixtures/reviewed-metrics-publication-v1/independent-task-review-v1.json",
+      "sha256": "422cd4d3faab3e233af0241ca11dd82cc9a26e75c0af08961698bc342b97552a",
+      "bytes": 27037
+    },
+    "v1_descriptor": {
+      "path": "docs/dataset-factory/fixtures/reviewed-metrics-publication-v1/final-descriptor-v1.json",
+      "sha256": "e44ca758c7d17d2256b974e714b15795a637d634eb29253a7f7ecee6347c0b93",
+      "bytes": 3741
+    },
+    "gate_e_promotion": {
+      "path": "docs/dataset-factory/fixtures/reviewed-source-evidence-v1/promotion-ledger-v1.json",
+      "sha256": "7a019cf96b1ec27a9dfe67465acc9107bd606a8acd2c024ff4c75e11ad8a82c9",
+      "bytes": 1000
+    },
+    "gate_f_review": {
+      "path": "docs/dataset-factory/fixtures/aerial-source-evidence-authority-v1/review-ledger-v1.json",
+      "sha256": "86c5d5033dacd704dae552ceb83754e38460caee5683b1d87fd2c407728fc56b",
+      "bytes": 17017
+    },
+    "gate_g_descriptor": {
+      "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-descriptor-v1.json",
+      "sha256": "dfd6a4a6e671937110f508d97857d04eb7ced1fdd6e793ab4d2fab5eb79f70c7",
+      "bytes": 40954
+    },
+    "ground_input": {
+      "path": "docs/dataset-factory/fixtures/ground-originals-v1/independent-review-input-v1.json",
+      "sha256": "c263eef97d3cd1662954a50748b3f9fadab5cf65ff79ac33ba80b909969699b3",
+      "bytes": 2470
+    },
+    "ground_records": {
+      "path": "docs/dataset-factory/fixtures/ground-originals-v1/records-v1.json",
+      "sha256": "55bca29de2bf7d5a41c031835db87a0b2d7f7627db360d63aaaab17a43806ad4",
+      "bytes": 19460
+    },
+    "reviewed_visual_transcriptions": {
+      "path": "docs/dataset-factory/fixtures/ground-originals-v1/reviewed-visual-transcriptions-v1.json",
+      "sha256": "323d84094dcd793ee8d0d9cb7561036449000c5fca87a0a54bf7ecdcaf671372",
+      "bytes": 1907
+    }
+  },
+  "completion": {
+    "candidate_complete": false,
+    "issue_92_complete": false,
+    "issue_69_complete": false,
+    "publication_exists": false
+  },
+  "mutations": {
+    "production": false,
+    "search_index": false,
+    "private_object_store_write": false,
+    "paid_gpu": false
+  }
+}

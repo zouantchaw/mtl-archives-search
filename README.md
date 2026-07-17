@@ -409,6 +409,12 @@ Vectorize reliability notes:
 
 Engineering tasks and roadmap are tracked in `TASKS.md`.
 
+Reviewed Metrics v2 remains candidate-only for issue #96. Activation still requires the authority-only direct-child commit and exact clean-parent controls. Each consequential command uses a fresh stage-specific coordinator receipt for visual/source prediction and freeze, gold/envelope authoring, private prepare/retain/finalize, task review, metrics, or publication. Actual wall-clock start must be within 30 seconds of issue and completion must remain covered. An `O_EXCL`, fsynced durable start/completion marker pair rejects cross-process replay before side effects.
+
+Private retention requires exact account/endpoint identity, a dedicated bucket, secret HMAC-keyed opaque object addresses, exact custom metadata, conditional ETag/version readback, stable post-readback HEAD, and pre/post Cloudflare domain plus Worker-binding enumeration. Receipt issuance occurs only after postflight and semantic validation. `openssl`, `curl`, `ioreg`, `sw_vers`, and `uname` use verified absolute root-owned executables, never `PATH`.
+
+Place precision and coverage use only the opaque official-source-search task joined through Gate E acceptance, frozen source prediction, private retention, and signed finalization. Visual rows must contain zero place opportunities or links, preserve `no_pixel_identity_claim`, and cannot turn Gate E into scene support. Entity arrays are capped at 12 per row, reject quantized/IoU-near duplicates at `0.98`, and use deterministic polynomial min-cost assignment maximizing match count then integerized IoU with stable ties. Mask/geolocation remain prerequisite N/A; model/tool cost remains explicitly unavailable because no real usage receipt exists. No real trust/evaluator key, authority, route receipt, prediction, gold/private evidence, R2 write, score, publication, push, deploy, or production mutation exists. See `docs/dataset-factory/reviewed-metrics-v2.md`.
+
 ## Dataset
 
 The photo collection includes:

@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pre-activation-attestor-trust.schema.v2.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "admission_validity_policy", "attestors"],
+  "properties": {
+    "schema_version": { "const": "reviewed_metrics_pre_activation_attestor_trust_v2.2.0" },
+    "status": { "enum": ["blocked_no_real_attestors_admitted", "reviewed_real_attestors_admitted"] },
+    "admission_validity_policy": { "$ref": "pre-activation-attestor-admission.schema.v2.json#/$defs/validityPolicy" },
+    "attestors": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/attestor" }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "blocked_no_real_attestors_admitted" } } },
+      "then": { "properties": { "attestors": { "maxItems": 0 } } },
+      "else": { "properties": { "attestors": { "minItems": 5, "maxItems": 5 } } }
+    }
+  ],
+  "$defs": {
+    "attestor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidence_kind", "principal", "session_id", "logical_route", "physical_route_identity_sha256", "public_key_sha256", "surface_id", "surface_inventory_digest", "canonical_physical_host_id", "trusted_surface_inventory", "admission_commit", "admission_receipt"],
+      "properties": {
+        "evidence_kind": { "enum": ["executor_semantics_attestor", "executor_conformance_reviewer", "d1_live", "linux_sandbox", "pre_activation_verifier"] },
+        "principal": { "type": "string", "minLength": 1 },
+        "session_id": { "type": "string", "minLength": 1 },
+        "logical_route": { "$ref": "pre-activation-attestor-admission.schema.v2.json#/$defs/logicalRoute" },
+        "physical_route_identity_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "public_key_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "surface_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "surface_inventory_digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "canonical_physical_host_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "trusted_surface_inventory": { "$ref": "execution-authorization.schema.v2.json#/$defs/surfaceInventory" },
+        "admission_commit": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+        "admission_receipt": { "$ref": "#/$defs/repositoryPin" }
+      }
+    },
+    "repositoryPin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "bytes"],
+      "properties": {
+        "path": { "type": "string", "pattern": "^docs/dataset-factory/authorities/reviewed-metrics-v2/admissions/[a-z0-9._-]+\\.json$" },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "bytes": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

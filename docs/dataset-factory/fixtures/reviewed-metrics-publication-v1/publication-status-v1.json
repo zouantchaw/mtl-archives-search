@@ -1,0 +1,17 @@
+{
+  "schema_version": "reviewed_metrics_publication_status_v1.0.0",
+  "state": "published_external_task_review",
+  "counts": {
+    "candidates": 32,
+    "accepted": 32,
+    "held": 0,
+    "rejected": 0,
+    "reviewed_tasks": 32,
+    "published_tasks": 32,
+    "search_tasks": 0
+  },
+  "issue_complete": true,
+  "production_mutation": false,
+  "search_index_mutation": false,
+  "paid_gpu": false
+}

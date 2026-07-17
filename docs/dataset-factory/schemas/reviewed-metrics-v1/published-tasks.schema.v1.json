@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "source_artifact_id",
+    "review_receipt_sha256",
+    "accepted_tasks",
+    "retained"
+  ],
+  "properties": {
+    "schema_version": { "const": "reviewed_metrics_published_tasks_v1.0.0" },
+    "source_artifact_id": { "type": "string", "minLength": 1 },
+    "review_receipt_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "accepted_tasks": {
+      "type": "array",
+      "minItems": 32,
+      "maxItems": 32,
+      "items": {
+        "allOf": [
+          { "$ref": "candidate-tasks.schema.v1.json#/$defs/task" },
+          {
+            "type": "object",
+            "properties": {
+              "task_review": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "required",
+                  "status",
+                  "disposition",
+                  "reviewer",
+                  "rationale"
+                ],
+                "properties": {
+                  "required": { "const": true },
+                  "status": { "const": "accepted_external_review" },
+                  "disposition": { "const": "accepted" },
+                  "reviewer": {
+                    "$ref": "task-review-receipt.schema.v1.json#/properties/reviewer"
+                  },
+                  "rationale": { "type": "string", "minLength": 1 }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "retained": {
+      "type": "array",
+      "maxItems": 0,
+      "items": {
+        "$ref": "task-review-receipt.schema.v1.json#/$defs/disposition"
+      }
+    }
+  }
+}

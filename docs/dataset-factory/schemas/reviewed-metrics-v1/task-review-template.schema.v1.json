@@ -1,0 +1,145 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "pin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "bytes"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "bytes": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "approvals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exact_task_binding",
+        "claim_and_dossier_authority",
+        "component_and_split",
+        "rights_and_pixels",
+        "evidence_boundary"
+      ],
+      "properties": {
+        "exact_task_binding": { "const": false },
+        "claim_and_dossier_authority": { "const": false },
+        "component_and_split": { "const": false },
+        "rights_and_pixels": { "const": false },
+        "evidence_boundary": { "const": false }
+      }
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "artifact_id",
+    "candidate_descriptor",
+    "candidate_tasks",
+    "forbidden_principals",
+    "reviewer",
+    "dispositions",
+    "counts"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "reviewed_metrics_task_review_template_v1.0.0"
+    },
+    "status": { "const": "blank_external_review_required" },
+    "artifact_id": { "type": "string", "minLength": 1 },
+    "candidate_descriptor": { "$ref": "#/$defs/pin" },
+    "candidate_tasks": { "$ref": "#/$defs/pin" },
+    "forbidden_principals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identities", "sessions"],
+      "properties": {
+        "identities": {
+          "type": "array",
+          "minItems": 5,
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "sessions": {
+          "type": "array",
+          "minItems": 5,
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        }
+      }
+    },
+    "reviewer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "identity",
+        "session_id",
+        "model",
+        "reasoning_effort",
+        "reviewed_at",
+        "attestations"
+      ],
+      "properties": {
+        "identity": { "const": "" },
+        "session_id": { "const": "" },
+        "model": { "const": "gpt-5.6-sol" },
+        "reasoning_effort": { "const": "high" },
+        "reviewed_at": { "const": "" },
+        "attestations": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "no_implementation_overlap",
+            "no_candidate_author_overlap",
+            "no_gate_e_source_reviewer_overlap",
+            "no_gate_f_source_reviewer_overlap",
+            "no_gate_g_reviewer_overlap"
+          ],
+          "properties": {
+            "no_implementation_overlap": { "const": false },
+            "no_candidate_author_overlap": { "const": false },
+            "no_gate_e_source_reviewer_overlap": { "const": false },
+            "no_gate_f_source_reviewer_overlap": { "const": false },
+            "no_gate_g_reviewer_overlap": { "const": false }
+          }
+        }
+      }
+    },
+    "dispositions": {
+      "type": "array",
+      "minItems": 32,
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "task_id",
+          "task_sha256",
+          "disposition",
+          "approvals",
+          "rationale"
+        ],
+        "properties": {
+          "task_id": { "type": "string", "minLength": 1 },
+          "task_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "disposition": { "type": "null" },
+          "approvals": { "$ref": "#/$defs/approvals" },
+          "rationale": { "const": "" }
+        }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidates", "accepted", "held", "rejected"],
+      "properties": {
+        "candidates": { "const": 32 },
+        "accepted": { "const": 0 },
+        "held": { "const": 0 },
+        "rejected": { "const": 0 }
+      }
+    }
+  }
+}

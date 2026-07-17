@@ -1,0 +1,104 @@
+{
+  "schema_version": "reviewed_metrics_final_criterion_matrix_v1.0.0",
+  "artifact_id": "dfv0_reviewed_metrics_v1_candidate_20260714",
+  "issue_complete": true,
+  "rows": [
+    {
+      "criterion_id": "92.metrics_denominators",
+      "status": "satisfied",
+      "artifact": "reviewed-metrics-v1.json"
+    },
+    {
+      "criterion_id": "92.false_precision",
+      "status": "satisfied",
+      "artifact": "false-precision-cases-v1.json"
+    },
+    {
+      "criterion_id": "92.cost_time",
+      "status": "satisfied_unavailable",
+      "artifact": "stage-cost-evidence-v1.json"
+    },
+    {
+      "criterion_id": "92.accepted_tasks",
+      "status": "satisfied_all_32_externally_accepted",
+      "artifact": "independent-task-review.template-v1.json"
+    },
+    {
+      "criterion_id": "92.component_leakage",
+      "status": "satisfied",
+      "artifact": "component-split-audit-v1.json"
+    },
+    {
+      "criterion_id": "92.criterion_mapping",
+      "status": "satisfied",
+      "artifact": "criterion-matrix-v1.json"
+    },
+    {
+      "criterion_id": "92.schemas_registry_replay",
+      "status": "satisfied",
+      "artifact": "descriptor-v1.json"
+    },
+    {
+      "criterion_id": "69.process_60_records",
+      "status": "satisfied_predecessor",
+      "artifact": "component-split-audit-v1.json"
+    },
+    {
+      "criterion_id": "69.25_verified_dossiers",
+      "status": "satisfied_predecessor",
+      "artifact": "reviewed-metrics-v1.json"
+    },
+    {
+      "criterion_id": "69.visual_claim_regions",
+      "status": "satisfied_predecessor",
+      "artifact": "candidate-benchmark-tasks-v1.json"
+    },
+    {
+      "criterion_id": "69.external_claim_sources",
+      "status": "not_applicable_zero_task_claims",
+      "artifact": "reviewed-metrics-v1.json"
+    },
+    {
+      "criterion_id": "69.unsupported_claims_held",
+      "status": "satisfied",
+      "artifact": "false-precision-cases-v1.json"
+    },
+    {
+      "criterion_id": "69.reviewed_metrics",
+      "status": "satisfied_with_unavailable_denominators",
+      "artifact": "reviewed-metrics-v1.json"
+    },
+    {
+      "criterion_id": "69.false_precision",
+      "status": "satisfied",
+      "artifact": "false-precision-cases-v1.json"
+    },
+    {
+      "criterion_id": "69.rights_complete",
+      "status": "satisfied_predecessor",
+      "artifact": "candidate-benchmark-tasks-v1.json"
+    },
+    {
+      "criterion_id": "69.reviewed_tasks",
+      "status": "satisfied_all_32_externally_accepted",
+      "artifact": "independent-task-review.template-v1.json"
+    },
+    {
+      "criterion_id": "69.schemas_registry",
+      "status": "satisfied",
+      "artifact": "descriptor-v1.json"
+    },
+    {
+      "criterion_id": "69.separate_dossier_reviewer",
+      "status": "satisfied_predecessor",
+      "artifact": "candidate-benchmark-tasks-v1.json"
+    }
+  ],
+  "task_review_result": {
+    "candidates": 32,
+    "reviewed": 32,
+    "accepted": 32,
+    "held": 0,
+    "rejected": 0
+  }
+}

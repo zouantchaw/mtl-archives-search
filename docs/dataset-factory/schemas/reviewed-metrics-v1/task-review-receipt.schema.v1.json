@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "approvals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exact_task_binding",
+        "claim_and_dossier_authority",
+        "component_and_split",
+        "rights_and_pixels",
+        "evidence_boundary"
+      ],
+      "properties": {
+        "exact_task_binding": { "type": "boolean" },
+        "claim_and_dossier_authority": { "type": "boolean" },
+        "component_and_split": { "type": "boolean" },
+        "rights_and_pixels": { "type": "boolean" },
+        "evidence_boundary": { "type": "boolean" }
+      }
+    },
+    "disposition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task_id",
+        "task_sha256",
+        "disposition",
+        "approvals",
+        "rationale"
+      ],
+      "properties": {
+        "task_id": { "type": "string", "minLength": 1 },
+        "task_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "disposition": { "enum": ["accepted", "held", "rejected"] },
+        "approvals": { "$ref": "#/$defs/approvals" },
+        "rationale": { "type": "string", "minLength": 1 }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "disposition": { "const": "accepted" } },
+            "required": ["disposition"]
+          },
+          "then": {
+            "properties": {
+              "approvals": {
+                "properties": {
+                  "exact_task_binding": { "const": true },
+                  "claim_and_dossier_authority": { "const": true },
+                  "component_and_split": { "const": true },
+                  "rights_and_pixels": { "const": true },
+                  "evidence_boundary": { "const": true }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "authorization_sha256",
+    "candidate_descriptor_sha256",
+    "candidate_tasks_sha256",
+    "reviewer",
+    "dispositions",
+    "counts"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "reviewed_metrics_task_review_receipt_v1.0.0"
+    },
+    "status": { "const": "completed" },
+    "authorization_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "candidate_descriptor_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "candidate_tasks_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "reviewer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "identity",
+        "session_id",
+        "model",
+        "reasoning_effort",
+        "reviewed_at",
+        "attestations"
+      ],
+      "properties": {
+        "identity": { "type": "string", "minLength": 1 },
+        "session_id": { "type": "string", "minLength": 1 },
+        "model": { "const": "gpt-5.6-sol" },
+        "reasoning_effort": { "const": "high" },
+        "reviewed_at": { "type": "string", "format": "date-time" },
+        "attestations": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "no_implementation_overlap",
+            "no_candidate_author_overlap",
+            "no_gate_e_source_reviewer_overlap",
+            "no_gate_f_source_reviewer_overlap",
+            "no_gate_g_reviewer_overlap"
+          ],
+          "properties": {
+            "no_implementation_overlap": { "const": true },
+            "no_candidate_author_overlap": { "const": true },
+            "no_gate_e_source_reviewer_overlap": { "const": true },
+            "no_gate_f_source_reviewer_overlap": { "const": true },
+            "no_gate_g_reviewer_overlap": { "const": true }
+          }
+        }
+      }
+    },
+    "dispositions": {
+      "type": "array",
+      "minItems": 32,
+      "maxItems": 32,
+      "items": { "$ref": "#/$defs/disposition" }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidates", "accepted", "held", "rejected"],
+      "properties": {
+        "candidates": { "const": 32 },
+        "accepted": { "type": "integer", "minimum": 0, "maximum": 32 },
+        "held": { "type": "integer", "minimum": 0, "maximum": 32 },
+        "rejected": { "type": "integer", "minimum": 0, "maximum": 32 }
+      }
+    }
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "publication-assembly-plan.schema.v2.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "candidate_id", "candidate_commit", "authority_hash", "publisher", "ledger_pin", "pre_plan_member_paths", "members_before_plan", "tree_before_plan_sha256", "final_member_paths", "expected_schemas", "post_plan_derivations"],
+  "properties": {
+    "schema_version": {"const": "reviewed_metrics_publication_assembly_plan_v2.1.0"},
+    "status": {"const": "planned"},
+    "candidate_id": {"const": "dfv0_reviewed_metrics_v2_candidate_20260715"},
+    "candidate_commit": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+    "authority_hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "publisher": {"type": "object", "additionalProperties": false, "required": ["principal", "session_id", "model", "role"], "properties": {"principal": {"type": "string"}, "session_id": {"type": "string"}, "model": {"type": "string"}, "role": {"const": "publisher"}}},
+    "ledger_pin": {"type": "object"},
+    "pre_plan_member_paths": {"const": ["execution-authorization-v2.json", "gold-review-v2.json", "input-authority-v2.json", "prediction-freeze-v2.json", "prediction-output-v2.json", "private-score-receipt-v2.json", "reviewed-metrics-v2.json", "search-task-review-v2.json", "search-task-v2.json", "source-search-bundle-v2.json", "source-search-freeze-v2.json", "source-search-output-schema-v2.json", "source-search-prediction-v2.json"]},
+    "members_before_plan": {"type": "array", "minItems": 13, "maxItems": 13, "uniqueItems": true, "items": {"$ref": "#/$defs/pin"}},
+    "tree_before_plan_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "final_member_paths": {"type": "array", "minItems": 17, "maxItems": 17, "uniqueItems": true, "items": {"type": "string"}},
+    "expected_schemas": {"type": "object", "additionalProperties": false, "required": ["matrix", "descriptor", "stage_ledger"], "properties": {"matrix": {"$ref": "#/$defs/pin"}, "descriptor": {"$ref": "#/$defs/pin"}, "stage_ledger": {"$ref": "#/$defs/pin"}}},
+    "post_plan_derivations": {"const": ["seal_signed_stage_ledger_from_complete_remote_readback", "construct_final_matrix_with_exact_ledger_pin", "construct_commit_last_descriptor_from_plan_ledger_matrix_and_members"]}
+  },
+  "$defs": {"pin": {"type": "object", "additionalProperties": false, "required": ["path", "sha256", "bytes"], "properties": {"path": {"type": "string"}, "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "bytes": {"type": "integer", "minimum": 1}}}}
+}

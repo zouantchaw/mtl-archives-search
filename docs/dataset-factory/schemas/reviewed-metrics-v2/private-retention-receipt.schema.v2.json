@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "private-retention-receipt.schema.v2.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "candidate_id", "candidate_commit", "authority_hash", "finalization_id", "scored_at", "provider_capability", "privacy_verification", "objects", "issued_at", "evaluator", "signer", "signature"],
+  "properties": {
+    "schema_version": {"const": "reviewed_metrics_private_retention_receipt_v2.2.0"},
+    "candidate_id": {"const": "dfv0_reviewed_metrics_v2_candidate_20260715"},
+    "candidate_commit": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+    "authority_hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "finalization_id": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "scored_at": {"type": "string", "format": "date-time"},
+    "provider_capability": {"type":"object","additionalProperties":false,"required":["provider","bucket_capability_id","bucket_digest"],"properties":{"provider":{"enum":["cloudflare_r2_private","synthetic_in_memory"]},"bucket_capability_id":{"type":"string","pattern":"^[a-f0-9]{64}$"},"bucket_digest":{"type":"string","pattern":"^[a-f0-9]{64}$"}}},
+    "privacy_verification": {"type":"object","additionalProperties":false,"required":["preflight","postflight"],"properties":{"preflight":{"$ref":"#/$defs/privacy"},"postflight":{"$ref":"#/$defs/privacy"}}},
+    "objects": {"type":"array","minItems":2,"maxItems":2,"items":{"$ref":"#/$defs/retainedObject"}},
+    "issued_at": {"type":"string","format":"date-time"},
+    "evaluator": {"type":"object","additionalProperties":false,"required":["principal","session_id","surface_id"],"properties":{"principal":{"type":"string","minLength":1},"session_id":{"type":"string","minLength":1},"surface_id":{"type":"string","pattern":"^[a-f0-9]{64}$"}}},
+    "signer": {"type":"object","additionalProperties":false,"required":["authority_role","public_key_sha256"],"properties":{"authority_role":{"const":"private_evaluator"},"public_key_sha256":{"type":"string","pattern":"^[a-f0-9]{64}$"}}},
+    "signature": {"type":"object","additionalProperties":false,"required":["algorithm","signature_base64"],"properties":{"algorithm":{"const":"ed25519"},"signature_base64":{"type":"string","pattern": "^[A-Za-z0-9+/]{86}==$"}}}
+  },
+  "$defs": {
+    "retainedObject": {
+      "type":"object","additionalProperties":false,
+      "required":["artifact_role","object_key_commitment","version_id","etag","sha256","bytes","operations","readback_at","no_public_acl","readback_verified"],
+      "properties":{"artifact_role":{"enum":["private_expected_envelope","private_score_detail"]},"object_key_commitment":{"type":"string","pattern":"^[a-f0-9]{64}$"},"version_id":{"type":["string","null"],"minLength":1},"etag":{"type":"string","minLength":1},"sha256":{"type":"string","pattern":"^[a-f0-9]{64}$"},"bytes":{"type":"integer","minimum":1},"operations":{"type":"object","additionalProperties":false,"required":["put","head","get","stable_head"],"properties":{"put":{"type":"object","additionalProperties":false,"required":["status","status_code","attempted_at","completed_at"],"properties":{"status":{"enum":["new_write","preexisting_verified"]},"status_code":{"type":"integer","minimum":200,"maximum":499},"attempted_at":{"type":"string","format":"date-time"},"completed_at":{"type":"string","format":"date-time"}}},"recovery_head":{"$ref":"#/$defs/operation"},"recovery_get":{"$ref":"#/$defs/operation"},"head":{"$ref":"#/$defs/operation"},"get":{"$ref":"#/$defs/operation"},"stable_head":{"$ref":"#/$defs/operation"}}},"written_at":{"type":"string","format":"date-time"},"observed_existing_at":{"type":"string","format":"date-time"},"readback_at":{"type":"string","format":"date-time"},"no_public_acl":{"const":true},"readback_verified":{"const":true}},
+      "oneOf":[
+        {"required":["written_at"],"properties":{"operations":{"required":["put"],"properties":{"put":{"properties":{"status":{"const":"new_write"}}}}}},"not":{"required":["observed_existing_at"]}},
+        {"required":["observed_existing_at"],"properties":{"operations":{"required":["put","recovery_head","recovery_get"],"properties":{"put":{"properties":{"status":{"const":"preexisting_verified"}}}}}},"not":{"required":["written_at"]}}
+      ]
+    },
+    "operation": {"type":"object","additionalProperties":false,"required":["status","status_code","at"],"properties":{"status":{"type":"string","minLength":1},"status_code":{"type":"integer","minimum":200,"maximum":299},"at":{"type":"string","format":"date-time"}}},
+    "privacy": {"type":"object","additionalProperties":false,"required":["checked_at","enabled_custom_domains","managed_domain_enabled","status_code_digest","request_count","script_count","dispatch_namespace_count","dispatch_script_count","pages_project_count","binding_count","workers_dev_enabled","custom_worker_domain_count","zone_count","route_count","inventory_digest","no_r2_bucket_binding","no_direct_public_domain"],"properties":{"checked_at":{"type":"string","format":"date-time"},"enabled_custom_domains":{"const":0},"managed_domain_enabled":{"const":false},"status_code_digest":{"type":"string","pattern":"^[a-f0-9]{64}$"},"request_count":{"type":"integer","minimum":9},"script_count":{"type":"integer","minimum":0},"dispatch_namespace_count":{"type":"integer","minimum":0},"dispatch_script_count":{"type":"integer","minimum":0},"pages_project_count":{"type":"integer","minimum":0},"binding_count":{"type":"integer","minimum":0},"workers_dev_enabled":{"type":"boolean"},"custom_worker_domain_count":{"type":"integer","minimum":0},"zone_count":{"type":"integer","minimum":0},"route_count":{"type":"integer","minimum":0},"inventory_digest":{"type":"string","pattern":"^[a-f0-9]{64}$"},"no_r2_bucket_binding":{"const":true},"no_direct_public_domain":{"const":true}}}
+  }
+}

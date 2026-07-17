@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "private-score-preparation-handoff.schema.v2.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "candidate_id", "candidate_commit", "authority_hash", "task_id", "source_search_freeze", "private_envelope", "private_detail", "scored_at", "finalization_id", "evaluator", "signature"],
+  "properties": {
+    "schema_version": {"const":"reviewed_metrics_private_score_preparation_handoff_v2.0.0"},
+    "status": {"const":"sealed_private_detail_prepared"},
+    "candidate_id": {"const":"dfv0_reviewed_metrics_v2_candidate_20260715"},
+    "candidate_commit": {"type":"string","pattern":"^[a-f0-9]{40}$"},
+    "authority_hash": {"type":"string","pattern":"^[a-f0-9]{64}$"},
+    "task_id": {"const":"task-7b1d4f0c9a2e6d83"},
+    "source_search_freeze": {"$ref":"#/$defs/pin"},
+    "private_envelope": {"$ref":"#/$defs/pin"},
+    "private_detail": {"$ref":"#/$defs/hashBytes"},
+    "scored_at": {"type":"string","format":"date-time"},
+    "finalization_id": {"type":"string","pattern":"^[a-f0-9]{64}$"},
+    "evaluator": {"type":"object","additionalProperties":false,"required":["principal","session_id","surface_id"],"properties":{"principal":{"type":"string","minLength":1},"session_id":{"type":"string","minLength":1},"surface_id":{"type":"string","pattern":"^[a-f0-9]{64}$"}}},
+    "signature": {"type":"object","additionalProperties":false,"required":["algorithm","public_key_sha256","signature_base64"],"properties":{"algorithm":{"const":"ed25519"},"public_key_sha256":{"type":"string","pattern":"^[a-f0-9]{64}$"},"signature_base64":{"type":"string","pattern": "^[A-Za-z0-9+/]{86}==$"}}}
+  },
+  "$defs": {
+    "pin": {"type":"object","additionalProperties":false,"required":["path","sha256","bytes"],"properties":{"path":{"type":"string","minLength":1},"sha256":{"type":"string","pattern":"^[a-f0-9]{64}$"},"bytes":{"type":"integer","minimum":1}}},
+    "hashBytes": {"type":"object","additionalProperties":false,"required":["sha256","bytes"],"properties":{"sha256":{"type":"string","pattern":"^[a-f0-9]{64}$"},"bytes":{"type":"integer","minimum":1}}}
+  }
+}

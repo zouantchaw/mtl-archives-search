@@ -1,0 +1,177 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "pin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "bytes"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "bytes": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "metric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "metric_id",
+        "status",
+        "numerator",
+        "denominator",
+        "value",
+        "unit",
+        "source_subset",
+        "exclusions",
+        "zero_denominator_policy",
+        "reason"
+      ],
+      "properties": {
+        "metric_id": { "type": "string", "minLength": 1 },
+        "status": { "enum": ["available", "unavailable"] },
+        "numerator": { "type": ["number", "null"] },
+        "denominator": { "type": "integer", "minimum": 0 },
+        "value": { "type": ["number", "null"] },
+        "unit": { "type": "string", "minLength": 1 },
+        "source_subset": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "member_id_kind",
+            "selection_predicate",
+            "authority_files",
+            "universe_member_ids",
+            "included_member_ids",
+            "denominator_member_ids",
+            "numerator_member_ids",
+            "excluded_members",
+            "subset_sha256"
+          ],
+          "properties": {
+            "id": { "type": "string", "minLength": 1 },
+            "member_id_kind": { "const": "stable_evidence_member_id" },
+            "selection_predicate": { "type": "string", "minLength": 10 },
+            "authority_files": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/pin" }
+            },
+            "universe_member_ids": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 },
+              "uniqueItems": true
+            },
+            "included_member_ids": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 },
+              "uniqueItems": true
+            },
+            "denominator_member_ids": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 },
+              "uniqueItems": true
+            },
+            "numerator_member_ids": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 },
+              "uniqueItems": true
+            },
+            "excluded_members": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["member_id", "reason"],
+                "properties": {
+                  "member_id": { "type": "string", "minLength": 1 },
+                  "reason": { "type": "string", "minLength": 1 }
+                }
+              }
+            },
+            "subset_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+          }
+        },
+        "exclusions": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "zero_denominator_policy": {
+          "enum": [
+            "status_unavailable_value_null_never_coerce_to_zero",
+            "ordinary_ratio_or_count"
+          ]
+        },
+        "reason": { "type": "string", "minLength": 1 }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "denominator": { "const": 0 } },
+            "required": ["denominator"]
+          },
+          "then": {
+            "properties": {
+              "status": { "const": "unavailable" },
+              "numerator": { "type": "null" },
+              "value": { "type": "null" },
+              "zero_denominator_policy": {
+                "const": "status_unavailable_value_null_never_coerce_to_zero"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "status": { "const": "unavailable" } },
+            "required": ["status"]
+          },
+          "then": { "properties": { "value": { "type": "null" } } }
+        }
+      ]
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "metrics",
+    "metric_count",
+    "class_support",
+    "warnings"
+  ],
+  "properties": {
+    "schema_version": { "const": "reviewed_metrics_v1.0.0" },
+    "artifact_id": { "type": "string", "minLength": 1 },
+    "metrics": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/metric" }
+    },
+    "metric_count": { "type": "integer", "minimum": 1 },
+    "class_support": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ground_street",
+        "aerial_vertical",
+        "aerial_oblique",
+        "document_map",
+        "low_information"
+      ],
+      "properties": {
+        "ground_street": { "const": 16 },
+        "aerial_vertical": { "const": 5 },
+        "aerial_oblique": { "const": 11 },
+        "document_map": { "const": 0 },
+        "low_information": { "const": 0 }
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}

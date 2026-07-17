@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "final-criterion-matrix.schema.v2.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "candidate_id",
+    "rows",
+    "issue_92_complete",
+    "issue_69_complete"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "reviewed_metrics_final_criterion_matrix_v2.0.0"
+    },
+    "status": {
+      "enum": [
+        "candidate_open",
+        "final"
+      ]
+    },
+    "candidate_id": {
+      "const": "dfv0_reviewed_metrics_v2_candidate_20260715"
+    },
+    "rows": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/row"
+      }
+    },
+    "issue_92_complete": {
+      "type": "boolean"
+    },
+    "issue_69_complete": {
+      "type": "boolean"
+    },
+    "stage_execution_ledger": {
+      "oneOf": [{"type": "null"}, {"$ref": "#/$defs/pin"}]
+    }
+  },
+  "allOf": [
+    {"if": {"properties": {"status": {"const": "candidate_open"}}}, "then": {"properties": {"issue_92_complete": {"const": false}, "issue_69_complete": {"const": false}, "stage_execution_ledger": {"type": "null"}}}},
+    {"if": {"properties": {"status": {"const": "final"}}}, "then": {"required": ["stage_execution_ledger"], "properties": {"rows": {"minItems": 9, "maxItems": 9}, "issue_92_complete": {"const": true}, "issue_69_complete": {"const": true}, "stage_execution_ledger": {"$ref": "#/$defs/pin"}}}}
+  ],
+  "$defs": {
+    "pin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256",
+        "bytes"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "recovery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "registered_artifact_id",
+        "source_sha256",
+        "bytes"
+      ],
+      "properties": {
+        "registered_artifact_id": {
+          "type": "string"
+        },
+        "source_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "criterion_id",
+        "required",
+        "verdict",
+        "result_ids",
+        "evidence",
+        "limitations"
+      ],
+      "properties": {
+        "criterion_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "verdict": {
+          "enum": ["pending", "satisfied_candidate", "satisfied_local_untracked_sources", "satisfied"]
+        },
+        "result_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/pin"
+              },
+              {
+                "$ref": "#/$defs/recovery"
+              }
+            ]
+          }
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

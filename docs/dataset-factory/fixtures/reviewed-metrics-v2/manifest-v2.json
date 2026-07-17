@@ -1,0 +1,66 @@
+{
+  "schema_version": "reviewed_metrics_candidate_manifest_v2.0.0",
+  "artifact_id": "dfv0_reviewed_metrics_v2_candidate_20260715",
+  "members": [
+    {
+      "path": "blind-bundle-descriptor.template-v2.json",
+      "sha256": "80858edd1598c32de37d3d43d2b8907e6a5f92771129f02143a6b3e2d84e1b34",
+      "bytes": 810
+    },
+    {
+      "path": "candidate-criterion-matrix-v2.json",
+      "sha256": "6087baa6aa2f79f181149925e50394984b0d0a0779150ba74bc956e48ea6ae25",
+      "bytes": 3707
+    },
+    {
+      "path": "candidate-status-v2.json",
+      "sha256": "9b79c6c820169f73805fe0a2a1a43661311d1185dc8f1351cedf90ea179348df",
+      "bytes": 2149
+    },
+    {
+      "path": "gold-review.template-v2.json",
+      "sha256": "032bbcac89867f5769378dd5944bd9a8cc1d98b138291a73ffd6703082afd192",
+      "bytes": 970
+    },
+    {
+      "path": "input-authority-v2.json",
+      "sha256": "34be01a2750894eab27ad8882acb79a0366f1de9b6c85fb96bb84e95ecfd81fa",
+      "bytes": 56908
+    },
+    {
+      "path": "prediction-output.template-v2.json",
+      "sha256": "7bf94ba1ece5893b5f94f48b09ed477df204cfbb44acaa68f9f57d98ab890f37",
+      "bytes": 1075
+    },
+    {
+      "path": "search-task-candidate-v2.json",
+      "sha256": "fc0b45213718f7e37a52e6166475dd3bed180c77bf28c45288eb763471e37783",
+      "bytes": 486
+    },
+    {
+      "path": "search-task-review.template-v2.json",
+      "sha256": "0c7dc53a3f179f0e343aa5242349874c7ee56e1c05e43d6764c1ecac3a17b8f9",
+      "bytes": 474
+    },
+    {
+      "path": "source-search-bundle.template-v2.json",
+      "sha256": "fe30e00c8e88b886b2fa72aba0fdc3d04c979d5807b92a1be087ddc35f677cf2",
+      "bytes": 911
+    },
+    {
+      "path": "source-search-prediction.template-v2.json",
+      "sha256": "1971482ed0c8b23daa367c5d163db5285bb4418acef2147252cc03d6e6642e76",
+      "bytes": 415
+    },
+    {
+      "path": "supersession-candidate-notice-v2.json",
+      "sha256": "0dcd0cc6df2a95890ba9043113a73b21f9f5b20d82177e8a7ee37917d445b1b8",
+      "bytes": 1056
+    }
+  ],
+  "content_sha256": "8950c3b1fcbaeb2f6a09df7a006c07dc9a0c9fabd4fb2b234bbc0ddd51918ce2",
+  "counts": {
+    "files_before_manifest_and_descriptor": 11,
+    "bytes_before_manifest_and_descriptor": 68961
+  }
+}

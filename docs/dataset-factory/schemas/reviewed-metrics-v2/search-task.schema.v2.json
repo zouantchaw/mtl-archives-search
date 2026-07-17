@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "search-task.schema.v2.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "candidate_id", "authored_by", "authored_at", "source_search_freeze", "internal_provenance", "public_projection", "source_only_boundary", "private_expected_commitment", "rights_policy", "component", "split", "review_state"],
+  "properties": {
+    "schema_version": {"const": "reviewed_metrics_search_task_v2.0.0"},
+    "status": {"enum": ["placeholder_issue_97_no_task_authority", "candidate", "published"]},
+    "candidate_id": {"const": "dfv0_reviewed_metrics_v2_candidate_20260715"},
+    "authored_by": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/identityPin"}]},
+    "authored_at": {"type": ["string", "null"], "format": "date-time"},
+    "source_search_freeze": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/pin"}]},
+    "internal_provenance": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/provenance"}]},
+    "public_projection": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/projection"}]},
+    "source_task_dossier": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/dossier"}]},
+    "source_only_boundary": {"const": true},
+    "private_expected_commitment": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/commitment"}]},
+    "rights_policy": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/rights"}]},
+    "component": {"type": ["string", "null"]},
+    "split": {"type": ["string", "null"], "enum": ["train", "validation", "test", null]},
+    "review_state": {"enum": ["not_started", "pending", "accepted", "held", "rejected"]}
+  },
+  "allOf": [
+    {"if": {"properties": {"status": {"const": "published"}}}, "then": {"required": ["source_task_dossier"], "properties": {"source_task_dossier": {"$ref": "#/$defs/dossier"}}}}
+  ],
+  "$defs": {
+    "pin": {"type": "object", "additionalProperties": false, "required": ["path", "sha256", "bytes"], "properties": {"path": {"type": "string", "minLength": 1}, "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "bytes": {"type": "integer", "minimum": 1}}},
+    "provenance": {"type": "object", "additionalProperties": false, "required": ["internal_task_id", "accepted_claim_id", "source_representation_id", "source_id", "source_family_id", "official_source_url", "promotion_ledger", "review_receipt", "source_representation", "source_acquisition", "no_pixel_identity_claim"], "properties": {"internal_task_id": {"type": "string", "pattern": "^[a-z0-9:-]+$"}, "accepted_claim_id": {"type": "string", "minLength": 1}, "source_representation_id": {"type": "string", "minLength": 1}, "source_id": {"type": "string", "minLength": 1}, "source_family_id": {"type": "string", "minLength": 1}, "official_source_url": {"type": "string", "format": "uri"}, "promotion_ledger": {"$ref": "#/$defs/pin"}, "review_receipt": {"$ref": "#/$defs/pin"}, "source_representation": {"$ref": "#/$defs/pin"}, "source_acquisition": {"$ref": "#/$defs/pin"}, "no_pixel_identity_claim": {"const": true}}},
+    "projection": {"type": "object", "additionalProperties": false, "required": ["prompt", "official_origins", "output_fields", "scoring_version"], "properties": {"prompt": {"type": "string", "minLength": 1}, "official_origins": {"const": ["https://www.patrimoine-culturel.gouv.qc.ca"]}, "output_fields": {"const": ["year", "civic_number", "street", "place", "official_url"]}, "scoring_version": {"const": "gate-h-v2-official-source-search-v1"}}},
+    "dossier": {"type": "object", "additionalProperties": false, "required": ["task_gate_id", "opportunity_id", "accepted_claim_id", "source_representation_id", "source_id", "source_family_id", "official_source_origin", "no_pixel_identity_claim"], "properties": {"task_gate_id": {"type": "string", "pattern": "^[a-z0-9:-]+$"}, "opportunity_id": {"type": "string", "minLength": 1}, "accepted_claim_id": {"type": "string", "minLength": 1}, "source_representation_id": {"type": "string", "minLength": 1}, "source_id": {"type": "string", "minLength": 1}, "source_family_id": {"type": "string", "minLength": 1}, "official_source_origin": {"const": "https://www.patrimoine-culturel.gouv.qc.ca"}, "no_pixel_identity_claim": {"const": true}}},
+    "identityPin": {"type": "object", "additionalProperties": false, "required": ["principal", "session_id", "model", "reasoning_effort", "route", "surface_id", "canonical_root"], "properties": {"principal": {"type": "string", "minLength": 1}, "session_id": {"type": "string", "minLength": 1}, "model": {"type": "string", "minLength": 1}, "reasoning_effort": {"type": "string", "minLength": 1}, "route": {"type": "string", "minLength": 1}, "surface_id": {"type": "string", "minLength": 1}, "canonical_root": {"type": "string", "pattern": "^/"}}},
+    "commitment": {"type": "object", "additionalProperties": false, "required": ["algorithm", "domain", "canonicalization", "value"], "properties": {"algorithm": {"const": "sha256"}, "domain": {"const": "gate-h-v2-search-expected"}, "canonicalization": {"const": "rfc8785-compatible-canonical-json-v1"}, "value": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}},
+    "rights": {"type": "object", "additionalProperties": false, "required": ["citation_only", "private_body_redistribution_allowed", "bounded_paraphrase_required"], "properties": {"citation_only": {"const": true}, "private_body_redistribution_allowed": {"const": false}, "bounded_paraphrase_required": {"const": true}}}
+  }
+}

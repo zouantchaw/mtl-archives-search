@@ -1,0 +1,281 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "pin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "bytes"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "bytes": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "task_id",
+        "task_type",
+        "record",
+        "component_id",
+        "split",
+        "input",
+        "expected",
+        "claim",
+        "claim_sha256",
+        "dossier",
+        "source_record",
+        "rights",
+        "evidence_boundary",
+        "predecessors",
+        "task_review"
+      ],
+      "properties": {
+        "schema_version": { "const": "reviewed_metrics_candidate_task_v1.0.0" },
+        "task_id": {
+          "type": "string",
+          "pattern": "^gate-h:image-mode:[0-9]+$"
+        },
+        "task_type": { "const": "image_mode_classification" },
+        "record": {
+          "$ref": "candidate-packets.schema.v1.json#/$defs/packet/properties/record"
+        },
+        "component_id": { "type": "string", "minLength": 1 },
+        "split": { "enum": ["train", "validation", "test"] },
+        "input": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "path",
+            "sha256",
+            "bytes",
+            "width",
+            "height",
+            "evidence_declaration"
+          ],
+          "properties": {
+            "kind": { "const": "review_pixels" },
+            "path": { "type": "string", "minLength": 1 },
+            "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+            "bytes": { "type": "integer", "minimum": 1 },
+            "width": { "type": "integer", "minimum": 1 },
+            "height": { "type": "integer", "minimum": 1 },
+            "evidence_declaration": {
+              "enum": ["whole_image", "normalized_bbox"]
+            }
+          }
+        },
+        "expected": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["target", "class"],
+          "properties": {
+            "target": { "const": "image_mode" },
+            "class": {
+              "enum": ["ground_street", "aerial_vertical", "aerial_oblique"]
+            }
+          }
+        },
+        "claim": {
+          "$ref": "candidate-packets.schema.v1.json#/$defs/packet/properties/visual_claims/items"
+        },
+        "claim_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "dossier": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "dossier_id",
+            "disposition",
+            "fully_verified",
+            "dossier_sha256",
+            "review_receipt",
+            "reviewer"
+          ],
+          "properties": {
+            "dossier_id": { "type": "string", "minLength": 1 },
+            "disposition": { "const": "accepted" },
+            "fully_verified": { "const": true },
+            "dossier_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+            "review_receipt": { "$ref": "#/$defs/pin" },
+            "reviewer": {
+              "$ref": "completed-independent-review.schema.v1.json#/$defs/reviewer"
+            }
+          }
+        },
+        "source_record": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "record_url",
+            "authority_url",
+            "body_locator",
+            "body_sha256",
+            "availability"
+          ],
+          "properties": {
+            "record_url": { "type": ["string", "null"] },
+            "authority_url": { "type": ["string", "null"] },
+            "body_locator": { "type": ["string", "null"] },
+            "body_sha256": {
+              "type": ["string", "null"],
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "availability": {
+              "enum": [
+                "private_source_body_hash_bound",
+                "tracked_official_dataset_snapshot"
+              ]
+            }
+          }
+        },
+        "rights": { "$ref": "candidate-packets.schema.v1.json#/$defs/rights" },
+        "evidence_boundary": { "type": "string", "minLength": 1 },
+        "predecessors": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "phase_d",
+            "gate_e",
+            "gate_f",
+            "ground_rights",
+            "canonical_image_recovery",
+            "gate_g_publication"
+          ],
+          "properties": {
+            "phase_d": {
+              "$ref": "candidate-packets.schema.v1.json#/$defs/predecessors/properties/phase_d"
+            },
+            "gate_e": {
+              "$ref": "candidate-packets.schema.v1.json#/$defs/predecessors/properties/gate_e"
+            },
+            "gate_f": {
+              "$ref": "candidate-packets.schema.v1.json#/$defs/predecessors/properties/gate_f"
+            },
+            "ground_rights": {
+              "$ref": "candidate-packets.schema.v1.json#/$defs/predecessors/properties/ground_rights"
+            },
+            "canonical_image_recovery": {
+              "$ref": "candidate-packets.schema.v1.json#/$defs/predecessors/properties/canonical_image_recovery"
+            },
+            "gate_g_publication": { "$ref": "#/$defs/pin" }
+          }
+        },
+        "task_review": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["required", "status", "disposition"],
+              "properties": {
+                "required": { "const": true },
+                "status": { "const": "pending_external_review" },
+                "disposition": { "type": "null" }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "required",
+                "status",
+                "disposition",
+                "reviewer",
+                "rationale"
+              ],
+              "properties": {
+                "required": { "const": true },
+                "status": { "const": "accepted_external_review" },
+                "disposition": { "const": "accepted" },
+                "reviewer": {
+                  "$ref": "task-review-receipt.schema.v1.json#/properties/reviewer"
+                },
+                "rationale": { "type": "string", "minLength": 1 }
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "author",
+    "task_count",
+    "task_types",
+    "excluded",
+    "tasks"
+  ],
+  "properties": {
+    "schema_version": { "const": "reviewed_metrics_candidate_tasks_v1.0.0" },
+    "artifact_id": { "type": "string", "minLength": 1 },
+    "author": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity", "session_id", "role"],
+      "properties": {
+        "identity": { "type": "string", "minLength": 1 },
+        "session_id": { "type": "string", "minLength": 1 },
+        "role": { "const": "candidate_metrics_and_task_author" }
+      }
+    },
+    "task_count": { "const": 32 },
+    "task_types": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["image_mode_classification", "other"],
+      "properties": {
+        "image_mode_classification": { "const": 32 },
+        "other": { "const": 0 }
+      }
+    },
+    "excluded": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "held_gate_g_dossiers",
+        "unmatched_gate_e_claims",
+        "forbidden_task_types"
+      ],
+      "properties": {
+        "held_gate_g_dossiers": { "const": [8132, 8134, 8139, 8143] },
+        "unmatched_gate_e_claims": { "const": ["c0-rpcq"] },
+        "forbidden_task_types": {
+          "const": [
+            "ocr",
+            "entity",
+            "place",
+            "geolocation",
+            "measurement",
+            "land_use",
+            "search_semantic"
+          ]
+        }
+      }
+    },
+    "tasks": {
+      "type": "array",
+      "minItems": 32,
+      "maxItems": 32,
+      "items": {
+        "allOf": [
+          { "$ref": "#/$defs/task" },
+          {
+            "properties": {
+              "task_review": {
+                "properties": {
+                  "status": { "const": "pending_external_review" }
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

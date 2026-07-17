@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "blind-bundle-descriptor.schema.v2.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "candidate_id", "generator_version", "members", "media_tree", "output_schema", "scans", "attestations"],
+  "properties": {
+    "schema_version": {"const": "reviewed_metrics_blind_bundle_descriptor_v2.0.0"},
+    "status": {"enum": ["template_no_bundle_built", "sealed_sanitized_bundle"]},
+    "candidate_id": {"const": "dfv0_reviewed_metrics_v2_candidate_20260715"},
+    "generator_version": {"const": "blind-png-v2"},
+    "members": {"type": "array", "maxItems": 44, "items": {"$ref": "#/$defs/member"}},
+    "media_tree": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/tree"}]},
+    "purpose": {"const": "uniform blind visual annotation over 44 opaque media inputs"},
+    "assignment": {"const": "uniform annotation of 44 opaque media inputs"},
+    "output_schema": {"allOf": [{"$ref": "#/$defs/pin"}, {"properties": {"path": {"const": "prediction-output.schema.v2.json"}}}]},
+    "scans": {"type": "object", "additionalProperties": false, "required": ["denylisted_keys", "denylisted_text", "forbidden_metadata_fields", "ancillary_png_chunks", "extra_files"], "properties": {"denylisted_keys": {"const": 0}, "denylisted_text": {"const": 0}, "forbidden_metadata_fields": {"const": 0}, "ancillary_png_chunks": {"const": 0}, "extra_files": {"const": 0}}},
+    "attestations": {"type": "object", "additionalProperties": false, "required": ["zero_labels", "zero_answers", "zero_reviewer_material", "zero_source_metadata"], "properties": {"zero_labels": {"const": true}, "zero_answers": {"const": true}, "zero_reviewer_material": {"const": true}, "zero_source_metadata": {"const": true}}}
+  },
+  "allOf": [
+    {"if": {"properties": {"status": {"const": "template_no_bundle_built"}}}, "then": {"required": ["purpose"], "properties": {"members": {"maxItems": 0}, "media_tree": {"type": "null"}}}},
+    {"if": {"properties": {"status": {"const": "sealed_sanitized_bundle"}}}, "then": {"required": ["assignment"], "properties": {"members": {"minItems": 44, "maxItems": 44}, "media_tree": {"$ref": "#/$defs/tree"}}}}
+  ],
+  "$defs": {
+    "pin": {"type": "object", "additionalProperties": false, "required": ["path", "sha256", "bytes"], "properties": {"path": {"type": "string", "minLength": 1}, "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "bytes": {"type": "integer", "minimum": 1}}},
+    "member": {"type": "object", "additionalProperties": false, "required": ["opaque_id", "filename", "sha256", "bytes", "width", "height"], "properties": {"opaque_id": {"type": "string", "pattern": "^v2-[0-9]{4}$"}, "filename": {"type": "string", "pattern": "^media/v2-[0-9]{4}\\.png$"}, "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "bytes": {"type": "integer", "minimum": 1}, "width": {"type": "integer", "minimum": 1}, "height": {"type": "integer", "minimum": 1}}},
+    "tree": {"type": "object", "additionalProperties": false, "required": ["members", "sha256", "bytes"], "properties": {"members": {"type": "array", "minItems": 44, "maxItems": 44, "items": {"$ref": "#/$defs/pin"}}, "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "bytes": {"type": "integer", "minimum": 1}}}
+  }
+}

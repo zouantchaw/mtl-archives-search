@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https-broker-event.schema.v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "schema_pin", "event_id", "manifest_id", "capability_id", "candidate_id", "stage_id", "exchange_ordinal", "sequence", "event_type", "occurred_at", "outcome", "evidence"],
+  "properties": {
+    "schema_version": { "const": "gate_h2_https_broker_event_v1.0.0" },
+    "schema_pin": { "type": "object", "additionalProperties": false, "required": ["sha256", "bytes", "schema_version"], "properties": { "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "bytes": { "type": "integer", "minimum": 1 }, "schema_version": { "const": "gate_h2_https_broker_event_v1.0.0" } } },
+    "event_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "manifest_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "capability_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "candidate_id": { "type": "string", "pattern": "^[a-z0-9_-]+$" },
+    "stage_id": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+    "exchange_ordinal": { "type": "integer", "minimum": 0 },
+    "sequence": { "type": "integer", "minimum": 0 },
+    "event_type": { "enum": ["handle_consumed", "dns_resolved", "tls_verified", "request_sent", "response_committed", "exchange_failed"] },
+    "occurred_at": { "type": "string", "format": "date-time", "pattern": "^[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]\\.[0-9]{3}Z$" },
+    "outcome": { "enum": ["accepted", "rejected", "failed_closed"] },
+    "evidence": { "type": "object", "additionalProperties": false, "properties": { "request_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "request_bytes": { "type": "integer", "minimum": 0 }, "dns_answer_set_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "connected_ip_commitment": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "tls_peer_chain_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "tls_version": { "const": "TLSv1.3" }, "response_status": { "type": "integer", "minimum": 200, "maximum": 599 }, "response_media_type": { "const": "application/json" }, "response_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "response_bytes": { "type": "integer", "minimum": 0 }, "failure_code": { "type": "string", "pattern": "^[a-z0-9_]+$" } } }
+  },
+  "allOf": [
+    { "if": { "properties": { "event_type": { "enum": ["handle_consumed", "request_sent"] } }, "required": ["event_type"] }, "then": { "properties": { "outcome": { "const": "accepted" }, "evidence": { "required": ["request_sha256", "request_bytes"], "minProperties": 2, "maxProperties": 2 } } } },
+    { "if": { "properties": { "event_type": { "const": "dns_resolved" } }, "required": ["event_type"] }, "then": { "properties": { "outcome": { "const": "accepted" }, "evidence": { "required": ["dns_answer_set_sha256", "connected_ip_commitment"], "minProperties": 2, "maxProperties": 2 } } } },
+    { "if": { "properties": { "event_type": { "const": "tls_verified" } }, "required": ["event_type"] }, "then": { "properties": { "outcome": { "const": "accepted" }, "evidence": { "required": ["tls_peer_chain_sha256", "tls_version"], "minProperties": 2, "maxProperties": 2 } } } },
+    { "if": { "properties": { "event_type": { "const": "response_committed" } }, "required": ["event_type"] }, "then": { "properties": { "outcome": { "const": "accepted" }, "evidence": { "required": ["response_status", "response_media_type", "response_sha256", "response_bytes"], "minProperties": 4, "maxProperties": 4 } } } },
+    { "if": { "properties": { "event_type": { "const": "exchange_failed" } }, "required": ["event_type"] }, "then": { "properties": { "outcome": { "const": "failed_closed" }, "evidence": { "required": ["failure_code"], "minProperties": 1, "maxProperties": 1 } } } }
+  ]
+}

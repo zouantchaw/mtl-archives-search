@@ -1,0 +1,11 @@
+{
+  "schema_version": "reviewed_metrics_stage_program_v2.2.0",
+  "schema_sha256": "6d2a30170cf640279292ab4fd40ef70ccf46f47ac504bfee57a791842a301c2c",
+  "executor_contract": "gate_h2_static_stage_program_executor_v2",
+  "action": "invoke_exact_https_exchange",
+  "input_artifact_roles": ["reviewed_request_body"],
+  "output_indexes": [0, 1],
+  "broker_socket_role": "owner_bound_https_exchange_socket",
+  "one_run_token_role": "broker_one_run_token",
+  "https_exchange_handles": ["h2h_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"]
+}

@@ -1,0 +1,258 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "publication-descriptor.schema.v2.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "status",
+    "created_at",
+    "implementation_base_commit",
+    "candidate_commit",
+    "members_before_descriptor",
+    "tree_before_descriptor_sha256",
+    "counts",
+    "predecessors",
+    "completion",
+    "mutations"
+  ],
+  "properties": {
+    "schema_version": {
+      "enum": [
+        "reviewed_metrics_candidate_descriptor_v2.0.0",
+        "reviewed_metrics_publication_descriptor_v2.0.0"
+      ]
+    },
+    "artifact_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "enum": [
+        "candidate_only",
+        "published"
+      ]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "implementation_base_commit": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "candidate_commit": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "members_before_descriptor": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/pin"
+      }
+    },
+    "tree_before_descriptor_sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "counts": {
+      "$ref": "#/$defs/counts"
+    },
+    "predecessors": {
+      "$ref": "#/$defs/predecessors"
+    },
+    "completion": {
+      "$ref": "#/$defs/completion"
+    },
+    "mutations": {
+      "$ref": "#/$defs/mutations"
+    },
+    "required_publication_members": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "publisher": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/publisher"}]}
+  },
+  "allOf": [
+    {"if": {"properties": {"status": {"const": "candidate_only"}}}, "then": {"properties": {"candidate_commit": {"type": "null"}, "required_publication_members": {"maxItems": 0}}}},
+    {"if": {"properties": {"status": {"const": "published"}}}, "then": {"required": ["required_publication_members", "publisher"], "properties": {"artifact_id": {"const": "dfv0_reviewed_metrics_v2_publication"}, "candidate_commit": {"type": "string", "pattern": "^[a-f0-9]{40}$"}, "publisher": {"$ref": "#/$defs/publisher"}, "required_publication_members": {"minItems": 17, "maxItems": 17}, "completion": {"properties": {"candidate_complete": {"const": true}, "issue_92_complete": {"const": true}, "issue_69_complete": {"const": true}, "publication_exists": {"const": true}}}, "predecessors": {"required": ["phase_d", "v1_tasks", "v1_receipt", "v1_descriptor", "gate_e_promotion", "gate_f_review", "gate_g_descriptor", "ground_input", "ground_records", "reviewed_visual_transcriptions", "input_authority", "execution_authorization", "prediction_output", "prediction_freeze", "gold_review", "private_score_receipt", "results", "source_search_bundle", "source_search_prediction", "source_search_freeze", "search_task", "criterion_matrix", "task_review", "stage_execution_ledger", "publication_assembly_plan"]}}}}
+  ],
+  "$defs": {
+    "pin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256",
+        "bytes"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "files_before_descriptor",
+        "bytes_before_descriptor",
+        "unique_sources",
+        "task_memberships"
+      ],
+      "properties": {
+        "files_before_descriptor": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "bytes_before_descriptor": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unique_sources": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "task_memberships": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "published_members": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "accepted_tasks": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "predecessors": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "phase_d",
+        "v1_tasks",
+        "v1_receipt",
+        "v1_descriptor",
+        "gate_e_promotion",
+        "gate_f_review",
+        "gate_g_descriptor",
+        "ground_input"
+        ,"ground_records"
+        ,"reviewed_visual_transcriptions"
+      ],
+      "properties": {
+        "phase_d": {
+          "$ref": "#/$defs/pin"
+        },
+        "v1_tasks": {
+          "$ref": "#/$defs/pin"
+        },
+        "v1_receipt": {
+          "$ref": "#/$defs/pin"
+        },
+        "v1_descriptor": {
+          "$ref": "#/$defs/pin"
+        },
+        "gate_e_promotion": {
+          "$ref": "#/$defs/pin"
+        },
+        "gate_f_review": {
+          "$ref": "#/$defs/pin"
+        },
+        "gate_g_descriptor": {
+          "$ref": "#/$defs/pin"
+        },
+        "ground_input": {
+          "$ref": "#/$defs/pin"
+        },
+        "ground_records": {"$ref": "#/$defs/pin"},
+        "reviewed_visual_transcriptions": {"$ref": "#/$defs/pin"},
+        "input_authority": {"$ref": "#/$defs/pin"},
+        "execution_authorization": {"$ref": "#/$defs/pin"},
+        "prediction_output": {"$ref": "#/$defs/pin"},
+        "prediction_freeze": {
+          "$ref": "#/$defs/pin"
+        },
+        "gold_review": {
+          "$ref": "#/$defs/pin"
+        },
+        "private_score_receipt": {"$ref": "#/$defs/pin"},
+        "results": {"$ref": "#/$defs/pin"},
+        "source_search_bundle": {"$ref": "#/$defs/pin"},
+        "source_search_prediction": {"$ref": "#/$defs/pin"},
+        "source_search_freeze": {"$ref": "#/$defs/pin"},
+        "search_task": {"$ref": "#/$defs/pin"},
+        "criterion_matrix": {"$ref": "#/$defs/pin"},
+        "task_review": {"$ref": "#/$defs/pin"},
+        "stage_execution_ledger": {"$ref": "#/$defs/pin"},
+        "publication_assembly_plan": {"$ref": "#/$defs/pin"}
+      }
+    },
+    "publisher": {"type": "object", "additionalProperties": false, "required": ["principal", "session_id", "model", "role", "published_at"], "properties": {"principal": {"type": "string", "minLength": 1}, "session_id": {"type": "string", "minLength": 1}, "model": {"type": "string", "minLength": 1}, "role": {"const": "publisher"}, "published_at": {"type": "string", "format": "date-time"}}},
+    "completion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidate_complete",
+        "issue_92_complete",
+        "issue_69_complete",
+        "publication_exists"
+      ],
+      "properties": {
+        "candidate_complete": {
+          "type": "boolean"
+        },
+        "issue_92_complete": {
+          "type": "boolean"
+        },
+        "issue_69_complete": {
+          "type": "boolean"
+        },
+        "publication_exists": {
+          "type": "boolean"
+        }
+      }
+    },
+    "mutations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "production",
+        "search_index",
+        "private_object_store_write",
+        "paid_gpu"
+      ],
+      "properties": {
+        "production": {
+          "const": false
+        },
+        "search_index": {
+          "const": false
+        },
+        "private_object_store_write": {
+          "const": false
+        },
+        "paid_gpu": {
+          "const": false
+        }
+      }
+    }
+  }
+}
