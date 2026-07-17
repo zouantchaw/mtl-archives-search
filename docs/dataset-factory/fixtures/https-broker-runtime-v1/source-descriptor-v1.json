@@ -5,9 +5,9 @@
   "source_tree": {
     "algorithm": "sha256",
     "scope": "sorted_tree_manifest",
-    "sha256": "1d9f7d124c118004ed8a441f3cfbc0d3a3c9ecca77b440ea16436632598eff6d",
-    "file_count": 25,
-    "byte_count": 260704,
+    "sha256": "a7fb1d28acae96221c097c152b57db6e568b4130688c3ab320dd350da74d3390",
+    "file_count": 26,
+    "byte_count": 266630,
     "members": [
       ".gitignore",
       "Cargo.lock",
@@ -20,6 +20,7 @@
       "scripts/build-stage-oci.sh",
       "scripts/check-local.sh",
       "scripts/generate-metadata.mjs",
+      "scripts/validate-uds-response.mjs",
       "scripts/verify-toolchain-lock.mjs",
       "src/bin/broker.rs",
       "src/bin/stage_runtime.rs",

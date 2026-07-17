@@ -1,6 +1,7 @@
 use std::{
     collections::{HashMap, VecDeque},
     io::{Read, Write},
+    process::{Command, Stdio},
     sync::{Arc, Mutex},
     time::Duration,
 };
@@ -13,7 +14,7 @@ use crate::{
     Broker, BrokerConfig,
     credential::SecretBytes,
     evidence::{AuthorityBindings, Clock, EvidenceWriter},
-    model::{AuthScheme, ExchangeRequest, FilePin, Manifest, SchemaPin},
+    model::{AuthScheme, ExchangeRequest, ExchangeResponse, FilePin, Manifest, SchemaPin},
     network::{
         AuthHeader, NetworkClient, NetworkFailure, NetworkMilestone, NetworkRequest,
         NetworkResponse,
@@ -23,6 +24,35 @@ use crate::{
 
 const HANDLE: &str = "h2h_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 const TOKEN: &str = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+
+fn assert_uds_response_schema(response: &ExchangeResponse) {
+    let repository = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let mut child = Command::new("node")
+        .arg(repository.join("crates/gate-h2-broker/scripts/validate-uds-response.mjs"))
+        .current_dir(&repository)
+        .stdin(Stdio::piped())
+        .spawn()
+        .expect("Node.js is required by the repository contract validators");
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(&serde_json::to_vec(response).unwrap())
+        .unwrap();
+    assert!(
+        child.wait().unwrap().success(),
+        "exchange_response failed the frozen JSON Schema: {response:?}"
+    );
+}
+
+fn response_from_http(bytes: &[u8]) -> ExchangeResponse {
+    let body = bytes
+        .windows(4)
+        .position(|window| window == b"\r\n\r\n")
+        .map(|index| &bytes[index + 4..])
+        .expect("complete HTTP response headers");
+    serde_json::from_slice(body).unwrap()
+}
 
 struct ScriptedNetwork;
 impl NetworkClient for ScriptedNetwork {
@@ -299,6 +329,7 @@ fn request(manifest: &Manifest) -> ExchangeRequest {
 #[test]
 fn invalid_admission_inputs_consume_once_and_never_reach_transport() {
     for (mutate, expected) in [
+        ("protocol", "protocol_error"),
         ("token", "invalid_token"),
         ("handle", "invalid_handle"),
         ("artifact", "request_artifact_mismatch"),
@@ -317,6 +348,7 @@ fn invalid_admission_inputs_consume_once_and_never_reach_transport() {
         );
         let mut exchange = request(&manifest);
         match mutate {
+            "protocol" => exchange.message_type = "unknown".into(),
             "token" => exchange.run_token = "B".repeat(43),
             "handle" => exchange.capability_handle = "h2h_BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB".into(),
             "artifact" => exchange.request_artifact_sha256 = "0".repeat(64),
@@ -325,6 +357,7 @@ fn invalid_admission_inputs_consume_once_and_never_reach_transport() {
         let response = broker
             .exchange(&manifest.capabilities[0].capability_id, exchange)
             .unwrap();
+        assert_uds_response_schema(&response);
         assert_eq!(response.failure_code.as_deref(), Some(expected));
         assert!(response.exchange_consumed);
         assert!(broker.is_terminal());
@@ -360,6 +393,7 @@ fn transport_failures_are_single_attempt_and_terminal() {
         let response = broker
             .exchange(&manifest.capabilities[0].capability_id, request(&manifest))
             .unwrap();
+        assert_uds_response_schema(&response);
         assert_eq!(response.failure_code.as_deref(), Some(expected));
         assert_eq!(network.call_count(), 1);
         assert!(broker.is_terminal());
@@ -382,6 +416,7 @@ fn failure_after_request_transmission_preserves_fsynced_truthful_prefix_and_time
     let response = broker
         .exchange(&manifest.capabilities[0].capability_id, request(&manifest))
         .unwrap();
+    assert_uds_response_schema(&response);
     assert_eq!(response.failure_code.as_deref(), Some("deadline_exceeded"));
     let event_types = broker
         .evidence
@@ -426,6 +461,57 @@ fn failure_after_request_transmission_preserves_fsynced_truthful_prefix_and_time
 }
 
 #[test]
+fn output_commit_failure_uses_schema_code_but_preserves_precise_transcript_diagnostic() {
+    let root = tempfile::tempdir().unwrap();
+    let body = vec![b'x'; 128];
+    let manifest = manifest(&body);
+    std::fs::write(root.path().join("outputs"), b"not a directory").unwrap();
+    let mut broker = broker_with_network(
+        root.path(),
+        manifest.clone(),
+        Arc::new(QueuedNetwork::new([Ok(success())])),
+        vec![HANDLE.into()],
+        vec![body],
+        HashMap::new(),
+    );
+    let response = broker
+        .exchange(&manifest.capabilities[0].capability_id, request(&manifest))
+        .unwrap();
+    assert_uds_response_schema(&response);
+    assert_eq!(response.outcome, "failed_closed");
+    assert_eq!(response.failure_code.as_deref(), Some("protocol_error"));
+    assert!(response.output_artifact.is_none());
+    assert_eq!(
+        broker.evidence.events.last().unwrap().evidence["failure_code"],
+        "output_commit_failed"
+    );
+    broker.seal_transcript().unwrap();
+}
+
+#[test]
+fn empty_output_success_conforms_to_the_frozen_uds_schema() {
+    let root = tempfile::tempdir().unwrap();
+    let body = vec![b'x'; 128];
+    let manifest = manifest(&body);
+    let mut empty = success();
+    empty.body.clear();
+    empty.content_length = Some(0);
+    let mut broker = broker_with_network(
+        root.path(),
+        manifest.clone(),
+        Arc::new(QueuedNetwork::new([Ok(empty)])),
+        vec![HANDLE.into()],
+        vec![body],
+        HashMap::new(),
+    );
+    let response = broker
+        .exchange(&manifest.capabilities[0].capability_id, request(&manifest))
+        .unwrap();
+    assert_uds_response_schema(&response);
+    assert_eq!(response.output_artifact.as_ref().unwrap().bytes, 0);
+}
+
+#[test]
 fn untrusted_transport_responses_fail_closed() {
     let mut cases = Vec::new();
     let mut redirect = success();
@@ -465,6 +551,7 @@ fn untrusted_transport_responses_fail_closed() {
         let response = broker
             .exchange(&manifest.capabilities[0].capability_id, request(&manifest))
             .unwrap();
+        assert_uds_response_schema(&response);
         assert_eq!(response.failure_code.as_deref(), Some(expected));
         assert_eq!(network.call_count(), 1);
         assert!(broker.is_terminal());
@@ -499,6 +586,7 @@ fn handles_remain_strictly_ordered_single_use_capabilities() {
     let denied_response = denied
         .exchange(&manifest.capabilities[1].capability_id, second_request)
         .unwrap();
+    assert_uds_response_schema(&denied_response);
     assert_eq!(
         denied_response.failure_code.as_deref(),
         Some("out_of_order")
@@ -515,20 +603,22 @@ fn handles_remain_strictly_ordered_single_use_capabilities() {
         vec![body.clone(), body],
         HashMap::new(),
     );
-    allowed
+    let first = allowed
         .exchange(&manifest.capabilities[0].capability_id, request(&manifest))
         .unwrap();
-    let mut second_request = request(&manifest);
-    second_request.capability_handle = handles[1].clone();
-    second_request.request_id = "b".repeat(32);
-    allowed
-        .exchange(&manifest.capabilities[1].capability_id, second_request)
-        .unwrap();
+    assert_uds_response_schema(&first);
     let replay = allowed
         .exchange(&manifest.capabilities[0].capability_id, request(&manifest))
         .unwrap();
+    assert_uds_response_schema(&replay);
     assert_eq!(replay.failure_code.as_deref(), Some("replay"));
-    assert_eq!(network.call_count(), 2);
+    assert_eq!(network.call_count(), 1);
+    assert!(
+        allowed
+            .exchange(&manifest.capabilities[1].capability_id, request(&manifest))
+            .is_err(),
+        "a terminal broker must not construct an exchange_response with exchange_consumed=false"
+    );
 }
 
 #[test]
@@ -580,6 +670,7 @@ fn successful_exchange_emits_v1_transcript_and_ed25519_authority_envelope() {
     let response = broker
         .exchange(&manifest.capabilities[0].capability_id, request(&manifest))
         .unwrap();
+    assert_uds_response_schema(&response);
     assert_eq!(response.outcome, "accepted");
     broker.seal_transcript().unwrap();
     std::fs::write(
@@ -638,6 +729,7 @@ fn uds_serve_runs_end_to_end_and_seals_terminal_evidence() {
     let mut response = Vec::new();
     stream.read_to_end(&mut response).unwrap();
     assert!(response.starts_with(b"HTTP/1.1 200 OK\r\n"));
+    assert_uds_response_schema(&response_from_http(&response));
     server.join().unwrap();
     assert!(root.path().join("evidence/transcript.v1.json").is_file());
     drop(guard);
@@ -760,6 +852,7 @@ fn terminal_acceptance_is_not_released_when_sealing_fails() {
 
 #[test]
 fn nonterminal_uds_delivery_failure_consumes_next_exchange_and_seals_failed_transcript() {
+    assert!(crate::uds::take_delivery_error_response_for_test().is_none());
     let root = tempfile::tempdir().unwrap();
     let body = vec![b'x'; 128];
     let mut manifest = manifest(&body);
@@ -798,6 +891,9 @@ fn nonterminal_uds_delivery_failure_consumes_next_exchange_and_seals_failed_tran
     stream.read_to_end(&mut response).unwrap();
     assert!(response.is_empty());
     assert!(server.join().unwrap().is_err());
+    let undelivered = crate::uds::take_delivery_error_response_for_test().unwrap();
+    assert_uds_response_schema(&undelivered);
+    assert_eq!(undelivered.outcome, "accepted");
     let transcript: serde_json::Value = serde_json::from_slice(
         &std::fs::read(root.path().join("evidence/transcript.v1.json")).unwrap(),
     )
@@ -852,6 +948,7 @@ fn malformed_uds_attempt_seals_a_valid_failed_lifecycle() {
     let mut response = Vec::new();
     stream.read_to_end(&mut response).unwrap();
     assert!(server.join().unwrap().is_err());
+    assert_uds_response_schema(&response_from_http(&response));
     let transcript: serde_json::Value = serde_json::from_slice(
         &std::fs::read(root.path().join("evidence/transcript.v1.json")).unwrap(),
     )
@@ -931,6 +1028,12 @@ fn wrong_peer_and_peer_credential_failure_seal_before_rejection() {
         } else if name != "configure_error" {
             read_result.unwrap();
             assert!(response.starts_with(b"HTTP/1.1 200 OK\r\n"));
+            let wire_response = response_from_http(&response);
+            assert_uds_response_schema(&wire_response);
+            assert_eq!(
+                wire_response.failure_code.as_deref(),
+                Some("protocol_error")
+            );
         } else {
             read_result.unwrap();
             assert!(response.is_empty());

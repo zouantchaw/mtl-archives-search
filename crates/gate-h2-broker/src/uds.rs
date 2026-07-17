@@ -132,11 +132,7 @@ fn serve_with_hooks(
         };
         if !peer_matches {
             terminate_and_seal(&broker, code)?;
-            let _ = write_rejection(
-                &mut stream,
-                "00000000000000000000000000000000",
-                "protocol_error",
-            );
+            let _ = write_rejection(&mut stream, "00000000000000000000000000000000", code);
             return Err(io::Error::new(io::ErrorKind::PermissionDenied, code));
         }
         let response = match handle_stream(&mut stream, &broker) {
@@ -272,7 +268,8 @@ pub(crate) fn serve_with_delivery_error_for_test(
     listener: UnixListener,
     broker: Arc<Mutex<Broker>>,
 ) -> io::Result<()> {
-    fn delivery_error(_: &mut UnixStream, _: &ExchangeResponse) -> io::Result<()> {
+    fn delivery_error(_: &mut UnixStream, response: &ExchangeResponse) -> io::Result<()> {
+        *DELIVERY_ERROR_RESPONSE.lock().unwrap() = Some(serde_json::to_vec(response).unwrap());
         Err(io::Error::new(
             io::ErrorKind::BrokenPipe,
             "injected response delivery failure",
@@ -281,6 +278,18 @@ pub(crate) fn serve_with_delivery_error_for_test(
     let mut hooks = default_hooks();
     hooks.deliver = delivery_error;
     serve_with_hooks(listener, broker, ACCEPT_TIMEOUT, hooks)
+}
+
+#[cfg(test)]
+static DELIVERY_ERROR_RESPONSE: Mutex<Option<Vec<u8>>> = Mutex::new(None);
+
+#[cfg(test)]
+pub(crate) fn take_delivery_error_response_for_test() -> Option<ExchangeResponse> {
+    DELIVERY_ERROR_RESPONSE
+        .lock()
+        .unwrap()
+        .take()
+        .map(|bytes| serde_json::from_slice(&bytes).unwrap())
 }
 
 /*
@@ -564,7 +573,7 @@ fn write_rejection(
             outcome: "rejected".into(),
             exchange_consumed: true,
             output_artifact: None,
-            failure_code: Some(code.into()),
+            failure_code: Some(crate::broker::uds_failure_code(code).into()),
         },
     )
 }

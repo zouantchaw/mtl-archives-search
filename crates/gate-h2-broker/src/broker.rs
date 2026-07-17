@@ -54,6 +54,10 @@ impl ExchangeError {
             Self::Configuration | Self::Evidence => "protocol_error",
         }
     }
+
+    fn uds_code(&self) -> &'static str {
+        uds_failure_code(self.code())
+    }
 }
 
 pub struct Broker {
@@ -185,7 +189,7 @@ impl Broker {
                 output_artifact: Some(output),
                 failure_code: None,
             }),
-            Err(error) => {
+            Err(error) if consumed => {
                 let outcome = if matches!(error, ExchangeError::Rejected(_)) {
                     "rejected"
                 } else {
@@ -198,9 +202,10 @@ impl Broker {
                     outcome: outcome.into(),
                     exchange_consumed: consumed,
                     output_artifact: None,
-                    failure_code: Some(error.code().into()),
+                    failure_code: Some(error.uds_code().into()),
                 })
             }
+            Err(error) => Err(error),
         }
     }
 
@@ -525,6 +530,27 @@ fn network_code(value: NetworkFailure) -> &'static str {
         NetworkFailure::Overflow => "response_too_large",
         NetworkFailure::Framing => "protocol_error",
         NetworkFailure::Evidence => "protocol_error",
+    }
+}
+
+pub(crate) fn uds_failure_code(code: &'static str) -> &'static str {
+    match code {
+        "invalid_token"
+        | "invalid_handle"
+        | "replay"
+        | "out_of_order"
+        | "request_artifact_mismatch"
+        | "dns_forbidden"
+        | "dns_rebinding"
+        | "tls_failure"
+        | "redirect_forbidden"
+        | "response_status_forbidden"
+        | "response_type_forbidden"
+        | "request_too_large"
+        | "response_too_large"
+        | "deadline_exceeded"
+        | "protocol_error" => code,
+        _ => "protocol_error",
     }
 }
 fn hash_addresses(addresses: &[IpAddr]) -> String {

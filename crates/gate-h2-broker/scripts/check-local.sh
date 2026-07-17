@@ -7,6 +7,7 @@ GATE_H2_RUN_TS_ORACLE=1 cargo test --manifest-path "$ROOT/Cargo.toml" --locked -
 node --check "$ROOT/scripts/generate-metadata.mjs"
 node --check "$ROOT/scripts/assemble-oci.mjs"
 node --check "$ROOT/scripts/verify-toolchain-lock.mjs"
+node --check "$ROOT/scripts/validate-uds-response.mjs"
 node "$ROOT/scripts/verify-toolchain-lock.mjs" "$ROOT/oci/toolchain-lock.v1.json" >/dev/null
 if node "$ROOT/scripts/verify-toolchain-lock.mjs" "$ROOT/oci/toolchain-lock.v1.json" \
   'builder.invalid/not-digest-pinned' 'not-a-sha256' >/dev/null 2>&1; then
