@@ -2,6 +2,7 @@ use std::{
     fs,
     io::{self, Read, Write},
     os::fd::AsRawFd,
+    os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt},
     os::unix::net::{UnixListener, UnixStream},
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
@@ -11,9 +12,12 @@ use crate::{
     Broker,
     model::{ExchangeRequest, ExchangeResponse},
 };
+use zeroize::Zeroizing;
 
 const MAX_HEADER_BYTES: usize = 8 * 1024;
 const MAX_BODY_BYTES: usize = 16 * 1024;
+const ACCEPT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
+const IO_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
 
 pub struct SocketGuard {
     directory: PathBuf,
@@ -25,14 +29,46 @@ impl Drop for SocketGuard {
 }
 
 pub fn bind_owner_only(directory: &Path) -> io::Result<(UnixListener, SocketGuard)> {
+    let parent = directory.parent().ok_or_else(|| {
+        io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "socket directory has no parent",
+        )
+    })?;
+    let parent_metadata = fs::symlink_metadata(parent)?;
+    let name = directory
+        .file_name()
+        .and_then(|name| name.to_str())
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "invalid socket directory"))?;
+    if !parent_metadata.file_type().is_dir()
+        || parent_metadata.file_type().is_symlink()
+        || parent_metadata.uid() != unsafe { libc::geteuid() }
+        || parent_metadata.permissions().mode() & 0o022 != 0
+        || name.is_empty()
+        || !name
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || b"_-".contains(&byte))
+    {
+        return Err(io::Error::new(
+            io::ErrorKind::PermissionDenied,
+            "unsafe socket parent or directory name",
+        ));
+    }
     fs::create_dir(directory)?;
-    fs::set_permissions(
-        directory,
-        std::os::unix::fs::PermissionsExt::from_mode(0o700),
-    )?;
+    fs::set_permissions(directory, fs::Permissions::from_mode(0o700))?;
     let socket = directory.join("broker.sock");
     let listener = UnixListener::bind(&socket)?;
-    fs::set_permissions(&socket, std::os::unix::fs::PermissionsExt::from_mode(0o600))?;
+    fs::set_permissions(&socket, fs::Permissions::from_mode(0o600))?;
+    let socket_metadata = fs::symlink_metadata(&socket)?;
+    if !socket_metadata.file_type().is_socket()
+        || socket_metadata.uid() != unsafe { libc::geteuid() }
+        || socket_metadata.permissions().mode() & 0o777 != 0o600
+    {
+        return Err(io::Error::new(
+            io::ErrorKind::PermissionDenied,
+            "unsafe broker socket",
+        ));
+    }
     Ok((
         listener,
         SocketGuard {
@@ -43,23 +79,30 @@ pub fn bind_owner_only(directory: &Path) -> io::Result<(UnixListener, SocketGuar
 
 pub fn serve(listener: UnixListener, broker: Arc<Mutex<Broker>>) -> io::Result<()> {
     loop {
+        wait_readable(listener.as_raw_fd(), ACCEPT_TIMEOUT)?;
         let (mut stream, _) = listener.accept()?;
+        stream.set_read_timeout(Some(IO_TIMEOUT))?;
+        stream.set_write_timeout(Some(IO_TIMEOUT))?;
         let expected_uid = broker
             .lock()
             .map_err(|_| io::Error::other("broker state poisoned"))?
             .expected_uid();
         if peer_uid(&stream)? != expected_uid {
-            write_rejection(
+            let _ = write_rejection(
                 &mut stream,
                 "00000000000000000000000000000000",
                 "protocol_error",
-            )?;
-            return Err(io::Error::new(
-                io::ErrorKind::PermissionDenied,
-                "unexpected Unix peer",
-            ));
+            );
+            return terminate_and_seal(&broker, "wrong_peer");
         }
-        handle_stream(&mut stream, &broker)?;
+        if handle_stream(&mut stream, &broker).is_err() {
+            let _ = write_rejection(
+                &mut stream,
+                "00000000000000000000000000000000",
+                "protocol_error",
+            );
+            return terminate_and_seal(&broker, "protocol_error");
+        }
         let mut state = broker
             .lock()
             .map_err(|_| io::Error::other("broker state poisoned"))?;
@@ -72,13 +115,26 @@ pub fn serve(listener: UnixListener, broker: Arc<Mutex<Broker>>) -> io::Result<(
     }
 }
 
+fn terminate_and_seal(broker: &Arc<Mutex<Broker>>, code: &'static str) -> io::Result<()> {
+    let mut state = broker
+        .lock()
+        .map_err(|_| io::Error::other("broker state poisoned"))?;
+    state
+        .terminate_protocol_failure(code)
+        .map_err(|_| io::Error::other("terminal evidence failed"))?;
+    state
+        .seal_transcript()
+        .map_err(|_| io::Error::other("transcript seal failed"))?;
+    Ok(())
+}
+
 fn handle_stream(stream: &mut UnixStream, broker: &Arc<Mutex<Broker>>) -> io::Result<()> {
     let (path, body) = read_request(stream)?;
     let capability_id = path
         .strip_prefix("/v1/exchange/")
         .filter(|v| v.len() == 64 && v.bytes().all(|b| b.is_ascii_hexdigit()))
         .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "invalid exchange path"))?;
-    let request: ExchangeRequest = serde_json::from_value(parse_no_duplicates(&body)?)
+    let request: ExchangeRequest = serde_json::from_value(parse_strict_json(&body)?)
         .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "invalid protocol body"))?;
     let response = broker
         .lock()
@@ -88,7 +144,7 @@ fn handle_stream(stream: &mut UnixStream, broker: &Arc<Mutex<Broker>>) -> io::Re
     write_response(stream, &response)
 }
 
-fn parse_no_duplicates(bytes: &[u8]) -> io::Result<serde_json::Value> {
+pub(crate) fn parse_strict_json(bytes: &[u8]) -> io::Result<serde_json::Value> {
     use serde::de::{DeserializeSeed, Error, MapAccess, SeqAccess, Visitor};
     struct Seed;
     impl<'de> DeserializeSeed<'de> for Seed {
@@ -155,8 +211,8 @@ fn parse_no_duplicates(bytes: &[u8]) -> io::Result<serde_json::Value> {
     Ok(value)
 }
 
-fn read_request(stream: &mut UnixStream) -> io::Result<(String, Vec<u8>)> {
-    let mut bytes = Vec::new();
+fn read_request(stream: &mut UnixStream) -> io::Result<(String, Zeroizing<Vec<u8>>)> {
+    let mut bytes = Zeroizing::new(Vec::new());
     let mut chunk = [0u8; 1024];
     let header_end = loop {
         let read = stream.read(&mut chunk)?;
@@ -190,6 +246,9 @@ fn read_request(stream: &mut UnixStream) -> io::Result<(String, Vec<u8>)> {
     }
     let path = request.path.unwrap().to_owned();
     let mut length = None;
+    let mut host = None;
+    let mut content_type = None;
+    let mut connection = None;
     for header in request.headers.iter() {
         if header.name.eq_ignore_ascii_case("content-length") {
             if length.is_some() {
@@ -206,10 +265,25 @@ fn read_request(stream: &mut UnixStream) -> io::Result<(String, Vec<u8>)> {
                         io::Error::new(io::ErrorKind::InvalidData, "invalid content length")
                     })?,
             );
-        } else if !header.name.eq_ignore_ascii_case("host")
-            && !header.name.eq_ignore_ascii_case("content-type")
-            && !header.name.eq_ignore_ascii_case("connection")
-        {
+        } else if header.name.eq_ignore_ascii_case("host") {
+            if host.replace(header.value).is_some() {
+                return Err(io::Error::new(io::ErrorKind::InvalidData, "duplicate host"));
+            }
+        } else if header.name.eq_ignore_ascii_case("content-type") {
+            if content_type.replace(header.value).is_some() {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "duplicate content type",
+                ));
+            }
+        } else if header.name.eq_ignore_ascii_case("connection") {
+            if connection.replace(header.value).is_some() {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "duplicate connection",
+                ));
+            }
+        } else {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 "unexpected request header",
@@ -218,6 +292,15 @@ fn read_request(stream: &mut UnixStream) -> io::Result<(String, Vec<u8>)> {
     }
     let length = length
         .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "missing content length"))?;
+    if host != Some(b"gate-h2".as_slice())
+        || content_type != Some(b"application/json".as_slice())
+        || connection != Some(b"close".as_slice())
+    {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "invalid required protocol headers",
+        ));
+    }
     if length > MAX_BODY_BYTES {
         return Err(io::Error::new(
             io::ErrorKind::InvalidData,
@@ -240,7 +323,37 @@ fn read_request(stream: &mut UnixStream) -> io::Result<(String, Vec<u8>)> {
             "request smuggling bytes",
         ));
     }
-    Ok((path, bytes[header_end..].to_vec()))
+    stream.set_read_timeout(Some(IO_TIMEOUT))?;
+    let mut trailing = [0_u8; 1];
+    if stream.read(&mut trailing)? != 0 {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "request smuggling bytes",
+        ));
+    }
+    Ok((path, Zeroizing::new(bytes[header_end..].to_vec())))
+}
+
+fn wait_readable(fd: i32, timeout: std::time::Duration) -> io::Result<()> {
+    let mut poll_fd = libc::pollfd {
+        fd,
+        events: libc::POLLIN,
+        revents: 0,
+    };
+    let timeout_ms = i32::try_from(timeout.as_millis()).unwrap_or(i32::MAX);
+    let result = unsafe { libc::poll(&mut poll_fd, 1, timeout_ms) };
+    if result > 0 && poll_fd.revents & libc::POLLIN != 0 {
+        Ok(())
+    } else if result == 0 {
+        Err(io::Error::new(
+            io::ErrorKind::TimedOut,
+            "broker accept deadline",
+        ))
+    } else if result < 0 {
+        Err(io::Error::last_os_error())
+    } else {
+        Err(io::Error::other("broker listener failed"))
+    }
 }
 
 fn write_response(stream: &mut UnixStream, response: &ExchangeResponse) -> io::Result<()> {
@@ -334,7 +447,7 @@ mod tests {
 
     #[test]
     fn malformed_method_and_duplicate_length_are_rejected() {
-        fn parse(raw: &[u8]) -> io::Result<(String, Vec<u8>)> {
+        fn parse(raw: &[u8]) -> io::Result<(String, Zeroizing<Vec<u8>>)> {
             let (mut writer, mut reader) = UnixStream::pair()?;
             writer.write_all(raw)?;
             writer.shutdown(std::net::Shutdown::Write)?;
@@ -348,6 +461,6 @@ mod tests {
             .is_err()
         );
         assert!(parse(b"POST /v1/exchange/x HTTP/1.1\r\ntransfer-encoding: chunked\r\ncontent-length: 0\r\n\r\n").is_err());
-        assert!(parse_no_duplicates(br#"{"x":1,"x":2}"#).is_err());
+        assert!(parse_strict_json(br#"{"x":1,"x":2}"#).is_err());
     }
 }

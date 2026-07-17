@@ -1,6 +1,6 @@
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
-use crate::model::{AuthScheme, Capability, Manifest};
+use crate::model::{AuthScheme, Capability, Manifest, Method};
 use serde::Serialize;
 use serde_json::json;
 use sha2::{Digest, Sha256};
@@ -63,11 +63,13 @@ fn validate_capability(
         || c.fixed_headers.serialization != "accept: SP value CRLF; content-type: SP value CRLF"
         || c.request_artifact.media_type != "application/json"
         || c.request_artifact.bytes > c.request_byte_cap
+        || matches!(c.method, Method::Get) && c.request_artifact.bytes != 0
         || c.request_byte_cap > 16_777_216
         || c.response_byte_cap == 0
         || c.response_byte_cap > 16_777_216
         || !(1..=30_000).contains(&c.connect_deadline_ms)
         || !(1..=300_000).contains(&c.exchange_deadline_ms)
+        || c.connect_deadline_ms > c.exchange_deadline_ms
         || c.content_encoding != "identity"
         || c.redirect_policy != "forbid_all"
         || c.retry_policy != "no_automatic_retries"
@@ -76,10 +78,8 @@ fn validate_capability(
             .iter()
             .any(|status| !(200..=599).contains(status))
         || c.allowed_response_statuses
-            .iter()
-            .collect::<std::collections::HashSet<_>>()
-            .len()
-            != c.allowed_response_statuses.len()
+            .windows(2)
+            .any(|pair| pair[0] >= pair[1])
         || c.allowed_response_media_types.as_slice() != ["application/json"]
         || c.dns_policy
             != json!({"resolution_owner":"host_broker","resolve_once_per_exchange":true,"connect_only_to_resolved_set":true,"re_resolve_forbidden":true,"forbidden_ip_ranges":["unspecified","loopback","link_local","private","carrier_grade_nat","documentation","benchmark","multicast","reserved"],"mixed_allowed_forbidden_answer":"reject_entire_exchange"})
@@ -138,10 +138,17 @@ fn auth_insertion_exact(c: &Capability) -> bool {
 }
 
 fn valid_hostname(value: &str) -> bool {
+    let ascii = idna::domain_to_ascii(value);
+    let unicode = idna::domain_to_unicode(value);
     value.len() <= 253
         && value.contains('.')
+        && !value.ends_with('.')
         && value == value.to_ascii_lowercase()
         && value.parse::<IpAddr>().is_err()
+        && ascii.as_deref().is_ok_and(|ascii| ascii == value)
+        && idna::domain_to_ascii(&unicode.0)
+            .as_deref()
+            .is_ok_and(|ascii| ascii == value)
         && value.split('.').all(|label| {
             !label.is_empty()
                 && label.len() <= 63
@@ -179,16 +186,20 @@ pub fn object_id<T: Serialize>(domain: &[u8], value: &T, field: &str) -> Option<
 }
 
 fn valid_target(value: &str) -> bool {
+    let (path, query) = value
+        .split_once('?')
+        .map_or((value, None), |(path, query)| (path, Some(query)));
     if !value.starts_with('/')
         || value.starts_with("//")
         || value.contains('#')
+        || value.contains('\\')
         || value.bytes().any(|b| b <= 0x20 || b >= 0x7f)
-        || value
-            .split('?')
-            .next()
-            .unwrap_or("")
+        || !path.bytes().all(valid_path_byte)
+        || query.is_some_and(|query| !query.bytes().all(valid_query_byte))
+        || path.contains("//")
+        || path
             .split('/')
-            .any(|s| s == "." || s == "..")
+            .any(|segment| segment == "." || segment == "..")
     {
         return false;
     }
@@ -230,6 +241,14 @@ fn valid_target(value: &str) -> bool {
     true
 }
 
+fn valid_path_byte(byte: u8) -> bool {
+    byte.is_ascii_alphanumeric() || b"-._~!$&'()*+,;=:@/%".contains(&byte)
+}
+
+fn valid_query_byte(byte: u8) -> bool {
+    byte.is_ascii_alphanumeric() || b"-._~!$'()*+,;=:@/?%&".contains(&byte)
+}
+
 fn is_lower_hex(byte: u8) -> bool {
     byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte)
 }
@@ -258,15 +277,13 @@ pub fn is_forbidden(ip: IpAddr) -> bool {
             if let Some(v4) = v6.to_ipv4_mapped() {
                 return forbidden_v4(v4);
             }
-            v6.is_unspecified()
-                || v6.is_loopback()
-                || v6.is_multicast()
-                || in_v6(v6, "fe80::".parse().unwrap(), 10)
-                || in_v6(v6, "fc00::".parse().unwrap(), 7)
+            !in_v6(v6, "2000::".parse().unwrap(), 3)
+                || in_v6(v6, "2001::".parse().unwrap(), 23)
                 || in_v6(v6, "2001:db8::".parse().unwrap(), 32)
-                || in_v6(v6, "2001:2::".parse().unwrap(), 48)
-                || in_v6(v6, "100::".parse().unwrap(), 64)
-                || in_v6(v6, "ff00::".parse().unwrap(), 8)
+                || in_v6(v6, "2002::".parse().unwrap(), 16)
+                || in_v6(v6, "2620:4f:8000::".parse().unwrap(), 48)
+                || in_v6(v6, "3fff::".parse().unwrap(), 20)
+                || in_v6(v6, "5f00::".parse().unwrap(), 16)
         }
     }
 }
@@ -282,7 +299,9 @@ fn forbidden_v4(v: Ipv4Addr) -> bool {
         (0xac100000, 12),
         (0xc0000000, 24),
         (0xc0000200, 24),
+        (0xc034c100, 24),
         (0xc0586300, 24),
+        (0xc0af3000, 24),
         (0xc0a80000, 16),
         (0xc6120000, 15),
         (0xc6336400, 24),
@@ -323,6 +342,9 @@ mod tests {
             "fe80::1",
             "fc00::1",
             "2001:db8::1",
+            "::2",
+            "fec0::1",
+            "3fff::1",
             "::ffff:127.0.0.1",
         ] {
             assert!(is_forbidden(value.parse().unwrap()), "{value}");
@@ -331,5 +353,18 @@ mod tests {
         assert!(!is_forbidden(
             "2606:2800:220:1:248:1893:25c8:1946".parse().unwrap()
         ));
+    }
+
+    #[test]
+    fn target_and_hostname_rules_match_the_typescript_authority() {
+        assert!(valid_hostname("api.example.net"));
+        assert!(!valid_hostname("xn--a.example"));
+        assert!(!valid_hostname("Example.net"));
+        assert!(valid_target("/v1/exact?mode=a&sample=1"));
+        assert!(!valid_target("/v1//exact"));
+        assert!(!valid_target("/v1\\exact"));
+        assert!(!valid_target("/v1/[exact]"));
+        assert!(!valid_target("/v1/%61"));
+        assert!(!valid_target("/v1?a=1&a=2"));
     }
 }

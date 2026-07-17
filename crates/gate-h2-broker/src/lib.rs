@@ -3,16 +3,19 @@
 pub mod broker;
 pub mod credential;
 pub mod evidence;
+pub mod launcher;
 pub mod model;
 pub mod network;
 pub mod policy;
+pub mod stage;
 pub mod uds;
 
 pub use broker::{Broker, BrokerConfig, ExchangeError};
-pub use network::{
-    NetworkClient, NetworkFailure, NetworkObservation, NetworkRequest, NetworkResponse,
-};
+pub use network::{NetworkFailure, ProductionNetworkClient};
 
 pub const PROTOCOL_VERSION: &str = "gate_h2_https_exchange_uds_v1.0.0";
 pub const EVENT_VERSION: &str = "gate_h2_https_broker_event_v1.0.0";
 pub const TRANSCRIPT_VERSION: &str = "gate_h2_https_broker_transcript_v1.0.0";
+
+#[cfg(test)]
+mod production_tests;

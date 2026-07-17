@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use zeroize::Zeroize;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -120,7 +121,8 @@ pub enum AuthScheme {
     ApiKeyHeader,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Zeroize)]
+#[zeroize(drop)]
 #[serde(deny_unknown_fields)]
 pub struct ExchangeRequest {
     pub schema_version: String,

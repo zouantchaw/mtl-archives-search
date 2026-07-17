@@ -152,7 +152,10 @@ export const ID_DOMAINS = {
   manifest: "gate-h2-https-exchange-manifest-v1-schema-bound",
   event: "gate-h2-https-broker-event-v1-schema-bound",
   transcript: "gate-h2-https-broker-transcript-v1-schema-bound",
+  authorityEnvelope: "gate-h2-https-broker-authority-envelope-v2-schema-bound",
 } as const;
+
+const AUTHORITY_SIGNATURE_DOMAIN = "gate-h2-https-broker-authority-signature-ed25519-v2";
 
 export function domainSeparatedId(domain: string, value: Json, idField: string): string {
   const unsigned = structuredClone(value) as Record<string, Json>;
@@ -344,6 +347,47 @@ export function validateTranscript(value: Json, manifestValue?: Json): void {
   if (!failureSeen && lifecycleIndex !== 0) fail("HTTPS_EVENT_LIFECYCLE", "transcript ends during an exchange lifecycle");
   if (transcript.attempted_exchange_count !== attempted || transcript.completed_exchange_count !== completed || (transcript.final_outcome === "complete" ? completed !== capabilities.length || failureSeen : !failureSeen)) fail("HTTPS_TRANSCRIPT_COUNTS", "transcript counts contradict exact lifecycle evidence");
   if (transcript.transcript_id !== domainSeparatedId(ID_DOMAINS.transcript, value, "transcript_id")) fail("HTTPS_TRANSCRIPT_ID", "transcript_id mismatch");
+}
+
+export function validateAuthorityEnvelopeV2(
+  value: Json,
+  transcriptBytes: Buffer,
+  manifestValue: Json,
+  expectedSignerTrustEntrySha256: string,
+): void {
+  schema("https-broker-authority-envelope.schema.v2.json", value);
+  const envelope = value as Record<string, Json>;
+  if (jcs(envelope.schema_pin) !== jcs(expectedSchemaPin("https-broker-authority-envelope.schema.v2.json", "gate_h2_https_broker_authority_envelope_v2.0.0"))) fail("HTTPS_AUTHORITY_SCHEMA_PIN", "authority envelope self-schema bytes differ");
+  const transcript = parseStrictJson(transcriptBytes) as Record<string, Json>;
+  validateTranscript(transcript, manifestValue);
+  if (envelope.transcript_id !== transcript.transcript_id
+    || envelope.transcript_sha256 !== crypto.createHash("sha256").update(jcs(transcript)).digest("hex")
+    || envelope.manifest_id !== transcript.manifest_id
+    || envelope.socket_identity_sha256 !== transcript.socket_identity_sha256
+    || envelope.run_token_commitment !== transcript.run_token_commitment
+    || envelope.final_outcome !== transcript.final_outcome
+    || envelope.signer_trust_entry_sha256 !== expectedSignerTrustEntrySha256) {
+    fail("HTTPS_AUTHORITY_JOIN", "authority envelope differs from transcript or trusted signer entry");
+  }
+  const unsignedId = structuredClone(envelope);
+  delete unsignedId.envelope_id;
+  delete unsignedId.signature_base64url;
+  const expectedEnvelopeId = crypto.createHash("sha256")
+    .update(ID_DOMAINS.authorityEnvelope).update("\0").update(jcs(unsignedId)).digest("hex");
+  if (envelope.envelope_id !== expectedEnvelopeId) fail("HTTPS_AUTHORITY_ID", "authority envelope ID mismatch");
+  const publicKey = Buffer.from(envelope.public_key_base64url as string, "base64url");
+  const signerId = crypto.createHash("sha256")
+    .update("gate-h2-ed25519-signer-v1\0").update(envelope.public_key_base64url as string).digest("hex");
+  if (publicKey.length !== 32 || envelope.signer_id !== signerId) fail("HTTPS_AUTHORITY_SIGNER", "authority signer identity mismatch");
+  const unsignedSignature = structuredClone(envelope);
+  delete unsignedSignature.signature_base64url;
+  const spki = Buffer.concat([Buffer.from("302a300506032b6570032100", "hex"), publicKey]);
+  const message = Buffer.concat([
+    Buffer.from(`${AUTHORITY_SIGNATURE_DOMAIN}\0`),
+    Buffer.from(jcs(unsignedSignature)),
+  ]);
+  const signature = Buffer.from(envelope.signature_base64url as string, "base64url");
+  if (signature.length !== 64 || !crypto.verify(null, message, crypto.createPublicKey({ key: spki, format: "der", type: "spki" }), signature)) fail("HTTPS_AUTHORITY_SIGNATURE", "authority Ed25519 signature mismatch");
 }
 
 export function validateCompletedTranscriptOutputs(value: Json, manifestValue: Json, retainedOutputs: Json[]): void {

@@ -3,8 +3,9 @@ import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-const [root, output, target, trustRootsSha256] = process.argv.slice(2);
-if (!root || !output || !target || !/^[a-f0-9]{64}$/.test(trustRootsSha256 ?? "")) throw new Error("invalid metadata arguments");
+const [root, output, target, trustRootsSha256, sourceCommit, sourceTree, toolchainSha256, binarySha256, rootfsSha256, ociArchiveSha256, ociImageId] = process.argv.slice(2);
+const digests = [trustRootsSha256, sourceCommit, sourceTree, toolchainSha256, binarySha256, rootfsSha256, ociArchiveSha256];
+if (!root || !output || !target || digests.some((value) => !/^[a-f0-9]{40,64}$/.test(value ?? "")) || !/^sha256:[a-f0-9]{64}$/.test(ociImageId ?? "")) throw new Error("invalid verified metadata arguments");
 mkdirSync(output, { recursive: true });
 const tree = execFileSync("cargo", ["tree", "--manifest-path", join(root, "Cargo.toml"), "--locked", "--offline", "--target", target, "--edges", "normal", "--prefix", "none", "--format", "{p}\t{l}"], { cwd: root, encoding: "utf8" });
 const byPurl = new Map();
@@ -19,6 +20,22 @@ for (const line of tree.trim().split("\n")) {
 const components = [...byPurl.values()].sort((a, b) => a.purl.localeCompare(b.purl));
 const lock = readFileSync(join(root, "Cargo.lock"));
 const sbom = { bomFormat: "CycloneDX", specVersion: "1.5", version: 1, metadata: { component: { type: "application", name: "gate-h2-stage-runtime", version: "0.1.0" } }, components };
-const provenance = { schema_version: "gate_h2_stage_build_provenance_v1.0.0", source_date_epoch: 0, target, cargo_lock_sha256: createHash("sha256").update(lock).digest("hex"), trust_roots_sha256: trustRootsSha256, network_policy: "offline_build_and_podman_network_none", reproducibility_status: "pending_two_clean_linux_builds", production_authority_activated: false };
+const provenance = {
+  schema_version: "gate_h2_stage_build_provenance_v1.0.0",
+  source_date_epoch: 0,
+  source_commit: sourceCommit,
+  source_tree: sourceTree,
+  target,
+  toolchain_sha256: toolchainSha256,
+  cargo_lock_sha256: createHash("sha256").update(lock).digest("hex"),
+  trust_roots_sha256: trustRootsSha256,
+  binary_sha256: binarySha256,
+  rootfs_sha256: rootfsSha256,
+  oci_archive_sha256: ociArchiveSha256,
+  oci_image_id: ociImageId,
+  network_policy: "offline_build_and_podman_network_none",
+  reproducibility_status: "verified_two_independent_clean_source_builds",
+  production_authority_activated: false,
+};
 writeFileSync(join(output, "sbom.cdx.json"), `${JSON.stringify(sbom)}\n`, { mode: 0o444 });
 writeFileSync(join(output, "provenance.json"), `${JSON.stringify(provenance)}\n`, { mode: 0o444 });

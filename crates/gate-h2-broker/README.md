@@ -1,28 +1,27 @@
 # Gate H2 HTTPS broker runtime
 
-This package is the issue #99 implementation surface for the reviewed issue #98 exact-exchange contract. It is inactive infrastructure: it grants no destination, credential, execution, provider, Cloudflare, D1, R2, prediction, publication, or deployment authority.
+This crate is the inactive issue #99 production implementation of the merged issue #98 exact-exchange contract. It adds no destination manifest, provider credential, admitted launch configuration, or Cloudflare/D1/R2/prediction/publication authority.
 
-## Implemented local contract
+## Implemented boundary
 
-- A fresh `0700` directory and `0600` Unix socket, peer-UID admission, HTTP/1.1 `POST /v1/exchange/<capability_id>` framing, and cleanup guard.
-- Exact schema-bound manifest/capability admission, ordered single-use handles, one-run token commitment checks, request body/hash/byte checks, and typed auth insertion from inherited descriptors.
-- Full forbidden IPv4/IPv6 and IPv4-mapped classification, whole-answer-set rejection, connected-peer pinning, strict observed TLS 1.3/ALPN policy, no redirect/retry/compression/chunked framing, status/media/byte/deadline failure codes, and deterministic injectable fixture transport.
-- Fsynced raw outputs, schema-compatible hash-only events and transcript, and a detached HMAC-SHA-256 transcript signature. Provider credential bytes are zeroed on drop and never enter errors or evidence.
-- A fixed-path static stage runtime that can access only the owner-bound UDS protocol and reviewed input/output paths.
-
-The production network constructor is deliberately non-injectable and fail-closed in this commit. The no-network macOS environment did not contain pinned `rustls`, `webpki`, signature, test-certificate, or Linux musl sources. Fetching them would violate the issue run boundary, and substituting a subprocess or custom TLS/cryptography would violate the architecture.
+- `ProductionNetworkClient` resolves exactly once, rejects the complete answer set if any address is special-use, pins one allowed IPv4/IPv6 socket, verifies the connected peer, and performs exact-host rustls TLS 1.3 SNI/PKIX with byte-pinned native roots.
+- Upstream HTTP/1.1 uses exact origin-form target, Host, fixed/auth/transport header order, one content length, identity encoding, connection close, monotonic connect/exchange budgets, streaming caps, and no proxy environment, redirect, retry, decompression, transfer encoding, or ambiguous trailing bytes.
+- The launcher accepts only a domain-separated config whose ID exactly matches the build-time `GATE_H2_ADMITTED_CONFIG_ID` pin, verifies its own and stage-runtime bytes, and requires unique fully sealed inherited Linux memfds for the one-run token, every credential, and the base64url Ed25519 seed. Normal builds carry no admitted config pin.
+- A fresh owner-only UDS authenticates the peer UID and exact one-use token/handle/order. Required request/response headers, lengths, EOF, read/write/accept deadlines, owner/mode/parent checks, and terminal failure sealing are enforced.
+- The stage runtime validates every v2.2 field and schema pin, binds exact program bytes to a host authority, joins inputs/handles/capability IDs/output indexes, and uses fixed-root descriptor-relative `O_NOFOLLOW` reads with regular-file and single-link checks.
+- Every consumed handle produces a valid v1 lifecycle ending in `response_committed` or `exchange_failed`. The unchanged v1 transcript is validated by the #98 TypeScript oracle. A closed v2 envelope signs the exact v1 bytes with Ed25519 and binds D1 begin/attempt, session, broker/runtime/root pins, socket/token commitments, manifest, signer trust entry, and outcome.
 
 ## Local verification
 
 ```bash
-./crates/gate-h2-broker/scripts/check-local.sh
+npm run gate-h2:broker-self-test
 npm run dataset-factory:https-exchange-contract-self-test-v1
 ```
 
-All Cargo commands use `--locked --offline`. Tests use scripted observations only; they do not perform DNS, TCP, TLS, proxy, provider, or internet access.
+Tests use Unix sockets and local loopback TCP/rustls fixtures only. They do not contact DNS resolvers, proxies, providers, the internet, Cloudflare, R2, or D1.
 
-## Retained issue #101 gates
+## Issue #101 evidence gates
 
-Run `scripts/build-stage-oci.sh` only on a clean Linux worker with the reviewed trust-root bytes and hash. It hard-requires Linux, a musl target, Podman, two byte-identical clean static builds, two identical `FROM scratch` OCI image IDs, an exact rootfs inventory, SBOM, and provenance. Until that succeeds, do not claim Linux static linkage, real TLS/SNI/PKIX/connect pinning, sealed-memfd enforcement, OCI reproducibility, sandbox flags, or production readiness.
+Run `scripts/build-stage-oci.sh` only from a clean reviewed Linux checkout with the pinned trust-root file. It creates two independent `git archive` source copies, isolated Cargo homes and target trees, verifies static ELF/no interpreter/no dynamic dependencies, compares exact binary and normalized rootfs bytes, builds two network-disabled OCI archives, compares their exact bytes and IDs, and writes provenance only after success.
 
-The production launcher remains disabled until those gates are proven and the merged transcript contract has an approved successor binding the D1 attempt/begin hash plus broker/runtime/trust pins. No existing v2.5 authority is activated by these files.
+Issue #101 must independently retain Linux evidence for `SO_PEERCRED`, sealed memfds, static linkage, sandbox flags, and byte-identical binary/rootfs/OCI outputs. That evidence is not claimed by this macOS change. Production remains inactive until an external authority admits the exact launcher config and all referenced pins.

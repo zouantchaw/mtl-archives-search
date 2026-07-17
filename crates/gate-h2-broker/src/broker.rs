@@ -1,4 +1,9 @@
-use std::{collections::HashMap, net::IpAddr, sync::Arc, time::Duration};
+use std::{
+    collections::{HashMap, HashSet},
+    net::IpAddr,
+    sync::Arc,
+    time::Duration,
+};
 
 use serde_json::json;
 use sha2::{Digest, Sha256};
@@ -10,7 +15,7 @@ use crate::{
     credential::SecretBytes,
     evidence::{Clock, Event, EvidenceWriter, transcript_base},
     model::{AuthScheme, ExchangeRequest, ExchangeResponse, Manifest, OutputArtifact},
-    network::{NetworkClient, NetworkFailure, NetworkRequest},
+    network::{AuthHeader, NetworkClient, NetworkFailure, NetworkRequest, ProductionNetworkClient},
     policy::{validate_dns_answers, validate_manifest, verify_connected_peer},
 };
 
@@ -61,6 +66,15 @@ pub struct Broker {
 impl Broker {
     pub fn new(
         config: BrokerConfig,
+        network: ProductionNetworkClient,
+        clock: Arc<dyn Clock>,
+        evidence: EvidenceWriter,
+    ) -> Result<Self, ExchangeError> {
+        Self::new_inner(config, Arc::new(network), clock, evidence)
+    }
+
+    fn new_inner(
+        config: BrokerConfig,
         network: Arc<dyn NetworkClient>,
         clock: Arc<dyn Clock>,
         evidence: EvidenceWriter,
@@ -87,12 +101,33 @@ impl Broker {
         }
         if config.handles.len() != config.manifest.exact_exchange_count
             || config.request_bodies.len() != config.manifest.exact_exchange_count
+            || config.session_id.is_empty()
+            || config.attempt_id.is_empty()
         {
+            return Err(ExchangeError::Configuration);
+        }
+        let mut handles = HashSet::new();
+        if config.handles.iter().any(|handle| {
+            !(36..=90).contains(&handle.len())
+                || !handle.starts_with("h2h_")
+                || !handle[4..]
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || b"_-".contains(&byte))
+                || !handles.insert(handle)
+        }) {
             return Err(ExchangeError::Configuration);
         }
         for (index, body) in config.request_bodies.iter().enumerate() {
             let pin = &config.manifest.capabilities[index].request_artifact;
             if body.len() as u64 != pin.bytes || hex::encode(Sha256::digest(body)) != pin.sha256 {
+                return Err(ExchangeError::Configuration);
+            }
+            let capability = &config.manifest.capabilities[index];
+            if capability.auth_policy.scheme != AuthScheme::None
+                && !config
+                    .credentials
+                    .contains_key(&capability.auth_policy.credential_capability_id)
+            {
                 return Err(ExchangeError::Configuration);
             }
         }
@@ -108,8 +143,22 @@ impl Broker {
         })
     }
 
+    #[cfg(test)]
+    pub(crate) fn new_for_test(
+        config: BrokerConfig,
+        network: Arc<dyn NetworkClient>,
+        clock: Arc<dyn Clock>,
+        evidence: EvidenceWriter,
+    ) -> Result<Self, ExchangeError> {
+        Self::new_inner(config, network, clock, evidence)
+    }
+
     pub fn expected_uid(&self) -> u32 {
         self.config.expected_uid
+    }
+    #[cfg(test)]
+    pub(crate) fn manifest(&self) -> &Manifest {
+        &self.config.manifest
     }
     pub fn is_terminal(&self) -> bool {
         self.failed_closed || self.next_ordinal == self.config.manifest.exact_exchange_count
@@ -120,14 +169,16 @@ impl Broker {
         request: ExchangeRequest,
     ) -> Result<ExchangeResponse, ExchangeError> {
         let request_id = request.request_id.clone();
+        let ordinal_before = self.next_ordinal;
         let result = self.exchange_inner(capability_id, &request);
+        let consumed = self.next_ordinal > ordinal_before;
         match result {
             Ok(output) => Ok(ExchangeResponse {
                 schema_version: PROTOCOL_VERSION.into(),
                 message_type: "exchange_response".into(),
                 request_id,
                 outcome: "accepted".into(),
-                exchange_consumed: true,
+                exchange_consumed: consumed,
                 output_artifact: Some(output),
                 failure_code: None,
             }),
@@ -142,7 +193,7 @@ impl Broker {
                     message_type: "exchange_response".into(),
                     request_id,
                     outcome: outcome.into(),
-                    exchange_consumed: true,
+                    exchange_consumed: consumed,
                     output_artifact: None,
                     failure_code: Some(error.code().into()),
                 })
@@ -163,6 +214,8 @@ impl Broker {
         }
         let ordinal = self.next_ordinal;
         let c = self.config.manifest.capabilities[ordinal].clone();
+        self.next_ordinal += 1;
+        self.append(ordinal, "handle_consumed", "accepted", json!({"request_sha256":c.request_artifact.sha256,"request_bytes":c.request_artifact.bytes}))?;
         if r.schema_version != PROTOCOL_VERSION
             || r.message_type != "exchange_request"
             || r.request_id.len() != 32
@@ -171,6 +224,7 @@ impl Broker {
                 .bytes()
                 .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
         {
+            self.terminal_failure("protocol_error", ordinal)?;
             return Err(ExchangeError::Rejected("protocol_error"));
         }
         if r.run_token.len() != 43
@@ -179,86 +233,71 @@ impl Broker {
                 .bytes()
                 .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
         {
+            self.terminal_failure("invalid_token", ordinal)?;
             return Err(ExchangeError::Rejected("invalid_token"));
         }
         let supplied = Sha256::digest(r.run_token.as_bytes());
         let expected = Sha256::digest(self.config.run_token.expose());
         if supplied.ct_eq(&expected).unwrap_u8() != 1 {
-            self.next_ordinal += 1;
-            self.fail("invalid_token", ordinal)?;
-            self.failed_closed = true;
+            self.terminal_failure("invalid_token", ordinal)?;
             return Err(ExchangeError::Rejected("invalid_token"));
         }
         if r.capability_handle != self.config.handles[ordinal] {
-            return Err(ExchangeError::Rejected(
-                if self
-                    .config
-                    .handles
-                    .iter()
-                    .take(ordinal)
-                    .any(|h| h == &r.capability_handle)
-                {
-                    "replay"
-                } else if self
-                    .config
-                    .handles
-                    .iter()
-                    .skip(ordinal + 1)
-                    .any(|h| h == &r.capability_handle)
-                {
-                    "out_of_order"
-                } else {
-                    "invalid_handle"
-                },
-            ));
+            let code = if self
+                .config
+                .handles
+                .iter()
+                .take(ordinal)
+                .any(|h| h == &r.capability_handle)
+            {
+                "replay"
+            } else if self
+                .config
+                .handles
+                .iter()
+                .skip(ordinal + 1)
+                .any(|h| h == &r.capability_handle)
+            {
+                "out_of_order"
+            } else {
+                "invalid_handle"
+            };
+            self.terminal_failure(code, ordinal)?;
+            return Err(ExchangeError::Rejected(code));
         }
         if capability_id != c.capability_id {
+            self.terminal_failure("invalid_handle", ordinal)?;
             return Err(ExchangeError::Rejected("invalid_handle"));
         }
-        self.next_ordinal += 1;
         if r.request_artifact_role != c.request_artifact.artifact_role
             || r.request_artifact_sha256 != c.request_artifact.sha256
             || r.request_artifact_bytes != c.request_artifact.bytes
         {
-            self.fail("request_artifact_mismatch", ordinal)?;
+            self.terminal_failure("request_artifact_mismatch", ordinal)?;
             return Err(ExchangeError::Rejected("request_artifact_mismatch"));
         }
-        self.append(ordinal, "handle_consumed", "accepted", json!({"request_sha256":c.request_artifact.sha256,"request_bytes":c.request_artifact.bytes}))?;
-        let mut headers = vec![
-            ("accept", b"application/json".to_vec()),
-            ("content-type", b"application/json".to_vec()),
-        ];
-        match c.auth_policy.scheme {
-            AuthScheme::None => {}
-            AuthScheme::Bearer | AuthScheme::ApiKeyHeader => {
-                let secret = self
-                    .config
+        let auth = match c.auth_policy.scheme {
+            AuthScheme::None => None,
+            AuthScheme::Bearer => Some(AuthHeader::Bearer(
+                self.config
                     .credentials
                     .get(&c.auth_policy.credential_capability_id)
-                    .ok_or(ExchangeError::Configuration)?;
-                let mut value = if c.auth_policy.scheme == AuthScheme::Bearer {
-                    b"Bearer ".to_vec()
-                } else {
-                    Vec::new()
-                };
-                value.extend_from_slice(secret.expose());
-                headers.push((
-                    if c.auth_policy.scheme == AuthScheme::Bearer {
-                        "authorization"
-                    } else {
-                        "x-api-key"
-                    },
-                    value,
-                ));
-            }
-        }
+                    .ok_or(ExchangeError::Configuration)?,
+            )),
+            AuthScheme::ApiKeyHeader => Some(AuthHeader::ApiKey(
+                self.config
+                    .credentials
+                    .get(&c.auth_policy.credential_capability_id)
+                    .ok_or(ExchangeError::Configuration)?,
+            )),
+        };
         let body = &self.config.request_bodies[ordinal];
         let request = NetworkRequest {
             hostname: &c.hostname,
             port: c.port,
             method: c.method.as_str(),
             path_query: &c.path_query,
-            headers,
+            auth,
             body,
             connect_deadline: Duration::from_millis(c.connect_deadline_ms),
             exchange_deadline: Duration::from_millis(c.exchange_deadline_ms),
@@ -268,22 +307,19 @@ impl Broker {
             Ok(v) => v,
             Err(e) => {
                 let code = network_code(e);
-                self.fail(code, ordinal)?;
-                self.failed_closed = true;
+                self.terminal_failure(code, ordinal)?;
                 return Err(ExchangeError::Failed(code));
             }
         };
         let answers = match validate_dns_answers(&response.observation.dns_answers) {
             Ok(v) => v,
             Err(_) => {
-                self.fail("dns_forbidden", ordinal)?;
-                self.failed_closed = true;
+                self.terminal_failure("dns_forbidden", ordinal)?;
                 return Err(ExchangeError::Failed("dns_forbidden"));
             }
         };
         if verify_connected_peer(&answers, response.observation.connected_peer).is_err() {
-            self.fail("dns_rebinding", ordinal)?;
-            self.failed_closed = true;
+            self.terminal_failure("dns_rebinding", ordinal)?;
             return Err(ExchangeError::Failed("dns_rebinding"));
         }
         let dns_hash = hash_addresses(&answers);
@@ -298,8 +334,7 @@ impl Broker {
         )?;
         if response.observation.tls_version != "TLSv1.3" || response.observation.alpn != "http/1.1"
         {
-            self.fail("tls_failure", ordinal)?;
-            self.failed_closed = true;
+            self.terminal_failure("tls_failure", ordinal)?;
             return Err(ExchangeError::Failed("tls_failure"));
         }
         self.append(ordinal, "tls_verified", "accepted", json!({"tls_peer_chain_sha256":response.observation.tls_peer_chain_sha256,"tls_version":"TLSv1.3"}))?;
@@ -328,17 +363,20 @@ impl Broker {
             None
         };
         if let Some(code) = failure {
-            self.fail(code, ordinal)?;
-            self.failed_closed = true;
+            self.terminal_failure(code, ordinal)?;
             return Err(ExchangeError::Failed(code));
         }
         let sha256 = hex::encode(Sha256::digest(&response.body));
-        crate::evidence::commit_output(
+        if crate::evidence::commit_output(
             &self.config.output_directory,
             &c.raw_response_output_role,
             &response.body,
         )
-        .map_err(|_| ExchangeError::Evidence)?;
+        .is_err()
+        {
+            self.terminal_failure("output_commit_failed", ordinal)?;
+            return Err(ExchangeError::Evidence);
+        }
         self.append(ordinal, "response_committed", "accepted", json!({"response_status":response.status,"response_media_type":"application/json","response_sha256":sha256,"response_bytes":response.body.len()}))?;
         Ok(OutputArtifact {
             artifact_role: c.raw_response_output_role.clone(),
@@ -385,6 +423,35 @@ impl Broker {
         )
     }
 
+    fn terminal_failure(
+        &mut self,
+        code: &'static str,
+        ordinal: usize,
+    ) -> Result<(), ExchangeError> {
+        self.fail(code, ordinal)?;
+        self.failed_closed = true;
+        Ok(())
+    }
+
+    pub(crate) fn terminate_protocol_failure(
+        &mut self,
+        code: &'static str,
+    ) -> Result<(), ExchangeError> {
+        if self.is_terminal() {
+            return Ok(());
+        }
+        let ordinal = self.next_ordinal;
+        let capability = self.config.manifest.capabilities[ordinal].clone();
+        self.next_ordinal += 1;
+        self.append(
+            ordinal,
+            "handle_consumed",
+            "accepted",
+            json!({"request_sha256":capability.request_artifact.sha256,"request_bytes":capability.request_artifact.bytes}),
+        )?;
+        self.terminal_failure(code, ordinal)
+    }
+
     pub fn seal_transcript(&mut self) -> Result<String, ExchangeError> {
         let completed = self
             .evidence
@@ -427,9 +494,7 @@ fn network_code(value: NetworkFailure) -> &'static str {
         NetworkFailure::Tls => "tls_failure",
         NetworkFailure::Deadline => "deadline_exceeded",
         NetworkFailure::Overflow => "response_too_large",
-        NetworkFailure::Framing | NetworkFailure::ProductionTransportUnavailable => {
-            "protocol_error"
-        }
+        NetworkFailure::Framing => "protocol_error",
     }
 }
 fn hash_addresses(addresses: &[IpAddr]) -> String {
