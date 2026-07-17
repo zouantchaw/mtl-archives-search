@@ -1,0 +1,14 @@
+{
+  "schema_version": "gate_h2_https_exchange_uds_v1.0.0",
+  "message_type": "exchange_response",
+  "request_id": "0123456789abcdef0123456789abcdef",
+  "outcome": "accepted",
+  "exchange_consumed": true,
+  "output_artifact": {
+    "artifact_role": "raw_https_response",
+    "sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+    "bytes": 512,
+    "media_type": "application/json",
+    "status": 200
+  }
+}

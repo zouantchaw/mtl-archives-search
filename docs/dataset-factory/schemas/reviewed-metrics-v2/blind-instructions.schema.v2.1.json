@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "blind-instructions.schema.v2.1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "assignment", "output_schema", "required_member_ids", "constraints"],
+  "properties": {
+    "schema_version": { "const": "reviewed_metrics_blind_instructions_v2.1.0" },
+    "assignment": { "const": "Annotate every opaque media input using every field in the bundled schema." },
+    "output_schema": { "const": "prediction-output.schema.v2.json" },
+    "required_member_ids": { "type": "array", "minItems": 44, "maxItems": 44, "uniqueItems": true, "items": { "type": "string", "pattern": "^v2-[0-9]{4}$" } },
+    "constraints": { "const": ["Return exactly one complete output object per required opaque ID.", "Use null, empty arrays, or the schema-defined uncertainty object when visual evidence does not support a value.", "Do not access any route outside this bundle and the assigned output route."] }
+  }
+}

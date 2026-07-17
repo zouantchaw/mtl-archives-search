@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "blind-bundle-descriptor.schema.v2.1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "candidate_id", "generator_version", "members", "media_tree", "output_schema", "descriptor_schema", "instructions", "instructions_schema", "scans", "attestations"],
+  "properties": {
+    "schema_version": { "const": "reviewed_metrics_blind_bundle_descriptor_v2.1.0" },
+    "status": { "$ref": "blind-bundle-descriptor.schema.v2.json#/properties/status" },
+    "candidate_id": { "$ref": "blind-bundle-descriptor.schema.v2.json#/properties/candidate_id" },
+    "generator_version": { "$ref": "blind-bundle-descriptor.schema.v2.json#/properties/generator_version" },
+    "members": { "$ref": "blind-bundle-descriptor.schema.v2.json#/properties/members" },
+    "media_tree": { "$ref": "blind-bundle-descriptor.schema.v2.json#/properties/media_tree" },
+    "purpose": { "$ref": "blind-bundle-descriptor.schema.v2.json#/properties/purpose" },
+    "assignment": { "$ref": "blind-bundle-descriptor.schema.v2.json#/properties/assignment" },
+    "output_schema": { "$ref": "blind-bundle-descriptor.schema.v2.json#/properties/output_schema" },
+    "descriptor_schema": { "$ref": "#/$defs/schemaPin" },
+    "instructions": { "allOf": [{ "$ref": "blind-bundle-descriptor.schema.v2.json#/$defs/pin" }, { "properties": { "path": { "const": "instructions.json" } } }] },
+    "instructions_schema": { "$ref": "#/$defs/schemaPin" },
+    "scans": { "$ref": "blind-bundle-descriptor.schema.v2.json#/properties/scans" },
+    "attestations": { "$ref": "blind-bundle-descriptor.schema.v2.json#/properties/attestations" }
+  },
+  "allOf": [
+    { "if": { "properties": { "status": { "const": "template_no_bundle_built" } }, "required": ["status"] }, "then": { "required": ["purpose"], "properties": { "members": { "maxItems": 0 }, "media_tree": { "type": "null" } } } },
+    { "if": { "properties": { "status": { "const": "sealed_sanitized_bundle" } }, "required": ["status"] }, "then": { "required": ["assignment"], "properties": { "members": { "minItems": 44, "maxItems": 44 }, "media_tree": { "$ref": "blind-bundle-descriptor.schema.v2.json#/$defs/tree" } } } }
+  ],
+  "$defs": {
+    "schemaPin": { "type": "object", "additionalProperties": false, "required": ["sha256", "bytes"], "properties": { "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "bytes": { "type": "integer", "minimum": 1 } } }
+  }
+}

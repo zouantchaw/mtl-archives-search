@@ -30,6 +30,7 @@ import {
   type LedgerReadback,
   type StageLedgerAdapter,
 } from "./reviewed-metrics-v2-ledger.js";
+import { ID_DOMAINS, assertNoPredictorHttpsAuthorityLeak, domainSeparatedId, parseStrictJson, validateAuthorizationNetworkContract, validateCompletedTranscriptOutputs, validateManifest, validateStageProgramV22 } from "./https-exchange-contract-v1.js";
 type J = any;
 type Source = {
   source_key: string;
@@ -369,6 +370,13 @@ function decodeEd25519SignatureBase64(value: unknown, code: string): Buffer {
   codedAssert(decoded.length === 64 && decoded.toString("base64") === value, code, "Ed25519 signature must decode to exactly 64 canonical bytes");
   return decoded;
 }
+const CANONICAL_SUCCESSOR_TIMESTAMP = /^[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]\.[0-9]{3}Z$/;
+function successorTimestamp(value: unknown, code: string): number {
+  codedAssert(typeof value === "string" && CANONICAL_SUCCESSOR_TIMESTAMP.test(value), code, "successor timestamp must be exact YYYY-MM-DDTHH:mm:ss.sssZ without leap seconds");
+  const parsed = Date.parse(value);
+  codedAssert(Number.isFinite(parsed) && new Date(parsed).toISOString() === value, code, "successor timestamp must be a finite calendar-valid canonical UTC instant");
+  return parsed;
+}
 function schemaFilePin(name: string): J { const raw = fs.readFileSync(path.join(SCHEMAS, name)); return { sha256: hash(raw), bytes: raw.length }; }
 function rejectPlaceholderEvidence(value: J): void {
   const serialized = canon(value);
@@ -378,6 +386,7 @@ function rejectPlaceholderEvidence(value: J): void {
 }
 function validateSignedAttestation(value: J, schemaName: string, allowSyntheticEmbedded = false): void {
   schema(schemaName, value);
+  if (schemaName === "linux-sandbox-attestation.schema.v2.5.json") successorTimestamp(value?.observation?.observed_at, "H2_SUCCESSOR_TIMESTAMP");
   codedAssert(value.synthetic === false, "H2_PREACTIVATION_SYNTHETIC", "synthetic evidence cannot activate authority");
   if (!allowSyntheticEmbedded) rejectPlaceholderEvidence(value);
   const key = parseEd25519PublicKey(value.signer.public_key_pem);
@@ -392,11 +401,34 @@ const EXECUTOR_LINUX_TEST_UNIVERSE = [
   "undeclared_dependency_rejected", "module_loader_absent", "native_loader_absent", "output_never_readable",
   "undeclared_write_rejected", "network_escape_rejected", "postspawn_source_replacement", "cleanup_precedes_completion",
 ] as const;
+const EXECUTOR_HTTPS_LINUX_TEST_UNIVERSE = [
+  ...EXECUTOR_LINUX_TEST_UNIVERSE,
+  "exact_https_program_success", "legacy_action_rejected", "uds_socket_role_substitution",
+  "run_token_role_substitution", "opaque_handle_gap_or_reorder", "transcript_commit_substitution",
+] as const;
+function executorSemanticsContract(attestation: J): {
+  attestationSchema: string; receiptSchema: string; stageProgramSchema: string; capabilityDomain: string; universe: readonly string[];
+} {
+  if (attestation?.schema_version === "reviewed_metrics_executor_semantics_attestation_v2.2.0") return {
+    attestationSchema: "executor-semantics-attestation.schema.v2.2.json",
+    receiptSchema: "executor-conformance-receipt.schema.v2.2.json",
+    stageProgramSchema: "stage-program.schema.v2.2.json",
+    capabilityDomain: "gate-h2-executor-semantics-capability-v2.2",
+    universe: EXECUTOR_HTTPS_LINUX_TEST_UNIVERSE,
+  };
+  return {
+    attestationSchema: "executor-semantics-attestation.schema.v2.json",
+    receiptSchema: "executor-conformance-receipt.schema.v2.json",
+    stageProgramSchema: "stage-program.schema.v2.json",
+    capabilityDomain: "gate-h2-executor-semantics-capability-v2",
+    universe: EXECUTOR_LINUX_TEST_UNIVERSE,
+  };
+}
 function executorCapabilityPayload(attestation: J): J {
   return { subject: attestation.subject, test_universe: attestation.test_universe, test_results: attestation.test_results };
 }
 function deriveExecutorCapability(attestation: J): string {
-  return hash(Buffer.concat([Buffer.from("gate-h2-executor-semantics-capability-v2\0"), Buffer.from(canon(executorCapabilityPayload(attestation)))]));
+  return hash(Buffer.concat([Buffer.from(`${executorSemanticsContract(attestation).capabilityDomain}\0`), Buffer.from(canon(executorCapabilityPayload(attestation)))]));
 }
 function canonicalEmbeddedPin(value: J, schemaName: string): J {
   const raw = Buffer.from(pretty(value)); return { sha256: hash(raw), bytes: raw.length, schema_sha256: schemaFilePin(schemaName).sha256 };
@@ -408,24 +440,29 @@ function verifyEmbeddedSignature(value: J, identityField: "signer" | "reviewer",
 }
 function validateExecutorSemanticsBundle(bundle: J, boundary: J, allowSynthetic = false, trust?: J): void {
   canonicalLogicalRoute(bundle?.attestation?.observation?.route); canonicalLogicalRoute(bundle?.attestation?.signer?.route); canonicalLogicalRoute(bundle?.conformance_receipt?.reviewer?.route); if (boundary?.signer) canonicalLogicalRoute(boundary.signer.route);
-  schema("executor-semantics-attestation.schema.v2.json", bundle.attestation); schema("executor-conformance-receipt.schema.v2.json", bundle.conformance_receipt);
+  const contract = executorSemanticsContract(bundle.attestation);
+  schema(contract.attestationSchema, bundle.attestation); schema(contract.receiptSchema, bundle.conformance_receipt);
   const attestation = bundle.attestation; const receipt = bundle.conformance_receipt;
-  codedAssert(canon(bundle.attestation_pin) === canon(canonicalEmbeddedPin(attestation, "executor-semantics-attestation.schema.v2.json")) && canon(bundle.receipt_pin) === canon(canonicalEmbeddedPin(receipt, "executor-conformance-receipt.schema.v2.json")), "H2_EXECUTOR_SEMANTICS_PIN", "executor attestation or conformance receipt canonical bytes/schema pin differ");
+  if (contract.attestationSchema === "executor-semantics-attestation.schema.v2.2.json") {
+    successorTimestamp(attestation?.observation?.observed_at, "H2_SUCCESSOR_TIMESTAMP");
+    successorTimestamp(receipt?.reviewed_at, "H2_SUCCESSOR_TIMESTAMP");
+  }
+  codedAssert(canon(bundle.attestation_pin) === canon(canonicalEmbeddedPin(attestation, contract.attestationSchema)) && canon(bundle.receipt_pin) === canon(canonicalEmbeddedPin(receipt, contract.receiptSchema)), "H2_EXECUTOR_SEMANTICS_PIN", "executor attestation or conformance receipt canonical bytes/schema pin differ");
   verifyEmbeddedSignature(attestation, "signer", "H2_EXECUTOR_SEMANTICS_SIGNATURE"); verifyEmbeddedSignature(receipt, "reviewer", "H2_EXECUTOR_CONFORMANCE_SIGNATURE");
   codedAssert(attestation.observation.principal === attestation.signer.principal && attestation.observation.session_id === attestation.signer.session_id && attestation.observation.route === attestation.signer.route && attestation.observation.physical_route_identity_sha256 === attestation.signer.physical_route_identity_sha256, "H2_EXECUTOR_SEMANTICS_IDENTITY", "executor observation and signer identities differ");
   const identities = [attestation.signer, receipt.reviewer, boundary.signer].filter(Boolean);
   for (const field of ["principal", "session_id", "physical_route_identity_sha256", "public_key_sha256"]) codedAssert(new Set(identities.map((identity: J) => identity[field])).size === identities.length, "H2_EXECUTOR_SEMANTICS_INDEPENDENCE", `executor attestor, conformance reviewer, and sandbox attestor must have pairwise distinct ${field}`);
   for (let left = 0; left < identities.length; left++) for (let right = left + 1; right < identities.length; right++) codedAssert(!logicalRoutesOverlap(identities[left].route, identities[right].route), "H2_EXECUTOR_SEMANTICS_INDEPENDENCE", "executor attestor, reviewer, and sandbox logical routes must not overlap by ancestry");
-  codedAssert(canon(attestation.test_universe.cases) === canon(EXECUTOR_LINUX_TEST_UNIVERSE) && attestation.test_universe.universe_sha256 === hash(canon({ version: attestation.test_universe.version, cases: attestation.test_universe.cases })), "H2_EXECUTOR_TEST_UNIVERSE", "executor conformance test universe is not the exact reviewed real-Linux universe");
-  codedAssert(canon(attestation.test_results.cases.map((entry: J) => entry.name)) === canon(EXECUTOR_LINUX_TEST_UNIVERSE) && attestation.test_results.results_sha256 === hash(canon({ platform: attestation.test_results.platform, immutable_image_digest: attestation.test_results.immutable_image_digest, cases: attestation.test_results.cases, all_passed: attestation.test_results.all_passed })), "H2_EXECUTOR_TEST_RESULTS", "executor conformance results do not exactly cover and hash the reviewed universe");
+  codedAssert(canon(attestation.test_universe.cases) === canon(contract.universe) && attestation.test_universe.universe_sha256 === hash(canon({ version: attestation.test_universe.version, cases: attestation.test_universe.cases })), "H2_EXECUTOR_TEST_UNIVERSE", "executor conformance test universe is not the exact reviewed real-Linux universe");
+  codedAssert(canon(attestation.test_results.cases.map((entry: J) => entry.name)) === canon(contract.universe) && attestation.test_results.results_sha256 === hash(canon({ platform: attestation.test_results.platform, immutable_image_digest: attestation.test_results.immutable_image_digest, cases: attestation.test_results.cases, all_passed: attestation.test_results.all_passed })), "H2_EXECUTOR_TEST_RESULTS", "executor conformance results do not exactly cover and hash the reviewed universe");
   const imageDigest = boundary.image?.digest ?? boundary.image_digest; const wrapper = boundary.wrapper; const runtime = boundary.runtime_tree?.runtime ?? boundary.runtime;
   const readableMounts = boundary.mounts?.readable_inputs ?? boundary.readable_mounts; const outputMounts = boundary.mounts?.output_mounts ?? boundary.output_mounts; const writablePaths = boundary.writable_confinement?.writable_paths ?? boundary.writable_paths;
   codedAssert(attestation.test_results.immutable_image_digest === imageDigest && canon(attestation.subject.wrapper) === canon(wrapper) && canon(attestation.subject.runtime) === canon(runtime) && canon(attestation.subject.executor) === canon(runtime), "H2_EXECUTOR_SEMANTICS_JOIN", "executor semantics do not bind the exact sandbox image/wrapper/runtime/executor bytes");
   if (boundary.stage_program) codedAssert(canon(attestation.subject.stage_program) === canon(boundary.stage_program), "H2_EXECUTOR_SEMANTICS_JOIN", "executor semantics do not bind the exact stage-program bytes");
   codedAssert(canon(attestation.subject.mount_output_behavior.readable_mounts) === canon(readableMounts) && canon(attestation.subject.mount_output_behavior.output_mounts) === canon(outputMounts) && canon(attestation.subject.mount_output_behavior.writable_paths) === canon(writablePaths), "H2_EXECUTOR_SEMANTICS_JOIN", "executor semantics mount/output behavior differs from the sandbox boundary");
-  codedAssert(canon(attestation.subject.stage_program_schema) === canon(schemaFilePin("stage-program.schema.v2.json")), "H2_EXECUTOR_SEMANTICS_SCHEMA", "executor semantics do not bind exact tracked stage-program schema bytes");
+  codedAssert(canon(attestation.subject.stage_program_schema) === canon(schemaFilePin(contract.stageProgramSchema)), "H2_EXECUTOR_SEMANTICS_SCHEMA", "executor semantics do not bind exact tracked stage-program schema bytes");
   const capability = deriveExecutorCapability(attestation);
-  codedAssert(attestation.capability_id === capability && bundle.capability_id === capability && receipt.capability_id === capability && canon(receipt.executor_attestation) === canon({ sha256: bundle.attestation_pin.sha256, bytes: bundle.attestation_pin.bytes }) && receipt.test_universe_sha256 === attestation.test_universe.universe_sha256 && receipt.test_results_sha256 === attestation.test_results.results_sha256, "H2_EXECUTOR_CAPABILITY_DERIVATION", "executor capability or conformance receipt is not derived from the exact semantic tuple");
+  codedAssert(attestation.capability_id === capability && bundle.capability_id === capability && receipt.capability_id === capability && canon(receipt.executor_attestation) === canon({ sha256: bundle.attestation_pin.sha256, bytes: bundle.attestation_pin.bytes }) && (contract.receiptSchema === "executor-conformance-receipt.schema.v2.json" || canon(receipt.attestation_schema) === canon(schemaFilePin(contract.attestationSchema))) && receipt.test_universe_sha256 === attestation.test_universe.universe_sha256 && receipt.test_results_sha256 === attestation.test_results.results_sha256, "H2_EXECUTOR_CAPABILITY_DERIVATION", "executor capability or conformance receipt is not derived from the exact semantic tuple and schema bytes");
   const observed = Date.parse(attestation.observation.observed_at); const reviewed = Date.parse(receipt.reviewed_at); const sandboxObserved = Date.parse(boundary.observation?.observed_at ?? new Date().toISOString());
   codedAssert(Number.isFinite(observed) && Number.isFinite(reviewed) && observed <= reviewed && reviewed <= sandboxObserved && sandboxObserved - observed <= 86_400_000, "H2_EXECUTOR_SEMANTICS_STALE", "executor attestation/receipt ordering or freshness differs");
   if (allowSynthetic) codedAssert(attestation.synthetic === true && receipt.synthetic === true && attestation.production_eligible === false && receipt.production_eligible === false && attestation.status === "synthetic_nonproduction_fixture" && receipt.status === "synthetic_nonproduction_fixture", "H2_EXECUTOR_SEMANTICS_SYNTHETIC", "internal executor semantics fixture must be explicitly production-ineligible");
@@ -437,17 +474,22 @@ function validateExecutorSemanticsBundle(bundle: J, boundary: J, allowSynthetic 
     codedAssert(trust?.status === "reviewed_real_attestors_admitted" && trustedPreActivationIdentity(trust, "executor_semantics_attestor", attestation.signer) && trustedPreActivationIdentity(trust, "executor_conformance_reviewer", receipt.reviewer), "H2_PREACTIVATION_TRUST", "production executor attestor and conformance reviewer require exact strict-ancestor admissions");
   }
 }
-function syntheticExecutorSemanticsBundle(input: { wrapper: J; runtime: J; stageProgram: J; imageDigest: string; readableMounts: J[]; outputMounts: J[]; writablePaths: string[]; observedAt?: string; selfReviewed?: boolean }): J {
+function syntheticExecutorSemanticsBundle(input: { wrapper: J; runtime: J; stageProgram: J; imageDigest: string; readableMounts: J[]; outputMounts: J[]; writablePaths: string[]; observedAt?: string; selfReviewed?: boolean; semanticsVersion?: "legacy" | "https_v2_2" }): J {
   const keys = [crypto.generateKeyPairSync("ed25519"), crypto.generateKeyPairSync("ed25519")]; const observedAt = input.observedAt ?? new Date().toISOString();
   const identity = (index: number, label: string): J => { const public_key_pem = keys[index].publicKey.export({ type: "spki", format: "pem" }).toString(); const route = `/opt/gate-h2/internal-${label}`; return { principal: `internal-${label}`, session_id: `internal-${label}-${crypto.randomUUID()}`, route, physical_route_identity_sha256: hash(`internal-route\0${route}`), public_key_pem, public_key_sha256: hash(public_key_pem) }; };
   const signer = identity(0, "executor-attestor"); const reviewer = input.selfReviewed ? structuredClone(signer) : identity(1, "executor-reviewer");
-  const cases = EXECUTOR_LINUX_TEST_UNIVERSE.map((name) => ({ name, result: "pass", evidence_sha256: hash(`internal-executor-evidence\0${name}`) }));
-  const test_universe = { version: "gate_h2_real_linux_executor_adversarial_universe_v1", cases: [...EXECUTOR_LINUX_TEST_UNIVERSE], universe_sha256: "" }; test_universe.universe_sha256 = hash(canon({ version: test_universe.version, cases: test_universe.cases }));
+  const stageProgramIsHttps = input.stageProgram?.version === "reviewed_metrics_stage_program_v2.2.0";
+  if (input.semanticsVersion !== undefined) codedAssert((input.semanticsVersion === "https_v2_2") === stageProgramIsHttps, "H2_EXECUTOR_SEMANTICS_VERSION", "producer-selected executor semantics must match the exact stage-program version");
+  const https = stageProgramIsHttps; const universe = https ? EXECUTOR_HTTPS_LINUX_TEST_UNIVERSE : EXECUTOR_LINUX_TEST_UNIVERSE;
+  const cases = universe.map((name) => ({ name, result: "pass", evidence_sha256: hash(`internal-executor-evidence\0${name}`) }));
+  const test_universe = { version: https ? "gate_h2_real_linux_exact_https_executor_adversarial_universe_v1" : "gate_h2_real_linux_executor_adversarial_universe_v1", cases: [...universe], universe_sha256: "" }; test_universe.universe_sha256 = hash(canon({ version: test_universe.version, cases: test_universe.cases }));
   const test_results = { platform: "linux", immutable_image_digest: input.imageDigest, cases, all_passed: true, results_sha256: "" }; test_results.results_sha256 = hash(canon({ platform: test_results.platform, immutable_image_digest: test_results.immutable_image_digest, cases, all_passed: true }));
-  const attestation: J = { schema_version: "reviewed_metrics_executor_semantics_attestation_v2.0.0", status: "synthetic_nonproduction_fixture", synthetic: true, production_eligible: false, capability_derivation: "sha256_domain_gate_h2_executor_semantics_capability_v2_canonical_subject_tests", subject: { wrapper: input.wrapper, runtime: input.runtime, executor: input.runtime, stage_program: input.stageProgram, stage_program_schema: schemaFilePin("stage-program.schema.v2.json"), action_semantics: { version: "gate_h2_invoke_attested_capability_semantics_v1", action: "invoke_attested_capability", input_resolution: "exact_ordered_read_only_artifact_roles_v1", output_resolution: "exact_ordered_declared_output_indexes_v1", network_resolution: "exact_sorted_destination_capability_commitments_v1", failure_behavior: "nonzero_or_contract_drift_produces_no_accepted_output_or_completion_v1" }, mount_output_behavior: { readable_mounts: input.readableMounts, output_mounts: input.outputMounts, writable_paths: input.writablePaths, declared_outputs_only: true, outputs_never_readable: true }, loader_contract: { version: "gate_h2_zero_loader_native_surface_v1", module_loader: "absent", native_loader: "absent", dynamic_linker: "absent", interpreter: "absent", eval_or_reflection: "absent", undeclared_dependencies: "forbidden" }, immutable_copy_contract: { version: "gate_h2_private_immutable_copy_execution_v1", source_consumption_after_preflight: "forbidden", execution_source: "owner_only_retained_exact_copies", pre_and_post_source_revalidation: true, cleanup_before_completion: true } }, test_universe, test_results, capability_id: "", observation: { observed_at: observedAt, principal: signer.principal, session_id: signer.session_id, route: signer.route, physical_route_identity_sha256: signer.physical_route_identity_sha256 }, signer, signature_base64: "" };
-  attestation.capability_id = deriveExecutorCapability(attestation); attestation.signature_base64 = crypto.sign(null, unsignedAttestationPayload(attestation), keys[0].privateKey).toString("base64"); const attestationPin = canonicalEmbeddedPin(attestation, "executor-semantics-attestation.schema.v2.json");
-  const receipt: J = { schema_version: "reviewed_metrics_executor_conformance_receipt_v2.0.0", status: "synthetic_nonproduction_fixture", synthetic: true, production_eligible: false, executor_attestation: { sha256: attestationPin.sha256, bytes: attestationPin.bytes }, capability_id: attestation.capability_id, test_universe_sha256: test_universe.universe_sha256, test_results_sha256: test_results.results_sha256, decision: "exact_semantics_and_real_linux_results_conform", reviewed_at: observedAt, reviewer, signature_base64: "" }; receipt.signature_base64 = crypto.sign(null, unsignedAttestationPayload(receipt), input.selfReviewed ? keys[0].privateKey : keys[1].privateKey).toString("base64");
-  return { capability_id: attestation.capability_id, attestation, attestation_pin: attestationPin, conformance_receipt: receipt, receipt_pin: canonicalEmbeddedPin(receipt, "executor-conformance-receipt.schema.v2.json"), reviewed_predecessor: { commit: "1".repeat(40), repository_path: "docs/dataset-factory/authorities/reviewed-metrics-v2/executor-receipts/internal-nonproduction.json" } };
+  const actionSemantics = https ? { version: "gate_h2_invoke_exact_https_exchange_semantics_v1", action: "invoke_exact_https_exchange", input_resolution: "exact_ordered_read_only_artifact_roles_v1", output_resolution: "exact_ordered_declared_output_indexes_v1", network_resolution: "raw_network_deny_all_host_broker_only_v1", socket_resolution: "owner_bound_unix_socket_role_v1", token_resolution: "one_run_token_role_never_serialized_v1", handle_resolution: "exact_ordered_single_use_opaque_handles_v1", transcript_resolution: "commit_raw_response_then_exact_broker_transcript_v1", failure_behavior: "nonzero_or_contract_drift_produces_no_accepted_output_or_completion_v1" } : { version: "gate_h2_invoke_attested_capability_semantics_v1", action: "invoke_attested_capability", input_resolution: "exact_ordered_read_only_artifact_roles_v1", output_resolution: "exact_ordered_declared_output_indexes_v1", network_resolution: "exact_sorted_destination_capability_commitments_v1", failure_behavior: "nonzero_or_contract_drift_produces_no_accepted_output_or_completion_v1" };
+  const attestationSchema = https ? "executor-semantics-attestation.schema.v2.2.json" : "executor-semantics-attestation.schema.v2.json"; const receiptSchema = https ? "executor-conformance-receipt.schema.v2.2.json" : "executor-conformance-receipt.schema.v2.json";
+  const attestation: J = { schema_version: https ? "reviewed_metrics_executor_semantics_attestation_v2.2.0" : "reviewed_metrics_executor_semantics_attestation_v2.0.0", status: "synthetic_nonproduction_fixture", synthetic: true, production_eligible: false, capability_derivation: https ? "sha256_domain_gate_h2_executor_semantics_capability_v2_2_canonical_subject_tests" : "sha256_domain_gate_h2_executor_semantics_capability_v2_canonical_subject_tests", subject: { wrapper: input.wrapper, runtime: input.runtime, executor: input.runtime, stage_program: input.stageProgram, stage_program_schema: schemaFilePin(https ? "stage-program.schema.v2.2.json" : "stage-program.schema.v2.json"), action_semantics: actionSemantics, mount_output_behavior: { readable_mounts: input.readableMounts, output_mounts: input.outputMounts, writable_paths: input.writablePaths, declared_outputs_only: true, outputs_never_readable: true }, loader_contract: { version: "gate_h2_zero_loader_native_surface_v1", module_loader: "absent", native_loader: "absent", dynamic_linker: "absent", interpreter: "absent", eval_or_reflection: "absent", undeclared_dependencies: "forbidden" }, immutable_copy_contract: { version: "gate_h2_private_immutable_copy_execution_v1", source_consumption_after_preflight: "forbidden", execution_source: "owner_only_retained_exact_copies", pre_and_post_source_revalidation: true, cleanup_before_completion: true } }, test_universe, test_results, capability_id: "", observation: { observed_at: observedAt, principal: signer.principal, session_id: signer.session_id, route: signer.route, physical_route_identity_sha256: signer.physical_route_identity_sha256 }, signer, signature_base64: "" };
+  attestation.capability_id = deriveExecutorCapability(attestation); attestation.signature_base64 = crypto.sign(null, unsignedAttestationPayload(attestation), keys[0].privateKey).toString("base64"); const attestationPin = canonicalEmbeddedPin(attestation, attestationSchema);
+  const receipt: J = { schema_version: https ? "reviewed_metrics_executor_conformance_receipt_v2.2.0" : "reviewed_metrics_executor_conformance_receipt_v2.0.0", status: "synthetic_nonproduction_fixture", synthetic: true, production_eligible: false, executor_attestation: { sha256: attestationPin.sha256, bytes: attestationPin.bytes }, ...(https ? { attestation_schema: schemaFilePin(attestationSchema) } : {}), capability_id: attestation.capability_id, test_universe_sha256: test_universe.universe_sha256, test_results_sha256: test_results.results_sha256, decision: https ? "exact_https_exchange_semantics_and_real_linux_results_conform" : "exact_semantics_and_real_linux_results_conform", reviewed_at: observedAt, reviewer, signature_base64: "" }; receipt.signature_base64 = crypto.sign(null, unsignedAttestationPayload(receipt), input.selfReviewed ? keys[0].privateKey : keys[1].privateKey).toString("base64");
+  return { capability_id: attestation.capability_id, attestation, attestation_pin: attestationPin, conformance_receipt: receipt, receipt_pin: canonicalEmbeddedPin(receipt, receiptSchema), reviewed_predecessor: { commit: "1".repeat(40), repository_path: "docs/dataset-factory/authorities/reviewed-metrics-v2/executor-receipts/internal-nonproduction.json" } };
 }
 const PREACTIVATION_EVIDENCE_KINDS = ["executor_semantics_attestor", "executor_conformance_reviewer", "d1_live", "linux_sandbox", "pre_activation_verifier"] as const;
 const PREACTIVATION_ADMISSION_VALIDITY_POLICY = Object.freeze({
@@ -616,7 +658,8 @@ function validateD1LiveAttestation(value: J): void {
 }
 function validateLinuxSandboxAttestation(value: J, allowSyntheticExecutorSemantics = false, trust?: J): void {
   canonicalLogicalRoute(value?.observation?.route); canonicalLogicalRoute(value?.signer?.route);
-  validateSignedAttestation(value, "linux-sandbox-attestation.schema.v2.json", allowSyntheticExecutorSemantics);
+  const schemaName = value?.schema_version === "reviewed_metrics_linux_sandbox_attestation_v2.5.0" ? "linux-sandbox-attestation.schema.v2.5.json" : "linux-sandbox-attestation.schema.v2.json";
+  validateSignedAttestation(value, schemaName, allowSyntheticExecutorSemantics);
   codedAssert(value.wrapper_grammar_version === "gate_h2_linux_wrapper_argv_v3" && canon(value.argv_prefix) === canon(deriveSandboxArgvPrefix(value)), "H2_PREACTIVATION_SANDBOX_ARGV", "sandbox argv prefix is not the exact typed grammar derived from signed image, mounts, network, runtime, capabilities, and fixed allowlist");
   codedAssert(value.network.policy === "deny_all" ? value.network.destination_capability_ids.length === 0 : value.network.destination_capability_ids.length > 0, "H2_PREACTIVATION_SANDBOX_NETWORK", "sandbox network policy and destination capabilities differ");
   codedAssert(value.mounts.readable_inputs.every((mount: J) => mount.mode === "ro") && value.mounts.output_mounts.every((mount: J) => mount.mode === "rw"), "H2_PREACTIVATION_SANDBOX_MOUNTS", "sandbox readable/output mount modes differ");
@@ -1151,7 +1194,7 @@ function currentPhysicalHostIdentity(inventory: J, measuredAt: string): J {
 }
 function measureRoute(authorityFile: string, role: string, measuredAt = new Date().toISOString(), capability?: InternalSyntheticCapability, stageId?: StageId): J {
   const authority = load(path.resolve(authorityFile));
-  schema("execution-authorization.schema.v2.json", authority);
+  executionAuthorizationSchema(authority);
   const actorValue = authority[role];
   codedAssert(actorValue?.role === role, "H2_ROUTE_ROLE", `authority role ${role} is unavailable`);
   const inventory = authority.trusted_surface_inventory.find((entry: J) => trustedInventoryDigest(entry) === actorValue.surface_inventory_digest);
@@ -1199,7 +1242,7 @@ function coordinatorSigningKey(signingKeyFile: string, authority: J): crypto.Key
 function signRouteReceipt(authorityFile: string, measurementFile: string, role: string, signingKeyFile: string, expiresAt: string, stageId?: StageId, testNow?: string, capability?: InternalSyntheticCapability): J {
   const authority = load(path.resolve(authorityFile));
   const measurement = load(path.resolve(measurementFile));
-  schema("execution-authorization.schema.v2.json", authority);
+  executionAuthorizationSchema(authority);
   schema("host-route-measurement.schema.v2.json", measurement);
   const actorValue = authority[role];
   const inventory = authority.trusted_surface_inventory.find((entry: J) => trustedInventoryDigest(entry) === actorValue?.surface_inventory_digest);
@@ -1340,7 +1383,7 @@ function assertCurrentStageHostAndRoute(authority: J, entry: J, receipt: J, meas
   const physical = strictHostRouteMeasurement(actorValue.route);
   codedAssert(physical.canonicalRoot === receipt.canonical_root && physical.existingAncestor === receipt.existing_ancestor && physical.stat.dev === receipt.ancestor_device && physical.stat.ino === receipt.ancestor_inode, "H2_ROUTE_CANONICAL_MISMATCH", "actual stage route differs from the fresh signed route measurement");
 }
-function stableStageOutputPin(file: string, artifactRole: string): J {
+function stableStageOutputSnapshot(file: string, artifactRole: string): { pin: J; raw: Buffer } {
   let fd: number | undefined;
   try {
     fd = fs.openSync(file, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
@@ -1350,7 +1393,7 @@ function stableStageOutputPin(file: string, artifactRole: string): J {
     const after = fs.fstatSync(fd);
     const current = fs.lstatSync(file);
     codedAssert(before.dev === after.dev && before.ino === after.ino && before.size === after.size && before.mtimeMs === after.mtimeMs && current.dev === before.dev && current.ino === before.ino && raw.length === before.size, "H2_STAGE_OUTPUT_SUBSTITUTION", "declared stage output changed during exact-byte hashing");
-    return { artifact_role: artifactRole, sha256: hash(raw), bytes: raw.length };
+    return { pin: { artifact_role: artifactRole, sha256: hash(raw), bytes: raw.length }, raw };
   } catch (error) {
     if (error instanceof GateH2Error) throw error;
     throw new GateH2Error("H2_STAGE_OUTPUT_SUBSTITUTION", "declared stage output could not be opened safely");
@@ -1539,9 +1582,15 @@ function installedDependencyTreeSnapshots(manifestPin: J): { snapshots: Operatio
     return { snapshots, manifest: value };
   } catch (error) { for (const snapshot of snapshots) { try { fs.closeSync(snapshot.fd); } catch { /* failed preflight releases all retained descriptors */ } } throw error; }
 }
-function validateProductionStageProgram(raw: Buffer, operation: J): J {
-  let value: J; try { value = JSON.parse(raw.toString("utf8")); } catch { throw new GateH2Error("H2_STAGE_PROGRAM_GRAMMAR", "production script must be canonical stage-program JSON, never JavaScript or another executable language"); }
-  codedAssert(raw.equals(Buffer.from(pretty(value))), "H2_STAGE_PROGRAM_GRAMMAR", "production stage program is not exact canonical JSON"); schema("stage-program.schema.v2.json", value);
+function validateProductionStageProgram(raw: Buffer, operation: J, httpsBinding?: J): J {
+  let value: J; try { value = parseStrictJson(raw); } catch { throw new GateH2Error("H2_STAGE_PROGRAM_GRAMMAR", "production script must be strict canonical stage-program JSON, never JavaScript or another executable language"); }
+  codedAssert(raw.equals(Buffer.from(pretty(value))), "H2_STAGE_PROGRAM_GRAMMAR", "production stage program is not exact canonical JSON");
+  if (httpsBinding) {
+    validateStageProgramV22(value);
+    codedAssert(value.schema_version === httpsBinding.stage_program_version && operation.script.sha256 === httpsBinding.stage_program_sha256 && canon(value.input_artifact_roles) === canon(operation.artifacts.map((artifact: J) => artifact.artifact_role)) && canon(value.output_indexes) === canon(operation.declared_output_paths.map((_file: string, index: number) => index)) && value.https_exchange_handles.length === httpsBinding.opaque_handle_count && operation.network_policy === "deny_all" && operation.network_capability_ids.length === 0, "H2_STAGE_PROGRAM_GRAMMAR", "stage-program v2.2 does not exactly join its v2.5 authority binding, artifacts, outputs, opaque handles, and deny-all raw network");
+    return value;
+  }
+  schema("stage-program.schema.v2.json", value);
   codedAssert(value.schema_sha256 === schemaFilePin("stage-program.schema.v2.json").sha256 && canon(value.input_artifact_roles) === canon(operation.artifacts.map((artifact: J) => artifact.artifact_role)) && canon(value.output_indexes) === canon(operation.declared_output_paths.map((_file: string, index: number) => index)) && canon(value.network_capability_ids) === canon(operation.network_capability_ids), "H2_STAGE_PROGRAM_GRAMMAR", "stage program schema/roles/outputs/network do not exactly join the authority operation");
   return value;
 }
@@ -1732,7 +1781,7 @@ function internalStageRaceHook(operation: J, capability?: InternalSyntheticCapab
   if (race === "insert_import_candidate") return () => { const file = path.join(path.dirname(member.realpath), "late-candidate.cjs"); fs.writeFileSync(file, "module.exports='late';\n", { mode: 0o400 }); return () => fs.unlinkSync(file); };
   throw new GateH2Error("H2_STAGE_INTERNAL_RACE", "unknown internal stage race injection");
 }
-function externalOperationContractSelfTest(): J {
+export function externalOperationContractSelfTest(): J {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "rmv2-external-operation-"));
   const git = trustedExecutable("git");
   const expect = (code: string, operation: () => unknown): void => { let observed = ""; try { operation(); } catch (error) { observed = error instanceof GateH2Error ? error.code : ""; } codedAssert(observed === code, "H2_EXTERNAL_TEST_CODE", `expected ${code}, observed ${observed || "none"}`); };
@@ -1778,9 +1827,49 @@ function externalOperationContractSelfTest(): J {
     const scriptJoin = structuredClone(operation); scriptJoin.script = structuredClone(scriptJoin.artifacts[0].pin); scriptJoin.argv[0] = scriptJoin.script.realpath; scriptJoin.argv_bindings[0].value_sha256 = hash(scriptJoin.argv[0]); expect("H2_STAGE_DEPENDENCY_JOIN", () => run(scriptJoin));
     const lockJoin = structuredClone(operation); lockJoin.dependency_lock = structuredClone(lockJoin.script); expect("H2_STAGE_DEPENDENCY_JOIN", () => run(lockJoin));
     expect("H2_STAGE_PROGRAM_GRAMMAR", () => executeExternalStageOperation(operation, [{ path: output }], false));
-    const stageProgram = { schema_version: "reviewed_metrics_stage_program_v2.1.0", schema_sha256: schemaFilePin("stage-program.schema.v2.json").sha256, executor_contract: "gate_h2_static_stage_program_executor_v1", action: "invoke_attested_capability", input_artifact_roles: ["sanitized_prompt"], output_indexes: [0], network_capability_ids: [] }; validateProductionStageProgram(Buffer.from(pretty(stageProgram)), operation);
+    const stageProgram = { action: "invoke_attested_capability", executor_contract: "gate_h2_static_stage_program_executor_v1", input_artifact_roles: ["sanitized_prompt"], network_capability_ids: [], output_indexes: [0], schema_sha256: schemaFilePin("stage-program.schema.v2.json").sha256, schema_version: "reviewed_metrics_stage_program_v2.1.0" }; validateProductionStageProgram(Buffer.from(pretty(stageProgram)), operation);
     for (const probe of ["module.require(process.env.OUT)", "require('node:module').createRequire(__filename)(process.env.OUT)", "process.getBuiltinModule('module').createRequire(__filename)(process.env.OUT)", "Module._load(process.env.OUT)", "process.dlopen(module,process.env.OUT)", "eval(\"require(process.env.OUT)\")", "Function('return module.require(process.env.OUT)')()", "const r=module['require'];r(process.env.OUT)", "const p='require';module[p](process.env.OUT)", "const load=Reflect.get(module,'require');load(process.env.OUT)"]) expect("H2_STAGE_PROGRAM_GRAMMAR", () => validateProductionStageProgram(Buffer.from(`${probe}\n`), operation));
     const semanticsContext = { ...boundaryPayload, runtime: runtimePin, stage_program: scriptPin, readable_mounts: [], output_mounts: outputMounts, observation: { observed_at: new Date(Date.now() + 1_000).toISOString() } }; validateExecutorSemanticsBundle(semantics, semanticsContext, true);
+    const httpsProgramPin = { ...scriptPin, version: "reviewed_metrics_stage_program_v2.2.0" };
+    const httpsSemantics = syntheticExecutorSemanticsBundle({ wrapper: wrapperPin, runtime: runtimePin, stageProgram: httpsProgramPin, imageDigest, readableMounts: [], outputMounts, writablePaths: [output] });
+    const httpsSemanticsContext = { ...semanticsContext, stage_program: httpsProgramPin };
+    validateExecutorSemanticsBundle(httpsSemantics, httpsSemanticsContext, true);
+    codedAssert(httpsSemantics.attestation.schema_version === "reviewed_metrics_executor_semantics_attestation_v2.2.0" && httpsSemantics.conformance_receipt.schema_version === "reviewed_metrics_executor_conformance_receipt_v2.2.0" && httpsSemantics.attestation.subject.action_semantics.action === "invoke_exact_https_exchange", "H2_EXECUTOR_SEMANTICS_VERSION", "v2.2 producer did not emit exact HTTPS successor semantics and conformance evidence");
+    const successorProgramSource = path.join(ROOT, "docs/dataset-factory/fixtures/https-exchange-contract-v1/stage-program-v2.2.json");
+    const successorProgramFile = path.join(root, "stage-program-v2.2.json"); fs.writeFileSync(successorProgramFile, pretty(parseStrictJson(fs.readFileSync(successorProgramSource))), { mode: 0o600 });
+    const successorProgramPin = filePin(successorProgramFile, "reviewed_metrics_stage_program_v2.2.0");
+    const rawResponse = path.join(root, "raw-https-response.json"); const brokerTranscript = path.join(root, "https-broker-transcript.json");
+    const successorOutputs = [{ artifact_role: "raw_https_response", host_path: rawResponse, guest_path: "/output/raw-response", mode: "rw", content_sha256: hash("empty-raw-response") }, { artifact_role: "https_broker_transcript", host_path: brokerTranscript, guest_path: "/output/broker-transcript", mode: "rw", content_sha256: hash("empty-broker-transcript") }];
+    const successorSemantics = syntheticExecutorSemanticsBundle({ wrapper: wrapperPin, runtime: runtimePin, stageProgram: successorProgramPin, imageDigest, readableMounts: [], outputMounts: successorOutputs, writablePaths: [rawResponse, brokerTranscript] });
+    const successorBoundaryPayload: J = { kind: "linux_sandbox_attestation_v1", platform: "linux", wrapper: wrapperPin, wrapper_grammar_version: "gate_h2_linux_wrapper_argv_v3", fixed_argument_allowlist: [], argv_prefix: [], argv_prefix_bindings: [], image_identity_kind: "oci_manifest", image_immutable_identity: "synthetic.invalid/gate-h2@sha256", image_digest: imageDigest, resolution_contract: dependencyValue.resolution_contract, dependency_tree_sha256: dependencyValue.tree_sha256, dependency_tree_bytes: dependencyValue.tree_bytes, dependency_tree_members: dependencyValue.member_count, executor_semantics: successorSemantics, network_policy: "deny_all", network_capability_ids: [], network_namespace_sha256: hash("successor-network-namespace"), firewall_rules_sha256: hash("successor-firewall-rules"), writable_paths: [rawResponse, brokerTranscript], readable_mounts: [], output_mounts: successorOutputs, repo_tree_sha256: repoTree, attestation_artifact_sha256: hash("successor-sandbox-attestation") };
+    const successorBoundary = { ...successorBoundaryPayload, attestation_sha256: hash(canon(successorBoundaryPayload)) };
+    const successorOperation: J = { kind: "external_command", execution_boundary: successorBoundary, runtime: runtimePin, script: successorProgramPin, artifacts: [{ artifact_role: "reviewed_request_body", pin: filePin(prompt) }], dependency_lock: filePin(lock), installed_dependency_tree: filePin(dependencies), repo_tree_sha256: repoTree, cwd: fs.realpathSync(root), argv: [successorProgramPin.realpath, prompt], argv_bindings: [{ index: 0, artifact_role: "script", value_sha256: hash(successorProgramPin.realpath) }, { index: 1, artifact_role: "reviewed_request_body", value_sha256: hash(prompt) }], declared_output_paths: [rawResponse, brokerTranscript], executor_capability_id: successorSemantics.capability_id, network_policy: "deny_all", network_capability_ids: [], environment: { public: [], secret_capability_ids: [] } };
+    const successorManifest = parseStrictJson(fs.readFileSync(path.join(ROOT, "docs/dataset-factory/fixtures/https-exchange-contract-v1/manifest-v1.json"))) as J;
+    successorManifest.candidate_id = CANDIDATE_ID; successorManifest.capabilities[0].candidate_id = CANDIDATE_ID; successorManifest.capabilities[0].request_artifact.sha256 = successorOperation.artifacts[0].pin.sha256; successorManifest.capabilities[0].request_artifact.bytes = successorOperation.artifacts[0].pin.bytes; successorManifest.capabilities[0].request_byte_cap = successorOperation.artifacts[0].pin.bytes; successorManifest.capabilities[0].capability_id = domainSeparatedId(ID_DOMAINS.capability, successorManifest.capabilities[0], "capability_id"); successorManifest.manifest_id = domainSeparatedId(ID_DOMAINS.manifest, successorManifest, "manifest_id"); validateManifest(successorManifest);
+    const successorManifestFile = path.join(root, "execution-authority-manifest.json"); fs.writeFileSync(successorManifestFile, pretty(successorManifest), { mode: 0o600 });
+    const successorAuthority = syntheticExecutionAuthority(hash("complete-v2.5-authority-fixture")); successorAuthority.schema_version = "reviewed_metrics_execution_authorization_v2.5.0";
+    const sourceStage = successorAuthority.stage_execution.stages.find((entry: J) => entry.stage_id === "source_predict"); sourceStage.operation = successorOperation; sourceStage.outputs = [{ artifact_role: "raw_https_response", path: rawResponse }, { artifact_role: "https_broker_transcript", path: brokerTranscript }];
+    const authoritySchemaPin = (name: string, schemaVersion: string): J => ({ ...schemaFilePin(name), schema_version: schemaVersion });
+    const successorManifestRaw = fs.readFileSync(successorManifestFile);
+    successorAuthority.https_exchange_authority = { contract_version: "gate_h2_https_exchange_authority_v1", raw_network_policy: "deny_all", manifest: { path: successorManifestFile, realpath: fs.realpathSync(successorManifestFile), sha256: hash(successorManifestRaw), bytes: successorManifestRaw.length, schema_version: successorManifest.schema_version, manifest_id: successorManifest.manifest_id }, capability_schema: authoritySchemaPin("https-exchange-capability.schema.v1.json", "gate_h2_https_exchange_capability_v1.0.0"), manifest_schema: authoritySchemaPin("https-exchange-manifest.schema.v1.json", "gate_h2_https_exchange_manifest_v1.0.0"), uds_protocol_schema: authoritySchemaPin("https-exchange-uds-protocol.schema.v1.json", "gate_h2_https_exchange_uds_v1.0.0"), broker_event_schema: authoritySchemaPin("https-broker-event.schema.v1.json", "gate_h2_https_broker_event_v1.0.0"), broker_transcript_schema: authoritySchemaPin("https-broker-transcript.schema.v1.json", "gate_h2_https_broker_transcript_v1.0.0"), executor_semantics_schema: authoritySchemaPin("executor-semantics-attestation.schema.v2.2.json", "reviewed_metrics_executor_semantics_attestation_v2.2.0"), executor_conformance_schema: authoritySchemaPin("executor-conformance-receipt.schema.v2.2.json", "reviewed_metrics_executor_conformance_receipt_v2.2.0"), linux_sandbox_schema: authoritySchemaPin("linux-sandbox-attestation.schema.v2.5.json", "reviewed_metrics_linux_sandbox_attestation_v2.5.0"), broker_socket_ownership: "owner_bound_unix_socket_one_stage_one_run", stage_bindings: [{ stage_id: "source_predict", manifest_id: successorManifest.manifest_id, opaque_handle_count: 1, stage_program_version: successorProgramPin.version, stage_program_sha256: successorProgramPin.sha256 }], transcript_output_role: "https_broker_transcript", predictor_exclusions: ["destination_manifest", "provider_auth_material"], legacy_migration: "explicit_reauthorization_required_no_automatic_allow_capabilities_migration" };
+    const attestationPinFixture = (version: string, schemaName: string): J => ({ artifact: { ...filePin(script, version), version }, schema_sha256: schemaFilePin(schemaName).sha256, attestor_principal: "external-attestor", attestor_session_id: "external-attestor-session", attestor_route: "/opt/gate-h2/external-attestor", attestor_physical_route_identity_sha256: hash("external-attestor-route"), signer_public_key_sha256: hash("external-attestor-key") });
+    successorAuthority.pre_activation_attestations = { contract_version: "gate_h2_pre_activation_attestations_v1", max_age_seconds: 3600, d1: attestationPinFixture("reviewed_metrics_d1_live_attestation_v2.1.0", "d1-live-attestation.schema.v2.json"), sandbox: attestationPinFixture("reviewed_metrics_linux_sandbox_attestation_v2.5.0", "linux-sandbox-attestation.schema.v2.5.json"), verification: attestationPinFixture("reviewed_metrics_pre_activation_verification_v2.2.0", "pre-activation-verification.schema.v2.json") };
+    sealSyntheticAuthority(successorAuthority);
+    executionAuthorizationSchema(successorAuthority); validatedHttpsAuthorityManifest(successorAuthority);
+    validateExecutorSemanticsBundle(successorSemantics, { ...successorBoundary, runtime: runtimePin, stage_program: successorProgramPin, observation: { observed_at: new Date(Date.now() + 1_000).toISOString() } }, true);
+    validateProductionStageProgram(fs.readFileSync(successorProgramFile), successorOperation, successorAuthority.https_exchange_authority.stage_bindings[0]);
+    const expectSuccessorSchemaReject = (candidate: J): void => { let rejected = false; try { executionAuthorizationSchema(candidate); } catch { rejected = true; } codedAssert(rejected, "H2_SUCCESSOR_AUTHORITY_SCHEMA_TEST", "v2.5 authority schema accepted a legacy cross-version substitution"); };
+    const legacySemanticsAuthority = structuredClone(successorAuthority); legacySemanticsAuthority.stage_execution.stages.find((entry: J) => entry.stage_id === "source_predict").operation.execution_boundary.executor_semantics = semantics; expectSuccessorSchemaReject(legacySemanticsAuthority);
+    const legacyProgramAuthority = structuredClone(successorAuthority); legacyProgramAuthority.stage_execution.stages.find((entry: J) => entry.stage_id === "source_predict").operation.script.version = "reviewed_metrics_stage_program_v2.1.0"; expectSuccessorSchemaReject(legacyProgramAuthority);
+    fs.rmSync(successorProgramFile); fs.rmSync(successorManifestFile);
+    const malformedSuccessorTimestamps = ["2026-07-16T00:00:00.000+00:00", "2026-07-16t00:00:00.000Z", "2026-07-16T00:00:00.000z", "2026-07-16T00:00:00Z", "2026-07-16T00:00:60.000Z", "2026-02-31T00:00:00.000Z"];
+    for (const timestamp of malformedSuccessorTimestamps) expect("H2_SUCCESSOR_TIMESTAMP", () => successorTimestamp(timestamp, "H2_SUCCESSOR_TIMESTAMP"));
+    const expectTimestampSchemaReject = (operation: () => void): void => { let rejected = false; try { operation(); } catch { rejected = true; } codedAssert(rejected, "H2_SUCCESSOR_TIMESTAMP_TEST", "successor timestamp schema accepted a calendar-invalid date"); };
+    const invalidAttestationTime = structuredClone(httpsSemantics); invalidAttestationTime.attestation.observation.observed_at = "2026-02-31T00:00:00.000Z"; invalidAttestationTime.attestation_pin = canonicalEmbeddedPin(invalidAttestationTime.attestation, "executor-semantics-attestation.schema.v2.2.json"); expectTimestampSchemaReject(() => validateExecutorSemanticsBundle(invalidAttestationTime, httpsSemanticsContext, true));
+    const invalidReceiptTime = structuredClone(httpsSemantics); invalidReceiptTime.conformance_receipt.reviewed_at = "2026-02-31T00:00:00.000Z"; invalidReceiptTime.receipt_pin = canonicalEmbeddedPin(invalidReceiptTime.conformance_receipt, "executor-conformance-receipt.schema.v2.2.json"); expectTimestampSchemaReject(() => validateExecutorSemanticsBundle(invalidReceiptTime, httpsSemanticsContext, true));
+    expect("H2_EXECUTOR_SEMANTICS_JOIN", () => validateExecutorSemanticsBundle(semantics, httpsSemanticsContext, true));
+    expect("H2_EXECUTOR_SEMANTICS_JOIN", () => validateExecutorSemanticsBundle(httpsSemantics, semanticsContext, true));
+    expect("H2_EXECUTOR_SEMANTICS_VERSION", () => syntheticExecutorSemanticsBundle({ wrapper: wrapperPin, runtime: runtimePin, stageProgram: httpsProgramPin, imageDigest, readableMounts: [], outputMounts, writablePaths: [output], semanticsVersion: "legacy" }));
     const forgedSemantics = structuredClone(semantics); forgedSemantics.attestation.test_results.cases[0].evidence_sha256 = hash("forged-evidence"); forgedSemantics.attestation.test_results.results_sha256 = hash(canon({ platform: forgedSemantics.attestation.test_results.platform, immutable_image_digest: forgedSemantics.attestation.test_results.immutable_image_digest, cases: forgedSemantics.attestation.test_results.cases, all_passed: true })); forgedSemantics.attestation_pin = canonicalEmbeddedPin(forgedSemantics.attestation, "executor-semantics-attestation.schema.v2.json"); expect("H2_EXECUTOR_SEMANTICS_SIGNATURE", () => validateExecutorSemanticsBundle(forgedSemantics, semanticsContext, true));
     const forgedReceipt = structuredClone(semantics); forgedReceipt.conformance_receipt.test_results_sha256 = hash("forged-results"); forgedReceipt.receipt_pin = canonicalEmbeddedPin(forgedReceipt.conformance_receipt, "executor-conformance-receipt.schema.v2.json"); expect("H2_EXECUTOR_CONFORMANCE_SIGNATURE", () => validateExecutorSemanticsBundle(forgedReceipt, semanticsContext, true));
     const forgedSchema = structuredClone(semantics); forgedSchema.attestation.subject.stage_program_schema.sha256 = hash("substituted-stage-program-schema"); forgedSchema.attestation_pin = canonicalEmbeddedPin(forgedSchema.attestation, "executor-semantics-attestation.schema.v2.json"); expect("H2_EXECUTOR_SEMANTICS_SIGNATURE", () => validateExecutorSemanticsBundle(forgedSchema, semanticsContext, true));
@@ -1884,7 +1973,18 @@ async function completeStageConsumption(consumption: StageConsumption, clock: Cl
     const entry = stageManifestEntry(consumption.authority, consumption.stageId);
     codedAssert(Date.parse(consumption.startedAt) <= Date.parse(completedAt) && Date.parse(completedAt) <= Date.parse(consumption.receipt.expires_at) && Date.parse(completedAt) <= Date.parse(consumption.authority.expires_at), "H2_ROUTE_EVENT_WINDOW", "actual stage completion is outside the signed receipt or authority window");
     assertCurrentStageHostAndRoute(consumption.authority, entry, consumption.receipt, completedAt, consumption.capability);
-    const outputs = entry.outputs.map((output: J) => stableStageOutputPin(output.path, output.artifact_role));
+    const retainedOutputs: ReturnType<typeof stableStageOutputSnapshot>[] = entry.outputs.map((output: J) => stableStageOutputSnapshot(output.path, output.artifact_role));
+    const httpsBinding = consumption.authority.schema_version === "reviewed_metrics_execution_authorization_v2.5.0" ? consumption.authority.https_exchange_authority.stage_bindings.find((binding: J) => binding.stage_id === consumption.stageId) : undefined;
+    if (httpsBinding) {
+      const transcriptOutput = retainedOutputs.find((output) => output.pin.artifact_role === consumption.authority.https_exchange_authority.transcript_output_role);
+      codedAssert(transcriptOutput, "H2_HTTPS_TRANSCRIPT", "HTTPS-bound stage omitted its declared broker transcript output");
+      let transcript: J;
+      try { transcript = parseStrictJson(transcriptOutput.raw); }
+      catch (error) { throw new GateH2Error("H2_HTTPS_TRANSCRIPT", error instanceof Error ? error.message : "broker transcript is not strict JSON"); }
+      try { validateCompletedTranscriptOutputs(transcript, validatedHttpsAuthorityManifest(consumption.authority), retainedOutputs.map((output) => output.pin)); }
+      catch (error) { throw new GateH2Error("H2_HTTPS_TRANSCRIPT", error instanceof Error ? error.message : "broker transcript does not prove exact retained response outputs"); }
+    }
+    const outputs = retainedOutputs.map((output) => output.pin);
     const identity = { candidate_commit: consumption.authority.candidate_commit, authority_hash: authorityBindingHash(consumption.authority), stage_id: consumption.stageId };
     const value = { schema_version: "reviewed_metrics_stage_completion_v4.0.0", status: "completed", ...identity, attempt_id: consumption.attemptId, role: entry.role, surface_id: consumption.receipt.surface_id, physical_host_commitment: consumption.beginEnvelope.physical_host_commitment, invocation_commitment: consumption.beginEnvelope.invocation_commitment, nonce_commitment: consumption.beginEnvelope.nonce_commitment, receipt_sha256: consumption.beginEnvelope.receipt_sha256, begin_sha256: hash(Buffer.from(pretty(consumption.beginEnvelope))), command_started_at: consumption.startedAt, command_completed_at: completedAt, outputs };
     await consumption.ledger.appendCompletion(identity, consumption.attemptId, completedAt, pretty(value), hash(Buffer.from(pretty(value))));
@@ -2078,6 +2178,10 @@ function schema(name: string, value: J): void {
     validate && validate(value),
     `${name}: ${JSON.stringify(validate?.errors)}`,
   );
+}
+function executionAuthorizationSchema(value: J): void {
+  schema(value?.schema_version === "reviewed_metrics_execution_authorization_v2.5.0" ? "execution-authorization.schema.v2.5.json" : "execution-authorization.schema.v2.json", value);
+  validateAuthorizationNetworkContract(value);
 }
 function phaseRow(id: number): J {
   const row = load(PHASE_D).records.find((x: J) => x.numeric_id === id);
@@ -2757,6 +2861,14 @@ function assertSanitizedMetadata(metadata: J): void {
     `unexpected metadata/profile/comment: ${unexpected.join(",")}`,
   );
 }
+async function assertStructuralPredictorRejection(label: string, operation: () => unknown | Promise<unknown>): Promise<void> {
+  try { await operation(); }
+  catch (error) {
+    codedAssert(error instanceof GateH2Error, "H2_TEST_UNTYPED_REJECTION", `${label} must reject through a Gate H2 boundary`);
+    return;
+  }
+  throw new GateH2Error("H2_TEST_ACCEPTED_ADVERSARY", `${label}: structural predictor adversary accepted`);
+}
 function pngChunks(buffer: Buffer): { type: string; bytes: Buffer }[] {
   assert(
     buffer
@@ -2903,7 +3015,7 @@ async function buildBlindBundle(
       "sanitized hash",
     );
     const instructions = {
-      schema_version: "reviewed_metrics_blind_instructions_v2.0.0",
+      schema_version: "reviewed_metrics_blind_instructions_v2.1.0",
       assignment:
         "Annotate every opaque media input using every field in the bundled schema.",
       output_schema: "prediction-output.schema.v2.json",
@@ -2923,7 +3035,7 @@ async function buildBlindBundle(
     );
     const visualTree = tree(path.join(reservation.root, "media"));
     const descriptor = {
-      schema_version: "reviewed_metrics_blind_bundle_descriptor_v2.0.0",
+      schema_version: "reviewed_metrics_blind_bundle_descriptor_v2.1.0",
       status: "sealed_sanitized_bundle",
       candidate_id: CANDIDATE_ID,
       generator_version: "blind-png-v2",
@@ -2934,6 +3046,9 @@ async function buildBlindBundle(
         path.join(reservation.root, "prediction-output.schema.v2.json"),
         "prediction-output.schema.v2.json",
       ),
+      descriptor_schema: schemaFilePin("blind-bundle-descriptor.schema.v2.1.json"),
+      instructions: pin(path.join(reservation.root, "instructions.json"), "instructions.json"),
+      instructions_schema: schemaFilePin("blind-instructions.schema.v2.1.json"),
       scans: {
         denylisted_keys: 0,
         denylisted_text: 0,
@@ -2950,7 +3065,7 @@ async function buildBlindBundle(
     };
     validateDenylist(descriptor);
     assertNeutralBundleSemantics(descriptor, instructions);
-    schema("blind-bundle-descriptor.schema.v2.json", descriptor);
+    schema("blind-bundle-descriptor.schema.v2.1.json", descriptor);
     writeJson(
       path.join(reservation.root, "blind-bundle-descriptor-v2.json"),
       descriptor,
@@ -2986,9 +3101,15 @@ async function verifyBlindBundle(
   ].sort();
   same(files(root), expected, "blind bundle members");
   const descriptor = load(path.join(root, "blind-bundle-descriptor-v2.json"));
-  schema("blind-bundle-descriptor.schema.v2.json", descriptor);
+  schema("blind-bundle-descriptor.schema.v2.1.json", descriptor);
   const instructions = load(path.join(root, "instructions.json"));
+  schema("blind-instructions.schema.v2.1.json", instructions);
+  same(descriptor.descriptor_schema, schemaFilePin("blind-bundle-descriptor.schema.v2.1.json"), "blind descriptor schema bytes");
+  same(descriptor.instructions_schema, schemaFilePin("blind-instructions.schema.v2.1.json"), "blind instructions schema bytes");
+  same(descriptor.instructions, pin(path.join(root, "instructions.json"), "instructions.json"), "blind instructions exact bytes");
+  same(instructions.required_member_ids, descriptor.members.map((member: J) => member.opaque_id), "blind instructions exact ordered member IDs");
   const scans = validateDenylist({ descriptor, instructions });
+  assertNoPredictorHttpsAuthorityLeak({ descriptor, instructions });
   assertNeutralBundleSemantics(descriptor, instructions);
   const schemaBytes = fs.readFileSync(
     path.join(root, "prediction-output.schema.v2.json"),
@@ -3627,7 +3748,10 @@ function validateSalt(
   );
 }
 function validateSourceSearchBundleValue(value: J, baseDir = ROOT): void {
-  schema("source-search-bundle.schema.v2.json", value);
+  const sealed = value?.status === "sealed_public_bundle";
+  schema(sealed ? "source-search-bundle.schema.v2.1.json" : "source-search-bundle.schema.v2.json", value);
+  if (sealed) same(value.bundle_schema, schemaFilePin("source-search-bundle.schema.v2.1.json"), "source-search bundle schema bytes");
+  assertNoPredictorHttpsAuthorityLeak(value);
   same(
     value.query_subject,
     SOURCE_SEARCH_QUERY_SUBJECT,
@@ -3754,6 +3878,8 @@ function buildSourceSearchBundle(output: string): J {
     );
     const value = {
       ...blankSourceSearchBundle(),
+      schema_version: "reviewed_metrics_source_search_bundle_v2.1.0",
+      bundle_schema: schemaFilePin("source-search-bundle.schema.v2.1.json"),
       status: "sealed_public_bundle",
       output_schema: pin(
         path.join(reservation.root, SOURCE_SEARCH_OUTPUT_SCHEMA_FILE),
@@ -3857,7 +3983,7 @@ function validatePrivateExpectedEnvelopeValue(
   );
   if (authority) {
     assert(
-      ["reviewed_metrics_execution_authorization_v2.2.0", "reviewed_metrics_execution_authorization_v2.3.0", "reviewed_metrics_execution_authorization_v2.4.0"].includes(authority.schema_version),
+      ["reviewed_metrics_execution_authorization_v2.2.0", "reviewed_metrics_execution_authorization_v2.3.0", "reviewed_metrics_execution_authorization_v2.4.0", "reviewed_metrics_execution_authorization_v2.5.0"].includes(authority.schema_version),
       "private envelope chronology requires v2.2 unified authority",
     );
     codedAssert(
@@ -3910,7 +4036,7 @@ function validateSourceSearchFreezeValue(
 ): void {
   schema("source-search-freeze.schema.v2.json", freeze);
   assert(
-    ["reviewed_metrics_execution_authorization_v2.2.0", "reviewed_metrics_execution_authorization_v2.3.0", "reviewed_metrics_execution_authorization_v2.4.0"].includes(authority.schema_version),
+    ["reviewed_metrics_execution_authorization_v2.2.0", "reviewed_metrics_execution_authorization_v2.3.0", "reviewed_metrics_execution_authorization_v2.4.0", "reviewed_metrics_execution_authorization_v2.5.0"].includes(authority.schema_version),
     "source-search freeze requires v2.2 unified authority",
   );
   assert(
@@ -4174,7 +4300,7 @@ function validateAuthorityPrincipals(value: J): void {
         !forbiddenSessions.has(actor.session_id),
       `authority forbidden prior reviewer overlap: ${actor.role}`,
     );
-  if (["reviewed_metrics_execution_authorization_v2.2.0", "reviewed_metrics_execution_authorization_v2.3.0", "reviewed_metrics_execution_authorization_v2.4.0"].includes(value.schema_version)) {
+  if (["reviewed_metrics_execution_authorization_v2.2.0", "reviewed_metrics_execution_authorization_v2.3.0", "reviewed_metrics_execution_authorization_v2.4.0", "reviewed_metrics_execution_authorization_v2.5.0"].includes(value.schema_version)) {
     const isolated = [
       value.implementation,
       value.predictor,
@@ -4250,7 +4376,7 @@ function validateAuthorityPrincipals(value: J): void {
         "H2_EVALUATOR_PUBLIC_KEY",
         `signing key forbidden for ${actorValue.role}`,
       );
-    if (["reviewed_metrics_execution_authorization_v2.3.0", "reviewed_metrics_execution_authorization_v2.4.0"].includes(value.schema_version)) {
+    if (["reviewed_metrics_execution_authorization_v2.3.0", "reviewed_metrics_execution_authorization_v2.4.0", "reviewed_metrics_execution_authorization_v2.5.0"].includes(value.schema_version)) {
       const stageExecution = value.stage_execution;
       const schemaPin = gateH2LedgerSchemaPin(ROOT);
       codedAssert(stageExecution.ledger.provider === "cloudflare_d1" && stageExecution.ledger.api_contract === "cloudflare_v4_d1_query_insert_select_v1" && stageExecution.ledger.table_schema_sha256 === schemaPin.sha256 && stageExecution.ledger.table_schema_bytes === schemaPin.bytes && stageExecution.ledger.coordinator_signer_sha256 === value.coordinator_trust.public_key_sha256, "H2_LEDGER_AUTHORITY", "authority D1 ledger contract or immutable schema pin differs");
@@ -4262,6 +4388,7 @@ function validateAuthorityPrincipals(value: J): void {
       for (const entry of stageExecution.stages) {
         codedAssert(entry.role === STAGE_ROLES[entry.stage_id as StageId], "H2_ROUTE_STAGE_ROLE", `authority stage role mismatch for ${entry.stage_id}`);
         codedAssert(entry.outputs.length > 0, "H2_STAGE_OUTPUT_DECLARATION", `authority stage ${entry.stage_id} must declare outputs`);
+        unique(entry.outputs.map((output: J) => output.artifact_role), `stage ${entry.stage_id} output role`);
         for (const output of entry.outputs) {
           codedAssert(path.isAbsolute(output.path) && path.normalize(output.path) === output.path, "H2_STAGE_OUTPUT_DECLARATION", "stage output paths must be normalized absolute paths");
           outputPaths.push(output.path);
@@ -4288,19 +4415,51 @@ function contextualPreActivationTrust(context: AuthorityValidationContext): J {
   return JSON.parse(raw.toString("utf8"));
 }
 function validateAuthorityValue(value: J, context?: AuthorityValidationContext): void {
-  schema("execution-authorization.schema.v2.json", value);
-  before(value.authorized_at, value.started_at, "authorization before visual prediction"); before(value.started_at, value.ended_at, "visual prediction execution"); before(value.ended_at, value.freeze_at, "visual prediction before freeze"); if (["reviewed_metrics_execution_authorization_v2.2.0", "reviewed_metrics_execution_authorization_v2.3.0", "reviewed_metrics_execution_authorization_v2.4.0"].includes(value.schema_version)) { before(value.freeze_at, value.source_search_started_at, "visual freeze before source-search run"); before(value.source_search_started_at, value.source_search_ended_at, "source-search execution"); before(value.source_search_ended_at, value.source_search_freeze_at, "source-search prediction before freeze"); before(value.source_search_freeze_at, value.source_dossier_authored_at, "source-search freeze before dossier authoring"); before(value.source_dossier_authored_at, value.private_envelope_sealed_at, "dossier before private envelope seal"); before(value.private_envelope_sealed_at, value.expires_at, "private envelope before authorization expiry"); } else before(value.freeze_at, value.expires_at, "visual freeze authorization expiry");
+  executionAuthorizationSchema(value);
+  if (value.schema_version === "reviewed_metrics_execution_authorization_v2.5.0") {
+    for (const field of ["authorized_at", "started_at", "ended_at", "freeze_at", "source_search_started_at", "source_search_ended_at", "source_search_freeze_at", "source_dossier_authored_at", "private_envelope_sealed_at", "expires_at"]) successorTimestamp(value[field], "H2_SUCCESSOR_TIMESTAMP");
+  }
+  before(value.authorized_at, value.started_at, "authorization before visual prediction"); before(value.started_at, value.ended_at, "visual prediction execution"); before(value.ended_at, value.freeze_at, "visual prediction before freeze"); if (["reviewed_metrics_execution_authorization_v2.2.0", "reviewed_metrics_execution_authorization_v2.3.0", "reviewed_metrics_execution_authorization_v2.4.0", "reviewed_metrics_execution_authorization_v2.5.0"].includes(value.schema_version)) { before(value.freeze_at, value.source_search_started_at, "visual freeze before source-search run"); before(value.source_search_started_at, value.source_search_ended_at, "source-search execution"); before(value.source_search_ended_at, value.source_search_freeze_at, "source-search prediction before freeze"); before(value.source_search_freeze_at, value.source_dossier_authored_at, "source-search freeze before dossier authoring"); before(value.source_dossier_authored_at, value.private_envelope_sealed_at, "dossier before private envelope seal"); before(value.private_envelope_sealed_at, value.expires_at, "private envelope before authorization expiry"); } else before(value.freeze_at, value.expires_at, "visual freeze authorization expiry");
   validateAuthorityPrincipals(value);
-  if (value.schema_version === "reviewed_metrics_execution_authorization_v2.4.0") validatePreActivationAuthority(value, context?.allowSyntheticExecutorSemantics ?? false, context);
+  if (["reviewed_metrics_execution_authorization_v2.4.0", "reviewed_metrics_execution_authorization_v2.5.0"].includes(value.schema_version)) validatePreActivationAuthority(value, context?.allowSyntheticExecutorSemantics ?? false, context);
+}
+function validatedHttpsAuthorityManifest(authority: J): J {
+  codedAssert(authority.schema_version === "reviewed_metrics_execution_authorization_v2.5.0", "H2_HTTPS_MANIFEST", "HTTPS manifest is available only under execution authorization v2.5");
+  const pinValue = authority.https_exchange_authority.manifest;
+  const snapshot = snapshotOperationFile(pinValue, "v2.5 HTTPS destination manifest");
+  try {
+    let manifest: J;
+    try { manifest = parseStrictJson(snapshot.raw); }
+    catch (error) { throw new GateH2Error("H2_HTTPS_MANIFEST", error instanceof Error ? error.message : "HTTPS manifest is not strict JSON"); }
+    try { validateManifest(manifest); }
+    catch (error) { throw new GateH2Error("H2_HTTPS_MANIFEST", error instanceof Error ? error.message : "HTTPS manifest is invalid"); }
+    codedAssert(manifest.manifest_id === pinValue.manifest_id && manifest.schema_version === pinValue.schema_version && manifest.candidate_id === authority.candidate_id && manifest.authorization_version === authority.schema_version, "H2_HTTPS_MANIFEST", "HTTPS manifest ID, schema, candidate, or authorization version differs from its v2.5 pin");
+    const binding = authority.https_exchange_authority.stage_bindings.find((candidate: J) => candidate.stage_id === manifest.stage_id);
+    const stage = authority.stage_execution.stages.find((candidate: J) => candidate.stage_id === manifest.stage_id);
+    codedAssert(authority.https_exchange_authority.stage_bindings.length === 1 && binding && stage?.operation?.kind === "external_command" && binding.manifest_id === manifest.manifest_id && binding.opaque_handle_count === manifest.exact_exchange_count, "H2_HTTPS_MANIFEST", "HTTPS manifest must be the sole exact stage binding with matching exchange/handle count");
+    const artifacts = new Map(stage.operation.artifacts.map((artifact: J) => [artifact.artifact_role, artifact.pin]));
+    codedAssert(manifest.capabilities.every((exchange: J) => exchange.raw_response_output_role !== authority.https_exchange_authority.transcript_output_role), "H2_HTTPS_MANIFEST", "raw-response output roles must be distinct from the broker transcript output role");
+    for (const exchange of manifest.capabilities) {
+      const requestPin = artifacts.get(exchange.request_artifact.artifact_role) as J | undefined;
+      const protocolPin = authority.https_exchange_authority.uds_protocol_schema;
+      codedAssert(requestPin?.sha256 === exchange.request_artifact.sha256 && requestPin?.bytes === exchange.request_artifact.bytes && stage.outputs.some((output: J) => output.artifact_role === exchange.raw_response_output_role), "H2_HTTPS_MANIFEST", "HTTPS request artifact or raw-response output does not exactly join the stage declaration");
+      codedAssert(exchange.protocol_schema.sha256 === protocolPin.sha256 && exchange.protocol_schema.bytes === protocolPin.bytes && exchange.protocol_schema.version === protocolPin.schema_version, "H2_HTTPS_MANIFEST", "HTTPS capability protocol pin differs from the authorized tracked UDS schema bytes");
+    }
+    return manifest;
+  } finally { fs.closeSync(snapshot.fd); }
 }
 function validatePreActivationAuthority(authority: J, allowSyntheticExecutorSemantics = false, context?: AuthorityValidationContext): void {
   if (context !== undefined) codedAssert(INTERNAL_SYNTHETIC_AUTHORITIES.has(authority) && authority.candidate_commit === SYNTHETIC_CANDIDATE_COMMIT, "H2_INTERNAL_CAPABILITY", "untrusted authority cannot inject validation context");
   const pins = authority.pre_activation_attestations;
+  const httpsAuthority = authority.schema_version === "reviewed_metrics_execution_authorization_v2.5.0";
+  if (httpsAuthority) validatedHttpsAuthorityManifest(authority);
   const d1 = verifyAttestationArtifact(pins.d1, pins.d1.schema_sha256, "d1-live-attestation.schema.v2.json");
-  const sandbox = verifyAttestationArtifact(pins.sandbox, pins.sandbox.schema_sha256, "linux-sandbox-attestation.schema.v2.json");
+  const sandboxSchema = httpsAuthority ? "linux-sandbox-attestation.schema.v2.5.json" : "linux-sandbox-attestation.schema.v2.json";
+  const sandbox = verifyAttestationArtifact(pins.sandbox, pins.sandbox.schema_sha256, sandboxSchema);
   const verification = verifyAttestationArtifact(pins.verification, pins.verification.schema_sha256, "pre-activation-verification.schema.v2.json");
   const trust = context ? contextualPreActivationTrust(context) : load(PREACTIVATION_TRUST); const admissions = validatePreActivationTrustRegistry(trust, authority.coordinator_trust, context ? { now: context.now, repositoryRoot: context.repositoryRoot } : {});
   validateD1LiveAttestation(d1); validateLinuxSandboxAttestation(sandbox, allowSyntheticExecutorSemantics, trust);
+  codedAssert(!httpsAuthority || sandbox.executor_semantics.every((bundle: J) => bundle.attestation.schema_version === "reviewed_metrics_executor_semantics_attestation_v2.2.0" && bundle.conformance_receipt.schema_version === "reviewed_metrics_executor_conformance_receipt_v2.2.0"), "H2_EXECUTOR_SEMANTICS_VERSION", "v2.5 authority requires only exact v2.2 HTTPS executor semantics and conformance evidence");
   const roles = ["implementation", "predictor", "search_predictor", "private_evaluator", "gold_reviewer", "task_reviewer", "publisher"];
   const rolePrincipals = new Set(roles.map((role) => authority[role].principal));
   const roleSessions = new Set(roles.map((role) => authority[role].session_id));
@@ -4347,7 +4506,9 @@ function validatePreActivationAuthority(authority: J, allowSyntheticExecutorSema
     codedAssert(semantics && canon(boundary.executor_semantics) === canon(semantics), "H2_PREACTIVATION_EXECUTOR_SEMANTICS", `stage ${entry.stage_id} executor semantics differ from signed sandbox attestation`);
     const programSnapshot = snapshotOperationFile(entry.operation.script, `stage ${entry.stage_id} stage program`);
     try {
-      validateProductionStageProgram(programSnapshot.raw, entry.operation);
+      const httpsBinding = authority.schema_version === "reviewed_metrics_execution_authorization_v2.5.0" ? authority.https_exchange_authority.stage_bindings.find((binding: J) => binding.stage_id === entry.stage_id) : undefined;
+      validateProductionStageProgram(programSnapshot.raw, entry.operation, httpsBinding);
+      codedAssert(Boolean(httpsBinding) === (semantics.attestation.schema_version === "reviewed_metrics_executor_semantics_attestation_v2.2.0"), "H2_EXECUTOR_SEMANTICS_VERSION", `stage ${entry.stage_id} authority binding and executor semantics version differ`);
       codedAssert(canon(semantics.attestation.subject.stage_program) === canon(entry.operation.script) && entry.operation.executor_capability_id === deriveExecutorCapability(semantics.attestation), "H2_PREACTIVATION_EXECUTOR_SEMANTICS", `stage ${entry.stage_id} capability does not derive from exact stage program and semantics evidence`);
     } finally { fs.closeSync(programSnapshot.fd); }
   }
@@ -4401,12 +4562,16 @@ function executionAuthority(
       "prediction freeze unavailable: execution authorization bytes differ across HEAD, index, or worktree",
     );
     value = JSON.parse(evidence.headBytes.toString("utf8"));
+    if (value.schema_version === "reviewed_metrics_execution_authorization_v2.5.0" || evidence.headBytes.includes(Buffer.from("reviewed_metrics_execution_authorization_v2.5.0"))) {
+      try { value = parseStrictJson(evidence.headBytes); }
+      catch (error) { throw new GateH2Error("H2_AUTHORITY_GRAMMAR", error instanceof Error ? error.message : "v2.5 authority is not strict canonical JSON"); }
+    }
     assert(
       value.candidate_commit === evidence.parents[0],
       "prediction freeze unavailable: authority candidate_commit must equal the authority commit sole parent",
     );
   }
-  codedAssert(injected !== undefined || capability?.[INTERNAL_SYNTHETIC_CAPABILITY] === true || value.schema_version === "reviewed_metrics_execution_authorization_v2.4.0", "H2_PREACTIVATION_REQUIRED", "production authority activation requires v2.4 signed live D1 and Linux sandbox attestations");
+  codedAssert(injected !== undefined || capability?.[INTERNAL_SYNTHETIC_CAPABILITY] === true || ["reviewed_metrics_execution_authorization_v2.4.0", "reviewed_metrics_execution_authorization_v2.5.0"].includes(value.schema_version), "H2_PREACTIVATION_REQUIRED", "production authority activation requires v2.4 deny-all or explicit v2.5 HTTPS authority with signed live D1 and Linux sandbox attestations");
   validateAuthorityValue(value);
   const now = clock().getTime();
   assert(Number.isFinite(now), "execution authority clock invalid");
@@ -7118,7 +7283,7 @@ function validateIndependentChronology(
   );
   validateAuthorityPrincipals(authority);
   assert(
-    ["reviewed_metrics_execution_authorization_v2.2.0", "reviewed_metrics_execution_authorization_v2.3.0", "reviewed_metrics_execution_authorization_v2.4.0"].includes(authority.schema_version),
+    ["reviewed_metrics_execution_authorization_v2.2.0", "reviewed_metrics_execution_authorization_v2.3.0", "reviewed_metrics_execution_authorization_v2.4.0", "reviewed_metrics_execution_authorization_v2.5.0"].includes(authority.schema_version),
     "completed visual gold requires unified v2.2 authority",
   );
   assert(
@@ -7857,7 +8022,26 @@ async function baselineContractSelfTest(): Promise<J> {
     await reject(() => verifyBlindBundle(bundle, authority, capability));
     descriptor.members[0].opaque_id = originalId;
     writeJson(descriptorFile, descriptor);
-    const instructions = load(path.join(bundle, "instructions.json"));
+    const instructionsFile = path.join(bundle, "instructions.json");
+    const instructionsBytes = fs.readFileSync(instructionsFile);
+    const instructions = load(instructionsFile);
+    for (const [label, mutate] of [
+      ["camel-case-authority-alias", (value: J) => { value.destinationManifest = { opaque: true }; }],
+      ["encoded-authority-payload", (value: J) => { value.transport = { payload_base64: Buffer.from("https exchange authority").toString("base64") }; }],
+      ["nested-auth-alias", (value: J) => { value.context = { providerAuthMaterial: "opaque" }; }],
+      ["descriptor-schema-substitution", (value: J) => { value.descriptor_schema.sha256 = hash("substituted-descriptor-schema"); }],
+      ["instructions-schema-substitution", (value: J) => { value.instructions_schema.sha256 = hash("substituted-instructions-schema"); }],
+    ] as [string, (value: J) => void][]) {
+      const bad = structuredClone(descriptor); mutate(bad); writeJson(descriptorFile, bad);
+      await assertStructuralPredictorRejection(label, () => verifyBlindBundle(bundle, authority, capability));
+      writeJson(descriptorFile, descriptor);
+    }
+    const aliasedInstructions = structuredClone(instructions); aliasedInstructions.destinationManifest = { opaque: true }; writeJson(instructionsFile, aliasedInstructions);
+    await assertStructuralPredictorRejection("blind-instructions-camel-case-authority-alias", () => verifyBlindBundle(bundle, authority, capability));
+    fs.writeFileSync(instructionsFile, instructionsBytes);
+    const reorderedInstructions = structuredClone(instructions); [reorderedInstructions.required_member_ids[0], reorderedInstructions.required_member_ids[1]] = [reorderedInstructions.required_member_ids[1], reorderedInstructions.required_member_ids[0]]; writeJson(instructionsFile, reorderedInstructions);
+    await assertStructuralPredictorRejection("blind-instructions-byte-substitution", () => verifyBlindBundle(bundle, authority, capability));
+    fs.writeFileSync(instructionsFile, instructionsBytes);
     const inferred = structuredClone(descriptor);
     inferred.members[0].purposes = ["aerial_land_use"];
     await reject(() => assertNeutralBundleSemantics(inferred, instructions));
@@ -8528,6 +8712,8 @@ function makeSyntheticSearchWorkspace(
   );
   const bundle = {
     ...blankSourceSearchBundle(),
+    schema_version: "reviewed_metrics_source_search_bundle_v2.1.0",
+    bundle_schema: schemaFilePin("source-search-bundle.schema.v2.1.json"),
     status: "sealed_public_bundle",
     output_schema: pin(
       path.join(root, SOURCE_SEARCH_OUTPUT_SCHEMA_FILE),
@@ -9364,6 +9550,15 @@ async function sourceSearchSelfTest(): Promise<J> {
     await reject("prediction", "public-bundle-substituted-query-subject", () =>
       validateSourceSearchBundleValue(substitutedSubject, passDir),
     );
+    for (const [label, mutate] of [
+      ["public-bundle-camel-case-alias", (value: J) => { value.destinationManifest = { opaque: true }; }],
+      ["public-bundle-encoded-authority", (value: J) => { value.transport = { payload_base64: Buffer.from("provider auth material").toString("base64") }; }],
+      ["public-bundle-nested-auth-alias", (value: J) => { value.context = { providerAuthMaterial: "opaque" }; }],
+      ["public-bundle-schema-substitution", (value: J) => { value.bundle_schema.sha256 = hash("substituted-source-bundle-schema"); }],
+    ] as [string, (value: J) => void][]) {
+      const bad = structuredClone(publicBundle); mutate(bad);
+      await assertStructuralPredictorRejection(label, () => validateSourceSearchBundleValue(bad, passDir));
+    }
     const sourcePrediction = load(
       path.join(passDir, SOURCE_SEARCH_PREDICTION_FILE),
     );
@@ -12074,6 +12269,7 @@ async function main(): Promise<void> {
     result = assemblePublication(workspace, path.resolve(assertString(o.input, "--input publication plan required")), path.resolve(assertString(o.envelope, "--envelope signed stage ledger required")), authority, raceFile ? () => fs.writeFileSync(path.resolve(raceFile), "late race\n", { flag: "wx" }) : raceSpec ? () => internalPublicationRace(workspace, raceSpec) : undefined);
   }
   else if (command === "self-test") result = await selfTest();
+  else if (command === "external-operation-self-test") result = externalOperationContractSelfTest();
   else if (command === "security-self-test") result = { cloudflare_r2: await securityHelperSelfTest(), cloudflare_d1_ledger: await stageLedgerProductionContractSelfTest(ROOT), status: "security_helper_self_test_passed" };
   else if (command === "integration-test") result = await integrationTest();
   else throw new Error(`unknown command: ${command}`);
