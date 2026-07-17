@@ -1586,7 +1586,8 @@ function validateProductionStageProgram(raw: Buffer, operation: J, httpsBinding?
   let value: J; try { value = parseStrictJson(raw); } catch { throw new GateH2Error("H2_STAGE_PROGRAM_GRAMMAR", "production script must be strict canonical stage-program JSON, never JavaScript or another executable language"); }
   codedAssert(raw.equals(Buffer.from(pretty(value))), "H2_STAGE_PROGRAM_GRAMMAR", "production stage program is not exact canonical JSON");
   if (httpsBinding) {
-    validateStageProgramV22(value);
+    try { validateStageProgramV22(value); }
+    catch (error) { throw new GateH2Error("H2_STAGE_PROGRAM_GRAMMAR", error instanceof Error ? error.message : "stage-program v2.2 schema validation failed"); }
     codedAssert(value.schema_version === httpsBinding.stage_program_version && operation.script.sha256 === httpsBinding.stage_program_sha256 && canon(value.input_artifact_roles) === canon(operation.artifacts.map((artifact: J) => artifact.artifact_role)) && canon(value.output_indexes) === canon(operation.declared_output_paths.map((_file: string, index: number) => index)) && value.https_exchange_handles.length === httpsBinding.opaque_handle_count && operation.network_policy === "deny_all" && operation.network_capability_ids.length === 0, "H2_STAGE_PROGRAM_GRAMMAR", "stage-program v2.2 does not exactly join its v2.5 authority binding, artifacts, outputs, opaque handles, and deny-all raw network");
     return value;
   }
@@ -1594,7 +1595,38 @@ function validateProductionStageProgram(raw: Buffer, operation: J, httpsBinding?
   codedAssert(value.schema_sha256 === schemaFilePin("stage-program.schema.v2.json").sha256 && canon(value.input_artifact_roles) === canon(operation.artifacts.map((artifact: J) => artifact.artifact_role)) && canon(value.output_indexes) === canon(operation.declared_output_paths.map((_file: string, index: number) => index)) && canon(value.network_capability_ids) === canon(operation.network_capability_ids), "H2_STAGE_PROGRAM_GRAMMAR", "stage program schema/roles/outputs/network do not exactly join the authority operation");
   return value;
 }
-function validateDerivedResolutionClosure(operation: J, dependencyTree: { snapshots: OperationSnapshot[]; manifest: J }, syntheticBoundary: boolean): void {
+type ExternalOperationAuthorityContext = {
+  authorityVersion: string;
+  stageId: StageId;
+  operationSha256: string;
+  httpsBinding?: J;
+  reviewedTrust: J;
+  reviewedTrustSha256: string;
+};
+function externalOperationAuthorityContext(authority: J, stageId: StageId, reviewedTrust: J): ExternalOperationAuthorityContext {
+  const entry = stageManifestEntry(authority, stageId);
+  const httpsBinding = authority.schema_version === "reviewed_metrics_execution_authorization_v2.5.0" ? authority.https_exchange_authority.stage_bindings.find((binding: J) => binding.stage_id === stageId) : undefined;
+  return {
+    authorityVersion: authority.schema_version,
+    stageId,
+    operationSha256: hash(Buffer.from(canon(entry.operation))),
+    ...(httpsBinding ? { httpsBinding: structuredClone(httpsBinding) } : {}),
+    reviewedTrust: structuredClone(reviewedTrust),
+    reviewedTrustSha256: hash(Buffer.from(pretty(reviewedTrust))),
+  };
+}
+function validateExternalOperationAuthorityPreflight(operation: J, rawProgram: Buffer, context: ExternalOperationAuthorityContext | undefined, allowSyntheticExecutorSemantics: boolean): void {
+  codedAssert(context !== undefined, "H2_STAGE_AUTHORITY_CONTEXT", "external operation preflight requires its validated authority stage and reviewed trust context");
+  codedAssert(["reviewed_metrics_execution_authorization_v2.4.0", "reviewed_metrics_execution_authorization_v2.5.0"].includes(context.authorityVersion) && /^[a-f0-9]{64}$/.test(context.reviewedTrustSha256), "H2_STAGE_AUTHORITY_CONTEXT", "external operation authority version or trust commitment is invalid");
+  codedAssert(context.operationSha256 === hash(Buffer.from(canon(operation))) && context.reviewedTrustSha256 === hash(Buffer.from(pretty(context.reviewedTrust))), "H2_STAGE_AUTHORITY_CONTEXT", "external operation or reviewed trust context was substituted after authority validation");
+  codedAssert(context.httpsBinding === undefined || context.httpsBinding.stage_id === context.stageId, "H2_STAGE_AUTHORITY_CONTEXT", "HTTPS stage binding belongs to a different authority stage");
+  validateProductionStageProgram(rawProgram, operation, context.httpsBinding);
+  const successorSemantics = operation.execution_boundary.executor_semantics.attestation.schema_version === "reviewed_metrics_executor_semantics_attestation_v2.2.0";
+  codedAssert((context.authorityVersion === "reviewed_metrics_execution_authorization_v2.5.0" && context.httpsBinding !== undefined) === successorSemantics, "H2_EXECUTOR_SEMANTICS_VERSION", "authority version/stage binding and executor semantics version differ at external operation preflight");
+  codedAssert(canon(operation.execution_boundary.executor_semantics.attestation.subject.stage_program) === canon(operation.script), "H2_EXECUTOR_SEMANTICS_JOIN", "executor semantics do not bind the exact retained stage-program bytes");
+  validateExecutorSemanticsBundle(operation.execution_boundary.executor_semantics, { ...operation.execution_boundary, runtime: operation.runtime, stage_program: operation.script }, allowSyntheticExecutorSemantics, context.reviewedTrust);
+}
+function validateDerivedResolutionClosure(operation: J, dependencyTree: { snapshots: OperationSnapshot[]; manifest: J }, syntheticBoundary: boolean, authorityContext?: ExternalOperationAuthorityContext): void {
   const contract = dependencyTree.manifest.resolution_contract;
   if (!syntheticBoundary) codedAssert(contract.root_derivation === "static_stage_program_zero_dependency_v1" && contract.package_manager.kind === "npm_lockfile_v3_zero_dependency_v1" && contract.module_resolution.kind === "gate_h2_stage_program_no_module_loader_v1", "H2_STAGE_PROGRAM_GRAMMAR", "production categorically rejects synthetic/host-derived JavaScript and npm loader contracts");
   codedAssert(canon(contract.wrapper) === canon(operation.execution_boundary.wrapper), "H2_STAGE_DEPENDENCY_JOIN", "executed wrapper differs from the retained resolution closure");
@@ -1613,9 +1645,7 @@ function validateDerivedResolutionClosure(operation: J, dependencyTree: { snapsh
     codedAssert(contract.root_derivation === "synthetic_host_node_fixture_nonproduction_v1" && canon(derivedEdges) === canon(contract.module_resolution.edges) && canon(moduleProof) === canon({ schema_version: "gate_h2_synthetic_host_module_resolution_proof_v1", production_eligible: false, host_runtime_sha256: hash(fs.readFileSync(process.execPath)), entrypoint_sha256: operation.script.sha256, edges: derivedEdges, dynamic_imports: [], unresolved_specifiers: [] }), "H2_STAGE_DEPENDENCY_PROOF", "synthetic host-derived module proof differs or attempts to claim production eligibility");
   } else {
     codedAssert(contract.root_derivation === "static_stage_program_zero_dependency_v1" && contract.module_resolution.kind === "gate_h2_stage_program_no_module_loader_v1" && contract.module_resolution.edges.length === 0 && contract.module_resolution.physical_roots.length === 0, "H2_STAGE_PROGRAM_GRAMMAR", "production operation must categorically remove JavaScript and native module loading");
-    validateProductionStageProgram(entrypoint.raw, operation);
-    codedAssert(canon(operation.execution_boundary.executor_semantics.attestation.subject.stage_program) === canon(operation.script), "H2_EXECUTOR_SEMANTICS_JOIN", "executor semantics do not bind the exact retained stage-program bytes");
-    validateExecutorSemanticsBundle(operation.execution_boundary.executor_semantics, { ...operation.execution_boundary, runtime: operation.runtime, stage_program: operation.script }, false);
+    validateExternalOperationAuthorityPreflight(operation, entrypoint.raw, authorityContext, false);
     codedAssert(operation.executor_capability_id === operation.execution_boundary.executor_semantics.capability_id && operation.executor_capability_id === deriveExecutorCapability(operation.execution_boundary.executor_semantics.attestation), "H2_EXECUTOR_CAPABILITY_DERIVATION", "authority executor capability is not independently derived from exact semantics evidence");
     codedAssert(canon(moduleProof) === canon({ schema_version: "gate_h2_stage_program_module_proof_v1", entrypoint_sha256: operation.script.sha256, loader_surface: "none", edges: [] }), "H2_STAGE_DEPENDENCY_PROOF", "production stage-program proof must commit an empty loader surface");
   }
@@ -1659,7 +1689,7 @@ const clean=Object.fromEntries(names.map((name)=>[name,process.env[name]]));for(
 const runtime=process.argv[3];const script=process.argv[4];process.argv=[runtime,script,...process.argv.slice(5)];require(script);
 `;
 }
-function externalOperationPreflight(operation: J, outputs: J[], syntheticBoundary = false): ExternalPreflight {
+function externalOperationPreflight(operation: J, outputs: J[], syntheticBoundary = false, authorityContext?: ExternalOperationAuthorityContext): ExternalPreflight {
   const snapshots: OperationSnapshot[] = []; let immutableRoot: string | undefined;
   try {
   codedAssert(operation?.kind === "external_command", "H2_STAGE_OPERATION_DECLARATION", "external stage operation is not authority-precommitted");
@@ -1667,7 +1697,7 @@ function externalOperationPreflight(operation: J, outputs: J[], syntheticBoundar
   const pins = [operation.execution_boundary.wrapper, operation.runtime, operation.script, operation.dependency_lock, operation.installed_dependency_tree, ...artifactPins];
   for (let index = 0; index < pins.length; index += 1) snapshots.push(snapshotOperationFile(pins[index], `operation artifact ${index}`));
   const dependencyTree = installedDependencyTreeSnapshots(operation.installed_dependency_tree); snapshots.push(...dependencyTree.snapshots);
-  validateDerivedResolutionClosure(operation, dependencyTree, syntheticBoundary);
+  validateDerivedResolutionClosure(operation, dependencyTree, syntheticBoundary, authorityContext);
   codedAssert(fs.realpathSync(operation.cwd) === operation.cwd, "H2_STAGE_OPERATION_CWD", "stage cwd must be its exact physical realpath");
   const git = trustedExecutable("git");
   const gitTree = execFileSync(git, ["-C", operation.cwd, "rev-parse", "HEAD^{tree}"], { encoding: "utf8", env: {} }).trim();
@@ -1741,8 +1771,8 @@ function assertExternalOperationPostflight(exact: ReturnType<typeof externalOper
   const allowed = new Set(exact.outputPaths.map((file) => path.relative(exact.sourceCwd, path.join(fs.realpathSync(path.dirname(file)), path.basename(file)))));
   codedAssert(dirty.every((line) => line.startsWith("?? ") && allowed.has(line.slice(3))), "H2_STAGE_UNDECLARED_WRITE", `sandbox produced an undeclared write or modified tracked content: ${canon(dirty)}`);
 }
-function executeExternalStageOperation(operation: J, outputs: J[], syntheticBoundary = false, beforeChild?: () => void | (() => void)): ReturnType<typeof externalOperationPreflight> {
-  const exact = externalOperationPreflight(operation, outputs, syntheticBoundary);
+function executeExternalStageOperation(operation: J, outputs: J[], syntheticBoundary = false, beforeChild?: () => void | (() => void), authorityContext?: ExternalOperationAuthorityContext): ReturnType<typeof externalOperationPreflight> {
+  const exact = externalOperationPreflight(operation, outputs, syntheticBoundary, authorityContext);
   let undo: void | (() => void) = undefined;
   let result: ReturnType<typeof externalOperationPreflight> | undefined;
   let primary: unknown;
@@ -1856,8 +1886,15 @@ export function externalOperationContractSelfTest(): J {
     successorAuthority.pre_activation_attestations = { contract_version: "gate_h2_pre_activation_attestations_v1", max_age_seconds: 3600, d1: attestationPinFixture("reviewed_metrics_d1_live_attestation_v2.1.0", "d1-live-attestation.schema.v2.json"), sandbox: attestationPinFixture("reviewed_metrics_linux_sandbox_attestation_v2.5.0", "linux-sandbox-attestation.schema.v2.5.json"), verification: attestationPinFixture("reviewed_metrics_pre_activation_verification_v2.2.0", "pre-activation-verification.schema.v2.json") };
     sealSyntheticAuthority(successorAuthority);
     executionAuthorizationSchema(successorAuthority); validatedHttpsAuthorityManifest(successorAuthority);
-    validateExecutorSemanticsBundle(successorSemantics, { ...successorBoundary, runtime: runtimePin, stage_program: successorProgramPin, observation: { observed_at: new Date(Date.now() + 1_000).toISOString() } }, true);
-    validateProductionStageProgram(fs.readFileSync(successorProgramFile), successorOperation, successorAuthority.https_exchange_authority.stage_bindings[0]);
+    const successorTrust = { status: "synthetic_nonproduction_fixture", attestors: [] };
+    const successorContext = externalOperationAuthorityContext(successorAuthority, "source_predict", successorTrust);
+    validateExternalOperationAuthorityPreflight(successorOperation, fs.readFileSync(successorProgramFile), successorContext, true);
+    expect("H2_STAGE_AUTHORITY_CONTEXT", () => validateExternalOperationAuthorityPreflight(successorOperation, fs.readFileSync(successorProgramFile), undefined, true));
+    const substitutedContext = structuredClone(successorContext); substitutedContext.reviewedTrust.status = "substituted"; expect("H2_STAGE_AUTHORITY_CONTEXT", () => validateExternalOperationAuthorityPreflight(successorOperation, fs.readFileSync(successorProgramFile), substitutedContext, true));
+    const substitutedVersionContext = { ...successorContext, authorityVersion: "reviewed_metrics_execution_authorization_v2.4.0" }; expect("H2_EXECUTOR_SEMANTICS_VERSION", () => validateExternalOperationAuthorityPreflight(successorOperation, fs.readFileSync(successorProgramFile), substitutedVersionContext, true));
+    const substitutedBindingContext = structuredClone(successorContext); substitutedBindingContext.httpsBinding!.stage_program_sha256 = hash("substituted-stage-program"); expect("H2_STAGE_PROGRAM_GRAMMAR", () => validateExternalOperationAuthorityPreflight(successorOperation, fs.readFileSync(successorProgramFile), substitutedBindingContext, true));
+    const legacyProgramOperation = structuredClone(successorOperation); legacyProgramOperation.script = { ...legacyProgramOperation.script, version: "reviewed_metrics_stage_program_v2.1.0" }; const legacyProgramContext = { ...successorContext, operationSha256: hash(Buffer.from(canon(legacyProgramOperation))) }; expect("H2_STAGE_PROGRAM_GRAMMAR", () => validateExternalOperationAuthorityPreflight(legacyProgramOperation, Buffer.from(pretty(stageProgram)), legacyProgramContext, true));
+    const legacySemanticsOperation = structuredClone(successorOperation); legacySemanticsOperation.execution_boundary.executor_semantics = semantics; const legacySemanticsContext = { ...successorContext, operationSha256: hash(Buffer.from(canon(legacySemanticsOperation))) }; expect("H2_EXECUTOR_SEMANTICS_VERSION", () => validateExternalOperationAuthorityPreflight(legacySemanticsOperation, fs.readFileSync(successorProgramFile), legacySemanticsContext, true));
     const expectSuccessorSchemaReject = (candidate: J): void => { let rejected = false; try { executionAuthorizationSchema(candidate); } catch { rejected = true; } codedAssert(rejected, "H2_SUCCESSOR_AUTHORITY_SCHEMA_TEST", "v2.5 authority schema accepted a legacy cross-version substitution"); };
     const legacySemanticsAuthority = structuredClone(successorAuthority); legacySemanticsAuthority.stage_execution.stages.find((entry: J) => entry.stage_id === "source_predict").operation.execution_boundary.executor_semantics = semantics; expectSuccessorSchemaReject(legacySemanticsAuthority);
     const legacyProgramAuthority = structuredClone(successorAuthority); legacyProgramAuthority.stage_execution.stages.find((entry: J) => entry.stage_id === "source_predict").operation.script.version = "reviewed_metrics_stage_program_v2.1.0"; expectSuccessorSchemaReject(legacyProgramAuthority);
@@ -1908,7 +1945,7 @@ export function externalOperationContractSelfTest(): J {
     process.env.GATE_H2_INTERNAL_CLEANUP_FAIL_ONCE = "1"; let cleanupWithPrimary: unknown; try { executeExternalStageOperation(operation, [{ path: output }], true, () => { throw new GateH2Error("H2_TEST_PRIMARY", "synthetic primary stage failure"); }); } catch (error) { cleanupWithPrimary = error; } finally { delete process.env.GATE_H2_INTERNAL_CLEANUP_FAIL_ONCE; }
     codedAssert(cleanupWithPrimary instanceof GateH2Error && cleanupWithPrimary.code === "H2_STAGE_IMMUTABLE_CLEANUP" && (cleanupWithPrimary.cause as J)?.primary?.code === "H2_TEST_PRIMARY" && cleanupWithPrimary.message.includes("H2_TEST_PRIMARY") && !fs.existsSync(output), "H2_STAGE_IMMUTABLE_CLEANUP", "cleanup failure did not retain the primary error as auditable cause");
     codedAssert(fs.readdirSync(os.tmpdir()).every((name) => !name.startsWith("rmv2-immutable-operation-")), "H2_STAGE_IMMUTABLE_CLEANUP", "external operation test leaked an immutable tree");
-    return { status: "external_operation_contract_self_test_passed_synthetic_boundary_only", production_ready: false, real_linux_wrapper_test_satisfied: false, cases: ["clean_environment", "closed_scalar_grammar", "production_canonical_stage_program_only", "alternate_javascript_native_loader_probes_rejected", "host_node_resolution_nonproduction_only", "derived_executor_semantic_capability", "signed_semantics_and_independent_conformance_receipt", "semantic_program_schema_executor_mount_test_result_capability_substitution_rejected", "stale_self_reviewed_synthetic_production_rejected", "host_runtime_semantics_nonproduction_only", "production_zero_npm_dependency_subset", "retained_package_manifest_lock_installed_identity_proof", "lock_top_level_name_version_required_and_exact", "empty_lock_missing_root_missing_package_version_installed_identity_extra_lock_rejected", "path_injection", "node_options_injection", "pythonpath_injection", "home_auth_public_injection", "raw_secret_capabilities_rejected", "replaced_executable", "replaced_script", "retained_resolution_proof_bytes", "replaced_imported_dependency_tree", "inserted_import_candidate", "source_artifact_race_before_child", "dirty_untracked_cwd", "argv_substitution", "basename_dotfile_colon_uri_literal_rejection", "network_policy_escape", "missing_sandbox_attestation", "cwd_alias", "unpinned_output", "verified_fatal_immutable_tree_cleanup", "private_immutable_tree_execution"] };
+    return { status: "external_operation_contract_self_test_passed_synthetic_boundary_only", production_ready: false, real_linux_wrapper_test_satisfied: false, cases: ["clean_environment", "closed_scalar_grammar", "production_canonical_stage_program_only", "successor_authority_preflight_context", "successor_v2_1_program_v2_0_semantics_and_context_substitution_rejected", "alternate_javascript_native_loader_probes_rejected", "host_node_resolution_nonproduction_only", "derived_executor_semantic_capability", "signed_semantics_and_independent_conformance_receipt", "semantic_program_schema_executor_mount_test_result_capability_substitution_rejected", "stale_self_reviewed_synthetic_production_rejected", "host_runtime_semantics_nonproduction_only", "production_zero_npm_dependency_subset", "retained_package_manifest_lock_installed_identity_proof", "lock_top_level_name_version_required_and_exact", "empty_lock_missing_root_missing_package_version_installed_identity_extra_lock_rejected", "path_injection", "node_options_injection", "pythonpath_injection", "home_auth_public_injection", "raw_secret_capabilities_rejected", "replaced_executable", "replaced_script", "retained_resolution_proof_bytes", "replaced_imported_dependency_tree", "inserted_import_candidate", "source_artifact_race_before_child", "dirty_untracked_cwd", "argv_substitution", "basename_dotfile_colon_uri_literal_rejection", "network_policy_escape", "missing_sandbox_attestation", "cwd_alias", "unpinned_output", "verified_fatal_immutable_tree_cleanup", "private_immutable_tree_execution"] };
   } finally { delete process.env.NODE_OPTIONS; delete process.env.PYTHONPATH; delete process.env.EXTRA_AMBIENT; fs.rmSync(root, { recursive: true, force: true }); }
 }
 function consequentialGitPathShadowSelfTest(): J {
@@ -12120,7 +12157,12 @@ async function main(): Promise<void> {
     const authority = internalAuthority ?? executionAuthority();
     const operation = stageManifestEntry(authority, stageId).operation;
     const consumption = await beginStageConsumption(authority, path.resolve(assertString(o["stage-receipt"], "--stage-receipt required")), stageId, () => new Date(), internalCapability);
-    executeExternalStageOperation(operation, stageManifestEntry(authority, stageId).outputs, internalCapability !== undefined, internalStageRaceHook(operation, internalCapability));
+    let trustSnapshot: FileSnapshot | undefined;
+    try {
+      const authorityContext = internalCapability === undefined ? (trustSnapshot = reviewedTrustSnapshot(authority.coordinator_trust), externalOperationAuthorityContext(authority, stageId, trustSnapshot.value)) : undefined;
+      executeExternalStageOperation(operation, stageManifestEntry(authority, stageId).outputs, internalCapability !== undefined, internalStageRaceHook(operation, internalCapability), authorityContext);
+      if (trustSnapshot) assertSnapshotPathUnchanged(trustSnapshot);
+    } finally { if (trustSnapshot) closeSnapshot(trustSnapshot); }
     await completeStageConsumption(consumption);
     result = { status: "external_stage_operation_completed", stage_id: stageId };
   } else if (command === "seal-stage-ledger") {
