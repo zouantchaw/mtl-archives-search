@@ -36,17 +36,19 @@ pub(crate) struct NetworkRequest<'a> {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct NetworkObservation {
-    pub dns_answers: Vec<IpAddr>,
-    pub connected_peer: IpAddr,
-    pub tls_version: String,
-    pub tls_peer_chain_sha256: String,
-    pub alpn: String,
+pub(crate) enum NetworkMilestone {
+    DnsResolved {
+        dns_answers: Vec<IpAddr>,
+        connection_target: IpAddr,
+    },
+    TlsVerified {
+        tls_peer_chain_sha256: String,
+    },
+    RequestSent,
 }
 
 #[derive(Clone, Debug)]
 pub(crate) struct NetworkResponse {
-    pub observation: NetworkObservation,
     pub status: u16,
     pub media_type: String,
     pub content_encoding: Option<String>,
@@ -70,10 +72,16 @@ pub enum NetworkFailure {
     Framing,
     #[error("response exceeded byte cap")]
     Overflow,
+    #[error("durable milestone evidence failure")]
+    Evidence,
 }
 
 pub(crate) trait NetworkClient: Send + Sync {
-    fn exchange(&self, request: NetworkRequest<'_>) -> Result<NetworkResponse, NetworkFailure>;
+    fn exchange(
+        &self,
+        request: NetworkRequest<'_>,
+        milestone: &mut dyn FnMut(NetworkMilestone) -> Result<(), NetworkFailure>,
+    ) -> Result<NetworkResponse, NetworkFailure>;
 }
 
 trait Resolver: Send + Sync {
@@ -178,7 +186,11 @@ impl ProductionNetworkClient {
 }
 
 impl NetworkClient for ProductionNetworkClient {
-    fn exchange(&self, request: NetworkRequest<'_>) -> Result<NetworkResponse, NetworkFailure> {
+    fn exchange(
+        &self,
+        request: NetworkRequest<'_>,
+        milestone: &mut dyn FnMut(NetworkMilestone) -> Result<(), NetworkFailure>,
+    ) -> Result<NetworkResponse, NetworkFailure> {
         let exchange_started = Instant::now();
         let answers = self.resolver.resolve_once(
             request.hostname,
@@ -191,6 +203,10 @@ impl NetworkClient for ProductionNetworkClient {
             validate_dns_answers(&answers).map_err(|_| NetworkFailure::DnsForbidden)?
         };
         let pinned_ip = *answers.first().ok_or(NetworkFailure::DnsForbidden)?;
+        milestone(NetworkMilestone::DnsResolved {
+            dns_answers: answers.clone(),
+            connection_target: pinned_ip,
+        })?;
         let connect_budget = request
             .connect_deadline
             .min(remaining(exchange_started, request.exchange_deadline)?);
@@ -233,24 +249,19 @@ impl NetworkClient for ProductionNetworkClient {
             .filter(|certificates| !certificates.is_empty())
             .ok_or(NetworkFailure::Tls)?;
         let chain_sha256 = certificate_chain_pin(certificates);
+        milestone(NetworkMilestone::TlsVerified {
+            tls_peer_chain_sha256: chain_sha256,
+        })?;
 
         write_request(&mut stream, &request, exchange_started)?;
+        milestone(NetworkMilestone::RequestSent)?;
         let response = read_response(
             &mut stream,
             request.response_byte_cap,
             exchange_started,
             request.exchange_deadline,
         )?;
-        Ok(NetworkResponse {
-            observation: NetworkObservation {
-                dns_answers: answers,
-                connected_peer: peer,
-                tls_version: "TLSv1.3".into(),
-                tls_peer_chain_sha256: chain_sha256,
-                alpn: "http/1.1".into(),
-            },
-            ..response
-        })
+        Ok(response)
     }
 }
 
@@ -365,13 +376,6 @@ fn read_response(
         Err(error) => return Err(map_tls_io(error)),
     }
     Ok(NetworkResponse {
-        observation: NetworkObservation {
-            dns_answers: Vec::new(),
-            connected_peer: IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED),
-            tls_version: String::new(),
-            tls_peer_chain_sha256: String::new(),
-            alpn: String::new(),
-        },
         status: parsed.status,
         media_type: parsed.media_type,
         content_encoding: parsed.content_encoding,
@@ -556,6 +560,18 @@ mod tests {
         response_cap: u64,
         deadline: Duration,
     ) -> Result<NetworkResponse, NetworkFailure> {
+        fixture_exchange_observed(response, delay, response_cap, deadline).0
+    }
+
+    fn fixture_exchange_observed(
+        response: Vec<u8>,
+        delay: Duration,
+        response_cap: u64,
+        deadline: Duration,
+    ) -> (
+        Result<NetworkResponse, NetworkFailure>,
+        Vec<NetworkMilestone>,
+    ) {
         let rcgen::CertifiedKey { cert, signing_key } =
             rcgen::generate_simple_self_signed(vec!["fixture.example".into()]).unwrap();
         let certificate = cert.der().clone();
@@ -597,19 +613,26 @@ mod tests {
             true,
         )
         .unwrap();
-        let result = client.exchange(NetworkRequest {
-            hostname: "fixture.example",
-            port,
-            method: "GET",
-            path_query: "/",
-            auth: None,
-            body: b"",
-            connect_deadline: Duration::from_secs(2),
-            exchange_deadline: deadline,
-            response_byte_cap: response_cap,
-        });
+        let mut milestones = Vec::new();
+        let result = client.exchange(
+            NetworkRequest {
+                hostname: "fixture.example",
+                port,
+                method: "GET",
+                path_query: "/",
+                auth: None,
+                body: b"",
+                connect_deadline: Duration::from_secs(2),
+                exchange_deadline: deadline,
+                response_byte_cap: response_cap,
+            },
+            &mut |milestone| {
+                milestones.push(milestone);
+                Ok(())
+            },
+        );
         server.join().unwrap();
-        result
+        (result, milestones)
     }
 
     #[test]
@@ -723,25 +746,36 @@ mod tests {
         )
         .unwrap();
         let secret = SecretBytes::for_test(b"fixture-secret");
+        let mut milestones = Vec::new();
         let response = client
-            .exchange(NetworkRequest {
-                hostname: "fixture.example",
-                port,
-                method: "POST",
-                path_query: "/v1/exact?x=1",
-                auth: Some(AuthHeader::Bearer(&secret)),
-                body: br#"{"ok":true}"#,
-                connect_deadline: Duration::from_secs(2),
-                exchange_deadline: Duration::from_secs(5),
-                response_byte_cap: 11,
-            })
+            .exchange(
+                NetworkRequest {
+                    hostname: "fixture.example",
+                    port,
+                    method: "POST",
+                    path_query: "/v1/exact?x=1",
+                    auth: Some(AuthHeader::Bearer(&secret)),
+                    body: br#"{"ok":true}"#,
+                    connect_deadline: Duration::from_secs(2),
+                    exchange_deadline: Duration::from_secs(5),
+                    response_byte_cap: 11,
+                },
+                &mut |milestone| {
+                    milestones.push(milestone);
+                    Ok(())
+                },
+            )
             .unwrap();
         assert_eq!(response.status, 200);
         assert_eq!(response.body, br#"{"ok":true}"#);
-        assert_eq!(
-            response.observation.connected_peer,
-            "127.0.0.1".parse::<IpAddr>().unwrap()
-        );
+        assert!(matches!(
+            milestones.as_slice(),
+            [
+                NetworkMilestone::DnsResolved { .. },
+                NetworkMilestone::TlsVerified { .. },
+                NetworkMilestone::RequestSent
+            ]
+        ));
         server.join().unwrap();
     }
 
@@ -776,18 +810,29 @@ mod tests {
             true,
         )
         .unwrap();
-        let result = client.exchange(NetworkRequest {
-            hostname: "wrong.example",
-            port,
-            method: "GET",
-            path_query: "/",
-            auth: None,
-            body: b"",
-            connect_deadline: Duration::from_secs(2),
-            exchange_deadline: Duration::from_secs(5),
-            response_byte_cap: 1,
-        });
+        let mut milestones = Vec::new();
+        let result = client.exchange(
+            NetworkRequest {
+                hostname: "wrong.example",
+                port,
+                method: "GET",
+                path_query: "/",
+                auth: None,
+                body: b"",
+                connect_deadline: Duration::from_secs(2),
+                exchange_deadline: Duration::from_secs(5),
+                response_byte_cap: 1,
+            },
+            &mut |milestone| {
+                milestones.push(milestone);
+                Ok(())
+            },
+        );
         assert!(matches!(result, Err(NetworkFailure::Tls)));
+        assert!(matches!(
+            milestones.as_slice(),
+            [NetworkMilestone::DnsResolved { .. }]
+        ));
         server.join().unwrap();
     }
 
@@ -844,15 +889,21 @@ mod tests {
 
     #[test]
     fn production_transport_enforces_deadline_and_dns_answer_set_before_connect() {
+        let (timeout, milestones) = fixture_exchange_observed(
+            b"HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: 2\r\n\r\n{}"
+                .to_vec(),
+            Duration::from_millis(100),
+            32,
+            Duration::from_millis(20),
+        );
+        assert!(matches!(timeout, Err(NetworkFailure::Deadline)));
         assert!(matches!(
-            fixture_exchange(
-                b"HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: 2\r\n\r\n{}"
-                    .to_vec(),
-                Duration::from_millis(100),
-                32,
-                Duration::from_millis(20)
-            ),
-            Err(NetworkFailure::Deadline)
+            milestones.as_slice(),
+            [
+                NetworkMilestone::DnsResolved { .. },
+                NetworkMilestone::TlsVerified { .. },
+                NetworkMilestone::RequestSent,
+            ]
         ));
 
         let rcgen::CertifiedKey { cert, .. } =
@@ -870,17 +921,20 @@ mod tests {
         )
         .unwrap();
         assert!(matches!(
-            client.exchange(NetworkRequest {
-                hostname: "fixture.example",
-                port: 443,
-                method: "GET",
-                path_query: "/",
-                auth: None,
-                body: b"",
-                connect_deadline: Duration::from_millis(10),
-                exchange_deadline: Duration::from_millis(10),
-                response_byte_cap: 1,
-            }),
+            client.exchange(
+                NetworkRequest {
+                    hostname: "fixture.example",
+                    port: 443,
+                    method: "GET",
+                    path_query: "/",
+                    auth: None,
+                    body: b"",
+                    connect_deadline: Duration::from_millis(10),
+                    exchange_deadline: Duration::from_millis(10),
+                    response_byte_cap: 1,
+                },
+                &mut |_| Ok(())
+            ),
             Err(NetworkFailure::DnsForbidden)
         ));
     }

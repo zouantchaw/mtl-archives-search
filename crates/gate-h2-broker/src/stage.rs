@@ -96,7 +96,7 @@ pub fn run(stage_path: &Path, run_path: &Path) -> Result<(), Box<dyn std::error:
         )?;
         let retained = stage.read_nested(
             "outputs",
-            &format!("{}.json", authority.output_artifact_roles[ordinal]),
+            &format!("{}.bin", authority.output_artifact_roles[ordinal]),
             MAX_INPUT_BYTES,
         )?;
         validate_accepted_response(
@@ -137,7 +137,6 @@ fn validate_accepted_response(
         || output.sha256.len() != 64
         || !output.sha256.bytes().all(is_lower_hex)
         || output.media_type != "application/json"
-        || output.bytes == 0
         || !allowed_statuses.contains(&output.status)
         || retained.len() as u64 != output.bytes
         || hex::encode(Sha256::digest(retained)) != output.sha256
@@ -531,7 +530,7 @@ mod tests {
             assert!(request.starts_with(b"POST /v1/exchange/"));
             let retained = br#"{"ok":true}"#;
             fs::write(
-                server_stage.join("outputs/raw_https_response.json"),
+                server_stage.join("outputs/raw_https_response.bin"),
                 retained,
             )
             .unwrap();

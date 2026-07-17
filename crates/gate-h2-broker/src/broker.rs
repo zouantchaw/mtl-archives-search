@@ -15,8 +15,11 @@ use crate::{
     credential::SecretBytes,
     evidence::{Clock, Event, EvidenceWriter, transcript_base},
     model::{AuthScheme, ExchangeRequest, ExchangeResponse, Manifest, OutputArtifact},
-    network::{AuthHeader, NetworkClient, NetworkFailure, NetworkRequest, ProductionNetworkClient},
-    policy::{validate_dns_answers, validate_manifest, verify_connected_peer},
+    network::{
+        AuthHeader, NetworkClient, NetworkFailure, NetworkMilestone, NetworkRequest,
+        ProductionNetworkClient,
+    },
+    policy::validate_manifest,
 };
 
 pub struct BrokerConfig {
@@ -303,42 +306,68 @@ impl Broker {
             exchange_deadline: Duration::from_millis(c.exchange_deadline_ms),
             response_byte_cap: c.response_byte_cap,
         };
-        let response = match self.network.exchange(request) {
+        let network = Arc::clone(&self.network);
+        let manifest_id = self.config.manifest.manifest_id.clone();
+        let candidate_id = self.config.manifest.candidate_id.clone();
+        let stage_id = self.config.manifest.stage_id.clone();
+        let capability_id = c.capability_id.clone();
+        let event_schema_pin = self.evidence.event_schema_pin.clone();
+        let request_sha256 = c.request_artifact.sha256.clone();
+        let request_bytes = c.request_artifact.bytes;
+        let evidence = &mut self.evidence;
+        let clock = Arc::clone(&self.clock);
+        let mut milestone = |milestone: NetworkMilestone| {
+            let (event_type, event_evidence) = match milestone {
+                NetworkMilestone::DnsResolved {
+                    dns_answers,
+                    connection_target,
+                } => (
+                    "dns_resolved",
+                    json!({
+                        "dns_answer_set_sha256": hash_addresses(&dns_answers),
+                        "connected_ip_commitment": hex::encode(Sha256::digest(connection_target.to_string())),
+                    }),
+                ),
+                NetworkMilestone::TlsVerified {
+                    tls_peer_chain_sha256,
+                } => (
+                    "tls_verified",
+                    json!({"tls_peer_chain_sha256":tls_peer_chain_sha256,"tls_version":"TLSv1.3"}),
+                ),
+                NetworkMilestone::RequestSent => (
+                    "request_sent",
+                    json!({"request_sha256":request_sha256,"request_bytes":request_bytes}),
+                ),
+            };
+            let event = Event {
+                schema_version: crate::EVENT_VERSION,
+                schema_pin: event_schema_pin.clone(),
+                event_id: String::new(),
+                manifest_id: manifest_id.clone(),
+                capability_id: capability_id.clone(),
+                candidate_id: candidate_id.clone(),
+                stage_id: stage_id.clone(),
+                exchange_ordinal: ordinal,
+                sequence: evidence.events.len(),
+                event_type,
+                occurred_at: clock.now(),
+                outcome: "accepted",
+                evidence: event_evidence,
+            };
+            evidence.append(event).map_err(|_| NetworkFailure::Evidence)
+        };
+        let response = match network.exchange(request, &mut milestone) {
             Ok(v) => v,
+            Err(NetworkFailure::Evidence) => {
+                self.failed_closed = true;
+                return Err(ExchangeError::Evidence);
+            }
             Err(e) => {
                 let code = network_code(e);
                 self.terminal_failure(code, ordinal)?;
                 return Err(ExchangeError::Failed(code));
             }
         };
-        let answers = match validate_dns_answers(&response.observation.dns_answers) {
-            Ok(v) => v,
-            Err(_) => {
-                self.terminal_failure("dns_forbidden", ordinal)?;
-                return Err(ExchangeError::Failed("dns_forbidden"));
-            }
-        };
-        if verify_connected_peer(&answers, response.observation.connected_peer).is_err() {
-            self.terminal_failure("dns_rebinding", ordinal)?;
-            return Err(ExchangeError::Failed("dns_rebinding"));
-        }
-        let dns_hash = hash_addresses(&answers);
-        let peer_commitment = hex::encode(Sha256::digest(
-            response.observation.connected_peer.to_string(),
-        ));
-        self.append(
-            ordinal,
-            "dns_resolved",
-            "accepted",
-            json!({"dns_answer_set_sha256":dns_hash,"connected_ip_commitment":peer_commitment}),
-        )?;
-        if response.observation.tls_version != "TLSv1.3" || response.observation.alpn != "http/1.1"
-        {
-            self.terminal_failure("tls_failure", ordinal)?;
-            return Err(ExchangeError::Failed("tls_failure"));
-        }
-        self.append(ordinal, "tls_verified", "accepted", json!({"tls_peer_chain_sha256":response.observation.tls_peer_chain_sha256,"tls_version":"TLSv1.3"}))?;
-        self.append(ordinal, "request_sent", "accepted", json!({"request_sha256":c.request_artifact.sha256,"request_bytes":c.request_artifact.bytes}))?;
         let failure = if response.location.is_some() || (300..400).contains(&response.status) {
             Some("redirect_forbidden")
         } else if response
@@ -366,22 +395,22 @@ impl Broker {
             self.terminal_failure(code, ordinal)?;
             return Err(ExchangeError::Failed(code));
         }
-        let sha256 = hex::encode(Sha256::digest(&response.body));
-        if crate::evidence::commit_output(
+        let committed = match crate::evidence::commit_output(
             &self.config.output_directory,
             &c.raw_response_output_role,
             &response.body,
-        )
-        .is_err()
-        {
-            self.terminal_failure("output_commit_failed", ordinal)?;
-            return Err(ExchangeError::Evidence);
-        }
-        self.append(ordinal, "response_committed", "accepted", json!({"response_status":response.status,"response_media_type":"application/json","response_sha256":sha256,"response_bytes":response.body.len()}))?;
+        ) {
+            Ok(committed) => committed,
+            Err(_) => {
+                self.terminal_failure("output_commit_failed", ordinal)?;
+                return Err(ExchangeError::Evidence);
+            }
+        };
+        self.append(ordinal, "response_committed", "accepted", json!({"response_status":response.status,"response_media_type":"application/json","response_sha256":committed.sha256,"response_bytes":committed.bytes}))?;
         Ok(OutputArtifact {
             artifact_role: c.raw_response_output_role.clone(),
-            sha256,
-            bytes: response.body.len() as u64,
+            sha256: committed.sha256,
+            bytes: committed.bytes,
             media_type: "application/json".into(),
             status: response.status,
         })
@@ -495,6 +524,7 @@ fn network_code(value: NetworkFailure) -> &'static str {
         NetworkFailure::Deadline => "deadline_exceeded",
         NetworkFailure::Overflow => "response_too_large",
         NetworkFailure::Framing => "protocol_error",
+        NetworkFailure::Evidence => "protocol_error",
     }
 }
 fn hash_addresses(addresses: &[IpAddr]) -> String {

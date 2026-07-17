@@ -15,7 +15,7 @@ use crate::{
     evidence::{AuthorityBindings, Clock, EvidenceWriter},
     model::{AuthScheme, ExchangeRequest, FilePin, Manifest, SchemaPin},
     network::{
-        AuthHeader, NetworkClient, NetworkFailure, NetworkObservation, NetworkRequest,
+        AuthHeader, NetworkClient, NetworkFailure, NetworkMilestone, NetworkRequest,
         NetworkResponse,
     },
     policy::{CAPABILITY_DOMAIN, MANIFEST_DOMAIN, object_id},
@@ -26,7 +26,11 @@ const TOKEN: &str = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 
 struct ScriptedNetwork;
 impl NetworkClient for ScriptedNetwork {
-    fn exchange(&self, request: NetworkRequest<'_>) -> Result<NetworkResponse, NetworkFailure> {
+    fn exchange(
+        &self,
+        request: NetworkRequest<'_>,
+        milestone: &mut dyn FnMut(NetworkMilestone) -> Result<(), NetworkFailure>,
+    ) -> Result<NetworkResponse, NetworkFailure> {
         assert_eq!(request.hostname, "api.example.net");
         assert_eq!(request.port, 443);
         assert_eq!(request.method, "POST");
@@ -36,14 +40,8 @@ impl NetworkClient for ScriptedNetwork {
         assert_eq!(request.connect_deadline, Duration::from_secs(5));
         assert_eq!(request.exchange_deadline, Duration::from_secs(30));
         assert_eq!(request.response_byte_cap, 1_048_576);
+        emit_success_milestones(milestone)?;
         Ok(NetworkResponse {
-            observation: NetworkObservation {
-                dns_answers: vec!["93.184.216.34".parse().unwrap()],
-                connected_peer: "93.184.216.34".parse().unwrap(),
-                tls_version: "TLSv1.3".into(),
-                tls_peer_chain_sha256: "5".repeat(64),
-                alpn: "http/1.1".into(),
-            },
             status: 200,
             media_type: "application/json".into(),
             content_encoding: None,
@@ -52,6 +50,18 @@ impl NetworkClient for ScriptedNetwork {
             location: None,
             body: br#"{"ok":true}"#.to_vec(),
         })
+    }
+}
+
+struct PostSendFailureNetwork;
+impl NetworkClient for PostSendFailureNetwork {
+    fn exchange(
+        &self,
+        _: NetworkRequest<'_>,
+        milestone: &mut dyn FnMut(NetworkMilestone) -> Result<(), NetworkFailure>,
+    ) -> Result<NetworkResponse, NetworkFailure> {
+        emit_success_milestones(milestone)?;
+        Err(NetworkFailure::Deadline)
     }
 }
 
@@ -76,7 +86,11 @@ impl QueuedNetwork {
 }
 
 impl NetworkClient for QueuedNetwork {
-    fn exchange(&self, request: NetworkRequest<'_>) -> Result<NetworkResponse, NetworkFailure> {
+    fn exchange(
+        &self,
+        request: NetworkRequest<'_>,
+        milestone: &mut dyn FnMut(NetworkMilestone) -> Result<(), NetworkFailure>,
+    ) -> Result<NetworkResponse, NetworkFailure> {
         *self.calls.lock().unwrap() += 1;
         let auth = match request.auth {
             None => None,
@@ -85,11 +99,16 @@ impl NetworkClient for QueuedNetwork {
             }
         };
         self.observed_auth.lock().unwrap().push(auth);
-        self.responses
+        let result = self
+            .responses
             .lock()
             .unwrap()
             .pop_front()
-            .expect("scripted response exhausted")
+            .expect("scripted response exhausted");
+        if result.is_ok() {
+            emit_success_milestones(milestone)?;
+        }
+        result
     }
 }
 
@@ -119,13 +138,6 @@ fn clock() -> Arc<dyn Clock> {
 
 fn success() -> NetworkResponse {
     NetworkResponse {
-        observation: NetworkObservation {
-            dns_answers: vec!["93.184.216.34".parse().unwrap()],
-            connected_peer: "93.184.216.34".parse().unwrap(),
-            tls_version: "TLSv1.3".into(),
-            tls_peer_chain_sha256: "5".repeat(64),
-            alpn: "http/1.1".into(),
-        },
         status: 200,
         media_type: "application/json".into(),
         content_encoding: None,
@@ -134,6 +146,19 @@ fn success() -> NetworkResponse {
         location: None,
         body: br#"{"ok":true}"#.to_vec(),
     }
+}
+
+fn emit_success_milestones(
+    milestone: &mut dyn FnMut(NetworkMilestone) -> Result<(), NetworkFailure>,
+) -> Result<(), NetworkFailure> {
+    milestone(NetworkMilestone::DnsResolved {
+        dns_answers: vec!["93.184.216.34".parse().unwrap()],
+        connection_target: "93.184.216.34".parse().unwrap(),
+    })?;
+    milestone(NetworkMilestone::TlsVerified {
+        tls_peer_chain_sha256: "5".repeat(64),
+    })?;
+    milestone(NetworkMilestone::RequestSent)
 }
 
 fn manifest(body: &[u8]) -> Manifest {
@@ -342,20 +367,67 @@ fn transport_failures_are_single_attempt_and_terminal() {
 }
 
 #[test]
-fn untrusted_transport_observations_and_responses_fail_closed() {
+fn failure_after_request_transmission_preserves_fsynced_truthful_prefix_and_timestamp_order() {
+    let root = tempfile::tempdir().unwrap();
+    let body = vec![b'x'; 128];
+    let manifest = manifest(&body);
+    let mut broker = broker_with_network(
+        root.path(),
+        manifest.clone(),
+        Arc::new(PostSendFailureNetwork),
+        vec![HANDLE.into()],
+        vec![body],
+        HashMap::new(),
+    );
+    let response = broker
+        .exchange(&manifest.capabilities[0].capability_id, request(&manifest))
+        .unwrap();
+    assert_eq!(response.failure_code.as_deref(), Some("deadline_exceeded"));
+    let event_types = broker
+        .evidence
+        .events
+        .iter()
+        .map(|event| event.event_type)
+        .collect::<Vec<_>>();
+    assert_eq!(
+        event_types,
+        [
+            "handle_consumed",
+            "dns_resolved",
+            "tls_verified",
+            "request_sent",
+            "exchange_failed"
+        ]
+    );
+    let occurred = broker
+        .evidence
+        .events
+        .iter()
+        .map(|event| event.occurred_at.as_str())
+        .collect::<Vec<_>>();
+    assert_eq!(
+        occurred,
+        [
+            "2026-07-17T05:00:00.001Z",
+            "2026-07-17T05:00:00.002Z",
+            "2026-07-17T05:00:00.003Z",
+            "2026-07-17T05:00:00.004Z",
+            "2026-07-17T05:00:00.005Z",
+        ]
+    );
+    for sequence in 0..5 {
+        assert!(
+            root.path()
+                .join(format!("evidence/event-{sequence:04}.json"))
+                .is_file()
+        );
+    }
+    broker.seal_transcript().unwrap();
+}
+
+#[test]
+fn untrusted_transport_responses_fail_closed() {
     let mut cases = Vec::new();
-    let mut mixed_dns = success();
-    mixed_dns
-        .observation
-        .dns_answers
-        .push("127.0.0.1".parse().unwrap());
-    cases.push((mixed_dns, "dns_forbidden"));
-    let mut rebound = success();
-    rebound.observation.connected_peer = "93.184.216.35".parse().unwrap();
-    cases.push((rebound, "dns_rebinding"));
-    let mut tls = success();
-    tls.observation.tls_version = "TLSv1.2".into();
-    cases.push((tls, "tls_failure"));
     let mut redirect = success();
     redirect.status = 302;
     redirect.location = Some("https://other.example/".into());
@@ -572,6 +644,92 @@ fn uds_serve_runs_end_to_end_and_seals_terminal_evidence() {
 }
 
 #[test]
+fn real_broker_uds_and_stage_runtime_preserve_exact_binary_and_empty_outputs() {
+    use std::os::unix::fs::PermissionsExt;
+    for (name, payload) in [
+        ("binary", vec![0, 1, 255, b'\n', 0, 127]),
+        ("no_newline", b"exact-without-newline".to_vec()),
+        ("with_newline", b"exact-with-newline\n".to_vec()),
+        ("empty", Vec::new()),
+    ] {
+        let root = tempfile::tempdir().unwrap();
+        let run_root = root.path().join("run");
+        for directory in [root.path().join("inputs"), root.path().join("outputs")] {
+            std::fs::create_dir(&directory).unwrap();
+            std::fs::set_permissions(&directory, std::fs::Permissions::from_mode(0o700)).unwrap();
+        }
+        let program = include_bytes!(
+            "../../../docs/dataset-factory/fixtures/https-exchange-contract-v1/stage-program-v2.2.json"
+        );
+        std::fs::write(root.path().join("program.json"), program).unwrap();
+        let request_body = b"{}".to_vec();
+        std::fs::write(
+            root.path().join("inputs/reviewed_request_body.json"),
+            &request_body,
+        )
+        .unwrap();
+
+        let manifest = manifest(&request_body);
+        let response = NetworkResponse {
+            status: 200,
+            media_type: "application/json".into(),
+            content_encoding: None,
+            content_length: Some(payload.len() as u64),
+            transfer_encoding: None,
+            location: None,
+            body: payload.clone(),
+        };
+        let broker = broker_with_network(
+            root.path(),
+            manifest.clone(),
+            Arc::new(QueuedNetwork::new([Ok(response)])),
+            vec![HANDLE.into()],
+            vec![request_body],
+            HashMap::new(),
+        );
+        let authority = serde_json::json!({
+            "schema_version":"gate_h2_stage_program_authority_v1.0.0",
+            "program_sha256":hex::encode(Sha256::digest(program)),
+            "program_bytes":program.len(),
+            "manifest_id":manifest.manifest_id,
+            "capability_ids":[manifest.capabilities[0].capability_id],
+            "input_artifact_roles":["reviewed_request_body"],
+            "output_indexes":[0,1],
+            "output_artifact_roles":["raw_https_response"],
+            "allowed_response_statuses":[[200]]
+        });
+        let (listener, guard) = crate::uds::bind_owner_only(&run_root).unwrap();
+        std::fs::write(run_root.join("run-token"), TOKEN).unwrap();
+        std::fs::write(
+            run_root.join("stage-authority.json"),
+            serde_json::to_vec(&authority).unwrap(),
+        )
+        .unwrap();
+        let server =
+            std::thread::spawn(move || crate::uds::serve(listener, Arc::new(Mutex::new(broker))));
+        crate::stage::run(root.path(), &run_root).unwrap_or_else(|error| panic!("{name}: {error}"));
+        server.join().unwrap().unwrap();
+        let retained = std::fs::read(root.path().join("outputs/raw_https_response.bin")).unwrap();
+        assert_eq!(retained, payload, "{name}");
+        let receipt: serde_json::Value = serde_json::from_slice(
+            &std::fs::read(root.path().join("outputs/0.receipt.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            receipt["output_artifact"]["bytes"],
+            payload.len() as u64,
+            "{name}"
+        );
+        assert_eq!(
+            receipt["output_artifact"]["sha256"],
+            hex::encode(Sha256::digest(&payload)),
+            "{name}"
+        );
+        drop(guard);
+    }
+}
+
+#[test]
 fn terminal_acceptance_is_not_released_when_sealing_fails() {
     let root = tempfile::tempdir().unwrap();
     let broker = broker(root.path());
@@ -597,6 +755,83 @@ fn terminal_acceptance_is_not_released_when_sealing_fails() {
     stream.read_to_end(&mut response).unwrap();
     assert!(server.join().unwrap().is_err());
     assert!(response.is_empty());
+    drop(guard);
+}
+
+#[test]
+fn nonterminal_uds_delivery_failure_consumes_next_exchange_and_seals_failed_transcript() {
+    let root = tempfile::tempdir().unwrap();
+    let body = vec![b'x'; 128];
+    let mut manifest = manifest(&body);
+    let mut second = manifest.capabilities[0].clone();
+    second.exchange_ordinal = 1;
+    second.raw_response_output_role = "raw_https_response_2".into();
+    second.capability_id = object_id(CAPABILITY_DOMAIN, &second, "capability_id").unwrap();
+    manifest.capabilities.push(second);
+    manifest.exact_exchange_count = 2;
+    manifest.manifest_id = object_id(MANIFEST_DOMAIN, &manifest, "manifest_id").unwrap();
+    let broker = broker_with_network(
+        root.path(),
+        manifest.clone(),
+        Arc::new(QueuedNetwork::new([Ok(success())])),
+        vec![HANDLE.into(), "h2h_BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB".into()],
+        vec![body.clone(), body],
+        HashMap::new(),
+    );
+    let request_body = serde_json::to_vec(&request(&manifest)).unwrap();
+    let directory = root.path().join("socket_delivery_failure");
+    let (listener, guard) = crate::uds::bind_owner_only(&directory).unwrap();
+    let server = std::thread::spawn(move || {
+        crate::uds::serve_with_delivery_error_for_test(listener, Arc::new(Mutex::new(broker)))
+    });
+    let mut stream =
+        std::os::unix::net::UnixStream::connect(directory.join("broker.sock")).unwrap();
+    write!(
+        stream,
+        "POST /v1/exchange/{} HTTP/1.1\r\nhost: gate-h2\r\ncontent-type: application/json\r\nconnection: close\r\ncontent-length: {}\r\n\r\n",
+        manifest.capabilities[0].capability_id,
+        request_body.len()
+    ).unwrap();
+    stream.write_all(&request_body).unwrap();
+    stream.shutdown(std::net::Shutdown::Write).unwrap();
+    let mut response = Vec::new();
+    stream.read_to_end(&mut response).unwrap();
+    assert!(response.is_empty());
+    assert!(server.join().unwrap().is_err());
+    let transcript: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(root.path().join("evidence/transcript.v1.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(transcript["final_outcome"], "failed_closed");
+    assert_eq!(transcript["attempted_exchange_count"], 2);
+    assert_eq!(transcript["completed_exchange_count"], 1);
+    let event_types = transcript["events"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|event| event["event_type"].as_str().unwrap())
+        .collect::<Vec<_>>();
+    assert_eq!(
+        event_types,
+        [
+            "handle_consumed",
+            "dns_resolved",
+            "tls_verified",
+            "request_sent",
+            "response_committed",
+            "handle_consumed",
+            "exchange_failed",
+        ]
+    );
+    assert_eq!(
+        transcript["events"][6]["evidence"]["failure_code"],
+        "protocol_error"
+    );
+    assert!(
+        root.path()
+            .join("evidence/transcript.authority.v2.json")
+            .is_file()
+    );
     drop(guard);
 }
 

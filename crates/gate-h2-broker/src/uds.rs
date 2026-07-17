@@ -78,39 +78,47 @@ pub fn bind_owner_only(directory: &Path) -> io::Result<(UnixListener, SocketGuar
 }
 
 pub fn serve(listener: UnixListener, broker: Arc<Mutex<Broker>>) -> io::Result<()> {
-    serve_with_hooks(
-        listener,
-        broker,
-        ACCEPT_TIMEOUT,
-        accept_stream,
-        configure_stream,
-        peer_uid,
-        seal_broker,
-    )
+    serve_with_hooks(listener, broker, ACCEPT_TIMEOUT, default_hooks())
+}
+
+#[derive(Clone, Copy)]
+struct ServeHooks {
+    accept: fn(&UnixListener) -> io::Result<(UnixStream, std::os::unix::net::SocketAddr)>,
+    configure: fn(&UnixStream) -> io::Result<()>,
+    identify_peer: fn(&UnixStream) -> io::Result<u32>,
+    seal: fn(&mut Broker) -> io::Result<()>,
+    deliver: fn(&mut UnixStream, &ExchangeResponse) -> io::Result<()>,
+}
+
+fn default_hooks() -> ServeHooks {
+    ServeHooks {
+        accept: accept_stream,
+        configure: configure_stream,
+        identify_peer: peer_uid,
+        seal: seal_broker,
+        deliver: write_response,
+    }
 }
 
 fn serve_with_hooks(
     listener: UnixListener,
     broker: Arc<Mutex<Broker>>,
     accept_timeout: std::time::Duration,
-    accept: fn(&UnixListener) -> io::Result<(UnixStream, std::os::unix::net::SocketAddr)>,
-    configure: fn(&UnixStream) -> io::Result<()>,
-    identify_peer: fn(&UnixStream) -> io::Result<u32>,
-    seal: fn(&mut Broker) -> io::Result<()>,
+    hooks: ServeHooks,
 ) -> io::Result<()> {
     loop {
         if let Err(error) = wait_readable(listener.as_raw_fd(), accept_timeout) {
             terminate_and_seal(&broker, "deadline_exceeded")?;
             return Err(error);
         }
-        let (mut stream, _) = match accept(&listener) {
+        let (mut stream, _) = match (hooks.accept)(&listener) {
             Ok(value) => value,
             Err(error) => {
                 terminate_and_seal(&broker, "protocol_error")?;
                 return Err(error);
             }
         };
-        if let Err(error) = configure(&stream) {
+        if let Err(error) = (hooks.configure)(&stream) {
             terminate_and_seal(&broker, "protocol_error")?;
             return Err(error);
         }
@@ -118,7 +126,7 @@ fn serve_with_hooks(
             .lock()
             .map_err(|_| io::Error::other("broker state poisoned"))?
             .expected_uid();
-        let (peer_matches, code) = match identify_peer(&stream) {
+        let (peer_matches, code) = match (hooks.identify_peer)(&stream) {
             Ok(uid) => (uid == expected_uid, "wrong_peer"),
             Err(_) => (false, "protocol_error"),
         };
@@ -151,16 +159,19 @@ fn serve_with_hooks(
             let mut state = broker
                 .lock()
                 .map_err(|_| io::Error::other("broker state poisoned"))?;
-            seal(&mut state)?;
+            (hooks.seal)(&mut state)?;
             drop(state);
-            write_response(&mut stream, &response)?;
+            (hooks.deliver)(&mut stream, &response)?;
             return if response.outcome == "accepted" {
                 Ok(())
             } else {
                 Err(io::Error::other("exchange failed closed"))
             };
         }
-        write_response(&mut stream, &response)?;
+        if let Err(delivery_error) = (hooks.deliver)(&mut stream, &response) {
+            terminate_and_seal(&broker, "protocol_error")?;
+            return Err(delivery_error);
+        }
     }
 }
 
@@ -188,15 +199,7 @@ pub(crate) fn serve_with_timeout_for_test(
     broker: Arc<Mutex<Broker>>,
     timeout: std::time::Duration,
 ) -> io::Result<()> {
-    serve_with_hooks(
-        listener,
-        broker,
-        timeout,
-        accept_stream,
-        configure_stream,
-        peer_uid,
-        seal_broker,
-    )
+    serve_with_hooks(listener, broker, timeout, default_hooks())
 }
 
 #[cfg(test)]
@@ -207,15 +210,9 @@ pub(crate) fn serve_with_wrong_peer_for_test(
     fn wrong_peer(_: &UnixStream) -> io::Result<u32> {
         Ok(unsafe { libc::geteuid() }.wrapping_add(1))
     }
-    serve_with_hooks(
-        listener,
-        broker,
-        ACCEPT_TIMEOUT,
-        accept_stream,
-        configure_stream,
-        wrong_peer,
-        seal_broker,
-    )
+    let mut hooks = default_hooks();
+    hooks.identify_peer = wrong_peer;
+    serve_with_hooks(listener, broker, ACCEPT_TIMEOUT, hooks)
 }
 
 #[cfg(test)]
@@ -226,15 +223,9 @@ pub(crate) fn serve_with_peer_error_for_test(
     fn peer_error(_: &UnixStream) -> io::Result<u32> {
         Err(io::Error::other("injected peer credential failure"))
     }
-    serve_with_hooks(
-        listener,
-        broker,
-        ACCEPT_TIMEOUT,
-        accept_stream,
-        configure_stream,
-        peer_error,
-        seal_broker,
-    )
+    let mut hooks = default_hooks();
+    hooks.identify_peer = peer_error;
+    serve_with_hooks(listener, broker, ACCEPT_TIMEOUT, hooks)
 }
 
 #[cfg(test)]
@@ -245,15 +236,9 @@ pub(crate) fn serve_with_configure_error_for_test(
     fn configure_error(_: &UnixStream) -> io::Result<()> {
         Err(io::Error::other("injected timeout setup failure"))
     }
-    serve_with_hooks(
-        listener,
-        broker,
-        ACCEPT_TIMEOUT,
-        accept_stream,
-        configure_error,
-        peer_uid,
-        seal_broker,
-    )
+    let mut hooks = default_hooks();
+    hooks.configure = configure_error;
+    serve_with_hooks(listener, broker, ACCEPT_TIMEOUT, hooks)
 }
 
 #[cfg(test)]
@@ -264,15 +249,9 @@ pub(crate) fn serve_with_seal_error_for_test(
     fn seal_error(_: &mut Broker) -> io::Result<()> {
         Err(io::Error::other("injected seal failure"))
     }
-    serve_with_hooks(
-        listener,
-        broker,
-        ACCEPT_TIMEOUT,
-        accept_stream,
-        configure_stream,
-        peer_uid,
-        seal_error,
-    )
+    let mut hooks = default_hooks();
+    hooks.seal = seal_error;
+    serve_with_hooks(listener, broker, ACCEPT_TIMEOUT, hooks)
 }
 
 #[cfg(test)]
@@ -283,15 +262,25 @@ pub(crate) fn serve_with_accept_error_for_test(
     fn accept_error(_: &UnixListener) -> io::Result<(UnixStream, std::os::unix::net::SocketAddr)> {
         Err(io::Error::other("injected accept failure"))
     }
-    serve_with_hooks(
-        listener,
-        broker,
-        ACCEPT_TIMEOUT,
-        accept_error,
-        configure_stream,
-        peer_uid,
-        seal_broker,
-    )
+    let mut hooks = default_hooks();
+    hooks.accept = accept_error;
+    serve_with_hooks(listener, broker, ACCEPT_TIMEOUT, hooks)
+}
+
+#[cfg(test)]
+pub(crate) fn serve_with_delivery_error_for_test(
+    listener: UnixListener,
+    broker: Arc<Mutex<Broker>>,
+) -> io::Result<()> {
+    fn delivery_error(_: &mut UnixStream, _: &ExchangeResponse) -> io::Result<()> {
+        Err(io::Error::new(
+            io::ErrorKind::BrokenPipe,
+            "injected response delivery failure",
+        ))
+    }
+    let mut hooks = default_hooks();
+    hooks.deliver = delivery_error;
+    serve_with_hooks(listener, broker, ACCEPT_TIMEOUT, hooks)
 }
 
 /*

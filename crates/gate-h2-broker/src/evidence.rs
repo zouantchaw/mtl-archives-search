@@ -433,20 +433,36 @@ fn create_private_directory(path: &Path) -> io::Result<()> {
 }
 
 fn atomic_fsync(path: &Path, bytes: &[u8], mode: u32) -> io::Result<()> {
+    atomic_fsync_inner(path, bytes, mode, true)
+}
+
+fn atomic_fsync_raw(path: &Path, bytes: &[u8], mode: u32) -> io::Result<()> {
+    atomic_fsync_inner(path, bytes, mode, false)
+}
+
+fn atomic_fsync_inner(path: &Path, bytes: &[u8], mode: u32, newline: bool) -> io::Result<()> {
     use std::os::unix::fs::OpenOptionsExt;
     let temporary = path.with_extension("tmp");
     let mut options = OpenOptions::new();
     options.write(true).create_new(true).mode(mode);
     let mut file = options.open(&temporary)?;
     file.write_all(bytes)?;
-    file.write_all(b"\n")?;
+    if newline {
+        file.write_all(b"\n")?;
+    }
     file.sync_all()?;
     drop(file);
     fs::rename(&temporary, path)?;
     File::open(path.parent().expect("path has parent"))?.sync_all()
 }
 
-pub fn commit_output(directory: &Path, role: &str, bytes: &[u8]) -> io::Result<PathBuf> {
+pub struct CommittedOutput {
+    pub path: PathBuf,
+    pub sha256: String,
+    pub bytes: u64,
+}
+
+pub fn commit_output(directory: &Path, role: &str, bytes: &[u8]) -> io::Result<CommittedOutput> {
     use std::os::unix::fs::PermissionsExt;
     if role.is_empty()
         || !role
@@ -471,9 +487,29 @@ pub fn commit_output(directory: &Path, role: &str, bytes: &[u8]) -> io::Result<P
             "unsafe output directory",
         ));
     }
-    let path = directory.join(format!("{role}.json"));
-    atomic_fsync(&path, bytes, 0o600)?;
-    Ok(path)
+    let path = directory.join(format!("{role}.bin"));
+    atomic_fsync_raw(&path, bytes, 0o600)?;
+    let mut committed = File::open(&path)?;
+    let metadata = committed.metadata()?;
+    if !metadata.file_type().is_file() || metadata.len() != bytes.len() as u64 {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "committed output length mismatch",
+        ));
+    }
+    let mut hash = Sha256::new();
+    let read_bytes = io::copy(&mut committed, &mut hash)?;
+    if read_bytes != metadata.len() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "committed output readback mismatch",
+        ));
+    }
+    Ok(CommittedOutput {
+        path,
+        sha256: hex::encode(hash.finalize()),
+        bytes: read_bytes,
+    })
 }
 
 fn format_unix_millis(millis: u128) -> String {
