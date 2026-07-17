@@ -13,7 +13,7 @@ use sha2::{Digest, Sha256};
 use crate::{
     Broker, BrokerConfig,
     credential::SecretBytes,
-    evidence::{AuthorityBindings, Clock, EvidenceWriter},
+    evidence::{AuthorityBindings, Clock, EvidenceFaultPoint, EvidenceFaultTarget, EvidenceWriter},
     model::{AuthScheme, ExchangeRequest, ExchangeResponse, FilePin, Manifest, SchemaPin},
     network::{
         AuthHeader, NetworkClient, NetworkFailure, NetworkMilestone, NetworkRequest,
@@ -242,6 +242,26 @@ fn broker_with_network(
     request_bodies: Vec<Vec<u8>>,
     credentials: HashMap<String, SecretBytes>,
 ) -> Broker {
+    broker_with_network_and_evidence_fault(
+        root,
+        manifest,
+        network,
+        handles,
+        request_bodies,
+        credentials,
+        None,
+    )
+}
+
+fn broker_with_network_and_evidence_fault(
+    root: &std::path::Path,
+    manifest: Manifest,
+    network: Arc<dyn NetworkClient>,
+    handles: Vec<String>,
+    request_bodies: Vec<Vec<u8>>,
+    credentials: HashMap<String, SecretBytes>,
+    fault: Option<(EvidenceFaultTarget, EvidenceFaultPoint)>,
+) -> Broker {
     let session_id = "session_1".to_owned();
     let attempt_id = "attempt_1".to_owned();
     let uid = unsafe { libc::geteuid() };
@@ -261,36 +281,66 @@ fn broker_with_network(
         ]
         .concat(),
     ));
-    let evidence = EvidenceWriter::new(
-        root.join("evidence"),
-        SecretBytes::for_test(URL_SAFE_NO_PAD.encode(seed).as_bytes()),
-        schema_pin(
-            "5c33ce7a3dcee39b87b65f6c8dd196c1a56b8fc8d31ef5ad30684735121e152f",
-            3920,
-            crate::EVENT_VERSION,
-        ),
-        schema_pin(
-            "15fc05df41acd422321ccf8e2b834526059f594424d5f675a7f0ce3248169db2",
-            2045,
-            crate::TRANSCRIPT_VERSION,
-        ),
-        AuthorityBindings {
-            schema_pin: schema_pin(
-                "d7752a9c8325ed7537a58cbe3515cee146e5fb1c122c7a536d1ed8eedf79e079",
-                2697,
-                "gate_h2_https_broker_authority_envelope_v2.0.0",
-            ),
-            d1_attempt_id: "d1_attempt_1".into(),
-            d1_begin_sha256: "6".repeat(64),
-            session_id: session_id.clone(),
-            attempt_id: attempt_id.clone(),
-            broker_binary: file_pin('1', "broker-v1"),
-            stage_runtime: file_pin('2', "runtime-v1"),
-            trust_roots: file_pin('3', "roots-v1"),
-            signer_id,
-            signer_trust_entry_sha256: "4".repeat(64),
+    let trust_entry = serde_json::json!({
+        "schema_version":"gate_h2_https_broker_signer_trust_entry_v1.0.0",
+        "schema_pin":{
+            "sha256":"52a9e529090d350f29a2073b66e3b8614113e3b71444a4bc4ada0bac580d81fb",
+            "bytes":1108,
+            "schema_version":"gate_h2_https_broker_signer_trust_entry_v1.0.0"
         },
-    )
+        "signer_id":signer_id,
+        "public_key_base64url":public_key,
+        "signature_algorithm":"ed25519",
+        "trust_status":"trusted"
+    });
+    let trust_entry_bytes = format!("{}\n", crate::evidence::canonical_json(&trust_entry));
+    std::fs::write(root.join("signer-trust-entry.v1.json"), &trust_entry_bytes).unwrap();
+    let signer_trust_entry_sha256 = hex::encode(Sha256::digest(trust_entry_bytes.as_bytes()));
+    let signing_key_material = SecretBytes::for_test(URL_SAFE_NO_PAD.encode(seed).as_bytes());
+    let event_schema_pin = schema_pin(
+        "5c33ce7a3dcee39b87b65f6c8dd196c1a56b8fc8d31ef5ad30684735121e152f",
+        3920,
+        crate::EVENT_VERSION,
+    );
+    let transcript_schema_pin = schema_pin(
+        "15fc05df41acd422321ccf8e2b834526059f594424d5f675a7f0ce3248169db2",
+        2045,
+        crate::TRANSCRIPT_VERSION,
+    );
+    let authority = AuthorityBindings {
+        schema_pin: schema_pin(
+            "d7752a9c8325ed7537a58cbe3515cee146e5fb1c122c7a536d1ed8eedf79e079",
+            2697,
+            "gate_h2_https_broker_authority_envelope_v2.0.0",
+        ),
+        d1_attempt_id: "d1_attempt_1".into(),
+        d1_begin_sha256: "6".repeat(64),
+        session_id: session_id.clone(),
+        attempt_id: attempt_id.clone(),
+        broker_binary: file_pin('1', "broker-v1"),
+        stage_runtime: file_pin('2', "runtime-v1"),
+        trust_roots: file_pin('3', "roots-v1"),
+        signer_id,
+        signer_trust_entry_sha256,
+    };
+    let evidence = match fault {
+        Some((target, point)) => EvidenceWriter::new_faulting_for_test(
+            root.join("evidence"),
+            signing_key_material,
+            event_schema_pin,
+            transcript_schema_pin,
+            authority,
+            target,
+            point,
+        ),
+        None => EvidenceWriter::new(
+            root.join("evidence"),
+            signing_key_material,
+            event_schema_pin,
+            transcript_schema_pin,
+            authority,
+        ),
+    }
     .unwrap();
     Broker::new_for_test(
         BrokerConfig {
@@ -324,6 +374,159 @@ fn request(manifest: &Manifest) -> ExchangeRequest {
         request_artifact_sha256: capability.request_artifact.sha256.clone(),
         request_artifact_bytes: capability.request_artifact.bytes,
     }
+}
+
+fn two_exchange_manifest(body: &[u8]) -> Manifest {
+    let mut value = manifest(body);
+    let mut second = value.capabilities[0].clone();
+    second.exchange_ordinal = 1;
+    second.raw_response_output_role = "raw_https_response_2".into();
+    second.capability_id = object_id(CAPABILITY_DOMAIN, &second, "capability_id").unwrap();
+    value.capabilities.push(second);
+    value.exact_exchange_count = 2;
+    value.manifest_id = object_id(MANIFEST_DOMAIN, &value, "manifest_id").unwrap();
+    value
+}
+
+fn second_request(manifest: &Manifest) -> ExchangeRequest {
+    let capability = &manifest.capabilities[1];
+    ExchangeRequest {
+        schema_version: crate::PROTOCOL_VERSION.into(),
+        message_type: "exchange_request".into(),
+        request_id: "b".repeat(32),
+        run_token: TOKEN.into(),
+        capability_handle: "h2h_BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB".into(),
+        request_artifact_role: capability.request_artifact.artifact_role.clone(),
+        request_artifact_sha256: capability.request_artifact.sha256.clone(),
+        request_artifact_bytes: capability.request_artifact.bytes,
+    }
+}
+
+#[test]
+fn evidence_append_and_fsync_failures_are_sticky_and_never_create_responses() {
+    for (name, target) in [
+        ("handle", EvidenceFaultTarget::Event(0)),
+        ("terminal", EvidenceFaultTarget::Event(1)),
+        ("response_commit", EvidenceFaultTarget::Event(4)),
+    ] {
+        for point in [EvidenceFaultPoint::Append, EvidenceFaultPoint::Fsync] {
+            let root = tempfile::tempdir().unwrap();
+            let body = vec![b'x'; 128];
+            let manifest = manifest(&body);
+            let network_result = if name == "terminal" {
+                Err(NetworkFailure::Deadline)
+            } else {
+                Ok(success())
+            };
+            let network = Arc::new(QueuedNetwork::new([network_result]));
+            let mut broker = broker_with_network_and_evidence_fault(
+                root.path(),
+                manifest.clone(),
+                network.clone(),
+                vec![HANDLE.into()],
+                vec![body],
+                HashMap::new(),
+                Some((target, point)),
+            );
+            assert!(matches!(
+                broker.exchange(&manifest.capabilities[0].capability_id, request(&manifest)),
+                Err(crate::ExchangeError::Evidence)
+            ));
+            assert!(broker.is_terminal(), "{name} {point:?}");
+            assert!(
+                broker
+                    .exchange(&manifest.capabilities[0].capability_id, request(&manifest))
+                    .is_err()
+            );
+            assert!(broker.seal_transcript().is_err(), "{name} {point:?}");
+            assert!(
+                !root
+                    .path()
+                    .join("evidence/transcript.authority.v2.json")
+                    .exists()
+            );
+            let expected_calls = usize::from(name != "handle");
+            assert_eq!(network.call_count(), expected_calls, "{name} {point:?}");
+        }
+    }
+}
+
+#[test]
+fn multi_exchange_cannot_continue_or_seal_after_consumed_handle_evidence_failure() {
+    for point in [EvidenceFaultPoint::Append, EvidenceFaultPoint::Fsync] {
+        let root = tempfile::tempdir().unwrap();
+        let body = vec![b'x'; 128];
+        let manifest = two_exchange_manifest(&body);
+        let network = Arc::new(QueuedNetwork::new([Ok(success()), Ok(success())]));
+        let mut broker = broker_with_network_and_evidence_fault(
+            root.path(),
+            manifest.clone(),
+            network.clone(),
+            vec![HANDLE.into(), "h2h_BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB".into()],
+            vec![body.clone(), body],
+            HashMap::new(),
+            Some((EvidenceFaultTarget::Event(5), point)),
+        );
+        assert_eq!(
+            broker
+                .exchange(&manifest.capabilities[0].capability_id, request(&manifest))
+                .unwrap()
+                .outcome,
+            "accepted"
+        );
+        assert!(matches!(
+            broker.exchange(
+                &manifest.capabilities[1].capability_id,
+                second_request(&manifest)
+            ),
+            Err(crate::ExchangeError::Evidence)
+        ));
+        assert!(broker.is_terminal());
+        assert_eq!(network.call_count(), 1);
+        assert!(broker.seal_transcript().is_err());
+    }
+}
+
+#[test]
+fn sealing_rejects_nonterminal_and_invalid_lifecycle_sequences() {
+    let body = vec![b'x'; 128];
+    let manifest = two_exchange_manifest(&body);
+    let handles = vec![HANDLE.into(), "h2h_BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB".into()];
+
+    let root = tempfile::tempdir().unwrap();
+    let mut nonterminal = broker_with_network(
+        root.path(),
+        manifest.clone(),
+        Arc::new(QueuedNetwork::new([Ok(success())])),
+        handles.clone(),
+        vec![body.clone(), body.clone()],
+        HashMap::new(),
+    );
+    nonterminal
+        .exchange(&manifest.capabilities[0].capability_id, request(&manifest))
+        .unwrap();
+    assert!(nonterminal.seal_transcript().is_err());
+
+    let root = tempfile::tempdir().unwrap();
+    let mut invalid = broker_with_network(
+        root.path(),
+        manifest.clone(),
+        Arc::new(QueuedNetwork::new([Ok(success()), Ok(success())])),
+        handles,
+        vec![body.clone(), body],
+        HashMap::new(),
+    );
+    invalid
+        .exchange(&manifest.capabilities[0].capability_id, request(&manifest))
+        .unwrap();
+    invalid
+        .exchange(
+            &manifest.capabilities[1].capability_id,
+            second_request(&manifest),
+        )
+        .unwrap();
+    invalid.evidence.events[1].event_type = "request_sent";
+    assert!(invalid.seal_transcript().is_err());
 }
 
 #[test]
@@ -679,10 +882,21 @@ fn successful_exchange_emits_v1_transcript_and_ed25519_authority_envelope() {
     )
     .unwrap();
     assert!(root.path().join("evidence/transcript.v1.json").is_file());
+    let transcript_bytes = std::fs::read(root.path().join("evidence/transcript.v1.json")).unwrap();
+    assert!(transcript_bytes.ends_with(b"\n"));
+    let transcript_value: serde_json::Value = serde_json::from_slice(&transcript_bytes).unwrap();
+    assert_eq!(
+        transcript_bytes,
+        format!("{}\n", crate::evidence::canonical_json(&transcript_value)).into_bytes()
+    );
     let envelope: serde_json::Value = serde_json::from_slice(
         &std::fs::read(root.path().join("evidence/transcript.authority.v2.json")).unwrap(),
     )
     .unwrap();
+    assert_eq!(
+        envelope["transcript_sha256"],
+        hex::encode(Sha256::digest(&transcript_bytes))
+    );
     assert_eq!(envelope["signature_algorithm"], "ed25519");
     assert_eq!(envelope["final_outcome"], "complete");
     if std::env::var_os("GATE_H2_RUN_TS_ORACLE").is_some() {
@@ -695,7 +909,7 @@ fn successful_exchange_emits_v1_transcript_and_ed25519_authority_envelope() {
                 .arg(root.path().join("manifest.json"))
                 .arg(root.path().join("evidence/transcript.v1.json"))
                 .arg(root.path().join("evidence/transcript.authority.v2.json"))
-                .arg("4".repeat(64))
+                .arg(root.path().join("signer-trust-entry.v1.json"))
                 .current_dir(&repository)
                 .status()
                 .unwrap();
@@ -848,6 +1062,54 @@ fn terminal_acceptance_is_not_released_when_sealing_fails() {
     assert!(server.join().unwrap().is_err());
     assert!(response.is_empty());
     drop(guard);
+}
+
+#[test]
+fn durable_evidence_failures_close_uds_without_releasing_a_response() {
+    for (target, point) in [
+        (EvidenceFaultTarget::Event(4), EvidenceFaultPoint::Append),
+        (EvidenceFaultTarget::Event(4), EvidenceFaultPoint::Fsync),
+        (EvidenceFaultTarget::Transcript, EvidenceFaultPoint::Fsync),
+        (EvidenceFaultTarget::Envelope, EvidenceFaultPoint::Fsync),
+        (
+            EvidenceFaultTarget::FinalDirectorySync,
+            EvidenceFaultPoint::Fsync,
+        ),
+    ] {
+        let root = tempfile::tempdir().unwrap();
+        let request_body = vec![b'x'; 128];
+        let manifest = manifest(&request_body);
+        let broker = broker_with_network_and_evidence_fault(
+            root.path(),
+            manifest.clone(),
+            Arc::new(QueuedNetwork::new([Ok(success())])),
+            vec![HANDLE.into()],
+            vec![request_body],
+            HashMap::new(),
+            Some((target, point)),
+        );
+        let body = serde_json::to_vec(&request(&manifest)).unwrap();
+        let directory = root.path().join("socket_evidence_failure");
+        let (listener, guard) = crate::uds::bind_owner_only(&directory).unwrap();
+        let server =
+            std::thread::spawn(move || crate::uds::serve(listener, Arc::new(Mutex::new(broker))));
+        let mut stream =
+            std::os::unix::net::UnixStream::connect(directory.join("broker.sock")).unwrap();
+        write!(
+            stream,
+            "POST /v1/exchange/{} HTTP/1.1\r\nhost: gate-h2\r\ncontent-type: application/json\r\nconnection: close\r\ncontent-length: {}\r\n\r\n",
+            manifest.capabilities[0].capability_id,
+            body.len()
+        )
+        .unwrap();
+        stream.write_all(&body).unwrap();
+        stream.shutdown(std::net::Shutdown::Write).unwrap();
+        let mut response = Vec::new();
+        stream.read_to_end(&mut response).unwrap();
+        assert!(server.join().unwrap().is_err(), "{target:?} {point:?}");
+        assert!(response.is_empty(), "{target:?} {point:?}");
+        drop(guard);
+    }
 }
 
 #[test]

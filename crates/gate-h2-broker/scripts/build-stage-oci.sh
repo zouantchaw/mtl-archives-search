@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+umask 022
 
 CRATE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REPO_ROOT="$(git -C "$CRATE_ROOT" rev-parse --show-toplevel)"
@@ -67,6 +68,9 @@ for pass in 1 2; do
   ! grep -q 'NEEDED' "$TMP/readelf-dynamic-$pass" || { echo "dynamic dependency is forbidden" >&2; exit 65; }
   install -D -m 0555 "$BINARY" "$TMP/rootfs-$pass/usr/local/bin/gate-h2-stage-runtime"
   install -D -m 0444 "$GATE_H2_TRUST_ROOTS" "$TMP/rootfs-$pass/etc/ssl/certs/ca-certificates.crt"
+  find "$TMP/rootfs-$pass" -type d -exec chmod 0755 {} +
+  find "$TMP/rootfs-$pass" -type f -exec chmod 0444 {} +
+  chmod 0555 "$TMP/rootfs-$pass/usr/local/bin/gate-h2-stage-runtime"
   find "$TMP/rootfs-$pass" -exec touch -h -d @0 {} +
   (cd "$TMP/rootfs-$pass" && find . -type f -printf '/%P %m\n' | sort) > "$TMP/rootfs-$pass.inventory"
   cmp "$CRATE_ROOT/oci/rootfs-inventory.expected.txt" "$TMP/rootfs-$pass.inventory"

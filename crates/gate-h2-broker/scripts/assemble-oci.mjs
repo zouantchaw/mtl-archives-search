@@ -1,19 +1,23 @@
 import { createHash } from "node:crypto";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 
-const [layerPath, layoutPath, archivePath] = process.argv.slice(2);
+const [layerPath, layoutPath, archivePath, mode] = process.argv.slice(2);
 if (!layerPath || !layoutPath || !archivePath) throw new Error("layer, layout, and archive paths are required");
+if (mode && mode !== "--layout-only") throw new Error("unknown OCI assembly mode");
+process.umask(0o022);
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const writeBlob = (bytes) => {
   const digest = sha256(bytes);
   const path = join(layoutPath, "blobs", "sha256", digest);
   writeFileSync(path, bytes, { mode: 0o444, flag: "wx" });
+  chmodSync(path, 0o444);
   return { digest: `sha256:${digest}`, size: bytes.length };
 };
 
 mkdirSync(join(layoutPath, "blobs", "sha256"), { recursive: true, mode: 0o755 });
+for (const directory of [layoutPath, join(layoutPath, "blobs"), join(layoutPath, "blobs", "sha256")]) chmodSync(directory, 0o755);
 const layerBytes = readFileSync(layerPath);
 const layer = writeBlob(layerBytes);
 const configBytes = Buffer.from(JSON.stringify({
@@ -31,7 +35,7 @@ const manifestBytes = Buffer.from(JSON.stringify({
   layers: [{ mediaType: "application/vnd.oci.image.layer.v1.tar", ...layer }],
 }));
 const manifest = writeBlob(manifestBytes);
-writeFileSync(join(layoutPath, "oci-layout"), `${JSON.stringify({ imageLayoutVersion: "1.0.0" })}\n`);
+writeFileSync(join(layoutPath, "oci-layout"), `${JSON.stringify({ imageLayoutVersion: "1.0.0" })}\n`, { mode: 0o444, flag: "wx" });
 writeFileSync(join(layoutPath, "index.json"), `${JSON.stringify({
   schemaVersion: 2,
   mediaType: "application/vnd.oci.image.index.v1+json",
@@ -40,6 +44,8 @@ writeFileSync(join(layoutPath, "index.json"), `${JSON.stringify({
     ...manifest,
     platform: { architecture: "amd64", os: "linux" },
   }],
-})}\n`);
-execFileSync("tar", ["--sort=name", "--mtime=@0", "--owner=0", "--group=0", "--numeric-owner", "-C", layoutPath, "-cf", archivePath, "."]);
+})}\n`, { mode: 0o444, flag: "wx" });
+chmodSync(join(layoutPath, "oci-layout"), 0o444);
+chmodSync(join(layoutPath, "index.json"), 0o444);
+if (mode !== "--layout-only") execFileSync("tar", ["--sort=name", "--mtime=@0", "--owner=0", "--group=0", "--numeric-owner", "-C", layoutPath, "-cf", archivePath, "."]);
 process.stdout.write(`${manifest.digest}\n`);

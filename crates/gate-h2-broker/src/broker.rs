@@ -189,6 +189,7 @@ impl Broker {
                 output_artifact: Some(output),
                 failure_code: None,
             }),
+            Err(ExchangeError::Evidence) => Err(ExchangeError::Evidence),
             Err(error) if consumed => {
                 let outcome = if matches!(error, ExchangeError::Rejected(_)) {
                     "rejected"
@@ -321,7 +322,11 @@ impl Broker {
         let request_bytes = c.request_artifact.bytes;
         let evidence = &mut self.evidence;
         let clock = Arc::clone(&self.clock);
+        let mut milestone_evidence_failed = false;
         let mut milestone = |milestone: NetworkMilestone| {
+            if milestone_evidence_failed {
+                return Err(NetworkFailure::Evidence);
+            }
             let (event_type, event_evidence) = match milestone {
                 NetworkMilestone::DnsResolved {
                     dns_answers,
@@ -359,9 +364,18 @@ impl Broker {
                 outcome: "accepted",
                 evidence: event_evidence,
             };
-            evidence.append(event).map_err(|_| NetworkFailure::Evidence)
+            if evidence.append(event).is_err() {
+                milestone_evidence_failed = true;
+                return Err(NetworkFailure::Evidence);
+            }
+            Ok(())
         };
-        let response = match network.exchange(request, &mut milestone) {
+        let network_result = network.exchange(request, &mut milestone);
+        if milestone_evidence_failed {
+            self.failed_closed = true;
+            return Err(ExchangeError::Evidence);
+        }
+        let response = match network_result {
             Ok(v) => v,
             Err(NetworkFailure::Evidence) => {
                 self.failed_closed = true;
@@ -408,7 +422,7 @@ impl Broker {
             Ok(committed) => committed,
             Err(_) => {
                 self.terminal_failure("output_commit_failed", ordinal)?;
-                return Err(ExchangeError::Evidence);
+                return Err(ExchangeError::Failed("output_commit_failed"));
             }
         };
         self.append(ordinal, "response_committed", "accepted", json!({"response_status":response.status,"response_media_type":"application/json","response_sha256":committed.sha256,"response_bytes":committed.bytes}))?;
@@ -444,9 +458,11 @@ impl Broker {
             outcome,
             evidence,
         };
-        self.evidence
-            .append(event)
-            .map_err(|_| ExchangeError::Evidence)
+        if self.evidence.append(event).is_err() {
+            self.failed_closed = true;
+            return Err(ExchangeError::Evidence);
+        }
+        Ok(())
     }
     fn fail(&mut self, code: &'static str, ordinal: usize) -> Result<(), ExchangeError> {
         self.append(
@@ -462,9 +478,8 @@ impl Broker {
         code: &'static str,
         ordinal: usize,
     ) -> Result<(), ExchangeError> {
-        self.fail(code, ordinal)?;
         self.failed_closed = true;
-        Ok(())
+        self.fail(code, ordinal)
     }
 
     pub(crate) fn terminate_protocol_failure(
@@ -487,15 +502,7 @@ impl Broker {
     }
 
     pub fn seal_transcript(&mut self) -> Result<String, ExchangeError> {
-        let completed = self
-            .evidence
-            .events
-            .iter()
-            .filter(|event| event.event_type == "response_committed")
-            .count();
-        let complete = !self.failed_closed
-            && self.next_ordinal == self.config.manifest.exact_exchange_count
-            && completed == self.config.manifest.exact_exchange_count;
+        let (completed, complete) = self.validate_terminal_lifecycle()?;
         let mut transcript = transcript_base(self.evidence.transcript_schema_pin.clone());
         transcript.manifest_id = self.config.manifest.manifest_id.clone();
         transcript.candidate_id = self.config.manifest.candidate_id.clone();
@@ -514,10 +521,71 @@ impl Broker {
             "failed_closed"
         };
         transcript.events = self.evidence.events.clone();
-        self.evidence
-            .seal(transcript)
-            .map(|(_, id)| id)
-            .map_err(|_| ExchangeError::Evidence)
+        match self.evidence.seal(transcript) {
+            Ok((_, id)) => Ok(id),
+            Err(_) => {
+                self.failed_closed = true;
+                Err(ExchangeError::Evidence)
+            }
+        }
+    }
+
+    fn validate_terminal_lifecycle(&self) -> Result<(usize, bool), ExchangeError> {
+        const LIFECYCLE: [&str; 5] = [
+            "handle_consumed",
+            "dns_resolved",
+            "tls_verified",
+            "request_sent",
+            "response_committed",
+        ];
+        let mut ordinal = 0usize;
+        let mut lifecycle_index = 0usize;
+        let mut attempted = 0usize;
+        let mut completed = 0usize;
+        let mut failure_seen = false;
+        for (sequence, event) in self.evidence.events.iter().enumerate() {
+            let capability = self
+                .config
+                .manifest
+                .capabilities
+                .get(ordinal)
+                .ok_or(ExchangeError::Evidence)?;
+            if failure_seen
+                || event.sequence != sequence
+                || event.exchange_ordinal != ordinal
+                || event.capability_id != capability.capability_id
+            {
+                return Err(ExchangeError::Evidence);
+            }
+            if lifecycle_index == 0 {
+                attempted += 1;
+            }
+            if event.event_type == "exchange_failed" {
+                if lifecycle_index == 0 || lifecycle_index >= LIFECYCLE.len() {
+                    return Err(ExchangeError::Evidence);
+                }
+                failure_seen = true;
+            } else {
+                if event.event_type != LIFECYCLE[lifecycle_index] {
+                    return Err(ExchangeError::Evidence);
+                }
+                lifecycle_index += 1;
+                if event.event_type == "response_committed" {
+                    completed += 1;
+                    ordinal += 1;
+                    lifecycle_index = 0;
+                }
+            }
+        }
+        let complete = !self.failed_closed
+            && !failure_seen
+            && lifecycle_index == 0
+            && ordinal == self.config.manifest.exact_exchange_count;
+        let failed_terminal = self.failed_closed && failure_seen;
+        if attempted != self.next_ordinal || (!complete && !failed_terminal) {
+            return Err(ExchangeError::Evidence);
+        }
+        Ok((completed, complete))
     }
 }
 

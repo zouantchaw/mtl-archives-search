@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https-broker-signer-trust-entry.schema.v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "schema_pin",
+    "signer_id",
+    "public_key_base64url",
+    "signature_algorithm",
+    "trust_status"
+  ],
+  "properties": {
+    "schema_version": { "const": "gate_h2_https_broker_signer_trust_entry_v1.0.0" },
+    "schema_pin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sha256", "bytes", "schema_version"],
+      "properties": {
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "bytes": { "type": "integer", "minimum": 1 },
+        "schema_version": { "const": "gate_h2_https_broker_signer_trust_entry_v1.0.0" }
+      }
+    },
+    "signer_id": { "$ref": "#/$defs/sha256" },
+    "public_key_base64url": { "type": "string", "pattern": "^[A-Za-z0-9_-]{43}$" },
+    "signature_algorithm": { "const": "ed25519" },
+    "trust_status": { "const": "trusted" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  }
+}

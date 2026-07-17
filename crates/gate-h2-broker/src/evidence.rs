@@ -134,6 +134,7 @@ pub struct EvidenceWriter {
     directory: PathBuf,
     signing_key: SigningKey,
     authority: AuthorityBindings,
+    store: Box<dyn EvidenceStore>,
     pub events: Vec<Event>,
     pub event_schema_pin: SchemaPin,
     pub transcript_schema_pin: SchemaPin,
@@ -147,6 +148,24 @@ impl EvidenceWriter {
         event_schema_pin: SchemaPin,
         transcript_schema_pin: SchemaPin,
         authority: AuthorityBindings,
+    ) -> io::Result<Self> {
+        Self::new_with_store(
+            directory,
+            signing_key_material,
+            event_schema_pin,
+            transcript_schema_pin,
+            authority,
+            Box::new(FilesystemEvidenceStore),
+        )
+    }
+
+    fn new_with_store(
+        directory: PathBuf,
+        signing_key_material: SecretBytes,
+        event_schema_pin: SchemaPin,
+        transcript_schema_pin: SchemaPin,
+        authority: AuthorityBindings,
+        store: Box<dyn EvidenceStore>,
     ) -> io::Result<Self> {
         validate_schema_pin(
             &event_schema_pin,
@@ -193,11 +212,32 @@ impl EvidenceWriter {
             directory,
             signing_key,
             authority,
+            store,
             events: Vec::new(),
             event_schema_pin,
             transcript_schema_pin,
             sealed: false,
         })
+    }
+
+    #[cfg(test)]
+    pub(crate) fn new_faulting_for_test(
+        directory: PathBuf,
+        signing_key_material: SecretBytes,
+        event_schema_pin: SchemaPin,
+        transcript_schema_pin: SchemaPin,
+        authority: AuthorityBindings,
+        target: EvidenceFaultTarget,
+        point: EvidenceFaultPoint,
+    ) -> io::Result<Self> {
+        Self::new_with_store(
+            directory,
+            signing_key_material,
+            event_schema_pin,
+            transcript_schema_pin,
+            authority,
+            Box::new(FaultEvidenceStore::new(target, point)),
+        )
     }
 
     pub fn append(&mut self, mut event: Event) -> io::Result<()> {
@@ -208,12 +248,13 @@ impl EvidenceWriter {
             ));
         }
         event.event_id = domain_id(EVENT_DOMAIN, &event, "event_id")?;
-        let bytes = canonical_json(&serde_json::to_value(&event)?);
-        atomic_fsync(
+        let bytes = canonical_json_line(&serde_json::to_value(&event)?);
+        self.store.persist(
+            EvidenceRecord::Event,
             &self
                 .directory
                 .join(format!("event-{:04}.json", event.sequence)),
-            bytes.as_bytes(),
+            &bytes,
             0o600,
         )?;
         self.events.push(event);
@@ -228,9 +269,14 @@ impl EvidenceWriter {
             ));
         }
         transcript.transcript_id = domain_id(TRANSCRIPT_DOMAIN, &transcript, "transcript_id")?;
-        let transcript_bytes = canonical_json(&serde_json::to_value(&transcript)?);
+        let transcript_bytes = canonical_json_line(&serde_json::to_value(&transcript)?);
         let transcript_path = self.directory.join("transcript.v1.json");
-        atomic_fsync(&transcript_path, transcript_bytes.as_bytes(), 0o600)?;
+        self.store.persist(
+            EvidenceRecord::Transcript,
+            &transcript_path,
+            &transcript_bytes,
+            0o600,
+        )?;
 
         let public_key_base64url =
             URL_SAFE_NO_PAD.encode(self.signing_key.verifying_key().as_bytes());
@@ -239,7 +285,7 @@ impl EvidenceWriter {
             schema_pin: self.authority.schema_pin.clone(),
             envelope_id: String::new(),
             transcript_id: transcript.transcript_id.clone(),
-            transcript_sha256: hex::encode(Sha256::digest(transcript_bytes.as_bytes())),
+            transcript_sha256: hex::encode(Sha256::digest(&transcript_bytes)),
             manifest_id: transcript.manifest_id.clone(),
             d1_attempt_id: self.authority.d1_attempt_id.clone(),
             d1_begin_sha256: self.authority.d1_begin_sha256.clone(),
@@ -263,15 +309,127 @@ impl EvidenceWriter {
             .signing_key
             .sign(&[SIGNATURE_DOMAIN, unsigned.as_bytes()].concat());
         envelope.signature_base64url = URL_SAFE_NO_PAD.encode(signature.to_bytes());
-        let envelope_bytes = canonical_json(&serde_json::to_value(&envelope)?);
-        atomic_fsync(
+        let envelope_bytes = canonical_json_line(&serde_json::to_value(&envelope)?);
+        self.store.persist(
+            EvidenceRecord::Envelope,
             &self.directory.join("transcript.authority.v2.json"),
-            envelope_bytes.as_bytes(),
+            &envelope_bytes,
             0o600,
         )?;
-        File::open(&self.directory)?.sync_all()?;
+        self.store.sync_directory(&self.directory)?;
         self.sealed = true;
         Ok((transcript_path, transcript.transcript_id))
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum EvidenceRecord {
+    Event,
+    Transcript,
+    Envelope,
+}
+
+trait EvidenceStore: Send {
+    fn persist(
+        &self,
+        record: EvidenceRecord,
+        path: &Path,
+        bytes: &[u8],
+        mode: u32,
+    ) -> io::Result<()>;
+    fn sync_directory(&self, directory: &Path) -> io::Result<()>;
+}
+
+struct FilesystemEvidenceStore;
+
+impl EvidenceStore for FilesystemEvidenceStore {
+    fn persist(
+        &self,
+        _record: EvidenceRecord,
+        path: &Path,
+        bytes: &[u8],
+        mode: u32,
+    ) -> io::Result<()> {
+        atomic_fsync(path, bytes, mode)
+    }
+
+    fn sync_directory(&self, directory: &Path) -> io::Result<()> {
+        File::open(directory)?.sync_all()
+    }
+}
+
+#[cfg(test)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum EvidenceFaultTarget {
+    Event(usize),
+    Transcript,
+    Envelope,
+    FinalDirectorySync,
+}
+
+#[cfg(test)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum EvidenceFaultPoint {
+    Append,
+    Fsync,
+}
+
+#[cfg(test)]
+struct FaultEvidenceStore {
+    target: EvidenceFaultTarget,
+    point: EvidenceFaultPoint,
+    event_index: Mutex<usize>,
+}
+
+#[cfg(test)]
+impl FaultEvidenceStore {
+    fn new(target: EvidenceFaultTarget, point: EvidenceFaultPoint) -> Self {
+        Self {
+            target,
+            point,
+            event_index: Mutex::new(0),
+        }
+    }
+
+    fn targets(&self, record: EvidenceRecord) -> bool {
+        match (self.target, record) {
+            (EvidenceFaultTarget::Event(expected), EvidenceRecord::Event) => {
+                let mut index = self.event_index.lock().expect("fault counter poisoned");
+                let matches = *index == expected;
+                *index += 1;
+                matches
+            }
+            (EvidenceFaultTarget::Transcript, EvidenceRecord::Transcript)
+            | (EvidenceFaultTarget::Envelope, EvidenceRecord::Envelope) => true,
+            _ => false,
+        }
+    }
+}
+
+#[cfg(test)]
+impl EvidenceStore for FaultEvidenceStore {
+    fn persist(
+        &self,
+        record: EvidenceRecord,
+        path: &Path,
+        bytes: &[u8],
+        mode: u32,
+    ) -> io::Result<()> {
+        if !self.targets(record) {
+            return atomic_fsync(path, bytes, mode);
+        }
+        if self.point == EvidenceFaultPoint::Append {
+            return Err(io::Error::other("injected evidence append failure"));
+        }
+        atomic_write_without_sync(path, bytes, mode)?;
+        Err(io::Error::other("injected evidence fsync failure"))
+    }
+
+    fn sync_directory(&self, directory: &Path) -> io::Result<()> {
+        if self.target == EvidenceFaultTarget::FinalDirectorySync {
+            return Err(io::Error::other("injected final directory fsync failure"));
+        }
+        File::open(directory)?.sync_all()
     }
 }
 
@@ -324,6 +482,12 @@ pub fn canonical_json(value: &Value) -> String {
             )
         }
     }
+}
+
+fn canonical_json_line(value: &Value) -> Vec<u8> {
+    let mut bytes = canonical_json(value).into_bytes();
+    bytes.push(b'\n');
+    bytes
 }
 
 fn unsigned_envelope_bytes(envelope: &AuthorityEnvelope) -> io::Result<String> {
@@ -433,27 +597,36 @@ fn create_private_directory(path: &Path) -> io::Result<()> {
 }
 
 fn atomic_fsync(path: &Path, bytes: &[u8], mode: u32) -> io::Result<()> {
-    atomic_fsync_inner(path, bytes, mode, true)
+    atomic_fsync_inner(path, bytes, mode)
 }
 
 fn atomic_fsync_raw(path: &Path, bytes: &[u8], mode: u32) -> io::Result<()> {
-    atomic_fsync_inner(path, bytes, mode, false)
+    atomic_fsync_inner(path, bytes, mode)
 }
 
-fn atomic_fsync_inner(path: &Path, bytes: &[u8], mode: u32, newline: bool) -> io::Result<()> {
+fn atomic_fsync_inner(path: &Path, bytes: &[u8], mode: u32) -> io::Result<()> {
     use std::os::unix::fs::OpenOptionsExt;
     let temporary = path.with_extension("tmp");
     let mut options = OpenOptions::new();
     options.write(true).create_new(true).mode(mode);
     let mut file = options.open(&temporary)?;
     file.write_all(bytes)?;
-    if newline {
-        file.write_all(b"\n")?;
-    }
     file.sync_all()?;
     drop(file);
     fs::rename(&temporary, path)?;
     File::open(path.parent().expect("path has parent"))?.sync_all()
+}
+
+#[cfg(test)]
+fn atomic_write_without_sync(path: &Path, bytes: &[u8], mode: u32) -> io::Result<()> {
+    use std::os::unix::fs::OpenOptionsExt;
+    let temporary = path.with_extension("tmp");
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(mode)
+        .open(temporary)?;
+    file.write_all(bytes)
 }
 
 pub struct CommittedOutput {
