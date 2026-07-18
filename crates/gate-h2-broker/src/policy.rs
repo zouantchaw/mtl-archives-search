@@ -7,6 +7,7 @@ use sha2::{Digest, Sha256};
 
 pub const CAPABILITY_DOMAIN: &[u8] = b"gate-h2-https-exchange-capability-v1-schema-bound\0";
 pub const MANIFEST_DOMAIN: &[u8] = b"gate-h2-https-exchange-manifest-v1-schema-bound\0";
+pub const MAX_EXCHANGE_DEADLINE_MS: u64 = 300_000;
 
 pub fn validate_manifest(manifest: &Manifest) -> Result<(), &'static str> {
     if manifest.schema_version != "gate_h2_https_exchange_manifest_v1.0.0"
@@ -68,7 +69,7 @@ fn validate_capability(
         || c.response_byte_cap == 0
         || c.response_byte_cap > 16_777_216
         || !(1..=30_000).contains(&c.connect_deadline_ms)
-        || !(1..=300_000).contains(&c.exchange_deadline_ms)
+        || !(1..=MAX_EXCHANGE_DEADLINE_MS).contains(&c.exchange_deadline_ms)
         || c.connect_deadline_ms > c.exchange_deadline_ms
         || c.content_encoding != "identity"
         || c.redirect_policy != "forbid_all"
@@ -298,6 +299,7 @@ fn forbidden_v4(v: Ipv4Addr) -> bool {
         (0xa9fe0000, 16),
         (0xac100000, 12),
         (0xc0000000, 24),
+        (0xc01fc400, 24),
         (0xc0000200, 24),
         (0xc034c100, 24),
         (0xc0586300, 24),
@@ -353,6 +355,26 @@ mod tests {
         assert!(!is_forbidden(
             "2606:2800:220:1:248:1893:25c8:1946".parse().unwrap()
         ));
+    }
+
+    #[test]
+    fn rejects_as112_v4_boundaries_and_ipv4_mapped_aliases_only_inside_the_prefix() {
+        for value in [
+            "192.31.196.0",
+            "192.31.196.255",
+            "::ffff:192.31.196.0",
+            "::ffff:192.31.196.255",
+        ] {
+            assert!(is_forbidden(value.parse().unwrap()), "{value}");
+        }
+        for value in [
+            "192.31.195.255",
+            "192.31.197.0",
+            "::ffff:192.31.195.255",
+            "::ffff:192.31.197.0",
+        ] {
+            assert!(!is_forbidden(value.parse().unwrap()), "{value}");
+        }
     }
 
     #[test]

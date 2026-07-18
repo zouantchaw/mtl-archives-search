@@ -1,7 +1,9 @@
 import { createHash } from "node:crypto";
-import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { createDurableDirectory } from "./secure-files.mjs";
 
 const [layerPath, layoutPath, archivePath, mode] = process.argv.slice(2);
 if (!layerPath || !layoutPath || !archivePath) throw new Error("layer, layout, and archive paths are required");
@@ -16,7 +18,9 @@ const writeBlob = (bytes) => {
   return { digest: `sha256:${digest}`, size: bytes.length };
 };
 
-mkdirSync(join(layoutPath, "blobs", "sha256"), { recursive: true, mode: 0o755 });
+createDurableDirectory(layoutPath, 0o755);
+createDurableDirectory(join(layoutPath, "blobs"), 0o755);
+createDurableDirectory(join(layoutPath, "blobs", "sha256"), 0o755);
 for (const directory of [layoutPath, join(layoutPath, "blobs"), join(layoutPath, "blobs", "sha256")]) chmodSync(directory, 0o755);
 const layerBytes = readFileSync(layerPath);
 const layer = writeBlob(layerBytes);
@@ -47,5 +51,5 @@ writeFileSync(join(layoutPath, "index.json"), `${JSON.stringify({
 })}\n`, { mode: 0o444, flag: "wx" });
 chmodSync(join(layoutPath, "oci-layout"), 0o444);
 chmodSync(join(layoutPath, "index.json"), 0o444);
-if (mode !== "--layout-only") execFileSync("tar", ["--sort=name", "--mtime=@0", "--owner=0", "--group=0", "--numeric-owner", "-C", layoutPath, "-cf", archivePath, "."]);
+if (mode !== "--layout-only") execFileSync(process.execPath, [join(dirname(fileURLToPath(import.meta.url)), "create-canonical-tar.mjs"), layoutPath, archivePath]);
 process.stdout.write(`${manifest.digest}\n`);

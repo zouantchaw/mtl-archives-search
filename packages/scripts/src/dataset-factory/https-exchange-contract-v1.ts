@@ -397,8 +397,9 @@ export function validateAuthorityEnvelopeV2(
     Buffer.from(`${AUTHORITY_SIGNATURE_DOMAIN}\0`),
     Buffer.from(jcs(unsignedSignature)),
   ]);
-  const signature = Buffer.from(envelope.signature_base64url as string, "base64url");
-  if (signature.length !== 64 || !crypto.verify(null, message, crypto.createPublicKey({ key: spki, format: "der", type: "spki" }), signature)) fail("HTTPS_AUTHORITY_SIGNATURE", "authority Ed25519 signature mismatch");
+  const signatureBase64url = envelope.signature_base64url as string;
+  const signature = Buffer.from(signatureBase64url, "base64url");
+  if (signature.length !== 64 || signature.toString("base64url") !== signatureBase64url || !crypto.verify(null, message, crypto.createPublicKey({ key: spki, format: "der", type: "spki" }), signature)) fail("HTTPS_AUTHORITY_SIGNATURE", "authority Ed25519 signature mismatch");
 }
 
 export function validateCompletedTranscriptOutputs(value: Json, manifestValue: Json, retainedOutputs: Json[]): void {
@@ -545,6 +546,13 @@ export function selfTest(): void {
   };
   signEnvelope(envelope, trustedSigner.privateKey);
   validateAuthorityEnvelopeV2(envelope, transcriptBytes, manifest, trustEntryBytes);
+  const aliasedSignatureEnvelope = structuredClone(envelope);
+  const base64urlAlphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+  const canonicalLastIndex = base64urlAlphabet.indexOf(aliasedSignatureEnvelope.signature_base64url.at(-1));
+  if (canonicalLastIndex < 0 || canonicalLastIndex % 16 !== 0) throw new Error("test signature did not use canonical 64-byte base64url trailing bits");
+  aliasedSignatureEnvelope.signature_base64url = `${aliasedSignatureEnvelope.signature_base64url.slice(0, -1)}${base64urlAlphabet[canonicalLastIndex + 1]}`;
+  if (!Buffer.from(aliasedSignatureEnvelope.signature_base64url, "base64url").equals(Buffer.from(envelope.signature_base64url, "base64url"))) throw new Error("test signature alias changed decoded bytes");
+  expectCode("HTTPS_AUTHORITY_SIGNATURE", () => validateAuthorityEnvelopeV2(aliasedSignatureEnvelope, transcriptBytes, manifest, trustEntryBytes));
   expectCode("HTTPS_TRANSCRIPT_BYTES", () => validateAuthorityEnvelopeV2(envelope, Buffer.concat([Buffer.from(" "), transcriptBytes]), manifest, trustEntryBytes));
   expectCode("HTTPS_TRANSCRIPT_BYTES", () => validateAuthorityEnvelopeV2(envelope, transcriptBytes.subarray(0, transcriptBytes.length - 1), manifest, trustEntryBytes));
   const attacker = makeSigner();

@@ -1,5 +1,5 @@
 use std::{
-    io::{Read, Write},
+    io::{self, Read, Write},
     net::{IpAddr, SocketAddr, TcpStream, ToSocketAddrs},
     sync::Arc,
     time::{Duration, Instant},
@@ -225,14 +225,13 @@ impl NetworkClient for ProductionNetworkClient {
             verify_connected_peer(&answers, peer).map_err(|_| NetworkFailure::DnsRebinding)?;
         }
 
-        set_deadlines(&tcp, exchange_started, request.exchange_deadline)?;
         let server_name =
             ServerName::try_from(request.hostname.to_owned()).map_err(|_| NetworkFailure::Tls)?;
         let connection = ClientConnection::new(Arc::clone(&self.tls_config), server_name)
             .map_err(|_| NetworkFailure::Tls)?;
-        let mut stream = StreamOwned::new(connection, tcp);
+        let socket = DeadlineTcpStream::new(tcp, exchange_started, request.exchange_deadline);
+        let mut stream = StreamOwned::new(connection, socket);
         while stream.conn.is_handshaking() {
-            set_deadlines(&stream.sock, exchange_started, request.exchange_deadline)?;
             stream
                 .conn
                 .complete_io(&mut stream.sock)
@@ -266,7 +265,7 @@ impl NetworkClient for ProductionNetworkClient {
 }
 
 fn write_request(
-    stream: &mut StreamOwned<ClientConnection, TcpStream>,
+    stream: &mut StreamOwned<ClientConnection, DeadlineTcpStream>,
     request: &NetworkRequest<'_>,
     started: Instant,
 ) -> Result<(), NetworkFailure> {
@@ -310,21 +309,61 @@ fn write_request(
         request.exchange_deadline,
     )?;
     write_piece(stream, request.body, started, request.exchange_deadline)?;
-    stream.flush().map_err(map_tls_io)
+    flush_tls_before(stream, started, request.exchange_deadline)
 }
 
 fn write_piece(
-    stream: &mut StreamOwned<ClientConnection, TcpStream>,
+    stream: &mut StreamOwned<ClientConnection, DeadlineTcpStream>,
     bytes: &[u8],
     started: Instant,
     deadline: Duration,
 ) -> Result<(), NetworkFailure> {
-    set_deadlines(&stream.sock, started, deadline)?;
-    stream.write_all(bytes).map_err(map_tls_io)
+    let mut queued = 0;
+    while queued < bytes.len() {
+        let count = stream
+            .conn
+            .writer()
+            .write(&bytes[queued..])
+            .map_err(map_tls_io)?;
+        if count == 0 {
+            return Err(NetworkFailure::Framing);
+        }
+        queued += count;
+        drive_tls_writes_before(stream, started, deadline)?;
+    }
+    Ok(())
+}
+
+fn drive_tls_writes_before(
+    stream: &mut StreamOwned<ClientConnection, DeadlineTcpStream>,
+    started: Instant,
+    deadline: Duration,
+) -> Result<(), NetworkFailure> {
+    while stream.conn.wants_write() {
+        remaining(started, deadline)?;
+        if stream
+            .conn
+            .write_tls(&mut stream.sock)
+            .map_err(map_tls_io)?
+            == 0
+        {
+            return Err(NetworkFailure::Framing);
+        }
+    }
+    Ok(())
+}
+
+fn flush_tls_before(
+    stream: &mut StreamOwned<ClientConnection, DeadlineTcpStream>,
+    started: Instant,
+    deadline: Duration,
+) -> Result<(), NetworkFailure> {
+    drive_tls_writes_before(stream, started, deadline)?;
+    stream.sock.flush().map_err(map_io)
 }
 
 fn read_response(
-    stream: &mut StreamOwned<ClientConnection, TcpStream>,
+    stream: &mut StreamOwned<ClientConnection, DeadlineTcpStream>,
     cap: u64,
     started: Instant,
     deadline: Duration,
@@ -333,7 +372,7 @@ fn read_response(
     let mut bytes = Vec::with_capacity((cap + MAX_UPSTREAM_HEADER_BYTES).min(64 * 1024));
     let mut chunk = [0_u8; 8192];
     let header_end = loop {
-        set_deadlines(&stream.sock, started, deadline)?;
+        remaining(started, deadline)?;
         let read = stream.read(&mut chunk).map_err(map_tls_io)?;
         if read == 0 {
             return Err(NetworkFailure::Framing);
@@ -359,7 +398,7 @@ fn read_response(
         return Err(NetworkFailure::Framing);
     }
     while bytes.len() < header_end + body_length {
-        set_deadlines(&stream.sock, started, deadline)?;
+        remaining(started, deadline)?;
         let read = stream.read(&mut chunk).map_err(map_tls_io)?;
         if read == 0 {
             return Err(NetworkFailure::Framing);
@@ -369,7 +408,7 @@ fn read_response(
             return Err(NetworkFailure::Framing);
         }
     }
-    set_deadlines(&stream.sock, started, deadline)?;
+    remaining(started, deadline)?;
     match stream.read(&mut chunk[..1]) {
         Ok(0) => {}
         Ok(_) => return Err(NetworkFailure::Framing),
@@ -484,14 +523,55 @@ fn remaining(started: Instant, deadline: Duration) -> Result<Duration, NetworkFa
         .ok_or(NetworkFailure::Deadline)
 }
 
-fn set_deadlines(
-    stream: &TcpStream,
+struct DeadlineTcpStream {
+    stream: TcpStream,
     started: Instant,
     deadline: Duration,
-) -> Result<(), NetworkFailure> {
-    let remaining = remaining(started, deadline)?;
-    stream.set_read_timeout(Some(remaining)).map_err(map_io)?;
-    stream.set_write_timeout(Some(remaining)).map_err(map_io)
+}
+
+impl DeadlineTcpStream {
+    fn new(stream: TcpStream, started: Instant, deadline: Duration) -> Self {
+        Self {
+            stream,
+            started,
+            deadline,
+        }
+    }
+
+    fn remaining(&self) -> io::Result<Duration> {
+        remaining(self.started, self.deadline)
+            .map_err(|_| io::Error::new(io::ErrorKind::TimedOut, "exchange deadline exceeded"))
+    }
+
+    fn finish<T>(&self, result: io::Result<T>) -> io::Result<T> {
+        self.remaining()?;
+        result
+    }
+}
+
+impl Read for DeadlineTcpStream {
+    fn read(&mut self, bytes: &mut [u8]) -> io::Result<usize> {
+        let remaining = self.remaining()?;
+        self.stream.set_read_timeout(Some(remaining))?;
+        let result = self.stream.read(bytes);
+        self.finish(result)
+    }
+}
+
+impl Write for DeadlineTcpStream {
+    fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+        let remaining = self.remaining()?;
+        self.stream.set_write_timeout(Some(remaining))?;
+        let result = self.stream.write(bytes);
+        self.finish(result)
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        let remaining = self.remaining()?;
+        self.stream.set_write_timeout(Some(remaining))?;
+        let result = self.stream.flush();
+        self.finish(result)
+    }
 }
 
 fn map_io(error: std::io::Error) -> NetworkFailure {
@@ -540,7 +620,11 @@ mod tests {
     use super::*;
     use rustls::{ServerConfig, ServerConnection};
     use rustls_pki_types::{PrivateKeyDer, PrivatePkcs8KeyDer};
-    use std::{net::TcpListener, thread};
+    use std::{
+        net::TcpListener,
+        sync::atomic::{AtomicBool, Ordering},
+        thread,
+    };
 
     struct FixtureResolver(Vec<IpAddr>);
     impl Resolver for FixtureResolver {
@@ -551,6 +635,45 @@ mod tests {
             _: Duration,
         ) -> Result<Vec<IpAddr>, NetworkFailure> {
             Ok(self.0.clone())
+        }
+    }
+
+    fn fixture_tls_config() -> (CertificateDer<'static>, Arc<ServerConfig>) {
+        let rcgen::CertifiedKey { cert, signing_key } =
+            rcgen::generate_simple_self_signed(vec!["fixture.example".into()]).unwrap();
+        let certificate = cert.der().clone();
+        let private_key =
+            PrivateKeyDer::Pkcs8(PrivatePkcs8KeyDer::from(signing_key.serialize_der()));
+        let provider = rustls::crypto::aws_lc_rs::default_provider();
+        let mut config = ServerConfig::builder_with_provider(Arc::new(provider))
+            .with_protocol_versions(&[&rustls::version::TLS13])
+            .unwrap()
+            .with_no_client_auth()
+            .with_single_cert(vec![certificate.clone()], private_key)
+            .unwrap();
+        config.alpn_protocols = vec![b"http/1.1".to_vec()];
+        (certificate, Arc::new(config))
+    }
+
+    fn fixture_client(certificate: CertificateDer<'static>) -> ProductionNetworkClient {
+        let roots = vec![certificate];
+        let pin = trust_root_file_pin(&roots);
+        ProductionNetworkClient::from_roots(
+            roots,
+            &pin,
+            Arc::new(FixtureResolver(vec!["127.0.0.1".parse().unwrap()])),
+            true,
+        )
+        .unwrap()
+    }
+
+    fn trickle_prefix(stream: &mut TcpStream, bytes: &[u8], stop: &AtomicBool, byte_cap: usize) {
+        for byte in bytes.iter().take(byte_cap) {
+            if stop.load(Ordering::Relaxed) || stream.write_all(std::slice::from_ref(byte)).is_err()
+            {
+                return;
+            }
+            thread::sleep(Duration::from_millis(10));
         }
     }
 
@@ -777,6 +900,197 @@ mod tests {
             ]
         ));
         server.join().unwrap();
+    }
+
+    #[test]
+    fn upstream_request_writes_share_one_deadline_despite_partial_progress() {
+        let rcgen::CertifiedKey { cert, signing_key } =
+            rcgen::generate_simple_self_signed(vec!["fixture.example".into()]).unwrap();
+        let certificate = cert.der().clone();
+        let private_key =
+            PrivateKeyDer::Pkcs8(PrivatePkcs8KeyDer::from(signing_key.serialize_der()));
+        let provider = rustls::crypto::aws_lc_rs::default_provider();
+        let mut server_config = ServerConfig::builder_with_provider(Arc::new(provider))
+            .with_protocol_versions(&[&rustls::version::TLS13])
+            .unwrap()
+            .with_no_client_auth()
+            .with_single_cert(vec![certificate.clone()], private_key)
+            .unwrap();
+        server_config.alpn_protocols = vec![b"http/1.1".to_vec()];
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let server = thread::spawn(move || {
+            let (tcp, _) = listener.accept().unwrap();
+            tcp.set_read_timeout(Some(Duration::from_millis(50)))
+                .unwrap();
+            let connection = ServerConnection::new(Arc::new(server_config)).unwrap();
+            let mut tls = StreamOwned::new(connection, tcp);
+            let started = Instant::now();
+            let mut chunk = [0_u8; 1024];
+            while started.elapsed() < Duration::from_millis(250) {
+                match tls.read(&mut chunk) {
+                    Ok(0) | Err(_) => break,
+                    Ok(_) => thread::sleep(Duration::from_millis(5)),
+                }
+            }
+        });
+        let roots = vec![certificate];
+        let pin = trust_root_file_pin(&roots);
+        let client = ProductionNetworkClient::from_roots(
+            roots,
+            &pin,
+            Arc::new(FixtureResolver(vec!["127.0.0.1".parse().unwrap()])),
+            true,
+        )
+        .unwrap();
+        let body = vec![0x5a; 32 * 1024 * 1024];
+        let started = Instant::now();
+        let result = client.exchange(
+            NetworkRequest {
+                hostname: "fixture.example",
+                port,
+                method: "POST",
+                path_query: "/slow-reader",
+                auth: None,
+                body: &body,
+                connect_deadline: Duration::from_secs(1),
+                exchange_deadline: Duration::from_millis(80),
+                response_byte_cap: 1,
+            },
+            &mut |_| Ok(()),
+        );
+        assert!(matches!(result, Err(NetworkFailure::Deadline)));
+        assert!(started.elapsed() < Duration::from_millis(500));
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn trickled_tls_handshake_bytes_cannot_exceed_absolute_deadline() {
+        let (certificate, server_config) = fixture_tls_config();
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let stop = Arc::new(AtomicBool::new(false));
+        let server_stop = Arc::clone(&stop);
+        let server = thread::spawn(move || {
+            let (mut tcp, _) = listener.accept().unwrap();
+            tcp.set_read_timeout(Some(Duration::from_secs(1))).unwrap();
+            tcp.set_write_timeout(Some(Duration::from_secs(1))).unwrap();
+            let mut connection = ServerConnection::new(server_config).unwrap();
+            while !connection.wants_write() {
+                if connection.read_tls(&mut tcp).unwrap() == 0 {
+                    return;
+                }
+                connection.process_new_packets().unwrap();
+            }
+            let mut handshake_flight = Vec::new();
+            while connection.wants_write() {
+                connection.write_tls(&mut handshake_flight).unwrap();
+            }
+            assert!(handshake_flight.len() > 40);
+            trickle_prefix(&mut tcp, &handshake_flight, &server_stop, 40);
+        });
+
+        let client = fixture_client(certificate);
+        let mut milestones = Vec::new();
+        let started = Instant::now();
+        let result = client.exchange(
+            NetworkRequest {
+                hostname: "fixture.example",
+                port,
+                method: "GET",
+                path_query: "/",
+                auth: None,
+                body: b"",
+                connect_deadline: Duration::from_secs(1),
+                exchange_deadline: Duration::from_millis(100),
+                response_byte_cap: 1,
+            },
+            &mut |milestone| {
+                milestones.push(milestone);
+                Ok(())
+            },
+        );
+        stop.store(true, Ordering::Relaxed);
+        server.join().unwrap();
+
+        assert!(matches!(result, Err(NetworkFailure::Deadline)));
+        assert!(started.elapsed() < Duration::from_secs(1));
+        assert!(matches!(
+            milestones.as_slice(),
+            [NetworkMilestone::DnsResolved { .. }]
+        ));
+    }
+
+    #[test]
+    fn trickled_encrypted_response_records_cannot_exceed_absolute_deadline() {
+        let (certificate, server_config) = fixture_tls_config();
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let stop = Arc::new(AtomicBool::new(false));
+        let server_stop = Arc::clone(&stop);
+        let server = thread::spawn(move || {
+            let (tcp, _) = listener.accept().unwrap();
+            tcp.set_read_timeout(Some(Duration::from_secs(1))).unwrap();
+            tcp.set_write_timeout(Some(Duration::from_secs(1))).unwrap();
+            let connection = ServerConnection::new(server_config).unwrap();
+            let mut tls = StreamOwned::new(connection, tcp);
+            let mut request = Vec::new();
+            let mut chunk = [0_u8; 1024];
+            while !request.windows(4).any(|window| window == b"\r\n\r\n") {
+                match tls.read(&mut chunk) {
+                    Ok(0) | Err(_) => return,
+                    Ok(read) => request.extend_from_slice(&chunk[..read]),
+                }
+            }
+
+            tls.conn
+                .writer()
+                .write_all(
+                    b"HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: 2\r\nconnection: close\r\n\r\n{}",
+                )
+                .unwrap();
+            tls.conn.send_close_notify();
+            let mut encrypted_response = Vec::new();
+            while tls.conn.wants_write() {
+                tls.conn.write_tls(&mut encrypted_response).unwrap();
+            }
+            assert!(encrypted_response.len() > 40);
+            trickle_prefix(&mut tls.sock, &encrypted_response, &server_stop, 40);
+        });
+
+        let client = fixture_client(certificate);
+        let mut milestones = Vec::new();
+        let started = Instant::now();
+        let result = client.exchange(
+            NetworkRequest {
+                hostname: "fixture.example",
+                port,
+                method: "GET",
+                path_query: "/",
+                auth: None,
+                body: b"",
+                connect_deadline: Duration::from_secs(1),
+                exchange_deadline: Duration::from_millis(150),
+                response_byte_cap: 2,
+            },
+            &mut |milestone| {
+                milestones.push(milestone);
+                Ok(())
+            },
+        );
+        stop.store(true, Ordering::Relaxed);
+        server.join().unwrap();
+
+        assert!(matches!(result, Err(NetworkFailure::Deadline)));
+        assert!(started.elapsed() < Duration::from_secs(1));
+        assert!(matches!(
+            milestones.as_slice(),
+            [
+                NetworkMilestone::DnsResolved { .. },
+                NetworkMilestone::TlsVerified { .. },
+                NetworkMilestone::RequestSent,
+            ]
+        ));
     }
 
     #[test]

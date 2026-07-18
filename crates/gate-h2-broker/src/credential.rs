@@ -17,9 +17,9 @@ impl SecretBytes {
     pub fn from_sealed_inherited_fd(
         fd: RawFd,
         expected_commitment: &str,
-        max_bytes: usize,
+        expected_bytes: usize,
     ) -> io::Result<Self> {
-        if max_bytes == 0 || max_bytes > MAX_SECRET_BYTES {
+        if expected_bytes == 0 || expected_bytes > MAX_SECRET_BYTES {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
                 "invalid secret descriptor bound",
@@ -28,14 +28,18 @@ impl SecretBytes {
         validate_sealed_memfd(fd)?;
         let owned = unsafe { OwnedFd::from_raw_fd(fd) };
         let mut file = std::fs::File::from(owned);
-        let mut bytes = Zeroizing::new(Vec::with_capacity(max_bytes.min(4096)));
+        let mut bytes = Zeroizing::new(Vec::with_capacity(expected_bytes.min(4096)));
         let mut chunk = Zeroizing::new([0_u8; 4096]);
         loop {
             let read = file.read(&mut *chunk)?;
             if read == 0 {
                 break;
             }
-            if bytes.len().saturating_add(read) > max_bytes {
+            if bytes
+                .len()
+                .checked_add(read)
+                .is_none_or(|size| size > expected_bytes)
+            {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidData,
                     "secret descriptor exceeds bound",
@@ -43,6 +47,12 @@ impl SecretBytes {
             }
             bytes.extend_from_slice(&chunk[..read]);
             chunk[..read].zeroize();
+        }
+        if bytes.len() != expected_bytes {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "secret descriptor length mismatch",
+            ));
         }
         if bytes.is_empty()
             || bytes
@@ -140,10 +150,51 @@ mod tests {
         let bytes = b"fixture-secret";
         let commitment = hex::encode(Sha256::digest(bytes));
         let secret =
-            SecretBytes::from_sealed_inherited_fd(memfd(bytes, true), &commitment, 64).unwrap();
+            SecretBytes::from_sealed_inherited_fd(memfd(bytes, true), &commitment, bytes.len())
+                .unwrap();
         assert_eq!(secret.expose(), bytes);
         assert!(
-            SecretBytes::from_sealed_inherited_fd(memfd(bytes, false), &commitment, 64).is_err()
+            SecretBytes::from_sealed_inherited_fd(memfd(bytes, false), &commitment, bytes.len())
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn production_secret_reader_enforces_exact_length() {
+        let bytes = b"fixture-secret";
+        let commitment = hex::encode(Sha256::digest(bytes));
+        assert!(
+            SecretBytes::from_sealed_inherited_fd(
+                memfd(bytes, true),
+                &commitment,
+                bytes.len() - 1,
+            )
+            .is_err()
+        );
+        assert!(
+            SecretBytes::from_sealed_inherited_fd(
+                memfd(bytes, true),
+                &commitment,
+                bytes.len() + 1,
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn production_signing_key_representation_passes_sealed_memfd_reader() {
+        let bytes = b"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+        assert_eq!(bytes.len(), crate::evidence::SIGNING_KEY_BASE64URL_BYTES);
+        let commitment = hex::encode(Sha256::digest(bytes));
+        let secret = SecretBytes::from_sealed_inherited_fd(
+            memfd(bytes, true),
+            &commitment,
+            crate::evidence::SIGNING_KEY_BASE64URL_BYTES,
+        )
+        .unwrap();
+        assert_eq!(
+            secret.expose().len(),
+            crate::evidence::SIGNING_KEY_BASE64URL_BYTES
         );
     }
 }

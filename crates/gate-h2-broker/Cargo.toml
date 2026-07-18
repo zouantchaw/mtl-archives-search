@@ -5,6 +5,10 @@ edition = "2024"
 license = "MIT"
 publish = false
 
+[features]
+default = []
+test-fault-injection = []
+
 [lib]
 name = "gate_h2_broker"
 
@@ -15,6 +19,14 @@ path = "src/bin/broker.rs"
 [[bin]]
 name = "gate-h2-stage-runtime"
 path = "src/bin/stage_runtime.rs"
+
+[[bin]]
+name = "gate-h2-publish-noreplace"
+path = "src/bin/publish_noreplace.rs"
+
+[[bin]]
+name = "gate-h2-secure-candidate-read"
+path = "src/bin/secure_candidate_read.rs"
 
 [dependencies]
 base64 = "=0.22.1"

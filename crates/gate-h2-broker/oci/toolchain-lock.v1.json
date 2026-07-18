@@ -1,7 +1,7 @@
 {
   "schema_version": "gate_h2_hermetic_builder_lock_v2.0.0",
   "target": "x86_64-unknown-linux-musl",
-  "identity_basis": "single_reviewed_digest_pinned_builder_image",
+  "identity_basis": "single_reviewed_digest_pinned_builder_image_plus_exact_source_allowlist",
   "builder_image": {
     "reference_requirement": "name@sha256:<64-lowercase-hex>",
     "digest_algorithm": "sha256",
@@ -12,7 +12,6 @@
       "cmp",
       "coreutils",
       "findutils",
-      "git",
       "grep",
       "musl-gcc",
       "node",
@@ -23,6 +22,8 @@
       "vendored-cargo-registry"
     ]
   },
-  "host_boundary": "linux_container_engine_only_no_output_assembly",
+  "host_boundary": "linux_container_engine_plus_host_admission_publication_with_retained_fds",
+  "cargo_target_mount": "/gate-h2-build executable nosuid nodev mode 0700 uid 0 gid 0; /tmp remains noexec nosuid nodev",
+  "host_helpers": "two independent static musl builds plus exact manifest and builder-stdout manifest digest; host compares and executes only retained verified fds",
   "oci_assembly": "deterministic_uncompressed_layer_oci_layout_v1"
 }

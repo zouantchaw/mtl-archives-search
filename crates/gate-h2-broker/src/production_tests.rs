@@ -54,6 +54,65 @@ fn response_from_http(bytes: &[u8]) -> ExchangeResponse {
     serde_json::from_slice(body).unwrap()
 }
 
+fn acknowledge_terminal_delivery(
+    directory: &std::path::Path,
+    response_http: &[u8],
+    request: &ExchangeRequest,
+    manifest: &Manifest,
+) -> Vec<u8> {
+    acknowledge_terminal_delivery_with_receipt(directory, response_http, request, manifest, None)
+}
+
+fn acknowledge_terminal_delivery_with_receipt(
+    directory: &std::path::Path,
+    response_http: &[u8],
+    request: &ExchangeRequest,
+    manifest: &Manifest,
+    receipt_sha256: Option<&str>,
+) -> Vec<u8> {
+    let body = response_http
+        .windows(4)
+        .position(|window| window == b"\r\n\r\n")
+        .map(|index| &response_http[index + 4..])
+        .unwrap();
+    let response: ExchangeResponse = serde_json::from_slice(body).unwrap();
+    let output = response.output_artifact.as_ref().unwrap();
+    let ack = serde_json::to_vec(&serde_json::json!({
+        "schema_version":"gate_h2_terminal_delivery_ack_v1.0.0",
+        "acceptance_state":"validated_output_and_receipt_durably_committed",
+        "owner_uid":unsafe { libc::geteuid() },
+        "manifest_id":manifest.manifest_id,
+        "capability_id":manifest.capabilities[0].capability_id,
+        "exchange_ordinal":0,
+        "request_id":request.request_id,
+        "response_sha256":hex::encode(Sha256::digest(body)),
+        "run_token":request.run_token,
+        "request_artifact_role":request.request_artifact_role,
+        "output_index":0,
+        "output_artifact_role":output.artifact_role,
+        "output_sha256":output.sha256,
+        "output_bytes":output.bytes,
+        "output_status":output.status,
+        "receipt_sha256":receipt_sha256
+            .map(str::to_owned)
+            .unwrap_or_else(|| hex::encode(Sha256::digest(serde_json::to_vec(&response).unwrap()))),
+    }))
+    .unwrap();
+    let mut stream =
+        std::os::unix::net::UnixStream::connect(directory.join("broker.sock")).unwrap();
+    write!(
+        stream,
+        "POST /v1/delivery-ack HTTP/1.1\r\nhost: gate-h2\r\ncontent-type: application/json\r\nconnection: close\r\ncontent-length: {}\r\n\r\n",
+        ack.len()
+    )
+    .unwrap();
+    stream.write_all(&ack).unwrap();
+    stream.shutdown(std::net::Shutdown::Write).unwrap();
+    let mut confirmation = Vec::new();
+    stream.read_to_end(&mut confirmation).unwrap();
+    confirmation
+}
+
 struct ScriptedNetwork;
 impl NetworkClient for ScriptedNetwork {
     fn exchange(
@@ -902,7 +961,9 @@ fn successful_exchange_emits_v1_transcript_and_ed25519_authority_envelope() {
     if std::env::var_os("GATE_H2_RUN_TS_ORACLE").is_some() {
         let repository = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
         let status =
-            std::process::Command::new(repository.join("node_modules/.bin/tsx"))
+            std::process::Command::new("node")
+                .arg("--import")
+                .arg("tsx")
                 .arg(repository.join(
                     "packages/scripts/src/dataset-factory/validate-broker-runtime-artifacts.ts",
                 ))
@@ -944,8 +1005,185 @@ fn uds_serve_runs_end_to_end_and_seals_terminal_evidence() {
     stream.read_to_end(&mut response).unwrap();
     assert!(response.starts_with(b"HTTP/1.1 200 OK\r\n"));
     assert_uds_response_schema(&response_from_http(&response));
+    assert_eq!(
+        acknowledge_terminal_delivery(&directory, &response, &request, &manifest),
+        b"HTTP/1.1 204 No Content\r\ncontent-length: 0\r\nconnection: close\r\n\r\n"
+    );
     server.join().unwrap();
     assert!(root.path().join("evidence/transcript.v1.json").is_file());
+    drop(guard);
+}
+
+#[test]
+fn authenticated_delivery_ack_is_exact_and_single_use() {
+    let root = tempfile::tempdir().unwrap();
+    let mut broker = broker(root.path());
+    let manifest = broker.manifest().clone();
+    let expected_request = request(&manifest);
+    let response = broker
+        .exchange(&manifest.capabilities[0].capability_id, request(&manifest))
+        .unwrap();
+    let output = response.output_artifact.as_ref().unwrap();
+    let valid = |broker: &mut Broker, owner_uid| {
+        broker.consume_delivery_ack(
+            TOKEN,
+            owner_uid,
+            &expected_request.request_id,
+            &"a".repeat(64),
+            &manifest.manifest_id,
+            &manifest.capabilities[0].capability_id,
+            0,
+            &expected_request.request_artifact_role,
+            &output.artifact_role,
+            &output.sha256,
+            output.bytes,
+            output.status,
+            &expected_request.request_id,
+            &"a".repeat(64),
+            &output.artifact_role,
+            &output.sha256,
+            output.bytes,
+            output.status,
+        )
+    };
+    assert!(!valid(
+        &mut broker,
+        unsafe { libc::geteuid() }.wrapping_add(1)
+    ));
+    assert!(valid(&mut broker, unsafe { libc::geteuid() }));
+    assert!(
+        !valid(&mut broker, unsafe { libc::geteuid() }),
+        "ACK replay accepted"
+    );
+}
+
+#[test]
+fn optional_confirmation_write_failure_does_not_unseal_complete() {
+    let root = tempfile::tempdir().unwrap();
+    let broker = broker(root.path());
+    let manifest = broker.manifest().clone();
+    let request = request(&manifest);
+    let body = serde_json::to_vec(&request).unwrap();
+    let directory = root.path().join("socket_confirmation_failure");
+    let (listener, guard) = crate::uds::bind_owner_only(&directory).unwrap();
+    let server = std::thread::spawn(move || {
+        crate::uds::serve_with_confirmation_error_for_test(listener, Arc::new(Mutex::new(broker)))
+    });
+    let mut stream =
+        std::os::unix::net::UnixStream::connect(directory.join("broker.sock")).unwrap();
+    write!(stream, "POST /v1/exchange/{} HTTP/1.1\r\nhost: gate-h2\r\ncontent-type: application/json\r\nconnection: close\r\ncontent-length: {}\r\n\r\n", manifest.capabilities[0].capability_id, body.len()).unwrap();
+    stream.write_all(&body).unwrap();
+    stream.shutdown(std::net::Shutdown::Write).unwrap();
+    let mut response = Vec::new();
+    stream.read_to_end(&mut response).unwrap();
+    assert!(acknowledge_terminal_delivery(&directory, &response, &request, &manifest).is_empty());
+    server.join().unwrap().unwrap();
+    let transcript: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(root.path().join("evidence/transcript.v1.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(transcript["final_outcome"], "complete");
+    drop(guard);
+}
+
+#[test]
+fn malformed_terminal_ack_read_seals_failed_instead_of_complete() {
+    let root = tempfile::tempdir().unwrap();
+    let broker = broker(root.path());
+    let manifest = broker.manifest().clone();
+    let request = request(&manifest);
+    let body = serde_json::to_vec(&request).unwrap();
+    let directory = root.path().join("socket_bad_ack");
+    let (listener, guard) = crate::uds::bind_owner_only(&directory).unwrap();
+    let server =
+        std::thread::spawn(move || crate::uds::serve(listener, Arc::new(Mutex::new(broker))));
+    let mut stream =
+        std::os::unix::net::UnixStream::connect(directory.join("broker.sock")).unwrap();
+    write!(stream, "POST /v1/exchange/{} HTTP/1.1\r\nhost: gate-h2\r\ncontent-type: application/json\r\nconnection: close\r\ncontent-length: {}\r\n\r\n", manifest.capabilities[0].capability_id, body.len()).unwrap();
+    stream.write_all(&body).unwrap();
+    stream.shutdown(std::net::Shutdown::Write).unwrap();
+    let mut response = Vec::new();
+    stream.read_to_end(&mut response).unwrap();
+    assert!(!response.is_empty());
+    let mut ack = std::os::unix::net::UnixStream::connect(directory.join("broker.sock")).unwrap();
+    ack.write_all(b"POST /v1/delivery-ack HTTP/1.1\r\nhost: gate-h2\r\ncontent-type: application/json\r\nconnection: close\r\ncontent-length: 2\r\n\r\n{}").unwrap();
+    ack.shutdown(std::net::Shutdown::Write).unwrap();
+    let mut ignored = Vec::new();
+    ack.read_to_end(&mut ignored).unwrap();
+    assert!(server.join().unwrap().is_err());
+    let transcript: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(root.path().join("evidence/transcript.v1.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(transcript["final_outcome"], "failed_closed");
+    drop(guard);
+}
+
+#[test]
+fn terminal_ack_rejects_receipt_digest_not_bound_to_exact_response() {
+    let root = tempfile::tempdir().unwrap();
+    let broker = broker(root.path());
+    let manifest = broker.manifest().clone();
+    let request = request(&manifest);
+    let body = serde_json::to_vec(&request).unwrap();
+    let directory = root.path().join("sock_bad_receipt");
+    let (listener, guard) = crate::uds::bind_owner_only(&directory).unwrap();
+    let server =
+        std::thread::spawn(move || crate::uds::serve(listener, Arc::new(Mutex::new(broker))));
+    let mut stream =
+        std::os::unix::net::UnixStream::connect(directory.join("broker.sock")).unwrap();
+    write!(stream, "POST /v1/exchange/{} HTTP/1.1\r\nhost: gate-h2\r\ncontent-type: application/json\r\nconnection: close\r\ncontent-length: {}\r\n\r\n", manifest.capabilities[0].capability_id, body.len()).unwrap();
+    stream.write_all(&body).unwrap();
+    stream.shutdown(std::net::Shutdown::Write).unwrap();
+    let mut response = Vec::new();
+    stream.read_to_end(&mut response).unwrap();
+    assert!(response.starts_with(b"HTTP/1.1 200 OK\r\n"));
+    let forged_receipt = "0".repeat(64);
+    assert!(
+        acknowledge_terminal_delivery_with_receipt(
+            &directory,
+            &response,
+            &request,
+            &manifest,
+            Some(&forged_receipt),
+        )
+        .is_empty()
+    );
+    assert!(server.join().unwrap().is_err());
+    let transcript: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(root.path().join("evidence/transcript.v1.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(transcript["final_outcome"], "failed_closed");
+    drop(guard);
+}
+
+#[test]
+fn terminal_ack_eof_seals_failed_instead_of_complete() {
+    let root = tempfile::tempdir().unwrap();
+    let broker = broker(root.path());
+    let manifest = broker.manifest().clone();
+    let request = request(&manifest);
+    let body = serde_json::to_vec(&request).unwrap();
+    let directory = root.path().join("socket_ack_eof");
+    let (listener, guard) = crate::uds::bind_owner_only(&directory).unwrap();
+    let server =
+        std::thread::spawn(move || crate::uds::serve(listener, Arc::new(Mutex::new(broker))));
+    let mut stream =
+        std::os::unix::net::UnixStream::connect(directory.join("broker.sock")).unwrap();
+    write!(stream, "POST /v1/exchange/{} HTTP/1.1\r\nhost: gate-h2\r\ncontent-type: application/json\r\nconnection: close\r\ncontent-length: {}\r\n\r\n", manifest.capabilities[0].capability_id, body.len()).unwrap();
+    stream.write_all(&body).unwrap();
+    stream.shutdown(std::net::Shutdown::Write).unwrap();
+    let mut response = Vec::new();
+    stream.read_to_end(&mut response).unwrap();
+    assert!(!response.is_empty());
+    drop(std::os::unix::net::UnixStream::connect(directory.join("broker.sock")).unwrap());
+    assert!(server.join().unwrap().is_err());
+    let transcript: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(root.path().join("evidence/transcript.v1.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(transcript["final_outcome"], "failed_closed");
     drop(guard);
 }
 
@@ -959,6 +1197,7 @@ fn real_broker_uds_and_stage_runtime_preserve_exact_binary_and_empty_outputs() {
         ("empty", Vec::new()),
     ] {
         let root = tempfile::tempdir().unwrap();
+        std::fs::set_permissions(root.path(), std::fs::Permissions::from_mode(0o700)).unwrap();
         let run_root = root.path().join("run");
         for directory in [root.path().join("inputs"), root.path().join("outputs")] {
             std::fs::create_dir(&directory).unwrap();
@@ -1036,11 +1275,12 @@ fn real_broker_uds_and_stage_runtime_preserve_exact_binary_and_empty_outputs() {
 }
 
 #[test]
-fn terminal_acceptance_is_not_released_when_sealing_fails() {
+fn terminal_acceptance_is_not_confirmed_when_sealing_fails() {
     let root = tempfile::tempdir().unwrap();
     let broker = broker(root.path());
     let manifest = broker.manifest().clone();
-    let body = serde_json::to_vec(&request(&manifest)).unwrap();
+    let request = request(&manifest);
+    let body = serde_json::to_vec(&request).unwrap();
     let directory = root.path().join("socket_seal_failure");
     let (listener, guard) = crate::uds::bind_owner_only(&directory).unwrap();
     let server = std::thread::spawn(move || {
@@ -1059,8 +1299,9 @@ fn terminal_acceptance_is_not_released_when_sealing_fails() {
     stream.shutdown(std::net::Shutdown::Write).unwrap();
     let mut response = Vec::new();
     stream.read_to_end(&mut response).unwrap();
+    assert!(response.starts_with(b"HTTP/1.1 200 OK\r\n"));
+    assert!(acknowledge_terminal_delivery(&directory, &response, &request, &manifest).is_empty());
     assert!(server.join().unwrap().is_err());
-    assert!(response.is_empty());
     drop(guard);
 }
 
@@ -1088,7 +1329,8 @@ fn durable_evidence_failures_close_uds_without_releasing_a_response() {
             HashMap::new(),
             Some((target, point)),
         );
-        let body = serde_json::to_vec(&request(&manifest)).unwrap();
+        let request = request(&manifest);
+        let body = serde_json::to_vec(&request).unwrap();
         let directory = root.path().join("socket_evidence_failure");
         let (listener, guard) = crate::uds::bind_owner_only(&directory).unwrap();
         let server =
@@ -1106,10 +1348,108 @@ fn durable_evidence_failures_close_uds_without_releasing_a_response() {
         stream.shutdown(std::net::Shutdown::Write).unwrap();
         let mut response = Vec::new();
         stream.read_to_end(&mut response).unwrap();
+        if matches!(
+            target,
+            EvidenceFaultTarget::Transcript
+                | EvidenceFaultTarget::Envelope
+                | EvidenceFaultTarget::FinalDirectorySync
+        ) {
+            assert!(response.starts_with(b"HTTP/1.1 200 OK\r\n"));
+            assert!(
+                acknowledge_terminal_delivery(&directory, &response, &request, &manifest)
+                    .is_empty()
+            );
+        } else {
+            assert!(response.is_empty(), "{target:?} {point:?}");
+        }
         assert!(server.join().unwrap().is_err(), "{target:?} {point:?}");
-        assert!(response.is_empty(), "{target:?} {point:?}");
         drop(guard);
     }
+}
+
+#[test]
+fn evidence_directory_parent_fsync_failure_cannot_claim_completion() {
+    let root = tempfile::tempdir().unwrap();
+    let directory = root.path().join("evidence-parent-fsync-fault");
+    let error =
+        crate::evidence::create_private_directory_with_parent_fsync_fault_for_test(&directory)
+            .unwrap_err();
+    assert!(error.to_string().contains("parent fsync failure"));
+    assert!(directory.is_dir(), "creation is intentionally fail-sticky");
+    assert!(std::fs::read_dir(&directory).unwrap().next().is_none());
+    assert!(!directory.join("transcript.v1.json").exists());
+    assert!(!directory.join("authority-envelope.v2.json").exists());
+}
+
+#[test]
+fn one_exchange_terminal_delivery_failure_seals_truthful_failed_lifecycle() {
+    let root = tempfile::tempdir().unwrap();
+    let broker = broker(root.path());
+    let manifest = broker.manifest().clone();
+    let body = serde_json::to_vec(&request(&manifest)).unwrap();
+    let directory = root.path().join("sock_term_fail");
+    let (listener, guard) = crate::uds::bind_owner_only(&directory).unwrap();
+    let server = std::thread::spawn(move || {
+        crate::uds::serve_with_uncaptured_delivery_error_for_test(
+            listener,
+            Arc::new(Mutex::new(broker)),
+        )
+    });
+    let mut stream =
+        std::os::unix::net::UnixStream::connect(directory.join("broker.sock")).unwrap();
+    write!(
+        stream,
+        "POST /v1/exchange/{} HTTP/1.1\r\nhost: gate-h2\r\ncontent-type: application/json\r\nconnection: close\r\ncontent-length: {}\r\n\r\n",
+        manifest.capabilities[0].capability_id,
+        body.len()
+    )
+    .unwrap();
+    stream.write_all(&body).unwrap();
+    stream.shutdown(std::net::Shutdown::Write).unwrap();
+    let mut response = Vec::new();
+    stream.read_to_end(&mut response).unwrap();
+    assert!(response.is_empty());
+    assert!(server.join().unwrap().is_err());
+    let transcript: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(root.path().join("evidence/transcript.v1.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(transcript["final_outcome"], "failed_closed");
+    assert_eq!(transcript["attempted_exchange_count"], 1);
+    assert_eq!(transcript["completed_exchange_count"], 0);
+    let events = transcript["events"].as_array().unwrap();
+    assert_eq!(events.len(), 5);
+    assert_eq!(events[4]["event_type"], "exchange_failed");
+    assert_eq!(events[4]["evidence"]["failure_code"], "protocol_error");
+    assert!(
+        root.path()
+            .join("evidence/transcript.authority.v2.json")
+            .is_file()
+    );
+    drop(guard);
+}
+
+#[test]
+fn one_exchange_terminal_delivery_state_transition_is_deterministic_without_io() {
+    let root = tempfile::tempdir().unwrap();
+    let mut broker = broker(root.path());
+    let manifest = broker.manifest().clone();
+    assert_eq!(
+        broker
+            .exchange(&manifest.capabilities[0].capability_id, request(&manifest))
+            .unwrap()
+            .outcome,
+        "accepted"
+    );
+    broker.terminal_delivery_failure().unwrap();
+    broker.seal_transcript().unwrap();
+    let transcript: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(root.path().join("evidence/transcript.v1.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(transcript["final_outcome"], "failed_closed");
+    assert_eq!(transcript["completed_exchange_count"], 0);
+    assert_eq!(transcript["events"][4]["event_type"], "exchange_failed");
 }
 
 #[test]

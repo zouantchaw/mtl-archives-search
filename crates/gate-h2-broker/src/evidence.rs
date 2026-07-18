@@ -1,6 +1,6 @@
 use std::{
     fs::{self, File, OpenOptions},
-    io::{self, Write},
+    io::{self, Seek, Write},
     path::{Path, PathBuf},
     sync::Mutex,
     time::{SystemTime, UNIX_EPOCH},
@@ -23,6 +23,7 @@ const EVENT_DOMAIN: &[u8] = b"gate-h2-https-broker-event-v1-schema-bound\0";
 const TRANSCRIPT_DOMAIN: &[u8] = b"gate-h2-https-broker-transcript-v1-schema-bound\0";
 const AUTHORITY_DOMAIN: &[u8] = b"gate-h2-https-broker-authority-envelope-v2-schema-bound\0";
 const SIGNATURE_DOMAIN: &[u8] = b"gate-h2-https-broker-authority-signature-ed25519-v2\0";
+pub const SIGNING_KEY_BASE64URL_BYTES: usize = 43;
 const EVENT_SCHEMA_SHA256: &str =
     "5c33ce7a3dcee39b87b65f6c8dd196c1a56b8fc8d31ef5ad30684735121e152f";
 const TRANSCRIPT_SCHEMA_SHA256: &str =
@@ -180,19 +181,8 @@ impl EvidenceWriter {
             TRANSCRIPT_VERSION,
         )?;
         validate_authority(&authority)?;
-        let mut decoded = Zeroizing::new(
-            URL_SAFE_NO_PAD
-                .decode(signing_key_material.expose())
-                .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "invalid signing key"))?,
-        );
-        let seed = Zeroizing::new(
-            decoded
-                .as_slice()
-                .try_into()
-                .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "invalid signing key"))?,
-        );
+        let seed = decode_signing_key(signing_key_material.expose())?;
         let signing_key = SigningKey::from_bytes(&seed);
-        decoded.zeroize();
         let public_key = URL_SAFE_NO_PAD.encode(signing_key.verifying_key().as_bytes());
         let derived_signer_id = hex::encode(Sha256::digest(
             [
@@ -207,7 +197,7 @@ impl EvidenceWriter {
                 "signing key does not match signer identity",
             ));
         }
-        create_private_directory(&directory)?;
+        store.create_private_directory(&directory)?;
         Ok(Self {
             directory,
             signing_key,
@@ -258,6 +248,40 @@ impl EvidenceWriter {
             0o600,
         )?;
         self.events.push(event);
+        Ok(())
+    }
+
+    pub fn replace_last(&mut self, mut event: Event) -> io::Result<()> {
+        if self.sealed {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "evidence is sealed",
+            ));
+        }
+        let last = self
+            .events
+            .last()
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "no event to replace"))?;
+        if event.sequence != last.sequence
+            || event.exchange_ordinal != last.exchange_ordinal
+            || event.capability_id != last.capability_id
+        {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "replacement event identity mismatch",
+            ));
+        }
+        event.event_id = domain_id(EVENT_DOMAIN, &event, "event_id")?;
+        let bytes = canonical_json_line(&serde_json::to_value(&event)?);
+        self.store.persist(
+            EvidenceRecord::Event,
+            &self
+                .directory
+                .join(format!("event-{:04}.json", event.sequence)),
+            &bytes,
+            0o600,
+        )?;
+        *self.events.last_mut().expect("last event checked above") = event;
         Ok(())
     }
 
@@ -322,6 +346,34 @@ impl EvidenceWriter {
     }
 }
 
+fn decode_signing_key(encoded: &[u8]) -> io::Result<Zeroizing<[u8; 32]>> {
+    if encoded.len() != SIGNING_KEY_BASE64URL_BYTES {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "invalid signing key representation",
+        ));
+    }
+    let mut decoded = Zeroizing::new(
+        URL_SAFE_NO_PAD
+            .decode(encoded)
+            .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "invalid signing key"))?,
+    );
+    if URL_SAFE_NO_PAD.encode(&*decoded).as_bytes() != encoded {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "noncanonical signing key representation",
+        ));
+    }
+    let seed = Zeroizing::new(
+        decoded
+            .as_slice()
+            .try_into()
+            .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "invalid signing key"))?,
+    );
+    decoded.zeroize();
+    Ok(seed)
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum EvidenceRecord {
     Event,
@@ -330,6 +382,7 @@ enum EvidenceRecord {
 }
 
 trait EvidenceStore: Send {
+    fn create_private_directory(&self, path: &Path) -> io::Result<()>;
     fn persist(
         &self,
         record: EvidenceRecord,
@@ -343,6 +396,10 @@ trait EvidenceStore: Send {
 struct FilesystemEvidenceStore;
 
 impl EvidenceStore for FilesystemEvidenceStore {
+    fn create_private_directory(&self, path: &Path) -> io::Result<()> {
+        create_private_directory_and_sync(path)
+    }
+
     fn persist(
         &self,
         _record: EvidenceRecord,
@@ -361,6 +418,7 @@ impl EvidenceStore for FilesystemEvidenceStore {
 #[cfg(test)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum EvidenceFaultTarget {
+    DirectoryParentSync,
     Event(usize),
     Transcript,
     Envelope,
@@ -408,6 +466,16 @@ impl FaultEvidenceStore {
 
 #[cfg(test)]
 impl EvidenceStore for FaultEvidenceStore {
+    fn create_private_directory(&self, path: &Path) -> io::Result<()> {
+        create_private_directory_without_sync(path)?;
+        if self.target == EvidenceFaultTarget::DirectoryParentSync {
+            return Err(io::Error::other(
+                "injected evidence directory parent fsync failure",
+            ));
+        }
+        File::open(path.parent().expect("evidence directory has parent"))?.sync_all()
+    }
+
     fn persist(
         &self,
         record: EvidenceRecord,
@@ -582,12 +650,30 @@ fn is_sha256(value: &str) -> bool {
             .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
 }
 
-fn create_private_directory(path: &Path) -> io::Result<()> {
-    use std::os::unix::fs::PermissionsExt;
+fn create_private_directory_without_sync(path: &Path) -> io::Result<()> {
+    use std::os::unix::fs::{MetadataExt, PermissionsExt};
+    let parent = path
+        .parent()
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "directory has no parent"))?;
+    let parent_metadata = fs::symlink_metadata(parent)?;
+    if !parent_metadata.file_type().is_dir()
+        || parent_metadata.file_type().is_symlink()
+        || parent_metadata.uid() != unsafe { libc::geteuid() }
+        || parent_metadata.permissions().mode() & 0o022 != 0
+    {
+        return Err(io::Error::new(
+            io::ErrorKind::PermissionDenied,
+            "unsafe evidence/output parent directory",
+        ));
+    }
     fs::create_dir(path)?;
     fs::set_permissions(path, fs::Permissions::from_mode(0o700))?;
     let metadata = fs::symlink_metadata(path)?;
-    if !metadata.file_type().is_dir() || metadata.file_type().is_symlink() {
+    if !metadata.file_type().is_dir()
+        || metadata.file_type().is_symlink()
+        || metadata.uid() != unsafe { libc::geteuid() }
+        || metadata.permissions().mode() & 0o7777 != 0o700
+    {
         return Err(io::Error::new(
             io::ErrorKind::PermissionDenied,
             "unsafe evidence directory",
@@ -596,24 +682,45 @@ fn create_private_directory(path: &Path) -> io::Result<()> {
     Ok(())
 }
 
+fn create_private_directory_and_sync(path: &Path) -> io::Result<()> {
+    create_private_directory_without_sync(path)?;
+    File::open(path.parent().expect("directory has parent"))?.sync_all()
+}
+
+#[cfg(test)]
+pub(crate) fn create_private_directory_with_parent_fsync_fault_for_test(
+    path: &Path,
+) -> io::Result<()> {
+    create_private_directory_without_sync(path)?;
+    Err(io::Error::other(
+        "injected evidence/output directory parent fsync failure",
+    ))
+}
+
 fn atomic_fsync(path: &Path, bytes: &[u8], mode: u32) -> io::Result<()> {
     atomic_fsync_inner(path, bytes, mode)
 }
 
-fn atomic_fsync_raw(path: &Path, bytes: &[u8], mode: u32) -> io::Result<()> {
-    atomic_fsync_inner(path, bytes, mode)
-}
-
 fn atomic_fsync_inner(path: &Path, bytes: &[u8], mode: u32) -> io::Result<()> {
-    use std::os::unix::fs::OpenOptionsExt;
+    use std::os::unix::fs::{MetadataExt, OpenOptionsExt};
     let temporary = path.with_extension("tmp");
     let mut options = OpenOptions::new();
     options.write(true).create_new(true).mode(mode);
     let mut file = options.open(&temporary)?;
+    set_exact_mode(&file, mode)?;
     file.write_all(bytes)?;
     file.sync_all()?;
+    let initial = validate_private_file(&file, mode, bytes.len() as u64)?;
     drop(file);
     fs::rename(&temporary, path)?;
+    let committed = OpenOptions::new().read(true).open(path)?;
+    let final_metadata = validate_private_file(&committed, mode, bytes.len() as u64)?;
+    if initial.dev() != final_metadata.dev() || initial.ino() != final_metadata.ino() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "evidence file inode binding mismatch",
+        ));
+    }
     File::open(path.parent().expect("path has parent"))?.sync_all()
 }
 
@@ -626,7 +733,33 @@ fn atomic_write_without_sync(path: &Path, bytes: &[u8], mode: u32) -> io::Result
         .create_new(true)
         .mode(mode)
         .open(temporary)?;
+    set_exact_mode(&file, mode)?;
     file.write_all(bytes)
+}
+
+fn set_exact_mode(file: &File, mode: u32) -> io::Result<()> {
+    use std::os::fd::AsRawFd;
+    if unsafe { libc::fchmod(file.as_raw_fd(), mode as libc::mode_t) } != 0 {
+        return Err(io::Error::last_os_error());
+    }
+    Ok(())
+}
+
+fn validate_private_file(file: &File, mode: u32, bytes: u64) -> io::Result<fs::Metadata> {
+    use std::os::unix::fs::{MetadataExt, PermissionsExt};
+    let metadata = file.metadata()?;
+    if !metadata.file_type().is_file()
+        || metadata.uid() != unsafe { libc::geteuid() }
+        || metadata.permissions().mode() & 0o7777 != mode
+        || metadata.nlink() != 1
+        || metadata.len() != bytes
+    {
+        return Err(io::Error::new(
+            io::ErrorKind::PermissionDenied,
+            "unsafe private output file",
+        ));
+    }
+    Ok(metadata)
 }
 
 pub struct CommittedOutput {
@@ -636,7 +769,26 @@ pub struct CommittedOutput {
 }
 
 pub fn commit_output(directory: &Path, role: &str, bytes: &[u8]) -> io::Result<CommittedOutput> {
-    use std::os::unix::fs::PermissionsExt;
+    commit_output_inner(directory, role, bytes, |_| Ok(()), |_| Ok(()))
+}
+
+fn commit_output_inner(
+    directory: &Path,
+    role: &str,
+    bytes: &[u8],
+    after_create: impl FnOnce(&File) -> io::Result<()>,
+    after_rename: impl FnOnce(&File) -> io::Result<()>,
+) -> io::Result<CommittedOutput> {
+    use std::{
+        ffi::CString,
+        os::{
+            fd::{AsRawFd, FromRawFd, OwnedFd},
+            unix::{
+                ffi::OsStrExt,
+                fs::{MetadataExt, PermissionsExt},
+            },
+        },
+    };
     if role.is_empty()
         || !role
             .bytes()
@@ -648,12 +800,24 @@ pub fn commit_output(directory: &Path, role: &str, bytes: &[u8]) -> io::Result<C
         ));
     }
     if !directory.exists() {
-        create_private_directory(directory)?;
+        create_private_directory_and_sync(directory)?;
     }
-    let metadata = fs::symlink_metadata(directory)?;
+    let directory_name = CString::new(directory.as_os_str().as_bytes())?;
+    let directory_fd = unsafe {
+        libc::open(
+            directory_name.as_ptr(),
+            libc::O_RDONLY | libc::O_DIRECTORY | libc::O_NOFOLLOW | libc::O_CLOEXEC,
+        )
+    };
+    if directory_fd < 0 {
+        return Err(io::Error::last_os_error());
+    }
+    let retained_directory = File::from(unsafe { OwnedFd::from_raw_fd(directory_fd) });
+    let metadata = retained_directory.metadata()?;
     if !metadata.file_type().is_dir()
         || metadata.file_type().is_symlink()
-        || metadata.permissions().mode() & 0o077 != 0
+        || metadata.uid() != unsafe { libc::geteuid() }
+        || metadata.permissions().mode() & 0o7777 != 0o700
     {
         return Err(io::Error::new(
             io::ErrorKind::PermissionDenied,
@@ -661,28 +825,210 @@ pub fn commit_output(directory: &Path, role: &str, bytes: &[u8]) -> io::Result<C
         ));
     }
     let path = directory.join(format!("{role}.bin"));
-    atomic_fsync_raw(&path, bytes, 0o600)?;
-    let mut committed = File::open(&path)?;
-    let metadata = committed.metadata()?;
-    if !metadata.file_type().is_file() || metadata.len() != bytes.len() as u64 {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            "committed output length mismatch",
-        ));
+    let destination = CString::new(format!("{role}.bin"))?;
+    let temporary = CString::new(format!(".{role}.{}.tmp", std::process::id()))?;
+    let output_fd = unsafe {
+        libc::openat(
+            retained_directory.as_raw_fd(),
+            temporary.as_ptr(),
+            libc::O_RDWR | libc::O_CREAT | libc::O_EXCL | libc::O_NOFOLLOW | libc::O_CLOEXEC,
+            0o600,
+        )
+    };
+    if output_fd < 0 {
+        return Err(io::Error::last_os_error());
     }
+    let mut committed = File::from(unsafe { OwnedFd::from_raw_fd(output_fd) });
+    set_exact_mode(&committed, 0o600)?;
+    after_create(&committed)?;
+    validate_private_file(&committed, 0o600, 0)?;
+    committed.write_all(bytes)?;
+    committed.sync_all()?;
+    let initial = validate_private_file(&committed, 0o600, bytes.len() as u64)?;
+    committed.rewind()?;
     let mut hash = Sha256::new();
     let read_bytes = io::copy(&mut committed, &mut hash)?;
-    if read_bytes != metadata.len() {
+    let digest = hex::encode(hash.finalize());
+    if read_bytes != initial.len() || digest != hex::encode(Sha256::digest(bytes)) {
         return Err(io::Error::new(
             io::ErrorKind::InvalidData,
             "committed output readback mismatch",
         ));
     }
+    let after_read = validate_private_file(&committed, 0o600, read_bytes)?;
+    if after_read.dev() != initial.dev()
+        || after_read.ino() != initial.ino()
+        || after_read.uid() != initial.uid()
+        || after_read.permissions().mode() & 0o7777 != initial.permissions().mode() & 0o7777
+    {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "committed output changed during retained readback",
+        ));
+    }
+    if unsafe {
+        libc::renameat(
+            retained_directory.as_raw_fd(),
+            temporary.as_ptr(),
+            retained_directory.as_raw_fd(),
+            destination.as_ptr(),
+        )
+    } != 0
+    {
+        return Err(io::Error::last_os_error());
+    }
+    after_rename(&committed)?;
+    retained_directory.sync_all()?;
+    let mut final_status = std::mem::MaybeUninit::<libc::stat>::zeroed();
+    if unsafe {
+        libc::fstatat(
+            retained_directory.as_raw_fd(),
+            destination.as_ptr(),
+            final_status.as_mut_ptr(),
+            libc::AT_SYMLINK_NOFOLLOW,
+        )
+    } != 0
+    {
+        return Err(io::Error::last_os_error());
+    }
+    let final_status = unsafe { final_status.assume_init() };
+    if final_status.st_dev as u64 != initial.dev()
+        || final_status.st_ino != initial.ino()
+        || final_status.st_size as u64 != read_bytes
+        || final_status.st_nlink != 1
+        || final_status.st_uid != unsafe { libc::geteuid() }
+        || u32::from(final_status.st_mode & 0o7777) != 0o600
+        || final_status.st_mode & libc::S_IFMT != libc::S_IFREG
+    {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "committed output inode binding mismatch",
+        ));
+    }
+    let retained_before = validate_private_file(&committed, 0o600, read_bytes)?;
+    committed.rewind()?;
+    let mut final_hash = Sha256::new();
+    let final_read_bytes = io::copy(&mut committed, &mut final_hash)?;
+    let final_digest = hex::encode(final_hash.finalize());
+    let retained_after = validate_private_file(&committed, 0o600, read_bytes)?;
+    if !same_output_identity(&initial, &retained_before)
+        || !same_output_identity(&retained_before, &retained_after)
+        || final_read_bytes != read_bytes
+        || final_digest != digest
+    {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "committed output changed across rename",
+        ));
+    }
     Ok(CommittedOutput {
         path,
-        sha256: hex::encode(hash.finalize()),
-        bytes: read_bytes,
+        sha256: final_digest,
+        bytes: final_read_bytes,
     })
+}
+
+fn same_output_identity(left: &fs::Metadata, right: &fs::Metadata) -> bool {
+    use std::os::unix::fs::{MetadataExt, PermissionsExt};
+    left.dev() == right.dev()
+        && left.ino() == right.ino()
+        && left.uid() == right.uid()
+        && left.gid() == right.gid()
+        && left.permissions().mode() == right.permissions().mode()
+        && left.nlink() == right.nlink()
+        && left.len() == right.len()
+        && left.mtime() == right.mtime()
+        && left.mtime_nsec() == right.mtime_nsec()
+}
+
+#[cfg(test)]
+mod output_mode_tests {
+    use super::*;
+    use std::os::{fd::AsRawFd, unix::fs::PermissionsExt};
+
+    fn add_mode(file: &File, bits: u32) -> io::Result<()> {
+        let mode = file.metadata()?.permissions().mode() & 0o7777;
+        if unsafe { libc::fchmod(file.as_raw_fd(), (mode | bits) as libc::mode_t) } != 0 {
+            return Err(io::Error::last_os_error());
+        }
+        Ok(())
+    }
+
+    fn replace_content_same_length(file: &File) -> io::Result<()> {
+        let replacement = b"fail";
+        if unsafe {
+            libc::pwrite(
+                file.as_raw_fd(),
+                replacement.as_ptr().cast(),
+                replacement.len(),
+                0,
+            )
+        } != replacement.len() as isize
+        {
+            return Err(io::Error::last_os_error());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn preexisting_output_directories_require_exact_0700() {
+        for mode in [0o4700, 0o2700, 0o1700] {
+            let root = tempfile::tempdir().unwrap();
+            let output = root.path().join(format!("output-{mode:o}"));
+            fs::create_dir(&output).unwrap();
+            fs::set_permissions(&output, fs::Permissions::from_mode(mode)).unwrap();
+            assert!(
+                commit_output(&output, "response", b"body").is_err(),
+                "{mode:o}"
+            );
+        }
+    }
+
+    #[test]
+    fn output_mode_mutations_after_create_and_rename_fail_closed() {
+        for after_rename in [false, true] {
+            let root = tempfile::tempdir().unwrap();
+            let output = root.path().join("output");
+            fs::create_dir(&output).unwrap();
+            fs::set_permissions(&output, fs::Permissions::from_mode(0o700)).unwrap();
+            let result = if after_rename {
+                commit_output_inner(
+                    &output,
+                    "response",
+                    b"body",
+                    |_| Ok(()),
+                    |file| add_mode(file, 0o1000),
+                )
+            } else {
+                commit_output_inner(
+                    &output,
+                    "response",
+                    b"body",
+                    |file| add_mode(file, 0o4000),
+                    |_| Ok(()),
+                )
+            };
+            assert!(result.is_err(), "after_rename={after_rename}");
+        }
+    }
+
+    #[test]
+    fn output_same_length_content_change_after_rename_fails_closed() {
+        let root = tempfile::tempdir().unwrap();
+        let output = root.path().join("output");
+        fs::create_dir(&output).unwrap();
+        fs::set_permissions(&output, fs::Permissions::from_mode(0o700)).unwrap();
+        assert!(
+            commit_output_inner(
+                &output,
+                "response",
+                b"body",
+                |_| Ok(()),
+                replace_content_same_length,
+            )
+            .is_err()
+        );
+    }
 }
 
 fn format_unix_millis(millis: u128) -> String {
@@ -699,4 +1045,26 @@ fn format_unix_millis(millis: u128) -> String {
         broken_down.tm_sec,
         millis % 1000
     )
+}
+
+#[cfg(test)]
+mod signing_key_representation_tests {
+    use super::*;
+
+    #[test]
+    fn canonical_unpadded_base64url_seed_is_exactly_43_bytes() {
+        let encoded = URL_SAFE_NO_PAD.encode([7_u8; 32]);
+        assert_eq!(encoded.len(), SIGNING_KEY_BASE64URL_BYTES);
+        assert_eq!(*decode_signing_key(encoded.as_bytes()).unwrap(), [7_u8; 32]);
+    }
+
+    #[test]
+    fn signing_key_representation_rejects_noncanonical_short_long_and_alphabet() {
+        let canonical = URL_SAFE_NO_PAD.encode([8_u8; 32]);
+        assert!(decode_signing_key(&canonical.as_bytes()[..42]).is_err());
+        assert!(decode_signing_key(format!("{canonical}=").as_bytes()).is_err());
+        let mut invalid = canonical.into_bytes();
+        invalid[0] = b'+';
+        assert!(decode_signing_key(&invalid).is_err());
+    }
 }

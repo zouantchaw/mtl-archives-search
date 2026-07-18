@@ -1,12 +1,11 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-const [root, output, target, trustRootsSha256, sourceCommit, sourceTree, toolchainLockSha256, binarySha256, rootfsSha256, ociArchiveSha256, ociImageId, builderImage, builderImageDigest] = process.argv.slice(2);
-const digests = [trustRootsSha256, sourceCommit, sourceTree, toolchainLockSha256, binarySha256, rootfsSha256, ociArchiveSha256];
-if (!root || !output || !target || digests.some((value) => !/^[a-f0-9]{40,64}$/.test(value ?? "")) || !/^sha256:[a-f0-9]{64}$/.test(ociImageId ?? "") || !/^[a-f0-9]{64}$/.test(builderImageDigest ?? "") || builderImage !== `${builderImage?.split("@sha256:")[0]}@sha256:${builderImageDigest}`) throw new Error("invalid verified metadata arguments");
-mkdirSync(output, { recursive: true });
+const [root, output, target, trustRootsSha256, sourceCommit, sourceTree, sourceAllowlistSha256, sourceArchiveSha256, sourceManifestSha256, sourceFileCount, sourceByteCount, toolchainLockSha256, brokerBinarySha256, stageBinarySha256, rootfsSha256, ociArchiveSha256, ociImageId, builderImage, builderImageDigest] = process.argv.slice(2);
+const digests = [trustRootsSha256, sourceCommit, sourceTree, sourceAllowlistSha256, sourceArchiveSha256, sourceManifestSha256, toolchainLockSha256, brokerBinarySha256, stageBinarySha256, rootfsSha256, ociArchiveSha256];
+if (!root || !output || !target || digests.some((value) => !/^[a-f0-9]{40,64}$/.test(value ?? "")) || !/^(?:0|[1-9][0-9]*)$/.test(sourceFileCount ?? "") || !/^(?:0|[1-9][0-9]*)$/.test(sourceByteCount ?? "") || !Number.isSafeInteger(Number(sourceFileCount)) || !Number.isSafeInteger(Number(sourceByteCount)) || !/^sha256:[a-f0-9]{64}$/.test(ociImageId ?? "") || !/^[a-f0-9]{64}$/.test(builderImageDigest ?? "") || builderImage !== `${builderImage?.split("@sha256:")[0]}@sha256:${builderImageDigest}`) throw new Error("invalid verified metadata arguments");
 const tree = execFileSync("cargo", ["tree", "--manifest-path", join(root, "Cargo.toml"), "--locked", "--offline", "--target", target, "--edges", "normal", "--prefix", "none", "--format", "{p}\t{l}"], { cwd: root, encoding: "utf8" });
 const byPurl = new Map();
 for (const line of tree.trim().split("\n")) {
@@ -20,25 +19,32 @@ for (const line of tree.trim().split("\n")) {
 const components = [...byPurl.values()].sort((a, b) => a.purl.localeCompare(b.purl));
 const lock = readFileSync(join(root, "Cargo.lock"));
 const sbom = { bomFormat: "CycloneDX", specVersion: "1.5", version: 1, metadata: { component: { type: "application", name: "gate-h2-stage-runtime", version: "0.1.0" } }, components };
+const sbomBytes = Buffer.from(`${JSON.stringify(sbom)}\n`);
 const provenance = {
   schema_version: "gate_h2_stage_build_provenance_v1.0.0",
   source_date_epoch: 0,
   source_commit: sourceCommit,
   source_tree: sourceTree,
+  source_allowlist_sha256: sourceAllowlistSha256,
+  source_archive_sha256: sourceArchiveSha256,
+  source_manifest_sha256: sourceManifestSha256,
+  source_file_count: Number(sourceFileCount),
+  source_byte_count: Number(sourceByteCount),
   target,
   toolchain_lock_sha256: toolchainLockSha256,
-  toolchain_lock: JSON.parse(readFileSync(join(root, "oci/toolchain-lock.v1.json"))),
   builder_image: builderImage,
   builder_image_digest: builderImageDigest,
   cargo_lock_sha256: createHash("sha256").update(lock).digest("hex"),
   trust_roots_sha256: trustRootsSha256,
-  binary_sha256: binarySha256,
+  broker_binary_sha256: brokerBinarySha256,
+  stage_binary_sha256: stageBinarySha256,
   rootfs_sha256: rootfsSha256,
   oci_archive_sha256: ociArchiveSha256,
   oci_image_id: ociImageId,
-  network_policy: "digest_pinned_builder_with_network_none_and_offline_cargo",
-  reproducibility_status: "verified_two_independent_clean_source_builds",
+  sbom_sha256: createHash("sha256").update(sbomBytes).digest("hex"),
+  network_policy: "inner_candidate_requires_trusted_host_admission",
+  reproducibility_status: "unadmitted_two_build_candidate",
   production_authority_activated: false,
 };
-writeFileSync(join(output, "sbom.cdx.json"), `${JSON.stringify(sbom)}\n`, { mode: 0o444 });
+writeFileSync(join(output, "sbom.cdx.json"), sbomBytes, { mode: 0o444 });
 writeFileSync(join(output, "provenance.json"), `${JSON.stringify(provenance)}\n`, { mode: 0o444 });

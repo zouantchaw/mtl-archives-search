@@ -67,6 +67,7 @@ pub struct Broker {
     pub evidence: EvidenceWriter,
     next_ordinal: usize,
     failed_closed: bool,
+    delivery_ack_consumed: bool,
     started_at: String,
 }
 
@@ -146,6 +147,7 @@ impl Broker {
             evidence,
             next_ordinal: 0,
             failed_closed: false,
+            delivery_ack_consumed: false,
             started_at,
         })
     }
@@ -162,6 +164,55 @@ impl Broker {
 
     pub fn expected_uid(&self) -> u32 {
         self.config.expected_uid
+    }
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn consume_delivery_ack(
+        &mut self,
+        run_token: &str,
+        owner_uid: u32,
+        request_id: &str,
+        response_sha256: &str,
+        manifest_id: &str,
+        capability_id: &str,
+        exchange_ordinal: usize,
+        request_artifact_role: &str,
+        output_artifact_role: &str,
+        output_sha256: &str,
+        output_bytes: u64,
+        output_status: u16,
+        expected_request_id: &str,
+        expected_response_sha256: &str,
+        expected_output_artifact_role: &str,
+        expected_output_sha256: &str,
+        expected_output_bytes: u64,
+        expected_output_status: u16,
+    ) -> bool {
+        let supplied = Sha256::digest(run_token.as_bytes());
+        let expected = Sha256::digest(self.config.run_token.expose());
+        let Some(ordinal) = self.next_ordinal.checked_sub(1) else {
+            return false;
+        };
+        let capability = &self.config.manifest.capabilities[ordinal];
+        let valid = !self.delivery_ack_consumed
+            && supplied.ct_eq(&expected).unwrap_u8() == 1
+            && owner_uid == self.config.expected_uid
+            && request_id == expected_request_id
+            && response_sha256 == expected_response_sha256
+            && manifest_id == self.config.manifest.manifest_id
+            && capability_id == capability.capability_id
+            && exchange_ordinal == ordinal
+            && request_artifact_role == capability.request_artifact.artifact_role
+            && output_artifact_role == expected_output_artifact_role
+            && output_artifact_role == capability.raw_response_output_role
+            && output_sha256 == expected_output_sha256
+            && output_bytes == expected_output_bytes
+            && output_status == expected_output_status
+            && self.is_terminal()
+            && !self.failed_closed;
+        if valid {
+            self.delivery_ack_consumed = true;
+        }
+        valid
     }
     #[cfg(test)]
     pub(crate) fn manifest(&self) -> &Manifest {
@@ -499,6 +550,38 @@ impl Broker {
             json!({"request_sha256":capability.request_artifact.sha256,"request_bytes":capability.request_artifact.bytes}),
         )?;
         self.terminal_failure(code, ordinal)
+    }
+
+    pub(crate) fn terminal_delivery_failure(&mut self) -> Result<(), ExchangeError> {
+        if self.failed_closed || self.next_ordinal == 0 {
+            return Err(ExchangeError::Evidence);
+        }
+        let ordinal = self.next_ordinal - 1;
+        let last = self.evidence.events.last().ok_or(ExchangeError::Evidence)?;
+        if last.exchange_ordinal != ordinal || last.event_type != "response_committed" {
+            return Err(ExchangeError::Evidence);
+        }
+        let replacement = Event {
+            schema_version: crate::EVENT_VERSION,
+            schema_pin: self.evidence.event_schema_pin.clone(),
+            event_id: String::new(),
+            manifest_id: self.config.manifest.manifest_id.clone(),
+            capability_id: self.config.manifest.capabilities[ordinal]
+                .capability_id
+                .clone(),
+            candidate_id: self.config.manifest.candidate_id.clone(),
+            stage_id: self.config.manifest.stage_id.clone(),
+            exchange_ordinal: ordinal,
+            sequence: last.sequence,
+            event_type: "exchange_failed",
+            occurred_at: self.clock.now(),
+            outcome: "failed_closed",
+            evidence: json!({"failure_code":"protocol_error"}),
+        };
+        self.failed_closed = true;
+        self.evidence
+            .replace_last(replacement)
+            .map_err(|_| ExchangeError::Evidence)
     }
 
     pub fn seal_transcript(&mut self) -> Result<String, ExchangeError> {
