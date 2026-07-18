@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "post-begin-authority-enrollment.schema.v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "enrollment_id", "production_status", "synthetic", "candidate_commit", "canonicalization_version", "native_capability_contract", "relay_executable", "verifier", "coordinator_endpoint", "replay_journal", "authority_document", "stage_launch_authority", "d1", "report_channel"],
+  "properties": {
+    "schema_version": { "const": "gate_h2_post_begin_authority_enrollment_v1.0.0" },
+    "enrollment_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{7,127}$" },
+    "production_status": { "const": "inactive" },
+    "synthetic": { "const": true },
+    "candidate_commit": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "canonicalization_version": { "const": "gate_h2_post_begin_grant_jcs_v1" },
+    "native_capability_contract": { "const": "gate_h2_native_retained_fd_attestation_v1" },
+    "relay_executable": { "$ref": "#/$defs/runtimeFilePin" },
+    "verifier": {
+      "type": "object", "additionalProperties": false,
+      "required": ["principal", "key_id", "algorithm", "spki_der_base64", "spki_der_sha256"],
+      "properties": { "principal": { "type": "string", "minLength": 1 }, "key_id": { "type": "string", "minLength": 1 }, "algorithm": { "const": "ed25519" }, "spki_der_base64": { "type": "string", "pattern": "^[A-Za-z0-9+/]+={0,2}$" }, "spki_der_sha256": { "$ref": "#/$defs/digest" } }
+    },
+    "coordinator_endpoint": { "$ref": "#/$defs/nativeEndpoint" },
+    "replay_journal": {
+      "type": "object", "additionalProperties": false,
+      "required": ["namespace", "object_id", "exclusive_owner_id", "capability_lineage_sha256", "native_descriptor_sha256", "journal_state_sha256", "retention_mode"],
+      "properties": { "namespace": { "type": "string", "minLength": 1 }, "object_id": { "type": "string", "minLength": 1 }, "exclusive_owner_id": { "type": "string", "minLength": 1 }, "capability_lineage_sha256": { "$ref": "#/$defs/digest" }, "native_descriptor_sha256": { "$ref": "#/$defs/digest" }, "journal_state_sha256": { "$ref": "#/$defs/digest" }, "retention_mode": { "const": "coordinator_retained_durable_exclusive_writer" } }
+    },
+    "authority_document": { "$ref": "#/$defs/filePin" },
+    "stage_launch_authority": { "type": "object", "additionalProperties": false, "required": ["sha256", "candidate_commit"], "properties": { "sha256": { "$ref": "#/$defs/digest" }, "candidate_commit": { "type": "string", "pattern": "^[a-f0-9]{40}$" } } },
+    "d1": {
+      "type": "object", "additionalProperties": false,
+      "required": ["api_contract", "account_id_sha256", "database_id_sha256", "endpoint_url_sha256", "coordinator_capability_lineage_sha256", "namespace_digest", "migration", "enrollment_table_schema"],
+      "properties": { "api_contract": { "const": "cloudflare_v4_d1_query_select_v1" }, "account_id_sha256": { "$ref": "#/$defs/digest" }, "database_id_sha256": { "$ref": "#/$defs/digest" }, "endpoint_url_sha256": { "$ref": "#/$defs/digest" }, "coordinator_capability_lineage_sha256": { "$ref": "#/$defs/digest" }, "namespace_digest": { "$ref": "#/$defs/digest" }, "migration": { "$ref": "#/$defs/filePin" }, "enrollment_table_schema": { "type": "object", "additionalProperties": false, "required": ["sha256", "bytes"], "properties": { "sha256": { "$ref": "#/$defs/digest" }, "bytes": { "type": "integer", "minimum": 1 } } } }
+    },
+    "report_channel": {
+      "type": "object", "additionalProperties": false,
+      "required": ["channel_id", "capability_lineage_sha256", "native_descriptor_sha256", "transfer_mode", "completion_expectations_sha256"],
+      "properties": { "channel_id": { "type": "string", "minLength": 1 }, "capability_lineage_sha256": { "$ref": "#/$defs/digest" }, "native_descriptor_sha256": { "$ref": "#/$defs/digest" }, "transfer_mode": { "const": "coordinator_retained_one_run_report_fd" }, "completion_expectations_sha256": { "$ref": "#/$defs/digest" } }
+    }
+  },
+  "$defs": {
+    "digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "filePin": { "type": "object", "additionalProperties": false, "required": ["path", "sha256", "bytes"], "properties": { "path": { "type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$" }, "sha256": { "$ref": "#/$defs/digest" }, "bytes": { "type": "integer", "minimum": 1 } } },
+    "runtimeFilePin": { "type": "object", "additionalProperties": false, "required": ["path", "sha256", "bytes"], "properties": { "path": { "type": "string", "pattern": "^/(?!.*(?:^|/)\\.\\.(?:/|$)).+$" }, "sha256": { "$ref": "#/$defs/digest" }, "bytes": { "type": "integer", "minimum": 1 } } },
+    "nativeEndpoint": { "type": "object", "additionalProperties": false, "required": ["principal", "capability_id", "capability_lineage_sha256", "native_descriptor_sha256", "endpoint_identity_sha256", "transfer_mode"], "properties": { "principal": { "type": "string", "minLength": 1 }, "capability_id": { "$ref": "#/$defs/digest" }, "capability_lineage_sha256": { "$ref": "#/$defs/digest" }, "native_descriptor_sha256": { "$ref": "#/$defs/digest" }, "endpoint_identity_sha256": { "$ref": "#/$defs/digest" }, "transfer_mode": { "const": "coordinator_retained_inherited_one_run_fd" } } }
+  }
+}
