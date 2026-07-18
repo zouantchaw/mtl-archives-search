@@ -236,6 +236,8 @@
     "dataset-factory:reviewed-metrics-self-test-v2": "npm run dataset-factory:reviewed-metrics-self-test-v2 --workspace=@mtl-archives/scripts --",
     "dataset-factory:reviewed-metrics-security-self-test-v2": "npm run dataset-factory:reviewed-metrics-security-self-test-v2 --workspace=@mtl-archives/scripts --",
     "dataset-factory:https-exchange-contract-self-test-v1": "npm run dataset-factory:https-exchange-contract-self-test-v1 --workspace=@mtl-archives/scripts --",
+    "gate-h2:broker-self-test": "./crates/gate-h2-broker/scripts/check-local.sh",
+    "gate-h2:stage-oci": "./crates/gate-h2-broker/scripts/build-stage-oci.sh",
     "dataset-factory:reviewed-metrics-integration-test-v2": "npm run dataset-factory:reviewed-metrics-integration-test-v2 --workspace=@mtl-archives/scripts --",
     "dataset-factory:production-apply-gate-v0": "npm run dataset-factory:production-apply-gate-v0 --workspace=@mtl-archives/scripts --",
     "dataset-factory:production-scoped-apply-v0": "npm run dataset-factory:production-scoped-apply-v0 --workspace=@mtl-archives/scripts --",

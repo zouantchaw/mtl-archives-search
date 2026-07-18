@@ -152,7 +152,10 @@ export const ID_DOMAINS = {
   manifest: "gate-h2-https-exchange-manifest-v1-schema-bound",
   event: "gate-h2-https-broker-event-v1-schema-bound",
   transcript: "gate-h2-https-broker-transcript-v1-schema-bound",
+  authorityEnvelope: "gate-h2-https-broker-authority-envelope-v2-schema-bound",
 } as const;
+
+const AUTHORITY_SIGNATURE_DOMAIN = "gate-h2-https-broker-authority-signature-ed25519-v2";
 
 export function domainSeparatedId(domain: string, value: Json, idField: string): string {
   const unsigned = structuredClone(value) as Record<string, Json>;
@@ -346,6 +349,59 @@ export function validateTranscript(value: Json, manifestValue?: Json): void {
   if (transcript.transcript_id !== domainSeparatedId(ID_DOMAINS.transcript, value, "transcript_id")) fail("HTTPS_TRANSCRIPT_ID", "transcript_id mismatch");
 }
 
+export function validateAuthorityEnvelopeV2(
+  value: Json,
+  transcriptBytes: Buffer,
+  manifestValue: Json,
+  signerTrustEntryBytes: Buffer,
+): void {
+  schema("https-broker-authority-envelope.schema.v2.json", value);
+  const envelope = value as Record<string, Json>;
+  if (jcs(envelope.schema_pin) !== jcs(expectedSchemaPin("https-broker-authority-envelope.schema.v2.json", "gate_h2_https_broker_authority_envelope_v2.0.0"))) fail("HTTPS_AUTHORITY_SCHEMA_PIN", "authority envelope self-schema bytes differ");
+  const transcript = parseStrictJson(transcriptBytes) as Record<string, Json>;
+  const exactTranscriptBytes = Buffer.from(`${jcs(transcript)}\n`);
+  if (!transcriptBytes.equals(exactTranscriptBytes)) fail("HTTPS_TRANSCRIPT_BYTES", "transcript must be the exact canonical UTF-8 JSON line retained by the broker");
+  validateTranscript(transcript, manifestValue);
+  const trustEntry = parseStrictJson(signerTrustEntryBytes) as Record<string, Json>;
+  if (!signerTrustEntryBytes.equals(Buffer.from(`${jcs(trustEntry)}\n`))) fail("HTTPS_AUTHORITY_TRUST_BYTES", "signer trust entry must be an exact canonical UTF-8 JSON line");
+  schema("https-broker-signer-trust-entry.schema.v1.json", trustEntry);
+  if (jcs(trustEntry.schema_pin) !== jcs(expectedSchemaPin("https-broker-signer-trust-entry.schema.v1.json", "gate_h2_https_broker_signer_trust_entry_v1.0.0"))) fail("HTTPS_AUTHORITY_TRUST_SCHEMA_PIN", "signer trust entry self-schema bytes differ");
+  const trustEntrySha256 = crypto.createHash("sha256").update(signerTrustEntryBytes).digest("hex");
+  if (envelope.transcript_id !== transcript.transcript_id
+    || envelope.transcript_sha256 !== crypto.createHash("sha256").update(transcriptBytes).digest("hex")
+    || envelope.manifest_id !== transcript.manifest_id
+    || envelope.socket_identity_sha256 !== transcript.socket_identity_sha256
+    || envelope.run_token_commitment !== transcript.run_token_commitment
+    || envelope.final_outcome !== transcript.final_outcome
+    || envelope.signer_trust_entry_sha256 !== trustEntrySha256
+    || envelope.signer_id !== trustEntry.signer_id
+    || envelope.public_key_base64url !== trustEntry.public_key_base64url
+    || envelope.signature_algorithm !== trustEntry.signature_algorithm
+    || trustEntry.trust_status !== "trusted") {
+    fail("HTTPS_AUTHORITY_JOIN", "authority envelope differs from transcript or trusted signer entry");
+  }
+  const unsignedId = structuredClone(envelope);
+  delete unsignedId.envelope_id;
+  delete unsignedId.signature_base64url;
+  const expectedEnvelopeId = crypto.createHash("sha256")
+    .update(ID_DOMAINS.authorityEnvelope).update("\0").update(jcs(unsignedId)).digest("hex");
+  if (envelope.envelope_id !== expectedEnvelopeId) fail("HTTPS_AUTHORITY_ID", "authority envelope ID mismatch");
+  const publicKey = Buffer.from(trustEntry.public_key_base64url as string, "base64url");
+  const signerId = crypto.createHash("sha256")
+    .update("gate-h2-ed25519-signer-v1\0").update(trustEntry.public_key_base64url as string).digest("hex");
+  if (publicKey.length !== 32 || publicKey.toString("base64url") !== trustEntry.public_key_base64url || trustEntry.signer_id !== signerId) fail("HTTPS_AUTHORITY_SIGNER", "trusted authority signer identity mismatch");
+  const unsignedSignature = structuredClone(envelope);
+  delete unsignedSignature.signature_base64url;
+  const spki = Buffer.concat([Buffer.from("302a300506032b6570032100", "hex"), publicKey]);
+  const message = Buffer.concat([
+    Buffer.from(`${AUTHORITY_SIGNATURE_DOMAIN}\0`),
+    Buffer.from(jcs(unsignedSignature)),
+  ]);
+  const signatureBase64url = envelope.signature_base64url as string;
+  const signature = Buffer.from(signatureBase64url, "base64url");
+  if (signature.length !== 64 || signature.toString("base64url") !== signatureBase64url || !crypto.verify(null, message, crypto.createPublicKey({ key: spki, format: "der", type: "spki" }), signature)) fail("HTTPS_AUTHORITY_SIGNATURE", "authority Ed25519 signature mismatch");
+}
+
 export function validateCompletedTranscriptOutputs(value: Json, manifestValue: Json, retainedOutputs: Json[]): void {
   validateTranscript(value, manifestValue);
   const transcript = value as Record<string, Json>;
@@ -441,6 +497,70 @@ export function selfTest(): void {
   const resignEvent = (value: any): any => { value.event_id = domainSeparatedId(ID_DOMAINS.event, value, "event_id"); return value; };
   const resignTranscript = (value: any): any => { value.transcript_id = domainSeparatedId(ID_DOMAINS.transcript, value, "transcript_id"); return value; };
   validateManifest(manifest); validateTranscript(transcript, manifest);
+  const transcriptBytes = Buffer.from(`${jcs(transcript)}\n`);
+  const makeSigner = (): { privateKey: crypto.KeyObject; publicKeyBase64url: string; signerId: string } => {
+    const { privateKey, publicKey } = crypto.generateKeyPairSync("ed25519");
+    const publicKeyBytes = publicKey.export({ format: "der", type: "spki" }).subarray(-32);
+    const publicKeyBase64url = publicKeyBytes.toString("base64url");
+    const signerId = crypto.createHash("sha256").update("gate-h2-ed25519-signer-v1\0").update(publicKeyBase64url).digest("hex");
+    return { privateKey, publicKeyBase64url, signerId };
+  };
+  const trustedSigner = makeSigner();
+  const trustEntry: any = {
+    schema_version: "gate_h2_https_broker_signer_trust_entry_v1.0.0",
+    schema_pin: expectedSchemaPin("https-broker-signer-trust-entry.schema.v1.json", "gate_h2_https_broker_signer_trust_entry_v1.0.0"),
+    signer_id: trustedSigner.signerId,
+    public_key_base64url: trustedSigner.publicKeyBase64url,
+    signature_algorithm: "ed25519",
+    trust_status: "trusted",
+  };
+  const trustEntryBytes = Buffer.from(`${jcs(trustEntry)}\n`);
+  const envelope: any = {
+    schema_version: "gate_h2_https_broker_authority_envelope_v2.0.0",
+    schema_pin: expectedSchemaPin("https-broker-authority-envelope.schema.v2.json", "gate_h2_https_broker_authority_envelope_v2.0.0"),
+    envelope_id: "",
+    transcript_id: (transcript as any).transcript_id,
+    transcript_sha256: crypto.createHash("sha256").update(transcriptBytes).digest("hex"),
+    manifest_id: (transcript as any).manifest_id,
+    d1_attempt_id: "d1_attempt_1",
+    d1_begin_sha256: "6".repeat(64),
+    session_id: "session_1",
+    attempt_id: "attempt_1",
+    broker_binary: { sha256: "1".repeat(64), bytes: 1, version: "broker-v1" },
+    stage_runtime: { sha256: "2".repeat(64), bytes: 1, version: "runtime-v1" },
+    trust_roots: { sha256: "3".repeat(64), bytes: 1, version: "roots-v1" },
+    socket_identity_sha256: (transcript as any).socket_identity_sha256,
+    run_token_commitment: (transcript as any).run_token_commitment,
+    final_outcome: (transcript as any).final_outcome,
+    signer_id: trustedSigner.signerId,
+    signer_trust_entry_sha256: crypto.createHash("sha256").update(trustEntryBytes).digest("hex"),
+    public_key_base64url: trustedSigner.publicKeyBase64url,
+    signature_algorithm: "ed25519",
+    signature_base64url: "",
+  };
+  const signEnvelope = (candidate: any, privateKey: crypto.KeyObject): void => {
+    const idValue = structuredClone(candidate); delete idValue.envelope_id; delete idValue.signature_base64url;
+    candidate.envelope_id = crypto.createHash("sha256").update(ID_DOMAINS.authorityEnvelope).update("\0").update(jcs(idValue)).digest("hex");
+    const unsigned = structuredClone(candidate); delete unsigned.signature_base64url;
+    candidate.signature_base64url = crypto.sign(null, Buffer.concat([Buffer.from(`${AUTHORITY_SIGNATURE_DOMAIN}\0`), Buffer.from(jcs(unsigned))]), privateKey).toString("base64url");
+  };
+  signEnvelope(envelope, trustedSigner.privateKey);
+  validateAuthorityEnvelopeV2(envelope, transcriptBytes, manifest, trustEntryBytes);
+  const aliasedSignatureEnvelope = structuredClone(envelope);
+  const base64urlAlphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+  const canonicalLastIndex = base64urlAlphabet.indexOf(aliasedSignatureEnvelope.signature_base64url.at(-1));
+  if (canonicalLastIndex < 0 || canonicalLastIndex % 16 !== 0) throw new Error("test signature did not use canonical 64-byte base64url trailing bits");
+  aliasedSignatureEnvelope.signature_base64url = `${aliasedSignatureEnvelope.signature_base64url.slice(0, -1)}${base64urlAlphabet[canonicalLastIndex + 1]}`;
+  if (!Buffer.from(aliasedSignatureEnvelope.signature_base64url, "base64url").equals(Buffer.from(envelope.signature_base64url, "base64url"))) throw new Error("test signature alias changed decoded bytes");
+  expectCode("HTTPS_AUTHORITY_SIGNATURE", () => validateAuthorityEnvelopeV2(aliasedSignatureEnvelope, transcriptBytes, manifest, trustEntryBytes));
+  expectCode("HTTPS_TRANSCRIPT_BYTES", () => validateAuthorityEnvelopeV2(envelope, Buffer.concat([Buffer.from(" "), transcriptBytes]), manifest, trustEntryBytes));
+  expectCode("HTTPS_TRANSCRIPT_BYTES", () => validateAuthorityEnvelopeV2(envelope, transcriptBytes.subarray(0, transcriptBytes.length - 1), manifest, trustEntryBytes));
+  const attacker = makeSigner();
+  const selfSelectedEnvelope = structuredClone(envelope);
+  selfSelectedEnvelope.signer_id = attacker.signerId;
+  selfSelectedEnvelope.public_key_base64url = attacker.publicKeyBase64url;
+  signEnvelope(selfSelectedEnvelope, attacker.privateKey);
+  expectCode("HTTPS_AUTHORITY_JOIN", () => validateAuthorityEnvelopeV2(selfSelectedEnvelope, transcriptBytes, manifest, trustEntryBytes));
   validateProtocol(read("uds-request-v1.json")); validateProtocol(read("uds-response-v1.json"));
   validateStageProgramV22(read("stage-program-v2.2.json"));
   expectCode("HTTPS_JSON_DUPLICATE_KEY", () => { parseStrictJson(Buffer.from('{"a":1,"a":2}')); });
