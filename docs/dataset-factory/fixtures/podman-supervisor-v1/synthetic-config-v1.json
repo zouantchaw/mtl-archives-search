@@ -1,0 +1,79 @@
+{
+  "schema_version": "gate_h2_podman_supervisor_config_v1.0.0",
+  "execution_class": "synthetic_test_only",
+  "admission_state": "ineligible_pending_issue_101_real_linux_evidence",
+  "stage_id": "publication_assembly_plan",
+  "candidate_id": "dfv0_reviewed_metrics_v2_candidate_20260715",
+  "candidate_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "authority_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "attempt_id": "synthetic-attempt-1",
+  "d1_attempt_id": "synthetic-attempt-1",
+  "d1_begin_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "launch_record_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "authorization_id": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+  "admission_id": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+  "session_id": "synthetic-session-1",
+  "terminal_ack_fd": 4,
+  "exchange_mode": {
+    "kind": "https",
+    "manifest_id": "1010101010101010101010101010101010101010101010101010101010101010",
+    "capability_manifest_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+    "transcript_role": "https_broker_transcript",
+    "transcript_schema_sha256": "1313131313131313131313131313131313131313131313131313131313131313",
+    "authority_envelope_role": "https_broker_authority_envelope",
+    "authority_envelope_schema_sha256": "1414141414141414141414141414141414141414141414141414141414141414",
+    "channels": [
+      { "inherited_fd": 3, "role": "https_exchange", "endpoint_type": "capability_exchange", "capability_id": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "ordinal": 0, "request_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", "raw_response_role": "provider_raw_response", "raw_response_path": "/synthetic/evidence/provider-raw-response.json" }
+    ],
+    "broker": {
+      "executable": { "path": "/usr/bin/gate-h2-broker", "sha256": "1111111111111111111111111111111111111111111111111111111111111111", "bytes": 1 },
+      "config_fd": 9,
+      "config_sha256": "7777777777777777777777777777777777777777777777777777777777777777",
+      "config_bytes": 1,
+      "socket_path": "/synthetic/run/broker.sock",
+      "inherited_descriptors": [
+        { "fd": 9, "role": "launch_config", "sha256": "7777777777777777777777777777777777777777777777777777777777777777", "bytes": 1, "fully_sealed": false },
+        { "fd": 10, "role": "run_token", "sha256": "8888888888888888888888888888888888888888888888888888888888888888", "bytes": 43, "fully_sealed": true },
+        { "fd": 11, "role": "evidence_signing_key", "sha256": "9999999999999999999999999999999999999999999999999999999999999999", "bytes": 43, "fully_sealed": true },
+        { "fd": 12, "role": "replay_journal", "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "bytes": 1, "fully_sealed": false },
+        { "fd": 13, "role": "request_body_0", "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "bytes": 1, "fully_sealed": false }
+      ]
+    }
+  },
+  "broker_authority": { "static_pin_sha256": "4444444444444444444444444444444444444444444444444444444444444444", "trust_roots": { "path": "/synthetic/trust-roots", "realpath": "/synthetic/trust-roots", "sha256": "3333333333333333333333333333333333333333333333333333333333333333", "bytes": 1, "version": "synthetic-v1" } },
+  "stage_program": { "sha256": "1212121212121212121212121212121212121212121212121212121212121212", "bytes": 1, "version": "reviewed_metrics_stage_program_v2.2.0" },
+  "stage_runtime": { "sha256": "2222222222222222222222222222222222222222222222222222222222222222", "bytes": 1, "version": "synthetic-v1" },
+  "trust_roots": { "sha256": "3333333333333333333333333333333333333333333333333333333333333333", "bytes": 1, "version": "synthetic-v1" },
+  "image": {
+    "immutable_reference": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+    "manifest_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+    "runtime_path": "/usr/local/bin/gate-h2-stage-runtime",
+    "admitted_runtime_source": "/synthetic/admitted-root/usr/local/bin/gate-h2-stage-runtime",
+    "runtime": { "sha256": "2222222222222222222222222222222222222222222222222222222222222222", "bytes": 1, "version": "synthetic-v1" }
+  },
+  "schema_set_sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+  "podman": { "path": "/usr/bin/podman", "sha256": "6666666666666666666666666666666666666666666666666666666666666666", "bytes": 1 },
+  "container": {
+    "name": "gate-h2-synthetic-attempt-1",
+    "uid": 65532,
+    "gid": 65532,
+    "entrypoint": "/usr/local/bin/gate-h2-stage-runtime",
+    "mounts": [
+      { "source": { "path": "/synthetic/program.json", "source_type": "file", "dev": 1, "ino": 1, "uid": 501, "gid": 20, "mode": 384, "links": 1, "bytes": 1, "sha256": "8888888888888888888888888888888888888888888888888888888888888888" }, "guest": "/stage/program.json", "writable": false, "artifact_role": "stage_program", "transition": null },
+      { "source": { "path": "/synthetic/request.json", "source_type": "file", "dev": 1, "ino": 2, "uid": 501, "gid": 20, "mode": 384, "links": 1, "bytes": 1, "sha256": "8888888888888888888888888888888888888888888888888888888888888888" }, "guest": "/stage/inputs/request.json", "writable": false, "artifact_role": "request", "transition": null },
+      { "source": { "path": "/synthetic/outputs", "source_type": "directory", "dev": 1, "ino": 3, "uid": 501, "gid": 20, "mode": 448, "links": 2, "bytes": 0, "sha256": "8888888888888888888888888888888888888888888888888888888888888888" }, "guest": "/stage/outputs", "writable": true, "artifact_role": "declared_outputs", "transition": { "kind": "declared_outputs", "files": [{ "relative_path": "provider-raw-response.json", "artifact_role": "provider_raw_response" }, { "relative_path": "https-broker-transcript.json", "artifact_role": "https_broker_transcript" }, { "relative_path": "https-broker-authority-envelope.json", "artifact_role": "https_broker_authority_envelope" }] } },
+      { "source": { "path": "/synthetic/stage-authority.json", "source_type": "file", "dev": 1, "ino": 4, "uid": 501, "gid": 20, "mode": 384, "links": 1, "bytes": 1, "sha256": "8888888888888888888888888888888888888888888888888888888888888888" }, "guest": "/run/gate-h2/stage-authority.json", "writable": false, "artifact_role": "stage_authority", "transition": null },
+      { "source": { "path": "/synthetic/run-token", "source_type": "file", "dev": 1, "ino": 5, "uid": 501, "gid": 20, "mode": 384, "links": 1, "bytes": 43, "sha256": "8888888888888888888888888888888888888888888888888888888888888888" }, "guest": "/run/gate-h2/run-token", "writable": false, "artifact_role": "run_token", "transition": null },
+      { "source": { "path": "/synthetic/work", "source_type": "directory", "dev": 1, "ino": 6, "uid": 501, "gid": 20, "mode": 448, "links": 2, "bytes": 0, "sha256": "8888888888888888888888888888888888888888888888888888888888888888" }, "guest": "/stage/work", "writable": true, "artifact_role": "empty_work", "transition": { "kind": "empty_work" } }
+    ]
+  },
+  "expected_outputs": [
+    { "path": "/synthetic/outputs/provider-raw-response.json", "artifact_role": "provider_raw_response" },
+    { "path": "/synthetic/outputs/https-broker-transcript.json", "artifact_role": "https_broker_transcript" },
+    { "path": "/synthetic/outputs/https-broker-authority-envelope.json", "artifact_role": "https_broker_authority_envelope" }
+  ],
+  "run_root": { "fd": 14, "role": "supervisor_run_root", "path": "/synthetic", "dev": 1, "ino": 7, "uid": 501, "gid": 20, "mode": 448, "links": 2 },
+  "run_id": "run",
+  "retained_report": "/synthetic/supervisor-reports/fixture.json",
+  "deadlines": { "broker_ready_ms": 1000, "stage_ms": 1000, "term_grace_ms": 100, "kill_reap_ms": 100, "rm_ms": 100 }
+}

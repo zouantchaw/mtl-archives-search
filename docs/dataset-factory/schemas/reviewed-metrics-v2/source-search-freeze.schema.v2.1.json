@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "source-search-freeze.schema.v2.1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "candidate_id", "candidate_commit", "task_id", "public_bundle", "prediction", "principal", "session_id", "model", "reasoning_effort", "route", "started_at", "ended_at", "authorized_at", "broker_evidence", "frozen_at"],
+  "properties": {
+    "schema_version": { "const": "reviewed_metrics_source_search_freeze_v2.1.0" },
+    "status": { "const": "frozen" },
+    "candidate_id": { "const": "dfv0_reviewed_metrics_v2_candidate_20260715" },
+    "candidate_commit": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "task_id": { "const": "task-7b1d4f0c9a2e6d83" },
+    "public_bundle": { "$ref": "#/$defs/pin" },
+    "prediction": { "$ref": "#/$defs/hashBytes" },
+    "principal": { "type": "string", "minLength": 1 },
+    "session_id": { "type": "string", "minLength": 1 },
+    "model": { "type": "string", "minLength": 1 },
+    "reasoning_effort": { "type": "string", "minLength": 1 },
+    "route": { "type": "string", "minLength": 1 },
+    "started_at": { "type": "string", "format": "date-time" },
+    "ended_at": { "type": "string", "format": "date-time" },
+    "authorized_at": { "type": "string", "format": "date-time" },
+    "broker_evidence": { "$ref": "prediction-freeze.schema.v2.1.json#/$defs/brokerEvidence" },
+    "frozen_at": { "type": "string", "format": "date-time" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "hashBytes": { "type": "object", "additionalProperties": false, "required": ["sha256", "bytes"], "properties": { "sha256": { "$ref": "#/$defs/sha256" }, "bytes": { "type": "integer", "minimum": 1 } } },
+    "pin": { "type": "object", "additionalProperties": false, "required": ["path", "sha256", "bytes"], "properties": { "path": { "const": "source-search-bundle-v2.json" }, "sha256": { "$ref": "#/$defs/sha256" }, "bytes": { "type": "integer", "minimum": 1 } } }
+  }
+}

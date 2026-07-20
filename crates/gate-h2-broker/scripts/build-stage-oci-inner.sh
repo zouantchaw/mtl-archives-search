@@ -34,8 +34,8 @@ unset GATE_H2_ADMITTED_CODE_ID GATE_H2_LAUNCH_AUTHORITY_TRUST_JSON
 declare -a OCI_IMAGE_ID
 for pass in 1 2; do
   mkdir -p "$TMP/target-$pass" "$TMP/rootfs-$pass"
-  CARGO_TARGET_DIR="$TMP/target-$pass" cargo build --manifest-path "$CRATE_ROOT/Cargo.toml" --locked --offline --release --target "$TARGET" --bin gate-h2-broker --bin gate-h2-stage-runtime --bin gate-h2-publish-noreplace --bin gate-h2-secure-candidate-read
-  for binary in gate-h2-broker gate-h2-stage-runtime gate-h2-publish-noreplace gate-h2-secure-candidate-read; do
+  CARGO_TARGET_DIR="$TMP/target-$pass" cargo build --manifest-path "$CRATE_ROOT/Cargo.toml" --locked --offline --release --target "$TARGET" --bin gate-h2-broker --bin gate-h2-stage-runtime --bin gate-h2-publish-noreplace --bin gate-h2-secure-candidate-read --bin gate-h2-podman-supervisor --bin gate-h2-post-begin-handoff
+  for binary in gate-h2-broker gate-h2-stage-runtime gate-h2-publish-noreplace gate-h2-secure-candidate-read gate-h2-podman-supervisor gate-h2-post-begin-handoff; do
     readelf -lW "$TMP/target-$pass/$TARGET/release/$binary" > "$TMP/$binary-program-$pass"
     readelf -dW "$TMP/target-$pass/$TARGET/release/$binary" > "$TMP/$binary-dynamic-$pass"
     ! grep -q INTERP "$TMP/$binary-program-$pass" || { echo "ELF interpreter is forbidden" >&2; exit 65; }
@@ -52,7 +52,7 @@ for pass in 1 2; do
   node "$CRATE_ROOT/scripts/create-canonical-tar.mjs" "$TMP/rootfs-$pass" "$TMP/rootfs-$pass.tar"
   OCI_IMAGE_ID[$pass]="$(node "$CRATE_ROOT/scripts/assemble-oci.mjs" "$TMP/rootfs-$pass.tar" "$TMP/oci-layout-$pass" "$TMP/stage-$pass.oci.tar")"
 done
-for artifact in gate-h2-broker gate-h2-stage-runtime gate-h2-publish-noreplace gate-h2-secure-candidate-read; do cmp "$TMP/target-1/$TARGET/release/$artifact" "$TMP/target-2/$TARGET/release/$artifact"; done
+for artifact in gate-h2-broker gate-h2-stage-runtime gate-h2-publish-noreplace gate-h2-secure-candidate-read gate-h2-podman-supervisor gate-h2-post-begin-handoff; do cmp "$TMP/target-1/$TARGET/release/$artifact" "$TMP/target-2/$TARGET/release/$artifact"; done
 cmp "$TMP/rootfs-1.tar" "$TMP/rootfs-2.tar"; cmp "$TMP/stage-1.oci.tar" "$TMP/stage-2.oci.tar"
 [[ "${OCI_IMAGE_ID[1]}" == "${OCI_IMAGE_ID[2]}" ]] || exit 65
 BROKER_SHA256="$(sha256sum "$TMP/target-1/$TARGET/release/gate-h2-broker" | cut -d' ' -f1)"
@@ -63,7 +63,7 @@ install -m 0555 "$TMP/target-1/$TARGET/release/gate-h2-broker" "$OUT/gate-h2-bro
 install -m 0444 "$TMP/stage-1.oci.tar" "$OUT/gate-h2-stage.oci.tar"; install -m 0444 "$TMP/rootfs-1.tar" "$OUT/rootfs.tar"
 printf '%s\n' "candidate_only=true" > "$OUT/INNER-CANDIDATE"
 chmod 0444 "$OUT/INNER-CANDIDATE" "$OUT/provenance.json" "$OUT/sbom.cdx.json"
-for helper in gate-h2-publish-noreplace gate-h2-secure-candidate-read; do
+for helper in gate-h2-publish-noreplace gate-h2-secure-candidate-read gate-h2-podman-supervisor gate-h2-post-begin-handoff; do
   install -m 0555 "$TMP/target-1/$TARGET/release/$helper" "$HELPER_OUT/$helper"
   install -m 0444 "$TMP/target-1/$TARGET/release/$helper" "$HELPER_OUT/$helper.pass-1"
   install -m 0444 "$TMP/target-2/$TARGET/release/$helper" "$HELPER_OUT/$helper.pass-2"
@@ -72,7 +72,7 @@ node - "$HELPER_OUT" "$SOURCE_MANIFEST_SHA256" "$GATE_H2_BUILDER_IMAGE_DIGEST" "
 const fs = require("fs"), path = require("path"), crypto = require("crypto");
 const [output, sourceManifest, builderDigest, pass1, pass2] = process.argv.slice(2);
 const sha = (file) => crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
-const helpers = ["gate-h2-publish-noreplace", "gate-h2-secure-candidate-read"].map((name) => {
+const helpers = ["gate-h2-publish-noreplace", "gate-h2-secure-candidate-read", "gate-h2-podman-supervisor", "gate-h2-post-begin-handoff"].map((name) => {
   const finalPath = path.join(output, name), one = sha(path.join(pass1, name)), two = sha(path.join(pass2, name)), final = sha(finalPath);
   if (one !== two || one !== final) throw new Error("independent host-helper builds differ");
   return { name, bytes: fs.statSync(finalPath).size, mode: 0o555, pass_1_sha256: one, pass_2_sha256: two, sha256: final };

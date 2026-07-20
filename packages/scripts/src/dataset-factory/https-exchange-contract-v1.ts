@@ -242,9 +242,14 @@ const AUTHORITY_SCHEMA_PINS = {
   uds_protocol_schema: ["https-exchange-uds-protocol.schema.v1.json", "gate_h2_https_exchange_uds_v1.0.0"],
   broker_event_schema: ["https-broker-event.schema.v1.json", "gate_h2_https_broker_event_v1.0.0"],
   broker_transcript_schema: ["https-broker-transcript.schema.v1.json", "gate_h2_https_broker_transcript_v1.0.0"],
+  broker_authority_envelope_schema: ["https-broker-authority-envelope.schema.v2.json", "gate_h2_https_broker_authority_envelope_v2.0.0"],
   executor_semantics_schema: ["executor-semantics-attestation.schema.v2.2.json", "reviewed_metrics_executor_semantics_attestation_v2.2.0"],
   executor_conformance_schema: ["executor-conformance-receipt.schema.v2.2.json", "reviewed_metrics_executor_conformance_receipt_v2.2.0"],
   linux_sandbox_schema: ["linux-sandbox-attestation.schema.v2.5.json", "reviewed_metrics_linux_sandbox_attestation_v2.5.0"],
+  post_begin_launch_request_schema: ["gate-h2-post-begin-launch-request.schema.v1.json", "gate_h2_post_begin_launch_request_v1.0.0"],
+  post_begin_launch_grant_schema: ["gate-h2-post-begin-launch-grant.schema.v1.json", "gate_h2_post_begin_launch_grant_v1.1.0"],
+  podman_supervisor_config_schema: ["podman-supervisor-config.schema.v1.json", "gate_h2_podman_supervisor_config_v1.0.0"],
+  podman_supervisor_report_schema: ["podman-supervisor-report.schema.v1.json", "gate_h2_podman_supervisor_report_v1.0.0"],
 } as const;
 
 const SELF_SCHEMA_PINS = {

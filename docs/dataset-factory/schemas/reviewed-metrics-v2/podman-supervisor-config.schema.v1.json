@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "podman-supervisor-config.schema.v1.json",
+  "title": "Gate H2 Podman supervisor config v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "execution_class", "admission_state", "stage_id", "candidate_id", "candidate_commit", "authority_sha256", "attempt_id", "d1_attempt_id", "d1_begin_sha256", "launch_record_sha256", "authorization_id", "admission_id", "session_id", "terminal_ack_fd", "exchange_mode", "broker_authority", "stage_program", "stage_runtime", "trust_roots", "image", "schema_set_sha256", "podman", "container", "expected_outputs", "run_root", "run_id", "retained_report", "deadlines"],
+  "properties": {
+    "schema_version": { "const": "gate_h2_podman_supervisor_config_v1.0.0" },
+    "execution_class": { "enum": ["synthetic_test_only", "external_authorized"] },
+    "admission_state": { "const": "ineligible_pending_issue_101_real_linux_evidence" },
+    "stage_id": { "enum": ["visual_predict", "visual_freeze", "source_predict", "source_freeze", "gold_review", "gold_envelope_authoring", "private_prepare", "r2_retain", "private_finalize", "task_review", "metrics_score", "publication_assembly_plan"] },
+    "candidate_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "candidate_commit": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "authority_sha256": { "$ref": "#/$defs/sha256" },
+    "attempt_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "d1_attempt_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "d1_begin_sha256": { "$ref": "#/$defs/sha256" },
+    "launch_record_sha256": { "$ref": "#/$defs/sha256" },
+    "authorization_id": { "$ref": "#/$defs/sha256" },
+    "admission_id": { "$ref": "#/$defs/sha256" },
+    "session_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "terminal_ack_fd": { "type": ["integer", "null"], "minimum": 4, "maximum": 19 },
+    "exchange_mode": {
+      "oneOf": [
+        { "type": "object", "additionalProperties": false, "required": ["kind", "manifest", "channels", "broker"], "properties": { "kind": { "const": "none" }, "manifest": { "type": "null" }, "channels": { "type": "array", "maxItems": 0 }, "broker": { "type": "null" } } },
+        { "type": "object", "additionalProperties": false, "required": ["kind", "manifest_id", "capability_manifest_sha256", "transcript_role", "transcript_schema_sha256", "authority_envelope_role", "authority_envelope_schema_sha256", "channels", "broker"], "properties": { "kind": { "const": "https" }, "manifest_id": { "$ref": "#/$defs/sha256" }, "capability_manifest_sha256": { "$ref": "#/$defs/sha256" }, "transcript_role": { "const": "https_broker_transcript" }, "transcript_schema_sha256": { "$ref": "#/$defs/sha256" }, "authority_envelope_role": { "$ref": "#/$defs/role" }, "authority_envelope_schema_sha256": { "$ref": "#/$defs/sha256" }, "channels": { "type": "array", "minItems": 1, "maxItems": 16, "items": { "$ref": "#/$defs/channel" } }, "broker": { "$ref": "#/$defs/broker" } } }
+      ]
+    },
+    "broker_authority": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "object", "additionalProperties": false, "required": ["static_pin_sha256", "trust_roots"], "properties": { "static_pin_sha256": { "$ref": "#/$defs/sha256" }, "trust_roots": { "$ref": "#/$defs/requestFilePin" } } }
+      ]
+    },
+    "stage_program": { "$ref": "#/$defs/filePin" },
+    "stage_runtime": { "$ref": "#/$defs/filePin" },
+    "trust_roots": { "$ref": "#/$defs/filePin" },
+    "image": {
+      "type": "object", "additionalProperties": false,
+      "required": ["immutable_reference", "manifest_digest", "runtime_path", "admitted_runtime_source", "runtime"],
+      "properties": {
+        "immutable_reference": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+        "manifest_digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+        "runtime_path": { "const": "/usr/local/bin/gate-h2-stage-runtime" },
+        "admitted_runtime_source": { "$ref": "#/$defs/absolutePath" },
+        "runtime": { "$ref": "#/$defs/filePin" }
+      }
+    },
+    "schema_set_sha256": { "$ref": "#/$defs/sha256" },
+    "podman": {
+      "type": "object", "additionalProperties": false, "required": ["path", "sha256", "bytes"],
+      "properties": { "path": { "$ref": "#/$defs/absolutePath" }, "sha256": { "$ref": "#/$defs/sha256" }, "bytes": { "type": "integer", "minimum": 1, "maximum": 83886080 } }
+    },
+    "container": {
+      "type": "object", "additionalProperties": false, "required": ["name", "uid", "gid", "entrypoint", "mounts"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_.-]{0,127}$" },
+        "uid": { "type": "integer", "minimum": 1, "maximum": 4294967295 },
+        "gid": { "type": "integer", "minimum": 1, "maximum": 4294967295 },
+        "entrypoint": { "const": "/usr/local/bin/gate-h2-stage-runtime" },
+        "mounts": { "type": "array", "minItems": 1, "maxItems": 64, "items": { "$ref": "#/$defs/mount" } }
+      }
+    },
+    "expected_outputs": { "type": "array", "minItems": 1, "maxItems": 64, "items": { "type": "object", "additionalProperties": false, "required": ["path", "artifact_role"], "properties": { "path": { "$ref": "#/$defs/absolutePath" }, "artifact_role": { "$ref": "#/$defs/role" } } } },
+    "run_root": { "$ref": "#/$defs/runRootCapability" },
+    "run_id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$" },
+    "retained_report": { "$ref": "#/$defs/absolutePath" },
+    "deadlines": {
+      "type": "object", "additionalProperties": false, "required": ["broker_ready_ms", "stage_ms", "term_grace_ms", "kill_reap_ms", "rm_ms"],
+      "properties": {
+        "broker_ready_ms": { "$ref": "#/$defs/deadline" }, "stage_ms": { "$ref": "#/$defs/deadline" },
+        "term_grace_ms": { "$ref": "#/$defs/deadline" }, "kill_reap_ms": { "$ref": "#/$defs/deadline" }, "rm_ms": { "$ref": "#/$defs/deadline" }
+      }
+    }
+  },
+  "allOf": [
+    { "if": { "properties": { "exchange_mode": { "properties": { "kind": { "const": "none" } }, "required": ["kind"] } } }, "then": { "properties": { "terminal_ack_fd": { "type": "null" } } }, "else": { "properties": { "terminal_ack_fd": { "type": "integer" } } } }
+  ],
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "absolutePath": { "type": "string", "pattern": "^/" },
+    "role": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,127}$" },
+    "deadline": { "type": "integer", "minimum": 1, "maximum": 1800000 },
+    "filePin": { "type": "object", "additionalProperties": false, "required": ["sha256", "bytes", "version"], "properties": { "sha256": { "$ref": "#/$defs/sha256" }, "bytes": { "type": "integer", "minimum": 1, "maximum": 268435456 }, "version": { "type": "string", "minLength": 1 } } },
+    "requestFilePin": { "type": "object", "additionalProperties": false, "required": ["path", "realpath", "sha256", "bytes", "version"], "properties": { "path": { "$ref": "#/$defs/absolutePath" }, "realpath": { "$ref": "#/$defs/absolutePath" }, "sha256": { "$ref": "#/$defs/sha256" }, "bytes": { "type": "integer", "minimum": 1, "maximum": 268435456 }, "version": { "type": "string", "minLength": 1 } } },
+    "channel": { "type": "object", "additionalProperties": false, "required": ["inherited_fd", "role", "endpoint_type", "capability_id", "ordinal", "request_sha256", "raw_response_role", "raw_response_path"], "properties": { "inherited_fd": { "type": "integer", "minimum": 3, "maximum": 18 }, "role": { "const": "https_exchange" }, "endpoint_type": { "const": "capability_exchange" }, "capability_id": { "$ref": "#/$defs/sha256" }, "ordinal": { "type": "integer", "minimum": 0, "maximum": 15 }, "request_sha256": { "$ref": "#/$defs/sha256" }, "raw_response_role": { "$ref": "#/$defs/role" }, "raw_response_path": { "$ref": "#/$defs/absolutePath" } } },
+    "executablePin": { "type": "object", "additionalProperties": false, "required": ["path", "sha256", "bytes"], "properties": { "path": { "$ref": "#/$defs/absolutePath" }, "sha256": { "$ref": "#/$defs/sha256" }, "bytes": { "type": "integer", "minimum": 1, "maximum": 83886080 } } },
+    "descriptor": { "type": "object", "additionalProperties": false, "required": ["fd", "role", "sha256", "bytes", "fully_sealed"], "properties": { "fd": { "type": "integer", "minimum": 3, "maximum": 1024 }, "role": { "type": "string", "pattern": "^(launch_config|run_token|evidence_signing_key|replay_journal|request_body_[0-9]+|credential_[a-f0-9]{64})$" }, "sha256": { "$ref": "#/$defs/sha256" }, "bytes": { "type": "integer", "minimum": 1 }, "fully_sealed": { "type": "boolean" } } },
+    "runRootCapability": { "type": "object", "additionalProperties": false, "required": ["fd", "role", "path", "dev", "ino", "uid", "gid", "mode", "links"], "properties": { "fd": { "type": "integer", "minimum": 3, "maximum": 1024 }, "role": { "const": "supervisor_run_root" }, "path": { "$ref": "#/$defs/absolutePath" }, "dev": { "type": "integer", "minimum": 1 }, "ino": { "type": "integer", "minimum": 1 }, "uid": { "type": "integer", "minimum": 0 }, "gid": { "type": "integer", "minimum": 0 }, "mode": { "type": "integer", "minimum": 0, "maximum": 4095 }, "links": { "type": "integer", "minimum": 1 } } },
+    "broker": { "type": "object", "additionalProperties": false, "required": ["executable", "config_fd", "config_sha256", "config_bytes", "socket_path", "inherited_descriptors"], "properties": { "executable": { "$ref": "#/$defs/executablePin" }, "config_fd": { "type": "integer", "minimum": 3, "maximum": 1024 }, "config_sha256": { "$ref": "#/$defs/sha256" }, "config_bytes": { "type": "integer", "minimum": 1, "maximum": 2097152 }, "socket_path": { "$ref": "#/$defs/absolutePath" }, "inherited_descriptors": { "type": "array", "minItems": 5, "maxItems": 64, "items": { "$ref": "#/$defs/descriptor" } } } },
+    "sourcePin": { "type": "object", "additionalProperties": false, "required": ["path", "source_type", "dev", "ino", "uid", "gid", "mode", "links", "bytes", "sha256"], "properties": { "path": { "$ref": "#/$defs/absolutePath" }, "source_type": { "enum": ["file", "directory"] }, "dev": { "type": "integer", "minimum": 1 }, "ino": { "type": "integer", "minimum": 1 }, "uid": { "type": "integer", "minimum": 0 }, "gid": { "type": "integer", "minimum": 0 }, "mode": { "type": "integer", "minimum": 0, "maximum": 4095 }, "links": { "type": "integer", "minimum": 1 }, "bytes": { "type": "integer", "minimum": 0 }, "sha256": { "$ref": "#/$defs/sha256" } } },
+    "declaredOutput": { "type": "object", "additionalProperties": false, "required": ["relative_path", "artifact_role"], "properties": { "relative_path": { "type": "string", "pattern": "^[^/]+(?:/[^/]+)*$" }, "artifact_role": { "$ref": "#/$defs/role" } } },
+    "writableTransition": { "oneOf": [{ "type": "object", "additionalProperties": false, "required": ["kind", "files"], "properties": { "kind": { "const": "declared_outputs" }, "files": { "type": "array", "minItems": 1, "maxItems": 64, "items": { "$ref": "#/$defs/declaredOutput" } } } }, { "type": "object", "additionalProperties": false, "required": ["kind"], "properties": { "kind": { "const": "empty_work" } } }] },
+    "mount": { "type": "object", "additionalProperties": false, "required": ["source", "guest", "writable", "artifact_role", "transition"], "properties": { "source": { "$ref": "#/$defs/sourcePin" }, "guest": { "$ref": "#/$defs/absolutePath" }, "writable": { "type": "boolean" }, "artifact_role": { "$ref": "#/$defs/role" }, "transition": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/writableTransition" }] } }, "allOf": [{ "if": { "properties": { "writable": { "const": false } } }, "then": { "properties": { "transition": { "type": "null" } } }, "else": { "properties": { "transition": { "$ref": "#/$defs/writableTransition" } } } }] }
+  }
+}

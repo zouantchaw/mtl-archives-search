@@ -28,6 +28,14 @@ path = "src/bin/publish_noreplace.rs"
 name = "gate-h2-secure-candidate-read"
 path = "src/bin/secure_candidate_read.rs"
 
+[[bin]]
+name = "gate-h2-podman-supervisor"
+path = "src/bin/podman_supervisor.rs"
+
+[[bin]]
+name = "gate-h2-post-begin-handoff"
+path = "src/bin/post_begin_handoff.rs"
+
 [dependencies]
 base64 = "=0.22.1"
 ed25519-dalek = { version = "=2.2.0", features = ["zeroize"] }

@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "podman-supervisor-report.schema.v1.json",
+  "title": "Gate H2 Podman supervisor retained report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "execution_class", "admission_state", "stage_id", "candidate_id", "candidate_commit", "authority_sha256", "attempt_id", "d1_attempt_id", "d1_begin_sha256", "config_sha256", "launch_record_sha256", "authorization_id", "admission_id", "session_id", "terminal_ack_fd", "exchange_mode", "image_manifest_digest", "admitted_runtime_source", "stage_program", "stage_runtime", "ordered_mounts", "mount_set_sha256", "podman_argv", "trust_roots", "schema_set_sha256", "podman_argv_sha256", "broker_evidence_join", "broker_exit_success", "container_exit_success", "cleanup_succeeded", "output_transitions", "grant_authorization"],
+  "properties": {
+    "schema_version": { "const": "gate_h2_podman_supervisor_report_v1.0.0" },
+    "status": { "const": "supervised_stage_succeeded" },
+    "execution_class": { "$ref": "podman-supervisor-config.schema.v1.json#/properties/execution_class" },
+    "admission_state": { "$ref": "podman-supervisor-config.schema.v1.json#/properties/admission_state" },
+    "stage_id": { "$ref": "podman-supervisor-config.schema.v1.json#/properties/stage_id" },
+    "candidate_id": { "$ref": "podman-supervisor-config.schema.v1.json#/properties/candidate_id" },
+    "candidate_commit": { "$ref": "podman-supervisor-config.schema.v1.json#/properties/candidate_commit" },
+    "authority_sha256": { "$ref": "podman-supervisor-config.schema.v1.json#/$defs/sha256" },
+    "attempt_id": { "type": "string", "minLength": 1 },
+    "d1_attempt_id": { "type": "string", "minLength": 1 },
+    "d1_begin_sha256": { "$ref": "podman-supervisor-config.schema.v1.json#/$defs/sha256" },
+    "config_sha256": { "$ref": "podman-supervisor-config.schema.v1.json#/$defs/sha256" },
+    "launch_record_sha256": { "$ref": "podman-supervisor-config.schema.v1.json#/$defs/sha256" },
+    "authorization_id": { "$ref": "podman-supervisor-config.schema.v1.json#/$defs/sha256" },
+    "admission_id": { "$ref": "podman-supervisor-config.schema.v1.json#/$defs/sha256" },
+    "session_id": { "$ref": "podman-supervisor-config.schema.v1.json#/properties/session_id" },
+    "terminal_ack_fd": { "$ref": "podman-supervisor-config.schema.v1.json#/properties/terminal_ack_fd" },
+    "exchange_mode": { "$ref": "podman-supervisor-config.schema.v1.json#/properties/exchange_mode" },
+    "image_manifest_digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "admitted_runtime_source": { "$ref": "podman-supervisor-config.schema.v1.json#/$defs/absolutePath" },
+    "stage_program": { "$ref": "podman-supervisor-config.schema.v1.json#/$defs/filePin" },
+    "stage_runtime": { "$ref": "podman-supervisor-config.schema.v1.json#/$defs/filePin" },
+    "ordered_mounts": { "$ref": "podman-supervisor-config.schema.v1.json#/properties/container/properties/mounts" },
+    "mount_set_sha256": { "$ref": "podman-supervisor-config.schema.v1.json#/$defs/sha256" },
+    "podman_argv": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+    "trust_roots": { "$ref": "podman-supervisor-config.schema.v1.json#/$defs/filePin" },
+    "schema_set_sha256": { "$ref": "podman-supervisor-config.schema.v1.json#/$defs/sha256" },
+    "podman_argv_sha256": { "$ref": "podman-supervisor-config.schema.v1.json#/$defs/sha256" },
+    "broker_evidence_join": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/brokerEvidenceJoin" }] },
+    "broker_exit_success": { "type": ["boolean", "null"] },
+    "container_exit_success": { "const": true },
+    "cleanup_succeeded": { "const": true },
+    "output_transitions": { "type": "array", "maxItems": 64, "items": { "$ref": "#/$defs/outputTransition" } },
+    "grant_authorization": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/grantAuthorization" }] }
+  },
+  "allOf": [
+    { "if": { "properties": { "exchange_mode": { "properties": { "kind": { "const": "none" } }, "required": ["kind"] } } }, "then": { "properties": { "terminal_ack_fd": { "type": "null" }, "broker_evidence_join": { "type": "null" }, "broker_exit_success": { "type": "null" } } }, "else": { "properties": { "terminal_ack_fd": { "type": "integer" }, "broker_evidence_join": { "$ref": "#/$defs/brokerEvidenceJoin" }, "broker_exit_success": { "const": true } } } },
+    { "if": { "properties": { "execution_class": { "const": "external_authorized" } }, "required": ["execution_class"] }, "then": { "properties": { "grant_authorization": { "$ref": "#/$defs/grantAuthorization" } } } }
+  ],
+  "$defs": {
+    "grantAuthorization": { "type": "object", "additionalProperties": false, "required": ["grant_id", "issuer_principal", "key_id", "replay_sequence", "request_sha256", "grant_sha256", "completion_expectations_sha256", "supervisor_expectations_sha256", "signed_payload_base64", "signature_base64"], "properties": { "grant_id": { "$ref": "podman-supervisor-config.schema.v1.json#/$defs/sha256" }, "issuer_principal": { "type": "string", "minLength": 1 }, "key_id": { "type": "string", "minLength": 1 }, "replay_sequence": { "type": "integer", "minimum": 1 }, "request_sha256": { "$ref": "podman-supervisor-config.schema.v1.json#/$defs/sha256" }, "grant_sha256": { "$ref": "podman-supervisor-config.schema.v1.json#/$defs/sha256" }, "completion_expectations_sha256": { "$ref": "podman-supervisor-config.schema.v1.json#/$defs/sha256" }, "supervisor_expectations_sha256": { "$ref": "podman-supervisor-config.schema.v1.json#/$defs/sha256" }, "signed_payload_base64": { "type": "string", "minLength": 1 }, "signature_base64": { "type": "string", "pattern": "^[A-Za-z0-9+/]{86}==$" } } },
+    "outputTransition": { "type": "object", "additionalProperties": false, "required": ["artifact_role", "relative_path", "sha256", "bytes"], "properties": { "artifact_role": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,127}$" }, "relative_path": { "type": "string", "pattern": "^[^/]+(?:/[^/]+)*$" }, "sha256": { "$ref": "podman-supervisor-config.schema.v1.json#/$defs/sha256" }, "bytes": { "type": "integer", "minimum": 1 } } },
+    "retainedPin": { "type": "object", "additionalProperties": false, "required": ["artifact_role", "sha256", "bytes"], "properties": { "artifact_role": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,127}$" }, "sha256": { "$ref": "podman-supervisor-config.schema.v1.json#/$defs/sha256" }, "bytes": { "type": "integer", "minimum": 1 } } },
+    "rawResponsePin": { "type": "object", "additionalProperties": false, "required": ["artifact_role", "path", "sha256", "bytes", "ordinal", "capability_id", "request_sha256"], "properties": { "artifact_role": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,127}$" }, "path": { "$ref": "podman-supervisor-config.schema.v1.json#/$defs/absolutePath" }, "sha256": { "$ref": "podman-supervisor-config.schema.v1.json#/$defs/sha256" }, "bytes": { "type": "integer", "minimum": 1 }, "ordinal": { "type": "integer", "minimum": 0, "maximum": 15 }, "capability_id": { "$ref": "podman-supervisor-config.schema.v1.json#/$defs/sha256" }, "request_sha256": { "$ref": "podman-supervisor-config.schema.v1.json#/$defs/sha256" } } },
+    "brokerEvidenceJoin": {
+      "type": "object", "additionalProperties": false,
+      "required": ["candidate_id", "candidate_commit", "authority_sha256", "stage_id", "attempt_id", "d1_attempt_id", "d1_begin_sha256", "session_id", "authorization_id", "admission_id", "runtime_sha256", "image_manifest_digest", "podman_sha256", "broker_sha256", "trust_roots_sha256", "manifest_id", "manifest_sha256", "transcript", "authority_envelope", "raw_responses"],
+      "properties": {
+        "candidate_id": { "type": "string", "minLength": 1 }, "candidate_commit": { "$ref": "podman-supervisor-config.schema.v1.json#/properties/candidate_commit" }, "authority_sha256": { "$ref": "podman-supervisor-config.schema.v1.json#/$defs/sha256" }, "stage_id": { "$ref": "podman-supervisor-config.schema.v1.json#/properties/stage_id" }, "attempt_id": { "type": "string", "minLength": 1 }, "d1_attempt_id": { "type": "string", "minLength": 1 }, "d1_begin_sha256": { "$ref": "podman-supervisor-config.schema.v1.json#/$defs/sha256" }, "session_id": { "type": "string", "minLength": 1 }, "authorization_id": { "$ref": "podman-supervisor-config.schema.v1.json#/$defs/sha256" }, "admission_id": { "$ref": "podman-supervisor-config.schema.v1.json#/$defs/sha256" }, "runtime_sha256": { "$ref": "podman-supervisor-config.schema.v1.json#/$defs/sha256" }, "image_manifest_digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }, "podman_sha256": { "$ref": "podman-supervisor-config.schema.v1.json#/$defs/sha256" }, "broker_sha256": { "$ref": "podman-supervisor-config.schema.v1.json#/$defs/sha256" }, "trust_roots_sha256": { "$ref": "podman-supervisor-config.schema.v1.json#/$defs/sha256" }, "manifest_id": { "$ref": "podman-supervisor-config.schema.v1.json#/$defs/sha256" }, "manifest_sha256": { "$ref": "podman-supervisor-config.schema.v1.json#/$defs/sha256" }, "transcript": { "$ref": "#/$defs/retainedPin" }, "authority_envelope": { "$ref": "#/$defs/retainedPin" }, "raw_responses": { "type": "array", "minItems": 1, "maxItems": 16, "items": { "$ref": "#/$defs/rawResponsePin" } }
+      }
+    }
+  }
+}

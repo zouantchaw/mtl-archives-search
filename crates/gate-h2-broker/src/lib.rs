@@ -2,12 +2,15 @@
 
 pub mod broker;
 pub mod credential;
+pub mod enrollment;
 pub mod evidence;
+pub mod handoff;
 pub mod launcher;
 pub mod model;
 pub mod network;
 pub mod policy;
 pub mod stage;
+pub mod supervisor;
 pub mod uds;
 
 pub use broker::{Broker, BrokerConfig, ExchangeError};

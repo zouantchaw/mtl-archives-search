@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "gate-h2-post-begin-launch-grant.schema.v1.json",
+  "title": "Gate H2 externally supplied post-D1-begin launch grant v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "execution_class", "admission_state", "request_sha256", "candidate_id", "candidate_commit", "authority_sha256", "stage_id", "attempt_id", "d1_attempt_id", "d1_begin_sha256", "stage_launch_sha256", "session_id", "authorization_id", "admission_id", "supervisor_executable", "supervisor_config", "handoff_replay_journal", "supervisor_report", "completion_expectations", "supervisor_expectations", "supervisor_run_root", "broker_bundle", "grant_id", "issuer_principal", "key_id", "issued_at_unix_ms", "not_before_unix_ms", "expires_at_unix_ms", "replay_sequence", "completion_expectations_sha256", "supervisor_expectations_sha256", "grant_sha256", "signature_base64"],
+  "properties": {
+    "schema_version": { "const": "gate_h2_post_begin_launch_grant_v1.1.0" },
+    "execution_class": { "enum": ["synthetic_test_only", "external_authorized"] },
+    "admission_state": { "const": "ineligible_pending_issue_101_real_linux_evidence" },
+    "request_sha256": { "$ref": "#/$defs/sha256" },
+    "candidate_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "candidate_commit": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "authority_sha256": { "$ref": "#/$defs/sha256" },
+    "stage_id": { "$ref": "podman-supervisor-config.schema.v1.json#/properties/stage_id" },
+    "attempt_id": { "$ref": "#/$defs/id" },
+    "d1_attempt_id": { "$ref": "#/$defs/id" },
+    "d1_begin_sha256": { "$ref": "#/$defs/sha256" },
+    "stage_launch_sha256": { "$ref": "#/$defs/sha256" },
+    "session_id": { "$ref": "#/$defs/id" },
+    "authorization_id": { "$ref": "#/$defs/sha256" },
+    "admission_id": { "$ref": "#/$defs/sha256" },
+    "supervisor_executable": { "$ref": "#/$defs/executablePin" },
+    "supervisor_config": { "$ref": "#/$defs/fixedDescriptor" },
+    "handoff_replay_journal": { "$ref": "#/$defs/handoffReplayDescriptor" },
+    "supervisor_report": { "$ref": "#/$defs/reportDescriptor" },
+    "completion_expectations": { "$ref": "#/$defs/expectationDescriptor" },
+    "supervisor_expectations": { "$ref": "#/$defs/expectationDescriptor" },
+    "supervisor_run_root": { "$ref": "#/$defs/runRootDescriptor" },
+    "broker_bundle": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["broker_executable", "https_request_contract", "launch_config", "run_token", "evidence_signing_key", "replay_journal", "request_bodies", "credentials"],
+          "properties": {
+            "broker_executable": { "$ref": "#/$defs/executablePin" },
+            "https_request_contract": { "$ref": "gate-h2-post-begin-launch-request.schema.v1.json#/properties/exchange_mode" },
+            "launch_config": { "$ref": "#/$defs/fixedDescriptor" },
+            "run_token": { "$ref": "#/$defs/fixedDescriptor" },
+            "evidence_signing_key": { "$ref": "#/$defs/fixedDescriptor" },
+            "replay_journal": { "$ref": "#/$defs/fixedDescriptor" },
+            "request_bodies": { "type": "array", "minItems": 1, "maxItems": 16, "items": { "$ref": "#/$defs/requestDescriptor" } },
+            "credentials": { "type": "array", "maxItems": 16, "items": { "$ref": "#/$defs/credentialDescriptor" } }
+          }
+        }
+      ]
+    },
+    "grant_id": { "$ref": "#/$defs/sha256" },
+    "issuer_principal": { "$ref": "#/$defs/id" },
+    "key_id": { "$ref": "#/$defs/id" },
+    "issued_at_unix_ms": { "type": "integer", "minimum": 1 },
+    "not_before_unix_ms": { "type": "integer", "minimum": 1 },
+    "expires_at_unix_ms": { "type": "integer", "minimum": 1 },
+    "replay_sequence": { "type": "integer", "minimum": 1 },
+    "completion_expectations_sha256": { "$ref": "#/$defs/sha256" },
+    "supervisor_expectations_sha256": { "$ref": "#/$defs/sha256" },
+    "grant_sha256": { "$ref": "#/$defs/sha256" },
+    "signature_base64": { "type": "string", "pattern": "^[A-Za-z0-9+/]{86}==$" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "absolutePath": { "type": "string", "pattern": "^/" },
+    "executablePin": { "type": "object", "additionalProperties": false, "required": ["path", "realpath", "sha256", "bytes", "version"], "properties": { "path": { "$ref": "#/$defs/absolutePath" }, "realpath": { "$ref": "#/$defs/absolutePath" }, "sha256": { "$ref": "#/$defs/sha256" }, "bytes": { "type": "integer", "minimum": 1 }, "version": { "type": "string", "minLength": 1 } } },
+    "fixedDescriptor": { "type": "object", "additionalProperties": false, "required": ["fd", "role", "sha256", "bytes", "fully_sealed"], "properties": { "fd": { "type": "integer", "minimum": 3, "maximum": 1024 }, "role": { "enum": ["supervisor_config", "launch_config", "run_token", "evidence_signing_key", "replay_journal"] }, "sha256": { "$ref": "#/$defs/sha256" }, "bytes": { "type": "integer", "minimum": 1 }, "fully_sealed": { "type": "boolean" } } },
+    "handoffReplayDescriptor": { "type": "object", "additionalProperties": false, "required": ["fd", "role", "sha256", "bytes", "fully_sealed"], "properties": { "fd": { "type": "integer", "minimum": 3, "maximum": 1024 }, "role": { "const": "handoff_replay_journal" }, "sha256": { "$ref": "#/$defs/sha256" }, "bytes": { "type": "integer", "minimum": 1 }, "fully_sealed": { "const": false } } },
+    "reportDescriptor": { "type": "object", "additionalProperties": false, "required": ["fd", "role", "sha256", "bytes", "fully_sealed"], "properties": { "fd": { "type": "integer", "minimum": 3, "maximum": 1024 }, "role": { "const": "supervisor_report" }, "sha256": { "const": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" }, "bytes": { "const": 0 }, "fully_sealed": { "const": false } } },
+    "expectationDescriptor": { "type": "object", "additionalProperties": false, "required": ["fd", "role", "sha256", "bytes", "fully_sealed"], "properties": { "fd": { "type": "integer", "minimum": 3, "maximum": 1024 }, "role": { "enum": ["completion_expectations", "supervisor_expectations"] }, "sha256": { "$ref": "#/$defs/sha256" }, "bytes": { "type": "integer", "minimum": 1 }, "fully_sealed": { "const": false } } },
+    "runRootDescriptor": { "type": "object", "additionalProperties": false, "required": ["fd", "role", "path", "dev", "ino", "uid", "gid", "mode", "links", "sha256", "bytes", "fully_sealed"], "properties": { "fd": { "type": "integer", "minimum": 3, "maximum": 1024 }, "role": { "const": "supervisor_run_root" }, "path": { "type": "string", "pattern": "^/" }, "dev": { "type": "integer", "minimum": 1 }, "ino": { "type": "integer", "minimum": 1 }, "uid": { "type": "integer", "minimum": 0 }, "gid": { "type": "integer", "minimum": 0 }, "mode": { "type": "integer", "minimum": 0, "maximum": 4095 }, "links": { "type": "integer", "minimum": 1 }, "sha256": { "const": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" }, "bytes": { "const": 0 }, "fully_sealed": { "const": false } } },
+    "requestDescriptor": { "type": "object", "additionalProperties": false, "required": ["fd", "role", "ordinal", "sha256", "bytes", "fully_sealed"], "properties": { "fd": { "type": "integer", "minimum": 3, "maximum": 1024 }, "role": { "const": "request_body" }, "ordinal": { "type": "integer", "minimum": 0, "maximum": 15 }, "sha256": { "$ref": "#/$defs/sha256" }, "bytes": { "type": "integer", "minimum": 1 }, "fully_sealed": { "type": "boolean" } } },
+    "credentialDescriptor": { "type": "object", "additionalProperties": false, "required": ["fd", "role", "credential_capability_id", "sha256", "bytes", "fully_sealed"], "properties": { "fd": { "type": "integer", "minimum": 3, "maximum": 1024 }, "role": { "const": "credential" }, "credential_capability_id": { "$ref": "#/$defs/sha256" }, "sha256": { "$ref": "#/$defs/sha256" }, "bytes": { "type": "integer", "minimum": 1 }, "fully_sealed": { "type": "boolean" } } }
+  }
+}

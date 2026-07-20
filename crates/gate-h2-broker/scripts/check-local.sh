@@ -32,7 +32,7 @@ if grep -R -l --include='*.mjs' --exclude='test-*.mjs' 'GATE_H2_TEST_' "$ROOT/sc
   exit 1
 fi
 node "$ROOT/scripts/test-tar-fixture.mjs"
-node "$ROOT/scripts/verify-source-descriptor.mjs" >/dev/null
+node "$ROOT/scripts/verify-source-descriptor.mjs" "$ROOT/../../docs/dataset-factory/fixtures/podman-supervisor-v1/source-descriptor-v2.json" >/dev/null
 node "$ROOT/scripts/test-source-descriptor-modes.mjs" >/dev/null
 node "$ROOT/scripts/verify-toolchain-lock.mjs" "$ROOT/oci/toolchain-lock.v1.json" >/dev/null
 if node "$ROOT/scripts/verify-toolchain-lock.mjs" "$ROOT/oci/toolchain-lock.v1.json" \
@@ -69,7 +69,7 @@ diff -r "$TMP/layout-077" "$TMP/layout-002"
 cmp "$TMP/digest-077" "$TMP/digest-002"
 cmp "$TMP/archive-077.tar" "$TMP/archive-002.tar"
 node -e 'const fs=require("fs"),p=require("path"),c=require("crypto"); const scan=(root,dir=root)=>fs.readdirSync(dir,{withFileTypes:true}).flatMap(e=>{const q=p.join(dir,e.name),s=fs.statSync(q),r=p.relative(root,q); return e.isDirectory()?[`${r}/\t${(s.mode&0o7777).toString(8)}`,...scan(root,q)]:[`${r}\t${(s.mode&0o7777).toString(8)}\t${c.createHash("sha256").update(fs.readFileSync(q)).digest("hex")}`]}).sort().join("\n"); if(scan(process.argv[1])!==scan(process.argv[2])) process.exit(1)' "$TMP/layout-077" "$TMP/layout-002"
-DESCRIPTOR="$ROOT/../../docs/dataset-factory/fixtures/https-broker-runtime-v1/source-descriptor-v1.json"
+DESCRIPTOR="$ROOT/../../docs/dataset-factory/fixtures/podman-supervisor-v1/source-descriptor-v2.json"
 for mutation in member member_mode member_hash member_bytes hash file_count byte_count; do
   node - "$DESCRIPTOR" "$TMP/source-descriptor-$mutation.json" "$mutation" <<'NODE'
 const fs = require("fs");
