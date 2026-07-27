@@ -1,42 +1,49 @@
 # Montréal Archives Search
 
-Issue #90 Gate F aerial source evidence is documented in `docs/dataset-factory/aerial-source-evidence-v1.md`. The tracked publication imports the externally reviewed 15-file authority packet byte-for-byte under receipt SHA-256 `784d6bf14d207f12277c7d5ef873208e78485fef2a6ecf0408a3802b75d88383`. It establishes source/media/rights/attribution authority for all 22 records while preserving held or abstained location, georef, scale, land-use, and measurement semantics. `issue_complete` and `production_mutation` remain false, with zero accepted claims, verified dossiers, or tasks.
+**A mobile-first Montréal archives search, game, and print product — backed by Cloudflare edge services and offline data pipelines.**
 
-Issue #69 Gate B authoritative ground research is documented in `docs/dataset-factory/ground-authoritative-research-v1.md`. The versioned tracked fixture covers six ground records with rights-conscious source capture and pending claim drafts only; promotions, verified dossiers, benchmark/search tasks, and production mutations are all zero.
+Built on Cloudflare Workers, D1, Vectorize, R2, and Workers AI, with a Next.js frontend.
 
-Issue #69 Phase D's 60-record scale artifact is documented in `docs/dataset-factory/phase-d-scale-v1.md`. Its tracked state is published under an immutable fresh Sol High reviewer receipt after independent source restoration, selection replay, and join verification. Ordinary build cannot overwrite the receipt; verification and integration replay both candidate and authoritative states without changing tracked bytes. Verified dossiers, accepted tasks, and new external claims remain zero, so issue #69 remains open and incomplete.
-
-Issue #89 Gate E reviewed source-body evidence is documented in `docs/dataset-factory/reviewed-source-evidence-v1.md`. The published tracked authority preserves the exact candidate descriptor and binds all seven ground claims to exact private RPCQ/Parks bodies, sanitized HTTP acquisition receipts, short review-safe representations, citation-only BAnQ boundaries, City predecessor pins, and a deterministic private snapshot with an exact Cloudflare R2 upload/readback receipt. Its byte-preserved Sol High receipt records 1 accepted claim (`c0-rpcq`), 3 held, 1 rejected, and 2 abstained; verified dossiers, tasks, and production mutations remain zero.
-
-**Semantic and visual search API for the Montréal city archives photo collection (~15,000 historical images from 1870s-1990s).**
-
-Built on Cloudflare's edge infrastructure: Workers, D1, Vectorize, R2, and Workers AI.
+[Live site](https://mtlarchives.com) · [Try the API](#try-the-live-api) · [Architecture](docs/architecture.md)
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Node](https://img.shields.io/badge/node-%3E%3D23.5.0-green.svg)
 ![Cloudflare Workers](https://img.shields.io/badge/cloudflare-workers-orange.svg)
 
-## Features
+## What this repo is
 
-- **Text Search** — SQL-based keyword search across photo metadata
-- **Semantic Search** — Find conceptually similar photos using BGE text embeddings
-- **Visual Search** — CLIP-based image similarity search (512-dim embeddings)
-- **Daily Game** — Guess-the-location daily challenge + practice round
-- **Map Exploration** — Leaflet-based map view for geolocated photos
-- **Print Ordering** — Stripe Checkout payment with manual fulfillment emails
-- **Daily Newsletter** — Explicit opt-in email list with landing/game signup, welcome flow, daily send, and one-click unsubscribe
-- **V4 Frontend** — Paper-driven editorial landing, search, photo, print, checkout, auth, and game surfaces across desktop + mobile
-- **Bilingual UI** — French + English across the site and game
-- **Signed URLs** — Secure, time-limited access to R2-hosted images
-- **Edge Performance** — Sub-50ms response times globally via Cloudflare's network
+MTL Archives Search is a fast, mobile-first Montréal archives product: search, a daily location game, and print ordering on top of one archive data engine.
 
-Dataset Factory's Canonical Image Recovery v1 restores visual features for the exact 209 issue-67 failures under bounded read-only contracts. See [docs/dataset-factory/canonical-image-recovery-v1.md](docs/dataset-factory/canonical-image-recovery-v1.md).
+Three public experiences:
 
-Gold Label Batch 002 is complete for issue #68: 300 candidates were reviewed through sealed primary/blind passes, trusted adjudication, post-fix audit, search disposition review, and completion validation. The ignored local evidence remains under `data/mtl_archives/reports/gold_label_batch_002`; the durable sealed archive is recorded separately in Cloudflare R2 bucket `wiel-codex-worker-cache` at object key `artifacts/mtl-archives/gold-label-batch-002/11c4577c5fa2b0393d2c83a9c9a75effcf7c97252febc646fa8ceca4e6789fcd.tar.gz` with SHA-256 `11c4577c5fa2b0393d2c83a9c9a75effcf7c97252febc646fa8ceca4e6789fcd`. See [docs/dataset-factory/gold-label-batch-002-phase-1.md](docs/dataset-factory/gold-label-batch-002-phase-1.md).
+- Search the collection by text, semantic meaning, or image similarity.
+- Play the daily location game and practice mode.
+- Buy prints through Stripe Checkout, with manual fulfillment preserved.
 
-Verified Multimodal Intelligence Batch 001 now has a synthetic foundation, a 26-record canonical-real candidate pool, and a schema-bound primary visual promotion. Independent visual review approved all 16 primary decisions with zero disagreements: 12 selected records (6 ground and 6 aerial/control) and 4 reserves. The bounded public source run captured and offline-verified all 17 required sources, all 12 image samples, and the six exact official CSV rows. The stable aerial page directly supports TIFF/index distribution and non-georeferenced or approximate boundaries. Source acquisition is complete, but no historical, selected-image content, identity, geolocation, or land-use claim is promoted. See [docs/dataset-factory/verified-multimodal-batch-001.md](docs/dataset-factory/verified-multimodal-batch-001.md).
+Everything else in the repo exists to make those three things faster, safer, and easier to evolve: offline ETL and embedding pipelines, a Cloudflare edge API, a Next.js frontend, and the newsletter/social loops that bring people back.
 
-## Live API
+> Current focus: Dataset Factory v0 is the active workstream. The latest issue tracker lives in `TASKS.md`, with the detailed artifacts under `docs/dataset-factory/`.
+
+## At a glance
+
+| Surface | Purpose |
+| --- | --- |
+| `apps/api` | Cloudflare Worker API for search, photos, game, sitemap, and newsletter |
+| `apps/next-app` | Main site: search, map, photo pages, print checkout, auth, game |
+| `apps/web` | Three.js CLIP embedding explorer for research/outreach |
+| `packages/scripts` | ETL, vectorize, dataset-factory, and evaluation tooling |
+| `pipelines/` | Python OCR, VLM, and social/story pipelines |
+| `infrastructure/d1/` | D1 schema and migrations |
+
+## Why it looks this way
+
+- Offline pipelines do the expensive thinking ahead of time.
+- The Worker is the live authority at the edge.
+- The Next app stays mostly presentational.
+- Newsletter consent is explicit.
+- Manual print fulfillment stays manual.
+
+## Try the live API
 
 ```bash
 # Text search (SQL LIKE)
@@ -52,7 +59,7 @@ curl "https://mtl-archives-worker.wiel.workers.dev/api/search?q=snowy+park&mode=
 curl "https://mtl-archives-worker.wiel.workers.dev/api/photos?limit=10"
 ```
 
-## Architecture
+## System shape
 
 ```
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
