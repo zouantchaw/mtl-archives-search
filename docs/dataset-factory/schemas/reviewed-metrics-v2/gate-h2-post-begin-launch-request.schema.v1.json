@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "gate-h2-post-begin-launch-request.schema.v1.json",
+  "title": "Gate H2 post-D1-begin launch authorization request v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "execution_class", "admission_state", "candidate_id", "candidate_commit", "authority_sha256", "stage_id", "attempt_id", "d1_attempt_id", "d1_begin_sha256", "stage_launch_sha256", "operation_sha256", "session_id", "authorization_id", "admission_id", "enrollment_id", "enrollment_sha256", "supervisor_executable", "stage_program", "stage_runtime", "image_manifest_digest", "podman", "mounts", "expected_outputs", "uid", "gid", "deadlines", "exchange_mode", "request_sha256"],
+  "properties": {
+    "schema_version": { "const": "gate_h2_post_begin_launch_request_v1.0.0" },
+    "execution_class": { "enum": ["synthetic_test_only", "external_authorized"] },
+    "admission_state": { "const": "ineligible_pending_issue_101_real_linux_evidence" },
+    "candidate_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "candidate_commit": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "authority_sha256": { "$ref": "#/$defs/sha256" },
+    "stage_id": { "$ref": "podman-supervisor-config.schema.v1.json#/properties/stage_id" },
+    "attempt_id": { "$ref": "#/$defs/id" },
+    "d1_attempt_id": { "$ref": "#/$defs/id" },
+    "d1_begin_sha256": { "$ref": "#/$defs/sha256" },
+    "stage_launch_sha256": { "$ref": "#/$defs/sha256" },
+    "operation_sha256": { "$ref": "#/$defs/sha256" },
+    "session_id": { "$ref": "#/$defs/id" },
+    "authorization_id": { "$ref": "#/$defs/sha256" },
+    "admission_id": { "$ref": "#/$defs/sha256" },
+    "enrollment_id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{7,127}$" },
+    "enrollment_sha256": { "$ref": "#/$defs/sha256" },
+    "supervisor_executable": { "$ref": "#/$defs/filePin" },
+    "stage_program": { "$ref": "#/$defs/filePin" },
+    "stage_runtime": { "$ref": "#/$defs/filePin" },
+    "image_manifest_digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "podman": { "$ref": "podman-supervisor-config.schema.v1.json#/properties/podman" },
+    "mounts": { "type": "array", "minItems": 1, "maxItems": 64, "items": { "$ref": "#/$defs/mountCommitment" } },
+    "expected_outputs": { "type": "array", "minItems": 1, "maxItems": 64, "items": { "$ref": "#/$defs/outputCommitment" } },
+    "uid": { "type": "integer", "minimum": 1, "maximum": 4294967295 },
+    "gid": { "type": "integer", "minimum": 1, "maximum": 4294967295 },
+    "deadlines": { "$ref": "podman-supervisor-config.schema.v1.json#/properties/deadlines" },
+    "exchange_mode": {
+      "oneOf": [
+        { "type": "object", "additionalProperties": false, "required": ["kind", "manifest", "broker", "stage_exchange_descriptors", "terminal_ack_fd"], "properties": { "kind": { "const": "none" }, "manifest": { "type": "null" }, "broker": { "type": "null" }, "stage_exchange_descriptors": { "type": "array", "maxItems": 0 }, "terminal_ack_fd": { "type": "null" } } },
+        { "type": "object", "additionalProperties": false, "required": ["kind", "manifest", "broker", "stage_exchange_descriptors", "terminal_ack_fd"], "properties": { "kind": { "const": "https" }, "manifest": { "$ref": "#/$defs/manifestPin" }, "broker": { "$ref": "#/$defs/brokerPin" }, "stage_exchange_descriptors": { "type": "array", "minItems": 1, "maxItems": 16, "items": { "$ref": "#/$defs/stageExchangeDescriptor" } }, "terminal_ack_fd": { "type": "integer", "minimum": 4, "maximum": 19 } } }
+      ]
+    },
+    "request_sha256": { "$ref": "#/$defs/sha256" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "absolutePath": { "type": "string", "pattern": "^/" },
+    "role": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,127}$" },
+    "filePin": { "type": "object", "additionalProperties": false, "required": ["path", "realpath", "sha256", "bytes", "version"], "properties": { "path": { "$ref": "#/$defs/absolutePath" }, "realpath": { "$ref": "#/$defs/absolutePath" }, "sha256": { "$ref": "#/$defs/sha256" }, "bytes": { "type": "integer", "minimum": 1 }, "version": { "type": "string", "minLength": 1 } } },
+    "authorityVerifier": { "type": "object", "additionalProperties": false, "required": ["schema_version", "principal", "key_id", "public_key_spki_sha256", "public_key_spki_der_base64", "expected_peer_uid"], "properties": { "schema_version": { "const": "gate_h2_post_begin_authority_trust_v1.0.0" }, "principal": { "$ref": "#/$defs/id" }, "key_id": { "$ref": "#/$defs/id" }, "public_key_spki_sha256": { "$ref": "#/$defs/sha256" }, "public_key_spki_der_base64": { "type": "string", "pattern": "^[A-Za-z0-9+/]+={0,2}$" }, "expected_peer_uid": { "type": "integer", "minimum": 0, "maximum": 4294967295 } } },
+    "manifestPin": { "type": "object", "additionalProperties": false, "required": ["path", "realpath", "sha256", "bytes", "schema_version", "manifest_id"], "properties": { "path": { "$ref": "#/$defs/absolutePath" }, "realpath": { "$ref": "#/$defs/absolutePath" }, "sha256": { "$ref": "#/$defs/sha256" }, "bytes": { "type": "integer", "minimum": 1 }, "schema_version": { "const": "gate_h2_https_exchange_manifest_v1.0.0" }, "manifest_id": { "$ref": "#/$defs/sha256" } } },
+    "brokerPin": { "type": "object", "additionalProperties": false, "required": ["executable", "static_pin_sha256", "trust_roots"], "properties": { "executable": { "$ref": "#/$defs/filePin" }, "static_pin_sha256": { "$ref": "#/$defs/sha256" }, "trust_roots": { "$ref": "#/$defs/filePin" } } },
+    "declaredOutput": { "type": "object", "additionalProperties": false, "required": ["relative_path", "artifact_role"], "properties": { "relative_path": { "type": "string", "pattern": "^[^/]+(?:/[^/]+)*$" }, "artifact_role": { "$ref": "#/$defs/role" } } },
+    "writableTransition": { "oneOf": [{ "type": "object", "additionalProperties": false, "required": ["kind", "files"], "properties": { "kind": { "const": "declared_outputs" }, "files": { "type": "array", "minItems": 1, "maxItems": 64, "items": { "$ref": "#/$defs/declaredOutput" } } } }, { "type": "object", "additionalProperties": false, "required": ["kind"], "properties": { "kind": { "const": "empty_work" } } }] },
+    "mountCommitment": { "type": "object", "additionalProperties": false, "required": ["source", "guest", "writable", "artifact_role", "transition"], "properties": { "source": { "$ref": "#/$defs/absolutePath" }, "guest": { "$ref": "#/$defs/absolutePath" }, "writable": { "type": "boolean" }, "artifact_role": { "$ref": "#/$defs/role" }, "transition": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/writableTransition" }] } }, "allOf": [{ "if": { "properties": { "writable": { "const": false } } }, "then": { "properties": { "transition": { "type": "null" } } }, "else": { "properties": { "transition": { "$ref": "#/$defs/writableTransition" } } } }] },
+    "outputCommitment": { "type": "object", "additionalProperties": false, "required": ["artifact_role", "path"], "properties": { "artifact_role": { "$ref": "#/$defs/role" }, "path": { "$ref": "#/$defs/absolutePath" } } },
+    "stageExchangeDescriptor": { "type": "object", "additionalProperties": false, "required": ["fd", "ordinal", "capability_id", "request_sha256", "raw_response_role", "raw_response_path"], "properties": { "fd": { "type": "integer", "minimum": 3, "maximum": 18 }, "ordinal": { "type": "integer", "minimum": 0, "maximum": 15 }, "capability_id": { "$ref": "#/$defs/sha256" }, "request_sha256": { "$ref": "#/$defs/sha256" }, "raw_response_role": { "$ref": "#/$defs/role" }, "raw_response_path": { "$ref": "#/$defs/absolutePath" } } }
+  }
+}

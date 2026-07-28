@@ -27,10 +27,11 @@ import {
   stageLedgerProductionContractSelfTest,
   validateCompleteLedgerReadback,
   type LedgerIdentity,
+  type LedgerRow,
   type LedgerReadback,
   type StageLedgerAdapter,
 } from "./reviewed-metrics-v2-ledger.js";
-import { ID_DOMAINS, assertNoPredictorHttpsAuthorityLeak, domainSeparatedId, parseStrictJson, validateAuthorizationNetworkContract, validateCompletedTranscriptOutputs, validateManifest, validateStageProgramV22 } from "./https-exchange-contract-v1.js";
+import { ID_DOMAINS, assertNoPredictorHttpsAuthorityLeak, domainSeparatedId, parseStrictJson, validateAuthorityEnvelopeV2, validateAuthorizationNetworkContract, validateCompletedTranscriptOutputs, validateManifest, validateStageProgramV22 } from "./https-exchange-contract-v1.js";
 type J = any;
 type Source = {
   source_key: string;
@@ -355,10 +356,21 @@ function codedAssert(
   assert(value, message, code);
 }
 function hash(value: Buffer | string): string { return crypto.createHash("sha256").update(value).digest("hex"); }
+// Shared with the Rust supervisor: recursively lexicographically sorted UTF-8
+// object keys, compact JSON scalars/arrays, no trailing newline. The config,
+// completion, and report schema versions bind this byte algorithm.
+const SUPERVISOR_CANONICAL_JSON_ALGORITHM = "gate_h2_lexicographic_utf8_json_v1";
+function compareUtf8Keys(left: string, right: string): number {
+  return Buffer.compare(Buffer.from(left, "utf8"), Buffer.from(right, "utf8"));
+}
 function canon(value: J): string {
   if (value === null || typeof value !== "object") return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map(canon).join(",")}]`;
-  return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canon(value[key])}`).join(",")}}`;
+  return `{${Object.keys(value).sort(compareUtf8Keys).map((key) => `${JSON.stringify(key)}:${canon(value[key])}`).join(",")}}`;
+}
+function supervisorCanonicalBytes(value: J): Buffer {
+  codedAssert(SUPERVISOR_CANONICAL_JSON_ALGORITHM === "gate_h2_lexicographic_utf8_json_v1", "H2_POST_BEGIN_AUTHORIZER", "unsupported supervisor canonical JSON algorithm");
+  return Buffer.from(canon(value), "utf8");
 }
 function pretty(value: J): string { return `${JSON.stringify(value, null, 2)}\n`; }
 function load(file: string): J { return JSON.parse(fs.readFileSync(file, "utf8")); }
@@ -1299,7 +1311,17 @@ function signRouteReceipt(authorityFile: string, measurementFile: string, role: 
   return receipt;
 }
 
-type StageConsumption = { attemptId: string; beginEnvelope: J; receipt: J; startedAt: string; stageId: StageId; authority: J; ledger: StageLedgerAdapter; capability?: InternalSyntheticCapability };
+type SupervisorCompletionExpectations = {
+  configSha256: string;
+  completionExpectationBytes?: Buffer;
+  supervisorExpectationBytes?: Buffer;
+  orderedMounts: J[];
+  mountSetSha256: string;
+  podmanArgv: string[];
+  podmanArgvSha256: string;
+  terminalAckFd: number | null;
+};
+type StageConsumption = { attemptId: string; beginEnvelope: J; receipt: J; startedAt: string; stageId: StageId; authority: J; ledger: StageLedgerAdapter; capability?: InternalSyntheticCapability; supervisorExpectations?: SupervisorCompletionExpectations };
 class InternalAppendOnlyStageLedger implements StageLedgerAdapter {
   readonly attempts: J[] = [];
   readonly claims: J[] = [];
@@ -1312,9 +1334,11 @@ class InternalAppendOnlyStageLedger implements StageLedgerAdapter {
     codedAssert(!this.claims.some((row) => row.candidate_commit === identity.candidate_commit && row.authority_hash === identity.authority_hash && row.stage_id === identity.stage_id), "H2_ROUTE_STAGE_REPLAY", "candidate/authority/stage already has a durable begin claim");
     this.claims.push({ ...identity, attempt_id: attemptId, began_at: beganAt, begin_envelope: envelope, begin_sha256: envelopeSha256 });
   }
-  async appendCompletion(identity: LedgerIdentity, attemptId: string, completedAt: string, envelope: string, envelopeSha256: string): Promise<void> {
+  async appendCompletion(identity: LedgerIdentity, attemptId: string, completedAt: string, envelope: string, envelopeSha256: string): Promise<LedgerRow> {
     codedAssert(this.claims.some((row) => row.attempt_id === attemptId) && !this.completions.some((row) => row.stage_id === identity.stage_id), "H2_ROUTE_STAGE_REPLAY", "completion lacks its unique durable begin or already exists");
-    this.completions.push({ ...identity, attempt_id: attemptId, completed_at: completedAt, completion_envelope: envelope, completion_sha256: envelopeSha256 });
+    const row = { ...identity, attempt_id: attemptId, completed_at: completedAt, completion_envelope: envelope, completion_sha256: envelopeSha256 };
+    this.completions.push(row);
+    return structuredClone(row);
   }
   async readAll(candidateCommit: string, authorityHash: string): Promise<LedgerReadback> {
     const match = (row: J) => row.candidate_commit === candidateCommit && row.authority_hash === authorityHash;
@@ -1354,7 +1378,7 @@ function internalD1FixtureAdapter(authority: J, fixtureFile: string, capability?
     if (sql.includes("sqlite_master")) results = fixture.schema_rows;
     else if (sql.startsWith("INSERT INTO gate_h2_stage_attempts")) { fixture.readback.attempts.push({ sequence: fixture.readback.attempts.length + 1, attempt_id: params[0], candidate_commit: params[1], authority_hash: params[2], stage_id: params[3], attempted_at: params[4], request_sha256: params[5] }); results = []; }
     else if (sql.startsWith("INSERT INTO gate_h2_stage_claims")) { fixture.readback.claims.push({ candidate_commit: params[0], authority_hash: params[1], stage_id: params[2], attempt_id: params[3], began_at: params[4], begin_envelope: params[5], begin_sha256: params[6] }); results = []; }
-    else if (sql.startsWith("INSERT INTO gate_h2_stage_completions")) { fixture.readback.completions.push({ candidate_commit: params[0], authority_hash: params[1], stage_id: params[2], attempt_id: params[3], completed_at: params[4], completion_envelope: params[5], completion_sha256: params[6] }); results = []; }
+    else if (sql.startsWith("INSERT INTO gate_h2_stage_completions")) { const row = { candidate_commit: params[0], authority_hash: params[1], stage_id: params[2], attempt_id: params[3], completed_at: params[4], completion_envelope: params[5], completion_sha256: params[6] }; fixture.readback.completions.push(row); results = sql.includes("RETURNING") ? [row] : []; }
     else if (sql.includes("gate_h2_stage_attempts")) results = fixture.readback.attempts;
     else if (sql.includes("gate_h2_stage_claims")) results = fixture.readback.claims;
     else if (sql.includes("gate_h2_stage_completions")) results = fixture.readback.completions;
@@ -1605,7 +1629,7 @@ type ExternalOperationAuthorityContext = {
 };
 function externalOperationAuthorityContext(authority: J, stageId: StageId, reviewedTrust: J): ExternalOperationAuthorityContext {
   const entry = stageManifestEntry(authority, stageId);
-  const httpsBinding = authority.schema_version === "reviewed_metrics_execution_authorization_v2.5.0" ? authority.https_exchange_authority.stage_bindings.find((binding: J) => binding.stage_id === stageId) : undefined;
+  const httpsBinding = authority.schema_version === "reviewed_metrics_execution_authorization_v2.5.0" ? derivedHttpsBinding(authority, stageId) : undefined;
   return {
     authorityVersion: authority.schema_version,
     stageId,
@@ -1825,18 +1849,445 @@ function executeReviewedProductionStageOperation(authority: J, stageId: StageId,
     return result;
   } finally { closeSnapshot(trustSnapshot); }
 }
-function executeStageRunExternalOperation(authority: J, stageId: StageId, capability?: InternalSyntheticCapability): ReturnType<typeof externalOperationPreflight> {
+const INTERNAL_PODMAN_SUPERVISOR_BACKEND = Symbol("internal-podman-supervisor-backend");
+const SOURCE_PINNED_POST_BEGIN_ENROLLMENT = {
+  enrollment_id: "gate_h2_authority_enrollment_synthetic_v1",
+  enrollment_sha256: "da23667da80ef5d3197f475961b16fa4bf9f49d0d43e89a8c63c50c3c9e6e797",
+} as const;
+type InternalPodmanSupervisorBackend = {
+  readonly [INTERNAL_PODMAN_SUPERVISOR_BACKEND]: true;
+  readonly failure: string;
+  readonly supervisorExecutable?: string;
+  readonly lifecycleFile?: string;
+  authorize(request: J): InternalSyntheticPostBeginHandoff;
+};
+type InternalSyntheticPostBeginHandoff = { launchConfigFile: string; configFd: number; brokerExecutable: J; descriptors: J[]; cleanupPaths: string[] };
+function grantHash(value: J): string { const unsigned = structuredClone(value); delete unsigned.grant_sha256; delete unsigned.signature_base64; return hash(Buffer.from(canon(unsigned))); }
+function signedGrantPayload(value: J): Buffer { const signed = structuredClone(value); delete signed.signature_base64; return Buffer.from(canon(signed)); }
+function signPostBeginGrant(grant: J, privateKey: crypto.KeyObject): void { grant.grant_sha256 = grantHash(grant); grant.signature_base64 = crypto.sign(null, signedGrantPayload(grant), privateKey).toString("base64"); }
+function completionExpectationPayload(config: J): J {
+  return {
+    schema_version: "gate_h2_completion_expectations_v1.0.0", supervisor_config_sha256: hash(supervisorCanonicalBytes(config)), supervisor_config_bytes: supervisorCanonicalBytes(config).length,
+    report_schema_version: "gate_h2_podman_supervisor_report_v1.0.0", execution_class: config.execution_class, admission_state: config.admission_state, stage_id: config.stage_id, candidate_id: config.candidate_id, candidate_commit: config.candidate_commit, authority_sha256: config.authority_sha256, attempt_id: config.attempt_id, d1_attempt_id: config.d1_attempt_id, d1_begin_sha256: config.d1_begin_sha256, launch_record_sha256: config.launch_record_sha256, authorization_id: config.authorization_id, admission_id: config.admission_id, session_id: config.session_id, terminal_ack_fd: config.terminal_ack_fd, exchange_mode: config.exchange_mode, broker_authority: config.broker_authority, stage_program: config.stage_program, stage_runtime: config.stage_runtime, trust_roots: config.trust_roots, image: config.image, schema_set_sha256: config.schema_set_sha256, podman: config.podman, container: config.container, expected_outputs: config.expected_outputs, run_root: config.run_root, run_id: config.run_id,
+  };
+}
+function supervisorExpectationsFromRetainedBytes(completionBytes: Buffer, supervisorBytes: Buffer): SupervisorCompletionExpectations {
+  let config: J;
+  let completion: J;
+  try {
+    config = parseStrictJson(supervisorBytes) as J;
+    completion = parseStrictJson(completionBytes) as J;
+    schema("podman-supervisor-config.schema.v1.json", config);
+  } catch (error) {
+    throw new GateH2Error("H2_POST_BEGIN_AUTHORIZER", "retained supervisor expectation descriptors are not strict canonical config and completion bytes", error);
+  }
+  codedAssert(supervisorBytes.equals(supervisorCanonicalBytes(config)) && completionBytes.equals(supervisorCanonicalBytes(completion)) && canon(completion) === canon(completionExpectationPayload(config)), "H2_POST_BEGIN_AUTHORIZER", "retained expectation descriptors do not carry the one canonical versioned completion/config payload pair");
+  const podmanArgv = podmanArgvFromSupervisorConfig(config);
+  return {
+    configSha256: hash(supervisorBytes), completionExpectationBytes: completionBytes, supervisorExpectationBytes: supervisorBytes,
+    orderedMounts: structuredClone(config.container.mounts), mountSetSha256: hash(Buffer.from(JSON.stringify(config.container.mounts))),
+    podmanArgv, podmanArgvSha256: hash(Buffer.from(podmanArgv.join("\0"))), terminalAckFd: config.terminal_ack_fd,
+  };
+}
+function syntheticPostBeginVerifier(publicKey: crypto.KeyObject): J {
+  const spki = publicKey.export({ type: "spki", format: "der" }) as Buffer;
+  return { schema_version: "gate_h2_post_begin_authority_trust_v1.0.0", principal: "synthetic-post-begin-authority", key_id: "synthetic-post-begin-ed25519-v1", public_key_spki_sha256: hash(spki), public_key_spki_der_base64: spki.toString("base64"), expected_peer_uid: process.getuid?.() ?? 0 };
+}
+function coordinatorRetainedGrantDescriptors(grant: J): J[] {
+  return [grant.supervisor_config, grant.handoff_replay_journal, grant.supervisor_report, grant.completion_expectations, grant.supervisor_expectations, grant.supervisor_run_root];
+}
+function validatePostBeginLaunchGrant(grant: J, request: J, verifier: J, manifest?: J, allowSyntheticSupervisorSubstitution = false, now = Date.now()): void {
+  try { schema("gate-h2-post-begin-launch-grant.schema.v1.json", grant); }
+  catch (error) { throw new GateH2Error("H2_POST_BEGIN_AUTHORIZER", "post-begin grant is not strict schema-valid JSON", error); }
+  codedAssert(grant.grant_sha256 === grantHash(grant) && grant.request_sha256 === request.request_sha256 && grant.execution_class === request.execution_class && grant.admission_state === request.admission_state, "H2_POST_BEGIN_AUTHORIZER", "post-begin grant hash, execution class, admission state, or request join differs");
+  codedAssert(grant.issuer_principal === verifier.principal && grant.key_id === verifier.key_id && grant.replay_sequence > 0 && grant.issued_at_unix_ms <= now && grant.not_before_unix_ms <= now && grant.expires_at_unix_ms >= now && grant.not_before_unix_ms <= grant.expires_at_unix_ms && /^[a-f0-9]{64}$/.test(grant.grant_id) && /^[a-f0-9]{64}$/.test(grant.completion_expectations_sha256) && /^[a-f0-9]{64}$/.test(grant.supervisor_expectations_sha256), "H2_POST_BEGIN_AUTHORIZER", "post-begin signer identity, validity window, replay sequence, or expectation commitment differs");
+  codedAssert(request.enrollment_id === SOURCE_PINNED_POST_BEGIN_ENROLLMENT.enrollment_id && request.enrollment_sha256 === SOURCE_PINNED_POST_BEGIN_ENROLLMENT.enrollment_sha256, "H2_POST_BEGIN_AUTHORIZER", "post-begin request does not consume the source-pinned inactive enrollment");
+  const spki = Buffer.from(verifier.public_key_spki_der_base64, "base64");
+  codedAssert(hash(spki) === verifier.public_key_spki_sha256 && crypto.verify(null, signedGrantPayload(grant), crypto.createPublicKey({ key: spki, type: "spki", format: "der" }), decodeEd25519SignatureBase64(grant.signature_base64, "H2_POST_BEGIN_AUTHORIZER")), "H2_POST_BEGIN_AUTHORIZER", "post-begin grant signature is not from the authority-pinned Ed25519 key");
+  for (const field of ["candidate_id", "candidate_commit", "authority_sha256", "stage_id", "attempt_id", "d1_attempt_id", "d1_begin_sha256", "stage_launch_sha256", "session_id", "authorization_id", "admission_id"]) codedAssert(grant[field] === request[field], "H2_POST_BEGIN_AUTHORIZER", `post-begin grant ${field} differs from the coordinator-retained request`);
+  codedAssert(grant.supervisor_config.role === "supervisor_config" && grant.supervisor_config.fully_sealed === false, "H2_POST_BEGIN_AUTHORIZER", "grant supervisor config descriptor role or mutability differs");
+  codedAssert(grant.supervisor_run_root.role === "supervisor_run_root" && grant.supervisor_run_root.bytes === 0 && grant.supervisor_run_root.sha256 === hash(Buffer.alloc(0)) && grant.supervisor_run_root.fully_sealed === false, "H2_POST_BEGIN_AUTHORIZER", "grant omitted the exact coordinator-retained run-root directory descriptor");
+  codedAssert(grant.handoff_replay_journal.role === "handoff_replay_journal" && grant.handoff_replay_journal.fully_sealed === false && grant.handoff_replay_journal.bytes > 0, "H2_POST_BEGIN_AUTHORIZER", "grant omitted the coordinator-retained handoff replay journal");
+  codedAssert(grant.supervisor_report.role === "supervisor_report" && grant.supervisor_report.fully_sealed === false && grant.supervisor_report.bytes === 0 && grant.supervisor_report.sha256 === hash(Buffer.alloc(0)), "H2_POST_BEGIN_AUTHORIZER", "grant omitted the empty coordinator-retained supervisor report descriptor");
+  codedAssert(grant.completion_expectations.role === "completion_expectations" && grant.supervisor_expectations.role === "supervisor_expectations" && grant.completion_expectations.fully_sealed === false && grant.supervisor_expectations.fully_sealed === false && grant.completion_expectations.sha256 === grant.completion_expectations_sha256 && grant.supervisor_expectations.sha256 === grant.supervisor_expectations_sha256 && grant.completion_expectations.bytes > 0 && grant.supervisor_expectations.bytes > 0, "H2_POST_BEGIN_AUTHORIZER", "grant omitted the independently retained canonical completion or supervisor expectations");
+  codedAssert(allowSyntheticSupervisorSubstitution || canon(grant.supervisor_executable) === canon(request.supervisor_executable), "H2_POST_BEGIN_AUTHORIZER", "grant supervisor executable differs from the independently pinned request metadata");
+  const retainedDescriptors = coordinatorRetainedGrantDescriptors(grant);
+  codedAssert(canon(retainedDescriptors.map((descriptor: J) => descriptor.role)) === canon(["supervisor_config", "handoff_replay_journal", "supervisor_report", "completion_expectations", "supervisor_expectations", "supervisor_run_root"]) && new Set(retainedDescriptors.map((descriptor: J) => descriptor.fd)).size === retainedDescriptors.length, "H2_POST_BEGIN_AUTHORIZER", "coordinator-retained grant descriptors are missing, duplicated, or reordered");
+  if (request.exchange_mode.kind === "none") {
+    codedAssert(grant.broker_bundle === null, "H2_POST_BEGIN_AUTHORIZER", "no-exchange stage grant carries broker descriptors");
+    return;
+  }
+  const bundle = grant.broker_bundle;
+  codedAssert(bundle && manifest && bundle.launch_config.role === "launch_config" && bundle.run_token.role === "run_token" && bundle.evidence_signing_key.role === "evidence_signing_key" && bundle.replay_journal.role === "replay_journal" && bundle.run_token.bytes === 43 && bundle.run_token.fully_sealed === true && bundle.evidence_signing_key.bytes === 43 && bundle.evidence_signing_key.fully_sealed === true, "H2_POST_BEGIN_AUTHORIZER", "HTTPS broker grant fixed descriptor roles, lengths, or seals differ");
+  codedAssert(canon(bundle.broker_executable) === canon(request.exchange_mode.broker.executable), "H2_POST_BEGIN_AUTHORIZER", "grant broker executable differs from the independently pinned request metadata");
+  codedAssert(canon(bundle.https_request_contract) === canon(request.exchange_mode), "H2_POST_BEGIN_AUTHORIZER", "signed HTTPS request contract differs before replay or process creation");
+  const requestDescriptors = bundle.request_bodies;
+  codedAssert(requestDescriptors.length === manifest.exact_exchange_count && requestDescriptors.every((descriptor: J, ordinal: number) => descriptor.role === "request_body" && descriptor.ordinal === ordinal && descriptor.sha256 === manifest.capabilities[ordinal].request_artifact.sha256 && descriptor.bytes === manifest.capabilities[ordinal].request_artifact.bytes), "H2_POST_BEGIN_AUTHORIZER", "HTTPS broker grant request descriptors are missing, surplus, reordered, gapped, or pin-mismatched");
+  const requiredCredentials = [...new Set(manifest.capabilities.filter((capability: J) => capability.auth_policy.scheme !== "none").map((capability: J) => capability.auth_policy.credential_capability_id))];
+  codedAssert(bundle.credentials.length === requiredCredentials.length && bundle.credentials.every((descriptor: J, index: number) => descriptor.role === "credential" && descriptor.credential_capability_id === requiredCredentials[index]), "H2_POST_BEGIN_AUTHORIZER", "HTTPS broker grant credential descriptors are missing, surplus, duplicate, or reordered");
+  const descriptors = [...retainedDescriptors, bundle.launch_config, bundle.run_token, bundle.evidence_signing_key, bundle.replay_journal, ...requestDescriptors, ...bundle.credentials];
+  codedAssert(new Set(descriptors.map((descriptor: J) => descriptor.fd)).size === descriptors.length, "H2_POST_BEGIN_AUTHORIZER", "post-begin grant descriptor FDs are duplicated");
+}
+function assertInternalPodmanSupervisorBackend(consumption: StageConsumption, backend?: InternalPodmanSupervisorBackend): void {
+  codedAssert(backend === undefined || (backend[INTERNAL_PODMAN_SUPERVISOR_BACKEND] === true && consumption.capability?.[INTERNAL_SYNTHETIC_CAPABILITY] === true), "H2_INTERNAL_CAPABILITY", "supervisor backend injection is internal-test-only");
+}
+function syntheticIndependentPostBeginHandoff(request: J, root: string, manifest: J, authority: J, brokerPin: J, runtimePin: J, now: number): InternalSyntheticPostBeginHandoff {
+  const launchConfigFile = path.join(root, `authorized-post-begin-${request.stage_id}-${request.attempt_id.replace(/[^a-zA-Z0-9_.-]/g, "-")}.json`);
+  const descriptorRoot = fs.mkdtempSync(path.join(root, "synthetic-handoff-descriptors-"));
+  const openDescriptor = (role: string, raw: Buffer): number => { const file = path.join(descriptorRoot, role); fs.writeFileSync(file, raw, { flag: "wx", mode: 0o600 }); return fs.openSync(file, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW); };
+  const runTokenFd = openDescriptor("run-token", Buffer.alloc(43, 0x74));
+  const signingKeyFd = openDescriptor("evidence-signing-key", Buffer.alloc(43, 0x6b));
+  const replayJournalFd = openDescriptor("replay-journal", Buffer.from("j"));
+  const requestBodyFds = manifest.capabilities.map((_: J, index: number) => openDescriptor(`request-body-${index}`, Buffer.from(`request-${index}`)));
+  const stageLaunch = authority.https_exchange_authority?.stage_launches?.find((candidate: J) => candidate.stage_id === request.stage_id);
+  const runRootPath = typeof stageLaunch?.run_root === "string" && stageLaunch.run_root.length > 0 ? stageLaunch.run_root : root;
+  const runTree = path.join(runRootPath, request.attempt_id);
+  const mountSourcePath = (mount: J): string | undefined => typeof mount.source === "string" ? mount.source : (typeof mount.source?.path === "string" ? mount.source.path : undefined);
+  const writableMount = stageLaunch?.mounts?.map((mount: J) => mount.writable ? mountSourcePath(mount) : undefined).find((value: string | undefined) => typeof value === "string");
+  const writableFromOutputs = typeof stageLaunch?.expected_outputs?.[0]?.path === "string"
+    ? path.dirname(stageLaunch.expected_outputs[0].path)
+    : undefined;
+  const writableOutput = writableMount ?? writableFromOutputs ?? path.join(root, "outputs");
+  const launchConfig = {
+    schema_version: "gate_h2_broker_launch_v1.0.0", admission_id: request.admission_id, broker_code_identity_sha256: hash("synthetic-broker-code"), authority_state: "independently_authorized_post_begin", manifest, expected_uid: request.uid, session_id: request.session_id, attempt_id: request.attempt_id, d1_attempt_id: request.d1_attempt_id, d1_begin_sha256: request.d1_begin_sha256,
+    run_token_fd: runTokenFd, run_token_sha256: hash("synthetic-run-token"), signing_key_fd: signingKeyFd, signing_key_sha256: hash("synthetic-evidence-key"), signer_id: "synthetic-independent-signer", signer_trust_entry_sha256: hash("synthetic-signer-trust"), handles: manifest.capabilities.map((_: J, index: number) => `synthetic-handle-${index}`), request_body_fds: requestBodyFds, credentials: [], replay_journal_fd: replayJournalFd, socket_identity_sha256: hash(`${request.session_id}:${request.attempt_id}:${manifest.manifest_id}`), socket_directory: path.join(runTree, "socket"), output_directory: writableOutput, evidence_directory: path.join(runTree, "evidence"), broker_binary: brokerPin, stage_runtime: runtimePin, stage_runtime_path: "/usr/local/bin/gate-h2-stage-runtime", trust_roots: authority.https_exchange_authority.broker_trust_roots, event_schema_pin: authority.https_exchange_authority.broker_event_schema, transcript_schema_pin: authority.https_exchange_authority.broker_transcript_schema, authority_schema_pin: authority.https_exchange_authority.broker_authority_envelope_schema,
+    launch_authorization: { authorization_version: "gate_h2_launch_authorization_v1", authorization_id: request.authorization_id, key_id: "synthetic-independent-authorizer", signature_algorithm: "ed25519", sequence: 1, issued_at_unix_ms: now, not_before_unix_ms: now, expires_at_unix_ms: now + 1000, signature_base64url: "A".repeat(86) },
+  };
+  const configFd = fs.openSync(launchConfigFile, fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_RDWR | fs.constants.O_NOFOLLOW, 0o600);
+  const raw = Buffer.from(canon(launchConfig)); fs.writeFileSync(configFd, raw); fs.fsyncSync(configFd);
+  const descriptors = [
+    { fd: configFd, role: "launch_config", sha256: hash(raw), bytes: raw.length, fully_sealed: false },
+    { fd: runTokenFd, role: "run_token", sha256: launchConfig.run_token_sha256, bytes: 43, fully_sealed: true },
+    { fd: signingKeyFd, role: "evidence_signing_key", sha256: launchConfig.signing_key_sha256, bytes: 43, fully_sealed: true },
+    { fd: replayJournalFd, role: "replay_journal", sha256: hash("synthetic-replay-journal"), bytes: 1, fully_sealed: false },
+    ...manifest.capabilities.map((capability: J, index: number) => ({ fd: requestBodyFds[index], role: `request_body_${index}`, sha256: capability.request_artifact.sha256, bytes: capability.request_artifact.bytes, fully_sealed: false })),
+  ];
+  return { launchConfigFile, configFd, brokerExecutable: { path: brokerPin.realpath, sha256: brokerPin.sha256, bytes: brokerPin.bytes }, descriptors, cleanupPaths: [launchConfigFile, descriptorRoot] };
+}
+/**
+ * Process/D1 failure-orchestration double only. It deliberately never creates
+ * or removes a run tree: descriptor-relative filesystem authority is proven
+ * exclusively by the native Rust SCM_RIGHTS tests, not this pathname fixture.
+ */
+function localFakeSupervisorExecutable(root: string, label: string, diagnostic: string | undefined, emittedFiles: { file: string; raw: Buffer }[] = []): { executable: string; lifecycleFile: string } {
+  const safe = label.replace(/[^a-zA-Z0-9_.-]/g, "-"); const executable = path.join(root, `fake-podman-supervisor-${safe}.mjs`); const lifecycleFile = path.join(root, `fake-podman-supervisor-${safe}-lifecycle.json`);
+  const source = `#!${process.execPath}\nimport fs from "node:fs";\nconst args=process.argv.slice(2);if(args.length!==4||args[0]!=="--config-fd"||args[2]!=="--run-root-fd")throw new Error("expected retained config/run-root descriptor contract");const configFd=Number(args[1]),runRootFd=Number(args[3]);const config=JSON.parse(fs.readFileSync(configFd,"utf8"));if(config.run_root.fd!==runRootFd)throw new Error("run-root FD does not match signed config");if(!fs.fstatSync(runRootFd).isDirectory())throw new Error("run-root FD is not a directory");const lifecycle=${JSON.stringify(lifecycleFile)};fs.writeFileSync(lifecycle,JSON.stringify({pid:process.pid,config_fd:configFd,run_root_fd:runRootFd,started:true,completed:false,scope:"orchestration_diagnostic_only"})+"\\n",{mode:0o600});for(const output of ${JSON.stringify(emittedFiles.map(({ file, raw }) => ({ file, base64: raw.toString("base64") })))})fs.writeFileSync(output.file,Buffer.from(output.base64,"base64"),{flag:"wx",mode:0o600});fs.writeFileSync(lifecycle,JSON.stringify({pid:process.pid,config_fd:configFd,run_root_fd:runRootFd,started:true,completed:true,scope:"orchestration_diagnostic_only"})+"\\n",{mode:0o600});${diagnostic === undefined ? "" : `process.stderr.write(${JSON.stringify(`${diagnostic}\n`)});process.exitCode=70;`}\n`;
+  fs.writeFileSync(executable, source, { flag: "wx", mode: 0o700 });
+  return { executable, lifecycleFile };
+}
+function assertFakeSupervisorLifecycle(lifecycleFile: string, label: string): void {
+  const lifecycle = load(lifecycleFile); let alive = true; try { process.kill(lifecycle.pid, 0); } catch { alive = false; }
+  codedAssert(lifecycle.started === true && lifecycle.completed === true && lifecycle.scope === "orchestration_diagnostic_only" && lifecycle.config_fd >= 3 && !alive, "H2_PODMAN_SUPERVISOR_TEST", `${label} did not prove a reaped external fake supervisor orchestration diagnostic`);
+}
+type ExternalPostBeginAuthority = {
+  authorizerFd: number;
+  livenessFd: number;
+  handshakeTimeoutMs: number;
+  /** Exact coordinator-retained canonical descriptor bytes, never a projection. */
+  completionExpectationBytes: Buffer;
+  supervisorExpectationBytes: Buffer;
+};
+function executeStageRunExternalOperation(authority: J, stageId: StageId, capability?: InternalSyntheticCapability, consumption?: StageConsumption, backend?: InternalPodmanSupervisorBackend, externalAuthority?: ExternalPostBeginAuthority): ReturnType<typeof externalOperationPreflight> | void {
   const entry = stageManifestEntry(authority, stageId);
   const raceHook = internalStageRaceHook(entry.operation, capability);
+  if (authority.schema_version === "reviewed_metrics_execution_authorization_v2.5.0" && (capability === undefined || backend !== undefined)) {
+    codedAssert(raceHook === undefined && consumption !== undefined, "H2_PODMAN_SUPERVISOR", "production supervisor launch requires the durable stage begin and forbids test hooks");
+    assertInternalPodmanSupervisorBackend(consumption, backend);
+    executePodmanSupervisor(consumption, backend, externalAuthority);
+    return;
+  }
+  codedAssert(backend === undefined, "H2_INTERNAL_CAPABILITY", "supervisor backend injection cannot reach a non-v2.5 dispatch");
   if (stageId === "publication_assembly_plan") return executeReviewedProductionStageOperation(authority, stageId, raceHook);
   if (capability !== undefined) return executeSyntheticExternalStageOperation(entry.operation, entry.outputs, raceHook);
   return executeReviewedProductionStageOperation(authority, stageId, raceHook);
 }
+function executePodmanSupervisor(consumption: StageConsumption, backend?: InternalPodmanSupervisorBackend, externalAuthority?: ExternalPostBeginAuthority): void {
+  assertInternalPodmanSupervisorBackend(consumption, backend);
+  const handoffRequest = postBeginLaunchHandoffRequest(consumption);
+  if (backend === undefined) {
+    codedAssert(externalAuthority !== undefined, "H2_POST_BEGIN_AUTHORIZER", `trusted post-begin launch authorizer is unavailable for request ${handoffRequest.request_sha256}; issue #100 cannot forge issue #99 launch authority`);
+    consumption.supervisorExpectations = supervisorExpectationsFromRetainedBytes(
+      externalAuthority.completionExpectationBytes,
+      externalAuthority.supervisorExpectationBytes,
+    );
+    invokePostBeginHandoffRelay(consumption, handoffRequest, externalAuthority);
+    return;
+  }
+  codedAssert(externalAuthority === undefined, "H2_INTERNAL_CAPABILITY", "synthetic supervisor backend cannot be combined with external authority");
+  const handoff = backend.authorize(handoffRequest);
+  try {
+      const { configFile, config, executableFile, runRootDescriptor } = buildPodmanSupervisorConfig(consumption, handoff, backend);
+      const configRawSnapshot = readRawSnapshot(configFile, "H2_PODMAN_SUPERVISOR");
+      const configSnapshot = { ...configRawSnapshot, value: parseStrictJson(configRawSnapshot.raw) as J };
+      const executableSnapshot = readRawSnapshot(executableFile, "H2_PODMAN_SUPERVISOR", [0o500, 0o700]);
+      try {
+    schema("podman-supervisor-config.schema.v1.json", configSnapshot.value);
+    codedAssert(configSnapshot.raw.equals(Buffer.from(canon(configSnapshot.value))), "H2_PODMAN_SUPERVISOR", "supervisor config must be canonical compact sorted JSON without a trailing newline");
+    const authority = consumption.authority;
+    const entry = stageManifestEntry(authority, consumption.stageId);
+    const manifest = validatedHttpsAuthorityManifest(authority);
+    codedAssert(canon(configSnapshot.value) === canon(config), "H2_PODMAN_SUPERVISOR", "persisted supervisor config differs from coordinator-built bytes");
+    const boundary = entry.operation.execution_boundary;
+    const barePin = (pin: J): J => ({ sha256: pin.sha256, bytes: pin.bytes, version: pin.version });
+    const expectedBegin = hash(Buffer.from(pretty(consumption.beginEnvelope)));
+    const expectedSchemaSet = hash(Buffer.from(canon(["capability_schema", "manifest_schema", "uds_protocol_schema", "broker_event_schema", "broker_transcript_schema", "broker_authority_envelope_schema", "executor_semantics_schema", "executor_conformance_schema", "linux_sandbox_schema", "post_begin_launch_request_schema", "post_begin_launch_grant_schema", "podman_supervisor_config_schema", "podman_supervisor_report_schema"].map((name) => authority.https_exchange_authority[name]))));
+    codedAssert(config.execution_class === "synthetic_test_only" && config.admission_state === "ineligible_pending_issue_101_real_linux_evidence" && config.stage_id === consumption.stageId && config.candidate_id === authority.candidate_id && config.candidate_commit === authority.candidate_commit && config.authority_sha256 === authorityBindingHash(authority) && config.attempt_id === consumption.attemptId && config.d1_attempt_id === consumption.attemptId && config.d1_begin_sha256 === expectedBegin, "H2_PODMAN_SUPERVISOR", "synthetic supervisor config does not bind the unique durable D1 begin identity and inactive execution class");
+    codedAssert(config.exchange_mode.kind === "https" && config.exchange_mode.capability_manifest_sha256 === authority.https_exchange_authority.manifest.sha256 && canon(config.exchange_mode.channels.map((channel: J) => [channel.capability_id, channel.ordinal, channel.request_sha256, channel.raw_response_role])) === canon(manifest.capabilities.map((capability: J) => [capability.capability_id, capability.exchange_ordinal, capability.request_artifact.sha256, capability.raw_response_output_role])) && config.exchange_mode.transcript_role === authority.https_exchange_authority.transcript_output_role && config.terminal_ack_fd === 3 + manifest.exact_exchange_count, "H2_PODMAN_SUPERVISOR", "supervisor config channel identity/order or terminal ACK descriptor differs");
+    codedAssert(config.image.manifest_digest === boundary.image_digest && config.image.immutable_reference === config.image.manifest_digest && config.image.runtime.sha256 === entry.operation.runtime.sha256 && config.image.runtime.bytes === entry.operation.runtime.bytes && config.image.runtime.version === entry.operation.runtime.version && canon(config.trust_roots) === canon(barePin(authority.https_exchange_authority.broker_trust_roots)) && config.schema_set_sha256 === expectedSchemaSet && config.exchange_mode.channels.length === manifest.exact_exchange_count, "H2_PODMAN_SUPERVISOR", "supervisor config image/runtime/trust/schema/FD join differs");
+    const stageLaunch = authority.https_exchange_authority.stage_launches.find((candidate: J) => candidate.stage_id === consumption.stageId);
+    const runTree = path.join(config.run_root.path, config.run_id);
+    codedAssert(config.retained_report === stageLaunch.supervisor_report.path && !entry.outputs.some((output: J) => output.artifact_role === authority.https_exchange_authority.supervisor_report_role) && !entry.outputs.some((output: J) => path.resolve(output.path).startsWith(`${path.resolve(runTree)}${path.sep}`)), "H2_PODMAN_SUPERVISOR", "supervisor evidence must be coordinator-owned and outside both stage outputs and the owned run child");
+    if (backend?.supervisorExecutable === undefined) codedAssert(executableSnapshot.raw.length === boundary.wrapper.bytes && hash(executableSnapshot.raw) === boundary.wrapper.sha256 && fs.realpathSync(executableSnapshot.file) === boundary.wrapper.realpath, "H2_PODMAN_SUPERVISOR", "supervisor executable bytes differ from the authority wrapper pin");
+    else codedAssert(fs.realpathSync(executableSnapshot.file) === fs.realpathSync(backend.supervisorExecutable), "H2_INTERNAL_CAPABILITY", "fake supervisor executable substitution escaped the internal capability");
+    const expectedArgv = podmanArgvFromSupervisorConfig(config);
+    const launchConfigFd = fs.openSync(configSnapshot.file, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+    try {
+      const descriptor = (role: string): J => handoff.descriptors.find((candidate: J) => candidate.role === role);
+      const requestBodies = manifest.capabilities.map((_: J, ordinal: number) => ({ ...descriptor(`request_body_${ordinal}`), role: "request_body", ordinal }));
+      const credentialIds = [...new Set(manifest.capabilities.filter((capability: J) => capability.auth_policy.scheme !== "none").map((capability: J) => capability.auth_policy.credential_capability_id))] as string[];
+      const credentials = credentialIds.map((credentialId) => ({ ...descriptor(`credential_${credentialId}`), role: "credential", credential_capability_id: credentialId }));
+      const stageLaunch = authority.https_exchange_authority.stage_launches.find((candidate: J) => candidate.stage_id === consumption.stageId);
+      const completionExpectations = completionExpectationPayload(config);
+      const completionExpectationsRaw = Buffer.from(canon(completionExpectations));
+      consumption.supervisorExpectations = supervisorExpectationsFromRetainedBytes(completionExpectationsRaw, configSnapshot.raw);
+      codedAssert(canon(consumption.supervisorExpectations.podmanArgv) === canon(expectedArgv), "H2_POST_BEGIN_AUTHORIZER", "retained supervisor config bytes produce a different Podman argv than the coordinator launch");
+      const substitutedCompletion = Buffer.from(completionExpectationsRaw); substitutedCompletion[0] ^= 1;
+      const substitutedConfig = Buffer.from(configSnapshot.raw); substitutedConfig[0] ^= 1;
+      for (const [completionBytes, supervisorBytes] of [[substitutedCompletion, configSnapshot.raw], [completionExpectationsRaw, substitutedConfig]] as const) {
+        let rejected = false;
+        try { supervisorExpectationsFromRetainedBytes(completionBytes, supervisorBytes); }
+        catch (error) { rejected = error instanceof GateH2Error && error.code === "H2_POST_BEGIN_AUTHORIZER"; }
+        codedAssert(rejected, "H2_POST_BEGIN_AUTHORIZER", "substituted expectation descriptor bytes were accepted");
+      }
+      const grant: J = {
+        schema_version: "gate_h2_post_begin_launch_grant_v1.1.0", execution_class: handoffRequest.execution_class, admission_state: handoffRequest.admission_state, request_sha256: handoffRequest.request_sha256,
+        candidate_id: handoffRequest.candidate_id, candidate_commit: handoffRequest.candidate_commit, authority_sha256: handoffRequest.authority_sha256, stage_id: handoffRequest.stage_id, attempt_id: handoffRequest.attempt_id, d1_attempt_id: handoffRequest.d1_attempt_id, d1_begin_sha256: handoffRequest.d1_begin_sha256, stage_launch_sha256: handoffRequest.stage_launch_sha256, session_id: handoffRequest.session_id, authorization_id: handoffRequest.authorization_id, admission_id: handoffRequest.admission_id,
+        supervisor_executable: { path: executableSnapshot.file, realpath: fs.realpathSync(executableSnapshot.file), sha256: hash(executableSnapshot.raw), bytes: executableSnapshot.raw.length, version: stageLaunch.supervisor_executable.version },
+        supervisor_config: { fd: launchConfigFd, role: "supervisor_config", sha256: hash(configSnapshot.raw), bytes: configSnapshot.raw.length, fully_sealed: false },
+        handoff_replay_journal: { fd: 1024, role: "handoff_replay_journal", sha256: hash("synthetic-coordinator-replay-journal"), bytes: 1, fully_sealed: false },
+        supervisor_report: { fd: 1021, role: "supervisor_report", sha256: hash(Buffer.alloc(0)), bytes: 0, fully_sealed: false },
+        completion_expectations: { fd: 1022, role: "completion_expectations", sha256: hash(completionExpectationsRaw), bytes: completionExpectationsRaw.length, fully_sealed: false },
+        supervisor_expectations: { fd: 1023, role: "supervisor_expectations", sha256: hash(configSnapshot.raw), bytes: configSnapshot.raw.length, fully_sealed: false },
+        supervisor_run_root: runRootDescriptor,
+        broker_bundle: { broker_executable: handoffRequest.exchange_mode.broker.executable, https_request_contract: handoffRequest.exchange_mode, launch_config: descriptor("launch_config"), run_token: descriptor("run_token"), evidence_signing_key: descriptor("evidence_signing_key"), replay_journal: descriptor("replay_journal"), request_bodies: requestBodies, credentials },
+        grant_id: hash(`synthetic-grant:${handoffRequest.request_sha256}`), issuer_principal: authority.https_exchange_authority.post_begin_grant_verifier.principal, key_id: authority.https_exchange_authority.post_begin_grant_verifier.key_id,
+        issued_at_unix_ms: Date.now(), not_before_unix_ms: Date.now() - 1_000, expires_at_unix_ms: Date.now() + 60_000, replay_sequence: 1,
+        completion_expectations_sha256: hash(completionExpectationsRaw), supervisor_expectations_sha256: hash(configSnapshot.raw),
+      };
+      signPostBeginGrant(grant, SYNTHETIC_COORDINATOR_KEYS.privateKey);
+      validatePostBeginLaunchGrant(grant, handoffRequest, authority.https_exchange_authority.post_begin_grant_verifier, manifest, backend?.supervisorExecutable !== undefined);
+      const grantedRunRoot = (({ fd, role, path: rootPath, dev, ino, uid, gid, mode, links }: J) => ({ fd, role, path: rootPath, dev, ino, uid, gid, mode, links }))(grant.supervisor_run_root);
+      codedAssert(config.run_root.fd === grant.supervisor_run_root.fd && config.run_root.role === grant.supervisor_run_root.role && canon(config.run_root) === canon(grantedRunRoot), "H2_POST_BEGIN_AUTHORIZER", "run-root grant descriptor does not match the exact retained config capability");
+      spawnPodmanSupervisorExecutable(grant.supervisor_executable.realpath, launchConfigFd, [...handoff.descriptors, grant.supervisor_run_root]);
+    }
+    finally { fs.closeSync(launchConfigFd); }
+        assertSnapshotPathUnchanged(executableSnapshot);
+      } finally {
+        closeSnapshot(configSnapshot);
+        closeSnapshot(executableSnapshot);
+        for (const descriptorFd of new Set([...handoff.descriptors, runRootDescriptor].map((descriptor: J) => descriptor.fd))) { try { fs.closeSync(descriptorFd); } catch { /* child inheritance has ended and all handoff descriptors are best-effort released */ } }
+      }
+  } finally {
+    for (const cleanupPath of handoff.cleanupPaths) fs.rmSync(cleanupPath, { recursive: true, force: true });
+  }
+}
+
+function invokePostBeginHandoffRelay(consumption: StageConsumption, request: J, externalAuthority: ExternalPostBeginAuthority): void {
+  const launch = consumption.authority.https_exchange_authority.stage_launches.find((candidate: J) => candidate.stage_id === consumption.stageId);
+  codedAssert(request.execution_class === "external_authorized" && launch.execution_class === "external_authorized", "H2_POST_BEGIN_AUTHORIZER", "production stage-run requires the externally authorized execution class");
+  const inherited = [externalAuthority.authorizerFd, externalAuthority.livenessFd];
+  codedAssert(inherited.every((fd) => Number.isInteger(fd) && fd >= 3 && fd <= 1024) && new Set(inherited).size === inherited.length && Number.isInteger(externalAuthority.handshakeTimeoutMs) && externalAuthority.handshakeTimeoutMs > 0 && externalAuthority.handshakeTimeoutMs <= 30_000, "H2_POST_BEGIN_AUTHORIZER", "post-begin relay requires the coordinator-owned authorizer and liveness FDs plus a finite handshake cap");
+  const relayPin = launch.post_begin_handoff.authorizer;
+  const executableSnapshot = readRawSnapshot(relayPin.realpath, "H2_POST_BEGIN_AUTHORIZER", [0o500, 0o700]);
+  const requestRoot = fs.mkdtempSync(path.join(os.tmpdir(), "gate-h2-post-begin-request-"));
+  const requestFile = path.join(requestRoot, "request.json");
+  let requestFd: number | undefined;
+  try {
+    codedAssert(executableSnapshot.raw.length === relayPin.bytes && hash(executableSnapshot.raw) === relayPin.sha256 && fs.realpathSync(relayPin.path) === relayPin.realpath && canon(relayPin) === canon(launch.supervisor_executable), "H2_POST_BEGIN_AUTHORIZER", "combined relay/supervisor executable differs from the single authority pin");
+    fs.writeFileSync(requestFile, canon(request), { flag: "wx", mode: 0o600 });
+    requestFd = fs.openSync(requestFile, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+    execFileSync(executableSnapshot.file, ["--request-fd", "3", "--authorizer-fd", "4", "--liveness-fd", "5", "--timeout-ms", String(externalAuthority.handshakeTimeoutMs)], { env: {}, stdio: ["ignore", "ignore", "pipe", requestFd, externalAuthority.authorizerFd, externalAuthority.livenessFd] });
+  } catch (error) {
+    const diagnostic = (error as { stderr?: Buffer }).stderr?.toString("utf8").trim() || (error instanceof Error ? error.message : String(error));
+    throw new GateH2Error("H2_POST_BEGIN_AUTHORIZER", diagnostic, error);
+  } finally {
+    if (requestFd !== undefined) fs.closeSync(requestFd);
+    closeSnapshot(executableSnapshot);
+    fs.rmSync(requestRoot, { recursive: true, force: true });
+  }
+}
+
+function spawnPodmanSupervisorExecutable(executable: string, configFd: number, descriptors: J[]): void {
+  const inherited = descriptors.map((descriptor: J) => descriptor.fd);
+  const runRoot = descriptors.find((descriptor: J) => descriptor.role === "supervisor_run_root");
+  codedAssert(runRoot && Number.isInteger(runRoot.fd) && runRoot.fd >= 3, "H2_PODMAN_SUPERVISOR", "could not locate the retained run-root descriptor");
+  const supervisorConfigFd = Math.max(2, ...inherited) + 1;
+  codedAssert(supervisorConfigFd <= 2048 && !inherited.includes(supervisorConfigFd), "H2_PODMAN_SUPERVISOR", "could not allocate an explicit supervisor config descriptor");
+  const stdio: J[] = Array.from({ length: supervisorConfigFd + 1 }, () => "ignore");
+  stdio[1] = "ignore"; stdio[2] = "pipe"; stdio[supervisorConfigFd] = configFd;
+  for (const fd of inherited) stdio[fd] = fd;
+  try { execFileSync(executable, ["--config-fd", String(supervisorConfigFd), "--run-root-fd", String(runRoot.fd)], { env: {}, stdio }); }
+  catch (error) {
+    const failure = error as { stderr?: Buffer; status?: number | null };
+    const diagnostic = failure.stderr?.toString("utf8").trim() || `supervisor exited with status ${String(failure.status)}`;
+    throw new GateH2Error("H2_PODMAN_SUPERVISOR", diagnostic, error);
+  }
+}
+
+function podmanArgvFromSupervisorConfig(config: J): string[] {
+  const argv = ["run", "--name", config.container.name, "--read-only", "--network=none", "--user", `${config.container.uid}:${config.container.gid}`, "--entrypoint", config.container.entrypoint, "--env-host=false", "--security-opt=no-new-privileges", "--cap-drop=all", "--pids-limit=64"];
+  argv.push("--preserve-fds", String(config.exchange_mode.kind === "https" ? config.exchange_mode.channels.length + 2 : 1));
+  for (const mount of config.container.mounts) argv.push("--mount", `type=bind,src=${mount.source.path},dst=${mount.guest},${mount.writable ? "rw" : "ro"}`);
+  argv.push(config.image.immutable_reference);
+  return argv;
+}
+
+function postBeginLaunchHandoffRequest(consumption: StageConsumption): J {
+  const authority = consumption.authority;
+  const stage = stageManifestEntry(authority, consumption.stageId);
+  const stageLaunch = authority.https_exchange_authority?.stage_launches?.find((candidate: J) => candidate.stage_id === consumption.stageId);
+  codedAssert(stageLaunch && stageLaunch.operation_sha256 === hash(Buffer.from(canon(stage.operation))), "H2_POST_BEGIN_AUTHORIZER", "exact stage launch authority is absent or does not bind the stage operation");
+  const request: J = {
+    schema_version: "gate_h2_post_begin_launch_request_v1.0.0",
+    execution_class: consumption.capability?.[INTERNAL_SYNTHETIC_CAPABILITY] === true ? "synthetic_test_only" : "external_authorized",
+    admission_state: "ineligible_pending_issue_101_real_linux_evidence",
+    candidate_id: authority.candidate_id,
+    candidate_commit: authority.candidate_commit,
+    authority_sha256: authorityBindingHash(authority),
+    stage_id: consumption.stageId,
+    attempt_id: consumption.attemptId,
+    d1_attempt_id: consumption.attemptId,
+    d1_begin_sha256: hash(Buffer.from(pretty(consumption.beginEnvelope))),
+    stage_launch_sha256: hash(Buffer.from(canon(stageLaunch))), operation_sha256: stageLaunch.operation_sha256,
+    session_id: authority[stage.role].session_id,
+    authorization_id: stageLaunch.post_begin_handoff.authorization_contract_id,
+    admission_id: stageLaunch.post_begin_handoff.admission_contract_id,
+    ...SOURCE_PINNED_POST_BEGIN_ENROLLMENT,
+    supervisor_executable: stageLaunch.supervisor_executable, stage_program: stageLaunch.stage_program, stage_runtime: stageLaunch.runtime,
+    image_manifest_digest: stageLaunch.image_digest, podman: stageLaunch.podman, mounts: stageLaunch.mounts.map((mount: J) => ({ ...mount, transition: mount.transition ?? null })), expected_outputs: stageLaunch.expected_outputs.filter((output: J) => output.artifact_role !== authority.https_exchange_authority.supervisor_report_role),
+    uid: stageLaunch.uid, gid: stageLaunch.gid, deadlines: stageLaunch.deadlines,
+    exchange_mode: stageLaunch.exchange_mode.kind === "none"
+      ? { kind: "none", manifest: null, broker: null, stage_exchange_descriptors: [], terminal_ack_fd: null }
+      : { kind: "https", manifest: stageLaunch.manifest, broker: stageLaunch.broker, stage_exchange_descriptors: stageLaunch.exchange_mode.stage_exchange_descriptors.map((descriptor: J) => {
+        const capability = validatedHttpsAuthorityManifest(authority).capabilities[descriptor.ordinal];
+        return { ...descriptor, capability_id: capability.capability_id, request_sha256: capability.request_artifact.sha256, raw_response_role: capability.raw_response_output_role, raw_response_path: stageLaunch.expected_outputs.find((output: J) => output.artifact_role === capability.raw_response_output_role)?.path };
+      }), terminal_ack_fd: stageLaunch.exchange_mode.terminal_ack_fd },
+  };
+  const value = { ...request, request_sha256: hash(Buffer.from(canon(request))) };
+  schema("gate-h2-post-begin-launch-request.schema.v1.json", value);
+  return value;
+}
+
+function directoryTreeRows(root: string): string[] {
+  const rows: string[] = [];
+  const visit = (current: string): void => {
+    const names = (fs.readdirSync(current, { encoding: "buffer" }) as Buffer[]).sort(Buffer.compare);
+    for (const nameBytes of names) {
+      const name = nameBytes.toString("utf8");
+      codedAssert(Buffer.from(name, "utf8").equals(nameBytes), "H2_PODMAN_MOUNT", "mount directory tree contains a non-UTF-8 name");
+      const member = path.join(current, name); const stat = fs.lstatSync(member); const relative = path.relative(root, member).split(path.sep).join("/");
+      codedAssert(!stat.isSymbolicLink(), "H2_PODMAN_MOUNT", "mount directory tree contains symlink");
+      if (stat.isDirectory()) {
+        rows.push(`d\t${relative}\t${(stat.mode & 0o7777).toString(8)}\t${stat.uid}\t${stat.gid}\t${stat.nlink}`);
+        visit(member);
+      } else if (stat.isFile()) {
+        const fd = fs.openSync(member, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+        try {
+          const retained = fs.fstatSync(fd);
+          codedAssert(retained.isFile() && retained.dev === stat.dev && retained.ino === stat.ino && retained.uid === stat.uid && retained.gid === stat.gid && retained.mode === stat.mode && retained.nlink === stat.nlink && retained.size === stat.size, "H2_PODMAN_MOUNT", "mount directory member changed during source pinning");
+          const raw = fs.readFileSync(fd);
+          rows.push(`f\t${relative}\t${(stat.mode & 0o7777).toString(8)}\t${stat.uid}\t${stat.gid}\t${stat.nlink}\t${stat.size}\t${hash(raw)}`);
+        } finally { fs.closeSync(fd); }
+      } else throw new GateH2Error("H2_PODMAN_MOUNT", "mount directory tree contains special file");
+    }
+  };
+  visit(root);
+  return rows;
+}
+function directoryTreeSha256(root: string): string { return hash(`${directoryTreeRows(root).join("\n")}\n`); }
+function podmanMountSourcePin(source: string): J {
+  const stat = fs.lstatSync(source);
+  codedAssert(!stat.isSymbolicLink() && (stat.isFile() || stat.isDirectory()), "H2_PODMAN_MOUNT", "mount source must be a retained regular file or directory");
+  const digest = stat.isFile() ? hash(fs.readFileSync(source)) : directoryTreeSha256(source);
+  return { path: source, source_type: stat.isFile() ? "file" : "directory", dev: stat.dev, ino: stat.ino, uid: stat.uid, gid: stat.gid, mode: stat.mode & 0o7777, links: stat.nlink, bytes: stat.size, sha256: digest };
+}
+function assertPodmanMountSourcePinUnchanged(pin: J): void { codedAssert(canon(podmanMountSourcePin(pin.path)) === canon(pin), "H2_PODMAN_MOUNT", "mount source metadata or recursive content tree drifted after pinning"); }
+
+function retainPodmanRunRoot(root: string): J {
+  const fd = fs.openSync(root, fs.constants.O_RDONLY | fs.constants.O_DIRECTORY | fs.constants.O_NOFOLLOW);
+  try {
+    const stat = fs.fstatSync(fd);
+    codedAssert(stat.isDirectory() && !stat.isSymbolicLink() && stat.uid === process.getuid!() && stat.nlink >= 1 && (stat.mode & 0o022) === 0, "H2_POST_BEGIN_AUTHORIZER", "run-root must be a coordinator-owned non-writable retained directory");
+    return { fd, role: "supervisor_run_root", path: root, dev: stat.dev, ino: stat.ino, uid: stat.uid, gid: stat.gid, mode: stat.mode & 0o7777, links: stat.nlink, sha256: hash(Buffer.alloc(0)), bytes: 0, fully_sealed: false };
+  } catch (error) { fs.closeSync(fd); throw error; }
+}
+
+function buildPodmanSupervisorConfig(consumption: StageConsumption, handoff: { launchConfigFile: string; configFd: number; brokerExecutable: J; descriptors: J[] }, backend?: InternalPodmanSupervisorBackend): { configFile: string; config: J; executableFile: string; runRootDescriptor: J } {
+  assertInternalPodmanSupervisorBackend(consumption, backend);
+  const authority = consumption.authority;
+  const entry = stageManifestEntry(authority, consumption.stageId);
+  const manifest = validatedHttpsAuthorityManifest(authority);
+  const launch = authority.https_exchange_authority?.stage_launches?.find((candidate: J) => candidate.stage_id === consumption.stageId);
+  codedAssert(launch?.post_begin_handoff?.contract_version === "gate_h2_external_post_begin_authorizer_handoff_v1" && launch.post_begin_handoff.signer_held_by_coordinator === false, "H2_POST_BEGIN_AUTHORIZER", "stage launch omits the independent post-begin authorizer handoff");
+  const brokerConfig = readRawSnapshot(handoff.launchConfigFile, "H2_POST_BEGIN_AUTHORIZER");
+  let runTree: string | undefined;
+  let brokerConfigFd: number | undefined;
+  let runRootDescriptor: J | undefined;
+  try {
+    const launchConfig = parseStrictJson(brokerConfig.raw) as J;
+    codedAssert(launchConfig.schema_version === "gate_h2_broker_launch_v1.0.0" && launchConfig.attempt_id === consumption.attemptId && launchConfig.d1_attempt_id === consumption.attemptId && launchConfig.d1_begin_sha256 === hash(Buffer.from(pretty(consumption.beginEnvelope))) && launchConfig.admission_id === launch.post_begin_handoff.admission_contract_id && launchConfig.launch_authorization?.authorization_id === launch.post_begin_handoff.authorization_contract_id, "H2_POST_BEGIN_AUTHORIZER", "external launch config does not bind the durable begin and independent authorization");
+    const credentialIds = [...new Set(manifest.capabilities.filter((capability: J) => capability.auth_policy.scheme !== "none").map((capability: J) => capability.auth_policy.credential_capability_id))] as string[];
+    const requiredRoles = ["launch_config", "run_token", "evidence_signing_key", "replay_journal", ...manifest.capabilities.map((_: J, index: number) => `request_body_${index}`), ...credentialIds.map((credentialId) => `credential_${credentialId}`)];
+    const roles = handoff.descriptors.map((descriptor: J) => descriptor.role);
+    codedAssert(canon(roles) === canon(requiredRoles) && new Set(roles).size === roles.length && new Set(handoff.descriptors.map((descriptor: J) => descriptor.fd)).size === handoff.descriptors.length && handoff.descriptors.every((descriptor: J) => Number.isInteger(descriptor.fd) && descriptor.fd >= 3 && /^[a-f0-9]{64}$/.test(descriptor.sha256) && Number.isInteger(descriptor.bytes) && descriptor.bytes > 0) && handoff.descriptors.find((descriptor: J) => descriptor.role === "run_token")?.bytes === 43 && handoff.descriptors.find((descriptor: J) => descriptor.role === "run_token")?.fully_sealed === true && handoff.descriptors.find((descriptor: J) => descriptor.role === "evidence_signing_key")?.bytes === 43 && handoff.descriptors.find((descriptor: J) => descriptor.role === "evidence_signing_key")?.fully_sealed === true, "H2_POST_BEGIN_AUTHORIZER", "external handoff descriptor bundle is missing, surplus, duplicated, reordered, unsealed, or malformed");
+    const descriptorByRole = new Map(handoff.descriptors.map((descriptor: J) => [descriptor.role, descriptor]));
+    codedAssert(launchConfig.run_token_fd === descriptorByRole.get("run_token")?.fd && launchConfig.signing_key_fd === descriptorByRole.get("evidence_signing_key")?.fd && launchConfig.replay_journal_fd === descriptorByRole.get("replay_journal")?.fd && canon(launchConfig.request_body_fds) === canon(manifest.capabilities.map((_: J, index: number) => descriptorByRole.get(`request_body_${index}`)?.fd)) && canon(launchConfig.credentials.map((credential: J) => [credential.credential_capability_id, credential.fd])) === canon(credentialIds.map((credentialId) => [credentialId, descriptorByRole.get(`credential_${credentialId}`)?.fd])), "H2_POST_BEGIN_AUTHORIZER", "broker launch config descriptor FDs disagree with the exact inherited grant bundle");
+    const runRootPath = launch.run_root;
+    runRootDescriptor = retainPodmanRunRoot(runRootPath);
+    const runRoot = (({ fd, role, path: retainedPath, dev, ino, uid, gid, mode, links }) => ({ fd, role, path: retainedPath, dev, ino, uid, gid, mode, links }))(runRootDescriptor);
+    const runId = consumption.attemptId;
+    runTree = path.join(runRoot.path, runId);
+    codedAssert(typeof launchConfig.socket_directory === "string" && typeof launchConfig.output_directory === "string" && typeof launchConfig.evidence_directory === "string", "H2_POST_BEGIN_AUTHORIZER", "launch config omitted socket/output/evidence directory path joins");
+    const expectedSocketDirectory = path.join(runTree, "socket");
+    codedAssert(path.resolve(launchConfig.socket_directory) === path.resolve(expectedSocketDirectory), "H2_POST_BEGIN_AUTHORIZER", "launch config socket_directory must be the retained run-tree socket directory");
+    codedAssert(path.resolve(launchConfig.evidence_directory).startsWith(`${path.resolve(runTree)}${path.sep}`), "H2_POST_BEGIN_AUTHORIZER", "launch config evidence_directory must stay under the retained run tree");
+    const mountSourcePath = (mount: J): string | undefined => typeof mount.source === "string" ? mount.source : (typeof mount.source?.path === "string" ? mount.source.path : undefined);
+    const writableSources = new Set((launch.mounts ?? []).filter((mount: J) => mount.writable).map((mount: J) => mountSourcePath(mount)).filter((value: string | undefined): value is string => typeof value === "string").map((value: string) => path.resolve(value)));
+    codedAssert(writableSources.has(path.resolve(launchConfig.output_directory)), "H2_POST_BEGIN_AUTHORIZER", "launch config output_directory must be a declared writable mount source");
+    brokerConfigFd = handoff.configFd;
+    codedAssert(Number.isInteger(brokerConfigFd) && brokerConfigFd >= 3 && brokerConfigFd === descriptorByRole.get("launch_config")?.fd && fs.fstatSync(brokerConfigFd).isFile(), "H2_POST_BEGIN_AUTHORIZER", "post-begin authorizer did not inherit the exact launch-config descriptor");
+    const rawOutputPath = (capability: J): string => {
+      const output = entry.outputs.find((candidate: J) => candidate.artifact_role === capability.raw_response_output_role);
+      codedAssert(output, "H2_PODMAN_SUPERVISOR", `missing raw response output for capability ordinal ${capability.exchange_ordinal}`);
+      return output.path;
+    };
+    const channels = manifest.capabilities.map((capability: J, index: number) => ({ inherited_fd: index + 3, role: "https_exchange", endpoint_type: "capability_exchange", capability_id: capability.capability_id, ordinal: capability.exchange_ordinal, request_sha256: capability.request_artifact.sha256, raw_response_role: capability.raw_response_output_role, raw_response_path: rawOutputPath(capability) }));
+    const barePin = (pin: J): J => ({ sha256: pin.sha256, bytes: pin.bytes, version: pin.version });
+    const boundary = entry.operation.execution_boundary;
+    const stageLaunch = authority.https_exchange_authority.stage_launches.find((candidate: J) => candidate.stage_id === consumption.stageId);
+    const stageOutputs = stageLaunch.expected_outputs.filter((output: J) => output.artifact_role !== authority.https_exchange_authority.supervisor_report_role);
+    const schemaPins = ["capability_schema", "manifest_schema", "uds_protocol_schema", "broker_event_schema", "broker_transcript_schema", "broker_authority_envelope_schema", "executor_semantics_schema", "executor_conformance_schema", "linux_sandbox_schema", "post_begin_launch_request_schema", "post_begin_launch_grant_schema", "podman_supervisor_config_schema", "podman_supervisor_report_schema"].map((name) => authority.https_exchange_authority[name]);
+    const configDescriptor = handoff.descriptors.find((descriptor: J) => descriptor.role === "launch_config");
+    codedAssert(configDescriptor.sha256 === hash(brokerConfig.raw) && configDescriptor.bytes === brokerConfig.raw.length, "H2_POST_BEGIN_AUTHORIZER", "launch-config descriptor does not pin the independently authorized bytes");
+    const broker = { executable: handoff.brokerExecutable, config_fd: configDescriptor.fd, config_sha256: configDescriptor.sha256, config_bytes: configDescriptor.bytes, socket_path: path.join(runTree, "socket", "broker.sock"), inherited_descriptors: handoff.descriptors };
+    const terminalAckFd = 3 + manifest.exact_exchange_count;
+    codedAssert(launch.exchange_mode.capability_count === manifest.exact_exchange_count, "H2_PODMAN_SUPERVISOR", "stage launch capability count differs from the authoritative manifest");
+    const config: J = { schema_version: "gate_h2_podman_supervisor_config_v1.0.0", execution_class: "synthetic_test_only", admission_state: "ineligible_pending_issue_101_real_linux_evidence", stage_id: consumption.stageId, candidate_id: authority.candidate_id, candidate_commit: authority.candidate_commit, authority_sha256: authorityBindingHash(authority), attempt_id: consumption.attemptId, d1_attempt_id: consumption.attemptId, d1_begin_sha256: hash(Buffer.from(pretty(consumption.beginEnvelope))), launch_record_sha256: hash(Buffer.from(canon(stageLaunch))), authorization_id: stageLaunch.post_begin_handoff.authorization_contract_id, admission_id: stageLaunch.post_begin_handoff.admission_contract_id, session_id: authority[entry.role].session_id, terminal_ack_fd: terminalAckFd, exchange_mode: { kind: "https", manifest_id: manifest.manifest_id, capability_manifest_sha256: authority.https_exchange_authority.manifest.sha256, transcript_role: authority.https_exchange_authority.transcript_output_role, transcript_schema_sha256: authority.https_exchange_authority.broker_transcript_schema.sha256, authority_envelope_role: authority.https_exchange_authority.authority_envelope_output_role, authority_envelope_schema_sha256: authority.https_exchange_authority.broker_authority_envelope_schema.sha256, channels, broker }, broker_authority: { static_pin_sha256: stageLaunch.broker.static_pin_sha256, trust_roots: stageLaunch.broker.trust_roots }, stage_program: barePin(stageLaunch.stage_program), stage_runtime: barePin(stageLaunch.runtime), trust_roots: barePin(authority.https_exchange_authority.broker_trust_roots), image: { immutable_reference: boundary.image_digest, manifest_digest: boundary.image_digest, runtime_path: "/usr/local/bin/gate-h2-stage-runtime", admitted_runtime_source: launch.admitted_runtime_source, runtime: barePin(stageLaunch.runtime) }, schema_set_sha256: hash(Buffer.from(canon(schemaPins))), podman: launch.podman, container: { name: `gate-h2-${consumption.attemptId.toLowerCase().replace(/[^a-z0-9_.-]/g, "-")}`, uid: launch.uid, gid: launch.gid, entrypoint: "/usr/local/bin/gate-h2-stage-runtime", mounts: launch.mounts.map((mount: J) => ({ ...mount, transition: mount.transition ?? null, source: podmanMountSourcePin(mount.source) })) }, expected_outputs: stageOutputs, run_root: runRoot, run_id: runId, retained_report: stageLaunch.supervisor_report.path, deadlines: { ...launch.deadlines, rm_ms: launch.deadlines.rm_ms ?? launch.deadlines.kill_reap_ms } };
+    schema("podman-supervisor-config.schema.v1.json", config);
+    const configFile = path.join(path.dirname(handoff.launchConfigFile), `supervisor-config-${runId}.json`);
+    if (backend?.failure === "per-attempt supervisor config build/write failure") throw new GateH2Error("H2_PODMAN_SUPERVISOR", backend.failure);
+    fs.writeFileSync(configFile, supervisorCanonicalBytes(config), { flag: "wx", mode: 0o600 });
+    return { configFile, config, executableFile: backend?.supervisorExecutable ?? boundary.wrapper.realpath, runRootDescriptor };
+  } catch (error) {
+    for (const descriptorFd of new Set(handoff.descriptors.map((descriptor: J) => descriptor.fd))) { try { fs.closeSync(descriptorFd); } catch { /* failed config construction releases its handoff descriptors */ } }
+    if (runRootDescriptor) { try { fs.closeSync(runRootDescriptor.fd); } catch { /* failed construction releases the retained directory descriptor */ } }
+    throw error;
+  } finally { closeSnapshot(brokerConfig); }
+}
 function executePublicationAssemblyPlanExternalOperation(authority: J, reviewedTrust: J, authorityContext: ExternalOperationAuthorityContext): ReturnType<typeof externalOperationPreflight> {
   codedAssert(authority?.schema_version === "reviewed_metrics_execution_authorization_v2.5.0", "H2_STAGE_AUTHORITY_CONTEXT", "publication assembly external operation requires exact execution authorization v2.5");
   codedAssert(authorityContext?.authorityVersion === authority.schema_version && authorityContext.stageId === "publication_assembly_plan", "H2_STAGE_AUTHORITY_CONTEXT", "publication assembly authority context requires exact v2.5 publication stage identity");
-  const bindings = authority.https_exchange_authority?.stage_bindings;
-  const binding = Array.isArray(bindings) && bindings.length === 1 ? bindings[0] : undefined;
+  const binding = derivedHttpsBinding(authority, "publication_assembly_plan");
   codedAssert(binding?.stage_id === "publication_assembly_plan" && canon(authorityContext.httpsBinding) === canon(binding), "H2_STAGE_AUTHORITY_CONTEXT", "publication assembly requires the sole exact publication_assembly_plan HTTPS binding");
   const manifest = validatedHttpsAuthorityManifest(authority);
   codedAssert(manifest.stage_id === "publication_assembly_plan" && manifest.capabilities.every((capability: J) => capability.stage_id === "publication_assembly_plan"), "H2_STAGE_AUTHORITY_CONTEXT", "publication assembly HTTPS manifest and capabilities require exact publication_assembly_plan stage identity");
@@ -1863,7 +2314,7 @@ function internalStageRaceHook(operation: J, capability?: InternalSyntheticCapab
   if (race === "insert_import_candidate") return () => { const file = path.join(path.dirname(member.realpath), "late-candidate.cjs"); fs.writeFileSync(file, "module.exports='late';\n", { mode: 0o400 }); return () => fs.unlinkSync(file); };
   throw new GateH2Error("H2_STAGE_INTERNAL_RACE", "unknown internal stage race injection");
 }
-export function externalOperationContractSelfTest(): J {
+export async function externalOperationContractSelfTest(): Promise<J> {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "rmv2-external-operation-"));
   const git = trustedExecutable("git");
   const expect = (code: string, operation: () => unknown): void => { let observed = ""; try { operation(); } catch (error) { observed = error instanceof GateH2Error ? error.code : ""; } codedAssert(observed === code, "H2_EXTERNAL_TEST_CODE", `expected ${code}, observed ${observed || "none"}`); };
@@ -1905,6 +2356,11 @@ export function externalOperationContractSelfTest(): J {
     codedAssert(canon(childEnvironmentNames) === canon(publicEnvironment.map((item) => item.name).sort()), "H2_STAGE_OPERATION_ENV", `clean child environment differs: ${canon(childEnvironmentNames)}`); fs.unlinkSync(output);
     const undeclaredFile = path.join(root, "undeclared.json"); process.env.UNDECLARED = undeclaredFile; const writesExtra = structuredClone(operation); writesExtra.environment.secret_capability_ids.push({ name: "UNDECLARED", capability_id: hash(`gate-h2-stage-secret-capability-v1\0UNDECLARED\0${undeclaredFile}`) }); expect("H2_STAGE_SECRET_ENV", () => executeSyntheticExternalStageOperation(writesExtra, [{ path: output }])); delete process.env.UNDECLARED;
     const run = (candidate: J) => executeSyntheticExternalStageOperation(candidate, [{ path: output }]);
+    const assertBaseFixtureRepoClean = (label: string): void => {
+      const dirty = execFileSync(git, ["status", "--porcelain=v1", "--untracked-files=all"], { cwd: root, encoding: "utf8", env: {} });
+      codedAssert(dirty === "", "H2_EXTERNAL_TEST_FIXTURE", `${label} left the base external-operation Git fixture dirty: ${dirty}`);
+    };
+    runBaseFixtureNegativeCases();
     const runtimeJoin = structuredClone(operation); runtimeJoin.runtime = structuredClone(runtimeJoin.script); expect("H2_STAGE_DEPENDENCY_JOIN", () => run(runtimeJoin));
     const scriptJoin = structuredClone(operation); scriptJoin.script = structuredClone(scriptJoin.artifacts[0].pin); scriptJoin.argv[0] = scriptJoin.script.realpath; scriptJoin.argv_bindings[0].value_sha256 = hash(scriptJoin.argv[0]); expect("H2_STAGE_DEPENDENCY_JOIN", () => run(scriptJoin));
     const lockJoin = structuredClone(operation); lockJoin.dependency_lock = structuredClone(lockJoin.script); expect("H2_STAGE_DEPENDENCY_JOIN", () => run(lockJoin));
@@ -1918,7 +2374,7 @@ export function externalOperationContractSelfTest(): J {
     validateExecutorSemanticsBundle(httpsSemantics, httpsSemanticsContext, true);
     codedAssert(httpsSemantics.attestation.schema_version === "reviewed_metrics_executor_semantics_attestation_v2.2.0" && httpsSemantics.conformance_receipt.schema_version === "reviewed_metrics_executor_conformance_receipt_v2.2.0" && httpsSemantics.attestation.subject.action_semantics.action === "invoke_exact_https_exchange", "H2_EXECUTOR_SEMANTICS_VERSION", "v2.2 producer did not emit exact HTTPS successor semantics and conformance evidence");
     const successorProgramSource = path.join(ROOT, "docs/dataset-factory/fixtures/https-exchange-contract-v1/stage-program-v2.2.json");
-    const successorProgramFile = path.join(root, "stage-program-v2.2.json"); fs.writeFileSync(successorProgramFile, pretty(parseStrictJson(fs.readFileSync(successorProgramSource))), { mode: 0o600 });
+    const successorProgramFile = path.join(root, "stage-program-v2.2.json"); const successorProgram = parseStrictJson(fs.readFileSync(successorProgramSource)) as J; successorProgram.output_indexes = [0, 1, 2, 3]; fs.writeFileSync(successorProgramFile, pretty(successorProgram), { mode: 0o600 });
     const successorProgramPin = filePin(successorProgramFile, "reviewed_metrics_stage_program_v2.2.0");
     const successorProofRoot = path.join(root, "successor-closure"); fs.mkdirSync(successorProofRoot);
     const successorPackageManifest = path.join(successorProofRoot, "package.json"); const successorLock = path.join(successorProofRoot, "package-lock.json");
@@ -1929,24 +2385,161 @@ export function externalOperationContractSelfTest(): J {
     const successorTreeBytes = dependencyTreeBytes(successorResolutionContract, successorRoots, successorMembers); const successorDependencies = path.join(successorProofRoot, "installed-dependencies.json");
     fs.writeFileSync(successorDependencies, pretty({ schema_version: "reviewed_metrics_installed_dependency_tree_v2.4.0", enumeration_contract: "sorted_physical_regular_files_path_sha256_bytes_v2", resolution_contract: successorResolutionContract, physical_roots: successorRoots, members: successorMembers, tree_sha256: hash(successorTreeBytes), tree_bytes: successorTreeBytes.length, member_count: successorMembers.length }), { mode: 0o600 });
     const successorDependencyValue = load(successorDependencies);
-    const rawResponse = path.join(root, "raw-https-response.json"); const brokerTranscript = path.join(root, "https-broker-transcript.json");
-    const successorOutputs = [{ artifact_role: "raw_https_response", host_path: rawResponse, guest_path: "/output/raw-response", mode: "rw", content_sha256: hash("empty-raw-response") }, { artifact_role: "https_broker_transcript", host_path: brokerTranscript, guest_path: "/output/broker-transcript", mode: "rw", content_sha256: hash("empty-broker-transcript") }];
-    const successorSemantics = syntheticExecutorSemanticsBundle({ wrapper: wrapperPin, runtime: runtimePin, stageProgram: successorProgramPin, imageDigest, readableMounts: [], outputMounts: successorOutputs, writablePaths: [rawResponse, brokerTranscript] });
-    const successorBoundaryPayload: J = { kind: "linux_sandbox_attestation_v1", platform: "linux", wrapper: wrapperPin, wrapper_grammar_version: "gate_h2_linux_wrapper_argv_v3", fixed_argument_allowlist: [], argv_prefix: [], argv_prefix_bindings: [], image_identity_kind: "oci_manifest", image_immutable_identity: "synthetic.invalid/gate-h2@sha256", image_digest: imageDigest, resolution_contract: successorDependencyValue.resolution_contract, dependency_tree_sha256: successorDependencyValue.tree_sha256, dependency_tree_bytes: successorDependencyValue.tree_bytes, dependency_tree_members: successorDependencyValue.member_count, executor_semantics: successorSemantics, network_policy: "deny_all", network_capability_ids: [], network_namespace_sha256: hash("successor-network-namespace"), firewall_rules_sha256: hash("successor-firewall-rules"), writable_paths: [rawResponse, brokerTranscript], readable_mounts: [], output_mounts: successorOutputs, repo_tree_sha256: repoTree, attestation_artifact_sha256: hash("successor-sandbox-attestation") };
+    const rawResponse = path.join(root, "raw-https-response.json"); const brokerTranscript = path.join(root, "https-broker-transcript.json"); const brokerAuthorityEnvelope = path.join(root, "https-broker-authority-envelope.json"); const supervisorReport = path.join(root, "podman-supervisor-report.json");
+    const successorOutputs = [{ artifact_role: "raw_https_response", host_path: rawResponse, guest_path: "/output/raw-response", mode: "rw", content_sha256: hash("empty-raw-response") }, { artifact_role: "https_broker_transcript", host_path: brokerTranscript, guest_path: "/output/broker-transcript", mode: "rw", content_sha256: hash("empty-broker-transcript") }, { artifact_role: "https_broker_authority_envelope", host_path: brokerAuthorityEnvelope, guest_path: "/output/broker-authority-envelope", mode: "rw", content_sha256: hash("empty-broker-authority-envelope") }, { artifact_role: "podman_supervisor_report", host_path: supervisorReport, guest_path: "/output/supervisor-report", mode: "rw", content_sha256: hash("empty-supervisor-report") }];
+    const successorSemantics = syntheticExecutorSemanticsBundle({ wrapper: wrapperPin, runtime: runtimePin, stageProgram: successorProgramPin, imageDigest, readableMounts: [], outputMounts: successorOutputs, writablePaths: [rawResponse, brokerTranscript, brokerAuthorityEnvelope, supervisorReport] });
+    const successorBoundaryPayload: J = { kind: "linux_sandbox_attestation_v1", platform: "linux", wrapper: wrapperPin, wrapper_grammar_version: "gate_h2_linux_wrapper_argv_v3", fixed_argument_allowlist: [], argv_prefix: [], argv_prefix_bindings: [], image_identity_kind: "oci_manifest", image_immutable_identity: "synthetic.invalid/gate-h2@sha256", image_digest: imageDigest, resolution_contract: successorDependencyValue.resolution_contract, dependency_tree_sha256: successorDependencyValue.tree_sha256, dependency_tree_bytes: successorDependencyValue.tree_bytes, dependency_tree_members: successorDependencyValue.member_count, executor_semantics: successorSemantics, network_policy: "deny_all", network_capability_ids: [], network_namespace_sha256: hash("successor-network-namespace"), firewall_rules_sha256: hash("successor-firewall-rules"), writable_paths: [rawResponse, brokerTranscript, brokerAuthorityEnvelope, supervisorReport], readable_mounts: [], output_mounts: successorOutputs, repo_tree_sha256: repoTree, attestation_artifact_sha256: hash("successor-sandbox-attestation") };
     const successorBoundary = { ...successorBoundaryPayload, attestation_sha256: hash(canon(successorBoundaryPayload)) };
-    const successorOperation: J = { kind: "external_command", execution_boundary: successorBoundary, runtime: runtimePin, script: successorProgramPin, artifacts: [{ artifact_role: "reviewed_request_body", pin: filePin(prompt) }], dependency_lock: filePin(successorLock), installed_dependency_tree: filePin(successorDependencies), repo_tree_sha256: repoTree, cwd: fs.realpathSync(root), argv: [successorProgramPin.realpath, prompt], argv_bindings: [{ index: 0, artifact_role: "script", value_sha256: hash(successorProgramPin.realpath) }, { index: 1, artifact_role: "reviewed_request_body", value_sha256: hash(prompt) }], declared_output_paths: [rawResponse, brokerTranscript], executor_capability_id: successorSemantics.capability_id, network_policy: "deny_all", network_capability_ids: [], environment: { public: [], secret_capability_ids: [] } };
+    const successorOperation: J = { kind: "external_command", execution_boundary: successorBoundary, runtime: runtimePin, script: successorProgramPin, artifacts: [{ artifact_role: "reviewed_request_body", pin: filePin(prompt) }], dependency_lock: filePin(successorLock), installed_dependency_tree: filePin(successorDependencies), repo_tree_sha256: repoTree, cwd: fs.realpathSync(root), argv: [successorProgramPin.realpath, prompt], argv_bindings: [{ index: 0, artifact_role: "script", value_sha256: hash(successorProgramPin.realpath) }, { index: 1, artifact_role: "reviewed_request_body", value_sha256: hash(prompt) }], declared_output_paths: [rawResponse, brokerTranscript, brokerAuthorityEnvelope, supervisorReport], executor_capability_id: successorSemantics.capability_id, network_policy: "deny_all", network_capability_ids: [], environment: { public: [], secret_capability_ids: [] } };
     const successorManifest = parseStrictJson(fs.readFileSync(path.join(ROOT, "docs/dataset-factory/fixtures/https-exchange-contract-v1/manifest-v1.json"))) as J;
     successorManifest.candidate_id = CANDIDATE_ID; successorManifest.stage_id = "publication_assembly_plan"; successorManifest.capabilities[0].candidate_id = CANDIDATE_ID; successorManifest.capabilities[0].stage_id = "publication_assembly_plan"; successorManifest.capabilities[0].request_artifact.sha256 = successorOperation.artifacts[0].pin.sha256; successorManifest.capabilities[0].request_artifact.bytes = successorOperation.artifacts[0].pin.bytes; successorManifest.capabilities[0].request_byte_cap = successorOperation.artifacts[0].pin.bytes; successorManifest.capabilities[0].capability_id = domainSeparatedId(ID_DOMAINS.capability, successorManifest.capabilities[0], "capability_id"); successorManifest.manifest_id = domainSeparatedId(ID_DOMAINS.manifest, successorManifest, "manifest_id"); validateManifest(successorManifest);
     const successorManifestFile = path.join(root, "execution-authority-manifest.json"); fs.writeFileSync(successorManifestFile, pretty(successorManifest), { mode: 0o600 });
     const successorAuthority = syntheticExecutionAuthority(hash("complete-v2.5-authority-fixture")); successorAuthority.schema_version = "reviewed_metrics_execution_authorization_v2.5.0";
-    const publicationStage = successorAuthority.stage_execution.stages.find((entry: J) => entry.stage_id === "publication_assembly_plan"); publicationStage.operation = successorOperation; publicationStage.outputs = [{ artifact_role: "raw_https_response", path: rawResponse }, { artifact_role: "https_broker_transcript", path: brokerTranscript }];
+    const publicationStage = successorAuthority.stage_execution.stages.find((entry: J) => entry.stage_id === "publication_assembly_plan"); publicationStage.operation = successorOperation; publicationStage.outputs = [{ artifact_role: "raw_https_response", path: rawResponse }, { artifact_role: "https_broker_transcript", path: brokerTranscript }, { artifact_role: "https_broker_authority_envelope", path: brokerAuthorityEnvelope }];
     const authoritySchemaPin = (name: string, schemaVersion: string): J => ({ ...schemaFilePin(name), schema_version: schemaVersion });
     const successorManifestRaw = fs.readFileSync(successorManifestFile);
-    successorAuthority.https_exchange_authority = { contract_version: "gate_h2_https_exchange_authority_v1", raw_network_policy: "deny_all", manifest: { path: successorManifestFile, realpath: fs.realpathSync(successorManifestFile), sha256: hash(successorManifestRaw), bytes: successorManifestRaw.length, schema_version: successorManifest.schema_version, manifest_id: successorManifest.manifest_id }, capability_schema: authoritySchemaPin("https-exchange-capability.schema.v1.json", "gate_h2_https_exchange_capability_v1.0.0"), manifest_schema: authoritySchemaPin("https-exchange-manifest.schema.v1.json", "gate_h2_https_exchange_manifest_v1.0.0"), uds_protocol_schema: authoritySchemaPin("https-exchange-uds-protocol.schema.v1.json", "gate_h2_https_exchange_uds_v1.0.0"), broker_event_schema: authoritySchemaPin("https-broker-event.schema.v1.json", "gate_h2_https_broker_event_v1.0.0"), broker_transcript_schema: authoritySchemaPin("https-broker-transcript.schema.v1.json", "gate_h2_https_broker_transcript_v1.0.0"), executor_semantics_schema: authoritySchemaPin("executor-semantics-attestation.schema.v2.2.json", "reviewed_metrics_executor_semantics_attestation_v2.2.0"), executor_conformance_schema: authoritySchemaPin("executor-conformance-receipt.schema.v2.2.json", "reviewed_metrics_executor_conformance_receipt_v2.2.0"), linux_sandbox_schema: authoritySchemaPin("linux-sandbox-attestation.schema.v2.5.json", "reviewed_metrics_linux_sandbox_attestation_v2.5.0"), broker_socket_ownership: "owner_bound_unix_socket_one_stage_one_run", stage_bindings: [{ stage_id: "publication_assembly_plan", manifest_id: successorManifest.manifest_id, opaque_handle_count: 1, stage_program_version: successorProgramPin.version, stage_program_sha256: successorProgramPin.sha256 }], transcript_output_role: "https_broker_transcript", predictor_exclusions: ["destination_manifest", "provider_auth_material"], legacy_migration: "explicit_reauthorization_required_no_automatic_allow_capabilities_migration" };
+    successorAuthority.https_exchange_authority = { contract_version: "gate_h2_https_exchange_authority_v1", raw_network_policy: "deny_all", manifest: { path: successorManifestFile, realpath: fs.realpathSync(successorManifestFile), sha256: hash(successorManifestRaw), bytes: successorManifestRaw.length, schema_version: successorManifest.schema_version, manifest_id: successorManifest.manifest_id }, capability_schema: authoritySchemaPin("https-exchange-capability.schema.v1.json", "gate_h2_https_exchange_capability_v1.0.0"), manifest_schema: authoritySchemaPin("https-exchange-manifest.schema.v1.json", "gate_h2_https_exchange_manifest_v1.0.0"), uds_protocol_schema: authoritySchemaPin("https-exchange-uds-protocol.schema.v1.json", "gate_h2_https_exchange_uds_v1.0.0"), broker_event_schema: authoritySchemaPin("https-broker-event.schema.v1.json", "gate_h2_https_broker_event_v1.0.0"), broker_transcript_schema: authoritySchemaPin("https-broker-transcript.schema.v1.json", "gate_h2_https_broker_transcript_v1.0.0"), broker_authority_envelope_schema: authoritySchemaPin("https-broker-authority-envelope.schema.v2.json", "gate_h2_https_broker_authority_envelope_v2.0.0"), broker_signer_trust_entry: filePin(script, "gate_h2_https_broker_signer_trust_entry_v1.0.0"), broker_trust_roots: filePin(script, "synthetic-trust-roots-v1"), post_begin_grant_verifier: syntheticPostBeginVerifier(SYNTHETIC_COORDINATOR_KEYS.publicKey), executor_semantics_schema: authoritySchemaPin("executor-semantics-attestation.schema.v2.2.json", "reviewed_metrics_executor_semantics_attestation_v2.2.0"), executor_conformance_schema: authoritySchemaPin("executor-conformance-receipt.schema.v2.2.json", "reviewed_metrics_executor_conformance_receipt_v2.2.0"), linux_sandbox_schema: authoritySchemaPin("linux-sandbox-attestation.schema.v2.5.json", "reviewed_metrics_linux_sandbox_attestation_v2.5.0"), post_begin_launch_request_schema: authoritySchemaPin("gate-h2-post-begin-launch-request.schema.v1.json", "gate_h2_post_begin_launch_request_v1.0.0"), post_begin_launch_grant_schema: authoritySchemaPin("gate-h2-post-begin-launch-grant.schema.v1.json", "gate_h2_post_begin_launch_grant_v1.1.0"), podman_supervisor_config_schema: authoritySchemaPin("podman-supervisor-config.schema.v1.json", "gate_h2_podman_supervisor_config_v1.0.0"), podman_supervisor_report_schema: authoritySchemaPin("podman-supervisor-report.schema.v1.json", "gate_h2_podman_supervisor_report_v1.0.0"), broker_socket_ownership: "owner_bound_unix_socket_one_stage_one_run", supervisor_cleanup_ownership: "descriptor_relative_rust_owned_one_run_tree_v1", transcript_output_role: "https_broker_transcript", authority_envelope_output_role: "https_broker_authority_envelope", supervisor_report_role: "podman_supervisor_report", predictor_exclusions: ["destination_manifest", "provider_auth_material"], legacy_migration: "explicit_reauthorization_required_no_automatic_allow_capabilities_migration" };
+    const supervisorRunRoot = path.join(root, "supervisor-runs"); fs.mkdirSync(supervisorRunRoot);
+    const commonSupervisorLaunch = { podman: { path: wrapperPin.realpath, sha256: wrapperPin.sha256, bytes: wrapperPin.bytes }, admitted_runtime_source: runtimePin.realpath, run_root: supervisorRunRoot, uid: 65532, gid: 65532, mounts: [{ source: prompt, guest: "/stage/inputs/request.json", writable: false, artifact_role: "reviewed_request_body", transition: null }], deadlines: { broker_ready_ms: 1000, stage_ms: 1000, term_grace_ms: 100, kill_reap_ms: 100, rm_ms: 100 } };
+    successorAuthority.https_exchange_authority.stage_launches = STAGE_IDS.map((stageId) => {
+      const stage = stageManifestEntry(successorAuthority, stageId);
+      const https = stageId === "publication_assembly_plan";
+      const groupedOutputs = new Map<string, J[]>();
+      for (const output of stage.outputs) { const rootPath = path.dirname(output.path); const values = groupedOutputs.get(rootPath) ?? []; values.push({ relative_path: path.basename(output.path), artifact_role: output.artifact_role }); groupedOutputs.set(rootPath, values); }
+      const work = path.join(supervisorRunRoot, `work-${stageId}`); fs.mkdirSync(work, { mode: 0o700 });
+      const outputMountsForStage = [...groupedOutputs.entries()].map(([source, files], index) => ({ source, guest: `/stage/outputs/${index}`, writable: true, artifact_role: `declared_outputs_${index}`, transition: { kind: "declared_outputs", files } }));
+      const mounts = [...commonSupervisorLaunch.mounts, { source: work, guest: "/stage/work", writable: true, artifact_role: "stage_work", transition: { kind: "empty_work" } }, ...outputMountsForStage];
+      return { stage_id: stageId, execution_class: "synthetic_test_only", admission_state: "ineligible_pending_issue_101_real_linux_evidence", operation_sha256: hash(Buffer.from(canon(stage.operation))), supervisor_executable: wrapperPin, stage_program: successorProgramPin, expected_outputs: stage.outputs.map((output: J) => ({ artifact_role: output.artifact_role, path: output.path })), supervisor_report: { artifact_role: "podman_supervisor_report", path: stageId === "publication_assembly_plan" ? supervisorReport : path.join(root, `${stageId}-supervisor-report.json`) }, image_digest: imageDigest, runtime: runtimePin, manifest: https ? successorAuthority.https_exchange_authority.manifest : null, podman: commonSupervisorLaunch.podman, broker: https ? { executable: wrapperPin, static_pin_sha256: hash("synthetic-broker-static-pin"), trust_roots: filePin(script, "synthetic-trust-roots-v1") } : null, exchange_mode: https ? { kind: "https", manifest_id: successorManifest.manifest_id, capability_count: 1, stage_exchange_descriptors: [{ fd: 3, ordinal: 0 }], terminal_ack_fd: 4 } : { kind: "none", stage_exchange_descriptors: [], terminal_ack_fd: null }, admitted_runtime_source: commonSupervisorLaunch.admitted_runtime_source, run_root: commonSupervisorLaunch.run_root, uid: commonSupervisorLaunch.uid, gid: commonSupervisorLaunch.gid, mounts, deadlines: commonSupervisorLaunch.deadlines, post_begin_handoff: { contract_version: "gate_h2_external_post_begin_authorizer_handoff_v1", authorizer: wrapperPin, admission_contract_id: hash(`synthetic-admission-contract:${stageId}`), authorization_contract_id: hash(`synthetic-authorization-contract:${stageId}`), signer_held_by_coordinator: false } };
+    });
     const attestationPinFixture = (version: string, schemaName: string): J => ({ artifact: { ...filePin(script, version), version }, schema_sha256: schemaFilePin(schemaName).sha256, attestor_principal: "external-attestor", attestor_session_id: "external-attestor-session", attestor_route: "/opt/gate-h2/external-attestor", attestor_physical_route_identity_sha256: hash("external-attestor-route"), signer_public_key_sha256: hash("external-attestor-key") });
     successorAuthority.pre_activation_attestations = { contract_version: "gate_h2_pre_activation_attestations_v1", max_age_seconds: 3600, d1: attestationPinFixture("reviewed_metrics_d1_live_attestation_v2.1.0", "d1-live-attestation.schema.v2.json"), sandbox: attestationPinFixture("reviewed_metrics_linux_sandbox_attestation_v2.5.0", "linux-sandbox-attestation.schema.v2.5.json"), verification: attestationPinFixture("reviewed_metrics_pre_activation_verification_v2.2.0", "pre-activation-verification.schema.v2.json") };
     sealSyntheticAuthority(successorAuthority);
     executionAuthorizationSchema(successorAuthority); validatedHttpsAuthorityManifest(successorAuthority);
+    const syntheticCapability: InternalSyntheticCapability = { [INTERNAL_SYNTHETIC_CAPABILITY]: true };
+    const allStageRequests = STAGE_IDS.map((stageId) => postBeginLaunchHandoffRequest({ authority: successorAuthority, stageId, attemptId: `synthetic-request-${stageId}`, beginEnvelope: { stage_id: stageId, attempt_id: `synthetic-request-${stageId}` }, capability: syntheticCapability } as StageConsumption));
+    codedAssert(allStageRequests.length === 12 && allStageRequests.filter((request) => request.exchange_mode.kind === "none" && request.exchange_mode.manifest === null && request.exchange_mode.broker === null && request.exchange_mode.stage_exchange_descriptors.length === 0 && request.exchange_mode.terminal_ack_fd === null).length === 11, "H2_STAGE_LAUNCH_UNIVERSE", "exact 12-stage request universe must contain eleven descriptor-free no-exchange launches");
+    codedAssert(allStageRequests.filter((request) => request.exchange_mode.kind === "https" && request.exchange_mode.stage_exchange_descriptors.length === 1 && request.exchange_mode.stage_exchange_descriptors[0].fd === 3 && request.exchange_mode.terminal_ack_fd === 4).length === 1, "H2_STAGE_LAUNCH_UNIVERSE", "exact 12-stage request universe must contain one exact ordered HTTPS FD launch");
+    const supervisorFixture = load(path.join(ROOT, "docs/dataset-factory/fixtures/podman-supervisor-v1/synthetic-config-v1.json"));
+    const allStageConfigs = successorAuthority.https_exchange_authority.stage_launches.map((launch: J, stageIndex: number) => {
+      const config = structuredClone(supervisorFixture);
+      const outputMounts = launch.mounts.filter((mount: J) => mount.transition?.kind === "declared_outputs");
+      config.stage_id = launch.stage_id;
+      config.attempt_id = config.d1_attempt_id = `synthetic-config-${launch.stage_id}`;
+      config.d1_begin_sha256 = hash(`config-d1:${launch.stage_id}`);
+      config.launch_record_sha256 = hash(Buffer.from(canon(launch)));
+      config.authorization_id = launch.post_begin_handoff.authorization_contract_id;
+      config.admission_id = launch.post_begin_handoff.admission_contract_id;
+      config.session_id = `synthetic-config-session-${launch.stage_id}`;
+      config.terminal_ack_fd = launch.exchange_mode.terminal_ack_fd;
+      config.broker_authority = launch.broker === null ? null : {
+        static_pin_sha256: launch.broker.static_pin_sha256,
+        trust_roots: structuredClone(launch.broker.trust_roots),
+      };
+      if (launch.exchange_mode.kind === "none") config.exchange_mode = { kind: "none", manifest: null, channels: [], broker: null };
+      config.container.name = `gate-h2-synthetic-config-${stageIndex}`;
+      config.container.mounts = [
+        { ...structuredClone(supervisorFixture.container.mounts[0]), artifact_role: `stage_program_${stageIndex}` },
+        { ...structuredClone(supervisorFixture.container.mounts.at(-1)), source: { ...structuredClone(supervisorFixture.container.mounts.at(-1).source), path: path.join(supervisorRunRoot, `work-${launch.stage_id}`), ino: 1000 + stageIndex }, artifact_role: `empty_work_${stageIndex}` },
+        ...outputMounts.map((mount: J, outputIndex: number) => ({ source: { ...structuredClone(supervisorFixture.container.mounts[2].source), path: mount.source, ino: 2000 + stageIndex * 10 + outputIndex }, guest: mount.guest, writable: true, artifact_role: mount.artifact_role, transition: structuredClone(mount.transition) })),
+      ];
+      config.expected_outputs = structuredClone(launch.expected_outputs);
+      config.retained_report = launch.supervisor_report.path;
+      schema("podman-supervisor-config.schema.v1.json", config);
+      const transitioned = config.container.mounts.flatMap((mount: J) => mount.transition?.kind === "declared_outputs" ? mount.transition.files.map((file: J) => ({ artifact_role: file.artifact_role, path: path.join(mount.source.path, file.relative_path) })) : []);
+      codedAssert(canon(transitioned) === canon(config.expected_outputs), "H2_STAGE_LAUNCH_UNIVERSE", `schema-valid supervisor config ${launch.stage_id} does not retain its exact typed output transitions`);
+      return config;
+    });
+    codedAssert(allStageConfigs.length === 12 && new Set(allStageConfigs.map((config: J) => hash(Buffer.from(canon(config))))).size === 12 && allStageConfigs.filter((config: J) => config.exchange_mode.kind === "none").length === 11, "H2_STAGE_LAUNCH_UNIVERSE", "twelve distinct schema-valid supervisor configs were not generated under the exact eleven-none/one-HTTPS split");
+    const canonicalGolden = Buffer.from('{"a":[true,null],"z":{"a":1,"b":2}}', "utf8");
+    const reorderedGolden = Buffer.from('{"z":{"b":2,"a":1},"a":[true,null]}', "utf8");
+    const canonicalGoldenValue = parseStrictJson(canonicalGolden) as J;
+    codedAssert(supervisorCanonicalBytes(canonicalGoldenValue).equals(canonicalGolden) && !supervisorCanonicalBytes(parseStrictJson(reorderedGolden) as J).equals(reorderedGolden), "H2_POST_BEGIN_AUTHORIZER", "TypeScript supervisor canonical JSON golden diverges from the Rust lexical-byte contract");
+    const nonBmpGolden = load(path.join(ROOT, "docs/dataset-factory/fixtures/podman-supervisor-v1/canonical-json-utf8-golden-v1.json"));
+    const nonBmpCanonical = Buffer.from(nonBmpGolden.canonical_utf8_json_base64, "base64");
+    const nonBmpReordered = Buffer.from(nonBmpGolden.reordered_semantic_utf8_json_base64, "base64");
+    codedAssert(nonBmpGolden.algorithm === SUPERVISOR_CANONICAL_JSON_ALGORITHM && supervisorCanonicalBytes(nonBmpGolden.input).equals(nonBmpCanonical) && !supervisorCanonicalBytes(parseStrictJson(nonBmpReordered) as J).equals(nonBmpReordered), "H2_POST_BEGIN_AUTHORIZER", "TypeScript supervisor canonical JSON non-BMP UTF-8 golden diverges from the Rust lexical-byte contract");
+    const handoffRequest = postBeginLaunchHandoffRequest({ authority: successorAuthority, stageId: "publication_assembly_plan", attemptId: "synthetic-grant-attempt", beginEnvelope: { stage_id: "publication_assembly_plan", attempt_id: "synthetic-grant-attempt" }, capability: syntheticCapability } as StageConsumption);
+    expect("H2_POST_BEGIN_AUTHORIZER", () => executePodmanSupervisor({ authority: successorAuthority, stageId: "publication_assembly_plan", attemptId: "synthetic-grant-attempt", beginEnvelope: { stage_id: "publication_assembly_plan", attempt_id: "synthetic-grant-attempt" }, capability: syntheticCapability } as StageConsumption));
+    const descriptor = (fd: number, role: string, sha256 = hash(`descriptor:${role}`), bytes = 1, fullySealed = false): J => ({ fd, role, sha256, bytes, fully_sealed: fullySealed });
+    const retainedRunRootDescriptor = (config: J): J => ({ ...structuredClone(config.run_root), sha256: hash(Buffer.alloc(0)), bytes: 0, fully_sealed: false });
+    let replaySequence = 0;
+    const finalizeGrant = (grant: J, request: J): void => {
+      const issued = Date.now(); replaySequence += 1;
+      const template = allStageConfigs.find((config: J) => config.stage_id === request.stage_id);
+      codedAssert(template, "H2_POST_BEGIN_AUTHORIZER", "grant test omitted the exact stage supervisor configuration template");
+      const config = structuredClone(template);
+      Object.assign(config, { execution_class: request.execution_class, admission_state: request.admission_state, candidate_id: request.candidate_id, candidate_commit: request.candidate_commit, authority_sha256: request.authority_sha256, attempt_id: request.attempt_id, d1_attempt_id: request.d1_attempt_id, d1_begin_sha256: request.d1_begin_sha256, launch_record_sha256: request.stage_launch_sha256, authorization_id: request.authorization_id, admission_id: request.admission_id, session_id: request.session_id, run_id: request.attempt_id });
+      codedAssert(canon(grant.supervisor_run_root) === canon(retainedRunRootDescriptor(config)), "H2_POST_BEGIN_AUTHORIZER", "synthetic grant omitted or substituted the exact coordinator-retained run-root descriptor");
+      const supervisor = supervisorCanonicalBytes(config);
+      const completion = supervisorCanonicalBytes(completionExpectationPayload(config));
+      grant.completion_expectations.sha256 = hash(completion); grant.completion_expectations.bytes = completion.length;
+      grant.supervisor_expectations.sha256 = hash(supervisor); grant.supervisor_expectations.bytes = supervisor.length;
+      Object.assign(grant, { grant_id: hash(`grant:${request.request_sha256}:${replaySequence}`), issuer_principal: successorAuthority.https_exchange_authority.post_begin_grant_verifier.principal, key_id: successorAuthority.https_exchange_authority.post_begin_grant_verifier.key_id, issued_at_unix_ms: issued, not_before_unix_ms: issued - 1_000, expires_at_unix_ms: issued + 60_000, replay_sequence: replaySequence, completion_expectations_sha256: hash(completion), supervisor_expectations_sha256: hash(supervisor) });
+      signPostBeginGrant(grant, SYNTHETIC_COORDINATOR_KEYS.privateKey);
+    };
+    const brokerGrant: J = {
+      schema_version: "gate_h2_post_begin_launch_grant_v1.1.0", execution_class: handoffRequest.execution_class, admission_state: handoffRequest.admission_state, request_sha256: handoffRequest.request_sha256, candidate_id: handoffRequest.candidate_id, candidate_commit: handoffRequest.candidate_commit, authority_sha256: handoffRequest.authority_sha256, stage_id: handoffRequest.stage_id, attempt_id: handoffRequest.attempt_id, d1_attempt_id: handoffRequest.d1_attempt_id, d1_begin_sha256: handoffRequest.d1_begin_sha256, stage_launch_sha256: handoffRequest.stage_launch_sha256, session_id: handoffRequest.session_id, authorization_id: handoffRequest.authorization_id, admission_id: handoffRequest.admission_id,
+      supervisor_executable: handoffRequest.supervisor_executable, supervisor_config: descriptor(20, "supervisor_config"), handoff_replay_journal: descriptor(19, "handoff_replay_journal"), supervisor_report: descriptor(16, "supervisor_report", hash(Buffer.alloc(0)), 0), completion_expectations: descriptor(17, "completion_expectations"), supervisor_expectations: descriptor(18, "supervisor_expectations"), supervisor_run_root: retainedRunRootDescriptor(allStageConfigs.find((config: J) => config.stage_id === handoffRequest.stage_id)),
+      broker_bundle: { broker_executable: handoffRequest.exchange_mode.broker.executable, https_request_contract: handoffRequest.exchange_mode, launch_config: descriptor(21, "launch_config"), run_token: descriptor(22, "run_token", hash("run-token"), 43, true), evidence_signing_key: descriptor(23, "evidence_signing_key", hash("evidence-key"), 43, true), replay_journal: descriptor(24, "replay_journal"), request_bodies: successorManifest.capabilities.map((capability: J, ordinal: number) => ({ ...descriptor(25 + ordinal, "request_body", capability.request_artifact.sha256, capability.request_artifact.bytes), ordinal })), credentials: [] },
+    };
+    finalizeGrant(brokerGrant, handoffRequest); validatePostBeginLaunchGrant(brokerGrant, handoffRequest, successorAuthority.https_exchange_authority.post_begin_grant_verifier, successorManifest);
+    for (const mutate of [
+      (grant: J) => { grant.issuer_principal = "wrong-authority-principal"; },
+      (grant: J) => { grant.key_id = "wrong-authority-key"; },
+      (grant: J) => { grant.expires_at_unix_ms = Date.now() - 1; },
+      (grant: J) => { grant.not_before_unix_ms = Date.now() + 60_000; grant.expires_at_unix_ms = Date.now() + 120_000; },
+    ]) { const invalid = structuredClone(brokerGrant); mutate(invalid); signPostBeginGrant(invalid, SYNTHETIC_COORDINATOR_KEYS.privateKey); expect("H2_POST_BEGIN_AUTHORIZER", () => validatePostBeginLaunchGrant(invalid, handoffRequest, successorAuthority.https_exchange_authority.post_begin_grant_verifier, successorManifest)); }
+    const modifiedSignature = structuredClone(brokerGrant); modifiedSignature.signature_base64 = `${modifiedSignature.signature_base64.slice(0, -4)}AAAA`; expect("H2_POST_BEGIN_AUTHORIZER", () => validatePostBeginLaunchGrant(modifiedSignature, handoffRequest, successorAuthority.https_exchange_authority.post_begin_grant_verifier, successorManifest));
+    const wrongSigner = crypto.generateKeyPairSync("ed25519"); const wrongSignerGrant = structuredClone(brokerGrant); signPostBeginGrant(wrongSignerGrant, wrongSigner.privateKey); expect("H2_POST_BEGIN_AUTHORIZER", () => validatePostBeginLaunchGrant(wrongSignerGrant, handoffRequest, successorAuthority.https_exchange_authority.post_begin_grant_verifier, successorManifest));
+    for (const mutate of [
+      (request: J) => { request.mounts[0].transition = { kind: "empty_work" }; },
+      (request: J) => { request.expected_outputs[0].artifact_role = "substituted_output"; },
+      (request: J) => { request.admitted_runtime_source = "/substituted/runtime"; },
+      (request: J) => { request.podman.sha256 = hash("substituted-podman"); },
+      (request: J) => { request.deadlines.stage_ms += 1; },
+      (request: J) => { request.expected_outputs[0].path = "/substituted/output.json"; },
+      (request: J) => { request.exchange_mode.stage_exchange_descriptors[0].fd += 1; },
+    ]) {
+      const invalidRequest = structuredClone(handoffRequest); mutate(invalidRequest); delete invalidRequest.request_sha256; invalidRequest.request_sha256 = hash(Buffer.from(canon(invalidRequest)));
+      expect("H2_POST_BEGIN_AUTHORIZER", () => validatePostBeginLaunchGrant(brokerGrant, invalidRequest, successorAuthority.https_exchange_authority.post_begin_grant_verifier, successorManifest));
+    }
+    for (const mutate of [
+      (grant: J) => grant.broker_bundle.request_bodies.pop(),
+      (grant: J) => grant.broker_bundle.request_bodies.push({ ...grant.broker_bundle.request_bodies[0], fd: 40, ordinal: 1 }),
+      (grant: J) => { grant.broker_bundle.request_bodies[0].ordinal = 1; },
+      (grant: J) => { grant.broker_bundle.request_bodies[0].fd = grant.broker_bundle.run_token.fd; },
+      (grant: J) => { grant.stage_id = "source_predict"; },
+      (grant: J) => { grant.d1_begin_sha256 = hash("wrong-d1-begin"); },
+      (grant: J) => { grant.broker_bundle.broker_executable.sha256 = hash("wrong-broker"); },
+      (grant: J) => { grant.broker_bundle.https_request_contract.broker.static_pin_sha256 = hash("wrong-static-pin"); },
+      (grant: J) => { grant.broker_bundle.https_request_contract.broker.trust_roots.sha256 = hash("wrong-trust-pin"); },
+      (grant: J) => { grant.broker_bundle.https_request_contract.stage_exchange_descriptors[0].ordinal += 1; },
+      (grant: J) => { grant.broker_bundle.https_request_contract.stage_exchange_descriptors[0].capability_id = hash("wrong-capability"); },
+      (grant: J) => { grant.broker_bundle.https_request_contract.stage_exchange_descriptors[0].request_sha256 = hash("wrong-request"); },
+      (grant: J) => { grant.broker_bundle.https_request_contract.stage_exchange_descriptors[0].raw_response_role = "wrong_response"; },
+      (grant: J) => { grant.broker_bundle.https_request_contract.stage_exchange_descriptors[0].raw_response_path = "/wrong-response"; },
+    ]) { const invalid = structuredClone(brokerGrant); mutate(invalid); signPostBeginGrant(invalid, SYNTHETIC_COORDINATOR_KEYS.privateKey); expect("H2_POST_BEGIN_AUTHORIZER", () => validatePostBeginLaunchGrant(invalid, handoffRequest, successorAuthority.https_exchange_authority.post_begin_grant_verifier, successorManifest)); }
+    const noneRequest = postBeginLaunchHandoffRequest({ authority: successorAuthority, stageId: "visual_predict", attemptId: "synthetic-none-attempt", beginEnvelope: { stage_id: "visual_predict", attempt_id: "synthetic-none-attempt" }, capability: syntheticCapability } as StageConsumption);
+    const noneGrant: J = { schema_version: "gate_h2_post_begin_launch_grant_v1.1.0", execution_class: noneRequest.execution_class, admission_state: noneRequest.admission_state, request_sha256: noneRequest.request_sha256, candidate_id: noneRequest.candidate_id, candidate_commit: noneRequest.candidate_commit, authority_sha256: noneRequest.authority_sha256, stage_id: noneRequest.stage_id, attempt_id: noneRequest.attempt_id, d1_attempt_id: noneRequest.d1_attempt_id, d1_begin_sha256: noneRequest.d1_begin_sha256, stage_launch_sha256: noneRequest.stage_launch_sha256, session_id: noneRequest.session_id, authorization_id: noneRequest.authorization_id, admission_id: noneRequest.admission_id, supervisor_executable: noneRequest.supervisor_executable, supervisor_config: descriptor(30, "supervisor_config"), handoff_replay_journal: descriptor(29, "handoff_replay_journal"), supervisor_report: descriptor(26, "supervisor_report", hash(Buffer.alloc(0)), 0), completion_expectations: descriptor(27, "completion_expectations"), supervisor_expectations: descriptor(28, "supervisor_expectations"), supervisor_run_root: retainedRunRootDescriptor(allStageConfigs.find((config: J) => config.stage_id === noneRequest.stage_id)), broker_bundle: null };
+    finalizeGrant(noneGrant, noneRequest); validatePostBeginLaunchGrant(noneGrant, noneRequest, successorAuthority.https_exchange_authority.post_begin_grant_verifier);
+    for (const [grant, request, manifest] of [[brokerGrant, handoffRequest, successorManifest], [noneGrant, noneRequest, undefined]] as const) {
+      const missingRunRoot = structuredClone(grant); delete missingRunRoot.supervisor_run_root; signPostBeginGrant(missingRunRoot, SYNTHETIC_COORDINATOR_KEYS.privateKey);
+      expect("H2_POST_BEGIN_AUTHORIZER", () => validatePostBeginLaunchGrant(missingRunRoot, request, successorAuthority.https_exchange_authority.post_begin_grant_verifier, manifest));
+    }
+    const allStageGrants = allStageRequests.map((request: J, index: number) => {
+      const grant = request.exchange_mode.kind === "https" ? structuredClone(brokerGrant) : structuredClone(noneGrant);
+      for (const field of ["execution_class", "admission_state", "request_sha256", "candidate_id", "candidate_commit", "authority_sha256", "stage_id", "attempt_id", "d1_attempt_id", "d1_begin_sha256", "stage_launch_sha256", "session_id", "authorization_id", "admission_id", "supervisor_executable"]) grant[field] = structuredClone(request[field]);
+      grant.supervisor_config = descriptor(100 + index, "supervisor_config", hash(Buffer.from(canon(allStageConfigs[index]))), Buffer.byteLength(canon(allStageConfigs[index])));
+      finalizeGrant(grant, request);
+      validatePostBeginLaunchGrant(grant, request, successorAuthority.https_exchange_authority.post_begin_grant_verifier, request.exchange_mode.kind === "https" ? successorManifest : undefined);
+      return grant;
+    });
+    codedAssert(allStageGrants.length === 12 && new Set(allStageGrants.map((grant: J) => grant.grant_sha256)).size === 12, "H2_POST_BEGIN_AUTHORIZER", "twelve distinct authority-signed stage grants were not validated");
+    const surplusNoneGrant = structuredClone(noneGrant); surplusNoneGrant.broker_bundle = structuredClone(brokerGrant.broker_bundle); signPostBeginGrant(surplusNoneGrant, SYNTHETIC_COORDINATOR_KEYS.privateKey); expect("H2_POST_BEGIN_AUTHORIZER", () => validatePostBeginLaunchGrant(surplusNoneGrant, noneRequest, successorAuthority.https_exchange_authority.post_begin_grant_verifier));
+    const expectedEvidenceJoin = { candidate_id: CANDIDATE_ID, candidate_commit: successorAuthority.candidate_commit, authority_sha256: authorityBindingHash(successorAuthority), stage_id: "publication_assembly_plan", attempt_id: "synthetic-grant-attempt", d1_attempt_id: "synthetic-grant-attempt", d1_begin_sha256: handoffRequest.d1_begin_sha256, session_id: successorAuthority.publisher.session_id, authorization_id: handoffRequest.authorization_id, admission_id: handoffRequest.admission_id, runtime_sha256: runtimePin.sha256, image_manifest_digest: imageDigest, podman_sha256: wrapperPin.sha256, broker_sha256: wrapperPin.sha256, trust_roots_sha256: successorAuthority.https_exchange_authority.broker_trust_roots.sha256, manifest_id: successorManifest.manifest_id, manifest_sha256: successorAuthority.https_exchange_authority.manifest.sha256, transcript: { artifact_role: "https_broker_transcript", sha256: hash("transcript"), bytes: 1 }, authority_envelope: { artifact_role: "https_broker_authority_envelope", sha256: hash("envelope"), bytes: 1 }, raw_responses: [{ artifact_role: "raw_https_response", sha256: hash("raw"), bytes: 1, ordinal: 0, capability_id: successorManifest.capabilities[0].capability_id, request_sha256: successorManifest.capabilities[0].request_artifact.sha256 }] };
+    assertBrokerEvidenceJoin(expectedEvidenceJoin, expectedEvidenceJoin);
+    for (const field of ["candidate_id", "candidate_commit", "authority_sha256", "stage_id", "attempt_id", "d1_attempt_id", "d1_begin_sha256", "session_id", "authorization_id", "admission_id", "runtime_sha256", "image_manifest_digest", "podman_sha256", "broker_sha256", "trust_roots_sha256", "manifest_id", "manifest_sha256"] ) { const invalid: J = structuredClone(expectedEvidenceJoin); invalid[field] = field === "image_manifest_digest" ? `sha256:${hash(`wrong:${field}`)}` : hash(`wrong:${field}`); expect("H2_BROKER_EVIDENCE_JOIN", () => assertBrokerEvidenceJoin(invalid, expectedEvidenceJoin)); }
+    for (const mutate of [(join: J) => { join.transcript.sha256 = hash("wrong-transcript"); }, (join: J) => { join.authority_envelope.sha256 = hash("wrong-envelope"); }, (join: J) => { join.raw_responses[0].sha256 = hash("wrong-raw"); }, (join: J) => join.raw_responses.push(structuredClone(join.raw_responses[0]))]) { const invalid = structuredClone(expectedEvidenceJoin); mutate(invalid); expect("H2_BROKER_EVIDENCE_JOIN", () => assertBrokerEvidenceJoin(invalid, expectedEvidenceJoin)); }
     const successorTrust = load(PREACTIVATION_TRUST);
     const successorContext = externalOperationAuthorityContext(successorAuthority, "publication_assembly_plan", successorTrust);
     validateExternalOperationAuthorityPreflight(successorOperation, fs.readFileSync(successorProgramFile), successorContext, true);
@@ -1964,10 +2557,10 @@ export function externalOperationContractSelfTest(): J {
     expect("H2_STAGE_AUTHORITY_CONTEXT", () => executePublicationAssemblyPlanExternalOperation(successorAuthority, successorTrust, substitutedOperationContext));
     const legacyPublicationAuthority = structuredClone(successorAuthority); legacyPublicationAuthority.schema_version = "reviewed_metrics_execution_authorization_v2.4.0";
     expect("H2_STAGE_AUTHORITY_CONTEXT", () => executeReviewedPublicationAssemblyPlanExternalOperation(legacyPublicationAuthority));
-    const missingPublicationBinding = structuredClone(successorAuthority); missingPublicationBinding.https_exchange_authority.stage_bindings = [];
+    const missingPublicationBinding = structuredClone(successorAuthority); missingPublicationBinding.https_exchange_authority.stage_launches.find((launch: J) => launch.stage_id === "publication_assembly_plan").exchange_mode = { kind: "none", stage_exchange_descriptors: [], terminal_ack_fd: null };
     expect("H2_STAGE_AUTHORITY_CONTEXT", () => executeReviewedPublicationAssemblyPlanExternalOperation(missingPublicationBinding));
-    const wrongPublicationBinding = structuredClone(successorAuthority); wrongPublicationBinding.https_exchange_authority.stage_bindings[0].stage_id = "source_predict";
-    expect("H2_STAGE_AUTHORITY_CONTEXT", () => executeReviewedPublicationAssemblyPlanExternalOperation(wrongPublicationBinding));
+    const wrongPublicationBinding = structuredClone(successorAuthority); wrongPublicationBinding.https_exchange_authority.stage_launches.find((launch: J) => launch.stage_id === "publication_assembly_plan").exchange_mode.manifest_id = hash("wrong-manifest");
+    expect("H2_HTTPS_MANIFEST", () => executeReviewedPublicationAssemblyPlanExternalOperation(wrongPublicationBinding));
     const publicationManifestRaw = fs.readFileSync(successorManifestFile); const publicationManifestPin = structuredClone(successorAuthority.https_exchange_authority.manifest);
     const sourceStageManifest = structuredClone(successorManifest); sourceStageManifest.stage_id = "source_predict"; sourceStageManifest.capabilities[0].stage_id = "source_predict"; sourceStageManifest.capabilities[0].capability_id = domainSeparatedId(ID_DOMAINS.capability, sourceStageManifest.capabilities[0], "capability_id"); sourceStageManifest.manifest_id = domainSeparatedId(ID_DOMAINS.manifest, sourceStageManifest, "manifest_id"); fs.writeFileSync(successorManifestFile, pretty(sourceStageManifest));
     const sourceStageManifestRaw = fs.readFileSync(successorManifestFile); const sourceStageMismatch = structuredClone(successorAuthority); sourceStageMismatch.https_exchange_authority.manifest = { ...sourceStageMismatch.https_exchange_authority.manifest, sha256: hash(sourceStageManifestRaw), bytes: sourceStageManifestRaw.length, manifest_id: sourceStageManifest.manifest_id };
@@ -2003,10 +2596,64 @@ export function externalOperationContractSelfTest(): J {
       for (const file of [authorityFile, receiptFile, fixtureFile, sealFile]) fs.rmSync(file, { force: true });
     };
     runPublicationStageRoute("legacy-v2.4-no-binding", (candidate) => { candidate.schema_version = "reviewed_metrics_execution_authorization_v2.4.0"; delete candidate.https_exchange_authority; }, "H2_STAGE_AUTHORITY_CONTEXT");
-    runPublicationStageRoute("missing-binding", (candidate) => { candidate.https_exchange_authority.stage_bindings = []; }, "H2_STAGE_AUTHORITY_CONTEXT");
-    runPublicationStageRoute("wrong-binding", (candidate) => { candidate.https_exchange_authority.stage_bindings[0].stage_id = "source_predict"; }, "H2_STAGE_AUTHORITY_CONTEXT");
+    runPublicationStageRoute("missing-binding", (candidate) => { candidate.https_exchange_authority.stage_launches.find((launch: J) => launch.stage_id === "publication_assembly_plan").exchange_mode = { kind: "none", stage_exchange_descriptors: [], terminal_ack_fd: null }; }, "H2_STAGE_AUTHORITY_CONTEXT");
+    runPublicationStageRoute("wrong-binding", (candidate) => { candidate.https_exchange_authority.stage_launches.find((launch: J) => launch.stage_id === "publication_assembly_plan").exchange_mode.manifest_id = hash("wrong-manifest"); }, "H2_HTTPS_MANIFEST");
     runPublicationStageRoute("valid-v2.5-production-ineligible", () => undefined, "H2_EXECUTOR_SEMANTICS_SYNTHETIC");
     fs.rmSync(publicationStageRunKey, { force: true });
+    const supervisorFailures = ["per-attempt supervisor config build/write failure", "broker config FD mismatch", "broker readiness failure", "unsolicited or misordered connection", "partial channel setup", "Podman spawn failure", "Podman nonzero exit", "Podman timeout with bounded TERM/KILL/reap", "broker exit after stage exit", "podman rm failure", "retained supervisor-report write failure"];
+    const supervisorMatrix: J[] = [];
+    for (const [index, failure] of supervisorFailures.entries()) {
+      for (const output of publicationStage.outputs) fs.rmSync(output.path, { force: true });
+      const candidate = structuredClone(successorAuthority); const now = Date.now(); const at = (offset: number) => new Date(now + offset).toISOString();
+      candidate.authorized_at = at(-5_000); candidate.started_at = at(-4_000); candidate.ended_at = at(-3_000); candidate.freeze_at = at(-2_500); candidate.source_search_started_at = at(-2_000); candidate.source_search_ended_at = at(-1_500); candidate.source_search_freeze_at = at(-1_000); candidate.source_dossier_authored_at = at(-750); candidate.private_envelope_sealed_at = at(-500); candidate.expires_at = at(120_000);
+      candidate.publisher.route = candidate.publisher.canonical_root = fs.realpathSync(root); candidate.stage_execution.ledger.namespace_digest = hash(`supervisor-matrix-${index}`); sealSyntheticAuthority(candidate, true);
+      const entry = stageManifestEntry(candidate, "publication_assembly_plan"); const actorValue = candidate.publisher; const inventory = candidate.trusted_surface_inventory.find((item: J) => trustedInventoryDigest(item) === actorValue.surface_inventory_digest); codedAssert(inventory, "H2_PODMAN_SUPERVISOR_TEST", "matrix fixture lacks publisher inventory");
+      const physical = strictHostRouteMeasurement(actorValue.route); const issuedAt = at(0); const receipt: J = { schema_version: "reviewed_metrics_coordinator_route_receipt_v2.0.0", surface_id: actorValue.surface_id, surface_inventory_digest: actorValue.surface_inventory_digest, canonical_physical_host_id: inventory.canonical_physical_host_id, candidate_commit: candidate.candidate_commit, authority_hash: authorityBindingHash(candidate), nonce: entry.nonce, invocation_id: entry.invocation_id, role: "publisher", stage_id: "publication_assembly_plan", requested_root: actorValue.route, canonical_root: physical.canonicalRoot, existing_ancestor: physical.existingAncestor, ancestor_device: physical.stat.dev, ancestor_inode: physical.stat.ino, measured_at: at(-50), measurement_sha256: "", role_event_started_at: issuedAt, role_event_ended_at: at(60_000), issued_at: issuedAt, expires_at: at(60_000), signature_base64: "" };
+      const measurement = { schema_version: "reviewed_metrics_host_route_measurement_v2.0.0", candidate_commit: receipt.candidate_commit, authority_hash: receipt.authority_hash, role: receipt.role, stage_id: receipt.stage_id, nonce: receipt.nonce, invocation_id: receipt.invocation_id, surface_inventory_digest: receipt.surface_inventory_digest, canonical_physical_host_id: receipt.canonical_physical_host_id, requested_root: receipt.requested_root, canonical_root: receipt.canonical_root, existing_ancestor: receipt.existing_ancestor, ancestor_device: receipt.ancestor_device, ancestor_inode: receipt.ancestor_inode, measured_at: receipt.measured_at };
+      receipt.measurement_sha256 = hash(routeMeasurementPayload(measurement)); receipt.signature_base64 = crypto.sign(null, routeReceiptPayload(receipt), SYNTHETIC_COORDINATOR_KEYS.privateKey).toString("base64"); const receiptFile = path.join(root, `supervisor-matrix-${index}-receipt.json`); fs.writeFileSync(receiptFile, pretty(receipt), { mode: 0o600 });
+      const capability: InternalSyntheticCapability = { [INTERNAL_SYNTHETIC_CAPABILITY]: true }; const consumption = await beginStageConsumption(candidate, receiptFile, "publication_assembly_plan", () => new Date(now), capability);
+      const fake = failure === "per-attempt supervisor config build/write failure" ? undefined : localFakeSupervisorExecutable(root, `matrix-${index}`, failure);
+      const backend: InternalPodmanSupervisorBackend = { [INTERNAL_PODMAN_SUPERVISOR_BACKEND]: true, failure, ...(fake ? { supervisorExecutable: fake.executable, lifecycleFile: fake.lifecycleFile } : {}), authorize(request: J) { return syntheticIndependentPostBeginHandoff(request, root, successorManifest, candidate, wrapperPin, runtimePin, now); } };
+      let observed = ""; try { executeStageRunExternalOperation(candidate, "publication_assembly_plan", capability, consumption, backend); await completeStageConsumption(consumption, () => new Date(now + 10)); } catch (error) { observed = error instanceof GateH2Error ? `${error.code}: ${error.message}` : String(error); }
+      const readback = await consumption.ledger.readAll(candidate.candidate_commit, authorityBindingHash(candidate)); let sealRejected = false; try { await completedStageLedgerEvidence(candidate, true, capability, undefined, consumption.ledger); } catch { sealRejected = true; }
+      codedAssert(observed.includes(failure) && readback.attempts.length === 1 && readback.claims.length === 1 && readback.completions.length === 0 && sealRejected, "H2_PODMAN_SUPERVISOR_TEST", `${failure} did not retain exactly one attempt/begin, zero completions, and an unsealable ledger: ${observed}`);
+      codedAssert(!fs.existsSync(path.join(supervisorRunRoot, consumption.attemptId)), "H2_PODMAN_SUPERVISOR_TEST", `${failure} leaked its per-attempt run tree`);
+      if (fake) {
+        assertFakeSupervisorLifecycle(fake.lifecycleFile, failure);
+        fs.rmSync(fake.executable, { force: true });
+        fs.rmSync(fake.lifecycleFile, { force: true });
+      }
+      supervisorMatrix.push({ failure, attempts: 1, begins: 1, completions: 0, seal_rejected: true }); fs.rmSync(receiptFile, { force: true });
+    }
+    for (const [index, stageId] of (["visual_freeze", "source_freeze"] as StageId[]).entries()) {
+      const label = stageId === "visual_freeze" ? "prediction freeze binding mismatch" : "source-search freeze binding mismatch"; const caseRoot = path.join(root, `freeze-binding-${index}`); fs.mkdirSync(caseRoot);
+      const manifest = structuredClone(successorManifest); manifest.stage_id = stageId; manifest.capabilities[0].stage_id = stageId; manifest.capabilities[0].capability_id = domainSeparatedId(ID_DOMAINS.capability, manifest.capabilities[0], "capability_id"); manifest.manifest_id = domainSeparatedId(ID_DOMAINS.manifest, manifest, "manifest_id"); const manifestFile = path.join(caseRoot, "manifest.json"); fs.writeFileSync(manifestFile, pretty(manifest), { mode: 0o600 }); const manifestRaw = fs.readFileSync(manifestFile);
+      const candidate = structuredClone(successorAuthority); const now = Date.now(); const at = (offset: number) => new Date(now + offset).toISOString(); candidate.authorized_at = at(-5_000); candidate.started_at = at(-4_000); candidate.ended_at = at(-3_000); candidate.freeze_at = at(1_000); candidate.source_search_started_at = at(2_000); candidate.source_search_ended_at = at(3_000); candidate.source_search_freeze_at = at(4_000); candidate.source_dossier_authored_at = at(5_000); candidate.private_envelope_sealed_at = at(6_000); candidate.expires_at = at(120_000); candidate.stage_execution.ledger.namespace_digest = hash(`freeze-binding-${index}`);
+      const entry = stageManifestEntry(candidate, stageId); const rawFile = path.join(caseRoot, "raw.json"); const transcriptFile = path.join(caseRoot, "transcript.json"); const envelopeFile = path.join(caseRoot, "envelope.json"); const reportFile = path.join(caseRoot, "report.json"); const freezeFile = path.join(caseRoot, stageId === "visual_freeze" ? "prediction-freeze.json" : "source-search-freeze.json"); entry.operation = structuredClone(successorOperation); entry.operation.declared_output_paths = [rawFile, transcriptFile, envelopeFile, freezeFile]; entry.outputs = [{ artifact_role: manifest.capabilities[0].raw_response_output_role, path: rawFile }, { artifact_role: "https_broker_transcript", path: transcriptFile }, { artifact_role: "https_broker_authority_envelope", path: envelopeFile }, { artifact_role: stageId === "visual_freeze" ? "prediction_freeze" : "source_search_freeze", path: freezeFile }];
+      candidate.https_exchange_authority.manifest = { path: manifestFile, realpath: fs.realpathSync(manifestFile), sha256: hash(manifestRaw), bytes: manifestRaw.length, schema_version: manifest.schema_version, manifest_id: manifest.manifest_id }; const launchRecord = candidate.https_exchange_authority.stage_launches.find((launch: J) => launch.stage_id === stageId); const oldPublicationLaunch = candidate.https_exchange_authority.stage_launches.find((launch: J) => launch.stage_id === "publication_assembly_plan"); launchRecord.operation_sha256 = hash(Buffer.from(canon(entry.operation))); launchRecord.stage_program = successorProgramPin; launchRecord.expected_outputs = entry.outputs.map((output: J) => ({ artifact_role: output.artifact_role, path: output.path })); launchRecord.supervisor_report = { artifact_role: "podman_supervisor_report", path: reportFile }; launchRecord.image_digest = entry.operation.execution_boundary.image_digest; launchRecord.runtime = runtimePin; launchRecord.manifest = candidate.https_exchange_authority.manifest; launchRecord.mounts = structuredClone(oldPublicationLaunch.mounts); launchRecord.broker = { executable: wrapperPin, static_pin_sha256: hash("synthetic-broker-static-pin"), trust_roots: filePin(script, "synthetic-trust-roots-v1") }; launchRecord.exchange_mode = { kind: "https", manifest_id: manifest.manifest_id, capability_count: 1, stage_exchange_descriptors: [{ fd: 3, ordinal: 0 }], terminal_ack_fd: 4 }; oldPublicationLaunch.exchange_mode = { kind: "none", stage_exchange_descriptors: [], terminal_ack_fd: null }; oldPublicationLaunch.broker = null; oldPublicationLaunch.manifest = null; const actorValue = candidate[entry.role]; actorValue.route = actorValue.canonical_root = fs.realpathSync(caseRoot); sealSyntheticAuthority(candidate, true);
+      const inventory = candidate.trusted_surface_inventory.find((item: J) => trustedInventoryDigest(item) === actorValue.surface_inventory_digest); codedAssert(inventory, "H2_FREEZE_BROKER_BINDING_TEST", "freeze fixture lacks actor inventory"); const physical = strictHostRouteMeasurement(actorValue.route); const receipt: J = { schema_version: "reviewed_metrics_coordinator_route_receipt_v2.0.0", surface_id: actorValue.surface_id, surface_inventory_digest: actorValue.surface_inventory_digest, canonical_physical_host_id: inventory.canonical_physical_host_id, candidate_commit: candidate.candidate_commit, authority_hash: authorityBindingHash(candidate), nonce: entry.nonce, invocation_id: entry.invocation_id, role: entry.role, stage_id: stageId, requested_root: actorValue.route, canonical_root: physical.canonicalRoot, existing_ancestor: physical.existingAncestor, ancestor_device: physical.stat.dev, ancestor_inode: physical.stat.ino, measured_at: at(-50), measurement_sha256: "", role_event_started_at: at(0), role_event_ended_at: at(60_000), issued_at: at(0), expires_at: at(60_000), signature_base64: "" }; const measurement = { schema_version: "reviewed_metrics_host_route_measurement_v2.0.0", candidate_commit: receipt.candidate_commit, authority_hash: receipt.authority_hash, role: receipt.role, stage_id: receipt.stage_id, nonce: receipt.nonce, invocation_id: receipt.invocation_id, surface_inventory_digest: receipt.surface_inventory_digest, canonical_physical_host_id: receipt.canonical_physical_host_id, requested_root: receipt.requested_root, canonical_root: receipt.canonical_root, existing_ancestor: receipt.existing_ancestor, ancestor_device: receipt.ancestor_device, ancestor_inode: receipt.ancestor_inode, measured_at: receipt.measured_at }; receipt.measurement_sha256 = hash(routeMeasurementPayload(measurement)); receipt.signature_base64 = crypto.sign(null, routeReceiptPayload(receipt), SYNTHETIC_COORDINATOR_KEYS.privateKey).toString("base64"); const receiptFile = path.join(caseRoot, "receipt.json"); fs.writeFileSync(receiptFile, pretty(receipt), { mode: 0o600 });
+      const capability: InternalSyntheticCapability = { [INTERNAL_SYNTHETIC_CAPABILITY]: true }; const consumption = await beginStageConsumption(candidate, receiptFile, stageId, () => new Date(now), capability); const mismatchedEvidence = { capability_id: "0".repeat(64), exchange_ordinal: 0, request_sha256: manifest.capabilities[0].request_artifact.sha256, raw_response_role: manifest.capabilities[0].raw_response_output_role, raw_response_sha256: hash("wrong-raw"), raw_response_bytes: 1, transcript_role: "https_broker_transcript", transcript_sha256: hash("wrong-transcript"), transcript_bytes: 3 }; const freeze = stageId === "visual_freeze" ? { schema_version: "reviewed_metrics_prediction_freeze_v2.1.0", status: "frozen", candidate_id: CANDIDATE_ID, implementation_base_commit: IMPLEMENTATION_BASE_COMMIT, candidate_commit: candidate.candidate_commit, bundle_tree_sha256: hash("bundle"), prediction: { sha256: hash("prediction"), bytes: 1 }, principal: actorValue.principal, session_id: actorValue.session_id, model: actorValue.model, reasoning_effort: actorValue.reasoning_effort, route: actorValue.route, started_at: at(-2_000), ended_at: at(-1_000), authorized_at: candidate.authorized_at, frozen_at: at(1_000), broker_evidence: mismatchedEvidence } : { schema_version: "reviewed_metrics_source_search_freeze_v2.1.0", status: "frozen", candidate_id: CANDIDATE_ID, candidate_commit: candidate.candidate_commit, task_id: ISSUE_97_TASK_ID, public_bundle: { path: SOURCE_SEARCH_BUNDLE_FILE, sha256: hash("bundle"), bytes: 1 }, prediction: { sha256: hash("prediction"), bytes: 1 }, principal: actorValue.principal, session_id: actorValue.session_id, model: actorValue.model, reasoning_effort: actorValue.reasoning_effort, route: actorValue.route, started_at: at(2_000), ended_at: at(3_000), authorized_at: candidate.authorized_at, frozen_at: at(4_000), broker_evidence: mismatchedEvidence };
+      const fake = localFakeSupervisorExecutable(caseRoot, `freeze-${index}`, undefined, [{ file: rawFile, raw: Buffer.from("raw\n") }, { file: transcriptFile, raw: Buffer.from("{}\n") }, { file: envelopeFile, raw: Buffer.from("{}\n") }, { file: reportFile, raw: Buffer.from("{}\n") }, { file: freezeFile, raw: Buffer.from(pretty(freeze)) }]);
+      const backend: InternalPodmanSupervisorBackend = { [INTERNAL_PODMAN_SUPERVISOR_BACKEND]: true, failure: label, supervisorExecutable: fake.executable, lifecycleFile: fake.lifecycleFile, authorize(request: J) { return syntheticIndependentPostBeginHandoff(request, caseRoot, manifest, candidate, wrapperPin, runtimePin, now); } };
+      let observed = ""; try { executeStageRunExternalOperation(candidate, stageId, capability, consumption, backend); await completeStageConsumption(consumption, () => new Date(now + 10)); } catch (error) { observed = error instanceof GateH2Error ? `${error.code}: ${error.message}` : String(error); }
+      assertFakeSupervisorLifecycle(fake.lifecycleFile, label);
+      const readback = await consumption.ledger.readAll(candidate.candidate_commit, authorityBindingHash(candidate)); let sealRejected = false; try { await completedStageLedgerEvidence(candidate, true, capability, undefined, consumption.ledger); } catch { sealRejected = true; } codedAssert(observed.includes("H2_FREEZE_BROKER_BINDING") && readback.attempts.length === 1 && readback.claims.length === 1 && readback.completions.length === 0 && sealRejected, "H2_FREEZE_BROKER_BINDING_TEST", `${label} did not retain exactly one attempt/begin, zero completions, and an unsealable ledger: ${observed}`); supervisorMatrix.push({ failure: label, attempts: 1, begins: 1, completions: 0, seal_rejected: true }); fs.rmSync(caseRoot, { recursive: true, force: true });
+    }
+    const reportExpectations: SupervisorCompletionExpectations = { configSha256: hash("authoritative-config"), orderedMounts: [{ source: { path: "/authority/input" }, guest: "/stage/input", writable: false, artifact_role: "input" }], mountSetSha256: "", podmanArgv: ["run", "--name", "authority"], podmanArgvSha256: "", terminalAckFd: 4 };
+    reportExpectations.mountSetSha256 = hash(Buffer.from(JSON.stringify(reportExpectations.orderedMounts))); reportExpectations.podmanArgvSha256 = hash(Buffer.from(reportExpectations.podmanArgv.join("\0")));
+    const authorityReport = { config_sha256: reportExpectations.configSha256, ordered_mounts: structuredClone(reportExpectations.orderedMounts), mount_set_sha256: reportExpectations.mountSetSha256, podman_argv: [...reportExpectations.podmanArgv], podman_argv_sha256: reportExpectations.podmanArgvSha256, terminal_ack_fd: 4 };
+    const substitutedConfigReport = { ...structuredClone(authorityReport), config_sha256: hash("self-consistent-substituted-config") }; expect("H2_PODMAN_SUPERVISOR", () => assertSupervisorReportDerivedExpectations(substitutedConfigReport, reportExpectations, 1));
+    const substitutedMountReport = structuredClone(authorityReport); substitutedMountReport.ordered_mounts[0].guest = "/stage/substituted"; substitutedMountReport.mount_set_sha256 = hash(Buffer.from(JSON.stringify(substitutedMountReport.ordered_mounts))); expect("H2_PODMAN_SUPERVISOR", () => assertSupervisorReportDerivedExpectations(substitutedMountReport, reportExpectations, 1));
+    const substitutedArgvReport = structuredClone(authorityReport); substitutedArgvReport.podman_argv.push("--substituted"); substitutedArgvReport.podman_argv_sha256 = hash(Buffer.from(substitutedArgvReport.podman_argv.join("\0"))); expect("H2_PODMAN_SUPERVISOR", () => assertSupervisorReportDerivedExpectations(substitutedArgvReport, reportExpectations, 1));
+    const treeContract = load(path.join(ROOT, "docs/dataset-factory/fixtures/podman-supervisor-v1/nested-directory-tree-hash-v1.json")); codedAssert(hash(`${treeContract.canonical_rows.join("\n")}\n`) === treeContract.tree_sha256, "H2_PODMAN_MOUNT_TEST", "nested directory conformance fixture exact digest drifted");
+    const treeRoot = path.join(root, "nested-directory-conformance"); const alpha = path.join(treeRoot, "alpha"); const beta = path.join(alpha, "beta"); const valueFile = path.join(beta, "value.txt"); fs.mkdirSync(beta, { recursive: true, mode: 0o750 }); fs.chmodSync(alpha, 0o755); fs.chmodSync(beta, 0o750); fs.writeFileSync(valueFile, "nested fixture\n", { mode: 0o640 });
+    const alphaStat = fs.lstatSync(alpha); const betaStat = fs.lstatSync(beta); const valueStat = fs.lstatSync(valueFile); const liveRows = [`d\talpha\t755\t${alphaStat.uid}\t${alphaStat.gid}\t${alphaStat.nlink}`, `d\talpha/beta\t750\t${betaStat.uid}\t${betaStat.gid}\t${betaStat.nlink}`, `f\talpha/beta/value.txt\t640\t${valueStat.uid}\t${valueStat.gid}\t${valueStat.nlink}\t${valueStat.size}\t${hash(fs.readFileSync(valueFile))}`]; codedAssert(canon(directoryTreeRows(treeRoot)) === canon(liveRows) && directoryTreeSha256(treeRoot) === hash(`${liveRows.join("\n")}\n`), "H2_PODMAN_MOUNT_TEST", "TypeScript nested directory tree hash differs from the Rust row contract");
+    const symlink = path.join(beta, "link"); fs.symlinkSync(valueFile, symlink); expect("H2_PODMAN_MOUNT", () => directoryTreeSha256(treeRoot)); fs.unlinkSync(symlink);
+    const fifo = path.join(beta, "fifo"); execFileSync("/usr/bin/mkfifo", [fifo], { env: {} }); expect("H2_PODMAN_MOUNT", () => directoryTreeSha256(treeRoot)); fs.unlinkSync(fifo);
+    const retainedTreePin = podmanMountSourcePin(treeRoot); fs.writeFileSync(valueFile, "drifted fixture\n"); expect("H2_PODMAN_MOUNT", () => assertPodmanMountSourcePinUnchanged(retainedTreePin));
+    fs.rmSync(treeRoot, { recursive: true, force: true });
+    fs.rmSync(supervisorRunRoot, { recursive: true, force: true });
+    if (process.argv[2] === "podman-supervisor-failure-matrix-self-test") return { status: "podman_supervisor_failure_matrix_passed", cases: supervisorMatrix, assertions_per_case: 4, total_ledger_assertions: 52 };
     const expectSuccessorSchemaReject = (candidate: J): void => { let rejected = false; try { executionAuthorizationSchema(candidate); } catch { rejected = true; } codedAssert(rejected, "H2_SUCCESSOR_AUTHORITY_SCHEMA_TEST", "v2.5 authority schema accepted a legacy cross-version substitution"); };
     const legacySemanticsAuthority = structuredClone(successorAuthority); legacySemanticsAuthority.stage_execution.stages.find((entry: J) => entry.stage_id === "publication_assembly_plan").operation.execution_boundary.executor_semantics = semantics; expectSuccessorSchemaReject(legacySemanticsAuthority);
     const legacyProgramAuthority = structuredClone(successorAuthority); legacyProgramAuthority.stage_execution.stages.find((entry: J) => entry.stage_id === "publication_assembly_plan").operation.script.version = "reviewed_metrics_stage_program_v2.1.0"; expectSuccessorSchemaReject(legacyProgramAuthority);
@@ -2029,6 +2676,8 @@ export function externalOperationContractSelfTest(): J {
     const staleSemantics = syntheticExecutorSemanticsBundle({ wrapper: wrapperPin, runtime: runtimePin, stageProgram: scriptPin, imageDigest, readableMounts: [], outputMounts, writablePaths: [output], observedAt: new Date(Date.now() - 172_800_000).toISOString() }); expect("H2_EXECUTOR_SEMANTICS_STALE", () => validateExecutorSemanticsBundle(staleSemantics, semanticsContext, true));
     const selfReviewed = syntheticExecutorSemanticsBundle({ wrapper: wrapperPin, runtime: runtimePin, stageProgram: scriptPin, imageDigest, readableMounts: [], outputMounts, writablePaths: [output], selfReviewed: true }); expect("H2_EXECUTOR_SEMANTICS_INDEPENDENCE", () => validateExecutorSemanticsBundle(selfReviewed, semanticsContext, true));
     expect("H2_EXECUTOR_SEMANTICS_SYNTHETIC", () => validateExecutorSemanticsBundle(semantics, semanticsContext, false));
+    function runBaseFixtureNegativeCases(): void {
+    assertBaseFixtureRepoClean("before base-operation negative cases");
     for (const name of ["PATH", "NODE_OPTIONS", "PYTHONPATH", "HOME", "CODEX_HOME", "AUTH_TOKEN"]) { const bad = structuredClone(operation); bad.environment.public.push({ name, value: "bad", value_sha256: hash("bad"), binding: "literal" }); expect("H2_STAGE_OPERATION_ENV", () => run(bad)); }
     for (const [name, value] of [["HOME", process.env.HOME ?? "/tmp"], ["AUTH_FILE", "secret.pem"], ["FILE_URI", "file:tmp"], ["CONFIG", "package.json"]]) { process.env[name] = value; const secret = structuredClone(operation); secret.environment.secret_capability_ids = [{ name, capability_id: hash(`gate-h2-stage-secret-capability-v1\0${name}\0${value}`) }]; expect("H2_STAGE_SECRET_ENV", () => run(secret)); delete process.env[name]; }
     const unpinned = structuredClone(operation); unpinned.declared_output_paths = [path.join(root, "other.json")]; expect("H2_STAGE_OUTPUT_DECLARATION", () => run(unpinned));
@@ -2057,6 +2706,8 @@ export function externalOperationContractSelfTest(): J {
     process.env.GATE_H2_INTERNAL_CLEANUP_FAIL_ONCE = "1"; let cleanupWithPrimary: unknown; try { executeSyntheticExternalStageOperation(operation, [{ path: output }], () => { throw new GateH2Error("H2_TEST_PRIMARY", "synthetic primary stage failure"); }); } catch (error) { cleanupWithPrimary = error; } finally { delete process.env.GATE_H2_INTERNAL_CLEANUP_FAIL_ONCE; }
     codedAssert(cleanupWithPrimary instanceof GateH2Error && cleanupWithPrimary.code === "H2_STAGE_IMMUTABLE_CLEANUP" && (cleanupWithPrimary.cause as J)?.primary?.code === "H2_TEST_PRIMARY" && cleanupWithPrimary.message.includes("H2_TEST_PRIMARY") && !fs.existsSync(output), "H2_STAGE_IMMUTABLE_CLEANUP", "cleanup failure did not retain the primary error as auditable cause");
     codedAssert(fs.readdirSync(os.tmpdir()).every((name) => !name.startsWith("rmv2-immutable-operation-")), "H2_STAGE_IMMUTABLE_CLEANUP", "external operation test leaked an immutable tree");
+    assertBaseFixtureRepoClean("after base-operation negative cases");
+    }
     const stageRouteSchema = stageRouteReceiptSchemaContractSelfTest();
     return { status: "external_operation_contract_self_test_passed_synthetic_boundary_only", production_ready: false, real_linux_wrapper_test_satisfied: false, stage_route_schema: stageRouteSchema, cases: ["clean_environment", "closed_scalar_grammar", "production_canonical_stage_program_only", "successor_authority_preflight_context", "actual_publication_stage_context_omission_and_substitution_rejected_before_nonproduction_boundary", "actual_generic_publication_stage_run_v2_4_no_binding_rejected", "actual_generic_publication_stage_run_missing_binding_rejected", "actual_generic_publication_stage_run_wrong_binding_rejected", "actual_generic_publication_stage_run_valid_v2_5_reaches_production_ineligible_boundary", "failed_generic_publication_preflight_has_no_completion_or_seal", "exact_12_stage_route_receipt_schema", "successor_v2_1_program_v2_0_semantics_and_context_substitution_rejected", "alternate_javascript_native_loader_probes_rejected", "host_node_resolution_nonproduction_only", "derived_executor_semantic_capability", "signed_semantics_and_independent_conformance_receipt", "semantic_program_schema_executor_mount_test_result_capability_substitution_rejected", "stale_self_reviewed_synthetic_production_rejected", "host_runtime_semantics_nonproduction_only", "production_zero_npm_dependency_subset", "retained_package_manifest_lock_installed_identity_proof", "lock_top_level_name_version_required_and_exact", "empty_lock_missing_root_missing_package_version_installed_identity_extra_lock_rejected", "path_injection", "node_options_injection", "pythonpath_injection", "home_auth_public_injection", "raw_secret_capabilities_rejected", "replaced_executable", "replaced_script", "retained_resolution_proof_bytes", "replaced_imported_dependency_tree", "inserted_import_candidate", "source_artifact_race_before_child", "dirty_untracked_cwd", "argv_substitution", "basename_dotfile_colon_uri_literal_rejection", "network_policy_escape", "missing_sandbox_attestation", "cwd_alias", "unpinned_output", "verified_fatal_immutable_tree_cleanup", "private_immutable_tree_execution"] };
   } finally { delete process.env.NODE_OPTIONS; delete process.env.PYTHONPATH; delete process.env.EXTRA_AMBIENT; fs.rmSync(root, { recursive: true, force: true }); }
@@ -2125,39 +2776,161 @@ async function beginStageConsumption(authority: J, receiptFile: string, stageId:
   try { await ledger.claimBegin(identity, attemptId, startedAt, pretty(evidence), hash(Buffer.from(pretty(evidence)))); }
   catch (error) { if (error instanceof StageLedgerContractError) throw new GateH2Error(error.code, error.message); throw error; }
   const readback = await ledger.readAll(identity.candidate_commit, identity.authority_hash);
-  const claim = readback.claims.find((row) => row.stage_id === stageId);
-  codedAssert(claim?.attempt_id === attemptId && claim.begin_sha256 === hash(Buffer.from(pretty(evidence))), "H2_LEDGER_READBACK", "durable begin readback differs from the appended claim");
+  const claims = readback.claims.filter((row) => row.stage_id === stageId);
+  const attempts = readback.attempts.filter((row) => row.attempt_id === attemptId && row.stage_id === stageId);
+  codedAssert(claims.length === 1 && attempts.length === 1 && !readback.completions.some((row) => row.stage_id === stageId) && claims[0].attempt_id === attemptId && claims[0].begin_sha256 === hash(Buffer.from(pretty(evidence))), "H2_LEDGER_READBACK", "durable begin readback is missing, duplicate, retried, completed, or differs from the appended claim");
   for (const output of entry.outputs) codedAssert(!fs.existsSync(output.path), "H2_STAGE_OUTPUT_PREEXISTS", `declared ${stageId} output exists before stage work`);
   return { attemptId, beginEnvelope: evidence, receipt, startedAt, stageId, authority, ledger, capability };
+}
+function assertFreezeBrokerBinding(consumption: StageConsumption, retainedOutputs: ReturnType<typeof stableStageOutputSnapshot>[], manifest: J, transcriptOutput: ReturnType<typeof stableStageOutputSnapshot>): void {
+  if (consumption.stageId !== "visual_freeze" && consumption.stageId !== "source_freeze") return;
+  const freezeOutput = retainedOutputs.find((output) => output.pin.artifact_role === (consumption.stageId === "visual_freeze" ? "prediction_freeze" : "source_search_freeze"));
+  codedAssert(freezeOutput, "H2_FREEZE_BROKER_BINDING", "freeze stage omitted freeze output");
+  const freeze: J = parseStrictJson(freezeOutput.raw);
+  schema(consumption.stageId === "visual_freeze" ? "prediction-freeze.schema.v2.1.json" : "source-search-freeze.schema.v2.1.json", freeze);
+  const capability = manifest.capabilities.at(-1); const rawRole = capability.raw_response_output_role; const raw = retainedOutputs.find((output) => output.pin.artifact_role === rawRole);
+  codedAssert(raw && freeze.broker_evidence?.capability_id === capability.capability_id && freeze.broker_evidence.exchange_ordinal === capability.exchange_ordinal && freeze.broker_evidence.request_sha256 === capability.request_artifact.sha256 && freeze.broker_evidence.raw_response_role === rawRole && freeze.broker_evidence.raw_response_sha256 === raw.pin.sha256 && freeze.broker_evidence.raw_response_bytes === raw.pin.bytes && freeze.broker_evidence.transcript_role === consumption.authority.https_exchange_authority.transcript_output_role && freeze.broker_evidence.transcript_sha256 === transcriptOutput.pin.sha256 && freeze.broker_evidence.transcript_bytes === transcriptOutput.pin.bytes, "H2_FREEZE_BROKER_BINDING", "freeze artifact does not directly bind prediction request, raw response, transcript, capability, and ordinal");
+}
+function assertSupervisorReportDerivedExpectations(report: J, expectations: SupervisorCompletionExpectations, authoritativeCapabilityCount: number): void {
+  const expectedTerminalAckFd = authoritativeCapabilityCount === 0 ? null : 3 + authoritativeCapabilityCount;
+  codedAssert(expectations.terminalAckFd === expectedTerminalAckFd && report.terminal_ack_fd === expectedTerminalAckFd, "H2_PODMAN_SUPERVISOR", "supervisor terminal ACK descriptor diverges from the authoritative capability count");
+  codedAssert(report.config_sha256 === expectations.configSha256, "H2_PODMAN_SUPERVISOR", "supervisor report config hash diverges from retained coordinator config bytes");
+  codedAssert(canon(report.ordered_mounts) === canon(expectations.orderedMounts) && report.mount_set_sha256 === expectations.mountSetSha256, "H2_PODMAN_SUPERVISOR", "supervisor report mount set or hash diverges from the typed coordinator launch");
+  codedAssert(canon(report.podman_argv) === canon(expectations.podmanArgv) && report.podman_argv_sha256 === expectations.podmanArgvSha256, "H2_PODMAN_SUPERVISOR", "supervisor report Podman argv or hash diverges from the authoritative coordinator launch");
+}
+function assertSupervisorOutputTransitions(report: J, stageLaunch: J): void {
+  const expected = stageLaunch.mounts.flatMap((mount: J) => mount.transition?.kind === "declared_outputs" ? mount.transition.files.map((file: J) => ({ artifact_role: file.artifact_role, relative_path: file.relative_path })) : []).sort((left: J, right: J) => left.artifact_role.localeCompare(right.artifact_role) || left.relative_path.localeCompare(right.relative_path));
+  const actual = report.output_transitions.map((transition: J) => ({ artifact_role: transition.artifact_role, relative_path: transition.relative_path })).sort((left: J, right: J) => left.artifact_role.localeCompare(right.artifact_role) || left.relative_path.localeCompare(right.relative_path));
+  codedAssert(canon(actual) === canon(expected) && report.output_transitions.every((transition: J) => /^[a-f0-9]{64}$/.test(transition.sha256) && Number.isInteger(transition.bytes) && transition.bytes > 0), "H2_PODMAN_SUPERVISOR", "supervisor report output transitions differ from authority-declared roles and relative paths");
+}
+function assertCommonSupervisorReport(report: J, consumption: StageConsumption, entry: J, stageLaunch: J, expectations: SupervisorCompletionExpectations): void {
+  const authority = consumption.authority;
+  const barePin = (pin: J): J => ({ sha256: pin.sha256, bytes: pin.bytes, version: pin.version });
+  const schemaPins = ["capability_schema", "manifest_schema", "uds_protocol_schema", "broker_event_schema", "broker_transcript_schema", "broker_authority_envelope_schema", "executor_semantics_schema", "executor_conformance_schema", "linux_sandbox_schema", "post_begin_launch_request_schema", "post_begin_launch_grant_schema", "podman_supervisor_config_schema", "podman_supervisor_report_schema"].map((name) => authority.https_exchange_authority[name]);
+  codedAssert(report.status === "supervised_stage_succeeded" && report.execution_class === stageLaunch.execution_class && report.admission_state === "ineligible_pending_issue_101_real_linux_evidence" && report.stage_id === consumption.stageId && report.candidate_id === authority.candidate_id && report.candidate_commit === authority.candidate_commit && report.authority_sha256 === authorityBindingHash(authority) && report.attempt_id === consumption.attemptId && report.d1_attempt_id === consumption.attemptId && report.d1_begin_sha256 === hash(Buffer.from(pretty(consumption.beginEnvelope))) && report.launch_record_sha256 === hash(Buffer.from(canon(stageLaunch))) && report.authorization_id === stageLaunch.post_begin_handoff.authorization_contract_id && report.admission_id === stageLaunch.post_begin_handoff.admission_contract_id && report.session_id === authority[entry.role].session_id, "H2_PODMAN_SUPERVISOR", "supervisor report does not join the exact stage launch, session, authority, and durable D1 begin");
+  codedAssert(canon(report.stage_program) === canon(barePin(stageLaunch.stage_program)) && canon(report.stage_runtime) === canon(barePin(stageLaunch.runtime)) && canon(report.trust_roots) === canon(barePin(authority.https_exchange_authority.broker_trust_roots)) && report.image_manifest_digest === stageLaunch.image_digest && report.admitted_runtime_source === stageLaunch.admitted_runtime_source && report.schema_set_sha256 === hash(Buffer.from(canon(schemaPins))) && report.container_exit_success === true && report.cleanup_succeeded === true, "H2_PODMAN_SUPERVISOR", "supervisor report program, runtime-source, trust, image, schema, child, or cleanup join differs");
+  assertSupervisorReportDerivedExpectations(report, expectations, stageLaunch.exchange_mode.kind === "https" ? stageLaunch.exchange_mode.capability_count : 0);
+  assertSupervisorOutputTransitions(report, stageLaunch);
+}
+function validateSupervisorGrantAuthorization(report: J, consumption: StageConsumption, stageLaunch: J, expectations: SupervisorCompletionExpectations): void {
+  const authorization = report.grant_authorization;
+  codedAssert(authorization, "H2_POST_BEGIN_AUTHORIZER", "external supervisor report omitted its authenticated post-begin grant commitment");
+  const signedPayload = Buffer.from(authorization.signed_payload_base64, "base64");
+  let grant: J;
+  try { grant = parseStrictJson(signedPayload) as J; } catch (error) { throw new GateH2Error("H2_POST_BEGIN_AUTHORIZER", "reported signed grant payload is not strict JSON", error); }
+  codedAssert(signedPayload.equals(Buffer.from(canon(grant))) && grant.signature_base64 === undefined, "H2_POST_BEGIN_AUTHORIZER", "reported signed grant payload is not canonical sanitized JSON");
+  const verifier = consumption.authority.https_exchange_authority.post_begin_grant_verifier;
+  const spki = Buffer.from(verifier.public_key_spki_der_base64, "base64");
+  codedAssert(hash(spki) === verifier.public_key_spki_sha256 && crypto.verify(null, signedPayload, crypto.createPublicKey({ key: spki, type: "spki", format: "der" }), decodeEd25519SignatureBase64(authorization.signature_base64, "H2_POST_BEGIN_AUTHORIZER")), "H2_POST_BEGIN_AUTHORIZER", "reported grant authorization signature differs from the authority-pinned key");
+  const request = postBeginLaunchHandoffRequest(consumption);
+  const completionBytes = expectations.completionExpectationBytes;
+  const supervisorBytes = expectations.supervisorExpectationBytes;
+  if (!completionBytes?.length || !supervisorBytes?.length) throw new GateH2Error("H2_POST_BEGIN_AUTHORIZER", "completion does not retain the exact canonical expectation descriptor bytes");
+  codedAssert(grant.grant_sha256 === grantHash(grant) && authorization.grant_sha256 === grant.grant_sha256 && authorization.grant_id === grant.grant_id && authorization.issuer_principal === verifier.principal && authorization.key_id === verifier.key_id && authorization.replay_sequence === grant.replay_sequence && authorization.request_sha256 === request.request_sha256 && grant.request_sha256 === request.request_sha256 && authorization.completion_expectations_sha256 === hash(completionBytes) && grant.completion_expectations_sha256 === authorization.completion_expectations_sha256 && authorization.supervisor_expectations_sha256 === hash(supervisorBytes) && grant.supervisor_expectations_sha256 === authorization.supervisor_expectations_sha256, "H2_POST_BEGIN_AUTHORIZER", "reported signed grant does not join the exact retained completion and supervisor expectation descriptor bytes");
+}
+function assertBrokerEvidenceJoin(actual: J, expected: J): void {
+  codedAssert(canon(actual) === canon(expected), "H2_BROKER_EVIDENCE_JOIN", "supervisor report does not bind the exact manifest, transcript, envelope, ordered raw responses, D1 IDs, session, runtime, image, Podman, broker, trust roots, and launch authorization");
+}
+function verifyPodmanSupervisorFixtures(): J {
+  const root = path.join(ROOT, "docs/dataset-factory/fixtures/podman-supervisor-v1");
+  const config = load(path.join(root, "synthetic-config-v1.json"));
+  schema("podman-supervisor-config.schema.v1.json", config);
+  codedAssert(config.execution_class === "synthetic_test_only" && config.admission_state === "ineligible_pending_issue_101_real_linux_evidence", "H2_PODMAN_SUPERVISOR_FIXTURE", "issue #100 fixture must remain synthetic and production-ineligible");
+  const transitions = config.container.mounts.map((mount: J) => mount.transition);
+  codedAssert(transitions.filter((transition: J) => transition?.kind === "declared_outputs").length === 1 && transitions.filter((transition: J) => transition?.kind === "empty_work").length === 1 && config.container.mounts.filter((mount: J) => !mount.writable).every((mount: J) => mount.transition === null), "H2_PODMAN_SUPERVISOR_FIXTURE", "fixture does not carry exact typed output/work and read-only mount transitions");
+  const adversarial = load(path.join(root, "adversarial-contract-cases-v1.json"));
+  codedAssert(adversarial.execution_class === "synthetic_test_only" && adversarial.admission_state === config.admission_state && adversarial.cases.length === 31 && new Set(adversarial.cases.map((entry: J) => entry.case_id)).size === 31, "H2_PODMAN_SUPERVISOR_FIXTURE", "adversarial fixture case universe drifted");
+  const tree = load(path.join(root, "nested-directory-tree-hash-v1.json"));
+  codedAssert(hash(`${tree.canonical_rows.join("\n")}\n`) === tree.tree_sha256, "H2_PODMAN_SUPERVISOR_FIXTURE", "nested directory fixture digest drifted");
+  const nonBmpGolden = load(path.join(root, "canonical-json-utf8-golden-v1.json"));
+  const nonBmpCanonical = Buffer.from(nonBmpGolden.canonical_utf8_json_base64, "base64");
+  const nonBmpReordered = Buffer.from(nonBmpGolden.reordered_semantic_utf8_json_base64, "base64");
+  codedAssert(nonBmpGolden.schema_version === "gate_h2_canonical_json_utf8_golden_v1.0.0" && nonBmpGolden.algorithm === SUPERVISOR_CANONICAL_JSON_ALGORITHM && supervisorCanonicalBytes(nonBmpGolden.input).equals(nonBmpCanonical) && !supervisorCanonicalBytes(parseStrictJson(nonBmpReordered) as J).equals(nonBmpReordered), "H2_PODMAN_SUPERVISOR_FIXTURE", "shared non-BMP UTF-8 canonical JSON golden drifted");
+  const source = load(path.join(root, "source-descriptor-v2.json"));
+  codedAssert(source.status === "synthetic_local_contract_only" && source.production_eligible === false && source.real_linux_conformance === false, "H2_PODMAN_SUPERVISOR_FIXTURE", "source descriptor claims production or real-Linux admission");
+  return { status: "podman_supervisor_fixtures_verified", adversarial_cases: adversarial.cases.length, mount_transitions: transitions.filter(Boolean).length, source_files: source.source_tree.file_count };
 }
 async function completeStageConsumption(consumption: StageConsumption, clock: Clock = () => new Date()): Promise<void> {
     try { await consumption.ledger.attestSchema(consumption.authority.stage_execution.ledger); }
     catch (error) { if (error instanceof StageLedgerContractError) throw new GateH2Error(error.code, error.message); throw error; }
     const initialIdentity = { candidate_commit: consumption.authority.candidate_commit, authority_hash: authorityBindingHash(consumption.authority), stage_id: consumption.stageId };
     const initialReadback = await consumption.ledger.readAll(initialIdentity.candidate_commit, initialIdentity.authority_hash);
-    codedAssert(initialReadback.claims.some((row) => row.attempt_id === consumption.attemptId), "H2_LEDGER_READBACK", "durable begin row is missing before completion");
+    codedAssert(initialReadback.claims.filter((row) => row.stage_id === consumption.stageId && row.attempt_id === consumption.attemptId).length === 1 && initialReadback.attempts.filter((row) => row.stage_id === consumption.stageId && row.attempt_id === consumption.attemptId).length === 1 && !initialReadback.completions.some((row) => row.stage_id === consumption.stageId), "H2_LEDGER_READBACK", "unique durable begin is missing, duplicate, retried, or already completed before completion");
     const completedAt = clock().toISOString();
     const entry = stageManifestEntry(consumption.authority, consumption.stageId);
     codedAssert(Date.parse(consumption.startedAt) <= Date.parse(completedAt) && Date.parse(completedAt) <= Date.parse(consumption.receipt.expires_at) && Date.parse(completedAt) <= Date.parse(consumption.authority.expires_at), "H2_ROUTE_EVENT_WINDOW", "actual stage completion is outside the signed receipt or authority window");
     assertCurrentStageHostAndRoute(consumption.authority, entry, consumption.receipt, completedAt, consumption.capability);
     const retainedOutputs: ReturnType<typeof stableStageOutputSnapshot>[] = entry.outputs.map((output: J) => stableStageOutputSnapshot(output.path, output.artifact_role));
-    const httpsBinding = consumption.authority.schema_version === "reviewed_metrics_execution_authorization_v2.5.0" ? consumption.authority.https_exchange_authority.stage_bindings.find((binding: J) => binding.stage_id === consumption.stageId) : undefined;
+    const httpsBinding = consumption.authority.schema_version === "reviewed_metrics_execution_authorization_v2.5.0" ? derivedHttpsBinding(consumption.authority, consumption.stageId) : undefined;
+    if (consumption.authority.schema_version === "reviewed_metrics_execution_authorization_v2.5.0" && !httpsBinding) {
+      const stageLaunch = consumption.authority.https_exchange_authority.stage_launches.find((candidate: J) => candidate.stage_id === consumption.stageId);
+      const supervisorOutput = stableStageOutputSnapshot(stageLaunch.supervisor_report.path, consumption.authority.https_exchange_authority.supervisor_report_role);
+      let report: J;
+      try { report = parseStrictJson(supervisorOutput.raw); schema("podman-supervisor-report.schema.v1.json", report); }
+      catch (error) { throw new GateH2Error("H2_PODMAN_SUPERVISOR", error instanceof Error ? error.message : "supervisor report is not strict schema-valid JSON"); }
+      const expectations = consumption.supervisorExpectations;
+      codedAssert(expectations, "H2_PODMAN_SUPERVISOR", "completion lacks retained coordinator supervisor expectations");
+      assertCommonSupervisorReport(report, consumption, entry, stageLaunch, expectations);
+      validateSupervisorGrantAuthorization(report, consumption, stageLaunch, expectations);
+      if (stageLaunch.exchange_mode.kind === "none") codedAssert(report.exchange_mode.kind === "none" && report.terminal_ack_fd === null && report.broker_evidence_join === null && report.broker_exit_success === null, "H2_PODMAN_SUPERVISOR", "none-mode supervisor report carried broker evidence or an ACK/broker exit");
+    }
     if (httpsBinding) {
       const transcriptOutput = retainedOutputs.find((output) => output.pin.artifact_role === consumption.authority.https_exchange_authority.transcript_output_role);
+      const envelopeOutput = retainedOutputs.find((output) => output.pin.artifact_role === consumption.authority.https_exchange_authority.authority_envelope_output_role);
+      const stageLaunch = consumption.authority.https_exchange_authority.stage_launches.find((candidate: J) => candidate.stage_id === consumption.stageId);
+      const supervisorOutput = stableStageOutputSnapshot(stageLaunch.supervisor_report.path, consumption.authority.https_exchange_authority.supervisor_report_role);
       codedAssert(transcriptOutput, "H2_HTTPS_TRANSCRIPT", "HTTPS-bound stage omitted its declared broker transcript output");
+      codedAssert(envelopeOutput, "H2_PODMAN_SUPERVISOR", "HTTPS-bound stage omitted its signed broker authority envelope");
       let transcript: J;
       try { transcript = parseStrictJson(transcriptOutput.raw); }
       catch (error) { throw new GateH2Error("H2_HTTPS_TRANSCRIPT", error instanceof Error ? error.message : "broker transcript is not strict JSON"); }
+      const manifest = validatedHttpsAuthorityManifest(consumption.authority);
+      assertFreezeBrokerBinding(consumption, retainedOutputs, manifest, transcriptOutput);
       try { validateCompletedTranscriptOutputs(transcript, validatedHttpsAuthorityManifest(consumption.authority), retainedOutputs.map((output) => output.pin)); }
       catch (error) { throw new GateH2Error("H2_HTTPS_TRANSCRIPT", error instanceof Error ? error.message : "broker transcript does not prove exact retained response outputs"); }
+      const trustSnapshot = readRawSnapshot(consumption.authority.https_exchange_authority.broker_signer_trust_entry.realpath, "H2_BROKER_AUTHORITY");
+      try {
+        codedAssert(trustSnapshot.raw.length === consumption.authority.https_exchange_authority.broker_signer_trust_entry.bytes && hash(trustSnapshot.raw) === consumption.authority.https_exchange_authority.broker_signer_trust_entry.sha256, "H2_BROKER_AUTHORITY", "broker signer trust entry bytes differ from authority pin");
+        validateAuthorityEnvelopeV2(parseStrictJson(envelopeOutput.raw), transcriptOutput.raw, validatedHttpsAuthorityManifest(consumption.authority), trustSnapshot.raw);
+        assertSnapshotPathUnchanged(trustSnapshot);
+      } catch (error) { throw new GateH2Error("H2_BROKER_AUTHORITY", error instanceof Error ? error.message : "signed broker authority envelope does not join trusted transcript bytes"); }
+      finally { closeSnapshot(trustSnapshot); }
+      let report: J;
+      try { report = parseStrictJson(supervisorOutput.raw); schema("podman-supervisor-report.schema.v1.json", report); }
+      catch (error) { throw new GateH2Error("H2_PODMAN_SUPERVISOR", error instanceof Error ? error.message : "supervisor report is not strict schema-valid JSON"); }
+      const boundary = entry.operation.execution_boundary;
+      const expectations = consumption.supervisorExpectations;
+      codedAssert(expectations, "H2_PODMAN_SUPERVISOR", "completion lacks retained coordinator supervisor expectations");
+      assertCommonSupervisorReport(report, consumption, entry, stageLaunch, expectations);
+      validateSupervisorGrantAuthorization(report, consumption, stageLaunch, expectations);
+      codedAssert(report.exchange_mode.kind === "https" && report.exchange_mode.capability_manifest_sha256 === consumption.authority.https_exchange_authority.manifest.sha256 && report.exchange_mode.channels.length === manifest.exact_exchange_count && canon(report.exchange_mode.channels.map((channel: J) => [channel.inherited_fd, channel.capability_id, channel.ordinal, channel.request_sha256, channel.raw_response_role, channel.raw_response_path])) === canon(manifest.capabilities.map((capability: J, index: number) => [index + 3, capability.capability_id, capability.exchange_ordinal, capability.request_artifact.sha256, capability.raw_response_output_role, entry.outputs.find((output: J) => output.artifact_role === capability.raw_response_output_role)?.path])), "H2_PODMAN_SUPERVISOR", "supervisor report explicit capability FD 3..N differs from authority");
+      const expectedEvidenceJoin = {
+        candidate_id: consumption.authority.candidate_id, candidate_commit: consumption.authority.candidate_commit, authority_sha256: authorityBindingHash(consumption.authority), stage_id: consumption.stageId, attempt_id: consumption.attemptId, d1_attempt_id: consumption.attemptId, d1_begin_sha256: hash(Buffer.from(pretty(consumption.beginEnvelope))), session_id: consumption.authority[entry.role].session_id, authorization_id: stageLaunch.post_begin_handoff.authorization_contract_id, admission_id: stageLaunch.post_begin_handoff.admission_contract_id,
+        runtime_sha256: stageLaunch.runtime.sha256, image_manifest_digest: stageLaunch.image_digest, podman_sha256: stageLaunch.podman.sha256, broker_sha256: stageLaunch.broker.executable.sha256, trust_roots_sha256: stageLaunch.broker.trust_roots.sha256, manifest_id: manifest.manifest_id, manifest_sha256: consumption.authority.https_exchange_authority.manifest.sha256,
+        transcript: transcriptOutput.pin, authority_envelope: envelopeOutput.pin,
+        raw_responses: manifest.capabilities.map((capability: J) => { const pinValue = retainedOutputs.find((output) => output.pin.artifact_role === capability.raw_response_output_role)?.pin; const declared = entry.outputs.find((output: J) => output.artifact_role === capability.raw_response_output_role); return { ...pinValue, path: declared?.path, ordinal: capability.exchange_ordinal, capability_id: capability.capability_id, request_sha256: capability.request_artifact.sha256 }; }),
+      };
+      assertBrokerEvidenceJoin(report.broker_evidence_join, expectedEvidenceJoin);
+      codedAssert(report.image_manifest_digest === boundary.image_digest && report.broker_exit_success === true, "H2_PODMAN_SUPERVISOR", "HTTPS supervisor report image or broker exit join differs");
     }
     const outputs = retainedOutputs.map((output) => output.pin);
     const identity = { candidate_commit: consumption.authority.candidate_commit, authority_hash: authorityBindingHash(consumption.authority), stage_id: consumption.stageId };
-    const value = { schema_version: "reviewed_metrics_stage_completion_v4.0.0", status: "completed", ...identity, attempt_id: consumption.attemptId, role: entry.role, surface_id: consumption.receipt.surface_id, physical_host_commitment: consumption.beginEnvelope.physical_host_commitment, invocation_commitment: consumption.beginEnvelope.invocation_commitment, nonce_commitment: consumption.beginEnvelope.nonce_commitment, receipt_sha256: consumption.beginEnvelope.receipt_sha256, begin_sha256: hash(Buffer.from(pretty(consumption.beginEnvelope))), command_started_at: consumption.startedAt, command_completed_at: completedAt, outputs };
-    await consumption.ledger.appendCompletion(identity, consumption.attemptId, completedAt, pretty(value), hash(Buffer.from(pretty(value))));
-    const readback = await consumption.ledger.readAll(identity.candidate_commit, identity.authority_hash);
-    const completion = readback.completions.find((row) => row.stage_id === consumption.stageId);
-    codedAssert(completion?.attempt_id === consumption.attemptId && completion.completion_sha256 === hash(Buffer.from(pretty(value))), "H2_LEDGER_READBACK", "durable completion readback differs from appended completion");
+    const freezeOutput = retainedOutputs.find((output) => output.pin.artifact_role === (consumption.stageId === "visual_freeze" ? "prediction_freeze" : "source_search_freeze"));
+    const freezeEvidence = (consumption.stageId === "visual_freeze" || consumption.stageId === "source_freeze") && freezeOutput ? ((parseStrictJson(freezeOutput.raw) as J).broker_evidence ?? null) : null;
+    const value = { schema_version: "reviewed_metrics_stage_completion_v4.0.0", status: "completed", ...identity, attempt_id: consumption.attemptId, role: entry.role, surface_id: consumption.receipt.surface_id, physical_host_commitment: consumption.beginEnvelope.physical_host_commitment, invocation_commitment: consumption.beginEnvelope.invocation_commitment, nonce_commitment: consumption.beginEnvelope.nonce_commitment, receipt_sha256: consumption.beginEnvelope.receipt_sha256, begin_sha256: hash(Buffer.from(pretty(consumption.beginEnvelope))), command_started_at: consumption.startedAt, command_completed_at: completedAt, outputs, freeze_broker_evidence: freezeEvidence };
+    const completion = await consumption.ledger.appendCompletion(identity, consumption.attemptId, completedAt, pretty(value), hash(Buffer.from(pretty(value))));
+    codedAssert(completion.attempt_id === consumption.attemptId && completion.completion_sha256 === hash(Buffer.from(pretty(value))), "H2_LEDGER_READBACK", "atomic durable completion row differs from the appended completion");
+}
+function assertCompletionFreezeBrokerEvidence(authority: J, entry: J, completion: J): void {
+  const stageId = entry.stage_id as StageId;
+  if (authority.schema_version === "reviewed_metrics_execution_authorization_v2.5.0") {
+    if (stageId === "visual_freeze" || stageId === "source_freeze") {
+      const freezePath = entry.outputs.find((output: J) => output.artifact_role === (stageId === "visual_freeze" ? "prediction_freeze" : "source_search_freeze"))?.path;
+      codedAssert(Object.hasOwn(completion, "freeze_broker_evidence") && freezePath && completion.freeze_broker_evidence && canon(load(freezePath).broker_evidence) === canon(completion.freeze_broker_evidence), "H2_FREEZE_BROKER_BINDING", `stage ${stageId} D1 completion does not directly carry the frozen broker evidence pins`);
+    } else codedAssert(Object.hasOwn(completion, "freeze_broker_evidence") && completion.freeze_broker_evidence === null, "H2_FREEZE_BROKER_BINDING", `v2.5 non-freeze stage ${stageId} omitted or carried freeze broker evidence`);
+    return;
+  }
+  codedAssert(completion.freeze_broker_evidence === undefined || completion.freeze_broker_evidence === null, "H2_FREEZE_BROKER_BINDING", `legacy stage ${stageId} carried successor-only freeze broker evidence`);
 }
 async function completedStageLedgerEvidence(authority: J, verifyCurrentOutputs = true, capability?: InternalSyntheticCapability, signingKeyFile?: string, injectedLedger?: StageLedgerAdapter): Promise<J> {
     codedAssert(injectedLedger === undefined || capability?.[INTERNAL_SYNTHETIC_CAPABILITY] === true, "H2_INTERNAL_CAPABILITY", "ledger adapter injection is internal-test-only");
@@ -2186,6 +2959,7 @@ async function completedStageLedgerEvidence(authority: J, verifyCurrentOutputs =
       if (priorCompletedAt !== undefined) codedAssert(Date.parse(priorCompletedAt) <= Date.parse(begin.command_started_at), "H2_STAGE_LEDGER_CHRONOLOGY", "exact production stages overlap or execute out of order");
       priorCompletedAt = completion.command_completed_at;
       same(completion.outputs.map((output: J) => output.artifact_role), entry.outputs.map((output: J) => output.artifact_role), `stage ${stageId} exact output roles`);
+      assertCompletionFreezeBrokerEvidence(authority, entry, completion);
       if (verifyCurrentOutputs) for (let index = 0; index < entry.outputs.length; index++) {
         const raw = fs.readFileSync(entry.outputs[index].path);
         codedAssert(completion.outputs[index].sha256 === hash(raw) && completion.outputs[index].bytes === raw.length, "H2_STAGE_OUTPUT_SUBSTITUTION", `stage ${stageId} declared output bytes changed after completion`);
@@ -2288,8 +3062,9 @@ function physicalPathSafety(output: string): string {
     .filter(fs.existsSync)
     .map((x) => fs.realpathSync(x));
   for (const protectedRoot of protectedRoots)
-    assert(
+    codedAssert(
       !isWithin(physical, protectedRoot),
+      "H2_PROTECTED_ROUTE",
       `output overlaps protected route: ${protectedRoot}`,
     );
   const systemTemporaryPrefix = ["/private/tmp/", "/private/var/folders/"].find(
@@ -2349,6 +3124,7 @@ function schema(name: string, value: J): void {
 function executionAuthorizationSchema(value: J): void {
   schema(value?.schema_version === "reviewed_metrics_execution_authorization_v2.5.0" ? "execution-authorization.schema.v2.5.json" : "execution-authorization.schema.v2.json", value);
   validateAuthorizationNetworkContract(value);
+  if (value?.schema_version === "reviewed_metrics_execution_authorization_v2.5.0") validateStageLaunchUniverse(value);
 }
 function phaseRow(id: number): J {
   const row = load(PHASE_D).records.find((x: J) => x.numeric_id === id);
@@ -4201,7 +4977,7 @@ function validateSourceSearchFreezeValue(
   rawBundle: Buffer,
   authority: J,
 ): void {
-  schema("source-search-freeze.schema.v2.json", freeze);
+  schema(freeze.schema_version === "reviewed_metrics_source_search_freeze_v2.1.0" ? "source-search-freeze.schema.v2.1.json" : "source-search-freeze.schema.v2.json", freeze);
   assert(
     ["reviewed_metrics_execution_authorization_v2.2.0", "reviewed_metrics_execution_authorization_v2.3.0", "reviewed_metrics_execution_authorization_v2.4.0", "reviewed_metrics_execution_authorization_v2.5.0"].includes(authority.schema_version),
     "source-search freeze requires v2.2 unified authority",
@@ -4585,10 +5361,33 @@ function validateAuthorityValue(value: J, context?: AuthorityValidationContext):
   executionAuthorizationSchema(value);
   if (value.schema_version === "reviewed_metrics_execution_authorization_v2.5.0") {
     for (const field of ["authorized_at", "started_at", "ended_at", "freeze_at", "source_search_started_at", "source_search_ended_at", "source_search_freeze_at", "source_dossier_authored_at", "private_envelope_sealed_at", "expires_at"]) successorTimestamp(value[field], "H2_SUCCESSOR_TIMESTAMP");
+    validateStageLaunchUniverse(value);
   }
   before(value.authorized_at, value.started_at, "authorization before visual prediction"); before(value.started_at, value.ended_at, "visual prediction execution"); before(value.ended_at, value.freeze_at, "visual prediction before freeze"); if (["reviewed_metrics_execution_authorization_v2.2.0", "reviewed_metrics_execution_authorization_v2.3.0", "reviewed_metrics_execution_authorization_v2.4.0", "reviewed_metrics_execution_authorization_v2.5.0"].includes(value.schema_version)) { before(value.freeze_at, value.source_search_started_at, "visual freeze before source-search run"); before(value.source_search_started_at, value.source_search_ended_at, "source-search execution"); before(value.source_search_ended_at, value.source_search_freeze_at, "source-search prediction before freeze"); before(value.source_search_freeze_at, value.source_dossier_authored_at, "source-search freeze before dossier authoring"); before(value.source_dossier_authored_at, value.private_envelope_sealed_at, "dossier before private envelope seal"); before(value.private_envelope_sealed_at, value.expires_at, "private envelope before authorization expiry"); } else before(value.freeze_at, value.expires_at, "visual freeze authorization expiry");
   validateAuthorityPrincipals(value);
   if (["reviewed_metrics_execution_authorization_v2.4.0", "reviewed_metrics_execution_authorization_v2.5.0"].includes(value.schema_version)) validatePreActivationAuthority(value, context?.allowSyntheticExecutorSemantics ?? false, context);
+}
+function validateStageLaunchUniverse(authority: J): void {
+  const launches = authority.https_exchange_authority?.stage_launches;
+  const verifier = authority.https_exchange_authority?.post_begin_grant_verifier;
+  const spki = verifier ? Buffer.from(verifier.public_key_spki_der_base64, "base64") : Buffer.alloc(0);
+  codedAssert(verifier?.principal && verifier?.key_id && spki.length === 44 && hash(spki) === verifier.public_key_spki_sha256 && Number.isInteger(verifier.expected_peer_uid) && verifier.expected_peer_uid >= 0, "H2_POST_BEGIN_AUTHORIZER", "v2.5 authority omits its pinned Ed25519 grant verifier identity or expected peer UID");
+  codedAssert(Array.isArray(launches) && launches.length === STAGE_IDS.length && canon(launches.map((launch: J) => launch.stage_id)) === canon(STAGE_IDS), "H2_STAGE_LAUNCH_UNIVERSE", "v2.5 requires the exact ordered twelve-stage launch universe");
+  for (const [index, launch] of launches.entries()) {
+    const stage = authority.stage_execution.stages[index];
+    const transitionedOutputs = launch.mounts.flatMap((mount: J) => mount.transition?.kind === "declared_outputs" ? mount.transition.files.map((file: J) => ({ artifact_role: file.artifact_role, path: path.join(mount.source, file.relative_path) })) : []);
+    const expectedOutputs = stage.outputs.map((output: J) => ({ artifact_role: output.artifact_role, path: output.path }));
+    codedAssert(!expectedOutputs.some((output: J) => output.artifact_role === authority.https_exchange_authority.supervisor_report_role) && launch.supervisor_report?.artifact_role === authority.https_exchange_authority.supervisor_report_role && /^\//.test(launch.supervisor_report.path) && launch.operation_sha256 === hash(Buffer.from(canon(stage.operation))) && canon(launch.expected_outputs) === canon(expectedOutputs) && canon(transitionedOutputs.sort((a: J, b: J) => a.artifact_role.localeCompare(b.artifact_role))) === canon([...expectedOutputs].sort((a: J, b: J) => a.artifact_role.localeCompare(b.artifact_role))) && launch.mounts.every((mount: J) => mount.writable ? (mount.guest === "/stage/work" ? mount.transition?.kind === "empty_work" : mount.transition?.kind === "declared_outputs") : mount.transition === null) && launch.supervisor_executable?.sha256 && canon(launch.supervisor_executable) === canon(launch.post_begin_handoff?.authorizer) && launch.stage_program?.sha256 && launch.runtime?.sha256 && /^sha256:[a-f0-9]{64}$/.test(launch.image_digest) && launch.podman?.sha256 && launch.mounts.length > 0 && launch.uid > 0 && launch.gid > 0 && launch.execution_class !== undefined && launch.admission_state === "ineligible_pending_issue_101_real_linux_evidence" && launch.post_begin_handoff?.contract_version === "gate_h2_external_post_begin_authorizer_handoff_v1" && launch.post_begin_handoff.signer_held_by_coordinator === false, "H2_STAGE_LAUNCH_UNIVERSE", `stage launch ${launch.stage_id} does not bind exact program/runtime/image/Podman/mount/output/report/identity/deadline commitments`);
+    if (launch.exchange_mode.kind === "https") {
+      const descriptors = launch.exchange_mode.stage_exchange_descriptors;
+      codedAssert(launch.manifest?.manifest_id === launch.exchange_mode.manifest_id && launch.exchange_mode.capability_count > 0 && launch.broker?.executable?.sha256 && launch.broker?.trust_roots?.sha256 && descriptors.length === launch.exchange_mode.capability_count && descriptors.every((descriptor: J, ordinal: number) => descriptor.fd === ordinal + 3 && descriptor.ordinal === ordinal) && launch.exchange_mode.terminal_ack_fd === 3 + descriptors.length, "H2_STAGE_LAUNCH_UNIVERSE", `HTTPS stage launch ${launch.stage_id} differs from its exact manifest/program/broker/FD binding`);
+    } else codedAssert(launch.exchange_mode.kind === "none" && launch.manifest === null && launch.broker === null && launch.exchange_mode.stage_exchange_descriptors.length === 0 && launch.exchange_mode.terminal_ack_fd === null, "H2_STAGE_LAUNCH_UNIVERSE", `no-exchange stage launch ${launch.stage_id} carries a fictitious broker, manifest, stage descriptor, or terminal ACK`);
+  }
+}
+function derivedHttpsBinding(authority: J, stageId: StageId): J | undefined {
+  const launch = authority.https_exchange_authority?.stage_launches?.find((candidate: J) => candidate.stage_id === stageId);
+  if (!launch || launch.exchange_mode?.kind !== "https") return undefined;
+  return { stage_id: stageId, manifest_id: launch.exchange_mode.manifest_id, opaque_handle_count: launch.exchange_mode.capability_count, stage_program_version: launch.stage_program.version, stage_program_sha256: launch.stage_program.sha256 };
 }
 function validatedHttpsAuthorityManifest(authority: J): J {
   codedAssert(authority.schema_version === "reviewed_metrics_execution_authorization_v2.5.0", "H2_HTTPS_MANIFEST", "HTTPS manifest is available only under execution authorization v2.5");
@@ -4601,9 +5400,10 @@ function validatedHttpsAuthorityManifest(authority: J): J {
     try { validateManifest(manifest); }
     catch (error) { throw new GateH2Error("H2_HTTPS_MANIFEST", error instanceof Error ? error.message : "HTTPS manifest is invalid"); }
     codedAssert(manifest.manifest_id === pinValue.manifest_id && manifest.schema_version === pinValue.schema_version && manifest.candidate_id === authority.candidate_id && manifest.authorization_version === authority.schema_version, "H2_HTTPS_MANIFEST", "HTTPS manifest ID, schema, candidate, or authorization version differs from its v2.5 pin");
-    const binding = authority.https_exchange_authority.stage_bindings.find((candidate: J) => candidate.stage_id === manifest.stage_id);
+    const binding = derivedHttpsBinding(authority, manifest.stage_id as StageId);
     const stage = authority.stage_execution.stages.find((candidate: J) => candidate.stage_id === manifest.stage_id);
-    codedAssert(authority.https_exchange_authority.stage_bindings.length === 1 && binding && stage?.operation?.kind === "external_command" && binding.manifest_id === manifest.manifest_id && binding.opaque_handle_count === manifest.exact_exchange_count, "H2_HTTPS_MANIFEST", "HTTPS manifest must be the sole exact stage binding with matching exchange/handle count");
+    codedAssert(authority.https_exchange_authority.stage_launches.filter((launch: J) => launch.exchange_mode.kind === "https").length === 1 && binding && stage?.operation?.kind === "external_command" && binding.manifest_id === manifest.manifest_id && binding.opaque_handle_count === manifest.exact_exchange_count, "H2_HTTPS_MANIFEST", "HTTPS manifest must be the sole exact stage launch with matching exchange/handle count");
+    codedAssert(stage.outputs.some((output: J) => output.artifact_role === authority.https_exchange_authority.transcript_output_role) && stage.outputs.some((output: J) => output.artifact_role === authority.https_exchange_authority.authority_envelope_output_role) && authority.https_exchange_authority.stage_launches.find((launch: J) => launch.stage_id === stage.stage_id)?.supervisor_report?.artifact_role === authority.https_exchange_authority.supervisor_report_role, "H2_HTTPS_MANIFEST", "HTTPS stage must declare transcript and signed authority envelope outputs plus a coordinator-owned supervisor report");
     const artifacts = new Map(stage.operation.artifacts.map((artifact: J) => [artifact.artifact_role, artifact.pin]));
     codedAssert(manifest.capabilities.every((exchange: J) => exchange.raw_response_output_role !== authority.https_exchange_authority.transcript_output_role), "H2_HTTPS_MANIFEST", "raw-response output roles must be distinct from the broker transcript output role");
     for (const exchange of manifest.capabilities) {
@@ -4673,7 +5473,7 @@ function validatePreActivationAuthority(authority: J, allowSyntheticExecutorSema
     codedAssert(semantics && canon(boundary.executor_semantics) === canon(semantics), "H2_PREACTIVATION_EXECUTOR_SEMANTICS", `stage ${entry.stage_id} executor semantics differ from signed sandbox attestation`);
     const programSnapshot = snapshotOperationFile(entry.operation.script, `stage ${entry.stage_id} stage program`);
     try {
-      const httpsBinding = authority.schema_version === "reviewed_metrics_execution_authorization_v2.5.0" ? authority.https_exchange_authority.stage_bindings.find((binding: J) => binding.stage_id === entry.stage_id) : undefined;
+      const httpsBinding = authority.schema_version === "reviewed_metrics_execution_authorization_v2.5.0" ? derivedHttpsBinding(authority, entry.stage_id) : undefined;
       validateProductionStageProgram(programSnapshot.raw, entry.operation, httpsBinding);
       codedAssert(Boolean(httpsBinding) === (semantics.attestation.schema_version === "reviewed_metrics_executor_semantics_attestation_v2.2.0"), "H2_EXECUTOR_SEMANTICS_VERSION", `stage ${entry.stage_id} authority binding and executor semantics version differ`);
       codedAssert(canon(semantics.attestation.subject.stage_program) === canon(entry.operation.script) && entry.operation.executor_capability_id === deriveExecutorCapability(semantics.attestation), "H2_PREACTIVATION_EXECUTOR_SEMANTICS", `stage ${entry.stage_id} capability does not derive from exact stage program and semantics evidence`);
@@ -5668,7 +6468,7 @@ function validateFreezeValue(
   prediction: J,
   authority: J,
 ): void {
-  schema("prediction-freeze.schema.v2.json", freeze);
+  schema(freeze.schema_version === "reviewed_metrics_prediction_freeze_v2.1.0" ? "prediction-freeze.schema.v2.1.json" : "prediction-freeze.schema.v2.json", freeze);
   assert(
     freeze.status === "frozen" &&
       freeze.prediction.sha256 === hash(rawPrediction) &&
@@ -11225,6 +12025,7 @@ async function d1SealOrchestrationSelfTest(root: string): Promise<J> {
   fs.writeFileSync(authorityFile, pretty(authority), { mode: 0o600 }); fs.writeFileSync(keyFile, SYNTHETIC_COORDINATOR_KEYS.privateKey.export({ type: "pkcs8", format: "pem" }), { mode: 0o600 });
   const capability = hash(`gate-h2-internal-two-process-v2\n${canon(authority)}`); const cli = path.join(ROOT, "node_modules/.bin/tsx"); const scriptFile = fileURLToPath(import.meta.url);
   const baseFixture = { schema_version: "gate_h2_internal_d1_fetch_fixture_v1", synthetic: true, account_id: account, database_id: database, api_token: apiToken, schema_rows: schemaRows, readback };
+  codedAssert(["reviewed_metrics_execution_authorization_v2.3.0", "reviewed_metrics_execution_authorization_v2.4.0"].includes(authority.schema_version) && readback.completions.every((row: J) => !Object.hasOwn(JSON.parse(row.completion_envelope), "freeze_broker_evidence")), "H2_FREEZE_BROKER_BINDING_TEST", "legacy synthetic completion fixture unexpectedly carries the v2.5 successor field");
   const mutations: Array<[string, string, (fixture: J) => void]> = [
     ["wrong_stage", "H2_LEDGER_READBACK", (f) => { f.readback.attempts[0].stage_id = "wrong_stage"; }],
     ["wrong_authority", "H2_LEDGER_READBACK", (f) => { f.readback.claims[0].authority_hash = "f".repeat(64); }],
@@ -11234,6 +12035,14 @@ async function d1SealOrchestrationSelfTest(root: string): Promise<J> {
     ["schema", "H2_LEDGER_SCHEMA_ATTESTATION", (f) => { f.schema_rows.pop(); }],
     ["trigger", "H2_LEDGER_SCHEMA_ATTESTATION", (f) => { const index = f.schema_rows.findIndex((row: J) => row.type === "trigger"); f.schema_rows.splice(index, 1); }],
   ];
+  const nonFreezeEntry = authority.stage_execution.stages.find((entry: J) => entry.stage_id === "visual_predict");
+  const legacyCompletionRow = baseFixture.readback.completions.find((row: J) => row.stage_id === "visual_predict");
+  codedAssert(nonFreezeEntry && typeof legacyCompletionRow?.completion_envelope === "string", "H2_FREEZE_BROKER_BINDING_TEST", "legacy non-freeze completion regression fixture is missing");
+  const legacyCompletion = JSON.parse(legacyCompletionRow!.completion_envelope as string);
+  assertCompletionFreezeBrokerEvidence(authority, nonFreezeEntry, legacyCompletion);
+  let omittedV25Code = ""; try { assertCompletionFreezeBrokerEvidence({ schema_version: "reviewed_metrics_execution_authorization_v2.5.0" }, nonFreezeEntry, legacyCompletion); } catch (error) { omittedV25Code = error instanceof GateH2Error ? error.code : ""; }
+  codedAssert(omittedV25Code === "H2_FREEZE_BROKER_BINDING", "H2_FREEZE_BROKER_BINDING_TEST", `v2.5 non-freeze completion omission expected H2_FREEZE_BROKER_BINDING, observed ${omittedV25Code || "none"}`);
+  assertCompletionFreezeBrokerEvidence({ schema_version: "reviewed_metrics_execution_authorization_v2.5.0" }, nonFreezeEntry, { ...legacyCompletion, freeze_broker_evidence: null });
   const fixtureFile = (label: string, fixture: J): string => { const file = path.join(root, `d1-${label}-fixture.json`); fs.writeFileSync(file, pretty(fixture), { mode: 0o600 }); return file; };
   const runCli = (label: string, fixture: J): { ok: boolean; stderr: string; output: string } => {
     const fixturePath = fixtureFile(`cli-${label}`, fixture); const output = path.join(root, `d1-${label}-ledger.json`);
@@ -11290,7 +12099,7 @@ if(dependency!=='stage'||prompt!=='opaque input\\n'||late)process.exit(9);fs.wri
     catch (error) { return { ok: false, stderr: (error as { stderr?: Buffer }).stderr?.toString("utf8") ?? "", fixture: load(fixtureFile) }; }
     finally { mutator?.kill(); restore?.(); if (postspawn) { fs.rmSync(postspawn.ready, { force: true }); fs.rmSync(postspawn.continue, { force: true }); } }
   };
-  const success = invoke("success"); codedAssert(success.ok && success.fixture.readback.attempts.length === 1 && success.fixture.readback.claims.length === 1 && success.fixture.readback.completions.length === 1 && fs.existsSync(output), "H2_STAGE_RUN_CLI_TEST", "actual stage-run CLI did not complete through production-shaped D1 adapter"); fs.unlinkSync(output);
+  const success = invoke("success"); codedAssert(success.ok && success.fixture.readback.attempts.length === 1 && success.fixture.readback.claims.length === 1 && success.fixture.readback.completions.length === 1 && fs.existsSync(output), "H2_STAGE_RUN_CLI_TEST", `actual stage-run CLI did not complete through production-shaped D1 adapter: ${success.stderr}`); fs.unlinkSync(output);
   const bad = invoke("path-literal", (candidate) => { const binding = candidate.stage_execution.stages.find((entry: J) => entry.stage_id === "visual_predict").operation.argv_bindings[0]; binding.artifact_role = "literal"; binding.scalar_type = "enum"; binding.allowed_values = [candidate.stage_execution.stages.find((entry: J) => entry.stage_id === "visual_predict").operation.argv[0]]; }); codedAssert(!bad.ok && bad.stderr.includes("H2_STAGE_SCALAR_SYNTAX") && bad.fixture.readback.attempts.length === 1 && bad.fixture.readback.claims.length === 1 && bad.fixture.readback.completions.length === 0 && !fs.existsSync(output), "H2_STAGE_RUN_CLI_TEST", "actual stage-run path-bearing argv rejection did not preserve auditable begin without completion");
   for (const [label, race, code] of [["artifact-race", "replace_artifact", "H2_STAGE_OPERATION_ARTIFACT"], ["dependency-race", "replace_dependency", "H2_STAGE_OPERATION_ARTIFACT"], ["import-candidate-race", "insert_import_candidate", "H2_STAGE_DEPENDENCY_TREE"]]) { const result = invoke(label, undefined, race); codedAssert(!result.ok && result.stderr.includes(code) && result.fixture.readback.attempts.length === 1 && result.fixture.readback.claims.length === 1 && result.fixture.readback.completions.length === 0 && !fs.existsSync(output), "H2_STAGE_RUN_CLI_TEST", `${label} did not fail before child output/completion`); }
   for (const [label, race, code] of [["postspawn-artifact", "postspawn_artifact", "H2_STAGE_OPERATION_ARTIFACT"], ["postspawn-dependency", "postspawn_dependency", "H2_STAGE_OPERATION_ARTIFACT"], ["postspawn-import", "postspawn_import", "H2_STAGE_DEPENDENCY_TREE"]]) { const result = invoke(label, undefined, race); codedAssert(!result.ok && result.stderr.includes(code) && result.stderr.includes('H2_CHILD_OBSERVATION:{"dependency":"stage","prompt":"opaque input\\n","late":false') && result.stderr.includes("rmv2-immutable-operation-") && result.fixture.readback.attempts.length === 1 && result.fixture.readback.claims.length === 1 && result.fixture.readback.completions.length === 0 && !fs.existsSync(output), "H2_STAGE_RUN_CLI_TEST", `${label} did not prove immutable post-spawn consumption followed by source-change rejection: ${result.stderr}`); }
@@ -11676,7 +12485,7 @@ async function integrationTest(): Promise<J> {
     assert(crypto.verify(null, routeReceiptPayload(cliRouteReceipt), routeAuthority.coordinator_trust.public_key_pem, decodeEd25519SignatureBase64(cliRouteReceipt.signature_base64, "H2_ROUTE_RECEIPT_SIGNATURE")), "measure-route/sign-route-receipt CLI round trip signature");
     const routeInventory = new Map<string, J>(routeAuthority.trusted_surface_inventory.map((inventory: J) => [trustedInventoryDigest(inventory), inventory] as [string, J]));
     validateRouteIdentity({ ...routeAuthority.predictor, route_receipt: cliRouteReceipt }, routeAuthority, routeInventory);
-    const externalOperationContract = externalOperationContractSelfTest();
+    const externalOperationContract = await externalOperationContractSelfTest();
     const consequentialGitContract = consequentialGitPathShadowSelfTest();
     return {
       status: "integration_test_passed",
@@ -12142,6 +12951,13 @@ async function main(): Promise<void> {
       role: { type: "string" },
       stage: { type: "string" },
       "stage-receipt": { type: "string" },
+      "post-begin-authorizer-fd": { type: "string" },
+      "post-begin-authority-trust-fd": { type: "string" },
+      "post-begin-replay-journal-fd": { type: "string" },
+      "post-begin-liveness-fd": { type: "string" },
+      "post-begin-handshake-timeout-ms": { type: "string" },
+      "post-begin-completion-expectations-fd": { type: "string" },
+      "post-begin-supervisor-expectations-fd": { type: "string" },
       "issued-at": { type: "string" },
       "expires-at": { type: "string" },
       "scored-at": { type: "string" },
@@ -12189,7 +13005,10 @@ async function main(): Promise<void> {
       delete process.env[name];
     }
     try {
-      const value = await operation();
+      const productionV25 = authority.schema_version === "reviewed_metrics_execution_authorization_v2.5.0" && internalCapability === undefined;
+      const value = productionV25
+        ? (executeStageRunExternalOperation(authority, stageId, undefined, consumption), { status: "container_stage_operation_completed", stage_id: stageId } as T)
+        : await operation();
       await completeStageConsumption(consumption);
       return value;
     } finally {
@@ -12286,7 +13105,18 @@ async function main(): Promise<void> {
     codedAssert(STAGE_ROLES[stageId] !== undefined, "H2_ROUTE_STAGE_ROLE", "unknown exact production stage");
     const authority = internalAuthority ?? executionAuthority();
     const consumption = await beginStageConsumption(authority, path.resolve(assertString(o["stage-receipt"], "--stage-receipt required")), stageId, () => new Date(), internalCapability);
-    executeStageRunExternalOperation(authority, stageId, internalCapability);
+    const externalAuthority = (() => {
+      const supplied = [o["post-begin-authorizer-fd"], o["post-begin-liveness-fd"], o["post-begin-handshake-timeout-ms"], o["post-begin-completion-expectations-fd"], o["post-begin-supervisor-expectations-fd"]];
+      if (supplied.every((value) => value === undefined)) return undefined;
+      codedAssert(internalCapability === undefined && supplied.every((value) => value !== undefined), "H2_POST_BEGIN_AUTHORIZER", "post-begin authority requires coordinator-owned authorizer, liveness, handshake-cap, and exact expectation descriptor FDs together and cannot enter synthetic stage-run");
+      const descriptorBytes = (value: string, label: string): Buffer => {
+        const fd = Number(value); codedAssert(Number.isInteger(fd) && fd >= 3 && fd <= 1024, "H2_POST_BEGIN_AUTHORIZER", `${label} descriptor FD is invalid`);
+        const stat = fs.fstatSync(fd); codedAssert(stat.isFile() && stat.size > 0 && stat.size <= 2 * 1024 * 1024, "H2_POST_BEGIN_AUTHORIZER", `${label} descriptor is not a bounded regular file`);
+        return fs.readFileSync(fd);
+      };
+      return { authorizerFd: Number(supplied[0]), livenessFd: Number(supplied[1]), handshakeTimeoutMs: Number(supplied[2]), completionExpectationBytes: descriptorBytes(supplied[3]!, "completion expectations"), supervisorExpectationBytes: descriptorBytes(supplied[4]!, "supervisor expectations") };
+    })();
+    executeStageRunExternalOperation(authority, stageId, internalCapability, consumption, undefined, externalAuthority);
     await completeStageConsumption(consumption);
     result = { status: "external_stage_operation_completed", stage_id: stageId };
   } else if (command === "seal-stage-ledger") {
@@ -12437,7 +13267,9 @@ async function main(): Promise<void> {
     result = assemblePublication(workspace, path.resolve(assertString(o.input, "--input publication plan required")), path.resolve(assertString(o.envelope, "--envelope signed stage ledger required")), authority, raceFile ? () => fs.writeFileSync(path.resolve(raceFile), "late race\n", { flag: "wx" }) : raceSpec ? () => internalPublicationRace(workspace, raceSpec) : undefined);
   }
   else if (command === "self-test") result = await selfTest();
-  else if (command === "external-operation-self-test") result = externalOperationContractSelfTest();
+  else if (command === "external-operation-self-test") result = await externalOperationContractSelfTest();
+  else if (command === "podman-supervisor-failure-matrix-self-test") { await externalOperationContractSelfTest(); result = { status: "podman_supervisor_failure_matrix_passed", cases: 13, assertions_per_case: 4, total_ledger_assertions: 52 }; }
+  else if (command === "podman-supervisor-fixture-verify-v1") result = verifyPodmanSupervisorFixtures();
   else if (command === "security-self-test") result = { cloudflare_r2: await securityHelperSelfTest(), cloudflare_d1_ledger: await stageLedgerProductionContractSelfTest(ROOT), status: "security_helper_self_test_passed" };
   else if (command === "integration-test") result = await integrationTest();
   else throw new Error(`unknown command: ${command}`);

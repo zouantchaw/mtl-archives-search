@@ -147,7 +147,7 @@
     "httpsExchangeAuthority": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["contract_version", "raw_network_policy", "manifest", "capability_schema", "manifest_schema", "uds_protocol_schema", "broker_event_schema", "broker_transcript_schema", "executor_semantics_schema", "executor_conformance_schema", "linux_sandbox_schema", "broker_socket_ownership", "stage_bindings", "transcript_output_role", "predictor_exclusions", "legacy_migration"],
+      "required": ["contract_version", "raw_network_policy", "manifest", "capability_schema", "manifest_schema", "uds_protocol_schema", "broker_event_schema", "broker_transcript_schema", "broker_authority_envelope_schema", "broker_signer_trust_entry", "broker_trust_roots", "post_begin_grant_verifier", "executor_semantics_schema", "executor_conformance_schema", "linux_sandbox_schema", "post_begin_launch_request_schema", "post_begin_launch_grant_schema", "podman_supervisor_config_schema", "podman_supervisor_report_schema", "stage_launches", "broker_socket_ownership", "supervisor_cleanup_ownership", "transcript_output_role", "authority_envelope_output_role", "supervisor_report_role", "predictor_exclusions", "legacy_migration"],
       "properties": {
         "contract_version": { "const": "gate_h2_https_exchange_authority_v1" },
         "raw_network_policy": { "const": "deny_all" },
@@ -157,16 +157,62 @@
         "uds_protocol_schema": { "$ref": "#/$defs/artifactPin" },
         "broker_event_schema": { "$ref": "#/$defs/artifactPin" },
         "broker_transcript_schema": { "$ref": "#/$defs/artifactPin" },
+        "broker_authority_envelope_schema": { "$ref": "#/$defs/artifactPin" },
+        "broker_signer_trust_entry": { "$ref": "execution-authorization.schema.v2.json#/$defs/filePin" },
+        "broker_trust_roots": { "$ref": "execution-authorization.schema.v2.json#/$defs/filePin" },
+        "post_begin_grant_verifier": { "type": "object", "additionalProperties": false, "required": ["schema_version", "principal", "key_id", "public_key_spki_sha256", "public_key_spki_der_base64", "expected_peer_uid"], "properties": { "schema_version": { "const": "gate_h2_post_begin_authority_trust_v1.0.0" }, "principal": { "type": "string", "minLength": 1 }, "key_id": { "type": "string", "minLength": 1 }, "public_key_spki_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "public_key_spki_der_base64": { "type": "string", "minLength": 56, "maxLength": 60 }, "expected_peer_uid": { "type": "integer", "minimum": 0, "maximum": 4294967295 } } },
         "executor_semantics_schema": { "$ref": "#/$defs/artifactPin" },
         "executor_conformance_schema": { "$ref": "#/$defs/artifactPin" },
         "linux_sandbox_schema": { "$ref": "#/$defs/artifactPin" },
+        "post_begin_launch_request_schema": { "$ref": "#/$defs/artifactPin" },
+        "post_begin_launch_grant_schema": { "$ref": "#/$defs/artifactPin" },
+        "podman_supervisor_config_schema": { "$ref": "#/$defs/artifactPin" },
+        "podman_supervisor_report_schema": { "$ref": "#/$defs/artifactPin" },
+        "stage_launches": {
+          "type": "array", "minItems": 12, "maxItems": 12,
+          "prefixItems": [
+            { "$ref": "#/$defs/stageLaunchVisualPredict" }, { "$ref": "#/$defs/stageLaunchVisualFreeze" }, { "$ref": "#/$defs/stageLaunchSourcePredict" }, { "$ref": "#/$defs/stageLaunchSourceFreeze" },
+            { "$ref": "#/$defs/stageLaunchGoldReview" }, { "$ref": "#/$defs/stageLaunchGoldEnvelope" }, { "$ref": "#/$defs/stageLaunchPrivatePrepare" }, { "$ref": "#/$defs/stageLaunchR2Retain" },
+            { "$ref": "#/$defs/stageLaunchPrivateFinalize" }, { "$ref": "#/$defs/stageLaunchTaskReview" }, { "$ref": "#/$defs/stageLaunchMetricsScore" }, { "$ref": "#/$defs/stageLaunchPublication" }
+          ], "items": false
+        },
         "broker_socket_ownership": { "const": "owner_bound_unix_socket_one_stage_one_run" },
-        "stage_bindings": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "object", "additionalProperties": false, "required": ["stage_id", "manifest_id", "opaque_handle_count", "stage_program_version", "stage_program_sha256"], "properties": { "stage_id": { "type": "string", "pattern": "^[a-z0-9_]+$" }, "manifest_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "opaque_handle_count": { "type": "integer", "minimum": 1, "maximum": 16 }, "stage_program_version": { "const": "reviewed_metrics_stage_program_v2.2.0" }, "stage_program_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" } } } },
+        "supervisor_cleanup_ownership": { "const": "descriptor_relative_rust_owned_one_run_tree_v1" },
         "transcript_output_role": { "const": "https_broker_transcript" },
+        "authority_envelope_output_role": { "const": "https_broker_authority_envelope" },
+        "supervisor_report_role": { "const": "podman_supervisor_report" },
         "predictor_exclusions": { "const": ["destination_manifest", "provider_auth_material"] },
         "legacy_migration": { "const": "explicit_reauthorization_required_no_automatic_allow_capabilities_migration" }
       }
     },
+    "stageLaunch": {
+      "type": "object", "additionalProperties": false,
+      "required": ["stage_id", "execution_class", "admission_state", "operation_sha256", "supervisor_executable", "stage_program", "expected_outputs", "supervisor_report", "image_digest", "runtime", "manifest", "podman", "broker", "exchange_mode", "admitted_runtime_source", "run_root", "uid", "gid", "mounts", "deadlines", "post_begin_handoff"],
+      "properties": {
+        "stage_id": { "type": "string" }, "execution_class": { "enum": ["synthetic_test_only", "external_authorized"] }, "admission_state": { "const": "ineligible_pending_issue_101_real_linux_evidence" }, "operation_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "supervisor_executable": { "$ref": "execution-authorization.schema.v2.json#/$defs/filePin" }, "stage_program": { "$ref": "execution-authorization.schema.v2.json#/$defs/filePin" },
+        "expected_outputs": { "type": "array", "minItems": 1, "maxItems": 64, "items": { "type": "object", "additionalProperties": false, "required": ["artifact_role", "path"], "properties": { "artifact_role": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" }, "path": { "type": "string", "pattern": "^/" } } } },
+        "supervisor_report": { "type": "object", "additionalProperties": false, "required": ["artifact_role", "path"], "properties": { "artifact_role": { "const": "podman_supervisor_report" }, "path": { "type": "string", "pattern": "^/" } } },
+        "image_digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }, "runtime": { "$ref": "execution-authorization.schema.v2.json#/$defs/filePin" }, "manifest": { "oneOf": [{ "$ref": "#/$defs/manifestPin" }, { "type": "null" }] }, "podman": { "$ref": "podman-supervisor-config.schema.v1.json#/properties/podman" },
+        "broker": { "oneOf": [{ "type": "object", "additionalProperties": false, "required": ["executable", "static_pin_sha256", "trust_roots"], "properties": { "executable": { "$ref": "execution-authorization.schema.v2.json#/$defs/filePin" }, "static_pin_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "trust_roots": { "$ref": "execution-authorization.schema.v2.json#/$defs/filePin" } } }, { "type": "null" }] },
+        "exchange_mode": { "oneOf": [{ "type": "object", "additionalProperties": false, "required": ["kind", "stage_exchange_descriptors", "terminal_ack_fd"], "properties": { "kind": { "const": "none" }, "stage_exchange_descriptors": { "type": "array", "maxItems": 0 }, "terminal_ack_fd": { "type": "null" } } }, { "type": "object", "additionalProperties": false, "required": ["kind", "manifest_id", "capability_count", "stage_exchange_descriptors", "terminal_ack_fd"], "properties": { "kind": { "const": "https" }, "manifest_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "capability_count": { "type": "integer", "minimum": 1, "maximum": 16 }, "stage_exchange_descriptors": { "type": "array", "minItems": 1, "maxItems": 16, "items": { "type": "object", "additionalProperties": false, "required": ["fd", "ordinal"], "properties": { "fd": { "type": "integer", "minimum": 3, "maximum": 18 }, "ordinal": { "type": "integer", "minimum": 0, "maximum": 15 } } } }, "terminal_ack_fd": { "type": "integer", "minimum": 4, "maximum": 19 } } }] },
+        "admitted_runtime_source": { "type": "string", "pattern": "^/" }, "run_root": { "type": "string", "pattern": "^/" }, "uid": { "type": "integer", "minimum": 1 }, "gid": { "type": "integer", "minimum": 1 },
+        "mounts": { "type": "array", "minItems": 1, "maxItems": 64, "items": { "type": "object", "additionalProperties": false, "required": ["source", "guest", "writable", "artifact_role", "transition"], "properties": { "source": { "type": "string", "pattern": "^/" }, "guest": { "type": "string", "pattern": "^/" }, "writable": { "type": "boolean" }, "artifact_role": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" }, "transition": { "oneOf": [{ "type": "null" }, { "$ref": "podman-supervisor-config.schema.v1.json#/$defs/writableTransition" }] } }, "allOf": [{ "if": { "properties": { "writable": { "const": false } } }, "then": { "properties": { "transition": { "type": "null" } } }, "else": { "properties": { "transition": { "$ref": "podman-supervisor-config.schema.v1.json#/$defs/writableTransition" } } } }] } }, "deadlines": { "$ref": "podman-supervisor-config.schema.v1.json#/properties/deadlines" },
+        "post_begin_handoff": { "type": "object", "additionalProperties": false, "required": ["contract_version", "authorizer", "admission_contract_id", "authorization_contract_id", "signer_held_by_coordinator"], "properties": { "contract_version": { "const": "gate_h2_external_post_begin_authorizer_handoff_v1" }, "authorizer": { "$ref": "execution-authorization.schema.v2.json#/$defs/filePin" }, "admission_contract_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "authorization_contract_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "signer_held_by_coordinator": { "const": false } } }
+      }
+    },
+    "stageLaunchVisualPredict": { "allOf": [{ "$ref": "#/$defs/stageLaunch" }, { "properties": { "stage_id": { "const": "visual_predict" } } }] },
+    "stageLaunchVisualFreeze": { "allOf": [{ "$ref": "#/$defs/stageLaunch" }, { "properties": { "stage_id": { "const": "visual_freeze" } } }] },
+    "stageLaunchSourcePredict": { "allOf": [{ "$ref": "#/$defs/stageLaunch" }, { "properties": { "stage_id": { "const": "source_predict" } } }] },
+    "stageLaunchSourceFreeze": { "allOf": [{ "$ref": "#/$defs/stageLaunch" }, { "properties": { "stage_id": { "const": "source_freeze" } } }] },
+    "stageLaunchGoldReview": { "allOf": [{ "$ref": "#/$defs/stageLaunch" }, { "properties": { "stage_id": { "const": "gold_review" } } }] },
+    "stageLaunchGoldEnvelope": { "allOf": [{ "$ref": "#/$defs/stageLaunch" }, { "properties": { "stage_id": { "const": "gold_envelope_authoring" } } }] },
+    "stageLaunchPrivatePrepare": { "allOf": [{ "$ref": "#/$defs/stageLaunch" }, { "properties": { "stage_id": { "const": "private_prepare" } } }] },
+    "stageLaunchR2Retain": { "allOf": [{ "$ref": "#/$defs/stageLaunch" }, { "properties": { "stage_id": { "const": "r2_retain" } } }] },
+    "stageLaunchPrivateFinalize": { "allOf": [{ "$ref": "#/$defs/stageLaunch" }, { "properties": { "stage_id": { "const": "private_finalize" } } }] },
+    "stageLaunchTaskReview": { "allOf": [{ "$ref": "#/$defs/stageLaunch" }, { "properties": { "stage_id": { "const": "task_review" } } }] },
+    "stageLaunchMetricsScore": { "allOf": [{ "$ref": "#/$defs/stageLaunch" }, { "properties": { "stage_id": { "const": "metrics_score" } } }] },
+    "stageLaunchPublication": { "allOf": [{ "$ref": "#/$defs/stageLaunch" }, { "properties": { "stage_id": { "const": "publication_assembly_plan" } } }] },
     "manifestPin": { "type": "object", "additionalProperties": false, "required": ["path", "realpath", "sha256", "bytes", "schema_version", "manifest_id"], "properties": { "path": { "type": "string", "pattern": "^/" }, "realpath": { "type": "string", "pattern": "^/" }, "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "bytes": { "type": "integer", "minimum": 1 }, "schema_version": { "const": "gate_h2_https_exchange_manifest_v1.0.0" }, "manifest_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" } } }
   }
 }

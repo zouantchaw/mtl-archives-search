@@ -8,17 +8,37 @@ export type LedgerIdentity = { candidate_commit: string; authority_hash: string;
 export type LedgerRow = Record<string, unknown>;
 export type LedgerReadback = { attempts: LedgerRow[]; claims: LedgerRow[]; completions: LedgerRow[] };
 export type LedgerSchemaAttestation = { rows: LedgerRow[]; sha256: string; bytes: number };
+export type CompletionReconciliation =
+  | { status: "exact_completion_success"; row: LedgerRow }
+  | { status: "no_completion_indeterminate" }
+  | { status: "conflicting_completion_failure" };
 
 export interface StageLedgerAdapter {
   appendAttempt(identity: LedgerIdentity, attemptId: string, attemptedAt: string, requestSha256: string): Promise<void>;
   claimBegin(identity: LedgerIdentity, attemptId: string, beganAt: string, envelope: string, envelopeSha256: string): Promise<void>;
-  appendCompletion(identity: LedgerIdentity, attemptId: string, completedAt: string, envelope: string, envelopeSha256: string): Promise<void>;
+  appendCompletion(identity: LedgerIdentity, attemptId: string, completedAt: string, envelope: string, envelopeSha256: string): Promise<LedgerRow>;
   readAll(candidateCommit: string, authorityHash: string): Promise<LedgerReadback>;
   attestSchema(authorityLedger: Record<string, unknown>): Promise<void>;
 }
 
 export class StageLedgerContractError extends Error {
   constructor(readonly code: string, message: string) { super(`${code}: ${message}`); this.name = "StageLedgerContractError"; }
+}
+
+const COMPLETION_COLUMNS = ["candidate_commit", "authority_hash", "stage_id", "attempt_id", "completed_at", "completion_envelope", "completion_sha256"] as const;
+
+function exactCompletionRow(row: LedgerRow | undefined, identity: LedgerIdentity, attemptId: string, completedAt: string, envelope: string, envelopeSha256: string): boolean {
+  if (!row || Object.keys(row).length !== COMPLETION_COLUMNS.length || COMPLETION_COLUMNS.some((column) => !Object.hasOwn(row, column))) return false;
+  const expected = { ...identity, attempt_id: attemptId, completed_at: completedAt, completion_envelope: envelope, completion_sha256: envelopeSha256 };
+  return COMPLETION_COLUMNS.every((column) => row[column] === expected[column]);
+}
+
+export function reconcileCompletion(readback: LedgerReadback, identity: LedgerIdentity, attemptId: string, completedAt: string, envelope: string, envelopeSha256: string): CompletionReconciliation {
+  const relevant = readback.completions.filter((row) => row.candidate_commit === identity.candidate_commit && row.authority_hash === identity.authority_hash && row.stage_id === identity.stage_id);
+  if (relevant.length === 0) return { status: "no_completion_indeterminate" };
+  if (relevant.length === 1 && exactCompletionRow(relevant[0], identity, attemptId, completedAt, envelope, envelopeSha256))
+    return { status: "exact_completion_success", row: structuredClone(relevant[0]) };
+  return { status: "conflicting_completion_failure" };
 }
 
 function digest(domain: string, value: string): string {
@@ -89,8 +109,19 @@ export class CloudflareD1StageLedger implements StageLedgerAdapter {
   claimBegin(identity: LedgerIdentity, attemptId: string, beganAt: string, envelope: string, envelopeSha256: string): Promise<void> {
     return this.query("INSERT INTO gate_h2_stage_claims (candidate_commit,authority_hash,stage_id,attempt_id,began_at,begin_envelope,begin_sha256) VALUES (?,?,?,?,?,?,?)", [identity.candidate_commit, identity.authority_hash, identity.stage_id, attemptId, beganAt, envelope, envelopeSha256], true).then(() => undefined);
   }
-  appendCompletion(identity: LedgerIdentity, attemptId: string, completedAt: string, envelope: string, envelopeSha256: string): Promise<void> {
-    return this.query("INSERT INTO gate_h2_stage_completions (candidate_commit,authority_hash,stage_id,attempt_id,completed_at,completion_envelope,completion_sha256) VALUES (?,?,?,?,?,?,?)", [identity.candidate_commit, identity.authority_hash, identity.stage_id, attemptId, completedAt, envelope, envelopeSha256], true).then(() => undefined);
+  async appendCompletion(identity: LedgerIdentity, attemptId: string, completedAt: string, envelope: string, envelopeSha256: string): Promise<LedgerRow> {
+    // A returned row is the completion evidence. Do not append and then perform
+    // a fallible readback that could report failure after a durable commit.
+    try {
+      const rows = await this.query("INSERT INTO gate_h2_stage_completions (candidate_commit,authority_hash,stage_id,attempt_id,completed_at,completion_envelope,completion_sha256) VALUES (?,?,?,?,?,?,?) RETURNING candidate_commit,authority_hash,stage_id,attempt_id,completed_at,completion_envelope,completion_sha256", [identity.candidate_commit, identity.authority_hash, identity.stage_id, attemptId, completedAt, envelope, envelopeSha256], true);
+      const [row] = rows;
+      if (rows.length !== 1 || !exactCompletionRow(row, identity, attemptId, completedAt, envelope, envelopeSha256))
+        throw new StageLedgerContractError("H2_LEDGER_COMPLETION_UNKNOWN", "D1 completion returned no exact atomic row");
+      return structuredClone(row);
+    } catch (error) {
+      if (error instanceof StageLedgerContractError && error.code === "H2_LEDGER_COMPLETION_UNKNOWN") throw error;
+      throw new StageLedgerContractError("H2_LEDGER_COMPLETION_UNKNOWN", "completion response is ambiguous; durable status must be reconciled before retry");
+    }
   }
   async readAll(candidateCommit: string, authorityHash: string): Promise<LedgerReadback> {
     const rows = async (table: string) => this.query(`SELECT * FROM ${table} WHERE candidate_commit = ? AND authority_hash = ? ORDER BY sequence`, [candidateCommit, authorityHash], false);
@@ -174,7 +205,9 @@ export async function stageLedgerProductionContractSelfTest(repositoryRoot: stri
         : table.endsWith("claims")
           ? { candidate_commit: body.params[0], authority_hash: body.params[1], stage_id: body.params[2], attempt_id: body.params[3], began_at: body.params[4], begin_envelope: body.params[5], begin_sha256: body.params[6] }
           : { candidate_commit: body.params[0], authority_hash: body.params[1], stage_id: body.params[2], attempt_id: body.params[3], completed_at: body.params[4], completion_envelope: body.params[5], completion_sha256: body.params[6] };
-      target.push(row); return new Response(JSON.stringify({ success: true, result: [{ success: true, meta: { changes: 1 } }] }), { status: 200 });
+      target.push(row);
+      const returning = table.endsWith("completions") && body.sql.includes("RETURNING");
+      return new Response(JSON.stringify({ success: true, result: [{ success: true, ...(returning ? { results: [row] } : {}), meta: { changes: 1 } }] }), { status: 200 });
     }
     return new Response(JSON.stringify({ success: true, result: [{ success: true, results: target }] }), { status: 200 });
   };
@@ -188,7 +221,55 @@ export async function stageLedgerProductionContractSelfTest(repositoryRoot: stri
   try { await adapter.claimBegin(identity, "attempt-2", "2026-07-15T00:00:00.003Z", "{}", "4".repeat(64)); }
   catch (error) { duplicateRejected = error instanceof StageLedgerContractError && error.code === "H2_LEDGER_WRITE_CONFLICT"; }
   if (!duplicateRejected || attempts.length !== 2 || claims.length !== 1) throw new StageLedgerContractError("H2_LEDGER_TEST", "duplicate attempt was not retained while unique claim failed");
-  await adapter.appendCompletion(identity, "attempt-1", "2026-07-15T00:00:00.004Z", "{}", "5".repeat(64));
+  const completionEnvelope = "{}";
+  const completionSha256 = "5".repeat(64);
+  const completion = await adapter.appendCompletion(identity, "attempt-1", "2026-07-15T00:00:00.004Z", completionEnvelope, completionSha256);
+  if (!exactCompletionRow(completion, identity, "attempt-1", "2026-07-15T00:00:00.004Z", completionEnvelope, completionSha256)) throw new StageLedgerContractError("H2_LEDGER_TEST", "successful completion did not return the exact immutable row");
+
+  let insertCount = 0;
+  let loseResponse = true;
+  const lostCompletions: LedgerRow[] = [];
+  const committedLostResponseMock: typeof fetch = async (input, init) => {
+    const body = JSON.parse(String(init?.body)) as { sql: string; params: unknown[] };
+    if (body.sql.startsWith("INSERT INTO gate_h2_stage_completions")) {
+      insertCount++;
+      const row = { candidate_commit: body.params[0], authority_hash: body.params[1], stage_id: body.params[2], attempt_id: body.params[3], completed_at: body.params[4], completion_envelope: body.params[5], completion_sha256: body.params[6] };
+      lostCompletions.push(row);
+      if (loseResponse) { loseResponse = false; throw new Error("simulated lost response after commit"); }
+      return new Response(JSON.stringify({ success: true, result: [{ success: true, results: [row], meta: { changes: 1 } }] }), { status: 200 });
+    }
+    if (body.sql.startsWith("SELECT") && body.sql.includes("gate_h2_stage_completions"))
+      return new Response(JSON.stringify({ success: true, result: [{ success: true, results: lostCompletions }] }), { status: 200 });
+    return mock(input, init);
+  };
+  const lostResponseAdapter = CloudflareD1StageLedger.fromEnvironment(authority, { GATE_H2_LEDGER_ACCOUNT_ID: account, GATE_H2_LEDGER_DATABASE_ID: database, GATE_H2_LEDGER_API_TOKEN: "test-only-token" }, committedLostResponseMock);
+  const lostIdentity = { ...identity, stage_id: "source_predict" };
+  const lostCompletion = { attemptId: "attempt-lost", completedAt: "2026-07-15T00:00:00.014Z", envelope: "{\"lost\":true}", envelopeSha256: "d".repeat(64) };
+  let lostCode = "";
+  try { await lostResponseAdapter.appendCompletion(lostIdentity, lostCompletion.attemptId, lostCompletion.completedAt, lostCompletion.envelope, lostCompletion.envelopeSha256); }
+  catch (error) { lostCode = error instanceof StageLedgerContractError ? error.code : ""; }
+  if (lostCode !== "H2_LEDGER_COMPLETION_UNKNOWN" || insertCount !== 1) throw new StageLedgerContractError("H2_LEDGER_TEST", "committed completion with lost response did not remain indeterminate without re-execution");
+  const reconciled = reconcileCompletion(await lostResponseAdapter.readAll(identity.candidate_commit, identity.authority_hash), lostIdentity, lostCompletion.attemptId, lostCompletion.completedAt, lostCompletion.envelope, lostCompletion.envelopeSha256);
+  if (reconciled.status !== "exact_completion_success") throw new StageLedgerContractError("H2_LEDGER_TEST", "exact committed completion reconciliation did not succeed");
+  const noCompletion = reconcileCompletion({ attempts: [], claims: [], completions: [] }, lostIdentity, lostCompletion.attemptId, lostCompletion.completedAt, lostCompletion.envelope, lostCompletion.envelopeSha256);
+  if (noCompletion.status !== "no_completion_indeterminate") throw new StageLedgerContractError("H2_LEDGER_TEST", "missing completion was not indeterminate");
+  const conflicting = reconcileCompletion({ attempts: [], claims: [], completions: [{ ...reconciled.row, completion_sha256: "e".repeat(64) }] }, lostIdentity, lostCompletion.attemptId, lostCompletion.completedAt, lostCompletion.envelope, lostCompletion.envelopeSha256);
+  if (conflicting.status !== "conflicting_completion_failure") throw new StageLedgerContractError("H2_LEDGER_TEST", "conflicting completion was not rejected");
+  const malformed = reconcileCompletion({ attempts: [], claims: [], completions: [{ ...reconciled.row, completion_envelope: null }] }, lostIdentity, lostCompletion.attemptId, lostCompletion.completedAt, lostCompletion.envelope, lostCompletion.envelopeSha256);
+  if (malformed.status !== "conflicting_completion_failure") throw new StageLedgerContractError("H2_LEDGER_TEST", "malformed completion was not rejected");
+
+  const readbackFailureMock: typeof fetch = async (input, init) => {
+    const body = JSON.parse(String(init?.body)) as { sql: string; params: unknown[] };
+    if (body.sql.startsWith("SELECT") && body.sql.includes("gate_h2_stage_completions")) throw new Error("ordinary post-append readback unavailable");
+    if (body.sql.startsWith("INSERT INTO gate_h2_stage_completions")) {
+      const row = { candidate_commit: body.params[0], authority_hash: body.params[1], stage_id: body.params[2], attempt_id: body.params[3], completed_at: body.params[4], completion_envelope: body.params[5], completion_sha256: body.params[6] };
+      return new Response(JSON.stringify({ success: true, result: [{ success: true, results: [row], meta: { changes: 1 } }] }), { status: 200 });
+    }
+    return mock(input, init);
+  };
+  const readbackFailureAdapter = CloudflareD1StageLedger.fromEnvironment(authority, { GATE_H2_LEDGER_ACCOUNT_ID: account, GATE_H2_LEDGER_DATABASE_ID: database, GATE_H2_LEDGER_API_TOKEN: "test-only-token" }, readbackFailureMock);
+  const postAppend = await readbackFailureAdapter.appendCompletion({ ...identity, stage_id: "source_freeze" }, "attempt-post-append", "2026-07-15T00:00:00.024Z", "{\"post_append\":true}", "f".repeat(64));
+  if (postAppend.attempt_id !== "attempt-post-append") throw new StageLedgerContractError("H2_LEDGER_TEST", "post-append readback failure changed a durable completion into begin-only failure");
   const concurrentIdentity = { ...identity, stage_id: "visual_freeze" };
   await Promise.all([
     adapter.appendAttempt(concurrentIdentity, "attempt-3", "2026-07-15T00:00:00.005Z", "6".repeat(64)),
@@ -251,5 +332,5 @@ INSERT INTO gate_h2_stage_completions VALUES ('${identity.candidate_commit}','${
       }
     }
   } finally { fs.rmSync(sqliteRoot, { recursive: true, force: true }); }
-  return { status: "stage_ledger_production_contract_self_test_passed", cases: ["deleted_local_cache_irrelevant", "alternate_cache_irrelevant", "second_attempt_audited", "concurrent_unique_claim", "update_delete_trigger_rejected", "wrong_stage_readback", "wrong_authority_readback", "missing_remote_row", "duplicate_stage_readback", "envelope_hash_mismatch", "deployed_schema_trigger_mismatch", "enumeration_mismatch", "no_real_d1_write"] };
+  return { status: "stage_ledger_production_contract_self_test_passed", cases: ["deleted_local_cache_irrelevant", "alternate_cache_irrelevant", "second_attempt_audited", "concurrent_unique_claim", "atomic_completion_row", "committed_write_lost_response", "exact_completion_reconciliation", "no_completion_indeterminate_no_reexecution", "conflicting_malformed_completion_rejected", "post_append_readback_failure_does_not_false_fail", "update_delete_trigger_rejected", "wrong_stage_readback", "wrong_authority_readback", "missing_remote_row", "duplicate_stage_readback", "envelope_hash_mismatch", "deployed_schema_trigger_mismatch", "enumeration_mismatch", "no_real_d1_write"] };
 }

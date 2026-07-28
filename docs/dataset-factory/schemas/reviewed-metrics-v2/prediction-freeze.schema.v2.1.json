@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "prediction-freeze.schema.v2.1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "candidate_id", "implementation_base_commit", "candidate_commit", "bundle_tree_sha256", "prediction", "principal", "session_id", "model", "reasoning_effort", "route", "started_at", "ended_at", "authorized_at", "broker_evidence", "frozen_at"],
+  "properties": {
+    "schema_version": { "const": "reviewed_metrics_prediction_freeze_v2.1.0" },
+    "status": { "const": "frozen" },
+    "candidate_id": { "const": "dfv0_reviewed_metrics_v2_candidate_20260715" },
+    "implementation_base_commit": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "candidate_commit": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+    "bundle_tree_sha256": { "$ref": "#/$defs/sha256" },
+    "prediction": { "$ref": "#/$defs/hashBytes" },
+    "principal": { "type": "string", "minLength": 1 },
+    "session_id": { "type": "string", "minLength": 1 },
+    "model": { "type": "string", "minLength": 1 },
+    "reasoning_effort": { "type": "string", "minLength": 1 },
+    "route": { "type": "string", "minLength": 1 },
+    "started_at": { "type": "string", "format": "date-time" },
+    "ended_at": { "type": "string", "format": "date-time" },
+    "authorized_at": { "type": "string", "format": "date-time" },
+    "broker_evidence": { "$ref": "#/$defs/brokerEvidence" },
+    "frozen_at": { "type": "string", "format": "date-time" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "hashBytes": { "type": "object", "additionalProperties": false, "required": ["sha256", "bytes"], "properties": { "sha256": { "$ref": "#/$defs/sha256" }, "bytes": { "type": "integer", "minimum": 1 } } },
+    "brokerEvidence": {
+      "type": "object", "additionalProperties": false,
+      "required": ["capability_id", "exchange_ordinal", "request_sha256", "raw_response_role", "raw_response_sha256", "raw_response_bytes", "transcript_role", "transcript_sha256", "transcript_bytes"],
+      "properties": {
+        "capability_id": { "$ref": "#/$defs/sha256" },
+        "exchange_ordinal": { "type": "integer", "minimum": 0, "maximum": 15 },
+        "request_sha256": { "$ref": "#/$defs/sha256" },
+        "raw_response_role": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,127}$" },
+        "raw_response_sha256": { "$ref": "#/$defs/sha256" },
+        "raw_response_bytes": { "type": "integer", "minimum": 1 },
+        "transcript_role": { "const": "https_broker_transcript" },
+        "transcript_sha256": { "$ref": "#/$defs/sha256" },
+        "transcript_bytes": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

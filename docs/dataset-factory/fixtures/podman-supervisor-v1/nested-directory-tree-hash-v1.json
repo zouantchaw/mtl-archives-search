@@ -1,0 +1,11 @@
+{
+  "schema_version": "gate_h2_directory_tree_hash_conformance_v1.0.0",
+  "algorithm": "sha256",
+  "encoding": "rust_recursive_metadata_content_rows_v1",
+  "canonical_rows": [
+    "d\talpha\t755\t1000\t1000\t2",
+    "d\talpha/beta\t750\t1000\t1000\t2",
+    "f\talpha/beta/value.txt\t640\t1000\t1000\t1\t15\t4678af99c78964f0580907ff659e3869ce298e04ac3feed828f96928b584cb7d"
+  ],
+  "tree_sha256": "ec688e959ac0064af3a07a6064e16781b0223f4458b7e39d55a4db08d4d283e0"
+}

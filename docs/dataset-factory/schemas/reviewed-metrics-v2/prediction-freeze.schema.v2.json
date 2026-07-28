@@ -22,9 +22,7 @@
     "frozen_at"
   ],
   "properties": {
-    "schema_version": {
-      "const": "reviewed_metrics_prediction_freeze_v2.0.0"
-    },
+    "schema_version": { "const": "reviewed_metrics_prediction_freeze_v2.0.0" },
     "status": {
       "const": "frozen"
     },

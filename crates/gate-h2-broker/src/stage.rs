@@ -7,6 +7,7 @@ use std::{
         unix::fs::MetadataExt,
     },
     path::Path,
+    thread,
     time::{Duration, Instant},
 };
 
@@ -122,6 +123,9 @@ fn run_impl(
     let authority: StageAuthority =
         serde_json::from_value(crate::uds::parse_strict_json(&authority_bytes)?)?;
     validate_program(&program, &program_bytes, &authority)?;
+    if inherited_channels {
+        start_container_liveness_watchdog(program.https_exchange_handles.len())?;
+    }
     let token = Zeroizing::new(run.read_direct("run-token", 128)?);
     if token.len() != 43
         || !token
@@ -204,6 +208,66 @@ fn run_impl(
         }
     }
     Ok(())
+}
+
+fn container_liveness_fd(exchange_count: usize) -> io::Result<i32> {
+    let offset = if exchange_count == 0 {
+        0
+    } else {
+        exchange_count
+            .checked_add(1)
+            .ok_or_else(|| io::Error::other("container liveness FD overflow"))?
+    };
+    i32::try_from(
+        3_usize
+            .checked_add(offset)
+            .ok_or_else(|| io::Error::other("container liveness FD overflow"))?,
+    )
+    .map_err(|_| io::Error::other("container liveness FD overflow"))
+}
+
+fn start_container_liveness_watchdog(exchange_count: usize) -> io::Result<()> {
+    let fd = container_liveness_fd(exchange_count)?;
+    let mut stat: libc::stat = unsafe { std::mem::zeroed() };
+    if unsafe { libc::fstat(fd, &mut stat) } < 0 {
+        return Err(io::Error::last_os_error());
+    }
+    if stat.st_mode & libc::S_IFMT != libc::S_IFIFO {
+        return Err(io::Error::other(
+            "container liveness capability is not a fixed inherited pipe",
+        ));
+    }
+    let liveness = unsafe { OwnedFd::from_raw_fd(fd) };
+    thread::Builder::new()
+        .name("gate-h2-container-liveness".into())
+        .spawn(move || {
+            // The stage program is data, not executable code. This fixed runtime
+            // owns the only container copy of the liveness read end and terminates
+            // the entire container process on EOF or any malformed write.
+            let _ = wait_for_container_liveness_eof(liveness.as_raw_fd());
+            unsafe { libc::_exit(247) };
+        })?;
+    Ok(())
+}
+
+fn wait_for_container_liveness_eof(fd: i32) -> io::Result<()> {
+    let mut byte = [0_u8; 1];
+    loop {
+        let read = unsafe { libc::read(fd, byte.as_mut_ptr().cast(), byte.len()) };
+        if read == 0 {
+            return Ok(());
+        }
+        if read > 0 {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "container liveness capability received data instead of EOF",
+            ));
+        }
+        let error = io::Error::last_os_error();
+        if error.kind() != io::ErrorKind::Interrupted {
+            return Err(error);
+        }
+    }
 }
 
 fn validate_accepted_response(
@@ -1219,6 +1283,20 @@ mod tests {
         let stream = UnixStream::from(unsafe { OwnedFd::from_raw_fd(descriptor) });
         let error = validate_stage_channel(&stream, true).unwrap_err();
         assert_eq!(error.raw_os_error(), Some(libc::ENOTCONN));
+    }
+
+    #[test]
+    fn fixed_container_liveness_fd_and_eof_contract_are_deterministic() {
+        assert_eq!(container_liveness_fd(0).unwrap(), 3);
+        assert_eq!(container_liveness_fd(1).unwrap(), 5);
+        assert_eq!(container_liveness_fd(16).unwrap(), 20);
+
+        let mut pipe = [-1; 2];
+        assert_eq!(unsafe { libc::pipe(pipe.as_mut_ptr()) }, 0);
+        let read = unsafe { OwnedFd::from_raw_fd(pipe[0]) };
+        let write = unsafe { OwnedFd::from_raw_fd(pipe[1]) };
+        drop(write);
+        wait_for_container_liveness_eof(read.as_raw_fd()).unwrap();
     }
 
     fn add_mode(file: &File, bits: u32) -> io::Result<()> {

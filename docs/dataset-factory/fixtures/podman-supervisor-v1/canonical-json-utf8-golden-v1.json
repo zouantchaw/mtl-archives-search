@@ -1,0 +1,10 @@
+{
+  "schema_version": "gate_h2_canonical_json_utf8_golden_v1.0.0",
+  "algorithm": "gate_h2_lexicographic_utf8_json_v1",
+  "input": {
+    "\ud800\udc00": "non_bmp",
+    "\ue000": "bmp"
+  },
+  "canonical_utf8_json_base64": "eyLugIAiOiJibXAiLCLwkICAIjoibm9uX2JtcCJ9",
+  "reordered_semantic_utf8_json_base64": "eyLwkICAIjoibm9uX2JtcCIsIu6AgCI6ImJtcCJ9"
+}
