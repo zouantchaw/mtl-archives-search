@@ -1,0 +1,448 @@
+{
+  "schema_version": "gate_h2_linux_conformance_universe_v1.0.0",
+  "version": "gate_h2_real_linux_podman_conformance_universe_v1",
+  "predecessor": {
+    "artifact_id": "dfv0_gate_h2_podman_supervisor_v1_20260718",
+    "sorted_tree_sha256": "a0f88c5d297596ae25e826b6ea1a7e89e3749ec20b7ffecc094eabad8bfadda9",
+    "commit": "74e6f5af17b82ea116d1d0c51b6320959fd5c637",
+    "pins": {
+      "podman_descriptor": {
+        "path": "docs/dataset-factory/fixtures/podman-supervisor-v1/source-descriptor-v2.json",
+        "sha256": "418d111218b9bcd72c233ddb3dcc85fbe84e9a6235378c35f3bf307b56009534",
+        "bytes": 12045
+      },
+      "https_broker_descriptor": {
+        "path": "docs/dataset-factory/fixtures/https-broker-runtime-v1/source-descriptor-v1.json",
+        "sha256": "288e99faf97e01250df1ebf6d91a9eb63a5a6c81ed3a92295ae5b29b024af095",
+        "bytes": 12237
+      },
+      "source_allowlist": {
+        "path": "crates/gate-h2-broker/oci/source-allowlist.v1.txt",
+        "sha256": "5d2f26027590ac3663cb1b751d929b90d78859dd79e4d0b5d87766036bb7377c",
+        "bytes": 1525
+      }
+    },
+    "schema_commitments": {
+      "podman_descriptor_schema_version": "gate_h2_broker_runtime_source_descriptor_v2.0.0",
+      "https_broker_descriptor_schema_version": "gate_h2_broker_runtime_source_descriptor_v1.0.0",
+      "inherited_descriptor_sha256": "288e99faf97e01250df1ebf6d91a9eb63a5a6c81ed3a92295ae5b29b024af095"
+    }
+  },
+  "cases": [
+    {
+      "id": "canonical_program_success",
+      "category": "executor_semantics",
+      "evidence_kind": "executor_case",
+      "required_for_production": true
+    },
+    {
+      "id": "program_substitution",
+      "category": "executor_semantics",
+      "evidence_kind": "executor_case",
+      "required_for_production": true
+    },
+    {
+      "id": "schema_substitution",
+      "category": "executor_semantics",
+      "evidence_kind": "executor_case",
+      "required_for_production": true
+    },
+    {
+      "id": "executor_substitution",
+      "category": "executor_semantics",
+      "evidence_kind": "executor_case",
+      "required_for_production": true
+    },
+    {
+      "id": "undeclared_dependency_rejected",
+      "category": "executor_semantics",
+      "evidence_kind": "executor_case",
+      "required_for_production": true
+    },
+    {
+      "id": "module_loader_absent",
+      "category": "executor_semantics",
+      "evidence_kind": "executor_case",
+      "required_for_production": true
+    },
+    {
+      "id": "native_loader_absent",
+      "category": "executor_semantics",
+      "evidence_kind": "executor_case",
+      "required_for_production": true
+    },
+    {
+      "id": "output_never_readable",
+      "category": "executor_semantics",
+      "evidence_kind": "executor_case",
+      "required_for_production": true
+    },
+    {
+      "id": "undeclared_write_rejected",
+      "category": "executor_semantics",
+      "evidence_kind": "executor_case",
+      "required_for_production": true
+    },
+    {
+      "id": "network_escape_rejected",
+      "category": "executor_semantics",
+      "evidence_kind": "executor_case",
+      "required_for_production": true
+    },
+    {
+      "id": "postspawn_source_replacement",
+      "category": "executor_semantics",
+      "evidence_kind": "executor_case",
+      "required_for_production": true
+    },
+    {
+      "id": "cleanup_precedes_completion",
+      "category": "executor_semantics",
+      "evidence_kind": "executor_case",
+      "required_for_production": true
+    },
+    {
+      "id": "exact_https_program_success",
+      "category": "broker_protocol",
+      "evidence_kind": "broker_case",
+      "required_for_production": true
+    },
+    {
+      "id": "legacy_action_rejected",
+      "category": "broker_protocol",
+      "evidence_kind": "broker_case",
+      "required_for_production": true
+    },
+    {
+      "id": "uds_socket_role_substitution",
+      "category": "broker_protocol",
+      "evidence_kind": "broker_case",
+      "required_for_production": true
+    },
+    {
+      "id": "run_token_role_substitution",
+      "category": "broker_protocol",
+      "evidence_kind": "broker_case",
+      "required_for_production": true
+    },
+    {
+      "id": "opaque_handle_gap_or_reorder",
+      "category": "broker_protocol",
+      "evidence_kind": "broker_case",
+      "required_for_production": true
+    },
+    {
+      "id": "transcript_commit_substitution",
+      "category": "broker_protocol",
+      "evidence_kind": "broker_case",
+      "required_for_production": true
+    },
+    {
+      "id": "static_elf_linkage",
+      "category": "build_identity",
+      "evidence_kind": "build_receipt",
+      "required_for_production": true
+    },
+    {
+      "id": "kernel_architecture_identity",
+      "category": "build_identity",
+      "evidence_kind": "build_receipt",
+      "required_for_production": true
+    },
+    {
+      "id": "two_clean_binary_identity",
+      "category": "build_identity",
+      "evidence_kind": "build_receipt",
+      "required_for_production": true
+    },
+    {
+      "id": "two_clean_rootfs_identity",
+      "category": "build_identity",
+      "evidence_kind": "build_receipt",
+      "required_for_production": true
+    },
+    {
+      "id": "two_clean_oci_identity",
+      "category": "build_identity",
+      "evidence_kind": "build_receipt",
+      "required_for_production": true
+    },
+    {
+      "id": "source_commit_tree_identity",
+      "category": "build_identity",
+      "evidence_kind": "build_receipt",
+      "required_for_production": true
+    },
+    {
+      "id": "builder_image_identity",
+      "category": "build_identity",
+      "evidence_kind": "build_receipt",
+      "required_for_production": true
+    },
+    {
+      "id": "admitted_oci_image_identity",
+      "category": "build_identity",
+      "evidence_kind": "build_receipt",
+      "required_for_production": true
+    },
+    {
+      "id": "rootless_non_root_identity",
+      "category": "podman_confinement",
+      "evidence_kind": "runtime_observation",
+      "required_for_production": true
+    },
+    {
+      "id": "read_only_rootfs",
+      "category": "podman_confinement",
+      "evidence_kind": "runtime_observation",
+      "required_for_production": true
+    },
+    {
+      "id": "cap_drop_no_new_privileges",
+      "category": "podman_confinement",
+      "evidence_kind": "runtime_observation",
+      "required_for_production": true
+    },
+    {
+      "id": "seccomp_policy",
+      "category": "podman_confinement",
+      "evidence_kind": "runtime_observation",
+      "required_for_production": true
+    },
+    {
+      "id": "pid_namespace_isolation",
+      "category": "podman_confinement",
+      "evidence_kind": "runtime_observation",
+      "required_for_production": true
+    },
+    {
+      "id": "ipc_namespace_isolation",
+      "category": "podman_confinement",
+      "evidence_kind": "runtime_observation",
+      "required_for_production": true
+    },
+    {
+      "id": "uts_namespace_isolation",
+      "category": "podman_confinement",
+      "evidence_kind": "runtime_observation",
+      "required_for_production": true
+    },
+    {
+      "id": "exact_mounts",
+      "category": "podman_confinement",
+      "evidence_kind": "runtime_observation",
+      "required_for_production": true
+    },
+    {
+      "id": "writable_confinement",
+      "category": "podman_confinement",
+      "evidence_kind": "runtime_observation",
+      "required_for_production": true
+    },
+    {
+      "id": "fd_closure",
+      "category": "podman_confinement",
+      "evidence_kind": "runtime_observation",
+      "required_for_production": true
+    },
+    {
+      "id": "sealed_memfd_input",
+      "category": "podman_confinement",
+      "evidence_kind": "runtime_observation",
+      "required_for_production": true
+    },
+    {
+      "id": "retained_fd_execution",
+      "category": "podman_confinement",
+      "evidence_kind": "runtime_observation",
+      "required_for_production": true
+    },
+    {
+      "id": "atomic_no_replace_output",
+      "category": "podman_confinement",
+      "evidence_kind": "runtime_observation",
+      "required_for_production": true
+    },
+    {
+      "id": "raw_tcp_denied",
+      "category": "network_confinement",
+      "evidence_kind": "network_probe",
+      "required_for_production": true
+    },
+    {
+      "id": "raw_udp_denied",
+      "category": "network_confinement",
+      "evidence_kind": "network_probe",
+      "required_for_production": true
+    },
+    {
+      "id": "dns_denied",
+      "category": "network_confinement",
+      "evidence_kind": "network_probe",
+      "required_for_production": true
+    },
+    {
+      "id": "uds_only_exchange",
+      "category": "network_confinement",
+      "evidence_kind": "network_probe",
+      "required_for_production": true
+    },
+    {
+      "id": "so_peercred_binding",
+      "category": "broker_binding",
+      "evidence_kind": "broker_case",
+      "required_for_production": true
+    },
+    {
+      "id": "session_token_attempt_container_binding",
+      "category": "broker_binding",
+      "evidence_kind": "broker_case",
+      "required_for_production": true
+    },
+    {
+      "id": "dns_rebinding_denied",
+      "category": "broker_adversarial",
+      "evidence_kind": "broker_case",
+      "required_for_production": true
+    },
+    {
+      "id": "forbidden_address_denied",
+      "category": "broker_adversarial",
+      "evidence_kind": "broker_case",
+      "required_for_production": true
+    },
+    {
+      "id": "tls_sni_certificate_validation",
+      "category": "broker_adversarial",
+      "evidence_kind": "broker_case",
+      "required_for_production": true
+    },
+    {
+      "id": "redirect_denied",
+      "category": "broker_adversarial",
+      "evidence_kind": "broker_case",
+      "required_for_production": true
+    },
+    {
+      "id": "response_size_denied",
+      "category": "broker_adversarial",
+      "evidence_kind": "broker_case",
+      "required_for_production": true
+    },
+    {
+      "id": "timeout_enforced",
+      "category": "broker_adversarial",
+      "evidence_kind": "broker_case",
+      "required_for_production": true
+    },
+    {
+      "id": "malformed_framing_denied",
+      "category": "broker_adversarial",
+      "evidence_kind": "broker_case",
+      "required_for_production": true
+    },
+    {
+      "id": "replay_order_denied",
+      "category": "broker_adversarial",
+      "evidence_kind": "broker_case",
+      "required_for_production": true
+    },
+    {
+      "id": "supervisor_death_cleanup",
+      "category": "lifecycle_cleanup",
+      "evidence_kind": "lifecycle_receipt",
+      "required_for_production": true
+    },
+    {
+      "id": "term_kill_reap",
+      "category": "lifecycle_cleanup",
+      "evidence_kind": "lifecycle_receipt",
+      "required_for_production": true
+    },
+    {
+      "id": "cidfile_ownership",
+      "category": "lifecycle_cleanup",
+      "evidence_kind": "lifecycle_receipt",
+      "required_for_production": true
+    },
+    {
+      "id": "container_removal",
+      "category": "lifecycle_cleanup",
+      "evidence_kind": "lifecycle_receipt",
+      "required_for_production": true
+    },
+    {
+      "id": "run_tree_cleanup",
+      "category": "lifecycle_cleanup",
+      "evidence_kind": "lifecycle_receipt",
+      "required_for_production": true
+    },
+    {
+      "id": "twelve_stage_exact_universe",
+      "category": "stage_chronology",
+      "evidence_kind": "stage_receipt",
+      "required_for_production": true
+    },
+    {
+      "id": "twelve_stage_success",
+      "category": "stage_chronology",
+      "evidence_kind": "stage_receipt",
+      "required_for_production": true
+    },
+    {
+      "id": "twelve_stage_failure_no_completion",
+      "category": "stage_chronology",
+      "evidence_kind": "stage_receipt",
+      "required_for_production": true
+    },
+    {
+      "id": "twelve_stage_report_join",
+      "category": "stage_chronology",
+      "evidence_kind": "stage_receipt",
+      "required_for_production": true
+    },
+    {
+      "id": "d1_begin",
+      "category": "d1_chronology",
+      "evidence_kind": "d1_receipt",
+      "required_for_production": true
+    },
+    {
+      "id": "d1_unique_claim",
+      "category": "d1_chronology",
+      "evidence_kind": "d1_receipt",
+      "required_for_production": true
+    },
+    {
+      "id": "d1_completion_chronology",
+      "category": "d1_chronology",
+      "evidence_kind": "d1_receipt",
+      "required_for_production": true
+    },
+    {
+      "id": "d1_crash_without_completion",
+      "category": "d1_chronology",
+      "evidence_kind": "d1_receipt",
+      "required_for_production": true
+    },
+    {
+      "id": "d1_retry_chronology",
+      "category": "d1_chronology",
+      "evidence_kind": "d1_receipt",
+      "required_for_production": true
+    },
+    {
+      "id": "d1_append_only_mutation_denial",
+      "category": "d1_chronology",
+      "evidence_kind": "d1_receipt",
+      "required_for_production": true
+    },
+    {
+      "id": "transcript_output_authority_exact_joins",
+      "category": "authority_joins",
+      "evidence_kind": "authority_receipt",
+      "required_for_production": true
+    }
+  ],
+  "universe_sha256": "6239a9ac37b46b7298c2490c535af9d7600f40263067fbcb9f48447cbd032ed6"
+}

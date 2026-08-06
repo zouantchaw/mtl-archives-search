@@ -1,0 +1,1 @@
+synthetic local evidence for kernel_architecture_identity

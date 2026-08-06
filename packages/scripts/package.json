@@ -226,6 +226,8 @@
     "dataset-factory:post-begin-authority-enrollment-integration-test-v1": "tsx src/dataset-factory/post-begin-authority-enrollment-v1.ts integration-test",
     "dataset-factory:podman-supervisor-failure-matrix-self-test-v1": "tsx src/dataset-factory/reviewed-metrics-v2.ts podman-supervisor-failure-matrix-self-test",
     "dataset-factory:podman-supervisor-fixture-verify-v1": "tsx src/dataset-factory/reviewed-metrics-v2.ts podman-supervisor-fixture-verify-v1",
+    "dataset-factory:gate-h2-linux-conformance-verify-v1": "tsx src/dataset-factory/gate-h2-linux-conformance-v1.ts verify",
+    "dataset-factory:gate-h2-linux-conformance-self-test-v1": "tsx src/dataset-factory/gate-h2-linux-conformance-v1.ts self-test",
     "dataset-factory:https-exchange-contract-self-test-v1": "tsx src/dataset-factory/https-exchange-contract-v1.ts",
     "dataset-factory:broker-runtime-artifacts-v2": "tsx src/dataset-factory/validate-broker-runtime-artifacts.ts",
     "dataset-factory:reviewed-metrics-integration-test-v2": "tsx src/dataset-factory/reviewed-metrics-v2.ts integration-test",

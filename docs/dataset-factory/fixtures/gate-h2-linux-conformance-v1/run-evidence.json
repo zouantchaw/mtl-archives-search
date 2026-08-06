@@ -1,0 +1,899 @@
+{
+  "schema_version": "gate_h2_linux_conformance_run_evidence_v1.0.0",
+  "status": "synthetic_local_fixture",
+  "synthetic": true,
+  "production_eligible": false,
+  "metadata": {
+    "predecessor": {
+      "artifact_id": "dfv0_gate_h2_podman_supervisor_v1_20260718",
+      "sorted_tree_sha256": "a0f88c5d297596ae25e826b6ea1a7e89e3749ec20b7ffecc094eabad8bfadda9",
+      "commit": "74e6f5af17b82ea116d1d0c51b6320959fd5c637",
+      "pins": {
+        "podman_descriptor": {
+          "path": "docs/dataset-factory/fixtures/podman-supervisor-v1/source-descriptor-v2.json",
+          "sha256": "418d111218b9bcd72c233ddb3dcc85fbe84e9a6235378c35f3bf307b56009534",
+          "bytes": 12045
+        },
+        "https_broker_descriptor": {
+          "path": "docs/dataset-factory/fixtures/https-broker-runtime-v1/source-descriptor-v1.json",
+          "sha256": "288e99faf97e01250df1ebf6d91a9eb63a5a6c81ed3a92295ae5b29b024af095",
+          "bytes": 12237
+        },
+        "source_allowlist": {
+          "path": "crates/gate-h2-broker/oci/source-allowlist.v1.txt",
+          "sha256": "5d2f26027590ac3663cb1b751d929b90d78859dd79e4d0b5d87766036bb7377c",
+          "bytes": 1525
+        }
+      },
+      "schema_commitments": {
+        "podman_descriptor_schema_version": "gate_h2_broker_runtime_source_descriptor_v2.0.0",
+        "https_broker_descriptor_schema_version": "gate_h2_broker_runtime_source_descriptor_v1.0.0",
+        "inherited_descriptor_sha256": "288e99faf97e01250df1ebf6d91a9eb63a5a6c81ed3a92295ae5b29b024af095"
+      }
+    },
+    "source": {
+      "commit": "synthetic_local_fixture",
+      "tree": "synthetic_local_fixture",
+      "source_manifest_sha256": "synthetic_local_fixture"
+    },
+    "builder_image": {
+      "reference": "synthetic_local_fixture",
+      "digest": "synthetic_local_fixture"
+    },
+    "admitted_oci_image": {
+      "reference": "synthetic_local_fixture",
+      "digest": "synthetic_local_fixture"
+    },
+    "podman": {
+      "executable_pin": {
+        "path": "synthetic_local_fixture",
+        "sha256": "synthetic_local_fixture",
+        "bytes": 1
+      },
+      "version": "synthetic_local_fixture",
+      "rootless": false,
+      "rootless_uid": 0
+    },
+    "host": {
+      "platform": "synthetic_local",
+      "kernel_release": "synthetic_local_fixture",
+      "architecture": "not_applicable"
+    },
+    "producer": {
+      "principal": "synthetic_local_fixture",
+      "run_id": "synthetic_local_fixture"
+    }
+  },
+  "metadata_sha256": "8958443b7ea975441f4212ef8efd08bf87bd64d6c3e821be0ca5b57e04f3f209",
+  "universe_sha256": "6239a9ac37b46b7298c2490c535af9d7600f40263067fbcb9f48447cbd032ed6",
+  "results": [
+    {
+      "case_id": "canonical_program_success",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/canonical_program_success.txt",
+        "sha256": "35565ecc97dcf448109a97cf9591c856cb4832e02fa32a4943f4112eff2945fc",
+        "bytes": 55,
+        "media_type": "text/plain",
+        "kind": "executor_case",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "program_substitution",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/program_substitution.txt",
+        "sha256": "1b981f187a999d0005fbe3fbd98d209200fa7a3e6d5a8bac09ea1c7a3144d5d8",
+        "bytes": 50,
+        "media_type": "text/plain",
+        "kind": "executor_case",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "schema_substitution",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/schema_substitution.txt",
+        "sha256": "8c17ff755efd484170eb5350971c9cd4c6c3f6f55155707c3c29fe69a1ebaac2",
+        "bytes": 49,
+        "media_type": "text/plain",
+        "kind": "executor_case",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "executor_substitution",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/executor_substitution.txt",
+        "sha256": "bcab167376d64e80f46ae947f84917ad097fc065da22ace1a175a46bdb9a9079",
+        "bytes": 51,
+        "media_type": "text/plain",
+        "kind": "executor_case",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "undeclared_dependency_rejected",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/undeclared_dependency_rejected.txt",
+        "sha256": "e7bc73f0b5ac77c301c9f34cfecc7df7e737d7ac29307f2d39bd7d767e517277",
+        "bytes": 60,
+        "media_type": "text/plain",
+        "kind": "executor_case",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "module_loader_absent",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/module_loader_absent.txt",
+        "sha256": "469cdd98666b85ffea0dbd7b15959900d8d4ad04d873c20307bd13e41760e348",
+        "bytes": 50,
+        "media_type": "text/plain",
+        "kind": "executor_case",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "native_loader_absent",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/native_loader_absent.txt",
+        "sha256": "356478f878287b4110bb28f106dbf0c7aed57074f0dbcf1734a9dc4ad586c94e",
+        "bytes": 50,
+        "media_type": "text/plain",
+        "kind": "executor_case",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "output_never_readable",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/output_never_readable.txt",
+        "sha256": "068a32e480471e6bba4a9008429b8e768aea3187ddfc9547bf5dac1ed3da7bbc",
+        "bytes": 51,
+        "media_type": "text/plain",
+        "kind": "executor_case",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "undeclared_write_rejected",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/undeclared_write_rejected.txt",
+        "sha256": "b1baed8171584956bdad15a62b54c9d5879cdb285fdc15fd1588bd4bab64b054",
+        "bytes": 55,
+        "media_type": "text/plain",
+        "kind": "executor_case",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "network_escape_rejected",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/network_escape_rejected.txt",
+        "sha256": "edb053c0368711dbd4ad080ec6f7e833884f7bcde8c63b92c78797117e364de5",
+        "bytes": 53,
+        "media_type": "text/plain",
+        "kind": "executor_case",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "postspawn_source_replacement",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/postspawn_source_replacement.txt",
+        "sha256": "d20ae38e95747fa3292b1d3ef09fe523caa8460846c72bf986ea8be3a43f218a",
+        "bytes": 58,
+        "media_type": "text/plain",
+        "kind": "executor_case",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "cleanup_precedes_completion",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/cleanup_precedes_completion.txt",
+        "sha256": "dc77be8f1a890a02f0643b6a42ccded5e126cb90aee0611f36ff33ecabe4ae38",
+        "bytes": 57,
+        "media_type": "text/plain",
+        "kind": "executor_case",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "exact_https_program_success",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/exact_https_program_success.txt",
+        "sha256": "bb792ad5eb185fe8b3f3e0474ca1e6930376f06fe339e9e3921e0f47a8f74f40",
+        "bytes": 57,
+        "media_type": "text/plain",
+        "kind": "broker_case",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "legacy_action_rejected",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/legacy_action_rejected.txt",
+        "sha256": "3f642d6234db0c5d5c9a4ad1f74dbab15fc2466fcdc25de24189b8b47f4b6947",
+        "bytes": 52,
+        "media_type": "text/plain",
+        "kind": "broker_case",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "uds_socket_role_substitution",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/uds_socket_role_substitution.txt",
+        "sha256": "692c23c9d67458503a77536dbd1e82c4819446ff291097d39b69ec7bac054135",
+        "bytes": 58,
+        "media_type": "text/plain",
+        "kind": "broker_case",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "run_token_role_substitution",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/run_token_role_substitution.txt",
+        "sha256": "27622d87428ca82c55ef721ba414b9157dac88d16d0aacca0a7fc3c531f9a97d",
+        "bytes": 57,
+        "media_type": "text/plain",
+        "kind": "broker_case",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "opaque_handle_gap_or_reorder",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/opaque_handle_gap_or_reorder.txt",
+        "sha256": "97e046d0dc3072aa6c433e1e88a02312bc289e9416c2a7ecdbe0110a5cedc04c",
+        "bytes": 58,
+        "media_type": "text/plain",
+        "kind": "broker_case",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "transcript_commit_substitution",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/transcript_commit_substitution.txt",
+        "sha256": "39ec1133d5f115712ed540806e4d67fe99dd279e074212e03dce4ab19fa0ca41",
+        "bytes": 60,
+        "media_type": "text/plain",
+        "kind": "broker_case",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "static_elf_linkage",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/static_elf_linkage.txt",
+        "sha256": "6fec7e749887f5f5bcfe4fe5e2aa5bb325728496ca01a9f7687d65bc24285552",
+        "bytes": 48,
+        "media_type": "text/plain",
+        "kind": "build_receipt",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "kernel_architecture_identity",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/kernel_architecture_identity.txt",
+        "sha256": "6e64d9623926bb2d321706cb4cf75b6863fd2d6fa2545bad3d05a6d976cc8c32",
+        "bytes": 58,
+        "media_type": "text/plain",
+        "kind": "build_receipt",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "two_clean_binary_identity",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/two_clean_binary_identity.txt",
+        "sha256": "a6f9f060efc541cf56dae3b6522683ac75187204e06b0ecd269beed55f330231",
+        "bytes": 55,
+        "media_type": "text/plain",
+        "kind": "build_receipt",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "two_clean_rootfs_identity",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/two_clean_rootfs_identity.txt",
+        "sha256": "63fff5c655172a8d731e9ecd84cc2b420d9f8efee452fbd4592112efd63b79b7",
+        "bytes": 55,
+        "media_type": "text/plain",
+        "kind": "build_receipt",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "two_clean_oci_identity",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/two_clean_oci_identity.txt",
+        "sha256": "a7a1c3a52b1a32664bf7077dce638cdd7cf40cfe096675312ddbde98fcc161a8",
+        "bytes": 52,
+        "media_type": "text/plain",
+        "kind": "build_receipt",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "source_commit_tree_identity",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/source_commit_tree_identity.txt",
+        "sha256": "02bb93fc6412e224f8fb2f561e7ff48d71ece25fac81d44a344b1219312fccec",
+        "bytes": 57,
+        "media_type": "text/plain",
+        "kind": "build_receipt",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "builder_image_identity",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/builder_image_identity.txt",
+        "sha256": "7d42af25123b84d2bb5567d83004ec2c94cd110892838267506ce15b776813ee",
+        "bytes": 52,
+        "media_type": "text/plain",
+        "kind": "build_receipt",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "admitted_oci_image_identity",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/admitted_oci_image_identity.txt",
+        "sha256": "b49f45688a64d38e7996ffad585c96c53e8c14591bae965e8a4861706a5e4042",
+        "bytes": 57,
+        "media_type": "text/plain",
+        "kind": "build_receipt",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "rootless_non_root_identity",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/rootless_non_root_identity.txt",
+        "sha256": "3b14c067f7b47d59ac8f80a79287c919dd494ce272fdc5d882196b385302e9b1",
+        "bytes": 56,
+        "media_type": "text/plain",
+        "kind": "runtime_observation",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "read_only_rootfs",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/read_only_rootfs.txt",
+        "sha256": "a67f4e63eb2de057ec1281808628d65c8aa39fc801747f63c817cc64d5db9b4d",
+        "bytes": 46,
+        "media_type": "text/plain",
+        "kind": "runtime_observation",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "cap_drop_no_new_privileges",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/cap_drop_no_new_privileges.txt",
+        "sha256": "b65a05c0ae67702ab1aca71b3929c32b20cebfccb0c0d9e149660c2cbdad0c17",
+        "bytes": 56,
+        "media_type": "text/plain",
+        "kind": "runtime_observation",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "seccomp_policy",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/seccomp_policy.txt",
+        "sha256": "840351e076e5611d0c55a6b7e4ceb4c5b6eaa8d3e11007b78c31f65d5e521c71",
+        "bytes": 44,
+        "media_type": "text/plain",
+        "kind": "runtime_observation",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "pid_namespace_isolation",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/pid_namespace_isolation.txt",
+        "sha256": "e1ce912e02c2aace60e5ddfea504b2bfd8473e38e81a18822017d9281bd6a035",
+        "bytes": 53,
+        "media_type": "text/plain",
+        "kind": "runtime_observation",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "ipc_namespace_isolation",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/ipc_namespace_isolation.txt",
+        "sha256": "5fdf8479ee127867bf773cdd477d2fb68041a9af86533dfa9c416c2f5d1bf4c9",
+        "bytes": 53,
+        "media_type": "text/plain",
+        "kind": "runtime_observation",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "uts_namespace_isolation",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/uts_namespace_isolation.txt",
+        "sha256": "b2b79d4e8e9037e00e7b5e16c35c103d594cb9f0119e26b7f1983db9c598817a",
+        "bytes": 53,
+        "media_type": "text/plain",
+        "kind": "runtime_observation",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "exact_mounts",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/exact_mounts.txt",
+        "sha256": "5f98bedd5cda0769a329110f9970fe8e8b619e1cb66b57d8de5f6aff202173a7",
+        "bytes": 42,
+        "media_type": "text/plain",
+        "kind": "runtime_observation",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "writable_confinement",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/writable_confinement.txt",
+        "sha256": "085bc712d654cc2b033d427e75c86672bd7363c85af6848f0ebe83da2897ba88",
+        "bytes": 50,
+        "media_type": "text/plain",
+        "kind": "runtime_observation",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "fd_closure",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/fd_closure.txt",
+        "sha256": "11b31f40882b56e9082f1c7dd655cd9046431f2305ffbdfece64e185caa65f71",
+        "bytes": 40,
+        "media_type": "text/plain",
+        "kind": "runtime_observation",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "sealed_memfd_input",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/sealed_memfd_input.txt",
+        "sha256": "f84fc8d6b1a3cb6ac49cccde859748bff4420db509540a206e04418e9e921bb4",
+        "bytes": 48,
+        "media_type": "text/plain",
+        "kind": "runtime_observation",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "retained_fd_execution",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/retained_fd_execution.txt",
+        "sha256": "8265c772c31db349b97634828a89097611968cad5d7ad37cfbe6e49a19d87262",
+        "bytes": 51,
+        "media_type": "text/plain",
+        "kind": "runtime_observation",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "atomic_no_replace_output",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/atomic_no_replace_output.txt",
+        "sha256": "d06a2e8cdb8f9ee98185e6f9a7e2e08f7dc946f42d1d098289748e53939af8ee",
+        "bytes": 54,
+        "media_type": "text/plain",
+        "kind": "runtime_observation",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "raw_tcp_denied",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/raw_tcp_denied.txt",
+        "sha256": "9a3fcc026c37c86407767e2303a3ff839b723b478d77c5e24bababdd13da07b5",
+        "bytes": 44,
+        "media_type": "text/plain",
+        "kind": "network_probe",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "raw_udp_denied",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/raw_udp_denied.txt",
+        "sha256": "d357acc2933190826129ee6e884582902e6d2d2b8a5a55f168c2e94606007877",
+        "bytes": 44,
+        "media_type": "text/plain",
+        "kind": "network_probe",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "dns_denied",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/dns_denied.txt",
+        "sha256": "55c7e36bbdfa5b36bd15f51c8e0d1d139f4c25f0726c6510bde4d9fd3e366409",
+        "bytes": 40,
+        "media_type": "text/plain",
+        "kind": "network_probe",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "uds_only_exchange",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/uds_only_exchange.txt",
+        "sha256": "48a1551b78e400ca435b5997b6359055b5eacf8fa4b82a91de0dcae902613f49",
+        "bytes": 47,
+        "media_type": "text/plain",
+        "kind": "network_probe",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "so_peercred_binding",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/so_peercred_binding.txt",
+        "sha256": "9919421d554aabedb8c8f516ee5858d6fea671f5aebb445dee3da09c7fb299bf",
+        "bytes": 49,
+        "media_type": "text/plain",
+        "kind": "broker_case",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "session_token_attempt_container_binding",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/session_token_attempt_container_binding.txt",
+        "sha256": "319ff60d1b822e706a2ad34f69464430dbb2a1a124df9d397040fef8dd769266",
+        "bytes": 69,
+        "media_type": "text/plain",
+        "kind": "broker_case",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "dns_rebinding_denied",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/dns_rebinding_denied.txt",
+        "sha256": "813c8add8803c6ad8ad2a56b62bb01b7f542e923fd646dff321465475d16e70b",
+        "bytes": 50,
+        "media_type": "text/plain",
+        "kind": "broker_case",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "forbidden_address_denied",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/forbidden_address_denied.txt",
+        "sha256": "8b30cca14f3a66a22a18bc9fff95a4f1f775cba1b541227b180a7fa34f90e05e",
+        "bytes": 54,
+        "media_type": "text/plain",
+        "kind": "broker_case",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "tls_sni_certificate_validation",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/tls_sni_certificate_validation.txt",
+        "sha256": "fdc7e09a5d667515709166a660a42a9bd913f19406e0612f78f94ed32dbac260",
+        "bytes": 60,
+        "media_type": "text/plain",
+        "kind": "broker_case",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "redirect_denied",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/redirect_denied.txt",
+        "sha256": "8bef8f485cf751cc79e018ea93ac30ebbc15f802472f36805d2470c915ffdb4c",
+        "bytes": 45,
+        "media_type": "text/plain",
+        "kind": "broker_case",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "response_size_denied",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/response_size_denied.txt",
+        "sha256": "30d2d8dd4567bde1efcdb526a308d88cbc134f43fd5fd19ccc47408eae6f2fdc",
+        "bytes": 50,
+        "media_type": "text/plain",
+        "kind": "broker_case",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "timeout_enforced",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/timeout_enforced.txt",
+        "sha256": "69b0437435b6a73bb562691a76bc6a9c0b0ddaef48024691d9d8f42d3f0b8d28",
+        "bytes": 46,
+        "media_type": "text/plain",
+        "kind": "broker_case",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "malformed_framing_denied",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/malformed_framing_denied.txt",
+        "sha256": "57a24868481af8e67749b94b5eba1de9ab824b21c4e39895df14708f61ef5546",
+        "bytes": 54,
+        "media_type": "text/plain",
+        "kind": "broker_case",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "replay_order_denied",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/replay_order_denied.txt",
+        "sha256": "d48be98774e345f11519bbf93d1a22ba1aa6cd909bf544e79a70b299768045e7",
+        "bytes": 49,
+        "media_type": "text/plain",
+        "kind": "broker_case",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "supervisor_death_cleanup",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/supervisor_death_cleanup.txt",
+        "sha256": "4e26398dc422a48b0d5dac03e460c2b3003b95f80f863159653e8644d883879a",
+        "bytes": 54,
+        "media_type": "text/plain",
+        "kind": "lifecycle_receipt",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "term_kill_reap",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/term_kill_reap.txt",
+        "sha256": "823eb220a925e34818def75c4d17de524b24d40aed04bfbf314ca6dfdb1bf449",
+        "bytes": 44,
+        "media_type": "text/plain",
+        "kind": "lifecycle_receipt",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "cidfile_ownership",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/cidfile_ownership.txt",
+        "sha256": "7165ad35920a81cb387b7ce3bef599c1880ad24447197d551716db927e3ad197",
+        "bytes": 47,
+        "media_type": "text/plain",
+        "kind": "lifecycle_receipt",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "container_removal",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/container_removal.txt",
+        "sha256": "bbabf89b1475e6476c770355377fc1dd70859f4ef68a15bf1cbb177e94351543",
+        "bytes": 47,
+        "media_type": "text/plain",
+        "kind": "lifecycle_receipt",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "run_tree_cleanup",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/run_tree_cleanup.txt",
+        "sha256": "4c7e3936621a8dee7879a41efc7f6d57958b8f26f95b5a6d2a360e42e4422c81",
+        "bytes": 46,
+        "media_type": "text/plain",
+        "kind": "lifecycle_receipt",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "twelve_stage_exact_universe",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/twelve_stage_exact_universe.txt",
+        "sha256": "f092d5b1c9e73c662d56cb5190395d61b855c89a46bb8f8b753f5de47b9ef8d0",
+        "bytes": 57,
+        "media_type": "text/plain",
+        "kind": "stage_receipt",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "twelve_stage_success",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/twelve_stage_success.txt",
+        "sha256": "a144ba5a98f291994d11739f4f827e2e0db1ac08d56c2127a738d17ff97f8c1b",
+        "bytes": 50,
+        "media_type": "text/plain",
+        "kind": "stage_receipt",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "twelve_stage_failure_no_completion",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/twelve_stage_failure_no_completion.txt",
+        "sha256": "e4f2502e18d41350d421620e8f1d984b18b8ef6b90e910929d3597f0da6c84ec",
+        "bytes": 64,
+        "media_type": "text/plain",
+        "kind": "stage_receipt",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "twelve_stage_report_join",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/twelve_stage_report_join.txt",
+        "sha256": "708c8657c0d9c517d638b7adceebc4d7f52aa0db9b39da9a4ad87b3463b1cfea",
+        "bytes": 54,
+        "media_type": "text/plain",
+        "kind": "stage_receipt",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "d1_begin",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/d1_begin.txt",
+        "sha256": "810ada52b0a6e2f63218ab06c1f126ccb81fbdf2bed483b9ed270f49d39dac73",
+        "bytes": 38,
+        "media_type": "text/plain",
+        "kind": "d1_receipt",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "d1_unique_claim",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/d1_unique_claim.txt",
+        "sha256": "f0364505306383c56d345a5c150315889cbb0ec29a222dc61bf18b3fe18bafe1",
+        "bytes": 45,
+        "media_type": "text/plain",
+        "kind": "d1_receipt",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "d1_completion_chronology",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/d1_completion_chronology.txt",
+        "sha256": "d51f56dc5dd3897dbc89071153f0f780b9fa3ee825bb60d334ce1099a673a6b3",
+        "bytes": 54,
+        "media_type": "text/plain",
+        "kind": "d1_receipt",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "d1_crash_without_completion",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/d1_crash_without_completion.txt",
+        "sha256": "69e2d5d5a402420b96d42162ef9dc61d589adffca1b202bc23d4d393a57b80a9",
+        "bytes": 57,
+        "media_type": "text/plain",
+        "kind": "d1_receipt",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "d1_retry_chronology",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/d1_retry_chronology.txt",
+        "sha256": "ce85c3f540ac49cd019f6c0b4fea069f714d79e95681e4e6544318630d54fd30",
+        "bytes": 49,
+        "media_type": "text/plain",
+        "kind": "d1_receipt",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "d1_append_only_mutation_denial",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/d1_append_only_mutation_denial.txt",
+        "sha256": "54487c5bf7cd74726654857c8bb07364ef8193d1d45e297bbbd21fa612cc919f",
+        "bytes": 60,
+        "media_type": "text/plain",
+        "kind": "d1_receipt",
+        "schema_version": "v1"
+      }
+    },
+    {
+      "case_id": "transcript_output_authority_exact_joins",
+      "outcome": "pass",
+      "evidence": {
+        "path": "cases/transcript_output_authority_exact_joins.txt",
+        "sha256": "29a79f99f91dec5054b3f03ca42e998c2aecb9ade9b9d305d67166bdd1a764bc",
+        "bytes": 69,
+        "media_type": "text/plain",
+        "kind": "authority_receipt",
+        "schema_version": "v1"
+      }
+    }
+  ]
+}

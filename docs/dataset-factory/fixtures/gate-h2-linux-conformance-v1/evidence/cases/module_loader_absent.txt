@@ -1,0 +1,1 @@
+synthetic local evidence for module_loader_absent
