@@ -1,0 +1,28 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"gate-h2-hermetic-builder-recipe.schema.v1.json",
+  "type":"object","additionalProperties":false,
+  "required":["schema_version","target","approval_status","nonproduction","source","commitments","base_image","vendor_tree","trust_roots","policy","tool_requirements","recipe_sha256"],
+  "properties":{
+    "schema_version":{"const":"gate_h2_hermetic_builder_recipe_v1"},"target":{"const":"x86_64-unknown-linux-musl"},
+    "approval_status":{"enum":["pending_external_base_digest_review","approved_immutable_inputs"]},"nonproduction":{"type":"boolean"},
+    "source":{"$ref":"#/$defs/source"},"commitments":{"$ref":"#/$defs/commitments"},"base_image":{"anyOf":[{"type":"null"},{"$ref":"#/$defs/image"}]},"vendor_tree":{"anyOf":[{"type":"null"},{"$ref":"#/$defs/vendor"}]},"trust_roots":{"anyOf":[{"type":"null"},{"$ref":"#/$defs/hash"}]},
+    "policy":{"$ref":"#/$defs/policy"},"tool_requirements":{"$ref":"#/$defs/tools"},"recipe_sha256":{"$ref":"#/$defs/hash"}
+  },
+  "allOf":[
+    {"if":{"type":"object","properties":{"approval_status":{"const":"pending_external_base_digest_review"}},"required":["approval_status"]},"then":{"type":"object","properties":{"nonproduction":{"const":true},"base_image":{"type":"null"},"vendor_tree":{"type":"null"},"trust_roots":{"type":"null"},"tool_requirements":{"$ref":"#/$defs/pending_tools"}}}},
+    {"if":{"type":"object","properties":{"approval_status":{"const":"approved_immutable_inputs"}},"required":["approval_status"]},"then":{"type":"object","properties":{"nonproduction":{"const":false},"base_image":{"$ref":"#/$defs/image"},"vendor_tree":{"$ref":"#/$defs/vendor"},"trust_roots":{"$ref":"#/$defs/hash"},"tool_requirements":{"$ref":"#/$defs/approved_tools"}}}}
+  ],
+  "$defs":{
+    "hash":{"type":"string","pattern":"^[a-f0-9]{64}$"},
+    "source":{"type":"object","additionalProperties":false,"required":["commit","git_tree","descriptor_path","descriptor_sha256","descriptor_tree_sha256","descriptor_file_count","descriptor_byte_count"],"properties":{"commit":{"type":"string","pattern":"^[a-f0-9]{40}$"},"git_tree":{"type":"string","pattern":"^[a-f0-9]{40}$"},"descriptor_path":{"const":"docs/dataset-factory/fixtures/podman-supervisor-v1/source-descriptor-v2.json"},"descriptor_sha256":{"$ref":"#/$defs/hash"},"descriptor_tree_sha256":{"$ref":"#/$defs/hash"},"descriptor_file_count":{"const":57},"descriptor_byte_count":{"const":936319}}},
+    "commitments":{"type":"object","additionalProperties":false,"required":["cargo_lock_sha256","toolchain_lock_sha256","source_allowlist_sha256","source_export_script_sha256","build_script_sha256","oci_assembly_script_sha256"],"properties":{"cargo_lock_sha256":{"$ref":"#/$defs/hash"},"toolchain_lock_sha256":{"$ref":"#/$defs/hash"},"source_allowlist_sha256":{"$ref":"#/$defs/hash"},"source_export_script_sha256":{"$ref":"#/$defs/hash"},"build_script_sha256":{"$ref":"#/$defs/hash"},"oci_assembly_script_sha256":{"$ref":"#/$defs/hash"}}},
+    "image":{"type":"object","additionalProperties":false,"required":["reference","digest"],"properties":{"reference":{"type":"string","pattern":"^[a-z0-9][a-z0-9./:_-]*@sha256:[a-f0-9]{64}$"},"digest":{"type":"string","pattern":"^sha256:[a-f0-9]{64}$"}}},
+    "vendor":{"type":"object","additionalProperties":false,"required":["sha256","file_count","byte_count","source_replacement_config_sha256","repository_snapshots"],"properties":{"sha256":{"$ref":"#/$defs/hash"},"file_count":{"type":"integer","minimum":1},"byte_count":{"type":"integer","minimum":1},"source_replacement_config_sha256":{"$ref":"#/$defs/hash"},"repository_snapshots":{"type":"array","minItems":1,"items":{"type":"string","pattern":"^[a-z0-9][a-z0-9./:_-]*@sha256:[a-f0-9]{64}$"}}}},
+    "tool":{"type":"object","additionalProperties":false,"required":["version","artifact_sha256"],"properties":{"version":{"type":"string","pattern":"^\\d+\\.\\d+\\.\\d+$"},"artifact_sha256":{"anyOf":[{"type":"null"},{"$ref":"#/$defs/hash"}]}}},
+    "tools":{"type":"object","additionalProperties":false,"required":["cargo","rustc","musl","node","podman"],"properties":{"cargo":{"$ref":"#/$defs/tool"},"rustc":{"$ref":"#/$defs/tool"},"musl":{"$ref":"#/$defs/tool"},"node":{"$ref":"#/$defs/tool"},"podman":{"$ref":"#/$defs/tool"}}},
+    "pending_tools":{"allOf":[{"$ref":"#/$defs/tools"},{"type":"object","properties":{"cargo":{"type":"object","properties":{"artifact_sha256":{"type":"null"}}},"rustc":{"type":"object","properties":{"artifact_sha256":{"type":"null"}}},"musl":{"type":"object","properties":{"artifact_sha256":{"type":"null"}}},"node":{"type":"object","properties":{"artifact_sha256":{"type":"null"}}},"podman":{"type":"object","properties":{"artifact_sha256":{"type":"null"}}}}}]},
+    "approved_tools":{"allOf":[{"$ref":"#/$defs/tools"},{"type":"object","properties":{"cargo":{"type":"object","properties":{"artifact_sha256":{"$ref":"#/$defs/hash"}}},"rustc":{"type":"object","properties":{"artifact_sha256":{"$ref":"#/$defs/hash"}}},"musl":{"type":"object","properties":{"artifact_sha256":{"$ref":"#/$defs/hash"}}},"node":{"type":"object","properties":{"artifact_sha256":{"$ref":"#/$defs/hash"}}},"podman":{"type":"object","properties":{"artifact_sha256":{"type":"null"}}}}}]},
+    "policy":{"type":"object","additionalProperties":false,"required":["network","pull","read_only_rootfs","offline_cargo","host_cache_fallback","package_manager_mutation"],"properties":{"network":{"const":"none"},"pull":{"const":"never"},"read_only_rootfs":{"const":true},"offline_cargo":{"const":true},"host_cache_fallback":{"const":false},"package_manager_mutation":{"const":false}}}
+  }
+}
