@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "gate-h2-linux-conformance-universe.schema.v1.json",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "version", "predecessor", "cases", "universe_sha256"],
+  "properties": {
+    "schema_version": { "const": "gate_h2_linux_conformance_universe_v1.0.0" },
+    "version": { "const": "gate_h2_real_linux_podman_conformance_universe_v1" },
+    "predecessor": { "$ref": "#/$defs/predecessor" },
+    "cases": { "type": "array", "minItems": 69, "maxItems": 69, "items": { "type": "object", "additionalProperties": false, "required": ["id", "category", "evidence_kind", "required_for_production"], "properties": { "id": { "type": "string", "pattern": "^[a-z0-9_]+$" }, "category": { "type": "string", "pattern": "^[a-z0-9_]+$" }, "evidence_kind": { "type": "string", "pattern": "^[a-z0-9_]+$" }, "required_for_production": { "const": true } } } },
+    "universe_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+  },
+  "$defs": { "pin": { "type": "object", "additionalProperties": false, "required": ["path", "sha256", "bytes"], "properties": { "path": { "type": "string" }, "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "bytes": { "type": "integer", "minimum": 1 } } }, "predecessor": { "type": "object", "additionalProperties": false, "required": ["artifact_id", "sorted_tree_sha256", "commit", "pins", "schema_commitments"], "properties": { "artifact_id": { "const": "dfv0_gate_h2_podman_supervisor_v1_20260718" }, "sorted_tree_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "commit": { "type": "string", "pattern": "^[a-f0-9]{40}$" }, "pins": { "type": "object", "additionalProperties": false, "required": ["podman_descriptor", "https_broker_descriptor", "source_allowlist"], "properties": { "podman_descriptor": { "$ref": "#/$defs/pin" }, "https_broker_descriptor": { "$ref": "#/$defs/pin" }, "source_allowlist": { "$ref": "#/$defs/pin" } } }, "schema_commitments": { "type": "object", "additionalProperties": false, "required": ["podman_descriptor_schema_version", "https_broker_descriptor_schema_version", "inherited_descriptor_sha256"], "properties": { "podman_descriptor_schema_version": { "type": "string" }, "https_broker_descriptor_schema_version": { "type": "string" }, "inherited_descriptor_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" } } } } } }
+}

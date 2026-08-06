@@ -1,0 +1,1 @@
+synthetic local evidence for cap_drop_no_new_privileges
