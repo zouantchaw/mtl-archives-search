@@ -122,6 +122,12 @@ pipelines/
 9. Verified Multimodal Intelligence Batch 001: synthetic foundation → 26 mechanically eligible canonical-real candidates → primary 256px visual promotion with 12 selected and 4 reserves. Independent visual review approved all 16 primary decisions with zero disagreements; historical verification, dossiers, and benchmarks remain zero.
 10. City Memory buyer validation (#109): privacy-preserving interview/proposal kit → categorical five-slot ledger → fail-closed acceptance decision. The tracked template is intentionally empty; `kit_ready: true` is not external evidence and `--require-acceptance` must remain failing until real buyer evidence exists.
 
+MTL-CityMemory-Bench v1 (#70) currently has only a pre-lock candidate/preflight
+foundation. `npm run dataset-factory:benchmark-v1-candidate` must keep
+`lock_authority: false` and `issue_70_complete: false` until the exact graph and
+Gold Batch 002 evidence are available, 100 reviewed retrieval queries exist,
+and an independent benchmark review passes.
+
 Cross-platform content analytics (`npm run social:analyze-cross-platform`) is
 identity-gated. Supply an explicit platform-post identity map and canonical
 manifest; missing joins fail closed. Product events remain `reward_not_fact`

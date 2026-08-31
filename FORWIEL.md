@@ -23,6 +23,11 @@ The key engineering idea is separation of durable code from bulky generated evid
 
 Dataset Factory is the offline layer for making search quality measurable. It builds review packets, calibration labels, benchmark tasks, active-learning queues, quality-repair queues, visual-family graphs, research-enrichment packets, search judgments, and reward-data rows.
 
+MTL-CityMemory-Bench v1 is currently only a pre-lock candidate/preflight
+foundation. Its report binds available artifact IDs and hashes, keeps silver
+retrieval rows separate, and emits a human-review acquisition queue; it does
+not claim a locked benchmark or issue #70 completion.
+
 The cross-platform content loop is also offline and diagnostic: reports require
 an explicit platform-post/package/canonical identity join and keep product and
 social behavior separate from factual archive truth.
