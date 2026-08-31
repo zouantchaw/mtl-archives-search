@@ -74,6 +74,8 @@
     "dataset-factory:benchmark-v0:search": "npm run dataset-factory:benchmark-v0:search --workspace=@mtl-archives/scripts --",
     "dataset-factory:benchmark-v1-candidate": "npm run dataset-factory:benchmark-v1-candidate --workspace=@mtl-archives/scripts --",
     "dataset-factory:benchmark-v1-candidate:self-test": "npm run dataset-factory:benchmark-v1-candidate:self-test --workspace=@mtl-archives/scripts --",
+    "dataset-factory:promotion-challenge-preflight-v1": "npm run dataset-factory:promotion-challenge-preflight-v1 --workspace=@mtl-archives/scripts --",
+    "dataset-factory:promotion-challenge-preflight-self-test-v1": "npm run dataset-factory:promotion-challenge-preflight-self-test-v1 --workspace=@mtl-archives/scripts --",
     "dataset-factory:model-baseline-v0": "npm run dataset-factory:model-baseline-v0 --workspace=@mtl-archives/scripts --",
     "dataset-factory:search-reranker-v0": "npm run dataset-factory:search-reranker-v0 --workspace=@mtl-archives/scripts --",
     "dataset-factory:reward-data-v0": "npm run dataset-factory:reward-data-v0 --workspace=@mtl-archives/scripts --",
