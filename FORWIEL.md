@@ -23,6 +23,10 @@ The key engineering idea is separation of durable code from bulky generated evid
 
 Dataset Factory is the offline layer for making search quality measurable. It builds review packets, calibration labels, benchmark tasks, active-learning queues, quality-repair queues, visual-family graphs, research-enrichment packets, search judgments, and reward-data rows.
 
+The cross-platform content loop is also offline and diagnostic: reports require
+an explicit platform-post/package/canonical identity join and keep product and
+social behavior separate from factual archive truth.
+
 Issues #65 and #66 made this durable and identity-explicit:
 
 - `docs/dataset-factory/artifact-registry.v0.jsonl` records the artifact graph, including the tracked Issue 69 candidate, visual-review, source-research, and ground-research descriptors. Use the registry checker for the current count instead of copying a volatile number into this guide.

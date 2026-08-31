@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://mtlarchives.com/schemas/content-identity-map-v1.json",
+  "title": "MTL Archives Content Identity Map v1",
+  "description": "Declared external platform post to content package and canonical archive identity join. The canonical manifest verifies record/source-asset existence; package and visual-family values are not independently verified by this local contract. One JSON object per row; JSONL is supported by the local command.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "platform",
+    "platform_post_id",
+    "canonical_record_id",
+    "visual_family_id",
+    "package_id",
+    "source_asset",
+    "audience",
+    "format",
+    "theme",
+    "publish_status"
+  ],
+  "allOf": [
+    {
+      "if": { "properties": { "publish_status": { "const": "published" } } },
+      "then": {
+        "required": ["platform_permalink"],
+        "properties": {
+          "platform_permalink": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  ],
+  "properties": {
+    "platform": { "enum": ["instagram", "facebook"] },
+    "platform_post_id": { "type": "string", "minLength": 1 },
+    "canonical_record_id": { "type": "string", "minLength": 1 },
+    "visual_family_id": { "type": "string", "minLength": 1 },
+    "package_id": { "type": "string", "minLength": 1 },
+    "source_asset": { "type": "string", "minLength": 1 },
+    "audience": { "type": "string", "minLength": 1 },
+    "format": { "type": "string", "minLength": 1 },
+    "theme": { "type": "string", "minLength": 1 },
+    "hook": { "type": ["string", "null"] },
+    "caption_version": { "type": ["string", "null"] },
+    "pipeline_version": { "type": ["string", "null"] },
+    "model_version": { "type": ["string", "null"] },
+    "prompt_version": { "type": ["string", "null"] },
+    "renderer_version": { "type": ["string", "null"] },
+    "publish_status": {
+      "enum": ["draft", "scheduled", "published", "failed", "deleted"]
+    },
+    "platform_permalink": { "type": ["string", "null"] }
+  }
+}

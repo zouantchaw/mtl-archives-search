@@ -1,0 +1,153 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://mtlarchives.com/schemas/content-signal-v1.json",
+  "title": "MTL Archives Content Signal v1",
+  "description": "Identity-bearing product behavior signal. Social outcomes use the same identity fields but remain outside factual labels.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "signal_class",
+    "source_type",
+    "event_name",
+    "captured_at",
+    "timezone",
+    "canonical_record_id",
+    "visual_family_id",
+    "package_id",
+    "source_asset",
+    "platform",
+    "surface",
+    "metric_name",
+    "metric_value",
+    "metric_definition",
+    "observation_window",
+    "source",
+    "query",
+    "position",
+    "candidate_set",
+    "ranking_version",
+    "model_version",
+    "index_version",
+    "experiment_assignment",
+    "propensity",
+    "safety_budget_id",
+    "privacy_consent",
+    "ground_truth_boundary",
+    "identity_basis",
+    "package_family_verification"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": { "event_name": { "const": "search_result_clicked" } }
+      },
+      "then": {
+        "required": [
+          "query",
+          "position",
+          "candidate_set",
+          "ranking_version",
+          "model_version",
+          "index_version"
+        ],
+        "properties": {
+          "query": { "type": "string", "minLength": 1 },
+          "position": { "type": "integer", "minimum": 0 },
+          "candidate_set": { "type": "array", "minItems": 1 },
+          "ranking_version": { "type": "string", "minLength": 1 },
+          "model_version": { "type": "string", "minLength": 1 },
+          "index_version": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    {
+      "oneOf": [
+        {
+          "properties": {
+            "experiment_assignment": { "type": "null" },
+            "propensity": { "type": "null" },
+            "safety_budget_id": { "type": "null" }
+          }
+        },
+        {
+          "properties": {
+            "experiment_assignment": { "type": "string", "minLength": 1 },
+            "propensity": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            },
+            "safety_budget_id": { "type": "string", "minLength": 1 }
+          }
+        }
+      ]
+    }
+  ],
+  "properties": {
+    "schema_version": { "const": "mtl_content_signal_v1" },
+    "event_id": { "type": "string", "minLength": 1 },
+    "signal_class": { "const": "product_behavior" },
+    "source_type": { "const": "product_analytics" },
+    "event_name": {
+      "enum": [
+        "photo_viewed",
+        "photo_dwelled",
+        "photo_shared",
+        "search_committed",
+        "search_result_clicked",
+        "order_mode_entered",
+        "print_cta_clicked",
+        "cart_item_added",
+        "checkout_clicked",
+        "order_completed",
+        "search_no_results"
+      ]
+    },
+    "captured_at": { "type": "string", "format": "date-time" },
+    "timezone": { "const": "America/Toronto" },
+    "canonical_record_id": { "type": "string", "minLength": 1 },
+    "visual_family_id": { "type": "string", "minLength": 1 },
+    "package_id": { "type": "string", "minLength": 1 },
+    "source_asset": { "type": "string", "minLength": 1 },
+    "platform": { "const": "web" },
+    "surface": { "enum": ["search", "photo", "print", "checkout"] },
+    "metric_name": { "type": "string", "minLength": 1 },
+    "metric_value": { "type": "number", "minimum": 0 },
+    "metric_definition": { "type": "string", "minLength": 1 },
+    "observation_window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "end"],
+      "properties": {
+        "start": { "type": "string", "format": "date-time" },
+        "end": { "type": "string", "format": "date-time" }
+      }
+    },
+    "source": { "type": "string", "minLength": 1 },
+    "query": { "type": ["string", "null"] },
+    "position": { "type": ["integer", "null"], "minimum": 0 },
+    "candidate_set": {
+      "type": ["array", "null"],
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "ranking_version": { "type": ["string", "null"] },
+    "model_version": { "type": ["string", "null"] },
+    "index_version": { "type": ["string", "null"] },
+    "experiment_assignment": { "type": ["string", "null"] },
+    "propensity": {
+      "type": ["number", "null"],
+      "exclusiveMinimum": 0,
+      "maximum": 1
+    },
+    "safety_budget_id": { "type": ["string", "null"] },
+    "privacy_consent": {
+      "enum": ["aggregate_public", "pseudonymous_consent", "no_personal_data"]
+    },
+    "ground_truth_boundary": { "const": "reward_not_fact" },
+    "identity_basis": { "const": "declared_identity" },
+    "package_family_verification": { "const": "not_independently_verified" }
+  }
+}
