@@ -1,0 +1,43 @@
+{
+  "schema_version": "city_memory_buyer_validation_v1.0.0",
+  "study": {
+    "issue": 109,
+    "study_id": "city_memory_study_001",
+    "title": "City Memory Study 001: Montreal, Seen Again",
+    "status": "not_started",
+    "honest_status": "no_conversations_performed"
+  },
+  "proposal_test": {
+    "status": "not_tested",
+    "proposal_id": "city-memory-diagnostic-001",
+    "canonical_proposal_sha256": "048e71dff45a9d01e3f9a3f173c9a1cdc61f9957567b67980dd7ac803301f93a",
+    "scope": "Three-week paid City Memory diagnostic: curate 12 source-linked Montreal archive records into one approved visual direction, with a provenance ledger, one buyer-ready concept deck, one spatial application, and one revision round.",
+    "price_cad": 3500,
+    "timeline_weeks": 3,
+    "payment_schedule": "50% on approval; 50% on delivery",
+    "exclusions": [
+      "printing, framing, fabrication, installation, shipping, taxes, and third-party licensing fees",
+      "full interior design or construction documents",
+      "custom software or production deployment",
+      "unverified historical research or legal rights clearance"
+    ],
+    "acceptance_signal": "not_tested"
+  },
+  "slots": [
+    { "slot_id": "slot-1", "status": "uncontacted" },
+    { "slot_id": "slot-2", "status": "uncontacted" },
+    { "slot_id": "slot-3", "status": "uncontacted" },
+    { "slot_id": "slot-4", "status": "uncontacted" },
+    { "slot_id": "slot-5", "status": "uncontacted" }
+  ],
+  "decision": {
+    "status": "not_ready",
+    "owner": "study-owner",
+    "rationale_code": "evidence_pending"
+  },
+  "privacy": {
+    "storage_boundary": "No names, contact details, sensitive material, raw recordings, addresses, or raw budget figures in this ledger or the GitHub issue.",
+    "recording_rule": "Record only with explicit consent; store any recording in the approved private location and keep only a private reference token here.",
+    "redaction_rule": "Use role category, organization type, categorical fields, and private reference tokens only; keep identifying details in the approved private system."
+  }
+}

@@ -256,7 +256,9 @@
     "vlm:tags": "tsx src/vlm/tag-images.ts",
     "vlm:caption:dry": "tsx src/vlm/caption-images.ts --dry-run --limit 5",
     "vlm:merge": "tsx src/vlm/merge-captions.ts",
-    "merge-vision": "tsx src/etl/merge-vision-enrichments.ts"
+    "merge-vision": "tsx src/etl/merge-vision-enrichments.ts",
+    "city-memory:validation:verify-v1": "tsx src/city-memory-validation-v1/validate-evidence-ledger-v1.ts",
+    "city-memory:validation:self-test-v1": "tsx src/city-memory-validation-v1/validate-evidence-ledger-v1.ts --self-test"
   },
   "dependencies": {
     "@mtl-archives/core": "*",

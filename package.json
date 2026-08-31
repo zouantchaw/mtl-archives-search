@@ -201,6 +201,8 @@
     "dataset-factory:verified-dossiers-verify-tracked-v1": "npm run dataset-factory:verified-dossiers-verify-tracked-v1 --workspace=@mtl-archives/scripts --",
     "dataset-factory:verified-dossiers-self-test-v1": "npm run dataset-factory:verified-dossiers-self-test-v1 --workspace=@mtl-archives/scripts --",
     "dataset-factory:verified-dossiers-integration-test-v1": "npm run dataset-factory:verified-dossiers-integration-test-v1 --workspace=@mtl-archives/scripts --",
+    "city-memory:validation:verify-v1": "npm run city-memory:validation:verify-v1 --workspace=@mtl-archives/scripts --",
+    "city-memory:validation:self-test-v1": "npm run city-memory:validation:self-test-v1 --workspace=@mtl-archives/scripts --",
     "dataset-factory:reviewed-metrics-build-v1": "npm run dataset-factory:reviewed-metrics-build-v1 --workspace=@mtl-archives/scripts --",
     "dataset-factory:reviewed-metrics-verify-v1": "npm run dataset-factory:reviewed-metrics-verify-v1 --workspace=@mtl-archives/scripts --",
     "dataset-factory:reviewed-metrics-seal-registry-v1": "npm run dataset-factory:reviewed-metrics-seal-registry-v1 --workspace=@mtl-archives/scripts --",
