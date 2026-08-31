@@ -1041,7 +1041,14 @@ function isFullMonth(month: string, start: string, end: string): boolean {
 }
 
 function csvEscape(value: Cell): string {
-  const text = value === null ? "" : String(value);
+  const rawText = value === null ? "" : String(value);
+  // Report CSVs contain external captions, queries, and identifiers. Keep
+  // string cells that look like spreadsheet formulas as literal text while
+  // preserving numeric cells for downstream analysis.
+  const text =
+    typeof value === "string" && /^[=+\-@]/.test(rawText)
+      ? `'${rawText}`
+      : rawText;
   return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
 }
 

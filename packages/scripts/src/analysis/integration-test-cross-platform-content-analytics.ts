@@ -25,7 +25,7 @@ fs.writeFileSync(
       id: "ig-1",
       timestamp: "2026-01-02T15:00:00Z",
       permalink: "https://example.test/p/ig-1",
-      caption: "A Montreal archive",
+      caption: "=HYPERLINK(\"https://example.test/\")",
       metrics: { views: 10 },
     },
   ]),
@@ -277,6 +277,10 @@ assert.equal(report.monthly[0]?.vercel?.page_visitors, null);
 assert.equal(report.monthly[0]?.vercel?.page_views, 3);
 assert.equal(report.monthly[0]?.vercel?.event_visitors, null);
 assert.equal(report.monthly[0]?.vercel?.event_total, 6);
+assert.match(
+  fs.readFileSync(`${output}-posts.csv`, "utf8"),
+  /'=HYPERLINK\(""https:\/\/example\.test\//,
+);
 assert.equal(containsString(report), false);
 assert.equal(fs.readFileSync(`${output}.md`, "utf8").includes(temp), false);
 assert.equal(
