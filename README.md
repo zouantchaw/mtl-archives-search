@@ -21,6 +21,9 @@ product-event contract, and self-test command.
 Benchmark v1 currently has only a pre-lock candidate/preflight foundation. See
 `docs/dataset-factory/benchmark-v1.md`; it does not claim a locked benchmark,
 model result, or issue #70 completion.
+Issue #71 also has an offline promotion-challenge preflight scaffold; see
+`docs/dataset-factory/promotion-challenge-preflight-v1.md`. It is permanently
+no-ship and runs no models, GPU, production checks, or promotion.
 - `infrastructure/d1/` — schema and migrations
 
 ## Common commands
