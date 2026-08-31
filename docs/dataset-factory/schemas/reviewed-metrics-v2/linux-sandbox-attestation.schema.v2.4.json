@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "linux-sandbox-attestation.schema.v2.5.json",
+  "$id": "linux-sandbox-attestation.schema.v2.4.json",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "status", "synthetic", "platform", "wrapper", "image", "runtime_tree", "executor_semantics", "wrapper_grammar_version", "fixed_argument_allowlist", "argv_prefix", "mounts", "network", "writable_confinement", "runtime_observation", "repo_tree_sha256", "observation", "signer", "signature_base64"],
   "properties": {
-    "schema_version": { "const": "reviewed_metrics_linux_sandbox_attestation_v2.5.0" },
+    "schema_version": { "const": "reviewed_metrics_linux_sandbox_attestation_v2.4.0" },
     "status": { "$ref": "linux-sandbox-attestation.schema.v2.json#/properties/status" },
     "synthetic": { "$ref": "linux-sandbox-attestation.schema.v2.json#/properties/synthetic" },
     "platform": { "$ref": "linux-sandbox-attestation.schema.v2.json#/properties/platform" },
@@ -19,9 +19,9 @@
         "required": ["capability_id", "attestation", "attestation_pin", "conformance_receipt", "receipt_pin", "reviewed_predecessor"],
         "properties": {
           "capability_id": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
-          "attestation": { "$ref": "executor-semantics-attestation.schema.v2.2.json" },
+          "attestation": { "$ref": "executor-semantics-attestation.schema.v2.json" },
           "attestation_pin": { "$ref": "linux-sandbox-attestation.schema.v2.json#/$defs/bytePin" },
-          "conformance_receipt": { "$ref": "executor-conformance-receipt.schema.v2.2.json" },
+          "conformance_receipt": { "$ref": "executor-conformance-receipt.schema.v2.json" },
           "receipt_pin": { "$ref": "linux-sandbox-attestation.schema.v2.json#/$defs/bytePin" },
           "reviewed_predecessor": { "$ref": "linux-sandbox-attestation.schema.v2.json#/$defs/executorSemanticsBundle/properties/reviewed_predecessor" }
         }
@@ -60,7 +60,7 @@
       "type": "object", "additionalProperties": false,
       "required": ["id", "executable", "argv", "started_at", "ended_at", "exit_status", "signal", "timed_out", "stdout_base64", "stdout_sha256", "stdout_bytes", "stderr_base64", "stderr_sha256", "stderr_bytes"],
       "properties": {
-        "id": { "type": "string", "enum": ["image_inspect", "container_start", "container_inspect", "copy_wrapper", "copy_runtime", "copy_stage_program", "runtime_self_check", "network_namespace", "mount_table", "firewall_rules", "observed_destinations", "probe_read_only_input_write", "probe_root_write", "probe_undeclared_write", "probe_declared_output_write", "probe_network_denial", "probe_network_allowlist", "executor_canonical_program_success", "executor_program_substitution", "executor_schema_substitution", "executor_executor_substitution", "executor_undeclared_dependency_rejected", "executor_module_loader_absent", "executor_native_loader_absent", "executor_output_never_readable", "executor_undeclared_write_rejected", "executor_network_escape_rejected", "executor_postspawn_source_replacement", "executor_cleanup_precedes_completion", "executor_exact_https_program_success", "executor_legacy_action_rejected", "executor_uds_socket_role_substitution", "executor_run_token_role_substitution", "executor_opaque_handle_gap_or_reorder", "executor_transcript_commit_substitution", "container_remove", "container_absence"] }, "executable": { "type": "string", "enum": ["/usr/bin/podman", "/usr/bin/readlink", "/usr/bin/cat", "/usr/bin/nsenter", "/usr/sbin/nft", "/usr/bin/ss"] }, "argv": { "type": "array", "minItems": 1, "maxItems": 128, "items": { "type": "string", "maxLength": 4096 } },
+        "id": { "type": "string", "enum": ["image_inspect", "container_start", "container_inspect", "copy_wrapper", "copy_runtime", "copy_stage_program", "runtime_self_check", "network_namespace", "mount_table", "firewall_rules", "observed_destinations", "probe_read_only_input_write", "probe_root_write", "probe_undeclared_write", "probe_declared_output_write", "probe_network_denial", "probe_network_allowlist", "executor_canonical_program_success", "executor_program_substitution", "executor_schema_substitution", "executor_executor_substitution", "executor_undeclared_dependency_rejected", "executor_module_loader_absent", "executor_native_loader_absent", "executor_output_never_readable", "executor_undeclared_write_rejected", "executor_network_escape_rejected", "executor_postspawn_source_replacement", "executor_cleanup_precedes_completion", "container_remove", "container_absence"] }, "executable": { "type": "string", "enum": ["/usr/bin/podman", "/usr/bin/readlink", "/usr/bin/cat", "/usr/bin/nsenter", "/usr/sbin/nft", "/usr/bin/ss"] }, "argv": { "type": "array", "minItems": 1, "maxItems": 128, "items": { "type": "string", "maxLength": 4096 } },
         "started_at": { "$ref": "#/$defs/canonicalTimestamp" }, "ended_at": { "$ref": "#/$defs/canonicalTimestamp" }, "exit_status": { "type": ["integer", "null"] }, "signal": { "type": ["string", "null"] }, "timed_out": { "const": false },
         "stdout_base64": { "type": "string", "maxLength": 87384 }, "stdout_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "stdout_bytes": { "type": "integer", "minimum": 0, "maximum": 65536 },
         "stderr_base64": { "type": "string", "maxLength": 87384 }, "stderr_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "stderr_bytes": { "type": "integer", "minimum": 0, "maximum": 65536 }

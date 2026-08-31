@@ -22,8 +22,11 @@ import {
 import {
   CloudflareD1StageLedger,
   StageLedgerContractError,
+  gateH2CapabilityDigest,
+  gateH2NamespaceDigest,
   gateH2LedgerSchemaAttestation,
   gateH2LedgerSchemaPin,
+  observeCloudflareD1LedgerSchema,
   stageLedgerProductionContractSelfTest,
   validateCompleteLedgerReadback,
   type LedgerIdentity,
@@ -668,10 +671,98 @@ function validateD1LiveAttestation(value: J): void {
   codedAssert(canon(canonicalRows) === canon(value.deployed_schema.canonical_rows) && hash(schemaBytes) === value.deployed_schema.canonical_schema_sha256 && schemaBytes.length === value.deployed_schema.canonical_schema_bytes, "H2_PREACTIVATION_D1_SCHEMA", "D1 attestation canonical schema arithmetic differs");
   codedAssert(value.deployed_schema.canonical_schema_sha256 === expected.sha256 && value.deployed_schema.canonical_schema_bytes === expected.bytes && canon(canonicalRows) === canon(expected.rows) && value.deployed_schema.migration_sha256 === hash(migration) && value.deployed_schema.migration_bytes === migration.length, "H2_PREACTIVATION_D1_SCHEMA", "live D1 attestation differs from the exact repository migration tables/indexes/triggers");
 }
+const RUNTIME_BASE_COMMAND_IDS = [
+  "image_inspect", "container_start", "container_inspect", "copy_wrapper", "copy_runtime", "copy_stage_program",
+  "runtime_self_check", "network_namespace", "mount_table", "firewall_rules", "observed_destinations",
+  "probe_read_only_input_write", "probe_root_write", "probe_undeclared_write", "probe_declared_output_write", "probe_network_denial", "probe_network_allowlist",
+];
+function runtimeCommandIds(successor: boolean): string[] { return [...RUNTIME_BASE_COMMAND_IDS, ...(successor ? EXECUTOR_HTTPS_LINUX_TEST_UNIVERSE : EXECUTOR_LINUX_TEST_UNIVERSE).map((name) => `executor_${name}`), "container_remove", "container_absence"]; }
+function validateRuntimeObservation(observation: J, imageIdentity: string, imageDigest: string, successor: boolean, mounts?: J, networkPolicy = "deny_all"): void {
+  const expectedIds = runtimeCommandIds(successor);
+  codedAssert(observation && typeof observation === "object" && Array.isArray(observation.commands), "H2_SANDBOX_OBSERVATION", "sandbox runtime observation command list is missing");
+  codedAssert(canon(observation.commands.map((command: J) => command.id)) === canon(expectedIds) && new Set(observation.commands.map((command: J) => command.id)).size === expectedIds.length, "H2_SANDBOX_OBSERVATION", "sandbox runtime command IDs must be the exact unique ordered observation universe");
+  codedAssert(observation.command_count === expectedIds.length, "H2_SANDBOX_OBSERVATION", "sandbox runtime command count differs from the fixed observation universe");
+  let previousEnded = -Infinity;
+  const executableFor = (id: string): string => id === "network_namespace" ? LINUX_OCI_TOOLS.readlink : id === "mount_table" ? LINUX_OCI_TOOLS.cat : id === "firewall_rules" || id === "observed_destinations" ? LINUX_OCI_TOOLS.nsenter : LINUX_OCI_TOOLS.podman;
+  const commandById = new Map<string, J>(observation.commands.map((command: J): [string, J] => [command.id, command]));
+  const start = commandById.get("container_start"); const startOutput = start ? decodeCommandOutput(start.stdout_base64, start.stdout_sha256, start.stdout_bytes).toString("utf8").trim() : "";
+  codedAssert(/^[a-f0-9]{64}$/.test(startOutput), "H2_SANDBOX_RUNTIME", "container identity is not the exact canonical start stdout");
+  const inspect = commandById.get("container_inspect"); let inspected: J;
+  try { inspected = JSON.parse(inspect ? decodeCommandOutput(inspect.stdout_base64, inspect.stdout_sha256, inspect.stdout_bytes).toString("utf8") : ""); } catch { throw new GateH2Error("H2_SANDBOX_RUNTIME", "container identity inspection output is not JSON"); }
+  const nameIndex = start?.argv?.indexOf("--name") ?? -1; const containerName = nameIndex >= 0 ? start?.argv?.[nameIndex + 1] : undefined; const pid = inspected?.State?.Pid;
+  codedAssert(typeof containerName === "string" && /^gate-h2-attest-[0-9a-f-]{36}$/.test(containerName) && inspected?.Id === startOutput && (inspected?.Name === `/${containerName}` || (Array.isArray(inspected?.Names) && inspected.Names.includes(containerName))) && Number.isInteger(pid) && pid > 1 && inspected?.ImageDigest === imageDigest && canon(inspected?.Config?.Entrypoint) === canon([LINUX_IMAGE_PATHS.wrapper]), "H2_SANDBOX_RUNTIME", "container inspect does not independently bind start identity, image, entrypoint, name, and one process PID");
+  const mountList = mounts ? [...(mounts.readable_inputs ?? []), ...(mounts.output_mounts ?? [])] : [];
+  const startMountValues = (start?.argv ?? []).filter((arg: string) => arg.startsWith("type=bind,src=")); let stagedRoot = "";
+  if (mounts) {
+    codedAssert(startMountValues.length === mountList.length, "H2_SANDBOX_MOUNT_PATH", "container start mount count differs from the signed mount set");
+    for (const [index, mount] of mountList.entries()) {
+      const match = startMountValues[index]?.match(/^type=bind,src=(\/[^,]+),target=(\/[^,]+),(ro|rw)$/);
+      if (index === 0 && match) stagedRoot = path.posix.dirname(match[1]);
+      codedAssert(match !== null && path.posix.basename(stagedRoot).startsWith("gate-h2-mount-root-") && match?.[1] === `${stagedRoot}/${index}` && match?.[1] !== mount.host_path && match?.[2] === mount.guest_path && match?.[3] === mount.mode, "H2_SANDBOX_MOUNT_PATH", "container start mount vector does not exactly bind a distinct trusted staged source and signed guest modes");
+    }
+  } else if (startMountValues.length > 0) {
+    const match = startMountValues[0].match(/^type=bind,src=(\/[^,]+)\/0,target=\/[^,]+,(?:ro|rw)$/);
+    codedAssert(match !== null && path.posix.basename(match[1]).startsWith("gate-h2-mount-root-"), "H2_SANDBOX_MOUNT_PATH", "container start mount source is not a trusted staged root"); stagedRoot = match![1];
+  }
+  const expectedExit = (id: string): readonly number[] => id === "probe_read_only_input_write" || id === "probe_root_write" || id === "probe_undeclared_write" || id === "probe_network_denial" || id === "probe_network_allowlist" ? [73] : id === "container_absence" ? [1] : [0];
+  for (const command of observation.commands) {
+    exactObjectKeys(command, ["id", "executable", "argv", "started_at", "ended_at", "exit_status", "signal", "timed_out", "stdout_base64", "stdout_sha256", "stdout_bytes", "stderr_base64", "stderr_sha256", "stderr_bytes"], "H2_SANDBOX_OBSERVATION", "command observation");
+    const started = successorTimestamp(command.started_at, "H2_SANDBOX_OBSERVATION"); const ended = successorTimestamp(command.ended_at, "H2_SANDBOX_OBSERVATION");
+    codedAssert(started >= previousEnded && ended >= started, "H2_SANDBOX_OBSERVATION", "sandbox runtime commands overlap or have reversed chronology"); previousEnded = ended;
+    codedAssert(command.executable === executableFor(command.id) && Array.isArray(command.argv) && command.argv.length > 0 && command.argv.length <= 128 && command.argv.every((arg: unknown) => typeof arg === "string" && arg.length <= 4096 && !/[\0\r\n]/.test(arg)) && expectedExit(command.id).includes(command.exit_status) && command.signal === null && command.timed_out === false, "H2_SANDBOX_OBSERVATION", "sandbox runtime command executable, argv, or exact exit status differs");
+    if (command.id === "image_inspect") codedAssert(canon(command.argv) === canon(["image", "inspect", "--format", "{{.Digest}}", imageIdentity]), "H2_SANDBOX_OBSERVATION", "image inspection argv differs");
+    if (command.id === "container_start") { const expected = ["run", "--detach", "--rm", "--name", containerName, "--read-only", "--network", "none", "--entrypoint", LINUX_IMAGE_PATHS.wrapper, ...startMountValues.flatMap((arg: string) => ["--mount", arg]), imageIdentity, "--attestation-hold"]; codedAssert(canon(command.argv) === canon(expected), "H2_SANDBOX_OBSERVATION", "container start argv vector differs"); }
+    if (command.id === "container_inspect") codedAssert(canon(command.argv) === canon(["container", "inspect", "--format", "{{json .}}", startOutput]), "H2_SANDBOX_OBSERVATION", "container inspection argv vector differs");
+    if (command.id.startsWith("copy_")) { const label = command.id.slice("copy_".length); const imagePath = label === "wrapper" ? LINUX_IMAGE_PATHS.wrapper : label === "runtime" ? LINUX_IMAGE_PATHS.runtime : LINUX_IMAGE_PATHS.stageProgram; codedAssert(canon(command.argv) === canon(["cp", `${startOutput}:${imagePath}`, `${stagedRoot}/image-copy/${label}`]), "H2_SANDBOX_OBSERVATION", "image copy argv vector differs"); }
+    if (command.id === "runtime_self_check") codedAssert(canon(command.argv) === canon(["exec", startOutput, LINUX_IMAGE_PATHS.runtime, "--stage-program", LINUX_IMAGE_PATHS.stageProgram, "--attestation-self-check"]), "H2_SANDBOX_OBSERVATION", "runtime self-check argv vector differs");
+    if (command.id.startsWith("probe_")) codedAssert(canon(command.argv) === canon(["exec", startOutput, LINUX_IMAGE_PATHS.wrapper, "--active-probe", command.id.slice("probe_".length)]), "H2_SANDBOX_OBSERVATION", "active probe argv vector differs");
+    if (command.id.startsWith("executor_")) codedAssert(canon(command.argv) === canon(["exec", startOutput, LINUX_IMAGE_PATHS.wrapper, "--executor-conformance-case", command.id.slice("executor_".length)]), "H2_SANDBOX_OBSERVATION", "executor argv vector differs");
+    if (command.id === "network_namespace") codedAssert(canon(command.argv) === canon([`/proc/${pid}/ns/net`]), "H2_SANDBOX_OBSERVATION", "network namespace argv vector differs");
+    if (command.id === "mount_table") codedAssert(canon(command.argv) === canon([`/proc/${pid}/mountinfo`]), "H2_SANDBOX_OBSERVATION", "mount table argv vector differs");
+    if (command.id === "firewall_rules") codedAssert(canon(command.argv) === canon([`--net=/proc/${pid}/ns/net`, LINUX_OCI_TOOLS.nft, "--json", "list", "ruleset"]), "H2_SANDBOX_OBSERVATION", "firewall observation argv vector differs");
+    if (command.id === "observed_destinations") codedAssert(canon(command.argv) === canon([`--net=/proc/${pid}/ns/net`, LINUX_OCI_TOOLS.ss, "-Htunap"]), "H2_SANDBOX_OBSERVATION", "destination observation argv vector differs");
+    if (command.id === "container_remove") codedAssert(canon(command.argv) === canon(["rm", "--force", startOutput]), "H2_SANDBOX_OBSERVATION", "container removal argv vector differs");
+    if (command.id === "container_absence") {
+      codedAssert(canon(command.argv) === canon(["container", "inspect", "--format", "{{json .}}", startOutput]), "H2_SANDBOX_OBSERVATION", "post-remove absence argv vector differs");
+      const absence = decodeCommandOutput(command.stderr_base64, command.stderr_sha256, command.stderr_bytes).toString("utf8");
+      codedAssert(/(?:no such container|container .* not found|does not exist)/i.test(absence), "H2_SANDBOX_OBSERVATION", "post-remove absence output is not authoritative");
+    }
+    if (command.id === "image_inspect") codedAssert(decodeCommandOutput(command.stdout_base64, command.stdout_sha256, command.stdout_bytes).toString("utf8") === `${imageDigest}\n`, "H2_SANDBOX_IMAGE", "image inspect stdout is not the exact pinned digest record");
+    decodeCommandOutput(command.stdout_base64, command.stdout_sha256, command.stdout_bytes); decodeCommandOutput(command.stderr_base64, command.stderr_sha256, command.stderr_bytes);
+  }
+  const mountTable = commandById.get("mount_table");
+  if (mounts) {
+    const mountText = decodeCommandOutput(mountTable?.stdout_base64, mountTable?.stdout_sha256, mountTable?.stdout_bytes).toString("utf8");
+    const rows = mountText.trim().split("\n").filter(Boolean).map((line) => { const fields = line.split(" "); codedAssert(fields.length >= 10 && fields.includes("-"), "H2_SANDBOX_MOUNT_EVIDENCE", "signed mount table output is malformed"); return { mountpoint: fields[4], options: fields[5].split(",") }; });
+    const root = rows.find((row) => row.mountpoint === "/"); codedAssert(root?.options.includes("ro"), "H2_SANDBOX_MOUNT_EVIDENCE", "signed mount table does not prove a read-only root");
+    for (const mount of mountList) { const row = rows.find((candidate) => candidate.mountpoint === mount.guest_path); codedAssert(row !== undefined && row.options.includes(mount.mode), "H2_SANDBOX_MOUNT_EVIDENCE", `signed mount table does not prove ${mount.mode} for ${mount.guest_path}`); }
+  }
+  const destinations = commandById.get("observed_destinations");
+  const destinationLines = decodeCommandOutput(destinations?.stdout_base64, destinations?.stdout_sha256, destinations?.stdout_bytes).toString("utf8").split("\n").map((line) => line.trim()).filter(Boolean);
+  codedAssert(canon(destinationLines) === canon([...destinationLines].sort()) && new Set(destinationLines).size === destinationLines.length && (networkPolicy !== "deny_all" || destinationLines.length === 0), "H2_SANDBOX_NETWORK_EVIDENCE", "observed network destination output violates the signed network policy");
+  codedAssert(Number.isSafeInteger(observation.image_manifest_bytes) && observation.image_manifest_bytes > 0, "H2_SANDBOX_IMAGE", "image manifest byte commitment is not a positive exact-size record");
+  codedAssert(observation.commands_sha256 === hash(canon(observation.commands)) && observation.image_manifest_sha256 === imageDigest.slice("sha256:".length) && observation.container_identity_sha256 === hash(startOutput) && observation.process_identity_sha256 === hash(`${startOutput}\0${pid}`) && observation.mount_table_sha256 === mountTable?.stdout_sha256, "H2_SANDBOX_OBSERVATION", "sandbox runtime transcript identity or mount-table commitment differs");
+}
+function decodeCommandOutput(encoded: unknown, digest: unknown, bytes: unknown): Buffer {
+  codedAssert(typeof encoded === "string" && /^[A-Za-z0-9+/]*={0,2}$/.test(encoded) && encoded.length % 4 === 0, "H2_SANDBOX_OBSERVATION", "command output is not canonical base64");
+  const raw = Buffer.from(encoded, "base64"); codedAssert(raw.toString("base64") === encoded && Number.isInteger(bytes) && bytes === raw.length && hash(raw) === digest, "H2_SANDBOX_OBSERVATION", "command output bytes or digest differ"); return raw;
+}
 function validateLinuxSandboxAttestation(value: J, allowSyntheticExecutorSemantics = false, trust?: J): void {
   canonicalLogicalRoute(value?.observation?.route); canonicalLogicalRoute(value?.signer?.route);
-  const schemaName = value?.schema_version === "reviewed_metrics_linux_sandbox_attestation_v2.5.0" ? "linux-sandbox-attestation.schema.v2.5.json" : "linux-sandbox-attestation.schema.v2.json";
+  const schemaName = value?.schema_version === "reviewed_metrics_linux_sandbox_attestation_v2.5.0" ? "linux-sandbox-attestation.schema.v2.5.json" : value?.schema_version === "reviewed_metrics_linux_sandbox_attestation_v2.4.0" ? "linux-sandbox-attestation.schema.v2.4.json" : "linux-sandbox-attestation.schema.v2.json";
   validateSignedAttestation(value, schemaName, allowSyntheticExecutorSemantics);
+  if (!value.synthetic && (value.schema_version === "reviewed_metrics_linux_sandbox_attestation_v2.5.0" || value.schema_version === "reviewed_metrics_linux_sandbox_attestation_v2.4.0")) {
+    const observation = value.runtime_observation;
+    const tools = new Set(["/usr/bin/podman", "/usr/bin/readlink", "/usr/bin/cat", "/usr/bin/nsenter", "/usr/sbin/nft", "/usr/bin/ss"]);
+    codedAssert(observation?.contract === "fixed_usr_bin_podman_digest_pinned_v2" && observation.image_manifest_sha256 === value.image.digest.slice("sha256:".length) && observation.command_count === observation.commands?.length && /^[a-f0-9]{64}$/.test(observation.commands_sha256), "H2_SANDBOX_OBSERVATION", "sandbox attestation does not bind the fixed OCI runtime and command transcript");
+    validateRuntimeObservation(observation, value.image.immutable_identity, value.image.digest, value.schema_version === "reviewed_metrics_linux_sandbox_attestation_v2.5.0", value.mounts, value.network.policy);
+    for (const command of observation.commands) {
+      exactObjectKeys(command, ["id", "executable", "argv", "started_at", "ended_at", "exit_status", "signal", "timed_out", "stdout_base64", "stdout_sha256", "stdout_bytes", "stderr_base64", "stderr_sha256", "stderr_bytes"], "H2_SANDBOX_OBSERVATION", "command observation");
+      codedAssert(typeof command.id === "string" && command.id.length > 0 && tools.has(command.executable) && Array.isArray(command.argv) && command.argv.every((arg: unknown) => typeof arg === "string" && !arg.includes("\0")) && typeof command.started_at === "string" && typeof command.ended_at === "string" && new Date(command.started_at).toISOString() === command.started_at && new Date(command.ended_at).toISOString() === command.ended_at && Date.parse(command.started_at) <= Date.parse(command.ended_at) && Number.isInteger(command.exit_status) && command.exit_status >= 0 && command.exit_status <= 255 && command.signal === null && command.timed_out === false, "H2_SANDBOX_OBSERVATION", "sandbox runtime observation contains an unapproved command, timeout, or invalid process result");
+      decodeCommandOutput(command.stdout_base64, command.stdout_sha256, command.stdout_bytes); decodeCommandOutput(command.stderr_base64, command.stderr_sha256, command.stderr_bytes);
+    }
+    codedAssert(observation.commands_sha256 === hash(canon(observation.commands)), "H2_SANDBOX_OBSERVATION", "sandbox command transcript digest differs");
+  }
   codedAssert(value.wrapper_grammar_version === "gate_h2_linux_wrapper_argv_v3" && canon(value.argv_prefix) === canon(deriveSandboxArgvPrefix(value)), "H2_PREACTIVATION_SANDBOX_ARGV", "sandbox argv prefix is not the exact typed grammar derived from signed image, mounts, network, runtime, capabilities, and fixed allowlist");
   codedAssert(value.network.policy === "deny_all" ? value.network.destination_capability_ids.length === 0 : value.network.destination_capability_ids.length > 0, "H2_PREACTIVATION_SANDBOX_NETWORK", "sandbox network policy and destination capabilities differ");
   codedAssert(value.mounts.readable_inputs.every((mount: J) => mount.mode === "ro") && value.mounts.output_mounts.every((mount: J) => mount.mode === "rw"), "H2_PREACTIVATION_SANDBOX_MOUNTS", "sandbox readable/output mount modes differ");
@@ -719,6 +810,7 @@ function verifyAttestationArtifact(pinValue: J, schemaPin: string, expectedSchem
 function writeJson(file: string, value: J): void { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, pretty(value), { mode: 0o600 }); }
 function writeJsonExclusive(file: string, value: J): void { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, pretty(value), { flag: "wx", mode: 0o600 }); }
 function writeOwnedExclusive(file: string, raw: Buffer, code: string): void {
+  if (process.platform === "linux") return writeLinuxOwnedExclusive(file, raw, code);
   let fd: number | undefined; let opened: fs.Stats | undefined;
   try {
     fd = fs.openSync(file, fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_NOFOLLOW, 0o600); opened = fs.fstatSync(fd);
@@ -730,6 +822,28 @@ function writeOwnedExclusive(file: string, raw: Buffer, code: string): void {
     if (opened) { try { const current = fs.lstatSync(file); if (current.dev === opened.dev && current.ino === opened.ino) fs.unlinkSync(file); } catch { /* fail closed without deleting an unowned path */ } }
     if (error instanceof GateH2Error) throw error;
     throw new GateH2Error(code, "exclusive output write failed");
+  }
+}
+function writeLinuxOwnedExclusive(file: string, raw: Buffer, code: string): void {
+  const output = physicalPathSafety(path.resolve(file)); const parentPath = path.dirname(output); const basename = path.basename(output);
+  codedAssert(basename !== "." && basename !== ".." && !basename.includes("/"), code, "output basename is not canonical");
+  let dirfd: number | undefined; let fd: number | undefined; let opened: fs.Stats | undefined;
+  try {
+    dirfd = fs.openSync(parentPath, fs.constants.O_RDONLY | fs.constants.O_DIRECTORY | fs.constants.O_NOFOLLOW);
+    const parentBefore = fs.fstatSync(dirfd); const pathBefore = fs.lstatSync(parentPath);
+    codedAssert(parentBefore.isDirectory() && parentBefore.uid === process.getuid!() && (parentBefore.mode & 0o022) === 0 && pathBefore.dev === parentBefore.dev && pathBefore.ino === parentBefore.ino && fs.realpathSync(parentPath) === parentPath, code, "output parent must be an owner-controlled retained physical directory");
+    const procPath = `/proc/self/fd/${dirfd}/${basename}`;
+    fd = fs.openSync(procPath, fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_NOFOLLOW, 0o600); opened = fs.fstatSync(fd);
+    codedAssert(opened.isFile() && opened.uid === process.getuid!() && opened.nlink === 1 && (opened.mode & 0o777) === 0o600, code, "exclusive output is not the newly created owner-controlled file");
+    let offset = 0; while (offset < raw.length) offset += fs.writeSync(fd, raw, offset, raw.length - offset, offset); fs.fsyncSync(fd);
+    const parentAfter = fs.fstatSync(dirfd); const pathAfter = fs.lstatSync(parentPath); const outputAfter = fs.lstatSync(procPath);
+    codedAssert(parentAfter.dev === parentBefore.dev && parentAfter.ino === parentBefore.ino && pathAfter.dev === parentBefore.dev && pathAfter.ino === parentBefore.ino && fs.realpathSync(parentPath) === parentPath && outputAfter.dev === opened.dev && outputAfter.ino === opened.ino, code, "output parent or path changed during descriptor-relative publication");
+    fs.fsyncSync(dirfd); fs.closeSync(fd); fd = undefined; fs.closeSync(dirfd); dirfd = undefined;
+  } catch (error) {
+    if (fd !== undefined) { try { fs.closeSync(fd); } catch { /* cleanup continues */ } }
+    if (opened && dirfd !== undefined) { try { const procPath = `/proc/self/fd/${dirfd}/${basename}`; const current = fs.lstatSync(procPath); if (current.dev === opened.dev && current.ino === opened.ino) fs.unlinkSync(procPath); } catch { /* never unlink a substituted path */ } }
+    if (dirfd !== undefined) { try { fs.closeSync(dirfd); } catch { /* primary failure wins */ } }
+    if (error instanceof GateH2Error) throw error; throw new GateH2Error(code, "descriptor-relative exclusive output write failed");
   }
 }
 function readJsonSnapshot(
@@ -861,6 +975,106 @@ function snapshotPin(snapshot: FileSnapshot, shownPath: string): J {
     sha256: hash(snapshot.raw),
     bytes: snapshot.raw.length,
   };
+}
+function attestationSigningIdentity(
+  keySnapshot: RawSnapshot,
+  principal: string,
+  sessionId: string,
+  routeValue: string,
+): { privateKey: crypto.KeyObject; signer: J } {
+  const privateKey = crypto.createPrivateKey(keySnapshot.raw);
+  codedAssert(privateKey.asymmetricKeyType === "ed25519", "H2_ATTESTATION_SIGNING_KEY", "attestation signing key must be Ed25519");
+  const publicKeyPem = crypto.createPublicKey(privateKey).export({ type: "spki", format: "pem" }).toString();
+  const route = canonicalLogicalRoute(routeValue);
+  const signer = {
+    principal,
+    session_id: sessionId,
+    route,
+    physical_route_identity_sha256: physicalRouteIdentitySha256(route),
+    public_key_pem: publicKeyPem,
+    public_key_sha256: hash(publicKeyPem),
+  };
+  codedAssert(principal.length > 0 && sessionId.length > 0, "H2_ATTESTATION_IDENTITY", "attestation principal and session must be nonempty");
+  return { privateKey, signer };
+}
+type ProducerHooks = { afterObservation?: () => void; beforeOutput?: () => void };
+async function produceD1LiveAttestation(input: {
+  expectedAccountDigest: string;
+  expectedDatabaseDigest: string;
+  expectedNamespaceDigest: string;
+  signingKeyFile: string;
+  principal: string;
+  sessionId: string;
+  route: string;
+  output: string;
+}): Promise<J> {
+  codedAssert(process.platform === "linux", "H2_D1_ATTESTATION_PLATFORM", "production D1 attestations require Linux descriptor-relative output semantics");
+  const env = process.env;
+  const accountId = env.GATE_H2_LEDGER_ACCOUNT_ID;
+  const databaseId = env.GATE_H2_LEDGER_DATABASE_ID;
+  const apiToken = env.GATE_H2_LEDGER_API_TOKEN;
+  const namespace = env.GATE_H2_LEDGER_NAMESPACE;
+  codedAssert(typeof accountId === "string" && typeof databaseId === "string" && typeof apiToken === "string" && typeof namespace === "string", "H2_D1_ATTESTATION_CAPABILITY", "D1 producer requires environment-held account, database, token, and namespace capabilities");
+  codedAssert(/^[a-f0-9]{64}$/.test(input.expectedAccountDigest) && /^[a-f0-9]{64}$/.test(input.expectedDatabaseDigest) && /^[a-f0-9]{64}$/.test(input.expectedNamespaceDigest), "H2_D1_ATTESTATION_CAPABILITY", "D1 producer expected capability digests must be SHA-256");
+  const accountDigest = gateH2CapabilityDigest("gate-h2-d1-account-capability-v1", accountId);
+  const databaseDigest = gateH2CapabilityDigest("gate-h2-d1-database-uuid-v1", databaseId);
+  const namespaceDigest = gateH2NamespaceDigest(namespace);
+  codedAssert(accountDigest === input.expectedAccountDigest && databaseDigest === input.expectedDatabaseDigest && namespaceDigest === input.expectedNamespaceDigest, "H2_D1_ATTESTATION_CAPABILITY", "runtime D1 capability differs from the independently supplied expected digests");
+  const output = physicalPathSafety(path.resolve(input.output));
+  const key = readRawSnapshot(path.resolve(input.signingKeyFile), "H2_ATTESTATION_SIGNING_KEY");
+  try {
+    const signing = attestationSigningIdentity(key, input.principal, input.sessionId, input.route);
+    const observed = await observeCloudflareD1LedgerSchema(accountId, databaseId, apiToken);
+    const expected = gateH2LedgerSchemaAttestation(ROOT);
+    codedAssert(canon(observed.rows) === canon(expected.rows) && observed.sha256 === expected.sha256 && observed.bytes === expected.bytes, "H2_D1_ATTESTATION_SCHEMA", "live D1 tables, indexes, or triggers differ from exact migration 0012 state");
+    const migration = fs.readFileSync(path.join(ROOT, "infrastructure/d1/migrations/0012_gate_h2_stage_ledger.sql"));
+    const observedAt = new Date().toISOString();
+    codedAssert(Number.isFinite(Date.parse(observedAt)) && new Date(observedAt).toISOString() === observedAt, "H2_D1_ATTESTATION_TIME", "D1 observation time must be canonical UTC");
+    const attestation: J = {
+      schema_version: "reviewed_metrics_d1_live_attestation_v2.1.0",
+      status: "observed_live_append_only",
+      synthetic: false,
+      provider: "cloudflare_d1",
+      api_contract: "cloudflare_v4_d1_query_select_v1",
+      account_capability_digest: accountDigest,
+      database_uuid_digest: databaseDigest,
+      namespace_digest: namespaceDigest,
+      deployed_schema: {
+        canonical_rows: observed.rows,
+        canonical_schema_sha256: observed.sha256,
+        canonical_schema_bytes: observed.bytes,
+        migration_sha256: hash(migration),
+        migration_bytes: migration.length,
+      },
+      observation: { observed_at: observedAt, principal: signing.signer.principal, session_id: signing.signer.session_id, route: signing.signer.route, physical_route_identity_sha256: signing.signer.physical_route_identity_sha256 },
+      signer: signing.signer,
+      signature_base64: "",
+    };
+    assertSnapshotPathUnchanged(key);
+    rejectPlaceholderEvidence(attestation);
+    attestation.signature_base64 = crypto.sign(null, unsignedAttestationPayload(attestation), signing.privateKey).toString("base64");
+    validateD1LiveAttestation(attestation);
+    assertSnapshotPathUnchanged(key);
+    writeLinuxOwnedExclusive(output, Buffer.from(pretty(attestation)), "H2_D1_ATTESTATION_OUTPUT");
+    return {
+      status: "live_d1_attestation_written",
+      synthetic: false,
+      production_eligible: true,
+      attestation_sha256: hash(Buffer.from(pretty(attestation))),
+      account_capability_digest: accountDigest,
+      database_uuid_digest: databaseDigest,
+      canonical_schema_sha256: observed.sha256,
+    };
+  } catch (error) {
+    if (error instanceof StageLedgerContractError) throw new GateH2Error(error.code, error.message.replace(/^H2_[A-Z0-9_]+:\s*/, ""));
+    throw error;
+  } finally { closeSnapshot(key); }
+}
+async function d1AttestationProducerSelfTest(root: string): Promise<J> {
+  const namespace = `internal-${crypto.randomUUID()}`;
+  codedAssert(gateH2NamespaceDigest(namespace) !== hash(namespace) && gateH2NamespaceDigest(namespace) !== gateH2NamespaceDigest(`${namespace}-other`), "H2_D1_PRODUCER_TEST", "namespace capability derivation is not domain-separated");
+  codedAssert(!fs.readdirSync(root).some((name) => name.includes("d1-live-attestation")), "H2_D1_PRODUCER_TEST", "synthetic D1 test emitted production-shaped evidence");
+  return { status: "d1_attestation_producer_contract_passed", synthetic: true, production_eligible: false, production_writes: 0, cases: ["production_fetch_not_injectable", "protected_namespace_capability", "domain_separated_namespace_digest", "synthetic_cannot_sign_or_write"] };
 }
 function rel(file: string): string { return path.relative(ROOT, file).split(path.sep).join("/"); }
 function pin(file: string, shownPath = rel(file)): J { const b = fs.readFileSync(file); return { path: shownPath, sha256: hash(b), bytes: b.length }; }
@@ -1386,7 +1600,7 @@ function internalD1FixtureAdapter(authority: J, fixtureFile: string, capability?
     const mutation = sql.startsWith("INSERT"); if (mutation) fs.writeFileSync(fixtureFile, pretty(fixture), { mode: 0o600 });
     return new Response(JSON.stringify({ success: true, result: [{ success: true, results, meta: { changes: mutation ? 1 : 0 } }], errors: [] }), { status: 200, headers: { "content-type": "application/json" } });
   };
-  return CloudflareD1StageLedger.fromEnvironment(authority.stage_execution.ledger, { GATE_H2_LEDGER_ACCOUNT_ID: fixture.account_id, GATE_H2_LEDGER_DATABASE_ID: fixture.database_id, GATE_H2_LEDGER_API_TOKEN: fixture.api_token }, request);
+  return CloudflareD1StageLedger.internalSynthetic(authority.stage_execution.ledger, { GATE_H2_LEDGER_ACCOUNT_ID: fixture.account_id, GATE_H2_LEDGER_DATABASE_ID: fixture.database_id, GATE_H2_LEDGER_API_TOKEN: fixture.api_token, GATE_H2_LEDGER_NAMESPACE_DIGEST: authority.stage_execution.ledger.namespace_digest }, request);
 }
 function stageManifestEntry(authority: J, stageId: StageId): J {
   const entries = authority.stage_execution?.stages;
@@ -1487,13 +1701,627 @@ function staticModuleResolution(entrypoint: OperationSnapshot, members: J[], cod
   }
   return edges.sort((a: J, b: J) => canon(a).localeCompare(canon(b)));
 }
-function assertStaticElf(snapshot: OperationSnapshot, role: string): void {
-  const raw = snapshot.raw;
-  codedAssert(raw.length >= 64 && raw.subarray(0, 4).equals(Buffer.from([0x7f, 0x45, 0x4c, 0x46])) && raw[4] === 2 && raw[5] === 1, "H2_STAGE_STATIC_EXECUTABLE", `${role} must be an ELF64 little-endian executable`);
-  const programOffset = Number(raw.readBigUInt64LE(32)); const entrySize = raw.readUInt16LE(54); const count = raw.readUInt16LE(56);
-  codedAssert(entrySize >= 56 && programOffset + entrySize * count <= raw.length, "H2_STAGE_STATIC_EXECUTABLE", `${role} ELF program headers are invalid`);
-  const types = Array.from({ length: count }, (_, index) => raw.readUInt32LE(programOffset + index * entrySize));
-  codedAssert(!types.includes(2) && !types.includes(3), "H2_STAGE_STATIC_EXECUTABLE", `${role} has a dynamic segment or interpreter and could escape the immutable closure`);
+function validateStaticElfBytes(raw: Buffer, role: string, architecture = process.arch): void {
+  const fail: (condition: unknown, detail: string) => asserts condition = (condition, detail) => codedAssert(condition, "H2_STAGE_STATIC_EXECUTABLE", `${role} ${detail}`);
+  fail(raw.length >= 64 && raw.subarray(0, 4).equals(Buffer.from([0x7f, 0x45, 0x4c, 0x46])) && raw[4] === 2 && raw[5] === 1 && raw[6] === 1, "must be ELF64 little-endian version 1");
+  const type = raw.readUInt16LE(16); const machine = raw.readUInt16LE(18); const version = raw.readUInt32LE(20); const entry = raw.readBigUInt64LE(24); const programOffsetBig = raw.readBigUInt64LE(32); const headerSize = raw.readUInt16LE(52); const entrySize = raw.readUInt16LE(54); const count = raw.readUInt16LE(56);
+  const expectedMachine = architecture === "x64" ? 62 : architecture === "arm64" ? 183 : -1;
+  fail(expectedMachine !== -1 && machine === expectedMachine, `machine ${machine} does not match current architecture ${architecture}`);
+  fail((type === 2 || type === 3) && version === 1 && headerSize === 64 && entrySize === 56 && count > 0 && entry > 0n, "has invalid executable type, version, header sizes, program-header count, or entrypoint");
+  fail(programOffsetBig <= BigInt(Number.MAX_SAFE_INTEGER), "program-header offset is not safely representable");
+  const programOffset = Number(programOffsetBig); const tableEnd = programOffset + entrySize * count;
+  fail(programOffset >= headerSize && Number.isSafeInteger(tableEnd) && tableEnd <= raw.length, "program-header table is out of file bounds");
+  const fileLoads: Array<[bigint, bigint]> = []; const virtualLoads: Array<[bigint, bigint]> = []; let entryInExecutableLoad = false;
+  for (let index = 0; index < count; index += 1) {
+    const offset = programOffset + index * entrySize; const segmentType = raw.readUInt32LE(offset); const flags = raw.readUInt32LE(offset + 4); const fileOffset = raw.readBigUInt64LE(offset + 8); const virtualAddress = raw.readBigUInt64LE(offset + 16); const fileSize = raw.readBigUInt64LE(offset + 32); const memorySize = raw.readBigUInt64LE(offset + 40); const alignment = raw.readBigUInt64LE(offset + 48);
+    fail(segmentType !== 2 && segmentType !== 3, "contains PT_DYNAMIC or PT_INTERP");
+    if (segmentType !== 1) continue;
+    fail(fileSize <= memorySize && fileOffset + fileSize <= BigInt(raw.length), "contains a truncated or impossible PT_LOAD segment");
+    fail(alignment === 0n || alignment === 1n || ((alignment & (alignment - 1n)) === 0n && fileOffset % alignment === virtualAddress % alignment), "contains an invalid PT_LOAD alignment");
+    const fileRange: [bigint, bigint] = [fileOffset, fileOffset + fileSize]; const virtualRange: [bigint, bigint] = [virtualAddress, virtualAddress + memorySize];
+    fail(fileLoads.every(([start, end]) => fileRange[1] <= start || fileRange[0] >= end) && virtualLoads.every(([start, end]) => virtualRange[1] <= start || virtualRange[0] >= end), "contains overlapping PT_LOAD ranges");
+    fileLoads.push(fileRange); virtualLoads.push(virtualRange); if ((flags & 1) !== 0 && entry >= virtualRange[0] && entry < virtualRange[1]) entryInExecutableLoad = true;
+  }
+  fail(fileLoads.length > 0 && entryInExecutableLoad, "lacks an executable PT_LOAD containing the entrypoint");
+}
+function assertStaticElf(snapshot: OperationSnapshot, role: string): void { validateStaticElfBytes(snapshot.raw, role); }
+function staticElfSelfTest(): J {
+  const machine = process.arch === "arm64" ? 183 : 62;
+  const fixture = (type = 2): Buffer => { const raw = Buffer.alloc(128); Buffer.from([0x7f, 0x45, 0x4c, 0x46, 2, 1, 1]).copy(raw); raw.writeUInt16LE(type, 16); raw.writeUInt16LE(machine, 18); raw.writeUInt32LE(1, 20); raw.writeBigUInt64LE(0x400078n, 24); raw.writeBigUInt64LE(64n, 32); raw.writeUInt16LE(64, 52); raw.writeUInt16LE(56, 54); raw.writeUInt16LE(1, 56); raw.writeUInt32LE(1, 64); raw.writeUInt32LE(5, 68); raw.writeBigUInt64LE(0n, 72); raw.writeBigUInt64LE(0x400000n, 80); raw.writeBigUInt64LE(0x400000n, 88); raw.writeBigUInt64LE(BigInt(raw.length), 96); raw.writeBigUInt64LE(BigInt(raw.length), 104); raw.writeBigUInt64LE(0x1000n, 112); return raw; };
+  validateStaticElfBytes(fixture(), "valid fixture"); validateStaticElfBytes(fixture(3), "valid static PIE fixture");
+  const reject = (name: string, mutate: (raw: Buffer) => void): void => { const raw = fixture(); mutate(raw); let failed = false; try { validateStaticElfBytes(raw, name); } catch (error) { failed = error instanceof GateH2Error && error.code === "H2_STAGE_STATIC_EXECUTABLE"; } codedAssert(failed, "H2_ELF_SELF_TEST", `${name} ELF fixture was accepted`); };
+  reject("fabricated_64_byte_zero_phnum", (raw) => { raw.fill(0, 64); raw.writeUInt16LE(0, 56); }); reject("relocatable", (raw) => raw.writeUInt16LE(1, 16)); reject("core", (raw) => raw.writeUInt16LE(4, 16)); reject("wrong_machine", (raw) => raw.writeUInt16LE(machine === 62 ? 183 : 62, 18)); reject("zero_entry", (raw) => raw.writeBigUInt64LE(0n, 24)); reject("truncated_program_header", (raw) => raw.writeBigUInt64LE(100n, 32)); reject("truncated_segment", (raw) => raw.writeBigUInt64LE(1024n, 96)); reject("dynamic", (raw) => raw.writeUInt32LE(2, 64)); reject("interpreter", (raw) => raw.writeUInt32LE(3, 64)); reject("no_executable_load", (raw) => raw.writeUInt32LE(4, 68));
+  return { status: "strict_elf64_contract_passed", cases: ["valid_exec", "valid_static_pie", "fabricated_64_byte_zero_phnum", "relocatable", "core", "wrong_machine", "zero_entry", "truncated_program_header", "truncated_segment", "dynamic", "interpreter", "no_executable_load"] };
+}
+function exactObjectKeys(value: J, expected: readonly string[], code: string, label: string): void {
+  codedAssert(value && typeof value === "object" && !Array.isArray(value) && canon(Object.keys(value).sort()) === canon([...expected].sort()), code, `${label} must contain the exact reviewed field set`);
+}
+function validateSandboxEvidenceFreshness(collectedAt: string, now: number, maxAgeSeconds: number): void {
+  const collected = Date.parse(collectedAt);
+  codedAssert(Number.isInteger(maxAgeSeconds) && maxAgeSeconds > 0 && maxAgeSeconds <= 86_400 && Number.isFinite(collected) && new Date(collectedAt).toISOString() === collectedAt && collected <= now + 60_000 && now - collected <= maxAgeSeconds * 1_000, "H2_SANDBOX_TIME", "sandbox evidence is stale, future-dated, or outside the accepted age policy");
+}
+const LINUX_OCI_TOOLS = Object.freeze({ podman: "/usr/bin/podman", readlink: "/usr/bin/readlink", cat: "/usr/bin/cat", nsenter: "/usr/bin/nsenter", nft: "/usr/sbin/nft", ss: "/usr/bin/ss" });
+const LINUX_IMAGE_PATHS = Object.freeze({ wrapper: "/gate-h2/bin/wrapper", runtime: "/gate-h2/bin/runtime", stageProgram: "/gate-h2/program/stage.json" });
+const OBSERVATION_BYTE_CAP = 64 * 1024; const OBSERVATION_DEADLINE_MS = 10_000;
+const OBSERVATION_REAP_GRACE_MS = 1_000;
+type MountDirectorySnapshot = { hostPath: string; guestPath: string; mode: "ro" | "rw"; fd: number; stat: fs.Stats; treeSha256: string; treeContentSha256: string };
+function descriptorTargetPath(fd: number, fallback: string): string {
+  return process.platform === "linux" ? fs.realpathSync(`/proc/self/fd/${fd}`) : fallback;
+}
+function validateMountPathSyntax(value: unknown, kind: string): string {
+  codedAssert(typeof value === "string" && path.posix.isAbsolute(value) && path.posix.normalize(value) === value && !/[,:=;\\\0\r\n]/.test(value) && !value.includes("//"), "H2_SANDBOX_MOUNT_PATH", `${kind} mount path is noncanonical or contains Podman mount syntax characters`);
+  return value;
+}
+function retainMountDirectory(hostPathValue: unknown, guestPathValue: unknown, mode: "ro" | "rw", role: string): MountDirectorySnapshot {
+  const hostPath = validateMountPathSyntax(hostPathValue, `${role} host`); const guestPath = validateMountPathSyntax(guestPathValue, `${role} guest`);
+  let fd: number | undefined;
+  try {
+    const submitted = fs.lstatSync(hostPath);
+    codedAssert(submitted.isDirectory() && !submitted.isSymbolicLink() && submitted.uid === process.getuid!() && (submitted.mode & 0o022) === 0 && fs.realpathSync(hostPath) === hostPath, "H2_SANDBOX_MOUNT_PATH", `${role} host mount must be an owner-controlled, non-symlink canonical directory`);
+    fd = fs.openSync(hostPath, fs.constants.O_RDONLY | fs.constants.O_DIRECTORY | fs.constants.O_NOFOLLOW);
+    const retained = fs.fstatSync(fd);
+    codedAssert(retained.isDirectory() && retained.uid === process.getuid!() && (retained.mode & 0o022) === 0 && retained.dev === submitted.dev && retained.ino === submitted.ino && descriptorTargetPath(fd, hostPath) === hostPath, "H2_SANDBOX_MOUNT_PATH", `${role} host mount descriptor is not anchored to the submitted directory`);
+    const treeSha256 = filesystemEvidenceDigest(hostPath);
+    const treeContentSha256 = filesystemEvidenceDigest(hostPath, false);
+    return { hostPath, guestPath, mode, fd, stat: retained, treeSha256, treeContentSha256 };
+  } catch (error) {
+    if (fd !== undefined) { try { fs.closeSync(fd); } catch { /* preserve primary mount error */ } }
+    if (error instanceof GateH2Error) throw error;
+    throw new GateH2Error("H2_SANDBOX_MOUNT_PATH", `${role} host mount could not be retained safely${error instanceof Error ? `: ${error.message}` : ""}`);
+  }
+}
+function retainSandboxMounts(boundary: J): MountDirectorySnapshot[] {
+  const readable = boundary.mounts?.readable_inputs ?? []; const outputs = boundary.mounts?.output_mounts ?? [];
+  codedAssert(Array.isArray(readable) && Array.isArray(outputs) && readable.length > 0 && outputs.length > 0, "H2_SANDBOX_MOUNT_PATH", "sandbox must declare nonempty readable and output mount sets");
+  const mounts: MountDirectorySnapshot[] = []; const guests = new Set<string>(); const roles = new Set<string>();
+  try {
+    for (const mount of [...readable.map((value: J) => ({ value, mode: "ro" as const })), ...outputs.map((value: J) => ({ value, mode: "rw" as const }))]) {
+      codedAssert(typeof mount.value.artifact_role === "string" && !roles.has(mount.value.artifact_role), "H2_SANDBOX_MOUNT_PATH", "sandbox mount artifact roles must be unique"); roles.add(mount.value.artifact_role);
+      const retained = retainMountDirectory(mount.value.host_path, mount.value.guest_path, mount.mode, mount.value.artifact_role);
+      codedAssert(!guests.has(retained.guestPath), "H2_SANDBOX_MOUNT_PATH", "sandbox guest mount paths must be unique"); guests.add(retained.guestPath);
+      codedAssert(retained.treeSha256 === mount.value.content_sha256, "H2_SANDBOX_MOUNT_EVIDENCE", `sandbox mount ${mount.value.artifact_role} content differs before Podman start`);
+      mounts.push(retained);
+    }
+    return mounts;
+  } catch (error) {
+    for (const mount of mounts) { try { fs.closeSync(mount.fd); } catch { /* cleanup continues */ } }
+    throw error;
+  }
+}
+function assertSandboxMountDescriptorsStable(mounts: MountDirectorySnapshot[], checkContent = false): void {
+  for (const mount of mounts) {
+    const current = fs.fstatSync(mount.fd); const pathStat = fs.lstatSync(mount.hostPath);
+    codedAssert(current.isDirectory() && current.dev === mount.stat.dev && current.ino === mount.stat.ino && current.uid === mount.stat.uid && (current.mode & 0o777) === (mount.stat.mode & 0o777) && pathStat.isDirectory() && !pathStat.isSymbolicLink() && pathStat.dev === mount.stat.dev && pathStat.ino === mount.stat.ino && fs.realpathSync(mount.hostPath) === mount.hostPath, "H2_SANDBOX_MOUNT_PATH", `sandbox mount ${mount.hostPath} changed identity during observation`);
+    if (checkContent) codedAssert(filesystemEvidenceDigest(mount.hostPath) === mount.treeSha256, "H2_SANDBOX_MOUNT_EVIDENCE", `read-only sandbox mount ${mount.hostPath} changed during observation`);
+  }
+}
+type StagedMountSet = { rootPath: string; rootFd: number; mounts: Array<{ original: MountDirectorySnapshot; stagedPath: string }> };
+function copyVerifiedMountTree(source: string, destination: string): void {
+  const sourceStat = fs.lstatSync(source);
+  codedAssert(!sourceStat.isSymbolicLink(), "H2_SANDBOX_MOUNT_PATH", "staging refuses source symlinks");
+  if (sourceStat.isDirectory()) {
+    fs.mkdirSync(destination, { mode: 0o700 });
+    for (const name of fs.readdirSync(source).sort()) copyVerifiedMountTree(path.join(source, name), path.join(destination, name));
+    fs.chmodSync(destination, 0o700);
+    return;
+  }
+  codedAssert(sourceStat.isFile() && sourceStat.nlink === 1, "H2_SANDBOX_MOUNT_PATH", "staging requires regular source files");
+  const bytes = fs.readFileSync(source);
+  fs.writeFileSync(destination, bytes, { flag: "wx", mode: 0o600 });
+  fs.chmodSync(destination, sourceStat.mode & 0o600);
+}
+function chmodStagedTree(root: string, mode: "ro" | "rw"): void {
+  const stat = fs.lstatSync(root);
+  codedAssert(!stat.isSymbolicLink(), "H2_SANDBOX_MOUNT_PATH", "staged mount unexpectedly contains a symlink");
+  if (stat.isDirectory()) {
+    for (const name of fs.readdirSync(root)) chmodStagedTree(path.join(root, name), mode);
+    fs.chmodSync(root, mode === "ro" ? 0o500 : 0o700);
+  } else codedAssert(stat.isFile(), "H2_SANDBOX_MOUNT_PATH", "staged mount unexpectedly contains a non-file member");
+}
+function stageMountsForPodman(mounts: MountDirectorySnapshot[]): StagedMountSet {
+  const rootPath = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "gate-h2-mount-root-")));
+  let rootFd: number | undefined;
+  try {
+    fs.chmodSync(rootPath, 0o700);
+    rootFd = fs.openSync(rootPath, fs.constants.O_RDONLY | fs.constants.O_DIRECTORY | fs.constants.O_NOFOLLOW);
+    codedAssert(descriptorTargetPath(rootFd, rootPath) === rootPath, "H2_SANDBOX_MOUNT_PATH", "staging root descriptor is not canonical");
+    const staged: Array<{ original: MountDirectorySnapshot; stagedPath: string }> = [];
+    for (const [index, mount] of mounts.entries()) {
+      const stagedPath = path.join(rootPath, String(index));
+      copyVerifiedMountTree(mount.hostPath, stagedPath);
+      codedAssert(filesystemEvidenceDigest(stagedPath, false) === mount.treeContentSha256, "H2_SANDBOX_MOUNT_EVIDENCE", `staged mount ${mount.hostPath} differs from its retained snapshot`);
+      chmodStagedTree(stagedPath, mount.mode);
+      staged.push({ original: mount, stagedPath });
+      assertSandboxMountDescriptorsStable([mount], true);
+    }
+    fs.mkdirSync(path.join(rootPath, "image-copy"), { mode: 0o700 });
+    fs.chmodSync(rootPath, 0o500);
+    codedAssert(descriptorTargetPath(rootFd, rootPath) === rootPath, "H2_SANDBOX_MOUNT_PATH", "staging root changed before Podman start");
+    return { rootPath, rootFd, mounts: staged };
+  } catch (error) {
+    if (rootFd !== undefined) { try { fs.closeSync(rootFd); } catch { /* preserve primary staging error */ } }
+    try { chmodStagedTree(rootPath, "rw"); } catch { /* cleanup continues */ }
+    try { fs.chmodSync(rootPath, 0o700); } catch { /* cleanup continues */ }
+    fs.rmSync(rootPath, { recursive: true, force: true });
+    throw error;
+  }
+}
+function closeStagedMounts(staged: StagedMountSet | undefined): void {
+  if (!staged) return;
+  try { fs.closeSync(staged.rootFd); } catch { /* cleanup continues */ }
+  try { chmodStagedTree(staged.rootPath, "rw"); } catch { /* cleanup continues */ }
+  try { fs.chmodSync(staged.rootPath, 0o700); } catch { /* cleanup continues */ }
+  fs.rmSync(staged.rootPath, { recursive: true, force: true });
+}
+type RawCommandObservation = { id: string; executable: string; argv: string[]; started_at: string; ended_at: string; exit_status: number | null; signal: string | null; timed_out: boolean; stdout_base64: string; stdout_sha256: string; stdout_bytes: number; stderr_base64: string; stderr_sha256: string; stderr_bytes: number };
+const OBSERVATION_PROCESS_GROUP_SUPPORTED = process.platform === "linux" || process.platform === "darwin";
+function signalObservationGroup(pid: number, signal: NodeJS.Signals): void {
+  if (!OBSERVATION_PROCESS_GROUP_SUPPORTED || !Number.isInteger(pid) || pid <= 1) return;
+  try { process.kill(-pid, signal); } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code !== "ESRCH") throw error;
+  }
+}
+function observationGroupAlive(pid: number): boolean {
+  if (!OBSERVATION_PROCESS_GROUP_SUPPORTED || !Number.isInteger(pid) || pid <= 1) return false;
+  try { process.kill(-pid, 0); return true; } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "ESRCH") return false;
+    if (code === "EPERM") return true;
+    throw error;
+  }
+}
+async function waitForObservationGroupExit(pid: number, timeoutMs: number): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  while (observationGroupAlive(pid)) {
+    if (Date.now() >= deadline) return false;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  return true;
+}
+async function observeCommand(id: string, executable: string, argv: string[], acceptedExitStatuses: readonly number[] = [0]): Promise<RawCommandObservation> {
+  codedAssert((Object.values(LINUX_OCI_TOOLS) as string[]).includes(executable), "H2_SANDBOX_RUNTIME", `unreviewed observation executable refused: ${executable}`);
+  const executableStat = fs.lstatSync(executable);
+  codedAssert(executableStat.isFile() && !executableStat.isSymbolicLink() && executableStat.uid === 0 && (executableStat.mode & 0o022) === 0 && fs.realpathSync(executable) === executable, "H2_SANDBOX_RUNTIME", `fixed observation executable is unavailable or not root-controlled: ${executable}`);
+  const startedAt = new Date().toISOString(); const stdout: Buffer[] = []; const stderr: Buffer[] = []; let stdoutBytes = 0; let stderrBytes = 0; let overflow = false; let timedOut = false; let terminationStarted = false; let closed = false; let terminationSignalError: Error | undefined; let deadlineTimer: NodeJS.Timeout | undefined; let killTimer: NodeJS.Timeout | undefined; let reapTimer: NodeJS.Timeout | undefined;
+  const child = spawn(executable, argv, { env: { PATH: "/usr/bin:/usr/sbin", LANG: "C", LC_ALL: "C" }, stdio: ["ignore", "pipe", "pipe"], detached: OBSERVATION_PROCESS_GROUP_SUPPORTED });
+  let rejectReap: ((error: Error) => void) | undefined;
+  const terminate = (): void => {
+    if (terminationStarted) return;
+    terminationStarted = true; timedOut = true;
+    try { if (child.pid) signalObservationGroup(child.pid, "SIGTERM"); else child.kill("SIGTERM"); } catch (error) {
+      terminationSignalError = error instanceof Error ? error : new Error(String(error));
+      rejectReap?.(terminationSignalError);
+    }
+    killTimer = setTimeout(() => {
+      try { if (!closed && child.pid) signalObservationGroup(child.pid, "SIGKILL"); else if (!closed) child.kill("SIGKILL"); } catch (error) {
+        terminationSignalError = error instanceof Error ? error : new Error(String(error));
+        rejectReap?.(terminationSignalError);
+      }
+      reapTimer = setTimeout(() => {
+        if (closed) return;
+        child.stdout?.destroy(); child.stderr?.destroy();
+        const error = new GateH2Error("H2_SANDBOX_RUNTIME", "child process did not close after bounded TERM/grace/KILL reaping");
+        rejectReap?.(error);
+      }, OBSERVATION_REAP_GRACE_MS);
+    }, 250);
+  };
+  const append = (target: Buffer[], chunk: Buffer, stream: "stdout" | "stderr"): void => { const current = stream === "stdout" ? stdoutBytes : stderrBytes; const accepted = Math.max(0, Math.min(chunk.length, OBSERVATION_BYTE_CAP - current)); if (accepted > 0) target.push(chunk.subarray(0, accepted)); if (stream === "stdout") stdoutBytes += chunk.length; else stderrBytes += chunk.length; if (current + chunk.length > OBSERVATION_BYTE_CAP) { overflow = true; terminate(); } };
+  child.stdout.on("data", (chunk: Buffer) => append(stdout, chunk, "stdout")); child.stderr.on("data", (chunk: Buffer) => append(stderr, chunk, "stderr"));
+  deadlineTimer = setTimeout(terminate, OBSERVATION_DEADLINE_MS);
+  let result: { code: number | null; signal: NodeJS.Signals | null } | undefined;
+  let waitError: unknown;
+  try {
+    result = await new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolve, reject) => {
+      let settled = false;
+      rejectReap = (error) => { if (!settled) { settled = true; reject(error); } };
+      child.once("error", (error) => { if (!settled) { settled = true; reject(error); } });
+      child.once("close", (code, signal) => { closed = true; if (!settled) { settled = true; resolve({ code, signal }); } });
+    });
+  } catch (error) {
+    waitError = error;
+  } finally {
+    if (deadlineTimer) clearTimeout(deadlineTimer); if (killTimer) clearTimeout(killTimer); if (reapTimer) clearTimeout(reapTimer);
+  }
+  // This cleanup is deliberately outside the child-event await so rejection,
+  // timeout, output overflow, and normal close all cross the same authoritative
+  // process-group liveness boundary before this function can return or throw.
+  if (OBSERVATION_PROCESS_GROUP_SUPPORTED && child.pid) {
+    try {
+      if (observationGroupAlive(child.pid)) signalObservationGroup(child.pid, "SIGKILL");
+      codedAssert(await waitForObservationGroupExit(child.pid, OBSERVATION_REAP_GRACE_MS), "H2_SANDBOX_RUNTIME", "observation process group remained observable after bounded TERM/KILL cleanup");
+    } catch (error) {
+      throw new GateH2Error("H2_SANDBOX_RUNTIME", `observation process group could not be terminated and verified absent: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  if (terminationSignalError) throw new GateH2Error("H2_SANDBOX_RUNTIME", `observation process-group signaling failed: ${terminationSignalError.message}`);
+  if (waitError) throw waitError;
+  codedAssert(result !== undefined, "H2_SANDBOX_RUNTIME", "observation process exited without a terminal result");
+  const out = Buffer.concat(stdout); const err = Buffer.concat(stderr); const observation: RawCommandObservation = { id, executable, argv, started_at: startedAt, ended_at: new Date().toISOString(), exit_status: result.code, signal: result.signal, timed_out: timedOut, stdout_base64: out.toString("base64"), stdout_sha256: hash(out), stdout_bytes: out.length, stderr_base64: err.toString("base64"), stderr_sha256: hash(err), stderr_bytes: err.length };
+  codedAssert(!overflow && !timedOut && acceptedExitStatuses.includes(result.code ?? -1), "H2_SANDBOX_OBSERVATION", `${id} failed, timed out, or exceeded retained byte limits`);
+  return observation;
+}
+function commandStdout(observation: RawCommandObservation): Buffer { const raw = Buffer.from(observation.stdout_base64, "base64"); codedAssert(raw.length === observation.stdout_bytes && hash(raw) === observation.stdout_sha256, "H2_SANDBOX_OBSERVATION", "retained command stdout commitment differs"); return raw; }
+function observationDigest(observations: RawCommandObservation[]): string { return hash(canon(observations)); }
+function filesystemEvidenceDigest(root: string, includeRoot = true): string {
+  codedAssert(path.isAbsolute(root) && path.normalize(root) === root, "H2_SANDBOX_MOUNT_EVIDENCE", "mount evidence path must be canonical and absolute");
+  const realRoot = fs.realpathSync(root);
+  const members: J[] = [];
+  const visit = (current: string): void => {
+    const stat = fs.lstatSync(current);
+    codedAssert(!stat.isSymbolicLink(), "H2_SANDBOX_MOUNT_EVIDENCE", "mount evidence refuses symlinks");
+    const relative_path = current === realRoot ? "." : path.relative(realRoot, current).split(path.sep).join("/");
+    if (stat.isDirectory()) {
+      members.push({ relative_path, type: "directory", mode: stat.mode & 0o777 });
+      for (const name of fs.readdirSync(current).sort()) visit(path.join(current, name));
+      return;
+    }
+    codedAssert(stat.isFile() && stat.nlink === 1, "H2_SANDBOX_MOUNT_EVIDENCE", "mount evidence members must be one-link regular files or directories");
+    const raw = fs.readFileSync(current);
+    members.push({ relative_path, type: "file", mode: stat.mode & 0o777, sha256: hash(raw), bytes: raw.length });
+  };
+  visit(realRoot);
+  return hash(canon(includeRoot ? { root_realpath: realRoot, members } : { members }));
+}
+function validateLinuxSandboxEvidenceBundle(evidence: J, signer: J, trust: J | undefined, allowSynthetic = false): { attestation: J; snapshots: OperationSnapshot[]; productionEligible: boolean } {
+  exactObjectKeys(evidence, ["schema_version", "synthetic", "production_eligible", "collected_at", "image_manifest_base64", "stage_program", "sandbox", "observation_evidence"], "H2_SANDBOX_EVIDENCE", "Linux sandbox evidence bundle");
+  codedAssert(evidence.schema_version === "reviewed_metrics_linux_sandbox_evidence_bundle_v1.0.0", "H2_SANDBOX_EVIDENCE", "Linux sandbox evidence bundle version differs");
+  codedAssert(allowSynthetic ? evidence.synthetic === true && evidence.production_eligible === false : evidence.synthetic === false && evidence.production_eligible === true, "H2_SANDBOX_SYNTHETIC", "synthetic Linux evidence is categorically production-ineligible");
+  codedAssert(Number.isFinite(Date.parse(evidence.collected_at)) && new Date(evidence.collected_at).toISOString() === evidence.collected_at, "H2_SANDBOX_TIME", "sandbox collection time must be canonical UTC");
+  exactObjectKeys(evidence.sandbox, ["wrapper", "image", "runtime_tree", "executor_semantics", "fixed_argument_allowlist", "mounts", "network", "writable_confinement", "repo_tree_sha256"], "H2_SANDBOX_EVIDENCE", "sandbox observation");
+  exactObjectKeys(evidence.observation_evidence, ["network_namespace", "firewall_rules", "observed_destinations", "writable_pre_state", "writable_post_state", "writable_enforcement", "mount_filesystems"], "H2_SANDBOX_EVIDENCE", "sandbox enforcement evidence");
+  const boundary = evidence.sandbox;
+  const imageManifest = Buffer.from(evidence.image_manifest_base64, "base64");
+  codedAssert(imageManifest.length > 0 && imageManifest.toString("base64") === evidence.image_manifest_base64 && boundary.image.identity_kind === "oci_manifest" && boundary.image.digest === `sha256:${hash(imageManifest)}` && boundary.image.immutable_identity.endsWith(`@${boundary.image.digest}`), "H2_SANDBOX_IMAGE", "sandbox producer requires exact canonical OCI manifest bytes joined to immutable identity and digest");
+  const snapshots: OperationSnapshot[] = [];
+  try {
+    const wrapperSnapshot = snapshotOperationFile(boundary.wrapper, "sandbox wrapper"); snapshots.push(wrapperSnapshot);
+    const runtimeMembers = [...boundary.runtime_tree.members].sort((a: J, b: J) => a.realpath.localeCompare(b.realpath));
+    codedAssert(canon(runtimeMembers) === canon(boundary.runtime_tree.members) && boundary.runtime_tree.member_count === runtimeMembers.length, "H2_SANDBOX_RUNTIME_TREE", "runtime member set must be exact and sorted");
+    validateResolutionClosure(boundary.runtime_tree.resolution_contract, boundary.runtime_tree.physical_roots, runtimeMembers, "H2_SANDBOX_RUNTIME_TREE");
+    const discovered = boundary.runtime_tree.physical_roots.flatMap(enumerateDependencyRoot).sort((a: J, b: J) => a.realpath.localeCompare(b.realpath));
+    codedAssert(canon(discovered.map(({ realpath, sha256, bytes }: J) => ({ realpath, sha256, bytes }))) === canon(runtimeMembers.map(({ realpath, sha256, bytes }: J) => ({ realpath, sha256, bytes }))), "H2_SANDBOX_RUNTIME_TREE", "runtime tree omits, adds, or substitutes a physical member");
+    const runtimeBytes = dependencyTreeBytes(boundary.runtime_tree.resolution_contract, boundary.runtime_tree.physical_roots, runtimeMembers);
+    codedAssert(boundary.runtime_tree.complete_tree_sha256 === hash(runtimeBytes) && boundary.runtime_tree.complete_tree_bytes === runtimeBytes.length && boundary.runtime_tree.enumeration_contract === "sorted_physical_regular_files_path_sha256_bytes_v2", "H2_SANDBOX_RUNTIME_TREE", "runtime tree arithmetic differs");
+    for (const member of runtimeMembers) snapshots.push(snapshotOperationFile(member, "sandbox runtime tree member"));
+    const byPath = new Map(snapshots.map((snapshot): [string, OperationSnapshot] => [snapshot.pin.realpath, snapshot]));
+    const contract = boundary.runtime_tree.resolution_contract;
+    for (const section of [contract.package_manager, contract.module_resolution, contract.native_resolution]) {
+      const proof = byPath.get(section.proof.realpath) ?? snapshotOperationFile(section.proof, "sandbox resolution proof");
+      if (!byPath.has(section.proof.realpath)) { snapshots.push(proof); byPath.set(section.proof.realpath, proof); }
+      codedAssert(section.proof_sha256 === hash(proof.raw) && section.proof_sha256 === section.proof.sha256, "H2_SANDBOX_RUNTIME_TREE", "sandbox resolution proof bytes differ");
+    }
+    const stageProgramSnapshot = byPath.get(evidence.stage_program.realpath) ?? snapshotOperationFile(evidence.stage_program, "canonical stage program");
+    if (!byPath.has(evidence.stage_program.realpath)) { snapshots.push(stageProgramSnapshot); byPath.set(evidence.stage_program.realpath, stageProgramSnapshot); }
+    const runtimeSnapshot = byPath.get(boundary.runtime_tree.runtime.realpath);
+    codedAssert(runtimeSnapshot !== undefined && canon(boundary.wrapper) === canon(contract.wrapper) && canon(boundary.runtime_tree.runtime) === canon(contract.runtime) && contract.entrypoints.length === 1 && canon(contract.entrypoints[0]) === canon(evidence.stage_program), "H2_SANDBOX_RUNTIME_TREE", "wrapper, runtime, or stage program differs from the complete closure");
+    let program: J; try { program = JSON.parse(stageProgramSnapshot.raw.toString("utf8")); } catch { throw new GateH2Error("H2_STAGE_PROGRAM_GRAMMAR", "stage program evidence is not canonical JSON"); }
+    codedAssert(stageProgramSnapshot.raw.equals(Buffer.from(pretty(program))), "H2_STAGE_PROGRAM_GRAMMAR", "stage program must be canonical JSON");
+    const semanticVersions = new Set(boundary.executor_semantics.map((bundle: J) => bundle.attestation?.schema_version));
+    codedAssert(semanticVersions.size === 1 && (semanticVersions.has("reviewed_metrics_executor_semantics_attestation_v2.2.0") || semanticVersions.has("reviewed_metrics_executor_semantics_attestation_v2.0.0")), "H2_STAGE_PROGRAM_GRAMMAR", "sandbox executor semantics version is mixed or unsupported");
+    const successor = semanticVersions.has("reviewed_metrics_executor_semantics_attestation_v2.2.0");
+    const stageProgramSchema = successor ? "stage-program.schema.v2.2.json" : "stage-program.schema.v2.json";
+    schema(stageProgramSchema, program);
+    codedAssert(program.schema_version === (successor ? "reviewed_metrics_stage_program_v2.2.0" : "reviewed_metrics_stage_program_v2.1.0") && program.action === (successor ? "invoke_exact_https_exchange" : "invoke_attested_capability") && program.schema_sha256 === schemaFilePin(stageProgramSchema).sha256, "H2_STAGE_PROGRAM_GRAMMAR", "sandbox stage program does not match its executor semantics version");
+    codedAssert(contract.root_derivation === "static_stage_program_zero_dependency_v1" && contract.package_manager.kind === "npm_lockfile_v3_zero_dependency_v1" && contract.module_resolution.kind === "gate_h2_stage_program_no_module_loader_v1", "H2_SANDBOX_RUNTIME_TREE", "production sandbox requires the zero-loader static closure");
+    const rawFor = (realpath: string): Buffer => { const snapshot = byPath.get(realpath); codedAssert(snapshot !== undefined, "H2_SANDBOX_RUNTIME_TREE", "package proof input is outside retained runtime members"); return snapshot.raw; };
+    const packageProof = JSON.parse(rawFor(contract.package_manager.proof.realpath).toString("utf8"));
+    const derivedPackageProof = deriveNpmPackageProof({ ...contract.package_manager, runtime_sha256: boundary.runtime_tree.runtime.sha256, entrypoint_sha256: evidence.stage_program.sha256 }, runtimeMembers, rawFor, true);
+    codedAssert(canon(packageProof) === canon(derivedPackageProof), "H2_SANDBOX_RUNTIME_TREE", "package proof does not independently derive from retained zero-dependency bytes");
+    codedAssert(canon(JSON.parse(rawFor(contract.module_resolution.proof.realpath).toString("utf8"))) === canon({ schema_version: "gate_h2_stage_program_module_proof_v1", entrypoint_sha256: evidence.stage_program.sha256, loader_surface: "none", edges: [] }), "H2_SANDBOX_RUNTIME_TREE", "module proof does not establish the zero-loader surface");
+    codedAssert(canon(JSON.parse(rawFor(contract.native_resolution.proof.realpath).toString("utf8"))) === canon({ schema_version: "gate_h2_native_resolution_proof_v1", wrapper_sha256: boundary.wrapper.sha256, runtime_sha256: boundary.runtime_tree.runtime.sha256, runtime_linkage: "static", unresolved_libraries: [] }), "H2_SANDBOX_RUNTIME_TREE", "native proof does not join the wrapper/runtime static closure");
+    if (!allowSynthetic) { assertStaticElf(wrapperSnapshot, "sandbox wrapper"); assertStaticElf(runtimeSnapshot, "stage runtime"); }
+    const readableRoles = boundary.mounts.readable_inputs.map((mount: J) => mount.artifact_role);
+    codedAssert(canon(program.input_artifact_roles) === canon(readableRoles) && canon(program.output_indexes) === canon(boundary.mounts.output_mounts.map((_mount: J, index: number) => index)) && canon(successor ? [] : program.network_capability_ids) === canon(boundary.network.destination_capability_ids), "H2_STAGE_PROGRAM_GRAMMAR", "stage program inputs, outputs, or network capabilities differ from sandbox mounts");
+    const mountEvidence = [...evidence.observation_evidence.mount_filesystems].sort((a: J, b: J) => a.artifact_role.localeCompare(b.artifact_role));
+    const mounts = [...boundary.mounts.readable_inputs, ...boundary.mounts.output_mounts].sort((a: J, b: J) => a.artifact_role.localeCompare(b.artifact_role));
+    codedAssert(canon(mountEvidence.map((entry: J) => ({ artifact_role: entry.artifact_role, mode: entry.mode }))) === canon(mounts.map((entry: J) => ({ artifact_role: entry.artifact_role, mode: entry.mode }))), "H2_SANDBOX_MOUNT_EVIDENCE", "mount evidence set differs");
+    for (let index = 0; index < mounts.length; index++) {
+      const observedDigest = filesystemEvidenceDigest(mounts[index].host_path);
+      codedAssert(mountEvidence[index].tree_sha256 === observedDigest && mounts[index].content_sha256 === observedDigest, "H2_SANDBOX_MOUNT_EVIDENCE", "mount content differs from physically observed complete tree");
+    }
+    const observation = evidence.observation_evidence;
+    codedAssert(boundary.network.namespace_identity_sha256 === hash(canon(observation.network_namespace)) && boundary.network.firewall_rules_sha256 === hash(canon(observation.firewall_rules)) && canon(observation.observed_destinations) === canon([...observation.observed_destinations].sort()) && new Set(observation.observed_destinations).size === observation.observed_destinations.length && boundary.network.observed_destinations_digest === hash(canon(observation.observed_destinations)), "H2_SANDBOX_NETWORK_EVIDENCE", "network namespace, firewall, or observed destination evidence differs");
+    codedAssert(boundary.writable_confinement.pre_state_sha256 === hash(canon(observation.writable_pre_state)) && boundary.writable_confinement.post_state_sha256 === hash(canon(observation.writable_post_state)) && boundary.writable_confinement.enforcement_evidence_sha256 === hash(canon(observation.writable_enforcement)), "H2_SANDBOX_WRITABLE_EVIDENCE", "writable confinement evidence differs");
+    codedAssert(boundary.writable_confinement.read_only_root === true && canon([...boundary.writable_confinement.writable_paths].sort()) === canon(boundary.mounts.output_mounts.map((mount: J) => mount.host_path).sort()), "H2_SANDBOX_WRITABLE_EVIDENCE", "writable paths differ from exact output mounts");
+    const git = trustedExecutable("git");
+    const repoRoot = fs.realpathSync(ROOT);
+    const repoTree = execFileSync(git, ["ls-tree", "-r", "--full-tree", "HEAD"], { cwd: repoRoot, env: {} });
+    const dirty = execFileSync(git, ["status", "--porcelain=v1", "--untracked-files=all"], { cwd: repoRoot, env: {} }).toString();
+    codedAssert(hash(repoTree) === boundary.repo_tree_sha256 && (allowSynthetic || dirty === ""), "H2_SANDBOX_REPO_TREE", "sandbox evidence must be produced from the exact clean committed repository tree");
+    const attestation: J = {
+      schema_version: "reviewed_metrics_linux_sandbox_attestation_v2.3.0",
+      status: "observed_live_enforced",
+      synthetic: allowSynthetic,
+      platform: "linux",
+      wrapper: boundary.wrapper,
+      image: boundary.image,
+      runtime_tree: boundary.runtime_tree,
+      executor_semantics: boundary.executor_semantics,
+      wrapper_grammar_version: "gate_h2_linux_wrapper_argv_v3",
+      fixed_argument_allowlist: boundary.fixed_argument_allowlist,
+      argv_prefix: [],
+      mounts: boundary.mounts,
+      network: boundary.network,
+      writable_confinement: boundary.writable_confinement,
+      repo_tree_sha256: boundary.repo_tree_sha256,
+      observation: { observed_at: evidence.collected_at, principal: signer.principal, session_id: signer.session_id, route: signer.route, physical_route_identity_sha256: signer.physical_route_identity_sha256 },
+      signer,
+      signature_base64: "",
+    };
+    attestation.argv_prefix = deriveSandboxArgvPrefix(attestation);
+    for (const bundle of attestation.executor_semantics) {
+      codedAssert(canon(bundle.attestation.subject.stage_program) === canon(evidence.stage_program), "H2_EXECUTOR_SEMANTICS_JOIN", "executor semantics do not bind the exact canonical stage program");
+      validateExecutorSemanticsBundle(bundle, { ...attestation, stage_program: evidence.stage_program }, allowSynthetic, trust);
+    }
+    return { attestation, snapshots, productionEligible: !allowSynthetic };
+  } catch (error) {
+    for (const snapshot of snapshots) { try { fs.closeSync(snapshot.fd); } catch { // failed evidence preflight releases retained files
+    } }
+    throw error;
+  }
+}
+async function produceLinuxSandboxAttestation(input: {
+  evidenceFile: string;
+  coordinatorTrustFile: string;
+  signingKeyFile: string;
+  principal: string;
+  sessionId: string;
+  route: string;
+  maxAgeSeconds: number;
+  output: string;
+  now?: number;
+  hooks?: ProducerHooks;
+  attestationVersion: "v2.4" | "v2.5";
+  authoritySchemaVersion?: string;
+}): Promise<J> {
+  codedAssert(process.platform === "linux", "H2_SANDBOX_PLATFORM", "production sandbox attestations can only be produced on the observed Linux host");
+  codedAssert(Number.isInteger(input.maxAgeSeconds) && input.maxAgeSeconds > 0 && input.maxAgeSeconds <= 86_400, "H2_SANDBOX_TIME", "sandbox evidence maximum age must be 1..86400 seconds");
+  const output = physicalPathSafety(path.resolve(input.output));
+  const evidence = readJsonSnapshot(path.resolve(input.evidenceFile), "H2_SANDBOX_EVIDENCE");
+  const coordinatorTrust = readJsonSnapshot(path.resolve(input.coordinatorTrustFile), "H2_SANDBOX_TRUST");
+  const key = readRawSnapshot(path.resolve(input.signingKeyFile), "H2_ATTESTATION_SIGNING_KEY");
+  let operationSnapshots: OperationSnapshot[] = []; let mountSnapshots: MountDirectorySnapshot[] = []; let stagedMounts: StagedMountSet | undefined;
+  try {
+    exactObjectKeys(coordinatorTrust.value, ["public_key_pem", "public_key_sha256"], "H2_SANDBOX_TRUST", "coordinator trust key");
+    const signing = attestationSigningIdentity(key, input.principal, input.sessionId, input.route);
+    const trustSnapshot = reviewedTrustSnapshot(coordinatorTrust.value);
+    try {
+      const trust = trustSnapshot.value;
+      validatePreActivationTrustRegistry(trust, coordinatorTrust.value, { now: input.now ?? Date.now() });
+      codedAssert(trustedPreActivationIdentity(trust, "linux_sandbox", signing.signer), "H2_PREACTIVATION_TRUST", "sandbox producer signer identity is not exactly admitted");
+      const admitted = trust.attestors.find((entry: J) => entry.evidence_kind === "linux_sandbox");
+      const expectedHost = structuredClone(admitted.trusted_surface_inventory.physical_host_identity);
+      delete expectedHost.measured_at; delete expectedHost.coordinator_verification_pin;
+      const currentHost = currentPhysicalHostIdentity(admitted.trusted_surface_inventory, evidence.value.collected_at);
+      codedAssert(canon(currentHost) === canon(expectedHost), "H2_SANDBOX_HOST_IDENTITY", "current Linux host differs from the reviewed sandbox-attestor host");
+      exactObjectKeys(evidence.value, ["schema_version", "image_manifest_base64", "stage_program", "sandbox"], "H2_SANDBOX_EVIDENCE", "Linux sandbox production request");
+      codedAssert(evidence.value.schema_version === "reviewed_metrics_linux_sandbox_production_request_v2.0.0", "H2_SANDBOX_EVIDENCE", "Linux sandbox production request version differs");
+      const boundary = evidence.value.sandbox; const manifest = Buffer.from(evidence.value.image_manifest_base64, "base64"); const digest = `sha256:${hash(manifest)}`;
+      codedAssert(manifest.length > 0 && manifest.toString("base64") === evidence.value.image_manifest_base64 && boundary.image.identity_kind === "oci_manifest" && boundary.image.digest === digest && boundary.image.immutable_identity.endsWith(`@${digest}`), "H2_SANDBOX_IMAGE", "production request image manifest and immutable digest differ");
+      codedAssert(boundary.network.policy === "deny_all" && boundary.network.destination_capability_ids.length === 0, "H2_SANDBOX_NETWORK_EVIDENCE", "v2 producer currently supports only the reviewed deny-all OCI network contract");
+      codedAssert(input.attestationVersion === "v2.4" || input.attestationVersion === "v2.5", "H2_SANDBOX_VERSION", "sandbox attestation version is not an explicitly requested reviewed version");
+      if (input.authoritySchemaVersion !== undefined) codedAssert(input.authoritySchemaVersion === `reviewed_metrics_linux_sandbox_attestation_${input.attestationVersion}.0`, "H2_SANDBOX_VERSION", "requested sandbox attestation version differs from authority pin");
+      const semanticVersion = boundary.executor_semantics?.[0]?.attestation?.schema_version;
+      codedAssert((input.attestationVersion === "v2.5") === (semanticVersion === "reviewed_metrics_executor_semantics_attestation_v2.2.0"), "H2_SANDBOX_VERSION", "sandbox attestation version and executor semantics successor version differ");
+      mountSnapshots = retainSandboxMounts(boundary);
+      assertSandboxMountDescriptorsStable(mountSnapshots, true);
+      stagedMounts = stageMountsForPodman(mountSnapshots);
+      const collectedAt = new Date().toISOString(); const observations: RawCommandObservation[] = []; const observe = async (id: string, executable: string, argv: string[], exits: readonly number[] = [0]) => { const item = await observeCommand(id, executable, argv, exits); assertSandboxMountDescriptorsStable(mountSnapshots); observations.push(item); return item; };
+      const imageInspect = await observe("image_inspect", LINUX_OCI_TOOLS.podman, ["image", "inspect", "--format", "{{.Digest}}", boundary.image.immutable_identity]);
+      codedAssert(commandStdout(imageInspect).toString("utf8") === `${digest}\n`, "H2_SANDBOX_IMAGE", "podman image store did not resolve the exact manifest digest record");
+      const containerName = `gate-h2-attest-${crypto.randomUUID()}`; let containerCreated = false; let containerId = "";
+      const mountArgs: string[] = [];
+      for (const { original, stagedPath } of stagedMounts.mounts) mountArgs.push("--mount", `type=bind,src=${stagedPath},target=${original.guestPath},${original.mode}`);
+      try {
+        assertSandboxMountDescriptorsStable(mountSnapshots, true); containerCreated = true;
+        const started = await observe("container_start", LINUX_OCI_TOOLS.podman, ["run", "--detach", "--rm", "--name", containerName, "--read-only", "--network", "none", "--entrypoint", LINUX_IMAGE_PATHS.wrapper, ...mountArgs, boundary.image.immutable_identity, "--attestation-hold"]);
+        containerId = commandStdout(started).toString("utf8").trim(); codedAssert(/^[a-f0-9]{64}$/.test(containerId), "H2_SANDBOX_RUNTIME", "podman returned a noncanonical container identity"); containerCreated = true;
+        const inspected = await observe("container_inspect", LINUX_OCI_TOOLS.podman, ["container", "inspect", "--format", "{{json .}}", containerId]);
+        let container: J; try { container = JSON.parse(commandStdout(inspected).toString("utf8")); } catch { throw new GateH2Error("H2_SANDBOX_RUNTIME", "podman container inspection was not JSON"); }
+        const pid = container?.State?.Pid; codedAssert(container?.Id === containerId && (container?.Name === `/${containerName}` || (Array.isArray(container?.Names) && container.Names.includes(containerName))), "H2_SANDBOX_RUNTIME", "container identity does not bind the unique requested name and returned ID");
+        codedAssert(typeof pid === "number" && Number.isInteger(pid) && pid > 1 && container?.ImageDigest === digest && canon(container?.Config?.Entrypoint) === canon([LINUX_IMAGE_PATHS.wrapper]), "H2_SANDBOX_RUNTIME", "container/image/process identity does not bind the exact manifest and entrypoint");
+        const copiedRoot = path.join(stagedMounts.rootPath, "image-copy");
+        try {
+          const imageFiles = [["wrapper", LINUX_IMAGE_PATHS.wrapper, boundary.wrapper], ["runtime", LINUX_IMAGE_PATHS.runtime, boundary.runtime_tree.runtime], ["stage_program", LINUX_IMAGE_PATHS.stageProgram, evidence.value.stage_program]] as const;
+          for (const [label, imagePath, expectedPin] of imageFiles) { const destination = path.join(copiedRoot, label); await observe(`copy_${label}`, LINUX_OCI_TOOLS.podman, ["cp", `${containerId}:${imagePath}`, destination]); const raw = fs.readFileSync(destination); codedAssert(hash(raw) === expectedPin.sha256 && raw.length === expectedPin.bytes, "H2_SANDBOX_RUNTIME", `image ${label} bytes differ from the reviewed pin`); if (label !== "stage_program") validateStaticElfBytes(raw, `image ${label}`); }
+        } finally { fs.rmSync(copiedRoot, { recursive: true, force: true }); }
+        await observe("runtime_self_check", LINUX_OCI_TOOLS.podman, ["exec", containerId, LINUX_IMAGE_PATHS.runtime, "--stage-program", LINUX_IMAGE_PATHS.stageProgram, "--attestation-self-check"]);
+        const networkNs = await observe("network_namespace", LINUX_OCI_TOOLS.readlink, [`/proc/${pid}/ns/net`]);
+        const mountTable = await observe("mount_table", LINUX_OCI_TOOLS.cat, [`/proc/${pid}/mountinfo`]);
+        const mountRows = commandStdout(mountTable).toString("utf8").trim().split("\n").map((line) => { const fields = line.split(" "); codedAssert(fields.length >= 10 && fields.includes("-"), "H2_SANDBOX_MOUNT_EVIDENCE", "kernel mountinfo row is malformed"); return { mountpoint: fields[4], options: fields[5].split(",") }; });
+        const rootMount = mountRows.find((row) => row.mountpoint === "/"); codedAssert(rootMount?.options.includes("ro"), "H2_SANDBOX_MOUNT_EVIDENCE", "observed container root mount is not read-only");
+        for (const mount of [...boundary.mounts.readable_inputs, ...boundary.mounts.output_mounts]) { const observedMount = mountRows.find((row) => row.mountpoint === mount.guest_path); codedAssert(observedMount !== undefined && observedMount.options.includes(mount.mode === "ro" ? "ro" : "rw"), "H2_SANDBOX_MOUNT_EVIDENCE", `actual mount table does not enforce ${mount.mode} for ${mount.artifact_role}`); }
+        const firewall = await observe("firewall_rules", LINUX_OCI_TOOLS.nsenter, [`--net=/proc/${pid}/ns/net`, LINUX_OCI_TOOLS.nft, "--json", "list", "ruleset"]);
+        const destinations = await observe("observed_destinations", LINUX_OCI_TOOLS.nsenter, [`--net=/proc/${pid}/ns/net`, LINUX_OCI_TOOLS.ss, "-Htunap"]);
+        const preState = { mounts: [...boundary.mounts.readable_inputs, ...boundary.mounts.output_mounts].map((mount: J) => ({ artifact_role: mount.artifact_role, tree_sha256: filesystemEvidenceDigest(mount.host_path) })) };
+        const probeExpectations = new Map<string, readonly number[]>([["read_only_input_write", [73]], ["root_write", [73]], ["undeclared_write", [73]], ["declared_output_write", [0]], ["network_denial", [73]], ["network_allowlist", [73]]]);
+        for (const [name, exits] of probeExpectations) await observe(`probe_${name}`, LINUX_OCI_TOOLS.podman, ["exec", containerId, LINUX_IMAGE_PATHS.wrapper, "--active-probe", name], exits);
+        const executorUniverse = input.attestationVersion === "v2.5" ? EXECUTOR_HTTPS_LINUX_TEST_UNIVERSE : EXECUTOR_LINUX_TEST_UNIVERSE;
+        for (const name of executorUniverse) {
+          const result = await observe(`executor_${name}`, LINUX_OCI_TOOLS.podman, ["exec", containerId, LINUX_IMAGE_PATHS.wrapper, "--executor-conformance-case", name]);
+          const evidenceSha256 = hash(canon({ name, exit_status: result.exit_status, stdout_sha256: result.stdout_sha256, stdout_bytes: result.stdout_bytes, stderr_sha256: result.stderr_sha256, stderr_bytes: result.stderr_bytes }));
+          codedAssert(boundary.executor_semantics.every((bundle: J) => bundle.attestation.test_results.cases.find((entry: J) => entry.name === name)?.evidence_sha256 === evidenceSha256), "H2_EXECUTOR_TEST_RESULTS", `fresh executor case ${name} differs from independently signed result evidence`);
+        }
+        const postState = { mounts: [...boundary.mounts.readable_inputs, ...boundary.mounts.output_mounts].map((mount: J) => ({ artifact_role: mount.artifact_role, tree_sha256: filesystemEvidenceDigest(mount.host_path) })) };
+        codedAssert(canon(preState) === canon(postState), "H2_SANDBOX_WRITABLE_EVIDENCE", "active probes did not restore the declared output mount or changed a read-only mount");
+        assertSandboxMountDescriptorsStable(mountSnapshots, true);
+        await observe("container_remove", LINUX_OCI_TOOLS.podman, ["rm", "--force", containerId]);
+        await observe("container_absence", LINUX_OCI_TOOLS.podman, ["container", "inspect", "--format", "{{json .}}", containerId], [1]);
+        containerCreated = false;
+        const networkNamespace = { raw_sha256: networkNs.stdout_sha256, raw_bytes: networkNs.stdout_bytes }; const firewallRules = { raw_sha256: firewall.stdout_sha256, raw_bytes: firewall.stdout_bytes };
+        const observedDestinations = commandStdout(destinations).toString("utf8").split("\n").map((line) => line.trim()).filter(Boolean).sort();
+        codedAssert(observedDestinations.length === 0, "H2_SANDBOX_NETWORK_EVIDENCE", "deny-all container observed a network destination");
+        const writableEnforcement = { probes: [...probeExpectations.keys()].map((name) => ({ name, observation_id: `probe_${name}` })) };
+        const mountFilesystems = [...boundary.mounts.readable_inputs, ...boundary.mounts.output_mounts].map((mount: J) => ({ artifact_role: mount.artifact_role, mode: mount.mode, tree_sha256: filesystemEvidenceDigest(mount.host_path) })).sort((a: J, b: J) => a.artifact_role.localeCompare(b.artifact_role));
+        const derivedEvidence = { schema_version: "reviewed_metrics_linux_sandbox_evidence_bundle_v1.0.0", synthetic: false, production_eligible: true, collected_at: collectedAt, image_manifest_base64: evidence.value.image_manifest_base64, stage_program: evidence.value.stage_program, sandbox: structuredClone(boundary), observation_evidence: { network_namespace: networkNamespace, firewall_rules: firewallRules, observed_destinations: observedDestinations, writable_pre_state: preState, writable_post_state: postState, writable_enforcement: writableEnforcement, mount_filesystems: mountFilesystems } };
+        derivedEvidence.sandbox.writable_confinement.read_only_root = true;
+        derivedEvidence.sandbox.network.namespace_identity_sha256 = hash(canon(networkNamespace)); derivedEvidence.sandbox.network.firewall_rules_sha256 = hash(canon(firewallRules)); derivedEvidence.sandbox.network.observed_destinations_digest = hash(canon(observedDestinations));
+        derivedEvidence.sandbox.writable_confinement.pre_state_sha256 = hash(canon(preState)); derivedEvidence.sandbox.writable_confinement.post_state_sha256 = hash(canon(postState)); derivedEvidence.sandbox.writable_confinement.enforcement_evidence_sha256 = hash(canon(writableEnforcement));
+        validateSandboxEvidenceFreshness(collectedAt, input.now ?? Date.now(), input.maxAgeSeconds);
+        const validated = validateLinuxSandboxEvidenceBundle(derivedEvidence, signing.signer, trust, false);
+        operationSnapshots = validated.snapshots;
+        validated.attestation.schema_version = `reviewed_metrics_linux_sandbox_attestation_${input.attestationVersion}.0`;
+        validated.attestation.runtime_observation = { contract: "fixed_usr_bin_podman_digest_pinned_v2", image_manifest_sha256: hash(manifest), image_manifest_bytes: manifest.length, container_identity_sha256: hash(containerId), process_identity_sha256: hash(`${containerId}\0${pid}`), mount_table_sha256: mountTable.stdout_sha256, command_count: observations.length, commands: observations, commands_sha256: observationDigest(observations) };
+        const linkedToContainer = observations.filter((command) => ["container_inspect", "copy_wrapper", "copy_runtime", "copy_stage_program", "runtime_self_check", ...runtimeCommandIds(input.attestationVersion === "v2.5").filter((id) => id.startsWith("probe_") || id.startsWith("executor_"))].includes(command.id));
+        codedAssert(linkedToContainer.every((command) => command.argv.includes(containerId)) && observations.filter((command) => ["network_namespace", "mount_table", "firewall_rules", "observed_destinations"].includes(command.id)).every((command) => command.argv.some((arg) => arg.includes(`/proc/${pid}/`))), "H2_SANDBOX_RUNTIME", "runtime observation commands are not linked to the inspected container identity and process PID");
+        input.hooks?.afterObservation?.();
+        for (const snapshot of [evidence, coordinatorTrust, key, trustSnapshot]) assertSnapshotPathUnchanged(snapshot); assertOperationSnapshotsUnchanged(operationSnapshots); rejectPlaceholderEvidence(validated.attestation);
+        validated.attestation.signature_base64 = crypto.sign(null, unsignedAttestationPayload(validated.attestation), signing.privateKey).toString("base64"); validateLinuxSandboxAttestation(validated.attestation, false, trust);
+        input.hooks?.beforeOutput?.(); for (const snapshot of [evidence, coordinatorTrust, key, trustSnapshot]) assertSnapshotPathUnchanged(snapshot); assertOperationSnapshotsUnchanged(operationSnapshots);
+        writeLinuxOwnedExclusive(output, Buffer.from(pretty(validated.attestation)), "H2_SANDBOX_ATTESTATION_OUTPUT");
+        return { status: "live_linux_sandbox_attestation_written", synthetic: false, production_eligible: true, attestation_sha256: hash(Buffer.from(pretty(validated.attestation))), image_digest: digest, executor_capability_ids: validated.attestation.executor_semantics.map((bundle: J) => bundle.capability_id).sort() };
+      } finally {
+        if (containerCreated) {
+          try {
+            const cleanup = await observeCommand("container_remove", LINUX_OCI_TOOLS.podman, containerId ? ["rm", "--force", containerId] : ["rm", "--force", "--name", containerName], containerId ? [0] : [0, 1]);
+            if (!containerId && cleanup.exit_status === 1) {
+              const detail = decodeCommandOutput(cleanup.stderr_base64, cleanup.stderr_sha256, cleanup.stderr_bytes).toString("utf8");
+              codedAssert(/(?:no such container|container .* not found|does not exist)/i.test(detail), "H2_SANDBOX_CLEANUP", "name cleanup reported an unapproved nonzero absence status");
+            }
+            containerCreated = false;
+          } catch (error) { throw new GateH2Error("H2_SANDBOX_CLEANUP", error instanceof Error ? `container cleanup failed: ${error.message}` : "container cleanup failed"); }
+        }
+      }
+    } finally { closeSnapshot(trustSnapshot); }
+  } finally {
+    for (const snapshot of operationSnapshots) { try { fs.closeSync(snapshot.fd); } catch { // retained evidence is no longer in use
+    } }
+    for (const snapshot of mountSnapshots) { try { fs.closeSync(snapshot.fd); } catch { /* retained mount descriptor is no longer in use */ } }
+    closeStagedMounts(stagedMounts);
+    closeSnapshot(evidence); closeSnapshot(coordinatorTrust); closeSnapshot(key);
+  }
+}
+function linuxSandboxProducerSelfTest(root: string): J {
+  const work = path.join(root, "sandbox-producer"); fs.mkdirSync(work, { mode: 0o700 });
+  const write = (name: string, raw: Buffer | string, mode = 0o600): string => { const file = path.join(work, name); fs.writeFileSync(file, raw, { mode }); return file; };
+  const wrapperFile = write("wrapper.bin", "synthetic wrapper fixture\n");
+  const packageFile = write("package.json", pretty({ name: "gate-h2-sandbox-fixture", version: "1.0.0", private: true }));
+  const lockFile = write("package-lock.json", pretty({ name: "gate-h2-sandbox-fixture", version: "1.0.0", lockfileVersion: 3, requires: true, packages: { "": { name: "gate-h2-sandbox-fixture", version: "1.0.0" } } }));
+  const inputMountPath = path.join(work, "input"); const outputMountPath = path.join(work, "output"); fs.mkdirSync(inputMountPath, { mode: 0o700 }); fs.mkdirSync(outputMountPath, { mode: 0o700 }); const inputMount = fs.realpathSync(inputMountPath); const outputMount = fs.realpathSync(outputMountPath); write("input/payload.json", pretty({ opaque: "fixture" }));
+  const stageProgramFile = write("stage-program.json", pretty({ schema_version: "reviewed_metrics_stage_program_v2.1.0", schema_sha256: schemaFilePin("stage-program.schema.v2.json").sha256, executor_contract: "gate_h2_static_stage_program_executor_v1", action: "invoke_attested_capability", input_artifact_roles: ["stage_input"], output_indexes: [0], network_capability_ids: [] }));
+  const wrapper = filePinForAttestation(wrapperFile, "synthetic-wrapper-nonproduction");
+  const runtime = filePinForAttestation(process.execPath, process.version);
+  const stageProgram = filePinForAttestation(stageProgramFile, "reviewed_metrics_stage_program_v2.1.0");
+  const lock = filePinForAttestation(lockFile, "npm-lock-v3");
+  const packageManifest = filePinForAttestation(packageFile, "npm-package-v1");
+  const roots = [wrapper, runtime, stageProgram, lock, packageManifest].map((member: J) => ({ path: member.path, realpath: member.realpath, discovery_rule: "recursive_regular_files_no_symlinks_v1" })).sort((a: J, b: J) => a.realpath.localeCompare(b.realpath));
+  const members = roots.flatMap(enumerateDependencyRoot).sort((a: J, b: J) => a.realpath.localeCompare(b.realpath));
+  const resolution = makeZeroDependencyStageProgramResolutionClosure(wrapper, runtime, stageProgram, lock, packageManifest, roots, members, work);
+  const runtimeBytes = dependencyTreeBytes(resolution, roots, members);
+  const readable = [{ artifact_role: "stage_input", host_path: inputMount, guest_path: "/inputs/stage", mode: "ro", content_sha256: filesystemEvidenceDigest(inputMount) }];
+  const outputs = [{ artifact_role: "stage_output", host_path: outputMount, guest_path: "/outputs/stage", mode: "rw", content_sha256: filesystemEvidenceDigest(outputMount) }];
+  const imageManifest = Buffer.from(canon({ schemaVersion: 2, config: { digest: hash("config") }, layers: [] }));
+  const imageDigest = `sha256:${hash(imageManifest)}`;
+  const collectedAt = new Date().toISOString();
+  const semantics = syntheticExecutorSemanticsBundle({ wrapper, runtime, stageProgram, imageDigest, readableMounts: readable, outputMounts: outputs, writablePaths: [outputMount], observedAt: collectedAt });
+  const networkNamespace = { namespace_inode: 42, loopback_only: true };
+  const firewallRules = [{ chain: "OUTPUT", policy: "DROP", exceptions: [] }];
+  const observedDestinations: string[] = [];
+  const writablePre = { read_only_root: true, output_tree_sha256: filesystemEvidenceDigest(outputMount) };
+  const writablePost = { read_only_root: true, output_tree_sha256: filesystemEvidenceDigest(outputMount) };
+  const writableEnforcement = { undeclared_write_result: "rejected", root_write_result: "rejected" };
+  const repoTree = execFileSync(trustedExecutable("git"), ["ls-tree", "-r", "--full-tree", "HEAD"], { cwd: ROOT, env: {} });
+  const evidence: J = {
+    schema_version: "reviewed_metrics_linux_sandbox_evidence_bundle_v1.0.0",
+    synthetic: true,
+    production_eligible: false,
+    collected_at: collectedAt,
+    image_manifest_base64: imageManifest.toString("base64"),
+    stage_program: stageProgram,
+    sandbox: {
+      wrapper,
+      image: { identity_kind: "oci_manifest", immutable_identity: `registry.invalid/gate-h2@${imageDigest}`, digest: imageDigest },
+      runtime_tree: { runtime, resolution_contract: resolution, physical_roots: roots, members, complete_tree_sha256: hash(runtimeBytes), complete_tree_bytes: runtimeBytes.length, member_count: members.length, enumeration_contract: "sorted_physical_regular_files_path_sha256_bytes_v2" },
+      executor_semantics: [semantics],
+      fixed_argument_allowlist: [],
+      mounts: { readable_inputs: readable, output_mounts: outputs },
+      network: { namespace_identity_sha256: hash(canon(networkNamespace)), firewall_rules_sha256: hash(canon(firewallRules)), policy: "deny_all", destination_capability_ids: [], observed_destinations_digest: hash(canon(observedDestinations)) },
+      writable_confinement: { writable_paths: [outputMount], read_only_root: true, pre_state_sha256: hash(canon(writablePre)), post_state_sha256: hash(canon(writablePost)), enforcement_evidence_sha256: hash(canon(writableEnforcement)) },
+      repo_tree_sha256: hash(repoTree),
+    },
+    observation_evidence: { network_namespace: networkNamespace, firewall_rules: firewallRules, observed_destinations: observedDestinations, writable_pre_state: writablePre, writable_post_state: writablePost, writable_enforcement: writableEnforcement, mount_filesystems: [{ artifact_role: "stage_input", mode: "ro", tree_sha256: readable[0].content_sha256 }, { artifact_role: "stage_output", mode: "rw", tree_sha256: outputs[0].content_sha256 }] },
+  };
+  const keyPair = crypto.generateKeyPairSync("ed25519"); const keyFile = write("sandbox-key.pem", keyPair.privateKey.export({ type: "pkcs8", format: "pem" }));
+  const routePath = path.join(work, "attestor-route"); fs.mkdirSync(routePath, { mode: 0o700 }); const keySnapshot = readRawSnapshot(keyFile, "H2_ATTESTATION_SIGNING_KEY");
+  const signing = attestationSigningIdentity(keySnapshot, "sandbox-attestor-alpha", "sandbox-session-alpha", fs.realpathSync(routePath)); closeSnapshot(keySnapshot);
+  const baseline = validateLinuxSandboxEvidenceBundle(evidence, signing.signer, undefined, true);
+  codedAssert(baseline.productionEligible === false && baseline.attestation.signature_base64 === "" && baseline.attestation.synthetic === true, "H2_SANDBOX_PRODUCER_TEST", "synthetic sandbox validation attempted to create production-eligible signed output");
+  for (const snapshot of baseline.snapshots) fs.closeSync(snapshot.fd);
+  const expect = (label: string, code: string, mutate: (candidate: J) => void): void => {
+    const candidate = structuredClone(evidence); mutate(candidate); let observed = "";
+    try {
+      const result = validateLinuxSandboxEvidenceBundle(candidate, signing.signer, undefined, true);
+      for (const snapshot of result.snapshots) fs.closeSync(snapshot.fd);
+    } catch (error) { observed = error instanceof GateH2Error ? error.code : error instanceof Error ? error.message.split(":")[0] : String(error); }
+    codedAssert(observed === code, "H2_SANDBOX_PRODUCER_TEST", `${label} expected ${code}, observed ${observed || "accepted"}`);
+  };
+  let productionRejected = ""; try { validateLinuxSandboxEvidenceBundle(evidence, signing.signer, undefined, false); } catch (error) { productionRejected = error instanceof GateH2Error ? error.code : ""; }
+  codedAssert(productionRejected === "H2_SANDBOX_SYNTHETIC", "H2_SANDBOX_PRODUCER_TEST", "synthetic evidence crossed the production validation boundary");
+  expect("image-mismatch", "H2_SANDBOX_IMAGE", (candidate) => { candidate.sandbox.image.digest = `sha256:${hash("other-image")}`; });
+  expect("runtime-mismatch", "H2_SANDBOX_RUNTIME_TREE", (candidate) => { candidate.sandbox.runtime_tree.runtime = candidate.sandbox.wrapper; });
+  expect("tree-mismatch", "H2_SANDBOX_RUNTIME_TREE", (candidate) => { candidate.sandbox.runtime_tree.complete_tree_sha256 = hash("wrong-tree"); });
+  expect("mount-mismatch", "H2_SANDBOX_MOUNT_EVIDENCE", (candidate) => { candidate.sandbox.mounts.readable_inputs[0].content_sha256 = hash("wrong-mount"); });
+  expect("network-mismatch", "H2_SANDBOX_NETWORK_EVIDENCE", (candidate) => { candidate.sandbox.network.firewall_rules_sha256 = hash("wrong-firewall"); });
+  expect("writable-mismatch", "H2_SANDBOX_WRITABLE_EVIDENCE", (candidate) => { candidate.sandbox.writable_confinement.enforcement_evidence_sha256 = hash("wrong-enforcement"); });
+  expect("result-mismatch", "H2_EXECUTOR_SEMANTICS_PIN", (candidate) => { candidate.sandbox.executor_semantics[0].attestation.test_results.cases[0].evidence_sha256 = hash("wrong-result"); });
+  expect("signature-mismatch", "H2_EXECUTOR_SEMANTICS_SIGNATURE", (candidate) => { const bundle = candidate.sandbox.executor_semantics[0]; bundle.attestation.signature_base64 = Buffer.alloc(64).toString("base64"); bundle.attestation_pin = canonicalEmbeddedPin(bundle.attestation, "executor-semantics-attestation.schema.v2.json"); });
+  expect("stage-program-mismatch", "H2_SANDBOX_RUNTIME_TREE", (candidate) => { candidate.stage_program = candidate.sandbox.wrapper; });
+  const now = Date.parse(collectedAt);
+  validateSandboxEvidenceFreshness(collectedAt, now, 3600);
+  for (const [label, timestamp] of [["stale", new Date(now - 3_600_001).toISOString()], ["future", new Date(now + 60_001).toISOString()]] as const) {
+    let observed = ""; try { validateSandboxEvidenceFreshness(timestamp, now, 3600); } catch (error) { observed = error instanceof GateH2Error ? error.code : ""; }
+    codedAssert(observed === "H2_SANDBOX_TIME", "H2_SANDBOX_PRODUCER_TEST", `${label} sandbox evidence was accepted`);
+  }
+  const observationImage = `registry.invalid/gate-h2@sha256:${"b".repeat(64)}`; const observationContainer = "a".repeat(64); const observationPid = 42; const observationName = "gate-h2-attest-cccccccc-dddd-eeee-ffff-000000000000"; const observationStageRoot = "/tmp/gate-h2-mount-root-fixture"; const observationMounts = { readable_inputs: [{ host_path: "/signed/input", guest_path: "/inputs/stage", mode: "ro" }], output_mounts: [{ host_path: "/signed/output", guest_path: "/outputs/stage", mode: "rw" }] }; const zeroOutput = { stdout_base64: "", stdout_sha256: hash(Buffer.alloc(0)), stdout_bytes: 0, stderr_base64: "", stderr_sha256: hash(Buffer.alloc(0)), stderr_bytes: 0 };
+  const encodedOutput = (value: string): J => ({ stdout_base64: Buffer.from(value).toString("base64"), stdout_sha256: hash(Buffer.from(value)), stdout_bytes: Buffer.byteLength(value), stderr_base64: "", stderr_sha256: hash(Buffer.alloc(0)), stderr_bytes: 0 });
+  const observationContainerInspect = JSON.stringify({ Id: observationContainer, Name: `/${observationName}`, State: { Pid: observationPid }, ImageDigest: `sha256:${"b".repeat(64)}`, Config: { Entrypoint: [LINUX_IMAGE_PATHS.wrapper] } });
+  const observationCommands = runtimeCommandIds(false).map((id, index) => {
+    const executable = id === "network_namespace" ? LINUX_OCI_TOOLS.readlink : id === "mount_table" ? LINUX_OCI_TOOLS.cat : id === "firewall_rules" || id === "observed_destinations" ? LINUX_OCI_TOOLS.nsenter : LINUX_OCI_TOOLS.podman;
+    const argv = id === "image_inspect" ? ["image", "inspect", "--format", "{{.Digest}}", observationImage] : id === "container_start" ? ["run", "--detach", "--rm", "--name", observationName, "--read-only", "--network", "none", "--entrypoint", LINUX_IMAGE_PATHS.wrapper, "--mount", `type=bind,src=${observationStageRoot}/0,target=/inputs/stage,ro`, "--mount", `type=bind,src=${observationStageRoot}/1,target=/outputs/stage,rw`, observationImage, "--attestation-hold"] : id === "container_inspect" || id === "container_absence" ? ["container", "inspect", "--format", "{{json .}}", observationContainer] : id.startsWith("copy_") ? ["cp", `${observationContainer}:${id === "copy_wrapper" ? LINUX_IMAGE_PATHS.wrapper : id === "copy_runtime" ? LINUX_IMAGE_PATHS.runtime : LINUX_IMAGE_PATHS.stageProgram}`, `${observationStageRoot}/image-copy/${id.slice("copy_".length)}`] : id === "runtime_self_check" ? ["exec", observationContainer, LINUX_IMAGE_PATHS.runtime, "--stage-program", LINUX_IMAGE_PATHS.stageProgram, "--attestation-self-check"] : id === "network_namespace" ? [`/proc/${observationPid}/ns/net`] : id === "mount_table" ? [`/proc/${observationPid}/mountinfo`] : id === "firewall_rules" ? [`--net=/proc/${observationPid}/ns/net`, LINUX_OCI_TOOLS.nft, "--json", "list", "ruleset"] : id === "observed_destinations" ? [`--net=/proc/${observationPid}/ns/net`, LINUX_OCI_TOOLS.ss, "-Htunap"] : id.startsWith("probe_") ? ["exec", observationContainer, LINUX_IMAGE_PATHS.wrapper, "--active-probe", id.slice("probe_".length)] : id.startsWith("executor_") ? ["exec", observationContainer, LINUX_IMAGE_PATHS.wrapper, "--executor-conformance-case", id.slice("executor_".length)] : ["rm", "--force", observationContainer];
+    const observationMountTable = "36 25 0:32 / / ro,relatime - tmpfs tmpfs rw\n36 26 0:33 / /inputs/stage ro,relatime - bind /tmp/input ro\n36 27 0:34 / /outputs/stage rw,relatime - bind /tmp/output rw\n";
+    const output = id === "image_inspect" ? encodedOutput(`sha256:${"b".repeat(64)}\n`) : id === "container_start" ? encodedOutput(`${observationContainer}\n`) : id === "container_inspect" ? encodedOutput(observationContainerInspect) : id === "mount_table" ? encodedOutput(observationMountTable) : id === "container_absence" ? { ...zeroOutput, stderr_base64: Buffer.from("Error: no such container\n").toString("base64"), stderr_sha256: hash(Buffer.from("Error: no such container\n")), stderr_bytes: Buffer.byteLength("Error: no such container\n") } : zeroOutput;
+    return { id, executable, argv, started_at: `2026-01-01T00:00:${String(index).padStart(2, "0")}.000Z`, ended_at: `2026-01-01T00:00:${String(index).padStart(2, "0")}.000Z`, exit_status: id === "probe_read_only_input_write" || id === "probe_root_write" || id === "probe_undeclared_write" || id === "probe_network_denial" || id === "probe_network_allowlist" ? 73 : id === "container_absence" ? 1 : 0, signal: null, timed_out: false, ...output };
+  });
+  const observationFixture = { contract: "fixed_usr_bin_podman_digest_pinned_v2", image_manifest_sha256: "b".repeat(64), image_manifest_bytes: 1, container_identity_sha256: hash(observationContainer), process_identity_sha256: hash(`${observationContainer}\0${observationPid}`), mount_table_sha256: hash(Buffer.from("36 25 0:32 / / ro,relatime - tmpfs tmpfs rw\n36 26 0:33 / /inputs/stage ro,relatime - bind /tmp/input ro\n36 27 0:34 / /outputs/stage rw,relatime - bind /tmp/output rw\n")), command_count: observationCommands.length, commands: observationCommands, commands_sha256: hash(canon(observationCommands)) };
+  validateRuntimeObservation(observationFixture, observationImage, `sha256:${"b".repeat(64)}`, false, observationMounts);
+  for (const [label, mutate] of [
+    ["duplicate command ID", (candidate: J) => { candidate.commands[1].id = candidate.commands[0].id; }],
+    ["argv substitution", (candidate: J) => { candidate.commands[2].argv[0] = "unexpected"; }],
+    ["extra runtime argument", (candidate: J) => { candidate.commands.find((command: J) => command.id === "runtime_self_check").argv.push("--unexpected"); }],
+    ["PID substitution", (candidate: J) => { candidate.commands.find((command: J) => command.id === "network_namespace").argv[0] = "/proc/43/ns/net"; }],
+    ["expected exit substitution", (candidate: J) => { candidate.commands.find((command: J) => command.id === "probe_root_write").exit_status = 0; }],
+    ["mount commitment substitution", (candidate: J) => { candidate.mount_table_sha256 = hash("wrong-mount-table"); }],
+    ["cleanup argument substitution", (candidate: J) => { candidate.commands.find((command: J) => command.id === "container_remove").argv.push("--name"); }],
+  ] as const) {
+    const candidate = structuredClone(observationFixture); mutate(candidate); candidate.commands_sha256 = hash(canon(candidate.commands)); let rejected = ""; try { validateRuntimeObservation(candidate, observationImage, `sha256:${"b".repeat(64)}`, false); } catch (error) { rejected = error instanceof GateH2Error ? error.code : ""; } codedAssert(rejected === "H2_SANDBOX_OBSERVATION", "H2_SANDBOX_PRODUCER_TEST", `${label} runtime observation was accepted`);
+  }
+  const originalPathCandidate = structuredClone(observationFixture); const originalPathStart = originalPathCandidate.commands.find((command: J) => command.id === "container_start"); originalPathStart.argv[originalPathStart.argv.findIndex((arg: string) => arg.startsWith("type=bind,src="))] = "type=bind,src=/signed/input,target=/inputs/stage,ro"; originalPathCandidate.commands_sha256 = hash(canon(originalPathCandidate.commands)); let originalPathRejected = ""; try { validateRuntimeObservation(originalPathCandidate, observationImage, `sha256:${"b".repeat(64)}`, false, observationMounts); } catch (error) { originalPathRejected = error instanceof GateH2Error ? error.code : ""; } codedAssert(originalPathRejected === "H2_SANDBOX_MOUNT_PATH", "H2_SANDBOX_PRODUCER_TEST", "staged mount source equal to signed original host path was accepted");
+  const absenceCandidate = structuredClone(observationFixture); const absenceCommand = absenceCandidate.commands.find((command: J) => command.id === "container_absence"); absenceCommand.stderr_base64 = ""; absenceCommand.stderr_sha256 = hash(Buffer.alloc(0)); absenceCommand.stderr_bytes = 0; absenceCandidate.commands_sha256 = hash(canon(absenceCandidate.commands)); let absenceRejected = ""; try { validateRuntimeObservation(absenceCandidate, observationImage, `sha256:${"b".repeat(64)}`, false); } catch (error) { absenceRejected = error instanceof GateH2Error ? error.code : ""; } codedAssert(absenceRejected === "H2_SANDBOX_OBSERVATION", "H2_SANDBOX_PRODUCER_TEST", "post-remove absence without authoritative not-found output was accepted");
+  const networkCandidate = structuredClone(observationFixture); const networkCommand = networkCandidate.commands.find((command: J) => command.id === "observed_destinations"); const networkOutput = Buffer.from("ESTABLISHED 10.0.0.2:443\n"); networkCommand.stdout_base64 = networkOutput.toString("base64"); networkCommand.stdout_sha256 = hash(networkOutput); networkCommand.stdout_bytes = networkOutput.length; networkCandidate.commands_sha256 = hash(canon(networkCandidate.commands)); let networkRejected = ""; try { validateRuntimeObservation(networkCandidate, observationImage, `sha256:${"b".repeat(64)}`, false, observationMounts); } catch (error) { networkRejected = error instanceof GateH2Error ? error.code : ""; } codedAssert(networkRejected === "H2_SANDBOX_NETWORK_EVIDENCE", "H2_SANDBOX_PRODUCER_TEST", "deny-all observed destination output was accepted");
+  const expectMountRejection = (label: string, code: string, mutate: (candidate: J) => void): void => {
+    const candidate = structuredClone(evidence.sandbox); mutate(candidate); let observed = ""; let retained: MountDirectorySnapshot[] = [];
+    try { retained = retainSandboxMounts(candidate); } catch (error) { observed = error instanceof GateH2Error ? error.code : error instanceof Error ? error.message.split(":")[0] : String(error); }
+    for (const mount of retained) { try { fs.closeSync(mount.fd); } catch { /* cleanup continues */ } }
+    codedAssert(observed === code, "H2_SANDBOX_PRODUCER_TEST", `${label} mount was accepted with ${observed || "no error"}`);
+  };
+  expectMountRejection("mount syntax", "H2_SANDBOX_MOUNT_PATH", (candidate) => { candidate.mounts.readable_inputs[0].host_path = `${inputMount}:not-a-mount-path`; });
+  const symlinkMount = path.join(work, "input-link"); fs.symlinkSync(inputMount, symlinkMount);
+  try { expectMountRejection("symlink host mount", "H2_SANDBOX_MOUNT_PATH", (candidate) => { candidate.mounts.readable_inputs[0].host_path = symlinkMount; }); }
+  finally { fs.unlinkSync(symlinkMount); }
+  expectMountRejection("duplicate guest mount", "H2_SANDBOX_MOUNT_PATH", (candidate) => { candidate.mounts.output_mounts[0].guest_path = candidate.mounts.readable_inputs[0].guest_path; });
+  const retainedForStage = retainSandboxMounts(evidence.sandbox); let staged: StagedMountSet | undefined;
+  try {
+    const stagedSet = stageMountsForPodman(retainedForStage); staged = stagedSet;
+    codedAssert(stagedSet.mounts.length === retainedForStage.length && stagedSet.mounts.every(({ original, stagedPath }) => stagedPath !== original.hostPath && stagedPath.startsWith(`${stagedSet.rootPath}/`) && fs.realpathSync(stagedPath) === stagedPath), "H2_SANDBOX_MOUNT_PATH", "Podman staging did not replace original host paths with canonical staged paths");
+    const inputFile = path.join(inputMount, "payload.json"); const originalBytes = fs.readFileSync(inputFile); fs.writeFileSync(inputFile, Buffer.from("tampered\\n"), { mode: 0o600 });
+    try { let rejected = false; try { assertSandboxMountDescriptorsStable(retainedForStage, true); } catch (error) { rejected = error instanceof GateH2Error && error.code === "H2_SANDBOX_MOUNT_EVIDENCE"; } codedAssert(rejected, "H2_SANDBOX_MOUNT_EVIDENCE", "source mutation after staging crossed the retained snapshot boundary"); }
+    finally { fs.writeFileSync(inputFile, originalBytes, { mode: 0o600 }); }
+  } finally {
+    closeStagedMounts(staged);
+    for (const mount of retainedForStage) { try { fs.closeSync(mount.fd); } catch { /* cleanup continues */ } }
+  }
+  return { status: "linux_sandbox_producer_contract_passed", synthetic: true, production_eligible: false, production_writes: 0, cases: ["synthetic_never_production_eligible", "image_mismatch", "runtime_mismatch", "tree_mismatch", "mount_mismatch", "network_mismatch", "writable_mismatch", "executor_result_mismatch", "executor_signature_mismatch", "stage_program_mismatch", "stale_evidence", "future_evidence", "mount_syntax", "symlink_host_mount", "duplicate_guest_mount", "podman_consumes_staged_mounts", "source_mutation_after_staging_rejected", "staged_source_equals_signed_host_path_rejected", "post_remove_absence_required", "read_only_root_and_guest_modes_bound", "deny_all_destinations_bound"] };
 }
 function validateResolutionClosure(contract: J, roots: J[], members: J[], code = "H2_STAGE_DEPENDENCY_TREE"): void {
   codedAssert(contract?.version === "gate_h2_runtime_resolution_closure_v1" && contract.closure_complete === true, code, "runtime dependency closure is not explicitly complete");
@@ -2937,7 +3765,9 @@ async function completedStageLedgerEvidence(authority: J, verifyCurrentOutputs =
     const ledger = injectedLedger ?? stageLedger(authority, capability);
     try { await ledger.attestSchema(authority.stage_execution.ledger); }
     catch (error) { if (error instanceof StageLedgerContractError) throw new GateH2Error(error.code, error.message); throw error; }
-    const readback = await ledger.readAll(authority.candidate_commit, authorityBindingHash(authority));
+    let readback: LedgerReadback;
+    try { readback = await ledger.readAll(authority.candidate_commit, authorityBindingHash(authority)); }
+    catch (error) { if (error instanceof StageLedgerContractError) throw new GateH2Error(error.code, error.message); throw error; }
     let joined: ReturnType<typeof validateCompleteLedgerReadback>;
     try { joined = validateCompleteLedgerReadback(readback, authority.candidate_commit, authorityBindingHash(authority), STAGE_IDS); }
     catch (error) { if (error instanceof StageLedgerContractError) throw new GateH2Error(error.code, error.message); throw error; }
@@ -5421,7 +6251,9 @@ function validatePreActivationAuthority(authority: J, allowSyntheticExecutorSema
   const httpsAuthority = authority.schema_version === "reviewed_metrics_execution_authorization_v2.5.0";
   if (httpsAuthority) validatedHttpsAuthorityManifest(authority);
   const d1 = verifyAttestationArtifact(pins.d1, pins.d1.schema_sha256, "d1-live-attestation.schema.v2.json");
-  const sandboxSchema = httpsAuthority ? "linux-sandbox-attestation.schema.v2.5.json" : "linux-sandbox-attestation.schema.v2.json";
+  const sandboxVersion = pins.sandbox?.artifact?.version;
+  const sandboxSchema = sandboxVersion === "reviewed_metrics_linux_sandbox_attestation_v2.5.0" ? "linux-sandbox-attestation.schema.v2.5.json" : sandboxVersion === "reviewed_metrics_linux_sandbox_attestation_v2.4.0" ? "linux-sandbox-attestation.schema.v2.4.json" : "linux-sandbox-attestation.schema.v2.json";
+  codedAssert((httpsAuthority ? sandboxSchema === "linux-sandbox-attestation.schema.v2.5.json" : sandboxSchema !== "linux-sandbox-attestation.schema.v2.5.json"), "H2_PREACTIVATION_SANDBOX_BINDING", "authority execution version and pinned sandbox schema version differ");
   const sandbox = verifyAttestationArtifact(pins.sandbox, pins.sandbox.schema_sha256, sandboxSchema);
   const verification = verifyAttestationArtifact(pins.verification, pins.verification.schema_sha256, "pre-activation-verification.schema.v2.json");
   const trust = context ? contextualPreActivationTrust(context) : load(PREACTIVATION_TRUST); const admissions = validatePreActivationTrustRegistry(trust, authority.coordinator_trust, context ? { now: context.now, repositoryRoot: context.repositoryRoot } : {});
@@ -12291,6 +13123,9 @@ function filePinForAttestation(file: string, version: string): J { const raw = f
 async function integrationTest(): Promise<J> {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "rmv2-int-"));
   try {
+    const d1Producer = await d1AttestationProducerSelfTest(root);
+    const strictElf = staticElfSelfTest();
+    const sandboxProducer = linuxSandboxProducerSelfTest(root);
     const d1Seal = await d1SealOrchestrationSelfTest(root);
     const stageRunCli = stageRunSubprocessSelfTest(root);
     const preActivation = await preActivationFailClosedSelfTest(root);
@@ -12504,6 +13339,9 @@ async function integrationTest(): Promise<J> {
       fresh_second_receipt_same_stage: "rejected_by_candidate_authority_stage_key",
       external_operation_contract: externalOperationContract,
       d1_seal_orchestration: d1Seal,
+      strict_elf64: strictElf,
+      d1_attestation_producer: d1Producer,
+      linux_sandbox_attestation_producer: sandboxProducer,
       stage_run_cli: stageRunCli,
       pre_activation_contract: preActivation,
       consequential_git_contract: consequentialGitContract,
@@ -12970,6 +13808,15 @@ async function main(): Promise<void> {
       "verifier-principal": { type: "string" },
       "verifier-session": { type: "string" },
       "verifier-route": { type: "string" },
+      evidence: { type: "string" },
+      "coordinator-trust": { type: "string" },
+      "expected-account-digest": { type: "string" },
+      "expected-database-digest": { type: "string" },
+      "namespace-digest": { type: "string" },
+      "attestor-principal": { type: "string" },
+      "attestor-session": { type: "string" },
+      "attestor-route": { type: "string" },
+      "attestation-version": { type: "string" },
     },
     allowPositionals: false,
   });
@@ -12997,7 +13844,7 @@ async function main(): Promise<void> {
       () => new Date(),
       internalCapability,
     );
-    const ledgerEnvironmentNames = ["GATE_H2_LEDGER_ACCOUNT_ID", "GATE_H2_LEDGER_DATABASE_ID", "GATE_H2_LEDGER_API_TOKEN"] as const;
+    const ledgerEnvironmentNames = ["GATE_H2_LEDGER_ACCOUNT_ID", "GATE_H2_LEDGER_DATABASE_ID", "GATE_H2_LEDGER_API_TOKEN", "GATE_H2_LEDGER_NAMESPACE"] as const;
     const coordinatorLedgerEnvironment = new Map<string, string>();
     for (const name of ledgerEnvironmentNames) {
       const value = process.env[name];
@@ -13047,6 +13894,13 @@ async function main(): Promise<void> {
     const output = physicalPathSafety(path.resolve(assertString(o.output, "--output required")));
     fs.writeFileSync(output, pretty(receipt), { flag: "wx", mode: 0o644 });
     result = { status: "coordinator_route_receipt_signed", receipt_sha256: hash(Buffer.from(pretty(receipt))) };
+  } else if (command === "produce-d1-live-attestation") {
+    result = await produceD1LiveAttestation({ expectedAccountDigest: assertString(o["expected-account-digest"], "--expected-account-digest required"), expectedDatabaseDigest: assertString(o["expected-database-digest"], "--expected-database-digest required"), expectedNamespaceDigest: assertString(o["namespace-digest"], "--namespace-digest required"), signingKeyFile: path.resolve(assertString(o["signing-key"], "--signing-key required")), principal: assertString(o["attestor-principal"], "--attestor-principal required"), sessionId: assertString(o["attestor-session"], "--attestor-session required"), route: assertString(o["attestor-route"], "--attestor-route required"), output: path.resolve(assertString(o.output, "--output required")) });
+  } else if (command === "produce-linux-sandbox-attestation") {
+    const attestationVersion = assertString(o["attestation-version"], "--attestation-version required");
+    codedAssert(attestationVersion === "v2.4" || attestationVersion === "v2.5", "H2_SANDBOX_VERSION", "--attestation-version must be v2.4 or v2.5");
+    const authoritySchemaVersion = o.authority ? (() => { const authority = load(path.resolve(String(o.authority))); const version = authority.pre_activation_attestations?.sandbox?.artifact?.version ?? authority.pre_activation_attestations?.sandbox?.schema_version; codedAssert(typeof version === "string", "H2_SANDBOX_VERSION", "--authority does not carry an exact sandbox schema version pin"); return version; })() : undefined;
+    result = await produceLinuxSandboxAttestation({ evidenceFile: path.resolve(assertString(o.evidence, "--evidence required")), coordinatorTrustFile: path.resolve(assertString(o["coordinator-trust"], "--coordinator-trust required")), signingKeyFile: path.resolve(assertString(o["signing-key"], "--signing-key required")), principal: assertString(o["attestor-principal"], "--attestor-principal required"), sessionId: assertString(o["attestor-session"], "--attestor-session required"), route: assertString(o["attestor-route"], "--attestor-route required"), maxAgeSeconds: Number(assertString(o["max-age-seconds"], "--max-age-seconds required")), output: path.resolve(assertString(o.output, "--output required")), attestationVersion: attestationVersion as "v2.4" | "v2.5", authoritySchemaVersion });
   } else if (command === "pre-activation-verify") {
     const d1File = path.resolve(assertString(o["d1-attestation"], "--d1-attestation required"));
     const sandboxFile = path.resolve(assertString(o["sandbox-attestation"], "--sandbox-attestation required"));
@@ -13087,7 +13941,7 @@ async function main(): Promise<void> {
         for (const use of sandbox.executor_semantics.flatMap((bundle: J) => [{ kind: "executor_semantics_attestor", usedAt: bundle.attestation.observation.observed_at }, { kind: "executor_conformance_reviewer", usedAt: bundle.conformance_receipt.reviewed_at }]).concat([{ kind: "d1_live", usedAt: d1.observation.observed_at }, { kind: "linux_sandbox", usedAt: sandbox.observation.observed_at }, { kind: "pre_activation_verifier", usedAt: new Date(now).toISOString() }])) validateAdmissionEvidenceUse(admissions, use.kind, use.usedAt, now);
       }
       const internalFixture = internalCapability && process.env.GATE_H2_INTERNAL_D1_FIXTURE ? internalD1FixtureAdapter(internalAuthority, path.resolve(process.env.GATE_H2_INTERNAL_D1_FIXTURE), internalCapability) : undefined;
-      const adapter = internalFixture ?? CloudflareD1StageLedger.fromEnvironment({ account_capability_digest: d1.account_capability_digest, database_uuid_digest: d1.database_uuid_digest });
+      const adapter = internalFixture ?? CloudflareD1StageLedger.fromEnvironment({ account_capability_digest: d1.account_capability_digest, database_uuid_digest: d1.database_uuid_digest, namespace_digest: d1.namespace_digest });
       try { await adapter.attestSchema({ table_schema_sha256: d1.deployed_schema.canonical_schema_sha256, table_schema_bytes: d1.deployed_schema.canonical_schema_bytes }); }
       catch (error) { if (error instanceof StageLedgerContractError) throw new GateH2Error(error.code, error.message); throw error; }
       for (const snapshot of retained) assertSnapshotPathUnchanged(snapshot);
