@@ -1,8 +1,23 @@
 # MTL Archives Search, In Plain Language
 
-Issue #69 Gate B has a tracked, offline-replayable `ground-authoritative-research-v1` evidence-capture artifact for six ground records. It is explicitly non-promoting and does not create dossiers, tasks, or production changes.
-
 MTL Archives Search turns a large municipal photo archive into a product people can explore, play with, learn from, and eventually buy from. The public app is the visible part: search, maps, photo pages, the daily game, newsletter signup, and print ordering. Under that is a data system that cleans archive metadata, enriches records with vision/OCR signals, builds search indexes, and now keeps evaluation/training data reproducible through Dataset Factory v0.
+
+## The Product Direction Now
+
+Provenance Activation is the product and service: take a visual, cultural,
+archival, or historically significant collection and turn it into trusted,
+usable assets. Dataset Factory is the internal engine that handles identity,
+enrichment, evidence, review, and reproducibility. MTL Archives proves the
+method on a real collection. City Memory is the first client-facing
+application.
+
+The active roadmap is issues #123–#127: define the product, bound Dataset
+Factory Core, specify a portable Provenance Package, build one client-sendable
+City Memory pilot, and only then test it with approved buyer outreach. The old
+research issues are preserved as technical history under the closed #128
+index; they are not current delivery commitments. Agent-platform work is not
+an active dependency and should only return after repeated delivery reveals a
+measured automation bottleneck. See `docs/product/provenance-activation-v1.md`.
 
 ## How The Pieces Fit
 
@@ -13,13 +28,22 @@ MTL Archives Search turns a large municipal photo archive into a product people 
 - `docs/` explains the system and now includes Dataset Factory schemas, registry, and smoke fixtures.
 - `data/` is local and ignored. It can contain large manifests, reports, generated packets, and experiment outputs. Do not assume a clean clone has it.
 
-## City Memory buyer validation (#109)
+## City Memory client pilot and buyer validation (#126–#127)
 
-The buyer-validation kit in `docs/city-memory-validation-v1/` is a small, privacy-preserving operating layer around the City Memory specimen. It keeps the exact paid diagnostic proposal, interview order, consent/follow-up language, categorical five-slot ledger, and a TypeScript/AJV validator together. The checked-in ledger is intentionally empty: a clean checkout can prove the kit is ready to run, but it cannot manufacture the five qualified conversations or a commercial signal. The validator therefore reports `kit_ready: true` separately from `status: "template_only"`; only a real, consented ledger can pass `--require-acceptance`. Keep names, recordings, raw notes, and commercial details in an approved private system and retain only opaque reference tokens here.
+The current sequence begins with a prospect-specific, internally approved City
+Memory package (#126), not outreach. The predecessor issue #109 left a useful
+privacy-preserving operating kit in `docs/city-memory-validation-v1/`: the
+exact paid diagnostic proposal, interview order, consent/follow-up language,
+categorical five-slot ledger, and a TypeScript/AJV validator. Its empty ledger
+proves only that the kit runs; it does not prove demand. Issue #127 starts only
+after the pilot passes release review and the owner approves the prospect,
+message, sender, channel, and follow-up boundary. Keep names, recordings, raw
+notes, and commercial details in an approved private system and retain only
+opaque reference tokens here.
 
 The key engineering idea is separation of durable code from bulky generated evidence. Code, schemas, small fixtures, and reproducibility manifests are tracked. Large generated report trees stay local and ignored.
 
-## Dataset Factory v0
+## Dataset Factory v0 — internal engine
 
 Dataset Factory is the offline layer for making search quality measurable. It builds review packets, calibration labels, benchmark tasks, active-learning queues, quality-repair queues, visual-family graphs, research-enrichment packets, search judgments, and reward-data rows.
 
@@ -52,9 +76,15 @@ Issues #65 and #66 made this durable and identity-explicit:
 
 The lesson: if an important workflow depends on ignored files, either track the files, track a registry that proves what the files are, or track small fixtures that prove the code can still run. Here we do the last two.
 
-## Verified Multimodal Intelligence Foundation
+## Deferred Verified Multimodal Intelligence Foundation
 
-Issue #69 is the next, more ambitious archive-intelligence workflow: look at image regions, separate visible facts from metadata and inference, verify high-value claims against external sources, and derive benchmark/search tasks only from accepted evidence. The repo has a synthetic contract foundation plus a bounded canonical-real candidate-selection stage, but no verified historical output or final batch.
+Historical issue #69 explored a more ambitious archive-intelligence workflow:
+look at image regions, separate visible facts from metadata and inference,
+verify high-value claims against external sources, and derive benchmark/search
+tasks only from accepted evidence. The repo has a synthetic contract foundation
+plus a bounded canonical-real candidate-selection stage, but no verified
+historical output or final batch. This work is preserved but deferred under
+#128; it is not the active product roadmap.
 
 The foundation is synthetic and hermetic. Four tracked mock records exercise the two required lanes: ground OCR/entity/place and aerial land-use/georeference. They have no fictional archive URLs, no externally verified claims, and no benchmark tasks. The validator fails closed on boundary/collection mismatches, incomplete evidence or rights, exact geospatial claims without accepted structured external evidence, reviewer identity failures, and family/component split leakage. Run it with:
 
