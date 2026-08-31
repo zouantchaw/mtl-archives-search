@@ -1,0 +1,73 @@
+{
+  "schema_version": "city_memory_reel_frame_map_v1",
+  "reel": "city-memory-study-001-reel.mp4",
+  "duration_seconds": 18,
+  "canvas": { "width": 1080, "height": 1080, "fps": 30 },
+  "source_safe": true,
+  "generated_replacement_imagery": false,
+  "paired_delivery": {
+    "required": true,
+    "deck": "../concept-study.html",
+    "evidence_room": "../interactive-study.html",
+    "spatial_applications": "../spatial-applications.html",
+    "frame_map": "reel-frame-map.json",
+    "status": "preliminary_internal_concept_cut",
+    "external_release": "blocked_pending_human_production_and_rights_review"
+  },
+  "segments": [
+    {
+      "id": "title",
+      "start": 0,
+      "end": 3,
+      "records": [],
+      "overlay": "CITY MEMORY STUDY 001",
+      "transformation": "editorial_title_only"
+    },
+    {
+      "id": "process",
+      "start": 3,
+      "end": 6,
+      "records": [31, 10, 105],
+      "overlay": "REVIEW DERIVATIVE -> CROP HYPOTHESIS -> ROOM CONCEPT",
+      "transformation": "bounded_editorial_crop_and_label_only",
+      "boundary": "No restoration, reconstruction, generated replacement, or historical/location claim."
+    },
+    {
+      "id": "source_montage",
+      "start": 6,
+      "end": 15,
+      "records": [31, 10, 105, 4501, 12115, 13272, 17, 45, 58, 7929, 9844, 11836],
+      "overlay": "MTL ARCHIVES · SOURCE-LINKED CONCEPT",
+      "transformation": "editorial_ordering_and_timing_only"
+    },
+    {
+      "id": "spatial_concept_inset",
+      "start": 9,
+      "end": 12,
+      "records": [31],
+      "overlay": "LOBBY STATEMENT · 36-48 IN HYPOTHESIS / CONCEPT ONLY",
+      "transformation": "neutral_frame_inset_using_review_derivative",
+      "boundary": "Not a room render, installed-work photograph, measured wall, or fabrication file."
+    },
+    {
+      "id": "end_card",
+      "start": 15,
+      "end": 18,
+      "records": "all_montage_records",
+      "overlay": "CC BY 4.0 · PER-RECORD CREDIT IN LEDGER",
+      "attribution": {
+        "ground": "Ville de Montréal / Archives de la Ville de Montréal",
+        "aerial_oblique": "Archives de la Ville de Montréal"
+      },
+      "transformation": "attribution_and_preliminary_status_card"
+    }
+  ],
+  "release_gates": [
+    "full_resolution_source_availability",
+    "exact_archive_terms_and_credit",
+    "crop_and_transform_log",
+    "people_and_marks_review",
+    "production_resolution_and_spatial_review",
+    "human_reel_review"
+  ]
+}

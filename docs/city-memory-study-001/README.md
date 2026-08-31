@@ -2,7 +2,9 @@
 
 Internal concept-study foundation for GitHub issues [#73](https://github.com/zouantchaw/mtl-archives-search/issues/73) and [#109](https://github.com/zouantchaw/mtl-archives-search/issues/109).
 
-**Status:** locally complete working package; not approved, published, or shown to buyers.
+**Status:** internally assembled working package. It is not internally approved, publicly published, production-cleared, or yet approved for an external buyer walkthrough.
+
+This package can be reviewed in a controlled internal walkthrough as preliminary concept work. Do not forward standalone images, deck pages, or the reel, and do not describe the package as a rights clearance, production-ready proposal, buyer validation, or legal opinion. An external buyer walkthrough requires the open trust, design/commercial, attribution/marks/people, production-resolution, and internal-approval gates in [acceptance-review.md](./acceptance-review.md).
 
 **Working buyer:** a Montréal boutique hotel, workplace, lobby, corridor, or hospitality art programme that needs a specific local identity without commissioning a generic nostalgia wall.
 
@@ -17,11 +19,14 @@ Internal concept-study foundation for GitHub issues [#73](https://github.com/zou
 - [Curatorial directions](./curatorial-directions.md)
 - [Provenance ledger](./provenance-ledger.json)
 - [Offer and pricing hypothesis](./offer-and-pricing.md)
+- [Guided buyer walkthrough](./buyer-walkthrough.html) — preliminary internal entry point with an explicit next step and release boundary.
 - [Rendered reel + storyboard](./assets/city-memory-study-001-reel.mp4) · [production gate](./reel-storyboard.md)
+- [Output transform map](./assets/output-transform-map.json) · [reel frame map](./assets/reel-frame-map.json)
+- [Independent trust/design review](./independent-review-2026-08-31.md)
 - [Acceptance and external gates](./acceptance-review.md)
 - [Dataset Factory / process appendix](./dataset-factory-appendix.md)
 
-Validate the selected asset hashes and required ledger fields with `node validate-specimen.mjs` from this directory.
+Validate the selected asset hashes, all recorded upstream artifact hashes, and the required ledger/join boundaries with `node validate-specimen.mjs` from this directory. Run `node validate-specimen.mjs --self-test` to exercise adversarial tamper cases; these checks do not replace human rights, production, design/commercial, or approval review.
 
 ## Evidence boundary
 
@@ -33,7 +38,7 @@ Public-facing copy in this package uses only:
 - archive metadata explicitly labelled **reported by the archive**;
 - the recorded CC BY 4.0 rights authority and required per-record attribution (ground: `Ville de Montréal / Archives de la Ville de Montréal`; aerial/oblique: `Archives de la Ville de Montréal`).
 
-No coordinates, exact historical interpretation, brand identification, measurement, restoration claim, or buyer-demand claim is made. The source derivatives are presentation assets, not replacements for obtaining and checking the full-resolution originals at production time.
+No coordinates, exact historical interpretation, brand identification, measurement, restoration claim, or buyer-demand claim is made. Several selected pixels visibly contain historical signage, third-party marks, people, and archival overlays; the CC BY/source authority does not by itself resolve trademark, privacy/publicity, moral-rights, endorsement, or other third-party questions. Those require human archive/legal review before external, public, social, commercial, or installed use. The source derivatives are presentation assets, not replacements for obtaining and checking the full-resolution originals at production time.
 
 ## Selected set
 
