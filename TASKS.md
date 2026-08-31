@@ -1,15 +1,45 @@
 # Tasks
 
-- Issue #69 Gate B: `ground-authoritative-research-v1` captures and seals authoritative-source evidence plus pending claim drafts for six ground records; independent claim review and any later promotion remain separate work.
+## Active product roadmap
 
-Goal: Convert social audience (IG + FB + LinkedIn) into revenue. Validate both DTC print and B2B monetization paths.
+- [ ] **Provenance Activation v1 (#123)** — define the customer, collection,
+  transformation, trust boundary, offer, and acceptance evidence.
+- [ ] **Dataset Factory Core v1 (#124)** — bound the reusable internal engine
+  needed by the first delivery; do not turn every historical research track
+  into a V1 dependency.
+- [ ] **Provenance Package v1 (#125)** — specify and build the portable client
+  handoff for sources, rights, claims, uncertainty, transformations, review,
+  and activation readiness.
+- [ ] **City Memory Client Pilot v2 (#126)** — build a client-sendable,
+  Hôtel-Nelligan-tailored pilot and pass internal visual, narrative, rights,
+  and production review before any outreach.
+- [ ] **City Memory Buyer Validation v2 (#127)** — after release approval,
+  obtain explicit approval for the prospect list and outreach materials, then
+  run the fixed proposal test and record evidence without exposing private
+  buyer data.
+
+The closed issue #128 indexes deferred research and exact reopening triggers.
+Historical issues #64, #69–#73, #92, #96, #97, #109, and #110 are not active
+tasks and are not claimed complete. Agent-platform work has no active
+replacement issue.
+
+Current goal: turn the existing collection intelligence into one trusted,
+client-sendable Provenance Activation and use approved buyer evidence to decide
+what to productize next. DTC print and the public MTL Archives experience
+remain operating surfaces, not the organizing principle for this roadmap.
 Note: Non-code growth tasks and high-level goals live in the Logseq graph (MTL Archives Operating Plan). This file is for engineering tasks only.
 
-Current state (Feb 16, 2026): last 30d funnel shows `page_loaded` 343 -> `order_mode_entered` 19 -> `cart_item_added` 3 -> `checkout_clicked` 2 -> `orders_completed` 0. Last 7d shows `page_loaded` 96 -> `order_mode_entered` 3 -> `cart_item_added` 1 -> `checkout_clicked` 1 -> `orders_completed` 0. Facebook remains the largest referrer.
-
-Execution status: `47` open tasks. Completed work is consolidated in the archive section below. Active execution focus is now tech + UX first.
+Historical funnel snapshot (Feb 16, 2026): last 30d shows `page_loaded` 343 -> `order_mode_entered` 19 -> `cart_item_added` 3 -> `checkout_clicked` 2 -> `orders_completed` 0. Last 7d shows `page_loaded` 96 -> `order_mode_entered` 3 -> `cart_item_added` 1 -> `checkout_clicked` 1 -> `orders_completed` 0. Facebook was the largest referrer.
 
 ---
+
+## Legacy engineering inventory
+
+The sections below preserve the existing operational and technical backlog.
+Their checkboxes are local engineering notes, not the current GitHub product
+roadmap, and an unchecked historical issue reference does not mean that issue
+is open. Promote an item into the active roadmap only through #123–#127 or an
+explicitly approved successor.
 
 ## P0: Technical UX Reliability (Do First)
 
@@ -39,10 +69,10 @@ Deliver the best on-site user experience (especially mobile/in-app browsers) bef
 - [x] **Dataset Factory v0 durability gate (#65)** — Restored tracked Dataset Factory v0 docs/scripts; added a 76-entry, schema-validated, acyclic artifact phase graph with explicit human-decision and external-snapshot boundaries plus SHA-256/count/lineage/rights metadata; split search judgments into 3 exact entries (12 files) and quality repair into 25 exact entries (636 files); added missing-artifact, cycle, overlap, and symlink diagnostics plus strict fixed-clock tests; and made `npm run dataset-factory:smoke-v0` a fixed-clock exact-content/hash contract for packets, labels/adjudication, benchmark, active learning, search/reranker evaluation, quality repair, visual family graph, research enrichment, judgments, and reward data without copying generated report trees.
 - [x] **Canonical Corpus v1 (#66)** — Added production-read-only local/D1/R2/text/CLIP inventory collectors, exact tracked 12-input snapshot lineage, independently raw-derived source/rights provenance and reversible alias groups, full corpus/reconciliation/summary consistency checks, 72 adversarial offline cases, bounded R2 sampling, individually enumerated blockers, six registry bundles, and an identity-level no-write convergence/rollback plan. Current counts and decisions are generated in `docs/dataset-factory/canonical-corpus-v1-snapshot-summary.json`.
 - [x] **Gold Label Batch 002 (#68)** — Completed the 300-row corrected gold-label batch with sealed primary/blind passes, trusted adjudication, 50 post-fix audits, 49 search dispositions, completion validation, denominator-defined adjudication-change rates using the normalized adjudication-rate schema, and durable successor publication. The ignored local evidence remains `data/mtl_archives/reports/gold_label_batch_002`; the hash-bound final archive is `r2://wiel-codex-worker-cache/artifacts/mtl-archives/gold-label-batch-002/11c4577c5fa2b0393d2c83a9c9a75effcf7c97252febc646fa8ceca4e6789fcd.tar.gz`.
-- [ ] **Verified Multimodal Intelligence Batch 001 (#69)** — Added the synthetic foundation, 26-record canonical-real candidate pool, and hash-bound primary visual promotion. Direct 256px review selected 12 records (6 ground and 6 aerial/control) and retained 4 reserves. Independent visual review approved all 16 primary decisions with zero disagreements. Public source acquisition now verifies 17/17 required sources, all 12 HEAD + 4096-byte image samples, and six exact official CSV cote/source bindings. Signed Google transport is redacted and secret-scanned; the stable aerial page supports TIFF/index distribution and non-georeferenced or approximate boundaries. No historical, selected-image content, identity, geolocation, or land-use claim is promoted. The broader issue remains incomplete against dossier/benchmark targets; there is no production/search/index mutation.
+- **Deferred research history (#69; index #128)** — Added the synthetic foundation, 26-record canonical-real candidate pool, and hash-bound primary visual promotion. Direct 256px review selected 12 records (6 ground and 6 aerial/control) and retained 4 reserves. Independent visual review approved all 16 primary decisions with zero disagreements. Public source acquisition now verifies 17/17 required sources, all 12 HEAD + 4096-byte image samples, and six exact official CSV cote/source bindings. Signed Google transport is redacted and secret-scanned; the stable aerial page supports TIFF/index distribution and non-georeferenced or approximate boundaries. No historical, selected-image content, identity, geolocation, or land-use claim is promoted. The broader issue remains incomplete against dossier/benchmark targets; there is no production/search/index mutation.
 - [ ] **Visual Family Graph v1 (#67)** — Draft implementation adds an 18,462-record typed leakage graph, identity-bound and streaming-capped full-corpus DCT-pHash extraction, complete linear aerial-run grouping, explicit source/CLIP/DINO contracts, component-safe splits, component-supported canonical/alternate recommendations, stratified image review, search duplicate-rate evaluation, schemas, and adversarial checks. The independent reviewer confirmed all 120 visual decisions with zero disagreements; review of the corrected leakage universe and remediation head remains the acceptance gate before this item can be marked complete.
-- [ ] **MTL-CityMemory-Bench v1 foundation (#70)** — Added only the versioned pre-lock candidate/preflight contract, exact input ID/hash bindings, family-component split audit, silver/stress separation, reviewed-query shortfall and human acquisition queue, frozen proposed thresholds, and deterministic adversarial tests. The benchmark is not locked or complete: current clean checkouts lack the ignored Gold Batch 002 and full graph materializations, retrieval remains 26 reviewed-gold queries versus the 100 minimum, baselines are unrecorded, and independent benchmark review is outstanding.
-- [x] **Promotion challenge preflight/no-ship scaffold (#71)** — Added a machine-readable, fail-closed pre-lock report that binds to the #70 candidate shape, names benchmark/support/review/run/operational blockers, and permanently records `no_ship`, zero model/GPU/production runs, and no consumed results. It does not run a model or claim benchmark/promotion evidence.
+- **Deferred research history (#70; index #128)** — Added only the versioned pre-lock candidate/preflight contract, exact input ID/hash bindings, family-component split audit, silver/stress separation, reviewed-query shortfall and human acquisition queue, frozen proposed thresholds, and deterministic adversarial tests. The benchmark is not locked or complete: current clean checkouts lack the ignored Gold Batch 002 and full graph materializations, retrieval remains 26 reviewed-gold queries versus the 100 minimum, baselines are unrecorded, and independent benchmark review is outstanding.
+- **Deferred no-ship scaffold (#71; index #128)** — Added a machine-readable, fail-closed pre-lock report that binds to the #70 candidate shape, names benchmark/support/review/run/operational blockers, and permanently records `no_ship`, zero model/GPU/production runs, and no consumed results. It does not run a model or claim benchmark/promotion evidence.
 - [x] **Production game smoke check** — Added `npm run smoke:game` + `npm run smoke:game:prod` guardrail for `/game` regressions.
 - [x] **Add local social fallback pipeline** — `pipelines/daily-reel/main.py` now builds the daily IG carousel + FB reel package locally, with inspection artifacts, brand-readiness flags, and a `--reuse-research` rerender path for outage recovery when `spruce` is unavailable. Saved packages now rebuild the latest local public-story templates instead of freezing stale captions, and search/random runs auto-reroll until a brand-ready candidate passes or explicitly mark the strongest failed attempt for review.
 - [x] **Add hardened `today` outage command** — `npm run social:today` now wraps the fallback pipeline with timezone-aware date resolution (`--timezone`, `MTL_SOCIAL_TIMEZONE`, or local system timezone), persists `resolved_timezone` in package metadata so weekday/theme selection is auditable during `spruce` outages, writes packages to `~/Downloads/mtl-daily`, and prints an operator-readable summary by default.
@@ -52,7 +82,7 @@ Deliver the best on-site user experience (especially mobile/in-app browsers) bef
 - [x] **Add publish reconciliation + final package mirroring** — generated packages can now be reconciled against real IG/FB posts through `data/social/publish-registry.jsonl`, and registered publishes can be mirrored from Obsidian `experiments/` into `final/` so runtime state and editorial memory no longer have to guess at each other.
 - [x] **Add durable Meta token bootstrap + health check** — `pipelines/daily-reel/token_manager.py` can now exchange a short-lived user token into a long-lived user token, derive the Page token, write `data/social/meta-token-state.json`, and report expiry/health so `spruce` does not depend on manually pasted Graph API Explorer tokens. The repo CLI now auto-loads `.env.local` / `.env`, so agents can run `npm run social:token-status` directly.
 - [x] **Reuse durable Meta auth for history refresh + content correlation** — `npm run social:fetch-history` now falls back to `data/social/meta-token-state.json` when no explicit user token is set, and `npm run social:analyze-content` can emit dated JSON/Markdown reports that correlate Q1 post performance with content format + hook structure from `combined_posts.json`.
-- [ ] **Complete identity-gated cross-platform content signal contract (#72)** — Partial local instrumentation scaffolding exists in `npm run social:analyze-cross-platform`, including explicit platform-post/package/canonical-record/visual-family/source-asset joins, canonical-manifest validation, explicit real-versus-synthetic provenance, `no_personal_data` raw-query/candidate-list rejection, report-generation capture-time labeling, exact permalink requirements for published joins, outcome boundaries, duplicate rejection, and fail-closed exploration propensity/safety-budget checks. It is not #72 complete: production instrumentation, real exports, a product cohort, durable cross-export event deduplication, causal attribution, and RL-ready policy evidence remain outstanding.
+- **Deferred research history (#72; index #128)** — Partial local instrumentation scaffolding exists in `npm run social:analyze-cross-platform`, including explicit platform-post/package/canonical-record/visual-family/source-asset joins, canonical-manifest validation, explicit real-versus-synthetic provenance, `no_personal_data` raw-query/candidate-list rejection, report-generation capture-time labeling, exact permalink requirements for published joins, outcome boundaries, duplicate rejection, and fail-closed exploration propensity/safety-budget checks. It is not #72 complete: production instrumentation, real exports, a product cohort, durable cross-export event deduplication, causal attribution, and RL-ready policy evidence remain outstanding.
 - [x] **Block unsupported exact location claims in social copy** — the fallback research layer now carries explicit location-confidence state, downgrades thin-metadata grounded guesses to broader public sector labels, and rejects any caption/reel candidate that reintroduces suppressed exact place names like unsupported street intersections.
 - [x] **Replace naive carousel quadrants with contextual detail crops** — `pipelines/daily-reel/grids.py` now scores square crops against actual image texture plus light story cues, so Instagram detail slides favor contextual regions like signage, street activity, and architectural features instead of empty sky or dead edges.
 - [x] **Add day-level Meta export correlation + Facebook Views mapping** — `npm run social:analyze-daily` now joins downloaded Meta daily CSV exports to `combined_posts.json`, can supplement Facebook with live Page Insights, and confirms that the Business Suite daily/monthly Facebook Views line maps to `page_media_view` rather than to summed reel `views`.
@@ -89,7 +119,7 @@ Deliver the best on-site user experience (especially mobile/in-app browsers) bef
 
 ### Evaluation + measurement
 - [ ] **Build a 50-100 query eval set** — seed eval set and runner now live under `experiments/autoresearch/search/`; expand beyond the initial 10-query baseline.
-- [ ] **Dataset Factory v1 expansion (#64)** — Promote v0 durability into the broader systematic training-data/evaluation loop: human-reviewed gold growth, search/reranker iteration, active-learning feedback, and reward-data usefulness checks.
+- **Superseded programme (#64; active scope #124)** — The broad v1 expansion was replaced by a client-delivery-bounded Dataset Factory Core. Its historical artifacts remain available; incomplete research is indexed in #128.
 - [x] **Define initial success metrics** — `npm run autoresearch:search` now reports precision@1/3/5, MRR, duplicate rate, latency, and weighted score for smart-search fusion experiments.
 - [ ] **Pre/post comparison** — Run eval on current index vs cleaned index (same queries).
 - [ ] **Manual spot-check set** — 25 image queries + 25 text queries scored by 2 people.
@@ -123,7 +153,7 @@ New archive source is `archivesdemontreal.ica-atom.org`; ingest safely before fu
 
 ## P3: B2B Monetization (After UX Stabilization)
 
-- [ ] **City Memory buyer validation (#109)** — Ready-to-run privacy-preserving interview/proposal kit lives under `docs/city-memory-validation-v1/`; the empty ledger is intentionally `template_only`. Completion still requires five qualified, consented conversations, one fixed proposal test, a strongest-signal evidence update, and an explicit continue/revise/stop decision. Run `npm run city-memory:validation:self-test-v1` and `npm run city-memory:validation:verify-v1` for local contract checks; do not mark complete from those checks alone.
+- **Superseded buyer-validation kit (#109; active sequence #126–#127)** — The privacy-preserving interview/proposal kit remains under `docs/city-memory-validation-v1/`; its empty ledger is intentionally `template_only` and contains no buyer evidence. The new sequence requires a sendable pilot and owner-approved outreach before the fixed proposal test.
 - [ ] **Add partner landing page** — `/partners` with concise value proposition, proof metrics, and booking CTA.
 - [ ] **Track B2B events** — `partner_page_viewed`, `partner_cta_clicked`, `partner_form_submitted`, `partner_call_booked`.
 - [ ] **Add source-aware partner attribution** — persist UTMs + referrer through partner CTA/form flow.

@@ -6,6 +6,23 @@ Built on Cloudflare Workers, D1, Vectorize, R2, Workers AI, and a Next.js fronte
 
 [Live site](https://mtlarchives.com) · [Architecture](docs/architecture.md) · [Tasks](TASKS.md)
 
+## Current product direction
+
+**Provenance Activation** is the product and service: it turns visual,
+cultural, archival, and historically significant collections into trusted,
+usable assets. **Dataset Factory** is the internal evidence engine. **MTL
+Archives** is the reference implementation, and **City Memory** is the first
+commercial application.
+
+The active roadmap is deliberately small: [product definition (#123)](https://github.com/zouantchaw/mtl-archives-search/issues/123),
+[Dataset Factory Core (#124)](https://github.com/zouantchaw/mtl-archives-search/issues/124),
+[Provenance Package (#125)](https://github.com/zouantchaw/mtl-archives-search/issues/125),
+[one client-specific City Memory pilot (#126)](https://github.com/zouantchaw/mtl-archives-search/issues/126),
+and [buyer validation after internal release approval (#127)](https://github.com/zouantchaw/mtl-archives-search/issues/127).
+See [Provenance Activation v1](docs/product/provenance-activation-v1.md) for the
+product model and the [Montréal prospect shortlist](docs/product/city-memory-montreal-prospects-2026-08-31.md)
+for the no-outreach research snapshot.
+
 ## Repo layout
 
 - `apps/api` — Cloudflare Worker API
@@ -13,21 +30,23 @@ Built on Cloudflare Workers, D1, Vectorize, R2, Workers AI, and a Next.js fronte
 - `apps/web` — CLIP research explorer
 - `packages/scripts` — ETL, vectorize, dataset-factory, evals
 - `pipelines/` — OCR, VLM, and social/story scripts
+- `infrastructure/d1/` — schema and migrations
 
-Cross-platform content analytics is local-only, identity-gated, and provenance-
-explicit. Reports require `--evidence-kind` (`real_export` or
+Deferred cross-platform content analytics is local-only, identity-gated, and
+provenance-explicit. Reports require `--evidence-kind` (`real_export` or
 `synthetic_fixture`); `no_personal_data` events cannot carry raw queries or
 candidate lists, and aggregate capture time is report-generation time. See
 `docs/dataset-factory/content-signal-v1.md` for the required canonical join,
 product-event contract, and self-test command.
 
-Benchmark v1 currently has only a pre-lock candidate/preflight foundation. See
+Deferred Benchmark v1 research has only a pre-lock candidate/preflight
+foundation. See
 `docs/dataset-factory/benchmark-v1.md`; it does not claim a locked benchmark,
 model result, or issue #70 completion.
-Issue #71 also has an offline promotion-challenge preflight scaffold; see
+Historical issue #71 also has an offline promotion-challenge preflight
+scaffold; see
 `docs/dataset-factory/promotion-challenge-preflight-v1.md`. It is permanently
 no-ship and runs no models, GPU, production checks, or promotion.
-- `infrastructure/d1/` — schema and migrations
 
 ## Common commands
 
@@ -46,9 +65,16 @@ npm run city-memory:validation:self-test-v1
 npm run city-memory:validation:verify-v1
 ```
 
-## City Memory buyer validation
+## City Memory client pilot and buyer validation
 
-Issue #109 has a privacy-preserving, ready-to-run operating kit under [`docs/city-memory-validation-v1/`](docs/city-memory-validation-v1/). The checked-in ledger is intentionally empty: the validator reports `kit_ready: true` with `status: "template_only"` and does not treat local preparation as buyer evidence. Five real, consented conversations, a fixed proposal test, and a documented commercial signal remain human gates; `--require-acceptance` fails closed until those gates are recorded.
+The active sequence is to make the prospect-specific [client pilot (#126)](https://github.com/zouantchaw/mtl-archives-search/issues/126)
+sendable before running the approved [buyer-validation test (#127)](https://github.com/zouantchaw/mtl-archives-search/issues/127).
+The predecessor issue #109 produced a privacy-preserving operating kit under
+[`docs/city-memory-validation-v1/`](docs/city-memory-validation-v1/), but no
+buyer evidence. Its checked-in ledger is intentionally empty: the validator
+reports `kit_ready: true` with `status: "template_only"`; `--require-acceptance`
+must fail until real, consented evidence is recorded. No outreach is authorized
+by this repository.
 
 ## Gate H2 Linux Conformance
 

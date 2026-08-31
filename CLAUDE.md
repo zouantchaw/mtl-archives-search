@@ -1,6 +1,25 @@
 # CLAUDE.md
 
-For Issue #69 Gate B ground research, use the `dataset-factory:ground-authoritative-research-*-v1` scripts and `docs/dataset-factory/ground-authoritative-research-v1.md`. This artifact is evidence capture and pending claim drafting only, never a production or claim-promotion surface.
+## Current product direction
+
+Provenance Activation is the product/service, Dataset Factory is its internal
+engine, MTL Archives is the reference implementation, and City Memory is the
+first commercial application. The active roadmap is issues #123–#127 and is
+defined in `docs/product/provenance-activation-v1.md`. Older issue references
+in this file describe preserved technical contracts, not active roadmap items
+or completion claims; deferred research is indexed by closed issue #128.
+
+Do not build or activate an agent platform as part of the current roadmap.
+Reopen workflow automation only after repeated manual delivery identifies a
+measured bottleneck. Do not contact any City Memory prospect until the pilot,
+prospect list, message, sender, channel, and follow-up boundary are explicitly
+approved by the owner.
+
+For historical Issue #69 Gate B ground research, use the
+`dataset-factory:ground-authoritative-research-*-v1` scripts and
+`docs/dataset-factory/ground-authoritative-research-v1.md`. This artifact is
+evidence capture and pending claim drafting only, never a production or
+claim-promotion surface.
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
@@ -120,7 +139,7 @@ pipelines/
 8. Dataset Factory v0: ignored report artifacts → tracked registry + schemas + fixture smoke → packets, labels/adjudication, benchmark, active learning, repair, family graph, enrichment, judgments, reward-data outputs, and Gold Label Batch 002 reviewed evidence
 
 9. Verified Multimodal Intelligence Batch 001: synthetic foundation → 26 mechanically eligible canonical-real candidates → primary 256px visual promotion with 12 selected and 4 reserves. Independent visual review approved all 16 primary decisions with zero disagreements; historical verification, dossiers, and benchmarks remain zero.
-10. City Memory buyer validation (#109): privacy-preserving interview/proposal kit → categorical five-slot ledger → fail-closed acceptance decision. The tracked template is intentionally empty; `kit_ready: true` is not external evidence and `--require-acceptance` must remain failing until real buyer evidence exists.
+10. City Memory client path (#126–#127): internally approved, prospect-specific pilot → owner-approved outreach and fixed proposal → categorical five-slot ledger → fail-closed acceptance decision. The predecessor #109 template is intentionally empty; `kit_ready: true` is not external evidence and `--require-acceptance` must remain failing until real buyer evidence exists.
 
 MTL-CityMemory-Bench v1 (#70) currently has only a pre-lock candidate/preflight
 foundation. `npm run dataset-factory:benchmark-v1-candidate` must keep
