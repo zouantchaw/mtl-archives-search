@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { exactFields, parseStrictJson } from "./strict-json.mjs";
 import { readContainedRegular, visitSecureTree } from "./secure-files.mjs";
 import { MAX_STRICT_TAR_ENTRIES, parseStrictTar, requireEntrySet } from "./strict-tar.mjs";
-import { MAX_INPUT_LOCK_BYTES, MAX_RUNTIME_DIRECTORY_COUNT, parseAndValidateInputLock, validateExternalInputLock, verifyAcquiredDirectory } from "./verify-external-input-lock.mjs";
+import { MAX_INPUT_LOCK_BYTES, MAX_RUNTIME_DIRECTORY_COUNT, parseAndValidateInputLock, REVIEWED_BUILDER_IMAGE_REPOSITORY, validateExternalInputLock, verifyAcquiredDirectory } from "./verify-external-input-lock.mjs";
 
 const digest = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const fail = (code, message) => { const error = new Error(`${code}: ${message}`); error.code = code; throw error; };
@@ -24,7 +24,7 @@ export function validateBuilderImageReceipt(receipt, inputLockSha256) {
   if (receipt.platform.os !== "linux" || receipt.platform.architecture !== "amd64") fail("E_RECEIPT_PLATFORM", "receipt is not linux/amd64");
   if (!validHash(receipt.input_lock_sha256)) fail("E_RECEIPT_HASH", "receipt lock hash is invalid");
   for (const name of ["runtime_manifest", "rootfs", "layer", "config", "manifest", "index"]) identity(receipt[name], name);
-  if (typeof receipt.final_image_reference !== "string" || receipt.final_image_reference !== `${receipt.final_image_reference.split("@sha256:")[0]}@sha256:${receipt.manifest.sha256}` || !/^[^@\s]+@sha256:[a-f0-9]{64}$/.test(receipt.final_image_reference)) fail("E_RECEIPT_REFERENCE", "final image reference must bind the manifest digest");
+  if (receipt.final_image_reference !== `${REVIEWED_BUILDER_IMAGE_REPOSITORY}@sha256:${receipt.manifest.sha256}`) fail("E_RECEIPT_REFERENCE", "final image reference must bind the reviewed builder repository and manifest digest");
   try { exactFields(receipt.materializer, ["id", "source_commit", "source_tree_sha256", "entrypoint"], "receipt materializer"); } catch (error) { fail("E_RECEIPT_MATERIALIZER", error.message); }
   if (typeof receipt.materializer.id !== "string" || receipt.materializer.id.length === 0 || !/^[a-f0-9]{40}$/.test(receipt.materializer.source_commit) || !validHash(receipt.materializer.source_tree_sha256) || receipt.materializer.entrypoint !== "crates/gate-h2-broker/scripts/materialize-builder-offline.mjs") fail("E_RECEIPT_MATERIALIZER", "materializer identity is invalid");
   if (inputLockSha256 !== undefined && receipt.input_lock_sha256 !== inputLockSha256) fail("E_RECEIPT_INPUT_LOCK", "receipt does not bind this exact raw input lock"); return receipt;

@@ -27,6 +27,9 @@ export const MAX_RUNTIME_DIRECTORY_COUNT = 32_768;
 export const MAX_INPUT_LOCK_BYTES = 32 * 1024 * 1024;
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const fail = (code, message) => { const error = new Error(`${code}: ${message}`); error.code = code; throw error; };
+// Keep the local output namespace separate from any upstream/source image.
+// A real repository is a later, independently reviewed packet input.
+export const REVIEWED_BUILDER_IMAGE_REPOSITORY = "localhost/gate-h2-builder";
 const isDigest = (value) => typeof value === "string" && /^[a-f0-9]{64}$/.test(value);
 const isCommit = (value) => typeof value === "string" && /^[a-f0-9]{40}$/.test(value);
 
@@ -76,7 +79,7 @@ export function validateExternalInputLock(lock) {
   validateLockCardinality(lock);
   if (lock.schema_version !== "gate_h2_builder_external_input_lock_v1.0.0") fail("E_LOCK_VERSION", "unsupported input lock schema");
   exact(lock.platform, ["os", "architecture"], "lock platform", "E_LOCK_PLATFORM"); if (lock.platform.os !== "linux" || lock.platform.architecture !== "amd64") fail("E_LOCK_PLATFORM", "only linux/amd64 is approved");
-  exact(lock.runtime_contract, ["runtime_root", "rust", "cargo", "node", "target"], "runtime contract", "E_LOCK_RUNTIME"); if (lock.runtime_contract.runtime_root !== "/opt/gate-h2" || lock.runtime_contract.rust !== "1.85.0" || lock.runtime_contract.cargo !== "1.85.0" || lock.runtime_contract.node !== "22.22.0" || lock.runtime_contract.target !== "x86_64-unknown-linux-musl") fail("E_LOCK_RUNTIME", "runtime contract differs from Packet 3A");
+  exact(lock.runtime_contract, ["runtime_root", "rust", "cargo", "node", "target", "output_image_repository"], "runtime contract", "E_LOCK_RUNTIME"); if (lock.runtime_contract.runtime_root !== "/opt/gate-h2" || lock.runtime_contract.rust !== "1.85.0" || lock.runtime_contract.cargo !== "1.85.0" || lock.runtime_contract.node !== "22.22.0" || lock.runtime_contract.target !== "x86_64-unknown-linux-musl" || lock.runtime_contract.output_image_repository !== REVIEWED_BUILDER_IMAGE_REPOSITORY) fail("E_LOCK_RUNTIME", "runtime contract differs from Packet 3A or reviewed local builder namespace");
   exact(lock.materializer, ["id", "source_commit", "source_tree_sha256", "entrypoint"], "materializer", "E_LOCK_MATERIALIZER"); if (typeof lock.materializer.id !== "string" || lock.materializer.id.length === 0 || !isCommit(lock.materializer.source_commit) || !isDigest(lock.materializer.source_tree_sha256) || lock.materializer.entrypoint !== "crates/gate-h2-broker/scripts/materialize-builder-offline.mjs") fail("E_LOCK_MATERIALIZER", "materializer identity is invalid");
   if (!Array.isArray(lock.artifacts) || lock.artifacts.length === 0) fail("E_LOCK_ARTIFACTS", "artifact list is empty");
   const paths = new Set(), digests = new Set(), categories = new Set(); let acquiredBytes = 0;
@@ -117,7 +120,7 @@ function validateOciConfig(config, diffIds) { if (!config || Array.isArray(confi
 function validateManifestRecords(lock, metadataByPath, layerDiffIds) { const byPath = artifactByPath(lock); for (const image of lock.oci_images) { const manifest = metadataByPath.get(image.manifest_member_path), config = metadataByPath.get(image.config_member_path); if (!manifest || !config) fail("E_ACQUIRED_OCI_MANIFEST", "OCI manifest or config bytes were not inspected"); exact(manifest, ["schemaVersion", "mediaType", "config", "layers"], "OCI manifest", "E_ACQUIRED_OCI_MANIFEST"); if (manifest.schemaVersion !== 2 || manifest.mediaType !== "application/vnd.oci.image.manifest.v1+json" || !Array.isArray(manifest.layers) || manifest.layers.length !== image.layer_member_paths.length) fail("E_ACQUIRED_OCI_MANIFEST", "OCI manifest shape or layer cardinality differs"); const configArtifact = byPath.get(image.config_member_path); descriptor(manifest.config, configArtifact, "OCI manifest config"); const diffIds = []; for (const [index, layerPath] of image.layer_member_paths.entries()) { const layer = byPath.get(layerPath); descriptor(manifest.layers[index], layer, `OCI manifest layer ${index}`); const diffId = layerDiffIds.get(layerPath); if (!diffId) fail("E_ACQUIRED_OCI_LAYER", `OCI layer was not inspected: ${layerPath}`); diffIds.push(diffId); } validateOciConfig(config, diffIds); } }
 
 function mappingsBySource(lock) { const grouped = new Map(); for (const mapping of lock.runtime_mapping) { const mappings = grouped.get(mapping.source_member_path) ?? []; mappings.push(mapping); grouped.set(mapping.source_member_path, mappings); } return grouped; }
-function inspectSourceArtifact(source, sourceBytes, mappings, gzipCode = "E_ACQUIRED_ARCHIVE") {
+export function deriveSourceMappings(source, sourceBytes, mappings, gzipCode = "E_ACQUIRED_ARCHIVE") {
   let archiveBytes = null;
   if (ARCHIVE_SOURCES.has(source.category)) {
     if (source.archive_format === "tar_gzip") { const expansionBudget = MAX_ACQUIRED_WORKING_BUFFER_BYTES - sourceBytes.length; if (expansionBudget < 1024) fail(gzipCode, `archive ${source.member_path}: compressed bytes leave no bounded expansion budget`); try { archiveBytes = gunzipSingleMember(sourceBytes, `archive ${source.member_path}`, expansionBudget); } catch (error) { fail(gzipCode, error.message); } }
@@ -128,13 +131,19 @@ function inspectSourceArtifact(source, sourceBytes, mappings, gzipCode = "E_ACQU
     let entries; try { entries = parseInputTar(archiveBytes, `archive ${source.member_path}`, { maximumBytes: MAX_ARCHIVE_EXPANDED_BYTES }); } catch (error) { fail("E_ACQUIRED_ARCHIVE", error.message); }
     entriesByName = new Map(entries.map((entry) => [entry.name, entry]));
   }
+  const results = new Map();
   for (const mapping of mappings) {
-    let derived;
-    if (mapping.operation === "whole_file") derived = sourceBytes;
-    else { const entry = entriesByName.get(mapping.archive_member_path); if (!entry || entry.type !== "file") fail("E_ACQUIRED_DERIVATION", `mapped archive member is missing or non-regular: ${mapping.archive_member_path}`); derived = entry.bytes; }
-    if (derived.length !== mapping.output.bytes || sha256(derived) !== mapping.output.sha256) fail("E_ACQUIRED_DERIVATION", `derived runtime output differs from the acquired source: ${mapping.destination}`);
+    let bytes;
+    if (mapping.operation === "whole_file") bytes = sourceBytes;
+    else { const entry = entriesByName.get(mapping.archive_member_path); if (!entry || entry.type !== "file") fail("E_ACQUIRED_DERIVATION", `mapped archive member is missing or non-regular: ${mapping.archive_member_path}`); bytes = entry.bytes; }
+    if (bytes.length !== mapping.output.bytes || sha256(bytes) !== mapping.output.sha256) fail("E_ACQUIRED_DERIVATION", `derived runtime output differs from the acquired source: ${mapping.destination}`);
+    results.set(mapping.destination, bytes);
   }
-  return source.category === "oci_layer" ? `sha256:${sha256(archiveBytes)}` : null;
+  return { derived: results, layerDiffId: source.category === "oci_layer" ? `sha256:${sha256(archiveBytes)}` : null };
+}
+
+function inspectSourceArtifact(source, sourceBytes, mappings, gzipCode = "E_ACQUIRED_ARCHIVE") {
+  return deriveSourceMappings(source, sourceBytes, mappings, gzipCode).layerDiffId;
 }
 
 export function verifyRuntimeDerivations(lock, bytesByPath) { const byPath = artifactByPath(lock); for (const [sourcePath, mappings] of mappingsBySource(lock)) { const source = byPath.get(sourcePath), sourceBytes = bytesByPath.get(sourcePath); if (!source || !sourceBytes) fail("E_ACQUIRED_DERIVATION", `mapped source bytes are missing: ${sourcePath}`); inspectSourceArtifact(source, sourceBytes, mappings); } }

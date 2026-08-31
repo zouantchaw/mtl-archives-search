@@ -25,10 +25,10 @@
     "runtimeContract": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["runtime_root", "rust", "cargo", "node", "target"],
+      "required": ["runtime_root", "rust", "cargo", "node", "target", "output_image_repository"],
       "properties": {
         "runtime_root": {"type": "string"}, "rust": {"type": "string"}, "cargo": {"type": "string"},
-        "node": {"type": "string"}, "target": {"type": "string"}
+        "node": {"type": "string"}, "target": {"type": "string"}, "output_image_repository": {"const": "localhost/gate-h2-builder"}
       }
     },
     "safePath": {"type": "string", "maxLength": 240, "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*(?:/[A-Za-z0-9][A-Za-z0-9._-]*)*$"},
