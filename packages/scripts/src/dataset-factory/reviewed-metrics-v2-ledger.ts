@@ -8,6 +8,12 @@ export type LedgerIdentity = { candidate_commit: string; authority_hash: string;
 export type LedgerRow = Record<string, unknown>;
 export type LedgerReadback = { attempts: LedgerRow[]; claims: LedgerRow[]; completions: LedgerRow[] };
 export type LedgerSchemaAttestation = { rows: LedgerRow[]; sha256: string; bytes: number };
+const INTERNAL_SYNTHETIC_TRANSPORT = Symbol("gate-h2-internal-synthetic-d1-transport");
+type InternalSyntheticTransport = { readonly [INTERNAL_SYNTHETIC_TRANSPORT]: true; request: typeof fetch; timeoutMs?: number };
+const D1_TIMEOUT_MS = 5_000;
+const D1_MAX_BODY_BYTES = 256 * 1024;
+const D1_MAX_ROWS = 64;
+const PRODUCTION_FETCH = globalThis.fetch.bind(globalThis);
 export type CompletionReconciliation =
   | { status: "exact_completion_success"; row: LedgerRow }
   | { status: "no_completion_indeterminate" }
@@ -44,13 +50,28 @@ export function reconcileCompletion(readback: LedgerReadback, identity: LedgerId
 function digest(domain: string, value: string): string {
   return crypto.createHash("sha256").update(`${domain}\0${value}`).digest("hex");
 }
+export function gateH2CapabilityDigest(domain: "gate-h2-d1-account-capability-v1" | "gate-h2-d1-database-uuid-v1", value: string): string { return digest(domain, value); }
+export function gateH2NamespaceDigest(value: string): string { return digest("gate-h2-d1-namespace-capability-v2", value); }
 function canonical(value: unknown): string {
   if (value === null || typeof value !== "object") return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
   const object = value as Record<string, unknown>;
   return `{${Object.keys(object).sort().map((key) => `${JSON.stringify(key)}:${canonical(object[key])}`).join(",")}}`;
 }
+function assertExactObjectKeys(value: unknown, expected: readonly string[], code: string, label: string): asserts value is Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value) || canonical(Object.keys(value).sort()) !== canonical([...expected].sort())) throw new StageLedgerContractError(code, `${label} keys differ from the reviewed D1 row contract`);
+}
+function validateSchemaRows(rows: LedgerRow[]): void {
+  if (!Array.isArray(rows)) throw new StageLedgerContractError("H2_D1_SCHEMA_ROW", "D1 schema observation rows are not an array");
+  const seen = new Set<string>();
+  for (const row of rows) {
+    assertExactObjectKeys(row, ["type", "name", "tbl_name", "sql"], "H2_D1_SCHEMA_ROW", "sqlite_master row");
+    if (typeof row.type !== "string" || !["index", "table", "trigger"].includes(row.type) || typeof row.name !== "string" || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(row.name) || typeof row.tbl_name !== "string" || !/^gate_h2_stage_[a-z_]+$/.test(row.tbl_name) || (row.type === "index" ? row.sql !== null : typeof row.sql !== "string" || row.sql.length === 0)) throw new StageLedgerContractError("H2_D1_SCHEMA_ROW", "sqlite_master row has an unapproved type, identity, or SQL shape");
+    const identity = `${row.type}\0${row.name}`; if (seen.has(identity)) throw new StageLedgerContractError("H2_D1_SCHEMA_ROW", "sqlite_master contains duplicate type/name identity"); seen.add(identity);
+  }
+}
 function schemaAttestation(rows: LedgerRow[]): LedgerSchemaAttestation {
+  validateSchemaRows(rows);
   const normalized = rows.map((row) => ({ type: row.type, name: row.name, tbl_name: row.tbl_name, sql: row.sql ?? null }))
     .sort((a, b) => `${a.type}\0${a.name}`.localeCompare(`${b.type}\0${b.name}`));
   const bytesValue = Buffer.from(`${canonical(normalized)}\n`);
@@ -63,15 +84,68 @@ type D1Envelope = {
   errors?: Array<{ code?: number; message?: string }>;
 };
 
+async function readBoundedJsonResponse(response: Response, controller: AbortController, responseCode: string): Promise<D1Envelope> {
+  const encoding = response.headers.get("content-encoding"); const contentType = response.headers.get("content-type"); const lengthText = response.headers.get("content-length");
+  if (encoding !== null && encoding.trim().toLowerCase() !== "identity") throw new StageLedgerContractError(responseCode, "D1 response compression is forbidden");
+  if (contentType === null || !/^application\/json(?:;\s*charset=utf-8)?$/i.test(contentType.trim())) throw new StageLedgerContractError(responseCode, "D1 response content type is not exact JSON");
+  if (lengthText !== null && (!/^(?:0|[1-9][0-9]*)$/.test(lengthText) || Number(lengthText) > D1_MAX_BODY_BYTES)) throw new StageLedgerContractError(responseCode, "D1 response Content-Length is invalid or oversized");
+  const reader = response.body?.getReader(); if (!reader) throw new StageLedgerContractError(responseCode, "D1 response body stream is unavailable");
+  const chunks: Buffer[] = []; let total = 0;
+  try {
+    for (;;) {
+      const item = await Promise.race([reader.read(), new Promise<never>((_resolve, reject) => controller.signal.addEventListener("abort", () => reject(new StageLedgerContractError(responseCode, "D1 response stream exceeded the fixed monotonic deadline")), { once: true }))]);
+      if (item.done) break; total += item.value.byteLength;
+      if (total > D1_MAX_BODY_BYTES) { controller.abort(); throw new StageLedgerContractError(responseCode, "D1 response exceeded the strict byte cap"); }
+      chunks.push(Buffer.from(item.value));
+    }
+  } finally { try { await reader.cancel(); } catch { /* abort/cancel cleanup is best effort */ } }
+  if (lengthText !== null && total !== Number(lengthText)) throw new StageLedgerContractError(responseCode, "D1 response body length differs from Content-Length");
+  try { return JSON.parse(Buffer.concat(chunks, total).toString("utf8")) as D1Envelope; } catch { throw new StageLedgerContractError(responseCode, "D1 response is invalid JSON"); }
+}
+async function fixedD1Request(accountId: string, databaseId: string, apiToken: string, sql: string, params: unknown[], responseCode: string, synthetic?: InternalSyntheticTransport): Promise<D1Envelope> {
+  const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), synthetic?.timeoutMs ?? D1_TIMEOUT_MS);
+  const request = synthetic?.[INTERNAL_SYNTHETIC_TRANSPORT] === true ? synthetic.request : PRODUCTION_FETCH;
+  const url = `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(accountId)}/d1/database/${encodeURIComponent(databaseId)}/query`;
+  try {
+    const response = await request(url, { method: "POST", headers: { Authorization: `Bearer ${apiToken}`, "Content-Type": "application/json", Accept: "application/json", "Accept-Encoding": "identity" }, body: JSON.stringify({ sql, params }), redirect: "error", signal: controller.signal });
+    if (response.redirected || (response.url !== "" && response.url !== url)) throw new StageLedgerContractError(responseCode, "D1 response redirected or changed endpoint");
+    const body = await readBoundedJsonResponse(response, controller, responseCode); if (!response.ok) throw new StageLedgerContractError(responseCode, "D1 endpoint returned a non-success status"); return body;
+  } catch (error) { if (error instanceof StageLedgerContractError) throw error; throw new StageLedgerContractError(responseCode, controller.signal.aborted ? "D1 request exceeded the fixed monotonic deadline" : "D1 request failed"); } finally { clearTimeout(timer); }
+}
+function assertBoundedRows(rows: LedgerRow[], responseCode: string): void {
+  if (rows.length > D1_MAX_ROWS) throw new StageLedgerContractError(responseCode, "D1 response row count exceeds the fixed cap");
+  for (const row of rows) for (const value of Object.values(row)) if (typeof value === "string" && Buffer.byteLength(value) > 64 * 1024) throw new StageLedgerContractError(responseCode, "D1 response field exceeds the fixed string cap");
+}
+function validateLedgerRows(sql: string, rows: LedgerRow[], responseCode: string): void {
+  const table = sql.match(/(?:INTO|FROM)\s+(gate_h2_stage_[a-z_]+)/i)?.[1] ?? "";
+  if (!table || rows.length === 0) return;
+  const expected = table.endsWith("attempts") ? ["sequence", "attempt_id", "candidate_commit", "authority_hash", "stage_id", "attempted_at", "request_sha256"] : table.endsWith("claims") ? ["candidate_commit", "authority_hash", "stage_id", "attempt_id", "began_at", "begin_envelope", "begin_sha256"] : table.endsWith("completions") ? ["candidate_commit", "authority_hash", "stage_id", "attempt_id", "completed_at", "completion_envelope", "completion_sha256"] : undefined;
+  if (!expected) throw new StageLedgerContractError(responseCode, "D1 response selected an unapproved ledger table");
+  const identities = new Set<string>();
+  for (const row of rows) {
+    assertExactObjectKeys(row, expected, responseCode, "ledger row");
+    if (table.endsWith("attempts") ? !(Number.isInteger(row.sequence) && typeof row.attempt_id === "string") : !(typeof row.candidate_commit === "string" && typeof row.authority_hash === "string" && typeof row.stage_id === "string" && typeof row.attempt_id === "string")) throw new StageLedgerContractError(responseCode, "D1 ledger row contains invalid identity types");
+    for (const field of expected.filter((field) => field !== "sequence")) if (typeof row[field] !== "string") throw new StageLedgerContractError(responseCode, "D1 ledger row contains an invalid scalar type");
+    const identity = table.endsWith("attempts") ? String(row.attempt_id) : `${row.candidate_commit}\0${row.authority_hash}\0${row.stage_id}`;
+    if (identities.has(identity)) throw new StageLedgerContractError(responseCode, "D1 ledger response contains a duplicate row identity"); identities.add(identity);
+  }
+}
+export async function observeCloudflareD1LedgerSchema(accountId: string, databaseId: string, apiToken: string): Promise<LedgerSchemaAttestation> {
+  if (!accountId || !databaseId || !apiToken) throw new StageLedgerContractError("H2_D1_ATTESTATION_CAPABILITY", "live D1 observation requires account, database, and token capabilities");
+  const envelope = await fixedD1Request(accountId, databaseId, apiToken, "SELECT type,name,tbl_name,sql FROM sqlite_master WHERE tbl_name LIKE 'gate_h2_stage_%' ORDER BY type,name", [], "H2_D1_ATTESTATION_RESPONSE");
+  if (envelope?.success !== true || !Array.isArray(envelope.result) || envelope.result.length !== 1 || envelope.result[0]?.success !== true || !Array.isArray(envelope.result[0].results) || (envelope.errors !== undefined && (!Array.isArray(envelope.errors) || envelope.errors.length !== 0))) throw new StageLedgerContractError("H2_D1_ATTESTATION_RESPONSE", "live D1 schema observation failed closed");
+  const rows = envelope.result[0].results; assertBoundedRows(rows, "H2_D1_ATTESTATION_RESPONSE"); return schemaAttestation(rows);
+}
+
 export class CloudflareD1StageLedger implements StageLedgerAdapter {
   private constructor(
     private readonly accountId: string,
     private readonly databaseId: string,
     private readonly apiToken: string,
-    private readonly request: typeof fetch,
+    private readonly synthetic?: InternalSyntheticTransport,
   ) {}
 
-  static fromEnvironment(authorityLedger: Record<string, unknown>, env: NodeJS.ProcessEnv = process.env, request: typeof fetch = fetch): CloudflareD1StageLedger {
+  static fromEnvironment(authorityLedger: Record<string, unknown>, env: NodeJS.ProcessEnv = process.env): CloudflareD1StageLedger {
     const required = (name: string): string => {
       const value = env[name];
       if (!value) throw new StageLedgerContractError("H2_LEDGER_CAPABILITY", `coordinator capability ${name} is unavailable`);
@@ -83,7 +157,17 @@ export class CloudflareD1StageLedger implements StageLedgerAdapter {
     if (digest("gate-h2-d1-account-capability-v1", accountId) !== authorityLedger.account_capability_digest ||
         digest("gate-h2-d1-database-uuid-v1", databaseId) !== authorityLedger.database_uuid_digest)
       throw new StageLedgerContractError("H2_LEDGER_CAPABILITY", "runtime D1 capability does not match authority digests");
-    return new CloudflareD1StageLedger(accountId, databaseId, apiToken, request);
+    if (authorityLedger.namespace_digest !== undefined) {
+      const namespace = required("GATE_H2_LEDGER_NAMESPACE");
+      if (gateH2NamespaceDigest(namespace) !== authorityLedger.namespace_digest) throw new StageLedgerContractError("H2_LEDGER_CAPABILITY", "runtime D1 namespace capability does not match authority digest");
+    }
+    return new CloudflareD1StageLedger(accountId, databaseId, apiToken);
+  }
+  static internalSynthetic(authorityLedger: Record<string, unknown>, env: NodeJS.ProcessEnv, request: typeof fetch, timeoutMs?: number): CloudflareD1StageLedger {
+    const accountId = env.GATE_H2_LEDGER_ACCOUNT_ID; const databaseId = env.GATE_H2_LEDGER_DATABASE_ID; const apiToken = env.GATE_H2_LEDGER_API_TOKEN;
+    if (!accountId || !databaseId || !apiToken || digest("gate-h2-d1-account-capability-v1", accountId) !== authorityLedger.account_capability_digest || digest("gate-h2-d1-database-uuid-v1", databaseId) !== authorityLedger.database_uuid_digest) throw new StageLedgerContractError("H2_INTERNAL_CAPABILITY", "synthetic D1 transport identity differs");
+    if (authorityLedger.namespace_digest !== undefined && env.GATE_H2_LEDGER_NAMESPACE_DIGEST !== authorityLedger.namespace_digest) throw new StageLedgerContractError("H2_INTERNAL_CAPABILITY", "synthetic D1 namespace identity differs");
+    return new CloudflareD1StageLedger(accountId, databaseId, apiToken, { [INTERNAL_SYNTHETIC_TRANSPORT]: true, request, timeoutMs });
   }
 
   private async query(sql: string, params: unknown[], mutation: boolean): Promise<LedgerRow[]> {
@@ -91,16 +175,14 @@ export class CloudflareD1StageLedger implements StageLedgerAdapter {
     if ((mutation && verb !== "INSERT") || (!mutation && verb !== "SELECT"))
       throw new StageLedgerContractError("H2_LEDGER_SQL_VERB", "D1 ledger permits INSERT mutations and SELECT readback only");
     const url = `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(this.accountId)}/d1/database/${encodeURIComponent(this.databaseId)}/query`;
-    const response = await this.request(url, { method: "POST", headers: { Authorization: `Bearer ${this.apiToken}`, "Content-Type": "application/json" }, body: JSON.stringify({ sql, params }), redirect: "error" });
-    let body: D1Envelope;
-    try { body = await response.json() as D1Envelope; }
-    catch { throw new StageLedgerContractError("H2_LEDGER_RESPONSE", "D1 ledger returned invalid JSON"); }
+    const body = await fixedD1Request(this.accountId, this.databaseId, this.apiToken, sql, params, "H2_LEDGER_RESPONSE", this.synthetic);
     const result = body.result?.[0];
-    if (!response.ok || body.success !== true || result?.success !== true)
+    if (body.success !== true || result?.success !== true)
       throw new StageLedgerContractError("H2_LEDGER_WRITE_CONFLICT", "D1 ledger operation failed closed");
     if (mutation && result.meta?.changes !== 1)
       throw new StageLedgerContractError("H2_LEDGER_READBACK", "D1 ledger mutation did not append exactly one row");
-    return result.results ?? [];
+    if (result.results !== undefined && !Array.isArray(result.results)) throw new StageLedgerContractError("H2_LEDGER_RESPONSE", "D1 ledger results field is not an array");
+    const rows = result.results ?? []; assertBoundedRows(rows, "H2_LEDGER_RESPONSE"); validateLedgerRows(sql, rows, "H2_LEDGER_RESPONSE"); return rows;
   }
 
   appendAttempt(identity: LedgerIdentity, attemptId: string, attemptedAt: string, requestSha256: string): Promise<void> {
@@ -127,8 +209,13 @@ export class CloudflareD1StageLedger implements StageLedgerAdapter {
     const rows = async (table: string) => this.query(`SELECT * FROM ${table} WHERE candidate_commit = ? AND authority_hash = ? ORDER BY sequence`, [candidateCommit, authorityHash], false);
     const claims = () => this.query("SELECT * FROM gate_h2_stage_claims WHERE candidate_commit = ? AND authority_hash = ? ORDER BY began_at, stage_id", [candidateCommit, authorityHash], false);
     const completions = () => this.query("SELECT * FROM gate_h2_stage_completions WHERE candidate_commit = ? AND authority_hash = ? ORDER BY completed_at, stage_id", [candidateCommit, authorityHash], false);
-    const [attempts, claimRows, completionRows] = await Promise.all([rows("gate_h2_stage_attempts"), claims(), completions()]);
-    return { attempts, claims: claimRows, completions: completionRows };
+    try {
+      const [attempts, claimRows, completionRows] = await Promise.all([rows("gate_h2_stage_attempts"), claims(), completions()]);
+      return { attempts, claims: claimRows, completions: completionRows };
+    } catch (error) {
+      if (error instanceof StageLedgerContractError) throw new StageLedgerContractError("H2_LEDGER_READBACK", error.message);
+      throw error;
+    }
   }
   async attestSchema(authorityLedger: Record<string, unknown>): Promise<void> {
     const rows = await this.query("SELECT type,name,tbl_name,sql FROM sqlite_master WHERE tbl_name LIKE 'gate_h2_stage_%' ORDER BY type,name", [], false);
@@ -191,15 +278,16 @@ export async function stageLedgerProductionContractSelfTest(repositoryRoot: stri
   };
   const attempts: LedgerRow[] = []; const claims: LedgerRow[] = []; const completions: LedgerRow[] = [];
   const requests: Array<{ url: string; sql: string }> = [];
+  const jsonResponse = (value: unknown, status = 200): Response => { const raw = JSON.stringify(value); return new Response(raw, { status, headers: { "content-type": "application/json", "content-length": String(Buffer.byteLength(raw)) } }); };
   const mock: typeof fetch = async (input, init) => {
     const body = JSON.parse(String(init?.body)) as { sql: string; params: unknown[] };
     requests.push({ url: String(input), sql: body.sql });
-    if (body.sql.includes("FROM sqlite_master")) return new Response(JSON.stringify({ success: true, result: [{ success: true, results: deployedSchema.rows }] }), { status: 200 });
-    const table = body.sql.match(/(?:INTO|FROM)\s+(gate_h2_stage_[a-z]+)/)?.[1] ?? "";
+    if (body.sql.includes("FROM sqlite_master")) return jsonResponse({ success: true, result: [{ success: true, results: deployedSchema.rows }] });
+    const table = body.sql.match(/(?:INTO|FROM)\s+(gate_h2_stage_[a-z_]+)/)?.[1] ?? "";
     const target = table.endsWith("attempts") ? attempts : table.endsWith("claims") ? claims : completions;
     if (body.sql.startsWith("INSERT")) {
       if (table.endsWith("claims") && claims.some((row) => row.candidate_commit === body.params[0] && row.authority_hash === body.params[1] && row.stage_id === body.params[2]))
-        return new Response(JSON.stringify({ success: false, result: [{ success: false, error: "UNIQUE" }] }), { status: 409 });
+        return jsonResponse({ success: false, result: [{ success: false, error: "UNIQUE" }] });
       const row = table.endsWith("attempts")
         ? { sequence: attempts.length + 1, attempt_id: body.params[0], candidate_commit: body.params[1], authority_hash: body.params[2], stage_id: body.params[3], attempted_at: body.params[4], request_sha256: body.params[5] }
         : table.endsWith("claims")
@@ -207,11 +295,11 @@ export async function stageLedgerProductionContractSelfTest(repositoryRoot: stri
           : { candidate_commit: body.params[0], authority_hash: body.params[1], stage_id: body.params[2], attempt_id: body.params[3], completed_at: body.params[4], completion_envelope: body.params[5], completion_sha256: body.params[6] };
       target.push(row);
       const returning = table.endsWith("completions") && body.sql.includes("RETURNING");
-      return new Response(JSON.stringify({ success: true, result: [{ success: true, ...(returning ? { results: [row] } : {}), meta: { changes: 1 } }] }), { status: 200 });
+      return jsonResponse({ success: true, result: [{ success: true, ...(returning ? { results: [row] } : {}), meta: { changes: 1 } }] });
     }
-    return new Response(JSON.stringify({ success: true, result: [{ success: true, results: target }] }), { status: 200 });
+    return jsonResponse({ success: true, result: [{ success: true, results: target }] });
   };
-  const adapter = CloudflareD1StageLedger.fromEnvironment(authority, { GATE_H2_LEDGER_ACCOUNT_ID: account, GATE_H2_LEDGER_DATABASE_ID: database, GATE_H2_LEDGER_API_TOKEN: "test-only-token" }, mock);
+  const adapter = CloudflareD1StageLedger.internalSynthetic(authority, { GATE_H2_LEDGER_ACCOUNT_ID: account, GATE_H2_LEDGER_DATABASE_ID: database, GATE_H2_LEDGER_API_TOKEN: "test-only-token" }, mock);
   await adapter.attestSchema(authority);
   const identity = { candidate_commit: "c".repeat(40), authority_hash: "a".repeat(64), stage_id: "visual_predict" };
   await adapter.appendAttempt(identity, "attempt-1", "2026-07-15T00:00:00.000Z", "1".repeat(64));
@@ -236,13 +324,13 @@ export async function stageLedgerProductionContractSelfTest(repositoryRoot: stri
       const row = { candidate_commit: body.params[0], authority_hash: body.params[1], stage_id: body.params[2], attempt_id: body.params[3], completed_at: body.params[4], completion_envelope: body.params[5], completion_sha256: body.params[6] };
       lostCompletions.push(row);
       if (loseResponse) { loseResponse = false; throw new Error("simulated lost response after commit"); }
-      return new Response(JSON.stringify({ success: true, result: [{ success: true, results: [row], meta: { changes: 1 } }] }), { status: 200 });
+      return jsonResponse({ success: true, result: [{ success: true, results: [row], meta: { changes: 1 } }] });
     }
     if (body.sql.startsWith("SELECT") && body.sql.includes("gate_h2_stage_completions"))
-      return new Response(JSON.stringify({ success: true, result: [{ success: true, results: lostCompletions }] }), { status: 200 });
+      return jsonResponse({ success: true, result: [{ success: true, results: lostCompletions }] });
     return mock(input, init);
   };
-  const lostResponseAdapter = CloudflareD1StageLedger.fromEnvironment(authority, { GATE_H2_LEDGER_ACCOUNT_ID: account, GATE_H2_LEDGER_DATABASE_ID: database, GATE_H2_LEDGER_API_TOKEN: "test-only-token" }, committedLostResponseMock);
+  const lostResponseAdapter = CloudflareD1StageLedger.internalSynthetic(authority, { GATE_H2_LEDGER_ACCOUNT_ID: account, GATE_H2_LEDGER_DATABASE_ID: database, GATE_H2_LEDGER_API_TOKEN: "test-only-token" }, committedLostResponseMock);
   const lostIdentity = { ...identity, stage_id: "source_predict" };
   const lostCompletion = { attemptId: "attempt-lost", completedAt: "2026-07-15T00:00:00.014Z", envelope: "{\"lost\":true}", envelopeSha256: "d".repeat(64) };
   let lostCode = "";
@@ -263,11 +351,11 @@ export async function stageLedgerProductionContractSelfTest(repositoryRoot: stri
     if (body.sql.startsWith("SELECT") && body.sql.includes("gate_h2_stage_completions")) throw new Error("ordinary post-append readback unavailable");
     if (body.sql.startsWith("INSERT INTO gate_h2_stage_completions")) {
       const row = { candidate_commit: body.params[0], authority_hash: body.params[1], stage_id: body.params[2], attempt_id: body.params[3], completed_at: body.params[4], completion_envelope: body.params[5], completion_sha256: body.params[6] };
-      return new Response(JSON.stringify({ success: true, result: [{ success: true, results: [row], meta: { changes: 1 } }] }), { status: 200 });
+      return jsonResponse({ success: true, result: [{ success: true, results: [row], meta: { changes: 1 } }] });
     }
     return mock(input, init);
   };
-  const readbackFailureAdapter = CloudflareD1StageLedger.fromEnvironment(authority, { GATE_H2_LEDGER_ACCOUNT_ID: account, GATE_H2_LEDGER_DATABASE_ID: database, GATE_H2_LEDGER_API_TOKEN: "test-only-token" }, readbackFailureMock);
+  const readbackFailureAdapter = CloudflareD1StageLedger.internalSynthetic(authority, { GATE_H2_LEDGER_ACCOUNT_ID: account, GATE_H2_LEDGER_DATABASE_ID: database, GATE_H2_LEDGER_API_TOKEN: "test-only-token" }, readbackFailureMock);
   const postAppend = await readbackFailureAdapter.appendCompletion({ ...identity, stage_id: "source_freeze" }, "attempt-post-append", "2026-07-15T00:00:00.024Z", "{\"post_append\":true}", "f".repeat(64));
   if (postAppend.attempt_id !== "attempt-post-append") throw new StageLedgerContractError("H2_LEDGER_TEST", "post-append readback failure changed a durable completion into begin-only failure");
   const concurrentIdentity = { ...identity, stage_id: "visual_freeze" };
@@ -307,10 +395,23 @@ export async function stageLedgerProductionContractSelfTest(repositoryRoot: stri
   expectReadbackRejection((rows) => { rows.completions.pop(); });
   expectReadbackRejection((rows) => { rows.attempts[1] = structuredClone(rows.attempts[0]); });
   expectReadbackRejection((rows) => { rows.claims[0].begin_sha256 = "0".repeat(64); });
-  const driftedSchemaMock: typeof fetch = async (_input, init) => { const body = JSON.parse(String(init?.body)) as { sql: string }; return new Response(JSON.stringify({ success: true, result: [{ success: true, results: body.sql.includes("sqlite_master") ? deployedSchema.rows.filter((row) => row.type !== "trigger") : [] }] }), { status: 200 }); };
-  const driftedAdapter = CloudflareD1StageLedger.fromEnvironment(authority, { GATE_H2_LEDGER_ACCOUNT_ID: account, GATE_H2_LEDGER_DATABASE_ID: database, GATE_H2_LEDGER_API_TOKEN: "test-only-token" }, driftedSchemaMock);
+  const driftedSchemaMock: typeof fetch = async (_input, init) => { const body = JSON.parse(String(init?.body)) as { sql: string }; return jsonResponse({ success: true, result: [{ success: true, results: body.sql.includes("sqlite_master") ? deployedSchema.rows.filter((row) => row.type !== "trigger") : [] }] }); };
+  const driftedAdapter = CloudflareD1StageLedger.internalSynthetic(authority, { GATE_H2_LEDGER_ACCOUNT_ID: account, GATE_H2_LEDGER_DATABASE_ID: database, GATE_H2_LEDGER_API_TOKEN: "test-only-token" }, driftedSchemaMock);
   let schemaRejected = false; try { await driftedAdapter.attestSchema(authority); } catch (error) { schemaRejected = error instanceof StageLedgerContractError && error.code === "H2_LEDGER_SCHEMA_ATTESTATION"; }
   if (!schemaRejected) throw new StageLedgerContractError("H2_LEDGER_TEST", "deployed schema/trigger mismatch passed attestation");
+  const malformedSchemaCase = async (label: string, rows: LedgerRow[]): Promise<void> => {
+    const malformedMock: typeof fetch = async () => jsonResponse({ success: true, result: [{ success: true, results: rows }] });
+    const malformedAdapter = CloudflareD1StageLedger.internalSynthetic(authority, { GATE_H2_LEDGER_ACCOUNT_ID: account, GATE_H2_LEDGER_DATABASE_ID: database, GATE_H2_LEDGER_API_TOKEN: "test-only-token" }, malformedMock);
+    let rejected = false; try { await malformedAdapter.attestSchema(authority); } catch (error) { rejected = error instanceof StageLedgerContractError && error.code === "H2_D1_SCHEMA_ROW"; }
+    if (!rejected) throw new StageLedgerContractError("H2_LEDGER_TEST", `${label} schema row crossed the exact D1 row contract`);
+  };
+  const validSchemaRow = deployedSchema.rows[0];
+  await malformedSchemaCase("extra schema key", [{ ...validSchemaRow, extra: true }]);
+  await malformedSchemaCase("wrong schema scalar", [{ ...validSchemaRow, name: 42 }]);
+  await malformedSchemaCase("duplicate schema identity", [validSchemaRow, structuredClone(validSchemaRow)]);
+  const namespacedAuthority = { ...authority, namespace_digest: gateH2NamespaceDigest("namespace-alpha") };
+  let namespaceRejected = false; try { CloudflareD1StageLedger.fromEnvironment(namespacedAuthority, { GATE_H2_LEDGER_ACCOUNT_ID: account, GATE_H2_LEDGER_DATABASE_ID: database, GATE_H2_LEDGER_API_TOKEN: "test-only-token", GATE_H2_LEDGER_NAMESPACE: "namespace-wrong" }); } catch (error) { namespaceRejected = error instanceof StageLedgerContractError && error.code === "H2_LEDGER_CAPABILITY"; }
+  if (!namespaceRejected) throw new StageLedgerContractError("H2_LEDGER_TEST", "production D1 environment accepted a mismatched namespace capability");
   if (requests.some((request) => !/^(INSERT|SELECT)\b/.test(request.sql)) || requests.some((request) => !request.url.endsWith(`/accounts/${account}/d1/database/${database}/query`))) throw new StageLedgerContractError("H2_LEDGER_TEST", "production adapter used an unapproved verb or endpoint");
   const schema = fs.readFileSync(path.join(repositoryRoot, "infrastructure/d1/migrations/0012_gate_h2_stage_ledger.sql"), "utf8");
   const sqlite = "/usr/bin/sqlite3";
@@ -332,5 +433,5 @@ INSERT INTO gate_h2_stage_completions VALUES ('${identity.candidate_commit}','${
       }
     }
   } finally { fs.rmSync(sqliteRoot, { recursive: true, force: true }); }
-  return { status: "stage_ledger_production_contract_self_test_passed", cases: ["deleted_local_cache_irrelevant", "alternate_cache_irrelevant", "second_attempt_audited", "concurrent_unique_claim", "atomic_completion_row", "committed_write_lost_response", "exact_completion_reconciliation", "no_completion_indeterminate_no_reexecution", "conflicting_malformed_completion_rejected", "post_append_readback_failure_does_not_false_fail", "update_delete_trigger_rejected", "wrong_stage_readback", "wrong_authority_readback", "missing_remote_row", "duplicate_stage_readback", "envelope_hash_mismatch", "deployed_schema_trigger_mismatch", "enumeration_mismatch", "no_real_d1_write"] };
+  return { status: "stage_ledger_production_contract_self_test_passed", cases: ["deleted_local_cache_irrelevant", "alternate_cache_irrelevant", "second_attempt_audited", "concurrent_unique_claim", "atomic_completion_row", "committed_write_lost_response", "exact_completion_reconciliation", "no_completion_indeterminate_no_reexecution", "conflicting_malformed_completion_rejected", "post_append_readback_failure_does_not_false_fail", "update_delete_trigger_rejected", "wrong_stage_readback", "wrong_authority_readback", "missing_remote_row", "duplicate_stage_readback", "envelope_hash_mismatch", "deployed_schema_trigger_mismatch", "enumeration_mismatch", "exact_schema_row_keys_types_and_duplicate_identity_rejected", "namespace_capability_mismatch_rejected", "no_real_d1_write"] };
 }
