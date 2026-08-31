@@ -14,10 +14,17 @@ usable assets. **Dataset Factory** is the internal evidence engine. **MTL
 Archives** is the reference implementation, and **City Memory** is the first
 commercial application.
 
+The commercial model has two paths over the same trust contract: institutions
+buy collection fit reviews or activation pilots; art, built-environment, and
+hospitality partners buy City Memory concept studies for real places. Every
+engagement moves through client collection, private processing, human review,
+and approved output zones. Paid pilots come before recurring software or
+workflow automation.
+
 The active roadmap is deliberately small: [product definition (#123)](https://github.com/zouantchaw/mtl-archives-search/issues/123),
 [Dataset Factory Core (#124)](https://github.com/zouantchaw/mtl-archives-search/issues/124),
 [Provenance Package (#125)](https://github.com/zouantchaw/mtl-archives-search/issues/125),
-[one client-specific City Memory pilot (#126)](https://github.com/zouantchaw/mtl-archives-search/issues/126),
+[one client-sendable City Memory reference concept (#126)](https://github.com/zouantchaw/mtl-archives-search/issues/126),
 and [buyer validation after internal release approval (#127)](https://github.com/zouantchaw/mtl-archives-search/issues/127).
 See [Provenance Activation v1](docs/product/provenance-activation-v1.md) for the
 product model and the [Montréal prospect shortlist](docs/product/city-memory-montreal-prospects-2026-08-31.md)
@@ -67,8 +74,10 @@ npm run city-memory:validation:verify-v1
 
 ## City Memory client pilot and buyer validation
 
-The active sequence is to make the prospect-specific [client pilot (#126)](https://github.com/zouantchaw/mtl-archives-search/issues/126)
+The active sequence is to make the Hôtel Nelligan–based [client pilot (#126)](https://github.com/zouantchaw/mtl-archives-search/issues/126)
 sendable before running the approved [buyer-validation test (#127)](https://github.com/zouantchaw/mtl-archives-search/issues/127).
+The hotel is a visual subject and possible recipient, not a presumed first
+buyer; recipient selection remains a separate, relationship-led decision.
 The predecessor issue #109 produced a privacy-preserving operating kit under
 [`docs/city-memory-validation-v1/`](docs/city-memory-validation-v1/), but no
 buyer evidence. Its checked-in ledger is intentionally empty: the validator

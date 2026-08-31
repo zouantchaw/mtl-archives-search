@@ -9,6 +9,21 @@ is issues #123–#127; `docs/product/provenance-activation-v1.md` defines how th
 pieces fit. Historical benchmark, model-promotion, feedback-learning, GPU, and
 agent-platform work is deferred and does not block the first client pilot.
 
+The commercial projections are distinct but share one evidence contract:
+
+```text
+Institution path ──┐
+                   ├─▶ Dataset Factory ─▶ Provenance Package ─▶ approved output
+Place/City Memory ─┘
+
+client collection ─▶ private processing ─▶ human review ─▶ client/public output
+```
+
+The source collection is not silently mutated, private hypotheses do not cross
+the release boundary, and machine suggestions are never approved by default.
+Each transition retains access, transformation, reviewer, approval, rights,
+and release state.
+
 The Dataset Factory includes an offline-replayable
 `ground-authoritative-research-v1` research artifact. Its network stage is
 exact-URL public capture; tracked build and verification are isolated from
@@ -275,7 +290,7 @@ Ignored reports in data/mtl_archives/reports/
 ### 8a. City Memory client pilot and buyer validation (#126–#127)
 
 ```text
-Client-sendable pilot (#126) ──▶ approved fixed proposal (#127) ──▶ private conversations
+Client-sendable pilot (#126) ──▶ approved path + fixed offer (#127) ──▶ private conversations
                                                                          │
                                       redacted categorical ledger ◀──────┘
                                                    │
@@ -284,7 +299,7 @@ Client-sendable pilot (#126) ──▶ approved fixed proposal (#127) ──▶ 
 ```
 
 - The superseded #109 implementation in `docs/city-memory-validation-v1/` contains the interview guide, consent/follow-up boundary, exact proposal, five-slot ledger schema/template, evidence rubric, and validator. It is a buyer-validation operating kit, not a source of buyer evidence.
-- The template intentionally has zero conversations and an untested proposal. The validator reports `kit_ready: true` separately from its evidence status (`template_only`, `in_progress`, or `complete`). `--require-acceptance` fails closed until five qualified conversations, a tested fixed proposal, and an explicit `continue`/`revise`/`stop` decision are recorded; `commercial_signal_gate` separately prevents a negative or interest-only result from being treated as demand.
+- The predecessor template intentionally has zero conversations and an untested $3,500 Diagnostic 001. The validator reports `kit_ready: true` separately from its evidence status (`template_only`, `in_progress`, or `complete`). `--require-acceptance` fails closed until its historical five-conversation/fixed-proposal decision contract is satisfied. The active #127 path may select a different versioned, segment-appropriate offer; it must never silently overwrite the digest-bound v1 proposal.
 - Names, recordings, raw notes, contact details, sensitive budgets, and other commercial material stay in an approved private system. The public ledger carries role/segment categories and opaque private reference tokens only; a token does not prove the private material exists.
 - No outreach, stakeholder conversation, proposal acceptance, payment, or commercial decision is claimed by the tracked template or local self-test.
 - Issue #127 must not begin until #126 passes internal release review and the owner approves the prospect, package, message, sender, channel, and follow-up boundary.

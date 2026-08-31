@@ -11,6 +11,13 @@ enrichment, evidence, review, and reproducibility. MTL Archives proves the
 method on a real collection. City Memory is the first client-facing
 application.
 
+There are two commercial paths over the same method. Institutions buy a fit
+review or archive activation pilot for collections they control. Art,
+built-environment, and hospitality partners buy a City Memory Concept Study
+for one real place. Both paths move through four zones—client collection,
+private processing, human review, and approved client/public output—and paid
+delivery must earn any later recurring software or automation.
+
 The active roadmap is issues #123–#127: define the product, bound Dataset
 Factory Core, specify a portable Provenance Package, build one client-sendable
 City Memory pilot, and only then test it with approved buyer outreach. The old
@@ -30,13 +37,16 @@ measured automation bottleneck. See `docs/product/provenance-activation-v1.md`.
 
 ## City Memory client pilot and buyer validation (#126–#127)
 
-The current sequence begins with a prospect-specific, internally approved City
-Memory package (#126), not outreach. The predecessor issue #109 left a useful
+The current sequence begins with an internally approved City Memory reference
+concept based on Hôtel Nelligan (#126), not outreach. The hotel is not presumed to be the
+first recipient; an approved warm partner or institution path may be stronger.
+The predecessor issue #109 left a useful
 privacy-preserving operating kit in `docs/city-memory-validation-v1/`: the
 exact paid diagnostic proposal, interview order, consent/follow-up language,
 categorical five-slot ledger, and a TypeScript/AJV validator. Its empty ledger
-proves only that the kit runs; it does not prove demand. Issue #127 starts only
-after the pilot passes release review and the owner approves the prospect,
+proves only that the kit runs; it does not prove demand. Its $3,500 proposal is
+an optional credited discovery step, not the default Provenance offer. Issue
+#127 starts only after the pilot passes release review and the owner approves the prospect,
 message, sender, channel, and follow-up boundary. Keep names, recordings, raw
 notes, and commercial details in an approved private system and retain only
 opaque reference tokens here.

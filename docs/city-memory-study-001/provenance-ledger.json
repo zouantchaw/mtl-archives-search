@@ -26,7 +26,7 @@
     "publication_status_artifact": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json",
     "publication_status_artifact_sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527",
     "output_transform_map": "docs/city-memory-study-001/assets/output-transform-map.json",
-    "output_transform_map_sha256": "6663927b9ed72e327796a82c7d5eb600d9b323741eae36a115d02ab4966d6c2e",
+    "output_transform_map_sha256": "3679d3182a0be5ba89c494a144cb65359a627a55c14772513c04dba0c139a2ef",
     "candidate_count": 36,
     "accepted_count": 32,
     "held_count": 4,

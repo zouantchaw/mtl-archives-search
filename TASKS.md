@@ -11,12 +11,13 @@
   handoff for sources, rights, claims, uncertainty, transformations, review,
   and activation readiness.
 - [ ] **City Memory Client Pilot v2 (#126)** — build a client-sendable,
-  Hôtel-Nelligan-tailored pilot and pass internal visual, narrative, rights,
-  and production review before any outreach.
+  Hôtel Nelligan–based reference concept and pass internal visual, narrative,
+  rights, and production review without presuming the hotel is the first
+  recipient.
 - [ ] **City Memory Buyer Validation v2 (#127)** — after release approval,
-  obtain explicit approval for the prospect list and outreach materials, then
-  run the fixed proposal test and record evidence without exposing private
-  buyer data.
+  select an institution or place-based path, obtain explicit approval for the
+  prospect list and outreach materials, then test the corresponding offer
+  without exposing private buyer data.
 
 The closed issue #128 indexes deferred research and exact reopening triggers.
 Historical issues #64, #69–#73, #92, #96, #97, #109, and #110 are not active
@@ -153,7 +154,7 @@ New archive source is `archivesdemontreal.ica-atom.org`; ingest safely before fu
 
 ## P3: B2B Monetization (After UX Stabilization)
 
-- **Superseded buyer-validation kit (#109; active sequence #126–#127)** — The privacy-preserving interview/proposal kit remains under `docs/city-memory-validation-v1/`; its empty ledger is intentionally `template_only` and contains no buyer evidence. The new sequence requires a sendable pilot and owner-approved outreach before the fixed proposal test.
+- **Superseded buyer-validation kit (#109; active sequence #126–#127)** — The privacy-preserving interview/proposal kit remains under `docs/city-memory-validation-v1/`; its empty ledger is intentionally `template_only` and contains no buyer evidence. The fixed $3,500 Diagnostic 001 is a versioned predecessor test, not the canonical service ladder. The active sequence requires a sendable pilot and owner-approved, preferably relationship-led outreach before a segment-appropriate offer test.
 - [ ] **Add partner landing page** — `/partners` with concise value proposition, proof metrics, and booking CTA.
 - [ ] **Track B2B events** — `partner_page_viewed`, `partner_cta_clicked`, `partner_form_submitted`, `partner_call_booked`.
 - [ ] **Add source-aware partner attribution** — persist UTMs + referrer through partner CTA/form flow.
