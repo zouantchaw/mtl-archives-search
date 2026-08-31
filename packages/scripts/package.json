@@ -60,6 +60,8 @@
     "dataset-factory:apply-quality-model-review-001": "tsx src/dataset-factory/apply-quality-model-review-001.ts",
     "dataset-factory:benchmark-v0": "tsx src/dataset-factory/build-benchmark-v0.ts",
     "dataset-factory:benchmark-v0:search": "tsx src/dataset-factory/evaluate-benchmark-search.ts",
+    "dataset-factory:benchmark-v1-candidate": "tsx src/dataset-factory/build-benchmark-v1-candidate.ts",
+    "dataset-factory:benchmark-v1-candidate:self-test": "tsx src/dataset-factory/self-test-benchmark-v1-candidate.ts",
     "dataset-factory:model-baseline-v0": "tsx src/dataset-factory/train-model-baseline-v0.ts",
     "dataset-factory:search-reranker-v0": "tsx src/dataset-factory/evaluate-search-reranker.ts",
     "dataset-factory:reward-data-v0": "tsx src/dataset-factory/build-reward-data-v0.ts",

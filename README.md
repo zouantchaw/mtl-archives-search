@@ -17,6 +17,10 @@ Built on Cloudflare Workers, D1, Vectorize, R2, Workers AI, and a Next.js fronte
 Cross-platform content analytics is local-only and identity-gated. See
 `docs/dataset-factory/content-signal-v1.md` for the required canonical join,
 product-event contract, and self-test command.
+
+Benchmark v1 currently has only a pre-lock candidate/preflight foundation. See
+`docs/dataset-factory/benchmark-v1.md`; it does not claim a locked benchmark,
+model result, or issue #70 completion.
 - `infrastructure/d1/` — schema and migrations
 
 ## Common commands

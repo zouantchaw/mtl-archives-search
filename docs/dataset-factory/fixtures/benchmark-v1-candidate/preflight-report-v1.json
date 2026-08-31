@@ -1,0 +1,662 @@
+{
+  "schema_version": "mtl_citymemory_bench_v1_candidate_v1.0.0",
+  "benchmark_id": "mtl_citymemory_bench_v1",
+  "generated_at": "2026-08-31T12:00:00.000Z",
+  "state": "preflight_blocked",
+  "candidate_ready": false,
+  "lock_authority": false,
+  "issue_70_complete": false,
+  "inputs": {
+    "canonical_corpus": {
+      "artifact_id": "ccv1_reconciliation_20260710",
+      "locator": "data/mtl_archives/reports/canonical_corpus_v1/live",
+      "status": "descriptor_only",
+      "expected_sha256": "3175aff85c36ca6f4c5d9b9947930bfac31820f408422e7a4f28291434d51be6",
+      "observed_sha256": null,
+      "bytes": null,
+      "rows": null
+    },
+    "visual_family_graph": {
+      "artifact_id": "ccv1_visual_family_graph_20260710",
+      "locator": "data/mtl_archives/reports/visual_family_graph_v1/graph/record-leakage-map-v1.jsonl",
+      "status": "descriptor_only",
+      "expected_sha256": "a4f66eee3b39573977ab3694cfde5fbe4db62be4f09c77120316d2d7b56aa8cc",
+      "observed_sha256": null,
+      "bytes": null,
+      "rows": null
+    },
+    "gold_batch_002": {
+      "artifact_id": "dfv0_gold_label_batch_002_phase_1",
+      "locator": "data/mtl_archives/reports/gold_label_batch_002",
+      "status": "missing_local_evidence",
+      "expected_sha256": "bbe746e0564012ea61e872219af7dd7140bd320d49a8c6521589bc549a79cf57",
+      "observed_sha256": null,
+      "bytes": null,
+      "rows": null
+    },
+    "verified_intelligence": {
+      "artifact_id": "dfv0_reviewed_metrics_v1_publication",
+      "locator": "docs/dataset-factory/fixtures/reviewed-metrics-publication-v1/published-benchmark-tasks-v1.json",
+      "status": "available",
+      "expected_sha256": "9381129f41fbd21f238f7a7a4eed53b0a3147f815f82a810ec1e020c63ecef99",
+      "observed_sha256": "9381129f41fbd21f238f7a7a4eed53b0a3147f815f82a810ec1e020c63ecef99",
+      "bytes": 370235,
+      "rows": null
+    },
+    "retrieval_tasks": {
+      "artifact_id": "dfv0_search_judgments_v0",
+      "locator": "data/mtl_archives/reports/search_judgments_v0/retrieval_tasks.search_judgments_v0.jsonl",
+      "status": "available",
+      "expected_sha256": "fc2e12e27918b73d5ed5b466e84a3a40381d36ec60ed59ea2c913f8d84ddbf7e",
+      "observed_sha256": "fc2e12e27918b73d5ed5b466e84a3a40381d36ec60ed59ea2c913f8d84ddbf7e",
+      "bytes": 61434,
+      "rows": 75
+    }
+  },
+  "splits": {
+    "status": "not_emitted_missing_graph",
+    "method": "visual_family_graph_v1_connected_component",
+    "component_crossings": null,
+    "rows": null,
+    "sha256": null,
+    "output_locator": null
+  },
+  "retrieval_shortfall": {
+    "reviewed_gold": 26,
+    "minimum_reviewed_gold": 100,
+    "shortfall": 74,
+    "silver": 49,
+    "stress": 0,
+    "by_slice": {
+      "metadata_title": {
+        "total": 4,
+        "reviewed_gold": 3,
+        "silver": 1,
+        "stress": 0
+      },
+      "entity_place": {
+        "total": 57,
+        "reviewed_gold": 13,
+        "silver": 44,
+        "stress": 0
+      },
+      "text_in_image": {
+        "total": 9,
+        "reviewed_gold": 5,
+        "silver": 4,
+        "stress": 0
+      },
+      "reranker_required": {
+        "total": 2,
+        "reviewed_gold": 2,
+        "silver": 0,
+        "stress": 0
+      },
+      "scene_text": {
+        "total": 3,
+        "reviewed_gold": 3,
+        "silver": 0,
+        "stress": 0
+      }
+    }
+  },
+  "classification_support": {
+    "reviewed_gold_records": 0,
+    "minimum_reviewed_gold_records": 200,
+    "by_target": {}
+  },
+  "promotion_thresholds": {
+    "status": "proposed_not_authorized",
+    "frozen_before_candidate_results": true,
+    "values": {
+      "classification_macro_f1": 0.7,
+      "retrieval_mrr": 0.55,
+      "retrieval_recall_at_10": 0.8,
+      "ranking_pairwise_accuracy": 0.6,
+      "duplicate_rate_at_10": 0.05,
+      "calibration_ece": 0.1
+    }
+  },
+  "acquisition_queue": {
+    "status": "human_review_required",
+    "required_additional_reviewed_queries": 74,
+    "rows": [
+      {
+        "queue_id": "retrieval-review-001",
+        "slice": "entity_place",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-002",
+        "slice": "entity_place",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-003",
+        "slice": "entity_place",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-004",
+        "slice": "entity_place",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-005",
+        "slice": "entity_place",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-006",
+        "slice": "entity_place",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-007",
+        "slice": "entity_place",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-008",
+        "slice": "metadata_title",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-009",
+        "slice": "metadata_title",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-010",
+        "slice": "metadata_title",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-011",
+        "slice": "metadata_title",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-012",
+        "slice": "metadata_title",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-013",
+        "slice": "metadata_title",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-014",
+        "slice": "metadata_title",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-015",
+        "slice": "metadata_title",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-016",
+        "slice": "metadata_title",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-017",
+        "slice": "metadata_title",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-018",
+        "slice": "metadata_title",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-019",
+        "slice": "metadata_title",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-020",
+        "slice": "metadata_title",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-021",
+        "slice": "metadata_title",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-022",
+        "slice": "metadata_title",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-023",
+        "slice": "metadata_title",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-024",
+        "slice": "metadata_title",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-025",
+        "slice": "reranker_required",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-026",
+        "slice": "reranker_required",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-027",
+        "slice": "reranker_required",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-028",
+        "slice": "reranker_required",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-029",
+        "slice": "reranker_required",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-030",
+        "slice": "reranker_required",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-031",
+        "slice": "reranker_required",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-032",
+        "slice": "reranker_required",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-033",
+        "slice": "reranker_required",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-034",
+        "slice": "reranker_required",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-035",
+        "slice": "reranker_required",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-036",
+        "slice": "reranker_required",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-037",
+        "slice": "reranker_required",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-038",
+        "slice": "reranker_required",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-039",
+        "slice": "reranker_required",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-040",
+        "slice": "reranker_required",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-041",
+        "slice": "reranker_required",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-042",
+        "slice": "reranker_required",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-043",
+        "slice": "scene_text",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-044",
+        "slice": "scene_text",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-045",
+        "slice": "scene_text",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-046",
+        "slice": "scene_text",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-047",
+        "slice": "scene_text",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-048",
+        "slice": "scene_text",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-049",
+        "slice": "scene_text",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-050",
+        "slice": "scene_text",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-051",
+        "slice": "scene_text",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-052",
+        "slice": "scene_text",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-053",
+        "slice": "scene_text",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-054",
+        "slice": "scene_text",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-055",
+        "slice": "scene_text",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-056",
+        "slice": "scene_text",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-057",
+        "slice": "scene_text",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-058",
+        "slice": "scene_text",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-059",
+        "slice": "scene_text",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-060",
+        "slice": "text_in_image",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-061",
+        "slice": "text_in_image",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-062",
+        "slice": "text_in_image",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-063",
+        "slice": "text_in_image",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-064",
+        "slice": "text_in_image",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-065",
+        "slice": "text_in_image",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-066",
+        "slice": "text_in_image",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-067",
+        "slice": "text_in_image",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-068",
+        "slice": "text_in_image",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-069",
+        "slice": "text_in_image",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-070",
+        "slice": "text_in_image",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-071",
+        "slice": "text_in_image",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-072",
+        "slice": "text_in_image",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-073",
+        "slice": "text_in_image",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      },
+      {
+        "queue_id": "retrieval-review-074",
+        "slice": "text_in_image",
+        "target_reviewed_gold": 1,
+        "status": "unreviewed_acquisition",
+        "reason": "needs_independent_human_review_before_gold"
+      }
+    ]
+  },
+  "gates": {
+    "independent_review": false,
+    "canonical_corpus_frozen": false,
+    "family_graph_frozen": false,
+    "classification_support": false,
+    "retrieval_support": false,
+    "silver_separated": true,
+    "leakage_audit": false,
+    "baseline_recorded": false
+  },
+  "blockers": [
+    "missing local Gold Batch 002 evidence: data/mtl_archives/reports/gold_label_batch_002",
+    "missing materialized Visual Family Graph v1 record map: data/mtl_archives/reports/visual_family_graph_v1/graph/record-leakage-map-v1.jsonl",
+    "classification reviewed-gold support 0/200",
+    "retrieval reviewed-gold support 26/100; shortfall 74",
+    "independent benchmark reviewer has not audited candidate validity, arithmetic, source boundaries, and splits",
+    "production baselines are not recorded by this foundation slice"
+  ]
+}

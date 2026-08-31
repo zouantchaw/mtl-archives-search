@@ -1,0 +1,177 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mtlarchives.com/schemas/benchmark-v1-candidate.schema.json",
+  "title": "MTL-CityMemory-Bench v1 candidate contract",
+  "description": "A pre-lock candidate/preflight report. This contract is deliberately unable to assert Benchmark v1 completion or lock authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "benchmark_id",
+    "generated_at",
+    "state",
+    "candidate_ready",
+    "lock_authority",
+    "issue_70_complete",
+    "inputs",
+    "splits",
+    "retrieval_shortfall",
+    "classification_support",
+    "promotion_thresholds",
+    "acquisition_queue",
+    "gates",
+    "blockers"
+  ],
+  "properties": {
+    "schema_version": { "const": "mtl_citymemory_bench_v1_candidate_v1.0.0" },
+    "benchmark_id": { "const": "mtl_citymemory_bench_v1" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "state": { "enum": ["candidate_ready", "preflight_blocked"] },
+    "candidate_ready": { "type": "boolean" },
+    "lock_authority": { "const": false },
+    "issue_70_complete": { "const": false },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["canonical_corpus", "visual_family_graph", "gold_batch_002", "verified_intelligence", "retrieval_tasks"],
+      "properties": {
+        "canonical_corpus": { "$ref": "#/$defs/input" },
+        "visual_family_graph": { "$ref": "#/$defs/input" },
+        "gold_batch_002": { "$ref": "#/$defs/input" },
+        "verified_intelligence": { "$ref": "#/$defs/input" },
+        "retrieval_tasks": { "$ref": "#/$defs/input" }
+      }
+    },
+    "splits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "method", "component_crossings", "rows", "sha256", "output_locator"],
+      "properties": {
+        "status": { "enum": ["not_emitted_missing_graph", "candidate_emitted"] },
+        "method": { "const": "visual_family_graph_v1_connected_component" },
+        "component_crossings": { "type": ["integer", "null"], "minimum": 0 },
+        "rows": { "type": ["integer", "null"], "minimum": 0 },
+        "sha256": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" },
+        "output_locator": { "type": ["string", "null"] }
+      }
+    },
+    "retrieval_shortfall": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reviewed_gold", "minimum_reviewed_gold", "shortfall", "silver", "stress"],
+      "properties": {
+        "reviewed_gold": { "type": "integer", "minimum": 0 },
+        "minimum_reviewed_gold": { "const": 100 },
+        "shortfall": { "type": "integer", "minimum": 0 },
+        "silver": { "type": "integer", "minimum": 0 },
+        "stress": { "type": "integer", "minimum": 0 },
+        "by_slice": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["total", "reviewed_gold", "silver", "stress"],
+            "properties": {
+              "total": { "type": "integer", "minimum": 0 },
+              "reviewed_gold": { "type": "integer", "minimum": 0 },
+              "silver": { "type": "integer", "minimum": 0 },
+              "stress": { "type": "integer", "minimum": 0 }
+            }
+          }
+        }
+      }
+    },
+    "classification_support": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reviewed_gold_records", "minimum_reviewed_gold_records", "by_target"],
+      "properties": {
+        "reviewed_gold_records": { "type": "integer", "minimum": 0 },
+        "minimum_reviewed_gold_records": { "const": 200 },
+        "by_target": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "promotion_thresholds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "frozen_before_candidate_results", "values"],
+      "properties": {
+        "status": { "const": "proposed_not_authorized" },
+        "frozen_before_candidate_results": { "const": true },
+        "values": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["classification_macro_f1", "retrieval_mrr", "retrieval_recall_at_10", "ranking_pairwise_accuracy", "duplicate_rate_at_10", "calibration_ece"],
+          "properties": {
+            "classification_macro_f1": { "type": "number", "minimum": 0, "maximum": 1 },
+            "retrieval_mrr": { "type": "number", "minimum": 0, "maximum": 1 },
+            "retrieval_recall_at_10": { "type": "number", "minimum": 0, "maximum": 1 },
+            "ranking_pairwise_accuracy": { "type": "number", "minimum": 0, "maximum": 1 },
+            "duplicate_rate_at_10": { "type": "number", "minimum": 0, "maximum": 1 },
+            "calibration_ece": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        }
+      }
+    },
+    "acquisition_queue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "required_additional_reviewed_queries", "rows"],
+      "properties": {
+        "status": { "const": "human_review_required" },
+        "required_additional_reviewed_queries": { "type": "integer", "minimum": 0 },
+        "rows": { "type": "array", "items": { "$ref": "#/$defs/queue_row" } }
+      }
+    },
+    "gates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["independent_review", "canonical_corpus_frozen", "family_graph_frozen", "classification_support", "retrieval_support", "silver_separated", "leakage_audit", "baseline_recorded"],
+      "properties": {
+        "independent_review": { "type": "boolean" },
+        "canonical_corpus_frozen": { "type": "boolean" },
+        "family_graph_frozen": { "type": "boolean" },
+        "classification_support": { "type": "boolean" },
+        "retrieval_support": { "type": "boolean" },
+        "silver_separated": { "type": "boolean" },
+        "leakage_audit": { "type": "boolean" },
+        "baseline_recorded": { "type": "boolean" }
+      }
+    },
+    "blockers": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    }
+  },
+  "$defs": {
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_id", "locator", "status", "expected_sha256", "observed_sha256", "bytes", "rows"],
+      "properties": {
+        "artifact_id": { "type": ["string", "null"] },
+        "locator": { "type": "string", "minLength": 1 },
+        "status": { "enum": ["available", "descriptor_only", "missing_local_evidence", "hash_mismatch"] },
+        "expected_sha256": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" },
+        "observed_sha256": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" },
+        "bytes": { "type": ["integer", "null"], "minimum": 0 },
+        "rows": { "type": ["integer", "null"], "minimum": 0 }
+      }
+    },
+    "queue_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["queue_id", "slice", "target_reviewed_gold", "status", "reason"],
+      "properties": {
+        "queue_id": { "type": "string", "minLength": 1 },
+        "slice": { "type": "string", "minLength": 1 },
+        "target_reviewed_gold": { "type": "integer", "minimum": 1 },
+        "status": { "const": "unreviewed_acquisition" },
+        "reason": { "const": "needs_independent_human_review_before_gold" }
+      }
+    }
+  }
+}
