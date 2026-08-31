@@ -129,10 +129,14 @@ Gold Batch 002 evidence are available, 100 reviewed retrieval queries exist,
 and an independent benchmark review passes.
 
 Cross-platform content analytics (`npm run social:analyze-cross-platform`) is
-identity-gated. Supply an explicit platform-post identity map and canonical
-manifest; missing joins fail closed. Product events remain `reward_not_fact`
-behavior signals. The contract self-test is
-`npm run social:analyze-cross-platform:self-test`.
+identity-gated and requires explicit `real_export` or `synthetic_fixture`
+provenance. Supply an explicit platform-post identity map and canonical
+manifest; missing joins fail closed. `no_personal_data` events cannot carry raw
+queries or candidate lists; published joins require exact permalinks; and
+aggregate capture is labeled as report-generation time. Product events remain
+`reward_not_fact` behavior signals. Event IDs are deduplicated only within one
+export; durable cross-export deduplication remains an external ingestion gate.
+The contract self-test is `npm run social:analyze-cross-platform:self-test`.
 
 ## Environment
 

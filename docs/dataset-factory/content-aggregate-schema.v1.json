@@ -2,22 +2,25 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://mtlarchives.com/schemas/content-aggregate-v1.json",
   "title": "MTL Archives Content Behavior Aggregate Envelope v1",
-  "description": "Envelope-only schema for the metadata carried by each social/product aggregate row emitted by the local cross-platform report. A full emitted row also contains a row-type-specific metric payload and therefore is intentionally not valid against this schema (additionalProperties is false). Project the eight fields named by AGGREGATE_ENVELOPE_FIELDS before validation. This envelope is not post-level attribution or factual archive truth.",
+  "description": "Envelope-only schema for the metadata carried by each social/product aggregate row emitted by the local cross-platform report. A full emitted row also contains a row-type-specific metric payload and therefore is intentionally not valid against this schema (additionalProperties is false). Project the ten fields named by AGGREGATE_ENVELOPE_FIELDS before validation. captured_at is the report-generation time, not a synthesized source-capture time. This envelope is not post-level attribution or factual archive truth.",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "schema_version",
     "captured_at",
+    "capture_time_basis",
     "timezone",
     "platform",
     "observation_window",
     "signal_class",
     "source_type",
-    "ground_truth_boundary"
+    "ground_truth_boundary",
+    "evidence_kind"
   ],
   "properties": {
     "schema_version": { "const": "mtl_content_signal_v1" },
     "captured_at": { "type": "string", "format": "date-time" },
+    "capture_time_basis": { "const": "report_generation" },
     "timezone": { "const": "America/Toronto" },
     "platform": { "enum": ["instagram", "facebook", "combined", "web"] },
     "observation_window": {
@@ -31,6 +34,7 @@
     },
     "signal_class": { "enum": ["social_behavior", "product_behavior"] },
     "source_type": { "enum": ["social_platform", "product_analytics"] },
-    "ground_truth_boundary": { "const": "reward_not_fact" }
+    "ground_truth_boundary": { "const": "reward_not_fact" },
+    "evidence_kind": { "enum": ["real_export", "synthetic_fixture"] }
   }
 }

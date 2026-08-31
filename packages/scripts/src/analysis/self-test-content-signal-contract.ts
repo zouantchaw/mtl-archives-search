@@ -56,6 +56,7 @@ const validSignal = {
   source_type: "product_analytics",
   event_name: "search_result_clicked",
   captured_at: "2026-01-02T15:00:00Z",
+  capture_time_basis: "source_event",
   timezone: "America/Toronto",
   canonical_record_id: identityInput.canonical_record_id,
   visual_family_id: identityInput.visual_family_id,
@@ -80,7 +81,8 @@ const validSignal = {
   experiment_assignment: null,
   propensity: null,
   safety_budget_id: null,
-  privacy_consent: "no_personal_data",
+  privacy_consent: "pseudonymous_consent",
+  evidence_kind: "synthetic_fixture",
   ground_truth_boundary: "reward_not_fact",
   identity_basis: "declared_identity",
   package_family_verification: "not_independently_verified",
@@ -121,9 +123,67 @@ assert.equal(
   true,
 );
 assert.equal(
+  schemaCheck({
+    ...validSignal,
+    event_name: "photo_viewed",
+    query: null,
+    position: null,
+    candidate_set: null,
+    privacy_consent: "no_personal_data",
+  }),
+  true,
+);
+assert.equal(
+  schemaCheck({ ...validSignal, privacy_consent: "no_personal_data" }),
+  false,
+);
+assert.throws(
+  () =>
+    validateProductSignals(
+      [
+        {
+          ...validSignal,
+          event_id: "event-private-data",
+          privacy_consent: "no_personal_data",
+        },
+      ],
+      byContent,
+    ),
+  /no_personal_data signals must not contain raw query or candidate_set/,
+);
+assert.throws(
+  () =>
+    validateProductSignals(
+      [
+        {
+          ...validSignal,
+          event_id: "event-invalid-provenance",
+          evidence_kind: "production_export",
+        },
+      ],
+      byContent,
+    ),
+  /evidence_kind is unsupported/,
+);
+assert.throws(
+  () =>
+    validateProductSignals(
+      [
+        {
+          ...validSignal,
+          event_id: "event-invalid-capture-basis",
+          capture_time_basis: "report_generation",
+        },
+      ],
+      byContent,
+    ),
+  /source_event capture_time_basis/,
+);
+assert.equal(
   aggregateSchemaCheck({
     schema_version: CONTENT_SIGNAL_SCHEMA,
     captured_at: "2026-01-02T12:00:00Z",
+    capture_time_basis: "report_generation",
     timezone: "America/Toronto",
     platform: "combined",
     observation_window: {
@@ -133,12 +193,14 @@ assert.equal(
     signal_class: "social_behavior",
     source_type: "social_platform",
     ground_truth_boundary: "reward_not_fact",
+    evidence_kind: "synthetic_fixture",
   }),
   true,
 );
 const emittedAggregate = {
   schema_version: CONTENT_SIGNAL_SCHEMA,
   captured_at: "2026-01-02T12:00:00Z",
+  capture_time_basis: "report_generation",
   timezone: "America/Toronto",
   platform: "combined",
   observation_window: {
@@ -148,6 +210,7 @@ const emittedAggregate = {
   signal_class: "social_behavior",
   source_type: "social_platform",
   ground_truth_boundary: "reward_not_fact",
+  evidence_kind: "synthetic_fixture",
   monthly_posts: 1,
   monthly_views: 10,
 };

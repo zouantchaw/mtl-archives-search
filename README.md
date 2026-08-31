@@ -14,7 +14,10 @@ Built on Cloudflare Workers, D1, Vectorize, R2, Workers AI, and a Next.js fronte
 - `packages/scripts` — ETL, vectorize, dataset-factory, evals
 - `pipelines/` — OCR, VLM, and social/story scripts
 
-Cross-platform content analytics is local-only and identity-gated. See
+Cross-platform content analytics is local-only, identity-gated, and provenance-
+explicit. Reports require `--evidence-kind` (`real_export` or
+`synthetic_fixture`); `no_personal_data` events cannot carry raw queries or
+candidate lists, and aggregate capture time is report-generation time. See
 `docs/dataset-factory/content-signal-v1.md` for the required canonical join,
 product-event contract, and self-test command.
 

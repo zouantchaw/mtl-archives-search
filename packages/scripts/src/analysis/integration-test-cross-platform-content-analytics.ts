@@ -25,7 +25,7 @@ fs.writeFileSync(
       id: "ig-1",
       timestamp: "2026-01-02T15:00:00Z",
       permalink: "https://example.test/p/ig-1",
-      caption: "A Montreal archive",
+      caption: '=HYPERLINK("https://example.test/")',
       metrics: { views: 10 },
     },
   ]),
@@ -66,6 +66,7 @@ fs.writeFileSync(
     source_type: "product_analytics",
     event_name: "photo_viewed",
     captured_at: "2026-01-03T15:00:00Z",
+    capture_time_basis: "source_event",
     timezone: "America/Toronto",
     canonical_record_id: "mtl_archives_metadata_1.json",
     visual_family_id: "family-1",
@@ -91,6 +92,7 @@ fs.writeFileSync(
     propensity: null,
     safety_budget_id: null,
     privacy_consent: "no_personal_data",
+    evidence_kind: "synthetic_fixture",
     ground_truth_boundary: "reward_not_fact",
     identity_basis: "declared_identity",
     package_family_verification: "not_independently_verified",
@@ -124,9 +126,24 @@ const command = [
   "2026-01-02",
   "--output-prefix",
   output,
+  "--evidence-kind",
+  "synthetic_fixture",
 ];
 const runReport = () =>
   execFileSync(process.execPath, command, { cwd: root, stdio: "pipe" });
+const missingProvenanceCommand = command.slice(0, -2);
+let missingProvenanceFailure = "";
+try {
+  execFileSync(process.execPath, missingProvenanceCommand, {
+    cwd: root,
+    stdio: "pipe",
+  });
+} catch (error) {
+  const result = error as { stderr?: Buffer; message?: string };
+  missingProvenanceFailure = `${result.stderr?.toString() ?? ""}\n${result.message ?? ""}`;
+}
+assert.match(missingProvenanceFailure, /Missing --evidence-kind/);
+assert.equal(fs.existsSync(`${output}.json`), false);
 let failure = "";
 try {
   runReport();
@@ -148,10 +165,67 @@ inWindowEvent.observation_window = {
   end: "2026-01-02T15:00:00Z",
 };
 fs.writeFileSync(events, `${JSON.stringify(inWindowEvent)}\n`);
+const personalEvent = {
+  ...inWindowEvent,
+  event_id: "personal-data-1",
+  query: "private visitor query",
+  candidate_set: ["mtl_archives_metadata_1.json"],
+};
+fs.writeFileSync(events, `${JSON.stringify(personalEvent)}\n`);
+let personalDataFailure = "";
+try {
+  runReport();
+} catch (error) {
+  const result = error as { stderr?: Buffer; message?: string };
+  personalDataFailure = `${result.stderr?.toString() ?? ""}\n${result.message ?? ""}`;
+}
+assert.match(
+  personalDataFailure,
+  /no_personal_data signals must not contain raw query or candidate_set/,
+);
+assert.equal(fs.existsSync(`${output}.json`), false);
+fs.writeFileSync(events, `${JSON.stringify(inWindowEvent)}\n`);
+const provenanceMismatchEvent = {
+  ...inWindowEvent,
+  event_id: "provenance-mismatch-1",
+  evidence_kind: "real_export",
+};
+fs.writeFileSync(events, `${JSON.stringify(provenanceMismatchEvent)}\n`);
+let provenanceMismatchFailure = "";
+try {
+  runReport();
+} catch (error) {
+  const result = error as { stderr?: Buffer; message?: string };
+  provenanceMismatchFailure = `${result.stderr?.toString() ?? ""}\n${result.message ?? ""}`;
+}
+assert.match(
+  provenanceMismatchFailure,
+  /product event evidence_kind must match --evidence-kind/,
+);
+assert.equal(fs.existsSync(`${output}.json`), false);
+fs.writeFileSync(events, `${JSON.stringify(inWindowEvent)}\n`);
 const negativePosts = JSON.parse(fs.readFileSync(posts, "utf8")) as Array<{
   metrics: Record<string, number>;
+  permalink: string | null;
 }>;
 negativePosts[0].metrics.views = -1;
+fs.writeFileSync(posts, JSON.stringify(negativePosts));
+
+negativePosts[0].permalink = null;
+fs.writeFileSync(posts, JSON.stringify(negativePosts));
+let missingPermalinkFailure = "";
+try {
+  runReport();
+} catch (error) {
+  const result = error as { stderr?: Buffer; message?: string };
+  missingPermalinkFailure = `${result.stderr?.toString() ?? ""}\n${result.message ?? ""}`;
+}
+assert.match(
+  missingPermalinkFailure,
+  /published post instagram:ig-1 requires permalink/,
+);
+assert.equal(fs.existsSync(`${output}.json`), false);
+negativePosts[0].permalink = "https://example.test/p/ig-1";
 fs.writeFileSync(posts, JSON.stringify(negativePosts));
 let negativeFailure = "";
 try {
@@ -181,10 +255,7 @@ assert.equal(fs.existsSync(`${output}.md`), false);
 fs.writeFileSync(posts, JSON.stringify(negativePosts));
 
 const viewsCsv = path.join(meta, "views.csv");
-fs.writeFileSync(
-  viewsCsv,
-  "date,primary\n2026-01-02,10\n2026-01-02,10\n",
-);
+fs.writeFileSync(viewsCsv, "date,primary\n2026-01-02,10\n2026-01-02,10\n");
 let duplicateMetaFailure = "";
 try {
   runReport();
@@ -226,9 +297,15 @@ const vercelMonth = path.join(vercel, "2026-01");
 fs.mkdirSync(vercelMonth, { recursive: true });
 const topPagesA = path.join(vercelMonth, "Top Pages.csv");
 const topPagesB = path.join(vercelMonth, "Top Pages duplicate.csv");
-const topPagesCsv = "page,visitors,total\n/photo/mtl-1,1,1\n";
+const topEvents = path.join(vercelMonth, "Top Events.csv");
+const topPagesCsv =
+  "page,visitors,total\n/photo/mtl-1,10,1\n/photo/mtl-2,10,2\n";
 fs.writeFileSync(topPagesA, topPagesCsv);
 fs.writeFileSync(topPagesB, topPagesCsv);
+fs.writeFileSync(
+  topEvents,
+  "event,visitors,total\nphoto_viewed,10,4\nsearch_committed,10,2\n",
+);
 let duplicateWebsiteFailure = "";
 try {
   runReport();
@@ -247,8 +324,24 @@ fs.unlinkSync(topPagesB);
 runReport();
 const report = JSON.parse(fs.readFileSync(`${output}.json`, "utf8")) as {
   inputs: Record<string, unknown>;
+  generated_at: string;
+  evidence_kind: string;
+  capture_time_basis: string;
   product_signals: unknown[];
-  monthly: Array<{ caveats: string[] }>;
+  monthly: Array<{
+    caveats: string[];
+    meta_account_metrics: {
+      captured_at: string;
+      capture_time_basis: string;
+      evidence_kind: string;
+    };
+    vercel?: {
+      page_visitors: number | null;
+      page_views: number | null;
+      event_visitors: number | null;
+      event_total: number | null;
+    };
+  }>;
 };
 const containsString = (value: unknown): boolean =>
   typeof value === "string"
@@ -259,6 +352,47 @@ const containsString = (value: unknown): boolean =>
         ? Object.values(value).some(containsString)
         : false;
 assert.equal(report.product_signals.length, 1);
+assert.equal(report.evidence_kind, "synthetic_fixture");
+assert.equal(report.capture_time_basis, "report_generation");
+assert.equal(
+  report.monthly[0]?.meta_account_metrics.capture_time_basis,
+  "report_generation",
+);
+assert.equal(
+  report.monthly[0]?.meta_account_metrics.captured_at,
+  report.generated_at,
+);
+assert.notEqual(
+  report.monthly[0]?.meta_account_metrics.captured_at,
+  "2026-01-02T12:00:00.000Z",
+);
+assert.equal(
+  report.monthly[0]?.meta_account_metrics.evidence_kind,
+  "synthetic_fixture",
+);
+assert.equal(
+  report.product_signals[0] &&
+    (report.product_signals[0] as { evidence_kind: string }).evidence_kind,
+  "synthetic_fixture",
+);
+assert.equal(
+  report.product_signals[0] &&
+    (report.product_signals[0] as { capture_time_basis: string })
+      .capture_time_basis,
+  "source_event",
+);
+assert.match(
+  fs.readFileSync(`${output}.md`, "utf8"),
+  /Evidence kind: `synthetic_fixture`[\s\S]*Aggregate capture-time basis: `report_generation`/,
+);
+assert.equal(report.monthly[0]?.vercel?.page_visitors, null);
+assert.equal(report.monthly[0]?.vercel?.page_views, 3);
+assert.equal(report.monthly[0]?.vercel?.event_visitors, null);
+assert.equal(report.monthly[0]?.vercel?.event_total, 6);
+assert.match(
+  fs.readFileSync(`${output}-posts.csv`, "utf8"),
+  /'=HYPERLINK\(""https:\/\/example\.test\//,
+);
 assert.equal(containsString(report), false);
 assert.equal(fs.readFileSync(`${output}.md`, "utf8").includes(temp), false);
 assert.equal(

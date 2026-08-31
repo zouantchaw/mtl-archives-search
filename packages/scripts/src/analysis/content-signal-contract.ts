@@ -18,12 +18,14 @@ export const CONTENT_SIGNAL_SCHEMA = "mtl_content_signal_v1";
 export const AGGREGATE_ENVELOPE_FIELDS = [
   "schema_version",
   "captured_at",
+  "capture_time_basis",
   "timezone",
   "platform",
   "observation_window",
   "signal_class",
   "source_type",
   "ground_truth_boundary",
+  "evidence_kind",
 ] as const;
 
 export function projectAggregateEnvelope(
@@ -56,6 +58,12 @@ export type PrivacyConsent =
   | "aggregate_public"
   | "pseudonymous_consent"
   | "no_personal_data";
+
+/**
+ * Provenance for an input artifact. A fixture must never be emitted as if it
+ * were a real product export, even when it happens to use the same schema.
+ */
+export type EvidenceKind = "real_export" | "synthetic_fixture";
 
 export type ContentIdentity = {
   platform: "instagram" | "facebook";
@@ -97,6 +105,7 @@ export type ProductSignal = {
     | "order_completed"
     | "search_no_results";
   captured_at: string;
+  capture_time_basis: "source_event";
   timezone: "America/Toronto";
   canonical_record_id: string;
   visual_family_id: string;
@@ -119,6 +128,7 @@ export type ProductSignal = {
   propensity: number | null;
   safety_budget_id: string | null;
   privacy_consent: PrivacyConsent;
+  evidence_kind: EvidenceKind;
   ground_truth_boundary: "reward_not_fact";
   identity_basis: "declared_identity";
   package_family_verification: "not_independently_verified";
@@ -181,6 +191,7 @@ const PRODUCT_SIGNAL_KEYS = new Set([
   "source_type",
   "event_name",
   "captured_at",
+  "capture_time_basis",
   "timezone",
   "canonical_record_id",
   "visual_family_id",
@@ -203,6 +214,7 @@ const PRODUCT_SIGNAL_KEYS = new Set([
   "propensity",
   "safety_budget_id",
   "privacy_consent",
+  "evidence_kind",
   "ground_truth_boundary",
   "identity_basis",
   "package_family_verification",
@@ -537,6 +549,15 @@ export function validateProductSignal(
     )
   )
     throw new Error("privacy_consent is unsupported");
+  const evidenceKind = text(
+    value.evidence_kind,
+    "evidence_kind",
+  ) as EvidenceKind;
+  if (!(["real_export", "synthetic_fixture"] as const).includes(evidenceKind))
+    throw new Error("evidence_kind is unsupported");
+  const query = nullableText(value.query, "query");
+  if (text(value.capture_time_basis, "capture_time_basis") !== "source_event")
+    throw new Error("product signals must use source_event capture_time_basis");
   const position =
     value.position === null || value.position === undefined
       ? null
@@ -563,6 +584,13 @@ export function validateProductSignal(
     new Set(candidateSet).size !== candidateSet.length
   )
     throw new Error("candidate_set must contain unique IDs");
+  if (
+    consent === "no_personal_data" &&
+    (query !== null || candidateSet !== null)
+  )
+    throw new Error(
+      "no_personal_data signals must not contain raw query or candidate_set",
+    );
   const surface = text(value.surface, "surface") as ProductSignal["surface"];
   if (!["search", "photo", "print", "checkout"].includes(surface))
     throw new Error("surface is unsupported");
@@ -575,11 +603,7 @@ export function validateProductSignal(
       throw new Error(`${eventName} requires search surface`);
   }
   if (eventName === "search_result_clicked") {
-    if (
-      !nullableText(value.query, "query") ||
-      position === null ||
-      !candidateSet?.length
-    )
+    if (!query || position === null || !candidateSet?.length)
       throw new Error(
         "search_result_clicked requires query, position, and candidate_set",
       );
@@ -604,6 +628,7 @@ export function validateProductSignal(
     source_type: "product_analytics",
     event_name: eventName,
     captured_at: capturedAt,
+    capture_time_basis: "source_event",
     timezone: "America/Toronto",
     canonical_record_id: recordId,
     visual_family_id: familyId,
@@ -616,7 +641,7 @@ export function validateProductSignal(
     metric_definition: metricDefinition,
     observation_window: observationWindow,
     source,
-    query: nullableText(value.query),
+    query,
     position,
     candidate_set: candidateSet as string[] | null,
     ranking_version: nullableText(value.ranking_version),
@@ -626,6 +651,7 @@ export function validateProductSignal(
     propensity,
     safety_budget_id: safetyBudget,
     privacy_consent: consent,
+    evidence_kind: evidenceKind,
     ground_truth_boundary: "reward_not_fact",
     identity_basis: "declared_identity",
     package_family_verification: "not_independently_verified",
