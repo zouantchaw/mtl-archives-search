@@ -29,8 +29,12 @@ retrieval rows separate, and emits a human-review acquisition queue; it does
 not claim a locked benchmark or issue #70 completion.
 
 The cross-platform content loop is also offline and diagnostic: reports require
-an explicit platform-post/package/canonical identity join and keep product and
-social behavior separate from factual archive truth.
+an explicit platform-post/package/canonical identity join, exact permalinks for
+published joins, and an explicit `real_export` versus `synthetic_fixture`
+provenance declaration. Product and social behavior remain separate from
+factual archive truth; aggregate `captured_at` means report-generation time,
+not source-capture time, and this local slice has no durable cross-export event
+deduplication.
 
 Issues #65 and #66 made this durable and identity-explicit:
 

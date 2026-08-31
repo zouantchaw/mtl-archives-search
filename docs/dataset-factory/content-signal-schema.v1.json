@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://mtlarchives.com/schemas/content-signal-v1.json",
   "title": "MTL Archives Content Signal v1",
-  "description": "Identity-bearing product behavior signal. Social outcomes use the same identity fields but remain outside factual labels.",
+  "description": "Identity-bearing product behavior signal. Social outcomes use the same identity fields but remain outside factual labels. evidence_kind is mandatory so synthetic fixtures cannot be emitted as real exports; no_personal_data forbids raw query and candidate_set values.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -12,6 +12,7 @@
     "source_type",
     "event_name",
     "captured_at",
+    "capture_time_basis",
     "timezone",
     "canonical_record_id",
     "visual_family_id",
@@ -34,6 +35,7 @@
     "propensity",
     "safety_budget_id",
     "privacy_consent",
+    "evidence_kind",
     "ground_truth_boundary",
     "identity_basis",
     "package_family_verification"
@@ -83,6 +85,19 @@
           }
         }
       ]
+    },
+    {
+      "if": {
+        "properties": {
+          "privacy_consent": { "const": "no_personal_data" }
+        }
+      },
+      "then": {
+        "properties": {
+          "query": { "type": "null" },
+          "candidate_set": { "type": "null" }
+        }
+      }
     }
   ],
   "properties": {
@@ -106,6 +121,7 @@
       ]
     },
     "captured_at": { "type": "string", "format": "date-time" },
+    "capture_time_basis": { "const": "source_event" },
     "timezone": { "const": "America/Toronto" },
     "canonical_record_id": { "type": "string", "minLength": 1 },
     "visual_family_id": { "type": "string", "minLength": 1 },
@@ -146,6 +162,7 @@
     "privacy_consent": {
       "enum": ["aggregate_public", "pseudonymous_consent", "no_personal_data"]
     },
+    "evidence_kind": { "enum": ["real_export", "synthetic_fixture"] },
     "ground_truth_boundary": { "const": "reward_not_fact" },
     "identity_basis": { "const": "declared_identity" },
     "package_family_verification": { "const": "not_independently_verified" }

@@ -10,6 +10,7 @@ import {
   validateIdentityMap,
   validateProductSignals,
   type ContentIdentity,
+  type EvidenceKind,
   type ProductSignal,
 } from "./content-signal-contract.js";
 
@@ -73,10 +74,12 @@ type WebsiteMonth = {
 type AggregateEnvelope = {
   schema_version: typeof CONTENT_SIGNAL_SCHEMA;
   captured_at: string;
+  capture_time_basis: "report_generation";
   timezone: "America/Toronto";
   observation_window: { start: string; end: string };
   ground_truth_boundary: "reward_not_fact";
   platform: "instagram" | "facebook" | "combined" | "web";
+  evidence_kind: EvidenceKind;
 };
 
 type MonthlyMetaFallback = {
@@ -103,6 +106,7 @@ type PostRow = {
   signal_class: "social_behavior";
   source_type: "social_platform";
   ground_truth_boundary: "reward_not_fact";
+  evidence_kind: EvidenceKind;
 };
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -153,13 +157,19 @@ function validateDateRange(start: string, end: string): void {
   if (start > end) fail("--start must not be after --end");
 }
 
-function aggregateEnvelope(start: string, end: string): AggregateEnvelope {
-  // The report generation time is not the observation time. Use a stable
-  // in-window capture instant for aggregate rows and retain generated_at
-  // separately at the report level.
+function aggregateEnvelope(
+  start: string,
+  end: string,
+  generatedAt: string,
+  evidenceKind: EvidenceKind,
+): AggregateEnvelope {
+  // These aggregate exports do not carry source-capture timestamps. Keep the
+  // report-generation instant explicit instead of manufacturing an in-window
+  // observation time that could be mistaken for source evidence.
   return {
     schema_version: CONTENT_SIGNAL_SCHEMA,
-    captured_at: `${end}T12:00:00.000Z`,
+    captured_at: generatedAt,
+    capture_time_basis: "report_generation",
     timezone: "America/Toronto",
     platform: "combined",
     observation_window: {
@@ -167,7 +177,14 @@ function aggregateEnvelope(start: string, end: string): AggregateEnvelope {
       end: `${end}T23:59:59.999Z`,
     },
     ground_truth_boundary: "reward_not_fact",
+    evidence_kind: evidenceKind,
   };
+}
+
+function requireEvidenceKind(value: string): EvidenceKind {
+  if (value !== "real_export" && value !== "synthetic_fixture")
+    fail("--evidence-kind must be real_export or synthetic_fixture");
+  return value;
 }
 
 function safeDisplayPath(filePath: string): string {
@@ -715,6 +732,7 @@ function readPosts(
   startDate: string,
   endDate: string,
   identities: Map<string, ContentIdentity>,
+  evidenceKind: EvidenceKind,
 ): PostRow[] {
   const posts = JSON.parse(readText(postsPath)) as CombinedPost[];
   const rows: PostRow[] = [];
@@ -731,11 +749,11 @@ function readPosts(
       throw new Error(`missing explicit content identity join for ${id}`);
     if (identity.publish_status !== "published")
       throw new Error(`post ${id} is not marked published in the identity map`);
-    if (
-      identity.platform_permalink &&
-      post.permalink &&
-      identity.platform_permalink !== post.permalink
-    ) {
+    if (!post.permalink)
+      throw new Error(`published post ${id} requires permalink`);
+    if (!identity.platform_permalink)
+      throw new Error(`published identity ${id} requires permalink`);
+    if (identity.platform_permalink !== post.permalink) {
       throw new Error(`platform permalink mismatch for ${id}`);
     }
     const caption = post.caption ?? "";
@@ -770,6 +788,7 @@ function readPosts(
       signal_class: "social_behavior",
       source_type: "social_platform",
       ground_truth_boundary: "reward_not_fact",
+      evidence_kind: evidenceKind,
     });
   }
   return rows.sort(
@@ -1086,6 +1105,7 @@ function format(value: Cell): string {
 function buildMarkdown(params: {
   startDate: string;
   endDate: string;
+  evidenceKind: EvidenceKind;
   postsPath: string;
   metaRoot: string;
   vercelRoot: string;
@@ -1103,6 +1123,7 @@ function buildMarkdown(params: {
   const {
     startDate,
     endDate,
+    evidenceKind,
     postsPath,
     metaRoot,
     vercelRoot,
@@ -1168,6 +1189,10 @@ function buildMarkdown(params: {
   return `# MTL Archives Cross-Platform Content Join
 
 Window: ${startDate} to ${endDate}
+
+Evidence kind: \`${evidenceKind}\`
+Aggregate capture-time basis: \`report_generation\` (report-generation time;
+source-capture timestamps are not claimed)
 
 Inputs:
 - Meta content snapshot: \`${postsPath}\`
@@ -1241,6 +1266,7 @@ async function main() {
   const websiteSummaryPath = arg("--website-summary")
     ? path.resolve(arg("--website-summary") as string)
     : undefined;
+  const evidenceKind = requireEvidenceKind(requireArg("--evidence-kind"));
   const startDate = arg("--start") ?? "2026-01-01";
   const endDate = arg("--end") ?? "2026-07-31";
   validateDateRange(startDate, endDate);
@@ -1294,7 +1320,13 @@ async function main() {
     source_files: item.source_files.map(safeDisplayPath),
   }));
   const rows = attachDailyAccountMetrics(
-    readPosts(postsPath, startDate, endDate, identityValidation.byPost),
+    readPosts(
+      postsPath,
+      startDate,
+      endDate,
+      identityValidation.byPost,
+      evidenceKind,
+    ),
     daily,
   );
   if (!rows.length) fail("No posts found in the requested date range");
@@ -1309,6 +1341,8 @@ async function main() {
         identityByContent,
       )
     : [];
+  if (productSignals.some((signal) => signal.evidence_kind !== evidenceKind))
+    fail("product event evidence_kind must match --evidence-kind");
   assertProductSignalsWithinDateRange(
     productSignals,
     startDate,
@@ -1316,7 +1350,12 @@ async function main() {
     dateInToronto,
   );
   const generatedAt = new Date().toISOString();
-  const envelope = aggregateEnvelope(startDate, endDate);
+  const envelope = aggregateEnvelope(
+    startDate,
+    endDate,
+    generatedAt,
+    evidenceKind,
+  );
   const monthly = buildMonthly(
     rows,
     daily,
@@ -1354,11 +1393,13 @@ async function main() {
       return {
         schema_version: CONTENT_SIGNAL_SCHEMA,
         captured_at: envelope.captured_at,
+        capture_time_basis: envelope.capture_time_basis,
         timezone: envelope.timezone,
         observation_window: envelope.observation_window,
         signal_class: "social_behavior" as const,
         source_type: "social_platform" as const,
         ground_truth_boundary: envelope.ground_truth_boundary,
+        evidence_kind: envelope.evidence_kind,
         platform,
         date,
         post_count: dayRows.length,
@@ -1379,6 +1420,8 @@ async function main() {
 
   const output = {
     generated_at: generatedAt,
+    capture_time_basis: "report_generation",
+    evidence_kind: evidenceKind,
     timezone: "America/Toronto",
     start_date: startDate,
     end_date: endDate,
@@ -1424,6 +1467,7 @@ async function main() {
     rows.map((row) => ({
       schema_version: CONTENT_SIGNAL_SCHEMA,
       captured_at: envelope.captured_at,
+      capture_time_basis: envelope.capture_time_basis,
       timezone: envelope.timezone,
       observation_window_start: envelope.observation_window.start,
       observation_window_end: envelope.observation_window.end,
@@ -1450,6 +1494,7 @@ async function main() {
       signal_class: row.signal_class,
       source_type: row.source_type,
       ground_truth_boundary: row.ground_truth_boundary,
+      evidence_kind: row.evidence_kind,
       identity_basis: row.identity.identity_basis,
       package_family_verification: row.identity.package_family_verification,
       first_line: row.first_line,
@@ -1481,12 +1526,14 @@ async function main() {
     featureLifts.map((row) => ({
       schema_version: CONTENT_SIGNAL_SCHEMA,
       captured_at: envelope.captured_at,
+      capture_time_basis: envelope.capture_time_basis,
       timezone: envelope.timezone,
       observation_window_start: envelope.observation_window.start,
       observation_window_end: envelope.observation_window.end,
       signal_class: "social_behavior",
       source_type: "social_platform",
       ground_truth_boundary: envelope.ground_truth_boundary,
+      evidence_kind: envelope.evidence_kind,
       ...row,
     })),
   );
@@ -1495,12 +1542,14 @@ async function main() {
     dailyContent.map((row) => ({
       schema_version: row.schema_version,
       captured_at: row.captured_at,
+      capture_time_basis: row.capture_time_basis,
       timezone: row.timezone,
       observation_window_start: row.observation_window.start,
       observation_window_end: row.observation_window.end,
       signal_class: row.signal_class,
       source_type: row.source_type,
       ground_truth_boundary: row.ground_truth_boundary,
+      evidence_kind: row.evidence_kind,
       platform: row.platform,
       date: row.date,
       post_count: row.post_count,
@@ -1526,6 +1575,7 @@ async function main() {
       source_type: signal.source_type,
       event_name: signal.event_name,
       captured_at: signal.captured_at,
+      capture_time_basis: signal.capture_time_basis,
       timezone: signal.timezone,
       canonical_record_id: signal.canonical_record_id,
       visual_family_id: signal.visual_family_id,
@@ -1551,6 +1601,7 @@ async function main() {
       propensity: signal.propensity,
       safety_budget_id: signal.safety_budget_id,
       privacy_consent: signal.privacy_consent,
+      evidence_kind: signal.evidence_kind,
       ground_truth_boundary: signal.ground_truth_boundary,
       identity_basis: signal.identity_basis,
       package_family_verification: signal.package_family_verification,
@@ -1575,6 +1626,8 @@ async function main() {
         month: month.month,
         meta_schema_version: metaEnvelope.schema_version,
         meta_captured_at: metaEnvelope.captured_at,
+        meta_capture_time_basis: metaEnvelope.capture_time_basis,
+        meta_evidence_kind: metaEnvelope.evidence_kind,
         meta_timezone: metaEnvelope.timezone,
         meta_observation_window_start: metaEnvelope.observation_window.start,
         meta_observation_window_end: metaEnvelope.observation_window.end,
@@ -1585,6 +1638,10 @@ async function main() {
         vercel_schema_version:
           siteEnvelope.schema_version ?? CONTENT_SIGNAL_SCHEMA,
         vercel_captured_at: siteEnvelope.captured_at ?? envelope.captured_at,
+        vercel_capture_time_basis:
+          siteEnvelope.capture_time_basis ?? envelope.capture_time_basis,
+        vercel_evidence_kind:
+          siteEnvelope.evidence_kind ?? envelope.evidence_kind,
         vercel_timezone: siteEnvelope.timezone ?? envelope.timezone,
         vercel_observation_window_start:
           siteEnvelope.observation_window?.start ??
@@ -1617,6 +1674,7 @@ async function main() {
     buildMarkdown({
       startDate,
       endDate,
+      evidenceKind,
       postsPath: safeDisplayPath(postsPath),
       metaRoot: safeDisplayPath(metaRoot),
       vercelRoot: safeDisplayPath(vercelRoot),

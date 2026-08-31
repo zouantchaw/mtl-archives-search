@@ -39,21 +39,31 @@ npm run social:analyze-cross-platform -- \
   --identity-map /path/to/content-identity.jsonl \
   --canonical-manifest data/mtl_archives/export/manifest_enriched.ndjson \
   --product-events /path/to/product-signals.jsonl \
+  --evidence-kind real_export \
   --start 2026-01-01 --end 2026-07-31
 ```
 
 `--product-events` is optional, but when supplied every row is validated and
 written to `<output-prefix>-product-signals.csv`. The post CSV carries the
 same provenance fields. Missing, duplicate, or inconsistent joins fail before
-any output is written.
+any output is written. `--evidence-kind` is mandatory: use `real_export` only
+for an identified external export and `synthetic_fixture` for tests. Product
+events must carry the same value, so a fixture cannot masquerade as production
+evidence. A `no_personal_data` event must contain null `query` and
+`candidate_set`; raw search text and candidate lists require a more explicit
+consent level and remain in the local output only.
 
 Daily and monthly aggregate rows carry the same schema version, capture time,
-source platform, Toronto timezone, observation window, source class, and
-`reward_not_fact` boundary. Vercel rows explicitly carry
+capture-time basis, evidence kind, source platform, Toronto timezone,
+observation window, source class, and `reward_not_fact` boundary. Aggregate
+`captured_at` is the report-generation time because these exports do not carry
+a trustworthy source-capture timestamp; it is marked
+`capture_time_basis: report_generation` and must not be read as an in-window
+source observation. Vercel rows explicitly carry
 `platform: web` and `join_scope: month_aggregate`; they do not claim
 post-level attribution. `content-aggregate-schema.v1.json` is intentionally an
-envelope-only schema: emitted rows add row-type-specific metric payloads, so
-callers project the eight envelope fields before applying that schema. The
+ envelope-only schema: emitted rows add row-type-specific metric payloads, so
+ callers project the ten envelope fields before applying that schema. The
 report does not claim a single full-row schema across social, Meta, and website
 aggregate shapes.
 
@@ -68,6 +78,8 @@ The report fails closed when an input can silently change the result:
 - duplicate website `Top Pages` or `Top Events` tables for a month are
   rejected, as are repeated recognized event names within a table; and
 - duplicate normalized website summary rows for a month are rejected.
+- published identity joins and their post snapshots must both carry the exact
+  platform permalink; missing or mismatched permalinks are rejected.
 
 When a normalized Meta daily row and a raw export row share a key, the raw
 export is selected only when the values agree; conflicting values are rejected.
@@ -95,6 +107,13 @@ npm run social:analyze-cross-platform:integration-test
 When a requested window starts or ends mid-month, the corresponding monthly
 aggregate is marked with a partial-month caveat and must not be compared
 directly with a full month.
+
+Product `event_id` values are unique within one supplied export and are
+validated before output. Product event `captured_at` is source metadata and is
+marked `capture_time_basis: source_event`; it is distinct from aggregate
+report-generation capture time. Durable global deduplication across exports requires
+an event-ingestion store with an idempotency key and retention policy; this
+local command does not claim that infrastructure or production instrumentation.
 
 This is partial instrumentation scaffolding for #72, not completion of #72. It
 does not claim a real product-event cohort, 100 explicit human judgments,
