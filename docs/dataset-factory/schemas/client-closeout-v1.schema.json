@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mtlarchives.com/schemas/dataset-factory-client-closeout-v1.json",
+  "title": "MTL Archives Dataset Factory client closeout v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "purpose",
+    "client_specimen",
+    "research_evaluation",
+    "evidence",
+    "criteria",
+    "safety"
+  ],
+  "properties": {
+    "schema_version": { "const": "dataset_factory_client_closeout_v1.0.0" },
+    "artifact_id": {
+      "type": "string",
+      "pattern": "^dfv0_client_closeout_v1_[0-9]{8}$"
+    },
+    "purpose": {
+      "type": "string",
+      "const": "separate client specimen evidence from pending research evaluation"
+    },
+    "client_specimen": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "meaning", "record_count", "fully_verified_dossier_count", "task_count"],
+      "properties": {
+        "status": { "const": "client_specimen_ready" },
+        "meaning": { "type": "string", "minLength": 1 },
+        "record_count": { "type": "integer", "minimum": 60 },
+        "fully_verified_dossier_count": { "type": "integer", "minimum": 25 },
+        "task_count": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "research_evaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "meaning", "issues"],
+      "properties": {
+        "status": { "const": "research_evaluation_pending" },
+        "meaning": { "type": "string", "minLength": 1 },
+        "issues": {
+          "type": "array",
+          "items": { "type": "integer", "enum": [69, 92, 96, 97, 101] },
+          "uniqueItems": true,
+          "minItems": 1
+        }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "path", "sha256", "bytes", "role"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+          "path": {
+            "type": "string",
+            "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+          },
+          "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "bytes": { "type": "integer", "minimum": 1 },
+          "role": { "enum": ["client_ready", "research_pending", "registry"] }
+        }
+      }
+    },
+    "criteria": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["issue", "criterion_id", "status", "result", "evidence_ids", "limitation"],
+        "properties": {
+          "issue": { "type": "integer", "enum": [69, 92] },
+          "criterion_id": { "type": "string", "minLength": 1 },
+          "status": { "enum": ["proven", "proven_in_scope", "partial", "pending"] },
+          "result": { "type": "string", "minLength": 1 },
+          "evidence_ids": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+            "uniqueItems": true
+          },
+          "limitation": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["production_mutation", "search_index_mutation", "paid_gpu", "provider_calls", "city_memory_output"],
+      "properties": {
+        "production_mutation": { "const": false },
+        "search_index_mutation": { "const": false },
+        "paid_gpu": { "const": false },
+        "provider_calls": { "const": false },
+        "city_memory_output": { "const": false }
+      }
+    }
+  }
+}

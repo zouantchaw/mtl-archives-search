@@ -1,0 +1,63 @@
+{
+  "schema_version": "dataset_factory_client_closeout_v1.0.0",
+  "artifact_id": "dfv0_client_closeout_v1_20260831",
+  "purpose": "separate client specimen evidence from pending research evaluation",
+  "client_specimen": {
+    "status": "client_specimen_ready",
+    "meaning": "The bounded dossier and image-mode evidence is suitable as a client specimen input. It is not a finished historical narrative, source-search answer, model evaluation, or City Memory study.",
+    "record_count": 60,
+    "fully_verified_dossier_count": 32,
+    "task_count": 32
+  },
+  "research_evaluation": {
+    "status": "research_evaluation_pending",
+    "meaning": "Measured OCR/entity/place/aerial evaluation, source-search review, and any live prediction remain pending. Linux/H2 fixtures are contracts or synthetic evidence and are not execution authority.",
+    "issues": [69, 92, 96, 97, 101]
+  },
+  "evidence": [
+    { "id": "phase_d_status", "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/status-report-v1.json", "sha256": "5778afc0e2033055a0d74a362ac98d726e8c2917783c2618b1ee4102f059fc47", "bytes": 937, "role": "client_ready" },
+    { "id": "phase_d_selection", "path": "docs/dataset-factory/fixtures/phase-d-scale-v1/candidate-selection-evidence-v1.json", "sha256": "d6aec52d39d83a3fda645d56f101890ad176b3e1851851b2787db98d2645f78d", "bytes": 4243798, "role": "client_ready" },
+    { "id": "gate_g_status", "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/publication-status-v1.json", "sha256": "84370bb42e7f99700b3dcf5a600ba38a9fa461bea987472cbd08cd39d994c527", "bytes": 824, "role": "client_ready" },
+    { "id": "gate_g_review", "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/independent-dossier-review-v1.json", "sha256": "22f476ec148e45283f66e3dbf838934929f6f56aaf34248241e2630b7a91e2cc", "bytes": 50658, "role": "client_ready" },
+    { "id": "gate_g_dossiers", "path": "docs/dataset-factory/fixtures/verified-dossiers-publication-v1/published-dossiers-v1.json", "sha256": "92cc7feff1704918883afc578c6393ca1eb708a6971bcf195f09e317044c8425", "bytes": 434863, "role": "client_ready" },
+    { "id": "gate_h_metrics", "path": "docs/dataset-factory/fixtures/reviewed-metrics-publication-v1/reviewed-metrics-v1.json", "sha256": "88c73267a73264d8aaf629f43a7927dfd801ebf6f63dda4645cf8656b3d140ef", "bytes": 225454, "role": "research_pending" },
+    { "id": "gate_h_false_precision", "path": "docs/dataset-factory/fixtures/reviewed-metrics-publication-v1/false-precision-cases-v1.json", "sha256": "244a04b6974f7724d19c07c02ce56cd356c6eca0d2bea6b01eae7eb20adaf967", "bytes": 4208, "role": "client_ready" },
+    { "id": "gate_h_matrix", "path": "docs/dataset-factory/fixtures/reviewed-metrics-publication-v1/final-criterion-matrix-v1.json", "sha256": "c54fcb468e143c8870ce2a705baaeb9f18afc07e9919a5c38c6ba5c41b3699ad", "bytes": 2965, "role": "research_pending" },
+    { "id": "gate_h_status", "path": "docs/dataset-factory/fixtures/reviewed-metrics-publication-v1/publication-status-v1.json", "sha256": "e061c09444f1c80f85b63f0b42164bf0602e6172b2895a469182ea6a50e5c0c1", "bytes": 397, "role": "research_pending" },
+    { "id": "gate_h_task_review", "path": "docs/dataset-factory/fixtures/reviewed-metrics-publication-v1/independent-task-review-v1.json", "sha256": "422cd4d3faab3e233af0241ca11dd82cc9a26e75c0af08961698bc342b97552a", "bytes": 27037, "role": "client_ready" },
+    { "id": "gate_h_published_tasks", "path": "docs/dataset-factory/fixtures/reviewed-metrics-publication-v1/published-benchmark-tasks-v1.json", "sha256": "9381129f41fbd21f238f7a7a4eed53b0a3147f815f82a810ec1e020c63ecef99", "bytes": 370235, "role": "client_ready" },
+    { "id": "gate_h2_status", "path": "docs/dataset-factory/fixtures/reviewed-metrics-v2/candidate-status-v2.json", "sha256": "9b79c6c820169f73805fe0a2a1a43661311d1185dc8f1351cedf90ea179348df", "bytes": 2149, "role": "research_pending" },
+    { "id": "gate_h2_matrix", "path": "docs/dataset-factory/fixtures/reviewed-metrics-v2/candidate-criterion-matrix-v2.json", "sha256": "6087baa6aa2f79f181149925e50394984b0d0a0779150ba74bc956e48ea6ae25", "bytes": 3707, "role": "research_pending" },
+    { "id": "h2_builder_synthetic", "path": "docs/dataset-factory/fixtures/gate-h2-builder-receipts-v1/synthetic-comparison.json", "sha256": "085ad5cc051ea9315cebe53f4f71f424f5c8a114c61d3f58c32bc35a5cfa94cf", "bytes": 507, "role": "research_pending" },
+    { "id": "h2_linux_synthetic", "path": "docs/dataset-factory/fixtures/gate-h2-linux-conformance-v1/run-evidence.json", "sha256": "77bf0bb8348c5a18f2135cdb098d044f343228e1624d39acbebaf583e02a1232", "bytes": 28122, "role": "research_pending" }
+  ],
+  "criteria": [
+    { "issue": 69, "criterion_id": "69.processed_records", "status": "proven", "result": "60 records are selected and provenance/visually processed: 30 ground, 20 aerial, 10 controls.", "evidence_ids": ["phase_d_status", "phase_d_selection"], "limitation": "Processed is not the same as independently verified historical content." },
+    { "issue": 69, "criterion_id": "69.deeply_verified_dossiers", "status": "proven", "result": "32 dossiers are independently accepted and fully_verified; four pilots remain held.", "evidence_ids": ["gate_g_status", "gate_g_review", "gate_g_dossiers"], "limitation": "The dossiers are bounded image-mode/provenance specimens, not broad identity or geolocation claims." },
+    { "issue": 69, "criterion_id": "69.visual_claim_boundaries", "status": "proven", "result": "Every accepted dossier has a reviewed whole-image evidence declaration for its bounded image-mode claim.", "evidence_ids": ["gate_g_dossiers", "gate_g_review"], "limitation": "No localized OCR/entity/place evidence is being claimed by this packet." },
+    { "issue": 69, "criterion_id": "69.external_claim_citations", "status": "proven_in_scope", "result": "The accepted dossier publication emits zero external historical claims; rights/source evidence is retained with URL and snapshot bindings.", "evidence_ids": ["gate_g_dossiers", "gate_g_review"], "limitation": "A future external claim must carry its own source URL and evidence note; zero claims do not prove future research." },
+    { "issue": 69, "criterion_id": "69.unsupported_claim_controls", "status": "proven", "result": "Unsupported identity, location, georef, scale, land-use, measurement, OCR, brand, and entity claims remain held/rejected/abstained.", "evidence_ids": ["gate_g_dossiers", "gate_g_review", "gate_h_false_precision"], "limitation": "This is a refusal/abstention control, not evidence that those claims were solved." },
+    { "issue": 69, "criterion_id": "69.reviewed_metrics", "status": "pending", "result": "No measured OCR/entity/place/model metrics are client-ready; zero-denominator and unavailable states are recorded honestly.", "evidence_ids": ["gate_h_metrics", "gate_h2_status"], "limitation": "Gate H2 blind prediction and gold review have not executed." },
+    { "issue": 69, "criterion_id": "69.false_precision", "status": "proven", "result": "The known CASTROL false-precision case and three additional unsupported-claim controls are documented.", "evidence_ids": ["gate_h_false_precision"], "limitation": "Examples document failure boundaries; they are not a model performance score." },
+    { "issue": 69, "criterion_id": "69.rights_attribution", "status": "proven", "result": "All 36 Gate G dossier rows have complete CC BY/attribution fields; 32 accepted rows are client-ready.", "evidence_ids": ["gate_g_status", "gate_g_dossiers", "gate_g_review"], "limitation": "Rights authority does not establish image identity, place, date, or history." },
+    { "issue": 69, "criterion_id": "69.accepted_tasks", "status": "proven_in_scope", "result": "32 accepted Gate G image-mode claims produced 32 independently accepted image-mode tasks.", "evidence_ids": ["gate_h_status", "gate_h_task_review", "gate_h_published_tasks"], "limitation": "No OCR/entity/place/land-use/geolocation or source-search task is accepted in this closeout." },
+    { "issue": 69, "criterion_id": "69.schema_registry", "status": "proven", "result": "Gate G and Gate H v1 tracked publications validate against versioned schemas and registered artifact pins; this closeout is registered separately.", "evidence_ids": ["gate_g_status", "gate_h_status"], "limitation": "The v2 research candidate remains non-published and cannot promote parent completion." },
+    { "issue": 69, "criterion_id": "69.separate_dossier_review", "status": "proven", "result": "A separate Gate G reviewer accepted every fully verified dossier with independence attestations.", "evidence_ids": ["gate_g_review", "gate_g_status"], "limitation": "This reviewer evidence does not substitute for the pending Gate H2 gold reviewer." },
+    { "issue": 69, "criterion_id": "69.issue_close", "status": "pending", "result": "Parent issue remains open because reviewed measured metrics and the complete Gate H v2 close authority are pending.", "evidence_ids": ["gate_h2_status", "gate_h2_matrix"], "limitation": "Do not close #69 from the client specimen lane alone." },
+    { "issue": 92, "criterion_id": "92.metrics_denominators", "status": "proven_in_scope", "result": "Gate H v1 records numerator, denominator, exclusions, subset identity, and explicit unavailable/null policy for each candidate metric.", "evidence_ids": ["gate_h_metrics", "gate_h_matrix"], "limitation": "This proves the reporting contract and available historical subsets, not missing blind model measurements." },
+    { "issue": 92, "criterion_id": "92.false_precision", "status": "proven", "result": "CASTROL and additional observed failure controls are preserved in the reviewed false-precision artifact.", "evidence_ids": ["gate_h_false_precision"], "limitation": "No claim is made that the pending Gate H2 run has measured hallucination rates." },
+    { "issue": 92, "criterion_id": "92.cost_time", "status": "proven", "result": "Unavailable wall-time/cost values remain null with explicit zero-denominator reasons; no estimates are used.", "evidence_ids": ["gate_h_metrics"], "limitation": "Actual usage receipts are still required for future measured runs." },
+    { "issue": 92, "criterion_id": "92.accepted_tasks", "status": "partial", "result": "32 image-mode tasks are independently accepted; the required source-only task and measured Gate H2 task review remain pending.", "evidence_ids": ["gate_h_status", "gate_h_task_review", "gate_h_published_tasks", "gate_h2_status"], "limitation": "#97 must produce the source-search task and v2 close authority." },
+    { "issue": 92, "criterion_id": "92.component_leakage", "status": "proven_in_scope", "result": "Component/split checks are proven for the 32 published image-mode tasks.", "evidence_ids": ["gate_h_matrix", "gate_h_task_review", "gate_h_published_tasks"], "limitation": "Full v2 task universe and source-search task are not yet published." },
+    { "issue": 92, "criterion_id": "92.run_report_parent_matrix", "status": "pending", "result": "The v1 matrix is historical and the v2 matrix still contains pending rows; no final parent close matrix exists.", "evidence_ids": ["gate_h_matrix", "gate_h2_matrix"], "limitation": "Templates and candidate matrices cannot satisfy a final close criterion." },
+    { "issue": 92, "criterion_id": "92.schemas_registry_replay", "status": "proven_in_scope", "result": "The v1 publication and this closeout pass their focused schema/registry/replay checks. The H2 v2 tracked verifier/self-test remain pending because the registered control 8c97cfd0b01d8baefd3e122a3d630ef85d535878024f73113e53bdc9a5421ee0 is unavailable.", "evidence_ids": ["gate_h_status", "gate_h2_status"], "limitation": "No v2 pass is claimed; missing-control restoration and fresh H2 execution are required before research close." },
+    { "issue": 92, "criterion_id": "92.issue_close", "status": "pending", "result": "#92 remains open until #96 measured evidence and #97 superseding v2 publication are complete.", "evidence_ids": ["gate_h2_status", "gate_h2_matrix"], "limitation": "No external authority or provider/model call is part of this packet." }
+  ],
+  "safety": {
+    "production_mutation": false,
+    "search_index_mutation": false,
+    "paid_gpu": false,
+    "provider_calls": false,
+    "city_memory_output": false
+  }
+}

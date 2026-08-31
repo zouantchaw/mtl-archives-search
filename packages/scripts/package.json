@@ -234,6 +234,8 @@
     "dataset-factory:https-exchange-contract-self-test-v1": "tsx src/dataset-factory/https-exchange-contract-v1.ts",
     "dataset-factory:broker-runtime-artifacts-v2": "tsx src/dataset-factory/validate-broker-runtime-artifacts.ts",
     "dataset-factory:reviewed-metrics-integration-test-v2": "tsx src/dataset-factory/reviewed-metrics-v2.ts integration-test",
+    "dataset-factory:client-closeout-verify-v1": "tsx src/dataset-factory/client-closeout-v1.ts verify",
+    "dataset-factory:client-closeout-self-test-v1": "tsx src/dataset-factory/client-closeout-v1.ts self-test",
     "dataset-factory:production-apply-gate-v0": "tsx src/dataset-factory/build-production-apply-gate-v0.ts",
     "dataset-factory:production-scoped-apply-v0": "tsx src/dataset-factory/build-production-scoped-apply-v0.ts",
     "dataset-factory:production-rollback-pack-v0": "tsx src/dataset-factory/build-production-rollback-pack-v0.ts",
