@@ -1,5 +1,6 @@
 const BLOCK = 512;
 const ZERO = Buffer.alloc(BLOCK);
+export const MAX_STRICT_TAR_ENTRIES = 65_537;
 
 function exactString(block, start, length, label) {
   const raw = block.subarray(start, start + length);
@@ -48,8 +49,9 @@ function canonicalHeader(block, label) {
   return { name, type, size, mode, uid, gid, mtime, linkname, uname, gname };
 }
 
-export function parseStrictTar(bytes, label, cap) {
+export function parseStrictTar(bytes, label, cap, entryCap = MAX_STRICT_TAR_ENTRIES) {
   if (!Number.isSafeInteger(cap) || cap < 10240 || bytes.length > cap || bytes.length % 10240 !== 0) throw new Error(`${label} size is invalid`);
+  if (!Number.isSafeInteger(entryCap) || entryCap < 1 || entryCap > MAX_STRICT_TAR_ENTRIES) throw new Error(`${label} entry cap is invalid`);
   const entries = [];
   let offset = 0;
   let ended = false;
@@ -69,6 +71,7 @@ export function parseStrictTar(bytes, label, cap) {
     if (dataStart + padded > bytes.length) throw new Error(`${label} entry exceeds archive: ${entry.name}`);
     entry.bytes = bytes.subarray(dataStart, dataStart + entry.size);
     if (bytes.subarray(dataStart + entry.size, dataStart + padded).some((byte) => byte !== 0)) throw new Error(`${label} has nonzero entry padding: ${entry.name}`);
+    if (entries.length >= entryCap) throw new Error(`${label} exceeds ${entryCap} entries`);
     entries.push(entry);
     offset = dataStart + padded;
   }

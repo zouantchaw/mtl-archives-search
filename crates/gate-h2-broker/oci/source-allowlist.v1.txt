@@ -1,5 +1,7 @@
 100644 crates/gate-h2-broker/Cargo.lock
 100644 crates/gate-h2-broker/Cargo.toml
+100644 crates/gate-h2-broker/oci/builder-image-receipt.schema.v1.json
+100644 crates/gate-h2-broker/oci/external-input-lock.schema.v1.json
 100644 crates/gate-h2-broker/oci/rootfs-inventory.expected.txt
 100644 crates/gate-h2-broker/oci/source-allowlist.v1.txt
 100644 crates/gate-h2-broker/oci/toolchain-lock.v1.json
@@ -9,12 +11,18 @@
 100644 crates/gate-h2-broker/scripts/create-canonical-tar.mjs
 100644 crates/gate-h2-broker/scripts/generate-metadata.mjs
 100644 crates/gate-h2-broker/scripts/generate-trusted-sbom.mjs
+100644 crates/gate-h2-broker/scripts/input-tar.mjs
+100644 crates/gate-h2-broker/scripts/materialize-builder-offline.mjs
 100644 crates/gate-h2-broker/scripts/runtime-closure-core.mjs
 100644 crates/gate-h2-broker/scripts/secure-files.mjs
 100644 crates/gate-h2-broker/scripts/stage-rootless-build-inputs.mjs
 100644 crates/gate-h2-broker/scripts/strict-json.mjs
+100644 crates/gate-h2-broker/scripts/strict-tar.mjs
+100644 crates/gate-h2-broker/scripts/test-packet-3b-input-lock.mjs
 100755 crates/gate-h2-broker/scripts/verify-and-snapshot-source.sh
+100644 crates/gate-h2-broker/scripts/verify-builder-image-receipt.mjs
 100644 crates/gate-h2-broker/scripts/verify-builder-runtime.mjs
+100644 crates/gate-h2-broker/scripts/verify-external-input-lock.mjs
 100644 crates/gate-h2-broker/scripts/verify-rootless-boundary.mjs
 100644 crates/gate-h2-broker/scripts/verify-source-proof-core.mjs
 100644 crates/gate-h2-broker/scripts/verify-static-musl-elf.mjs
@@ -39,3 +47,4 @@
 100644 crates/gate-h2-broker/src/stage.rs
 100644 crates/gate-h2-broker/src/supervisor.rs
 100644 crates/gate-h2-broker/src/uds.rs
+100644 docs/dataset-factory/gate-h2-builder-packet-3b-input-lock-v1.md

@@ -20,6 +20,11 @@ node --check "$ROOT/scripts/generate-trusted-sbom.mjs"
 node --check "$ROOT/scripts/compare-trusted-sbom.mjs"
 node --check "$ROOT/scripts/runtime-closure-core.mjs"
 node --check "$ROOT/scripts/verify-builder-runtime.mjs"
+node --check "$ROOT/scripts/input-tar.mjs"
+node --check "$ROOT/scripts/verify-external-input-lock.mjs"
+node --check "$ROOT/scripts/verify-builder-image-receipt.mjs"
+node --check "$ROOT/scripts/materialize-builder-offline.mjs"
+node --check "$ROOT/scripts/test-packet-3b-input-lock.mjs"
 node --check "$ROOT/scripts/verify-rootless-boundary.mjs"
 node --check "$ROOT/scripts/verify-source-proof-core.mjs"
 node --check "$ROOT/scripts/verify-static-musl-elf.mjs"
@@ -43,6 +48,7 @@ if grep -R -l --include='*.mjs' --exclude='test-*.mjs' 'GATE_H2_TEST_' "$ROOT/sc
   exit 1
 fi
 node "$ROOT/scripts/test-tar-fixture.mjs"
+node "$ROOT/scripts/test-packet-3b-input-lock.mjs"
 node "$ROOT/scripts/verify-source-descriptor.mjs" "$ROOT/../../docs/dataset-factory/fixtures/podman-supervisor-v1/source-descriptor-v2.json" --git-commit 74e6f5af17b82ea116d1d0c51b6320959fd5c637 >/dev/null
 node "$ROOT/scripts/test-source-descriptor-modes.mjs" >/dev/null
 node "$ROOT/scripts/verify-toolchain-lock.mjs" "$ROOT/oci/toolchain-lock.v1.json" >/dev/null
