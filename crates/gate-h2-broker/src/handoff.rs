@@ -1317,7 +1317,7 @@ fn receive_packet(fd: RawFd, deadline: Instant) -> io::Result<(Vec<u8>, Vec<Owne
             return Err(io::Error::other("unexpected authorizer ancillary message"));
         }
         let payload = header_ref.cmsg_len as usize - unsafe { libc::CMSG_LEN(0) as usize };
-        if !payload.is_multiple_of(mem::size_of::<RawFd>()) {
+        if payload % mem::size_of::<RawFd>() != 0 {
             return Err(io::Error::other("malformed SCM_RIGHTS payload"));
         }
         let count = payload / mem::size_of::<RawFd>();
