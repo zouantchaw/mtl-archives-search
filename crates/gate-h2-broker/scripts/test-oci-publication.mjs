@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 const scripts = dirname(fileURLToPath(import.meta.url));
 const crate = resolve(scripts, "..");
 const target = mkdtempSync(join(tmpdir(), "gate-h2-publication-helper-"));
+const normalBuild = mkdtempSync(join(tmpdir(), "gate-h2-normal-helper-"));
 const build = spawnSync("cargo", ["build", "--manifest-path", join(crate, "Cargo.toml"), "--locked", "--offline", "--features", "test-fault-injection", "--target-dir", target, "--bin", "gate-h2-publish-noreplace"], { encoding: "utf8" });
 if (build.status !== 0) throw new Error(`publication test helper build failed: ${build.stderr}`);
 const helper = join(target, "debug", "gate-h2-publish-noreplace");
@@ -100,12 +101,11 @@ try {
     for (const index of [0, 3, 8]) if (run(durable, `readdir-${index}`, { GATE_H2_TEST_READDIR_ERROR: String(index) }).status === 0) throw new Error(`readdir error ${index} was treated as EOF`);
   } finally { closeCapability(durable); }
 
-  const normalBuild = mkdtempSync(join(tmpdir(), "gate-h2-normal-helper-"));
   const normal = spawnSync("cargo", ["build", "--manifest-path", join(crate, "Cargo.toml"), "--locked", "--offline", "--release", "--target-dir", normalBuild, "--bin", "gate-h2-publish-noreplace", "--bin", "gate-h2-secure-candidate-read"], { encoding: "utf8" });
   if (normal.status !== 0) throw new Error(`normal helper build failed: ${normal.stderr}`);
   for (const binary of ["gate-h2-publish-noreplace", "gate-h2-secure-candidate-read"]) if (readFileSync(join(normalBuild, "release", binary)).includes(Buffer.from("GATE_H2_TEST_"))) throw new Error(`production helper contains activatable test branch: ${binary}`);
-  rmSync(normalBuild, { recursive: true, force: true });
 } finally {
-  rmSync(root, { recursive: true, force: true });
   rmSync(target, { recursive: true, force: true });
+  rmSync(normalBuild, { recursive: true, force: true });
+  rmSync(root, { recursive: true, force: true });
 }

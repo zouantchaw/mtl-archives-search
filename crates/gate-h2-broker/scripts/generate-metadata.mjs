@@ -3,10 +3,10 @@ import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-const [root, output, target, trustRootsSha256, sourceCommit, sourceTree, sourceAllowlistSha256, sourceArchiveSha256, sourceManifestSha256, sourceFileCount, sourceByteCount, toolchainLockSha256, brokerBinarySha256, stageBinarySha256, rootfsSha256, ociArchiveSha256, ociImageId, builderImage, builderImageDigest] = process.argv.slice(2);
+const [root, output, target, trustRootsSha256, sourceCommit, sourceTree, sourceAllowlistSha256, sourceArchiveSha256, sourceManifestSha256, sourceFileCount, sourceByteCount, toolchainLockSha256, brokerBinarySha256, stageBinarySha256, rootfsSha256, ociArchiveSha256, ociImageId, builderImage, builderImageDigest, cargo] = process.argv.slice(2);
 const digests = [trustRootsSha256, sourceCommit, sourceTree, sourceAllowlistSha256, sourceArchiveSha256, sourceManifestSha256, toolchainLockSha256, brokerBinarySha256, stageBinarySha256, rootfsSha256, ociArchiveSha256];
-if (!root || !output || !target || digests.some((value) => !/^[a-f0-9]{40,64}$/.test(value ?? "")) || !/^(?:0|[1-9][0-9]*)$/.test(sourceFileCount ?? "") || !/^(?:0|[1-9][0-9]*)$/.test(sourceByteCount ?? "") || !Number.isSafeInteger(Number(sourceFileCount)) || !Number.isSafeInteger(Number(sourceByteCount)) || !/^sha256:[a-f0-9]{64}$/.test(ociImageId ?? "") || !/^[a-f0-9]{64}$/.test(builderImageDigest ?? "") || builderImage !== `${builderImage?.split("@sha256:")[0]}@sha256:${builderImageDigest}`) throw new Error("invalid verified metadata arguments");
-const tree = execFileSync("cargo", ["tree", "--manifest-path", join(root, "Cargo.toml"), "--locked", "--offline", "--target", target, "--edges", "normal", "--prefix", "none", "--format", "{p}\t{l}"], { cwd: root, encoding: "utf8" });
+if (!root || !output || !target || !cargo?.startsWith("/") || digests.some((value) => !/^[a-f0-9]{40,64}$/.test(value ?? "")) || !/^(?:0|[1-9][0-9]*)$/.test(sourceFileCount ?? "") || !/^(?:0|[1-9][0-9]*)$/.test(sourceByteCount ?? "") || !Number.isSafeInteger(Number(sourceFileCount)) || !Number.isSafeInteger(Number(sourceByteCount)) || !/^sha256:[a-f0-9]{64}$/.test(ociImageId ?? "") || !/^[a-f0-9]{64}$/.test(builderImageDigest ?? "") || builderImage !== `${builderImage?.split("@sha256:")[0]}@sha256:${builderImageDigest}`) throw new Error("invalid verified metadata arguments");
+const tree = execFileSync(cargo, ["tree", "--manifest-path", join(root, "Cargo.toml"), "--locked", "--offline", "--target", target, "--edges", "normal", "--prefix", "none", "--format", "{p}\t{l}"], { cwd: root, encoding: "utf8" });
 const byPurl = new Map();
 for (const line of tree.trim().split("\n")) {
   const [display, license = ""] = line.split("\t");

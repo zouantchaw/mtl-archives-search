@@ -299,6 +299,6 @@ try {
   const bypass = spawnSync("bash", [inner, join(root, "direct-inner-output")], { env: { ...process.env, GATE_H2_IN_HERMETIC_BUILDER: "1" }, encoding: "utf8" }); if (bypass.status === 0) throw new Error("direct inner invocation produced a publishable bundle");
 } finally {
   rmSync(root, { recursive: true, force: true });
-  rmSync(helperDirectory, { recursive: true, force: true });
   rmSync(helperTarget, { recursive: true, force: true });
+  rmSync(helperDirectory, { recursive: true, force: true });
 }
