@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://mtlarchives.com/schemas/content-aggregate-v1.json",
+  "title": "MTL Archives Content Behavior Aggregate Envelope v1",
+  "description": "Envelope-only schema for the metadata carried by each social/product aggregate row emitted by the local cross-platform report. A full emitted row also contains a row-type-specific metric payload and therefore is intentionally not valid against this schema (additionalProperties is false). Project the eight fields named by AGGREGATE_ENVELOPE_FIELDS before validation. This envelope is not post-level attribution or factual archive truth.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "captured_at",
+    "timezone",
+    "platform",
+    "observation_window",
+    "signal_class",
+    "source_type",
+    "ground_truth_boundary"
+  ],
+  "properties": {
+    "schema_version": { "const": "mtl_content_signal_v1" },
+    "captured_at": { "type": "string", "format": "date-time" },
+    "timezone": { "const": "America/Toronto" },
+    "platform": { "enum": ["instagram", "facebook", "combined", "web"] },
+    "observation_window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "end"],
+      "properties": {
+        "start": { "type": "string", "format": "date-time" },
+        "end": { "type": "string", "format": "date-time" }
+      }
+    },
+    "signal_class": { "enum": ["social_behavior", "product_behavior"] },
+    "source_type": { "enum": ["social_platform", "product_analytics"] },
+    "ground_truth_boundary": { "const": "reward_not_fact" }
+  }
+}

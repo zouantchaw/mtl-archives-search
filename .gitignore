@@ -92,4 +92,5 @@ data/social/story-registry.jsonl
 data/social/post-publish-log.jsonl
 data/social/publish-registry.jsonl
 data/social/autoresearch_shortlist/
+data/social/cross-platform-content-analytics/
 .tmp_live_patch/

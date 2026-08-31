@@ -13,6 +13,10 @@ Built on Cloudflare Workers, D1, Vectorize, R2, Workers AI, and a Next.js fronte
 - `apps/web` — CLIP research explorer
 - `packages/scripts` — ETL, vectorize, dataset-factory, evals
 - `pipelines/` — OCR, VLM, and social/story scripts
+
+Cross-platform content analytics is local-only and identity-gated. See
+`docs/dataset-factory/content-signal-v1.md` for the required canonical join,
+product-event contract, and self-test command.
 - `infrastructure/d1/` — schema and migrations
 
 ## Common commands
