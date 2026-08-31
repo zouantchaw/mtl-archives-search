@@ -226,9 +226,15 @@ const vercelMonth = path.join(vercel, "2026-01");
 fs.mkdirSync(vercelMonth, { recursive: true });
 const topPagesA = path.join(vercelMonth, "Top Pages.csv");
 const topPagesB = path.join(vercelMonth, "Top Pages duplicate.csv");
-const topPagesCsv = "page,visitors,total\n/photo/mtl-1,1,1\n";
+const topEvents = path.join(vercelMonth, "Top Events.csv");
+const topPagesCsv =
+  "page,visitors,total\n/photo/mtl-1,10,1\n/photo/mtl-2,10,2\n";
 fs.writeFileSync(topPagesA, topPagesCsv);
 fs.writeFileSync(topPagesB, topPagesCsv);
+fs.writeFileSync(
+  topEvents,
+  "event,visitors,total\nphoto_viewed,10,4\nsearch_committed,10,2\n",
+);
 let duplicateWebsiteFailure = "";
 try {
   runReport();
@@ -248,7 +254,15 @@ runReport();
 const report = JSON.parse(fs.readFileSync(`${output}.json`, "utf8")) as {
   inputs: Record<string, unknown>;
   product_signals: unknown[];
-  monthly: Array<{ caveats: string[] }>;
+  monthly: Array<{
+    caveats: string[];
+    vercel?: {
+      page_visitors: number | null;
+      page_views: number | null;
+      event_visitors: number | null;
+      event_total: number | null;
+    };
+  }>;
 };
 const containsString = (value: unknown): boolean =>
   typeof value === "string"
@@ -259,6 +273,10 @@ const containsString = (value: unknown): boolean =>
         ? Object.values(value).some(containsString)
         : false;
 assert.equal(report.product_signals.length, 1);
+assert.equal(report.monthly[0]?.vercel?.page_visitors, null);
+assert.equal(report.monthly[0]?.vercel?.page_views, 3);
+assert.equal(report.monthly[0]?.vercel?.event_visitors, null);
+assert.equal(report.monthly[0]?.vercel?.event_total, 6);
 assert.equal(containsString(report), false);
 assert.equal(fs.readFileSync(`${output}.md`, "utf8").includes(temp), false);
 assert.equal(

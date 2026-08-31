@@ -74,6 +74,9 @@ export is selected only when the values agree; conflicting values are rejected.
 Normalized website monthly visitor/page-view totals intentionally supersede
 raw Top Pages totals because route visitors repeat, and this is a documented
 source-specific precedence rather than an undetected overwrite.
+Raw Top Pages and Top Events visitor columns are not summed across routes or
+event names because those counts can repeat the same visitor; without a
+normalized monthly total, the corresponding visitor field remains unknown.
 
 Run the offline contract tests with:
 

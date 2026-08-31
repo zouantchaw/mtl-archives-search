@@ -603,10 +603,11 @@ function readWebsiteMonths(
     const target = ensure(month);
     target.source_files.push(filePath);
     if (base.startsWith("top pages")) {
-      target.page_visitors = rows.reduce(
-        (sum, row) => sum + (numberValue(row.visitors) ?? 0),
-        0,
-      );
+      // Vercel's Top Pages `visitors` value is unique per route. The same
+      // visitor can therefore occur in multiple rows, so summing it would
+      // manufacture a monthly unique-visitor total. A normalized monthly
+      // summary may provide this value in mergeWebsiteSummary below.
+      target.page_visitors = null;
       target.page_views = rows.reduce(
         (sum, row) => sum + (numberValue(row.total) ?? 0),
         0,
@@ -620,10 +621,10 @@ function readWebsiteMonths(
         .sort((a, b) => b.total - a.total)
         .slice(0, 20);
     } else if (base.startsWith("top events")) {
-      target.event_visitors = rows.reduce(
-        (sum, row) => sum + (numberValue(row.visitors) ?? 0),
-        0,
-      );
+      // Event visitors are likewise unique per event, not additive across
+      // event names. Keep this unknown unless a separate monthly summary
+      // supplies a semantically valid aggregate.
+      target.event_visitors = null;
       target.event_total = rows.reduce(
         (sum, row) => sum + (numberValue(row.total) ?? 0),
         0,
