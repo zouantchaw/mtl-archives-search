@@ -63,6 +63,8 @@ npm run dataset-factory:canonical-image-recovery-impact-v1
 npm run dataset-factory:canonical-image-recovery-reproduce-v1 -- /path/to/content-addressed-bundle.tar.gz
 npm run dataset-factory:verified-multimodal-001
 npm run dataset-factory:verified-multimodal-self-test-001
+npm run city-memory:validation:self-test-v1
+npm run city-memory:validation:verify-v1
 ```
 
 ## Architecture
@@ -117,6 +119,7 @@ pipelines/
 7. Story promotion: `story_seed.json` from a strong social package → `pipelines/daily-reel/story_pages.py` → `apps/next-app/content/stories/*.json` → `/stories/[slug]`
 8. Dataset Factory v0: ignored report artifacts → tracked registry + schemas + fixture smoke → packets, labels/adjudication, benchmark, active learning, repair, family graph, enrichment, judgments, reward-data outputs, and Gold Label Batch 002 reviewed evidence
 9. Verified Multimodal Intelligence Batch 001: synthetic foundation → 26 mechanically eligible canonical-real candidates → primary 256px visual promotion with 12 selected and 4 reserves. Independent visual review approved all 16 primary decisions with zero disagreements; historical verification, dossiers, and benchmarks remain zero.
+10. City Memory buyer validation (#109): privacy-preserving interview/proposal kit → categorical five-slot ledger → fail-closed acceptance decision. The tracked template is intentionally empty; `kit_ready: true` is not external evidence and `--require-acceptance` must remain failing until real buyer evidence exists.
 
 ## Environment
 

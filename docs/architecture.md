@@ -257,6 +257,22 @@ Ignored reports in data/mtl_archives/reports/
 - `docs/dataset-factory/fixtures/v0-smoke/` contains small tracked fixtures that mirror the contracts needed by the v0 workflows. `npm run dataset-factory:smoke-v0` runs the v0 scripts against those fixtures and a local mock search API with a fixed clock, exact count/content assertions, and a committed tree hash, proving that a clean checkout can exercise the workflow deterministically without copying generated report trees.
 - Missing required artifacts should fail loudly through the Dataset Factory artifact helpers rather than silently producing empty downstream reports.
 
+### 8a. City Memory buyer validation (#109)
+
+```text
+City Memory specimen (#73) ──▶ fixed walkthrough + paid proposal ──▶ private conversations
+                                                                         │
+                                      redacted categorical ledger ◀──────┘
+                                                   │
+                                                   ▼
+                                  AJV + semantic gate ──▶ not_ready / revise / continue / stop
+```
+
+- `docs/city-memory-validation-v1/` contains the interview guide, consent/follow-up boundary, exact proposal, five-slot ledger schema/template, evidence rubric, and validator. It is a buyer-validation operating kit, not a source of buyer evidence.
+- The template intentionally has zero conversations and an untested proposal. The validator reports `kit_ready: true` separately from its evidence status (`template_only`, `in_progress`, or `complete`). `--require-acceptance` fails closed until five qualified conversations, a tested fixed proposal, and an explicit `continue`/`revise`/`stop` decision are recorded; `commercial_signal_gate` separately prevents a negative or interest-only result from being treated as demand.
+- Names, recordings, raw notes, contact details, sensitive budgets, and other commercial material stay in an approved private system. The public ledger carries role/segment categories and opaque private reference tokens only; a token does not prove the private material exists.
+- No outreach, stakeholder conversation, proposal acceptance, payment, or commercial decision is claimed by the tracked template or local self-test.
+
 #### Verified Multimodal Intelligence Batch 001 Foundation
 
 ```

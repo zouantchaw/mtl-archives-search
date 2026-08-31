@@ -1,0 +1,16 @@
+{
+  "schema_version": "city_memory_proposal_v1.0.0",
+  "proposal_id": "city-memory-diagnostic-001",
+  "scope": "Three-week paid City Memory diagnostic: curate 12 source-linked Montreal archive records into one approved visual direction, with a provenance ledger, one buyer-ready concept deck, one spatial application, and one revision round.",
+  "price_cad": 3500,
+  "timeline_weeks": 3,
+  "payment_schedule": "50% on approval; 50% on delivery",
+  "exclusions": [
+    "printing, framing, fabrication, installation, shipping, taxes, and third-party licensing fees",
+    "full interior design or construction documents",
+    "custom software or production deployment",
+    "unverified historical research or legal rights clearance"
+  ],
+  "offer_text": "City Memory Diagnostic 001 — $3,500 CAD, three weeks. We curate 12 source-linked Montreal archive records into one approved visual direction for your space or programme, including a provenance ledger, one buyer-ready concept deck, one realistic spatial application, and one revision round. Payment is 50% on approval and 50% on delivery. The fee excludes printing, framing, fabrication, installation, shipping, taxes, and third-party licensing fees; full interior-design or construction documents; custom software or production deployment; and unverified historical research or legal rights clearance. The diagnostic is a concept/curation deliverable, not a promise of physical production or rights beyond documented source evidence.",
+  "acceptance_signal_options": ["not_tested", "interest_only", "written_yes", "signed_sow", "paid_deposit", "procurement_started", "declined"]
+}

@@ -120,6 +120,7 @@ New archive source is `archivesdemontreal.ica-atom.org`; ingest safely before fu
 
 ## P3: B2B Monetization (After UX Stabilization)
 
+- [ ] **City Memory buyer validation (#109)** — Ready-to-run privacy-preserving interview/proposal kit lives under `docs/city-memory-validation-v1/`; the empty ledger is intentionally `template_only`. Completion still requires five qualified, consented conversations, one fixed proposal test, a strongest-signal evidence update, and an explicit continue/revise/stop decision. Run `npm run city-memory:validation:self-test-v1` and `npm run city-memory:validation:verify-v1` for local contract checks; do not mark complete from those checks alone.
 - [ ] **Add partner landing page** — `/partners` with concise value proposition, proof metrics, and booking CTA.
 - [ ] **Track B2B events** — `partner_page_viewed`, `partner_cta_clicked`, `partner_form_submitted`, `partner_call_booked`.
 - [ ] **Add source-aware partner attribution** — persist UTMs + referrer through partner CTA/form flow.

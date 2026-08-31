@@ -28,7 +28,13 @@ npm run gate-h2:linux-conformance-fixture-verify
 npm run gate-h2:linux-conformance-self-test
 npm run gate-h2:builder-receipts-fixture-verify
 npm run gate-h2:builder-receipts-self-test
+npm run city-memory:validation:self-test-v1
+npm run city-memory:validation:verify-v1
 ```
+
+## City Memory buyer validation
+
+Issue #109 has a privacy-preserving, ready-to-run operating kit under [`docs/city-memory-validation-v1/`](docs/city-memory-validation-v1/). The checked-in ledger is intentionally empty: the validator reports `kit_ready: true` with `status: "template_only"` and does not treat local preparation as buyer evidence. Five real, consented conversations, a fixed proposal test, and a documented commercial signal remain human gates; `--require-acceptance` fails closed until those gates are recorded.
 
 ## Gate H2 Linux Conformance
 

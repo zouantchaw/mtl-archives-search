@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mtlarchives.com/schemas/city-memory-validation-v1/evidence-ledger.v1.json",
+  "title": "City Memory Study 001 buyer-validation evidence ledger",
+  "description": "Privacy-preserving five-slot ledger. A structurally valid empty template is not validation evidence.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "study", "proposal_test", "slots", "decision", "privacy"],
+  "properties": {
+    "schema_version": { "const": "city_memory_buyer_validation_v1.0.0" },
+    "study": { "$ref": "#/$defs/study" },
+    "proposal_test": { "$ref": "#/$defs/proposalTest" },
+    "slots": { "type": "array", "minItems": 5, "maxItems": 5, "items": { "$ref": "#/$defs/slot" } },
+    "decision": { "$ref": "#/$defs/decision" },
+    "privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["storage_boundary", "recording_rule", "redaction_rule"],
+      "properties": {
+        "storage_boundary": { "const": "No names, contact details, sensitive material, raw recordings, addresses, or raw budget figures in this ledger or the GitHub issue." },
+        "recording_rule": { "const": "Record only with explicit consent; store any recording in the approved private location and keep only a private reference token here." },
+        "redaction_rule": { "const": "Use role category, organization type, categorical fields, and private reference tokens only; keep identifying details in the approved private system." }
+      }
+    }
+  },
+  "$defs": {
+    "study": {
+      "type": "object", "additionalProperties": false,
+      "required": ["issue", "study_id", "title", "status", "honest_status"],
+      "properties": {
+        "issue": { "const": 109 }, "study_id": { "const": "city_memory_study_001" },
+        "title": { "const": "City Memory Study 001: Montreal, Seen Again" },
+        "status": { "enum": ["not_started", "in_progress", "complete", "stopped"] },
+        "honest_status": { "enum": ["no_conversations_performed", "conversations_in_progress", "five_qualified_conversations_recorded", "stopped_before_five"] }
+      }
+    },
+    "qualification": {
+      "type": "object", "additionalProperties": false,
+      "required": ["segment", "role_category", "decision_access", "active_need", "qualified"],
+      "properties": {
+        "segment": { "enum": ["boutique_hotel", "hospitality_art_program", "interior_design_practice", "cultural_institution", "archive_partner", "workplace_program", "art_advisor"] },
+        "role_category": { "enum": ["owner", "budget_holder", "curator", "designer", "program_lead", "archive_lead", "advisor", "operator", "other"] },
+        "decision_access": { "enum": ["owner", "budget_holder", "recommender", "unknown"] },
+        "active_need": { "type": "boolean" }, "qualified": { "type": "boolean" }
+      }
+    },
+    "proposalLink": {
+      "type": "object", "additionalProperties": false, "required": ["proposal_id", "canonical_proposal_sha256"],
+      "properties": {
+        "proposal_id": { "const": "city-memory-diagnostic-001" },
+        "canonical_proposal_sha256": { "const": "048e71dff45a9d01e3f9a3f173c9a1cdc61f9957567b67980dd7ac803301f93a" }
+      }
+    },
+    "evidence": {
+      "type": "object", "additionalProperties": false,
+      "required": ["evidence_id", "class", "kind", "source", "action", "observation_code", "private_reference", "strength", "proposal_link"],
+      "properties": {
+        "evidence_id": { "type": "string", "pattern": "^slot-[1-5]-e[1-9][0-9]*$" },
+        "class": { "enum": ["opinion", "behavioral_signal", "buyer_intent", "payment_procurement"] },
+        "kind": { "enum": ["opinion", "workflow_observation", "requested_scope", "scheduled_action", "written_commitment", "procurement_artifact", "payment_artifact", "decline_reason"] },
+        "source": { "enum": ["conversation_notes", "follow_up_message", "private_procurement_artifact", "private_payment_artifact"] },
+        "action": { "enum": ["none", "described_workflow", "requested_tailored_sample", "requested_fixed_scope", "scheduled_review", "introduced_decision_maker", "submitted_procurement", "signed_sow", "paid_deposit", "declined"] },
+        "observation_code": { "enum": ["positive_reaction", "negative_reaction", "unclear_reaction", "shared_current_workflow", "requested_tailored_sample", "requested_fixed_scope", "dated_internal_review", "introduced_decision_maker", "written_yes", "signed_sow", "procurement_started", "paid_deposit", "declined_proposal"] },
+        "private_reference": { "type": "string", "pattern": "^private-[a-z0-9_-]{3,80}$" },
+        "strength": { "enum": ["weak", "moderate", "strong"] },
+        "proposal_link": { "anyOf": [{ "$ref": "#/$defs/proposalLink" }, { "type": "null" }] }
+      }
+    },
+    "consent": {
+      "type": "object", "additionalProperties": false, "required": ["recording", "consent_confirmed", "private_reference"],
+      "properties": {
+        "recording": { "enum": ["not_recorded", "audio", "video"] }, "consent_confirmed": { "type": "boolean" },
+        "private_reference": { "anyOf": [{ "type": "string", "pattern": "^private-[a-z0-9_-]{3,80}$" }, { "type": "null" }] }
+      }
+    },
+    "slot": {
+      "type": "object", "additionalProperties": false, "required": ["slot_id", "status"],
+      "properties": {
+        "slot_id": { "enum": ["slot-1", "slot-2", "slot-3", "slot-4", "slot-5"] },
+        "status": { "enum": ["uncontacted", "scheduled", "completed", "no_show", "declined", "ineligible"] },
+        "stakeholder_ref": { "type": "string", "pattern": "^stakeholder-[1-5]$" }, "conversation_date": { "type": "string", "format": "date" },
+        "facilitator_ref": { "type": "string", "pattern": "^[a-z0-9_-]{2,40}$" }, "qualification": { "$ref": "#/$defs/qualification" }, "consent": { "$ref": "#/$defs/consent" },
+        "problem_urgency": { "enum": ["none", "low", "medium", "high", "unknown"] },
+        "problem_code": { "enum": ["curation", "quality", "rights_attribution", "interpretation", "space_programme", "procurement", "other"] },
+        "workaround_code": { "enum": ["ad_hoc_search", "manual_curation", "existing_vendor", "internal_team", "none", "unknown", "other"] },
+        "budget_authority": { "enum": ["owner", "budget_holder", "influencer", "none", "unknown"] },
+        "procurement_path": { "enum": ["existing_budget", "discretionary_budget", "purchase_order", "grant_programme", "unknown", "none"] },
+        "proposal_response": { "enum": ["not_tested", "heard", "interested", "asked_to_follow_up", "accepted", "declined"] },
+        "objection_code": { "enum": ["price", "timing", "rights", "quality", "approval", "production", "none", "other"] },
+        "next_step_code": { "enum": ["none", "send_scope", "internal_review", "intro_decision_maker", "procurement", "paid_deposit", "declined", "follow_up"] },
+        "private_notes_ref": { "type": "string", "pattern": "^private-[a-z0-9_-]{3,80}$" }, "evidence": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/evidence" } }
+      },
+      "allOf": [{
+        "if": { "required": ["status"], "properties": { "status": { "const": "completed" } } },
+        "then": {
+          "required": ["stakeholder_ref", "conversation_date", "facilitator_ref", "qualification", "consent", "problem_urgency", "problem_code", "workaround_code", "budget_authority", "procurement_path", "proposal_response", "objection_code", "next_step_code", "private_notes_ref", "evidence"],
+          "properties": { "stakeholder_ref": {}, "conversation_date": {}, "facilitator_ref": {}, "qualification": {}, "consent": {}, "problem_urgency": {}, "problem_code": {}, "workaround_code": {}, "budget_authority": {}, "procurement_path": {}, "proposal_response": {}, "objection_code": {}, "next_step_code": {}, "private_notes_ref": {}, "evidence": {} }
+        }
+      }]
+    },
+    "proposalTest": {
+      "type": "object", "additionalProperties": false,
+      "required": ["status", "proposal_id", "canonical_proposal_sha256", "scope", "price_cad", "timeline_weeks", "payment_schedule", "exclusions", "acceptance_signal"],
+      "properties": {
+        "status": { "enum": ["not_tested", "tested"] }, "proposal_id": { "const": "city-memory-diagnostic-001" }, "canonical_proposal_sha256": { "const": "048e71dff45a9d01e3f9a3f173c9a1cdc61f9957567b67980dd7ac803301f93a" },
+        "scope": { "const": "Three-week paid City Memory diagnostic: curate 12 source-linked Montreal archive records into one approved visual direction, with a provenance ledger, one buyer-ready concept deck, one spatial application, and one revision round." }, "price_cad": { "const": 3500 }, "timeline_weeks": { "const": 3 }, "payment_schedule": { "const": "50% on approval; 50% on delivery" },
+        "exclusions": { "type": "array", "const": ["printing, framing, fabrication, installation, shipping, taxes, and third-party licensing fees", "full interior design or construction documents", "custom software or production deployment", "unverified historical research or legal rights clearance"] },
+        "acceptance_signal": { "enum": ["not_tested", "interest_only", "written_yes", "signed_sow", "paid_deposit", "procurement_started", "declined"] }, "acceptance_signal_slot": { "enum": ["slot-1", "slot-2", "slot-3", "slot-4", "slot-5"] }, "acceptance_signal_evidence_id": { "type": "string", "pattern": "^slot-[1-5]-e[1-9][0-9]*$" }, "tested_by_slots": { "type": "array", "minItems": 1, "items": { "enum": ["slot-1", "slot-2", "slot-3", "slot-4", "slot-5"] }, "uniqueItems": true }
+      },
+      "allOf": [
+        { "if": { "required": ["status"], "properties": { "status": { "const": "tested" } } }, "then": { "required": ["tested_by_slots"], "properties": { "tested_by_slots": { "type": "array" } } } },
+        { "if": { "required": ["acceptance_signal"], "properties": { "acceptance_signal": { "not": { "const": "not_tested" } } } }, "then": { "required": ["acceptance_signal_slot", "acceptance_signal_evidence_id"], "properties": { "acceptance_signal_slot": {}, "acceptance_signal_evidence_id": {} } } }
+      ]
+    },
+    "decision": {
+      "type": "object", "additionalProperties": false, "required": ["status", "owner", "rationale_code"],
+      "properties": { "status": { "enum": ["not_ready", "continue", "revise", "stop"] }, "owner": { "type": "string", "pattern": "^[a-z0-9_-]{2,40}$" }, "rationale_code": { "enum": ["evidence_pending", "qualified_need_and_intent", "price_scope_or_segment_revision", "structural_blocker", "rights_or_quality_blocker", "recruitment_blocker"] } }
+    }
+  }
+}

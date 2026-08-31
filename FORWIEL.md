@@ -13,6 +13,10 @@ MTL Archives Search turns a large municipal photo archive into a product people 
 - `docs/` explains the system and now includes Dataset Factory schemas, registry, and smoke fixtures.
 - `data/` is local and ignored. It can contain large manifests, reports, generated packets, and experiment outputs. Do not assume a clean clone has it.
 
+## City Memory buyer validation (#109)
+
+The buyer-validation kit in `docs/city-memory-validation-v1/` is a small, privacy-preserving operating layer around the City Memory specimen. It keeps the exact paid diagnostic proposal, interview order, consent/follow-up language, categorical five-slot ledger, and a TypeScript/AJV validator together. The checked-in ledger is intentionally empty: a clean checkout can prove the kit is ready to run, but it cannot manufacture the five qualified conversations or a commercial signal. The validator therefore reports `kit_ready: true` separately from `status: "template_only"`; only a real, consented ledger can pass `--require-acceptance`. Keep names, recordings, raw notes, and commercial details in an approved private system and retain only opaque reference tokens here.
+
 The key engineering idea is separation of durable code from bulky generated evidence. Code, schemas, small fixtures, and reproducibility manifests are tracked. Large generated report trees stay local and ignored.
 
 ## Dataset Factory v0
