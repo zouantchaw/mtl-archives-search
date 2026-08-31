@@ -1,8 +1,8 @@
 # Buyer brief
 
-## The situation
+## The situation (working positioning hypothesis)
 
-A Montréal hospitality or workplace interior often needs local character quickly, but the usual choices are generic skyline photography, decorative vintage imagery, or an unstructured archive dump. The buyer needs a point of view that feels native to the city and can survive scrutiny from a designer, operator, and rights reviewer.
+This specimen hypothesizes that a Montréal hospitality or workplace interior may need local character quickly, and that the alternatives may be generic skyline photography, decorative vintage imagery, or an unstructured archive dump. This is positioning copy to test with qualified stakeholders, not validated market research or a claim about buyer demand. The proposed buyer would need a point of view that feels native to the city and can survive scrutiny from a designer, operator, and rights reviewer.
 
 ## Audience and space
 

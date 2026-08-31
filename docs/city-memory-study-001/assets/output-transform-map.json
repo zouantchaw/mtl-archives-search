@@ -1,0 +1,50 @@
+{
+  "schema_version": "city_memory_output_transform_map_v1",
+  "status": "preliminary_internal_outputs",
+  "generated_replacement_archive_imagery": false,
+  "external_release": "blocked_pending_human_rights_production_and_internal_approval",
+  "outputs": [
+    {
+      "path": "concept-study.html",
+      "sha256": "95e514e2f09bdae9f656a3f18b57460c68b25df5a996af392d57ccbbf27c86f6",
+      "records": [10, 17, 31, 45, 58, 105, 4501, 7929, 9844, 11836, 12115, 13272],
+      "transforms": ["editorial sequencing", "CSS grayscale presentation", "object-fit crop hypotheses", "responsive scaling", "typographic overlays"],
+      "boundary": "Presentation deck only; crops and grayscale treatment are not restoration, reconstruction, production files, or changes to the source evidence."
+    },
+    {
+      "path": "interactive-study.html",
+      "sha256": "2297e0df2e3186f1d0f1f4f5ee9eec83ec08c1e3d83fcf588d5a0dee202a1bc1",
+      "records": [10, 17, 31, 45, 58, 105, 4501, 7929, 9844, 11836, 12115, 13272],
+      "transforms": ["editorial metadata projection", "CSS grayscale thumbnails", "object-fit crop hypotheses", "responsive scaling"],
+      "boundary": "Evidence-room projection only; archive titles and dates remain reported metadata and card copy is not independent corroboration."
+    },
+    {
+      "path": "spatial-applications.html",
+      "sha256": "4e8db62edb0f7049ba56b43b2111eb529ecb7152b41867908ad5825b57b85207",
+      "records": [10, 17, 31, 45, 58, 105, 4501, 13272],
+      "transforms": ["CSS grayscale presentation", "object-fit crop hypotheses", "responsive scaling", "concept framing", "hypothetical dimension labels"],
+      "boundary": "Composition studies only; not room photography, measured walls, scale-accurate renders, installed-work previews, or fabrication files."
+    },
+    {
+      "path": "assets/city-memory-study-001-reel.mp4",
+      "sha256": "be83364a5fe9dcb667960377934c6dd47c6235c25580f2cf087343240f719cc9",
+      "records": [10, 17, 31, 45, 58, 105, 4501, 7929, 9844, 11836, 12115, 13272],
+      "transforms": ["editorial ordering and timing", "crop-hypothesis overlay", "concept frame inset", "typographic overlays", "attribution end card"],
+      "boundary": "Internal teaser paired with the ledger and frame map; not a standalone provenance, rights, public-release, or production asset."
+    },
+    {
+      "path": "assets/reel-frame-map.json",
+      "sha256": "8c8dbeef6889c204add26b9f0c8b64621a29c9513284bac530e53b8330b8fc14",
+      "records": [10, 17, 31, 45, 58, 105, 4501, 7929, 9844, 11836, 12115, 13272],
+      "transforms": ["machine-readable segment and record mapping"],
+      "boundary": "Companion evidence for the internal reel; it does not grant release authority."
+    },
+    {
+      "path": "buyer-walkthrough.html",
+      "sha256": "f988988447b874d1e95fc4db9480597b506dcf8082fc3cc028bcd4abc3a7e5be",
+      "records": [],
+      "transforms": ["buyer-safe navigation and preliminary boundary copy"],
+      "boundary": "Guided internal entry point only; contains no archive pixels and does not imply buyer validation, legal approval, or production clearance."
+    }
+  ]
+}
