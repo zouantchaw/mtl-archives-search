@@ -5,13 +5,29 @@ contact data and authorizes no outreach. Before contact, the owner must approve
 the exact prospect, stakeholder, package, message, sender, channel, and
 follow-up boundary.
 
-## Primary pilot target
+## Commercial routes
+
+This shortlist serves two routes that share the same Provenance method:
+
+- **Place route:** art, experience, architecture, hospitality, development,
+  and public-realm organizations buy or commission a City Memory Concept Study
+  for one real environment.
+- **Institution route:** archives, museums, libraries, and cultural
+  organizations buy a Collection Fit Review or Archive Activation Pilot for a
+  collection they control.
+
+Warm relationships and approved introductions take precedence over list order.
+The visual subject of a pilot is not automatically its first outreach
+recipient.
+
+## Primary visual pilot subject
 
 ### Hôtel Nelligan / Corner Collection
 
 - Public context: [Hôtel Nelligan — a new chapter](https://hotelnelligan.com/nelligan-reopening/)
 - Buyer hypothesis: hotel or portfolio leadership, brand/guest experience,
-  cultural/event programming, or property marketing.
+  cultural/event programming, or property marketing. This is unconfirmed and
+  does not make the organization the presumed first recipient.
 - Why now: the public site describes a 2026 reimagining of the historic Old
   Montréal property, including redesigned rooms, event spaces, dining and
   cultural programming, and a spa planned for 2027.
@@ -21,8 +37,11 @@ follow-up boundary.
 - Risk: active relaunch may limit attention; the work must support the current
   brand rather than become a generic nostalgia treatment. Public marketing
   images cannot be reused in a sendable mockup without approval.
+- Route: build the hotel-specific concept as a strong demonstration. It may be
+  introduced through an approved art, experience, architecture, or hospitality
+  relationship before any direct approach to the property.
 
-## First validation alternatives and partners
+## Potential recipients and route partners
 
 ### GSM Studios
 
@@ -92,10 +111,17 @@ follow-up boundary.
 ## Recommended sequence
 
 1. Build the internally approved Hôtel Nelligan pilot without contacting the
-   organization or copying unapproved property assets.
-2. Test the same core idea as a repeatable production service with GSM Studios
-   and Provencher_Roy.
-3. Approach MEM as an institutional/design partner once the package is
+   organization, assuming recipient status, or copying unapproved property
+   assets.
+2. Identify the strongest owner-approved warm relationship in the art,
+   experience, architecture, hospitality, or institutional network. If an
+   existing relationship can sponsor one real site or programme, test that
+   route before cold outreach.
+3. Test the concept as a repeatable production service with GSM Studios and
+   Provencher_Roy, treating them as potential channel/delivery partners rather
+   than fallback prospects.
+4. Approach MEM through the institution path once the package is
    bilingual, rights-reviewed, and strong enough for public-sector scrutiny.
-4. Add hospitality and development prospects only after the visual prototype
-   is clearly client-sendable.
+5. Contact Hôtel Nelligan, Gray Collection, or development prospects only after
+   the visual prototype is client-sendable and the exact recipient, message,
+   sender, channel, and follow-up boundary are approved.

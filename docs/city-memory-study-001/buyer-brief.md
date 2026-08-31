@@ -29,9 +29,14 @@ Visitors should feel that Montréal is a lived system rather than a postcard: a 
 
 These are a planning hypothesis, not a quote or promise:
 
-- Concept study: CAD $8,000–$25,000 depending on selection depth and spatial iterations.
+- City Memory Concept Study: CAD $20,000–$60,000 over 4–6 weeks, depending on
+  selection depth, approved context assets, review requirements, spatial
+  applications, rights complexity, and production planning.
 - Installation/image package: CAD $20,000–$80,000+ before third-party print, framing, shipping, installation, insurance, taxes, and any rights/counsel costs.
 - Optional provenance/interactive layer: scoped separately after the buyer chooses the level of source evidence and public annotation.
+
+The predecessor $3,500 Diagnostic 001 is a separate reduced-scope validation
+artifact, not the default price for this concept study.
 
 ## Success criteria
 

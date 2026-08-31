@@ -2,6 +2,14 @@
 
 Issue #109 tests whether a qualified stakeholder will pay to address a real problem with the City Memory / Provenance specimen. This packet is the operating boundary for that test; it is not a claim that the test has happened.
 
+The fixed $3,500 CAD proposal is the digest-bound Diagnostic 001 used by this
+predecessor test. It is not the canonical Provenance service ladder or the
+default City Memory Concept Study price. Do not edit `proposal.v1.json` in
+place. If the active roadmap uses it, preserve the exact version and approve it
+as reduced-scope discovery with a predefined credit/conversion path. Any new
+route, scope, timeline, price, or payment schedule requires a new proposal
+version and digest.
+
 ## Current status
 
 **Ready to run; external evidence not started. No stakeholder conversations have been performed and no buyer evidence is recorded.** The checked-in [evidence-ledger.template.json](./evidence-ledger.template.json) is an honest empty template and cannot satisfy the issue acceptance criteria. Run the validator in acceptance mode only after real, consented conversations and a proposal test have occurred. The machine result deliberately separates `kit_ready: true` from `status: "template_only"` and `external_evidence_status: "none_recorded"`; readiness of this kit is not completion of the buyer test.

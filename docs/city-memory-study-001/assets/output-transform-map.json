@@ -6,7 +6,7 @@
   "outputs": [
     {
       "path": "concept-study.html",
-      "sha256": "95e514e2f09bdae9f656a3f18b57460c68b25df5a996af392d57ccbbf27c86f6",
+      "sha256": "4ed6d68446778852ac7d241ad487671ab57b9050fcfdda7e207889fb09058c1c",
       "records": [10, 17, 31, 45, 58, 105, 4501, 7929, 9844, 11836, 12115, 13272],
       "transforms": ["editorial sequencing", "CSS grayscale presentation", "object-fit crop hypotheses", "responsive scaling", "typographic overlays"],
       "boundary": "Presentation deck only; crops and grayscale treatment are not restoration, reconstruction, production files, or changes to the source evidence."
@@ -41,7 +41,7 @@
     },
     {
       "path": "buyer-walkthrough.html",
-      "sha256": "f988988447b874d1e95fc4db9480597b506dcf8082fc3cc028bcd4abc3a7e5be",
+      "sha256": "9b452b05fd1e007aa74ab4439df7309f84edd0661c85ca760244af0cd01bee75",
       "records": [],
       "transforms": ["buyer-safe navigation and preliminary boundary copy"],
       "boundary": "Guided internal entry point only; contains no archive pixels and does not imply buyer validation, legal approval, or production clearance."
