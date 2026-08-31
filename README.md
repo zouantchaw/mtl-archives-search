@@ -32,7 +32,7 @@ npm run gate-h2:builder-receipts-self-test
 
 ## Gate H2 Linux Conformance
 
-Issue #100 and Issue #101 Packets 1 and 2 remain merged inactive synthetic/local contracts. Packet 3A is the approved local, no-secrets, pre-launch builder implementation contract: [read the canonical Packet 3A document](docs/dataset-factory/gate-h2-builder-packet-3a-v1.md) for the future Rust/Cargo `1.85.0` and Node `22.22.0` floor, source proof, rootless boundary, dual helper rebuilds, SBOM comparison, and remaining real-build boundary. It is not real Linux evidence or a completed Issue #101 build; the frozen Packet 2 four-file fixture and pending recipe remain unchanged historical evidence.
+Issue #100 and Issue #101 Packets 1 and 2 remain merged inactive synthetic/local contracts. Packet 3A is the approved local, no-secrets, pre-launch builder implementation contract: [read the canonical Packet 3A document](docs/dataset-factory/gate-h2-builder-packet-3a-v1.md) for the future Rust/Cargo `1.85.0` and Node `22.22.0` floor, source proof, rootless boundary, dual helper rebuilds, and SBOM comparison. Packet 3B now defines strict external-input-lock and builder-receipt schemas/validators plus a Linux-only descriptor-anchored offline stop boundary; see [the Packet 3B contract](docs/dataset-factory/gate-h2-builder-packet-3b-input-lock-v1.md). It does not yet supply a real lock, materialized image, Linux build, or evidence receipt, so Issue #101 remains incomplete.
 
 ## Required env
 

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "gate-h2-builder-image-receipt-v1",
+  "title": "Gate H2 builder image receipt structure-only schema v1",
+  "$comment": "This schema validates receipt transport structure and vocabulary only. verify-builder-image-receipt.mjs is the sole semantic admission authority, including output graph joins, raw-lock binding, and cross-field digest/platform checks.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "platform", "input_lock_sha256", "runtime_manifest", "rootfs", "layer", "config", "manifest", "index", "final_image_reference", "materializer"],
+  "properties": {
+    "schema_version": {"const": "gate_h2_builder_image_receipt_v1.0.0"},
+    "platform": {"$ref": "#/$defs/platform"}, "input_lock_sha256": {"$ref": "#/$defs/sha256"},
+    "runtime_manifest": {"$ref": "#/$defs/identityRuntime"}, "rootfs": {"$ref": "#/$defs/identityRootfs"}, "layer": {"$ref": "#/$defs/identityLayer"},
+    "config": {"$ref": "#/$defs/identityConfig"}, "manifest": {"$ref": "#/$defs/identityManifest"}, "index": {"$ref": "#/$defs/identityIndex"},
+    "final_image_reference": {"type": "string", "pattern": "^[^@\\s]+@sha256:[a-f0-9]{64}$"},
+    "materializer": {"$ref": "#/$defs/materializer"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "commit": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+    "platform": {"type": "object", "additionalProperties": false, "required": ["os", "architecture"], "properties": {"os": {"const": "linux"}, "architecture": {"const": "amd64"}}},
+    "identity": {"type": "object", "additionalProperties": false, "required": ["sha256", "bytes", "media_type"], "properties": {"sha256": {"$ref": "#/$defs/sha256"}, "bytes": {"type": "integer", "minimum": 1, "maximum": 9007199254740991}, "media_type": {"type": "string", "minLength": 1}}},
+    "identityRuntime": {"allOf": [{"$ref": "#/$defs/identity"}, {"type": "object", "properties": {"bytes": {"type": "integer", "maximum": 16777216}, "media_type": {"const": "application/vnd.gate-h2.runtime-manifest.v1+json"}}}]},
+    "identityRootfs": {"allOf": [{"$ref": "#/$defs/identity"}, {"type": "object", "properties": {"bytes": {"type": "integer", "maximum": 1073741824}, "media_type": {"const": "application/vnd.gate-h2.rootfs.v1"}}}]},
+    "identityLayer": {"allOf": [{"$ref": "#/$defs/identity"}, {"type": "object", "properties": {"bytes": {"type": "integer", "maximum": 1073741824}, "media_type": {"const": "application/vnd.oci.image.layer.v1.tar"}}}]},
+    "identityConfig": {"allOf": [{"$ref": "#/$defs/identity"}, {"type": "object", "properties": {"bytes": {"type": "integer", "maximum": 1048576}, "media_type": {"const": "application/vnd.oci.image.config.v1+json"}}}]},
+    "identityManifest": {"allOf": [{"$ref": "#/$defs/identity"}, {"type": "object", "properties": {"bytes": {"type": "integer", "maximum": 1048576}, "media_type": {"const": "application/vnd.oci.image.manifest.v1+json"}}}]},
+    "identityIndex": {"allOf": [{"$ref": "#/$defs/identity"}, {"type": "object", "properties": {"bytes": {"type": "integer", "maximum": 1048576}, "media_type": {"const": "application/vnd.oci.image.index.v1+json"}}}]},
+    "materializer": {"type": "object", "additionalProperties": false, "required": ["id", "source_commit", "source_tree_sha256", "entrypoint"], "properties": {"id": {"type": "string", "minLength": 1}, "source_commit": {"$ref": "#/$defs/commit"}, "source_tree_sha256": {"$ref": "#/$defs/sha256"}, "entrypoint": {"type": "string", "minLength": 1}}}
+  }
+}
