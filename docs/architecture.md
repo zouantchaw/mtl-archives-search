@@ -305,6 +305,7 @@ canonical crosswalk ─▶ 100-record pool ─▶ ten-record evidence core
 - Names, recordings, raw notes, contact details, sensitive budgets, and other commercial material stay in an approved private system. The public ledger carries role/segment categories and opaque private reference tokens only; a token does not prove the private material exists.
 - No outreach, stakeholder conversation, proposal acceptance, payment, or commercial decision is claimed by the tracked template or local self-test.
 - The buyer routes are `/port-to-city/old-port` and `/port-to-city/sdc-vieux-montreal`; `/port-to-city` exposes the recipient-neutral evidence core. They use versioned JSON, tracked review derivatives, and a fail-closed package validator. All remain `noindex` while release status is `internal_review`.
+- When release status is not `public`, `VERCEL_ENV=production` must return 404 for all Port-to-City routes. Local development and deployment-protected Vercel previews remain available for review.
 - Issue #127 outreach must not begin until the remaining rights and report-sequence checks pass and the owner approves the prospect, package, message, sender, channel, and follow-up boundary.
 
 #### Verified Multimodal Intelligence Batch 001 Foundation

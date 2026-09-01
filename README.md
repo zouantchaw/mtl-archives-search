@@ -80,7 +80,8 @@ The current reference is the dataset-led [Port-to-City evidence core](docs/produ
 not the earlier Hôtel Nelligan mockup. It starts from a 100-record retrieval
 pool and a ten-record reviewed selection, then projects the same evidence into
 separate Old Port and SDC Vieux-Montréal routes. All three routes are `noindex`
-and remain in internal review. Buyer outreach still requires explicit owner
+and fail closed to 404 in production while release status is `internal_review`.
+Buyer outreach still requires explicit owner
 approval under [issue #127](https://github.com/zouantchaw/mtl-archives-search/issues/127).
 The predecessor issue #109 produced a privacy-preserving operating kit under
 [`docs/city-memory-validation-v1/`](docs/city-memory-validation-v1/), but no

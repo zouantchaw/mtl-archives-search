@@ -42,7 +42,8 @@ the earlier Hôtel Nelligan mockup and not outreach. A canonical crosswalk and
 100-record retrieval pool feed a ten-record evidence core covering aerial,
 street, report-sequence, and transformation views from 1922 to 1980. The same
 reviewed records now support separate Old Port and SDC Vieux-Montréal cuts in
-`apps/next-app`; they remain `noindex` and internal-review only.
+`apps/next-app`; they remain `noindex`, internal-review only, and unavailable
+on the production deployment until release status is explicitly promoted.
 The predecessor issue #109 left a useful
 privacy-preserving operating kit in `docs/city-memory-validation-v1/`: the
 exact paid diagnostic proposal, interview order, consent/follow-up language,
