@@ -70,14 +70,18 @@ npm run gate-h2:builder-receipts-fixture-verify
 npm run gate-h2:builder-receipts-self-test
 npm run city-memory:validation:self-test-v1
 npm run city-memory:validation:verify-v1
+npm run city-memory:opportunity-v1:self-test --workspace=@mtl-archives/scripts
+npm run validate:port-to-city --workspace=mtl-archives-next
 ```
 
 ## City Memory client pilot and buyer validation
 
-The active sequence is to make the Hôtel Nelligan–based [client pilot (#126)](https://github.com/zouantchaw/mtl-archives-search/issues/126)
-sendable before running the approved [buyer-validation test (#127)](https://github.com/zouantchaw/mtl-archives-search/issues/127).
-The hotel is a visual subject and possible recipient, not a presumed first
-buyer; recipient selection remains a separate, relationship-led decision.
+The current reference is the dataset-led [Port-to-City evidence core](docs/product/opportunity-scan/port-to-city/README.md),
+not the earlier Hôtel Nelligan mockup. It starts from a 100-record retrieval
+pool and a ten-record reviewed selection, then projects the same evidence into
+separate Old Port and SDC Vieux-Montréal routes. All three routes are `noindex`
+and remain in internal review. Buyer outreach still requires explicit owner
+approval under [issue #127](https://github.com/zouantchaw/mtl-archives-search/issues/127).
 The predecessor issue #109 produced a privacy-preserving operating kit under
 [`docs/city-memory-validation-v1/`](docs/city-memory-validation-v1/), but no
 buyer evidence. Its checked-in ledger is intentionally empty: the validator

@@ -13,7 +13,8 @@
     "smoke:filters": "node ./scripts/smoke-filters.mjs",
     "smoke:filters:prod": "node ./scripts/smoke-filters.mjs https://www.mtlarchives.com/",
     "smoke:filters:mobile": "node ./scripts/smoke-filters-mobile.mjs",
-    "smoke:filters:mobile:prod": "node ./scripts/smoke-filters-mobile.mjs https://www.mtlarchives.com/"
+    "smoke:filters:mobile:prod": "node ./scripts/smoke-filters-mobile.mjs https://www.mtlarchives.com/",
+    "validate:port-to-city": "node ./scripts/validate-port-to-city.mjs"
   },
   "dependencies": {
     "@clerk/localizations": "^3.35.3",

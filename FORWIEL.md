@@ -37,9 +37,12 @@ measured automation bottleneck. See `docs/product/provenance-activation-v1.md`.
 
 ## City Memory client pilot and buyer validation (#126–#127)
 
-The current sequence begins with an internally approved City Memory reference
-concept based on Hôtel Nelligan (#126), not outreach. The hotel is not presumed to be the
-first recipient; an approved warm partner or institution path may be stronger.
+The current sequence begins with the dataset-led Port-to-City reference, not
+the earlier Hôtel Nelligan mockup and not outreach. A canonical crosswalk and
+100-record retrieval pool feed a ten-record evidence core covering aerial,
+street, report-sequence, and transformation views from 1922 to 1980. The same
+reviewed records now support separate Old Port and SDC Vieux-Montréal cuts in
+`apps/next-app`; they remain `noindex` and internal-review only.
 The predecessor issue #109 left a useful
 privacy-preserving operating kit in `docs/city-memory-validation-v1/`: the
 exact paid diagnostic proposal, interview order, consent/follow-up language,

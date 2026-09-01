@@ -1,0 +1,61 @@
+{
+  "id": "old-port",
+  "path": "/port-to-city/old-port",
+  "audience": "Old Port of Montréal Corporation",
+  "title": "The working harbour inside today's visitor landscape",
+  "dek": "A source-linked sequence for interpreting how quays, infrastructure and city streets met before the contemporary Vieux-Port took shape.",
+  "chapters": [
+    {
+      "id": "working-harbour",
+      "number": "01",
+      "title": "Read the working harbour",
+      "intro": "The 1925 and 1962 views place the quays inside a larger city and river system. They can orient a visitor without flattening the site into nostalgia.",
+      "recordIds": ["mtl_archives_metadata_132.json", "mtl_archives_metadata_141.json", "mtl_archives_metadata_11487.json"]
+    },
+    {
+      "id": "quays-movement",
+      "number": "02",
+      "title": "Quays, movement and connection",
+      "intro": "The 1963 and 1965 report sequences bring the Clock Tower area, warehouses, quay structures and connecting infrastructure into a traceable research frame.",
+      "recordIds": ["mtl_archives_metadata_11606.json", "mtl_archives_metadata_11708.json"]
+    },
+    {
+      "id": "city-threshold",
+      "number": "03",
+      "title": "Where port met city",
+      "intro": "Rue de la Commune and Bonsecours make the threshold tangible at street level. Place d'Armes connects that edge to the civic district beyond.",
+      "recordIds": ["mtl_archives_metadata_88.json", "mtl_archives_metadata_38.json", "mtl_archives_metadata_67.json", "mtl_archives_metadata_165.json"]
+    },
+    {
+      "id": "before-vieux-port",
+      "number": "04",
+      "title": "Before the visitor district",
+      "intro": "The 1980 hangar report names a transition that can be investigated, sourced and interpreted in the places where that change is now experienced.",
+      "recordIds": ["mtl_archives_metadata_16620.json"]
+    }
+  ],
+  "activations": [
+    {
+      "title": "Quay evidence route",
+      "audience": "Visitors moving between the Clock Tower area and rue de la Commune",
+      "use": "A short physical and mobile sequence linking quay infrastructure to the street that served it.",
+      "records": [11606, 11708, 88, 38],
+      "dependency": "Exact viewpoint verification, site operations review and rights clearance."
+    },
+    {
+      "title": "Port layers at a visitor threshold",
+      "audience": "Visitors arriving at an orientation point or seasonal installation",
+      "use": "A controlled comparison of 1925, 1962 and 1980, with source and uncertainty visible beside each image.",
+      "records": [132, 11487, 16620],
+      "dependency": "Production files, bilingual copy and installation approval."
+    },
+    {
+      "title": "Project memory packet",
+      "audience": "Interpretation and public-realm teams",
+      "use": "A compact evidence packet that can travel with future signage, exhibition or programming briefs.",
+      "records": [141, 11606, 11708, 16620],
+      "dependency": "A named internal owner and an approved evidence-review workflow."
+    }
+  ],
+  "nextStep": "Review one quay-to-street route with the interpretation and public-realm teams, then identify the four records worth taking to production resolution."
+}

@@ -1,0 +1,119 @@
+{
+  "schema_version": "city_memory_opportunity_run_v1",
+  "generated_at": "2026-09-01T20:13:37.075Z",
+  "data_root": "${MTL_ARCHIVES_DATA_ROOT}",
+  "vocabulary": {
+    "old_port": [
+      "old port",
+      "old-port",
+      "vieux port",
+      "vieux-port",
+      "port de montreal",
+      "port de montréal",
+      "king edward quay",
+      "quai king edward",
+      "jacques cartier quay",
+      "quai jacques cartier",
+      "clock tower quay",
+      "quai de l horloge",
+      "quai de l'horloge",
+      "clock tower",
+      "tour de l horloge",
+      "quai de bonsecours",
+      "bonsecours quay",
+      "rue de la commune",
+      "quai alexandra"
+    ],
+    "old_montreal": [
+      "old montreal",
+      "old-montreal",
+      "vieux montreal",
+      "vieux-montréal",
+      "vieux-montreal",
+      "place jacques cartier",
+      "marché bonsecours",
+      "marche bonsecours",
+      "rue saint paul",
+      "rue saint-paul",
+      "square d youville",
+      "square d youville",
+      "champ de mars",
+      "bonsecours",
+      "notre dame est"
+    ]
+  },
+  "grains": {
+    "canonical_scored": {
+      "path": "${MTL_ARCHIVES_DATA_ROOT}/manifest_scored.jsonl",
+      "rows": 13499,
+      "unique_identities": 13499,
+      "matched": 13499,
+      "missing": 0,
+      "ambiguous": 0
+    },
+    "vlm": {
+      "path": "${MTL_ARCHIVES_DATA_ROOT}/reports/autoresearch_vlm_full/manifest_vlm_structured_full_detailed_llava7b.jsonl",
+      "rows": 14822,
+      "unique_identities": 14822,
+      "matched": 9859,
+      "missing": 3640,
+      "ambiguous": 0
+    },
+    "taxonomy": {
+      "path": "${MTL_ARCHIVES_DATA_ROOT}/reports/autoresearch_taxonomy/taxonomy_labels.jsonl",
+      "rows": 14822,
+      "unique_identities": 14822,
+      "matched": 9859,
+      "missing": 3640,
+      "ambiguous": 0
+    },
+    "geocode": {
+      "path": "${MTL_ARCHIVES_DATA_ROOT}/manifest_geocoded.jsonl",
+      "rows": 14822,
+      "unique_identities": 14822,
+      "matched": 9859,
+      "missing": 3640,
+      "ambiguous": 0
+    },
+    "ocr": {
+      "path": "${MTL_ARCHIVES_DATA_ROOT}/manifest_ocr.jsonl",
+      "rows": 13568,
+      "unique_identities": 13499,
+      "matched": 13458,
+      "missing": 0,
+      "ambiguous": 41
+    },
+    "date": {
+      "path": "${MTL_ARCHIVES_DATA_ROOT}/manifest_dated.jsonl",
+      "rows": 13499,
+      "unique_identities": 13499,
+      "matched": 13499,
+      "missing": 0,
+      "ambiguous": 0
+    },
+    "aerial": {
+      "path": "${MTL_ARCHIVES_DATA_ROOT}/manifest_aerial.jsonl",
+      "rows": 13499,
+      "unique_identities": 13499,
+      "matched": 13499,
+      "missing": 0,
+      "ambiguous": 0
+    },
+    "visual_family": {
+      "path": "${MTL_ARCHIVES_DATA_ROOT}/reports/visual_family_graph_v0/visual-family-graph-v0-record-family-map.jsonl",
+      "rows": 1462,
+      "unique_identities": 1462,
+      "matched": 841,
+      "missing": 12658,
+      "ambiguous": 0
+    }
+  },
+  "crosswalk_rows": 13499,
+  "place_signal_rows": 123,
+  "candidate_rows": 100,
+  "limits": {
+    "max_crosswalk_rows": null,
+    "max_candidates": 100
+  },
+  "gaps": []
+}

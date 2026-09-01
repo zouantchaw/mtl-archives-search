@@ -18,9 +18,10 @@ approved by the owner.
 Preserve two commercial projections over one technical contract: institution
 fit/activation work and place-based City Memory concept studies. Preserve the
 four trust zones—client collection, private processing, human review, and
-approved output—in product contracts and handoffs. Hôtel Nelligan is the pilot's
-subject and a possible recipient, not an assumed first buyer. The historical
-$3,500 proposal may be used only as explicitly approved, credited discovery;
+approved output—in product contracts and handoffs. The dataset-led Port-to-City
+evidence core replaces Hôtel Nelligan as the current reference. It has separate
+Old Port and SDC Vieux-Montréal internal cuts over the same reviewed records.
+The historical $3,500 proposal may be used only as explicitly approved, credited discovery;
 it must not silently replace the service ladder or a City Memory Concept Study.
 
 For historical Issue #69 Gate B ground research, use the
@@ -147,7 +148,7 @@ pipelines/
 8. Dataset Factory v0: ignored report artifacts → tracked registry + schemas + fixture smoke → packets, labels/adjudication, benchmark, active learning, repair, family graph, enrichment, judgments, reward-data outputs, and Gold Label Batch 002 reviewed evidence
 
 9. Verified Multimodal Intelligence Batch 001: synthetic foundation → 26 mechanically eligible canonical-real candidates → primary 256px visual promotion with 12 selected and 4 reserves. Independent visual review approved all 16 primary decisions with zero disagreements; historical verification, dossiers, and benchmarks remain zero.
-10. City Memory client path (#126–#127): internally approved visual-reference pilot → owner-approved commercial path, recipient, outreach, and versioned fixed offer → categorical ledger → fail-closed acceptance decision. The predecessor #109 template is intentionally empty and its $3,500 Diagnostic 001 remains digest-bound; `kit_ready: true` is not external evidence and `--require-acceptance` must remain failing until real buyer evidence exists.
+10. City Memory client path (#126–#127): canonical Port-to-City crosswalk → 100-record pool → ten-record reviewed evidence core → separate Old Port and SDC Vieux-Montréal internal routes → owner-approved commercial path, recipient, outreach, and versioned fixed offer. The predecessor #109 template is intentionally empty and its $3,500 Diagnostic 001 remains digest-bound; `kit_ready: true` is not external evidence and `--require-acceptance` must remain failing until real buyer evidence exists.
 
 MTL-CityMemory-Bench v1 (#70) currently has only a pre-lock candidate/preflight
 foundation. `npm run dataset-factory:benchmark-v1-candidate` must keep
@@ -198,6 +199,7 @@ Next app runtime env:
 - `apps/next-app/app/globals.css` now carries the V4 Paper brand tokens (warm paper background, Spectral/Figtree/IBM Plex Mono stack, editorial card surfaces).
 - Public entry now defaults to the editorial landing page on `/`; do not reintroduce random home-to-game redirects.
 - Route-specific V4 surfaces exist for `/`, `/search`, `/photo/[id]`, `/print`, `/checkout`, `/order-confirmation`, `/sign-in`, `/sign-up`, and `/game`.
+- Port-to-City internal-review surfaces exist at `/port-to-city`, `/port-to-city/old-port`, and `/port-to-city/sdc-vieux-montreal`. They are `noindex`, use one versioned evidence core, and must keep archive-reported claims separate from observed evidence and unresolved questions.
 - Stripe Checkout now handles payment collection for prints; fulfillment remains manual after the paid order webhook fires.
 - Hosted Stripe Checkout is not the shipping-pricing authority in this repo; the app validates the address and fixes the quote before redirect.
 - Newsletter consent is explicit-only. Do not auto-enroll Clerk/game signups without a dedicated opt-in action and audit log entry.

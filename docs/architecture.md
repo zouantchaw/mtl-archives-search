@@ -287,22 +287,25 @@ Ignored reports in data/mtl_archives/reports/
 - `docs/dataset-factory/fixtures/v0-smoke/` contains small tracked fixtures that mirror the contracts needed by the v0 workflows. `npm run dataset-factory:smoke-v0` runs the v0 scripts against those fixtures and a local mock search API with a fixed clock, exact count/content assertions, and a committed tree hash, proving that a clean checkout can exercise the workflow deterministically without copying generated report trees.
 - Missing required artifacts should fail loudly through the Dataset Factory artifact helpers rather than silently producing empty downstream reports.
 
-### 8a. City Memory client pilot and buyer validation (#126–#127)
+### 8a. City Memory Port-to-City reference and buyer validation (#126–#127)
 
 ```text
-Client-sendable pilot (#126) ──▶ approved path + fixed offer (#127) ──▶ private conversations
-                                                                         │
-                                      redacted categorical ledger ◀──────┘
-                                                   │
-                                                   ▼
-                                  AJV + semantic gate ──▶ not_ready / revise / continue / stop
+canonical crosswalk ─▶ 100-record pool ─▶ ten-record evidence core
+                                              │
+                     ┌────────────────────────┴──────────────────────┐
+                     ▼                                               ▼
+             Old Port cut                                   SDC Vieux-Montréal cut
+                     └────────────────────────┬──────────────────────┘
+                                              ▼
+                                  owner-approved buyer test (#127)
 ```
 
 - The superseded #109 implementation in `docs/city-memory-validation-v1/` contains the interview guide, consent/follow-up boundary, exact proposal, five-slot ledger schema/template, evidence rubric, and validator. It is a buyer-validation operating kit, not a source of buyer evidence.
 - The predecessor template intentionally has zero conversations and an untested $3,500 Diagnostic 001. The validator reports `kit_ready: true` separately from its evidence status (`template_only`, `in_progress`, or `complete`). `--require-acceptance` fails closed until its historical five-conversation/fixed-proposal decision contract is satisfied. The active #127 path may select a different versioned, segment-appropriate offer; it must never silently overwrite the digest-bound v1 proposal.
 - Names, recordings, raw notes, contact details, sensitive budgets, and other commercial material stay in an approved private system. The public ledger carries role/segment categories and opaque private reference tokens only; a token does not prove the private material exists.
 - No outreach, stakeholder conversation, proposal acceptance, payment, or commercial decision is claimed by the tracked template or local self-test.
-- Issue #127 must not begin until #126 passes internal release review and the owner approves the prospect, package, message, sender, channel, and follow-up boundary.
+- The buyer routes are `/port-to-city/old-port` and `/port-to-city/sdc-vieux-montreal`; `/port-to-city` exposes the recipient-neutral evidence core. They use versioned JSON, tracked review derivatives, and a fail-closed package validator. All remain `noindex` while release status is `internal_review`.
+- Issue #127 outreach must not begin until the remaining rights and report-sequence checks pass and the owner approves the prospect, package, message, sender, channel, and follow-up boundary.
 
 #### Verified Multimodal Intelligence Batch 001 Foundation
 

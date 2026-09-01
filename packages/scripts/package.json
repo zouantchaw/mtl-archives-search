@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
+    "city-memory:opportunity-v1": "tsx src/city-memory-opportunity-v1/build-opportunity-v1.ts",
+    "city-memory:opportunity-v1:self-test": "tsx src/city-memory-opportunity-v1/self-test-opportunity-v1.ts",
     "clean": "tsx src/etl/clean-metadata.ts",
     "canonicalize": "tsx src/etl/canonicalize-metadata.ts",
     "normalize-dates": "tsx src/etl/normalize-dates.ts",
