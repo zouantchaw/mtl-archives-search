@@ -1,0 +1,61 @@
+{
+  "id": "sdc-vieux-montreal",
+  "path": "/port-to-city/sdc-vieux-montreal",
+  "audience": "SDC Vieux-Montréal",
+  "title": "The port history carried by the district's streets",
+  "dek": "A source layer for routes, capsules and local programming that connects rue de la Commune and the civic core to the working waterfront beside them.",
+  "chapters": [
+    {
+      "id": "district-threshold",
+      "number": "01",
+      "title": "Begin on rue de la Commune",
+      "intro": "The strongest district entry is not a generic Old Montréal image. It is a documented working street with warehouses, rail and the port immediately beside it.",
+      "recordIds": ["mtl_archives_metadata_88.json", "mtl_archives_metadata_38.json", "mtl_archives_metadata_67.json"]
+    },
+    {
+      "id": "city-port",
+      "number": "02",
+      "title": "Show the district inside the port system",
+      "intro": "The early aerials connect Place d'Armes, the urban grid and the shoreline. They give street stories a geographic structure rather than a decorative backdrop.",
+      "recordIds": ["mtl_archives_metadata_132.json", "mtl_archives_metadata_165.json", "mtl_archives_metadata_141.json"]
+    },
+    {
+      "id": "working-shoreline",
+      "number": "03",
+      "title": "Follow the working shoreline",
+      "intro": "Dated port reports let a guide or editor move between images as a sequence while keeping report-level claims separate from what any one frame proves.",
+      "recordIds": ["mtl_archives_metadata_11487.json", "mtl_archives_metadata_11606.json", "mtl_archives_metadata_11708.json"]
+    },
+    {
+      "id": "visitor-era",
+      "number": "04",
+      "title": "Ask how the visitor district emerged",
+      "intro": "The 1980 hangar report gives a source-linked starting point for a later transformation story. Additional evidence is still needed before that story becomes a public claim.",
+      "recordIds": ["mtl_archives_metadata_16620.json"]
+    }
+  ],
+  "activations": [
+    {
+      "title": "Rue de la Commune source walk",
+      "audience": "Local guides, visitors and member businesses along the route",
+      "use": "A concise walking sequence that links the working street, Bonsecours and the port edge through exact archive records.",
+      "records": [88, 38, 11606, 11708],
+      "dependency": "Local guide review, viewpoint checks and a clear member participation model."
+    },
+    {
+      "title": "Chronicle-ready source packet",
+      "audience": "Editorial and social programming teams",
+      "use": "A prepared set of images, archive wording, source links and open questions for one tightly scoped historical capsule.",
+      "records": [88, 132, 16620],
+      "dependency": "Episode research, voice selection, bilingual writing and final rights clearance."
+    },
+    {
+      "title": "Member window trail",
+      "audience": "Businesses connecting the district to a seasonal cultural route",
+      "use": "A small distributed display where each location carries one source-linked record and points to the complete evidence sequence.",
+      "records": [38, 67, 165, 11487],
+      "dependency": "Business recruitment, print production, accessibility review and route operations."
+    }
+  ],
+  "nextStep": "Choose one rue de la Commune capsule, review it with a local guide and two member businesses, then measure whether the source layer improves the public story."
+}

@@ -1,0 +1,303 @@
+{
+  "schemaVersion": "port_to_city_evidence_core_v1",
+  "artifactId": "port_to_city_evidence_core_20260901",
+  "generatedAt": "2026-09-01T20:00:00Z",
+  "releaseStatus": "internal_review",
+  "title": "Port to City",
+  "sharedThesis": "A reviewed sequence connecting Montréal's working harbour, rue de la Commune and the public-facing district across 1922 to 1980.",
+  "sourceAuthority": {
+    "name": "Archives de la Ville de Montréal",
+    "license": "CC BY 4.0",
+    "licenseUrl": "https://donnees.montreal.ca/pages/licence-d-utilisation",
+    "attribution": "Archives de la Ville de Montréal",
+    "rightsStatus": "Documented source authority, not a legal opinion. Production use still requires a final check for people, marks and third-party interests."
+  },
+  "families": [
+    {
+      "id": "vm97-d01",
+      "label": "1925–1930 aerial survey",
+      "evidenceClass": "E1",
+      "note": "Scene-level archive title and description."
+    },
+    {
+      "id": "vm94-street",
+      "label": "1922–1936 street photographs",
+      "evidenceClass": "E1",
+      "note": "Scene-level archive title, with description where available."
+    },
+    {
+      "id": "vm94-port-reports",
+      "label": "1962–1965 port reports",
+      "evidenceClass": "E2",
+      "note": "Report-level sequence evidence. Individual child records may have incomplete metadata."
+    },
+    {
+      "id": "vm94-b251",
+      "label": "1980 port hangar report",
+      "evidenceClass": "E2",
+      "note": "Report-level description links the hangars to the later tourist district."
+    }
+  ],
+  "records": [
+    {
+      "id": "mtl_archives_metadata_132.json",
+      "numericId": 132,
+      "image": {
+        "src": "/port-to-city/132.webp",
+        "width": 1800,
+        "height": 1437,
+        "sha256": "b27e208cfe311c32063b583d7b09cfa4a4d18b365c00ae64788cbd603cb2840c",
+        "sourceSha256": "0d142c5eb08f076c0380d9ce1c30f8f37100353e73424a37636ef5cfd965a81c"
+      },
+      "familyId": "vm97-d01",
+      "evidenceClass": "E1",
+      "editorialRole": "The harbour and Place d'Armes in one frame",
+      "archiveReported": {
+        "title": "Vue aérienne oblique du port de Montréal et de la place d'Armes",
+        "date": "1925",
+        "cote": null,
+        "description": "Élévateurs à grain du port de Montréal, place d'Armes",
+        "sourceUrl": "https://depot.ville.montreal.qc.ca/vues-aeriennes-1925-1939/VM97-3_01-054.tif"
+      },
+      "observed": "An oblique aerial view joins a dense urban fabric to long piers and large waterfront structures.",
+      "unresolved": "Exact camera position, structure identities beyond the archive description, and independent date corroboration.",
+      "alt": "Oblique black-and-white aerial view of Montréal's waterfront, piers and dense city blocks.",
+      "reviewStatus": "reviewed_for_internal_concept",
+      "transform": "R2 JPEG derivative auto-oriented, resized within 1800 pixels and encoded as WebP. No generative alteration."
+    },
+    {
+      "id": "mtl_archives_metadata_165.json",
+      "numericId": 165,
+      "image": {
+        "src": "/port-to-city/165.webp",
+        "width": 1800,
+        "height": 1412,
+        "sha256": "2d79b12573be8277872dcd3180b181ce6169c7555423d659895b935fc389d3a7",
+        "sourceSha256": "57f51dcce85ed8933654a982e96bd38bfcce3ecadd40e66c9b9fc8c3cb359312"
+      },
+      "familyId": "vm97-d01",
+      "evidenceClass": "E1",
+      "editorialRole": "The city read from the river",
+      "archiveReported": {
+        "title": "Vue aérienne oblique du centre-ville et du fleuve Saint-Laurent",
+        "date": "1925",
+        "cote": null,
+        "description": "Vue vers le sud, port de Montréal, pont Victoria, île Sainte-Hélène avant la construction du pont Jacques-Cartier, mont Royal",
+        "sourceUrl": "https://depot.ville.montreal.qc.ca/vues-aeriennes-1925-1939/VM97-3_01-027.tif"
+      },
+      "observed": "A wide oblique view places the river, shoreline infrastructure and the city within one geographic field.",
+      "unresolved": "Exact camera position, scale, and independent identification of distant landmarks.",
+      "alt": "Wide black-and-white aerial view across the river toward Montréal and its shoreline.",
+      "reviewStatus": "reviewed_for_internal_concept",
+      "transform": "R2 JPEG derivative auto-oriented, resized within 1800 pixels and encoded as WebP. No generative alteration."
+    },
+    {
+      "id": "mtl_archives_metadata_141.json",
+      "numericId": 141,
+      "image": {
+        "src": "/port-to-city/141.webp",
+        "width": 1399,
+        "height": 1800,
+        "sha256": "0092691dbe28f2c086b3c1c4810b8bba75a0357d60ffda71c6dc49925f78ef5e",
+        "sourceSha256": "a254520de2d9bd14320197166f4f421a785a8299d1d45be927875ed92ed0d49a"
+      },
+      "familyId": "vm97-d01",
+      "evidenceClass": "E1",
+      "editorialRole": "The port as an urban system",
+      "archiveReported": {
+        "title": "Vue aérienne verticale du secteur du port de Montréal",
+        "date": "18 mai 1930",
+        "cote": null,
+        "description": "Port de Montréal, depuis le pont Jacques-Cartier vers l'Est",
+        "sourceUrl": "https://depot.ville.montreal.qc.ca/vues-aeriennes-1925-1939/VM97-3_01-031.tif"
+      },
+      "observed": "A vertical aerial view shows shoreline geometry, the urban grid and port infrastructure at district scale.",
+      "unresolved": "Scale, exact frame boundary, and independent interpretation of land uses.",
+      "alt": "Vertical black-and-white aerial view of a river edge, urban grid and port structures.",
+      "reviewStatus": "reviewed_for_internal_concept",
+      "transform": "R2 JPEG derivative auto-oriented, resized within 1800 pixels and encoded as WebP. No generative alteration."
+    },
+    {
+      "id": "mtl_archives_metadata_88.json",
+      "numericId": 88,
+      "image": {
+        "src": "/port-to-city/88.webp",
+        "width": 1800,
+        "height": 1256,
+        "sha256": "2d4c952f1afe5730dc406a2f24944e1ad1c4bf3da29dbba6068f60c1671767b4",
+        "sourceSha256": "7c89e058300caab340e4d1783b10f56a1b64e6910dab8bfcbb859704741eb690"
+      },
+      "familyId": "vm94-street",
+      "evidenceClass": "E1",
+      "editorialRole": "Rue de la Commune at the working edge",
+      "archiveReported": {
+        "title": "Rue Des Commissaires (devenue rue de la Commune)",
+        "date": "1936",
+        "cote": "VM94,SY,SS1,SSS17,D166",
+        "description": "En direction est, à partir de la rue Saint-Pierre. On y voit l'édifice du Catholic Sailor's Club, les entrepôts de la compagnie Blaiklock Bros. Limited de même qu'une section de la voie ferrée.",
+        "sourceUrl": "https://depot.ville.montreal.qc.ca/phototheque-archives/jpeg/VM94-Z167-1.jpg"
+      },
+      "observed": "A broad street view shows multi-storey commercial buildings, tracks at the road edge and sparse vehicle traffic.",
+      "unresolved": "Independent confirmation of building identities, exact viewpoint, and readable sign text.",
+      "alt": "Black-and-white street view with commercial buildings, rail tracks and a wide roadway.",
+      "reviewStatus": "reviewed_for_internal_concept",
+      "transform": "R2 JPEG derivative auto-oriented, resized within 1800 pixels and encoded as WebP. No generative alteration."
+    },
+    {
+      "id": "mtl_archives_metadata_38.json",
+      "numericId": 38,
+      "image": {
+        "src": "/port-to-city/38.webp",
+        "width": 1800,
+        "height": 1286,
+        "sha256": "f31fa77aea5903b4cf4df989ad48662de815f92db1b4964bb9a9d0dcbb0bc728",
+        "sourceSha256": "725db0dce0644dae0e34e0109535510f523e1d97fb6bab59780b48ed18c43c81"
+      },
+      "familyId": "vm94-street",
+      "evidenceClass": "E1",
+      "editorialRole": "Bonsecours from the port street",
+      "archiveReported": {
+        "title": "Marché Bonsecours vu de la rue des Commissaires (devenu rue de la Commune)",
+        "date": "1922",
+        "cote": "VM94,SY,SS1,SSS17,D82",
+        "description": null,
+        "sourceUrl": "https://depot.ville.montreal.qc.ca/phototheque-archives/jpeg/VM94-Z83-B.jpg"
+      },
+      "observed": "A masonry market building and domed structure line a broad street shared by early motor vehicles.",
+      "unresolved": "The archive row supplies no description. Historical use and adjacent building identities are not asserted here.",
+      "alt": "Black-and-white street view of a large masonry market building, domed structure and early cars.",
+      "reviewStatus": "reviewed_for_internal_concept",
+      "transform": "R2 JPEG derivative auto-oriented, resized within 1800 pixels and encoded as WebP. No generative alteration."
+    },
+    {
+      "id": "mtl_archives_metadata_67.json",
+      "numericId": 67,
+      "image": {
+        "src": "/port-to-city/67.webp",
+        "width": 1253,
+        "height": 1800,
+        "sha256": "5608c4ad4cb27e30f6a5953e92fc9b55ab0da04aca4d516487d9117ef49e7eed",
+        "sourceSha256": "37b64d235c69a2c74924052dc57a8e692936e429315adde6c0033a0eccc7cb2a"
+      },
+      "familyId": "vm94-street",
+      "evidenceClass": "E1",
+      "editorialRole": "A civic anchor beyond the quays",
+      "archiveReported": {
+        "title": "Basilique Notre-Dame (116, rue Notre-Dame Ouest)",
+        "date": "1936",
+        "cote": "VM94,SY,SS1,SSS17,D128",
+        "description": "Au premier plan, on remarque la place d'Armes, le monument Maisonneuve ainsi que l'entrée des deux vespasiennes de la place.",
+        "sourceUrl": "https://depot.ville.montreal.qc.ca/phototheque-archives/jpeg/VM94-Z129.jpg"
+      },
+      "observed": "A frontal architectural photograph shows a twin-towered stone facade facing a public square.",
+      "unresolved": "Independent date corroboration and interpretation of public-space use.",
+      "alt": "Black-and-white frontal view of a twin-towered stone basilica across a public square.",
+      "reviewStatus": "reviewed_for_internal_concept",
+      "transform": "R2 JPEG derivative auto-oriented, resized within 1800 pixels and encoded as WebP. No generative alteration."
+    },
+    {
+      "id": "mtl_archives_metadata_11487.json",
+      "numericId": 11487,
+      "image": {
+        "src": "/port-to-city/11487.webp",
+        "width": 1800,
+        "height": 1413,
+        "sha256": "ae2f3d7f24630493aacc0f4b3ac07d0631c706230fcf756123adea74cc89c37b",
+        "sourceSha256": "40267495d6b7883a2572e1b05fdec73d00bd86de4975f3dd957f9790e9070b97"
+      },
+      "familyId": "vm94-port-reports",
+      "evidenceClass": "E2",
+      "editorialRole": "The mid-century port facing the city",
+      "archiveReported": {
+        "title": "Vue de la rive sud vers le nord donnant le port, le centre commercial et la montagne / Armour Landry",
+        "date": "Juillet 1962",
+        "cote": "VM94-B007",
+        "description": "Port, quais, centre-ville (image 1).",
+        "sourceUrl": "https://depot.ville.montreal.qc.ca/vues-aeriennes-obliques-1960-1969/VM94-B007-001.tif"
+      },
+      "observed": "A wide oblique view shows several piers, vessels, the waterfront city and the mountain beyond.",
+      "unresolved": "Individual pier identities, exact camera altitude, and measurements.",
+      "alt": "Oblique black-and-white aerial view of piers, vessels, downtown Montréal and the mountain.",
+      "reviewStatus": "reviewed_for_internal_concept",
+      "transform": "R2 JPEG derivative resized within 1800 pixels, metadata stripped and encoded as WebP. No generative alteration."
+    },
+    {
+      "id": "mtl_archives_metadata_11606.json",
+      "numericId": 11606,
+      "image": {
+        "src": "/port-to-city/11606.webp",
+        "width": 1800,
+        "height": 1736,
+        "sha256": "7576a1febe48f596920c52e4a8a11858f4d008590576f56a38cbfe47a79bd792",
+        "sourceSha256": "2903db2153cc2fb11606fd0e5f9c9b7e2cbd341c94723c47255bd9f53dcf02a1"
+      },
+      "familyId": "vm94-port-reports",
+      "evidenceClass": "E2",
+      "editorialRole": "Clock Tower quay and working shoreline",
+      "archiveReported": {
+        "title": "VM94-B011, image 14",
+        "date": "10 septembre 1963",
+        "cote": "VM94-B011",
+        "description": "The parent report identifies images 14–18 as Port, quai de l'horloge and entrepôt frigorifique.",
+        "sourceUrl": "https://depot.ville.montreal.qc.ca/vues-aeriennes-obliques-1960-1969/VM94-B011-014.tif"
+      },
+      "observed": "An oblique view shows a broad river edge, low port buildings, shoreline infrastructure and the city beyond.",
+      "unresolved": "The child row has no image-level title. Object identities depend on the parent report range and need final frame-by-frame confirmation.",
+      "alt": "Black-and-white oblique aerial view across a riverfront with port buildings and the city beyond.",
+      "reviewStatus": "reviewed_for_internal_concept",
+      "transform": "R2 JPEG derivative resized within 1800 pixels, metadata stripped and encoded as WebP. No generative alteration."
+    },
+    {
+      "id": "mtl_archives_metadata_11708.json",
+      "numericId": 11708,
+      "image": {
+        "src": "/port-to-city/11708.webp",
+        "width": 1800,
+        "height": 1767,
+        "sha256": "3f00a8d190705df6fda5ce1ff0649905b199756b29b95c4ec0f22990a65eda04",
+        "sourceSha256": "d9422002afacb541af0fd56290fa52e3cc6e56c07a4edf3b08dd13c7c9d871d7"
+      },
+      "familyId": "vm94-port-reports",
+      "evidenceClass": "E2",
+      "editorialRole": "Quays, movement and the city threshold",
+      "archiveReported": {
+        "title": "VM94-B014, image 6",
+        "date": "23 mai 1965",
+        "cote": "VM94-B014",
+        "description": "The parent report identifies images 6–11 with Pont de la Concorde, grain silo no. 2 and the Alexandra, King Edward and Jacques-Cartier quays.",
+        "sourceUrl": "https://depot.ville.montreal.qc.ca/vues-aeriennes-obliques-1960-1969/VM94-B014-006.tif"
+      },
+      "observed": "A near-vertical oblique view shows multiple quay structures, water, bridges or roads, and the dense city edge.",
+      "unresolved": "The child row has no image-level title. Exact matching of each named structure to this frame requires final report-sequence review.",
+      "alt": "Black-and-white aerial view of water, long quay structures, connecting roads and Montréal city blocks.",
+      "reviewStatus": "reviewed_for_internal_concept",
+      "transform": "R2 JPEG derivative auto-oriented by 90 degrees, resized within 1800 pixels and encoded as WebP. No generative alteration."
+    },
+    {
+      "id": "mtl_archives_metadata_16620.json",
+      "numericId": 16620,
+      "image": {
+        "src": "/port-to-city/16620.webp",
+        "width": 1800,
+        "height": 1743,
+        "sha256": "17d3ceb2bd4d87c705a532b1db0f98581af676a8058ff46a5b03b01894d86280",
+        "sourceSha256": "f53ebd579c516cedfd1c7c844c7f7d10406e8308d2260d1b8c3dbb82e1d24110"
+      },
+      "familyId": "vm94-b251",
+      "evidenceClass": "E2",
+      "editorialRole": "Before the tourist-era Vieux-Port",
+      "archiveReported": {
+        "title": "Hangars du port de Montréal pour la future Cité du cinéma / Réal Benny",
+        "date": "8 février 1980",
+        "cote": "VM94-B251",
+        "description": "Hangars du Port de Montréal (devenu le secteur touristique du Vieux-Port) (images 1–95).",
+        "sourceUrl": "https://depot.ville.montreal.qc.ca/vues-aeriennes-obliques-1960-1969/VM94-B251-001.tif"
+      },
+      "observed": "An oblique aerial view shows long port hangars, rail and road lines, and dense blocks at the city edge.",
+      "unresolved": "The later reuse is archive-reported. This packet does not independently establish the full transformation chronology or exact building continuity.",
+      "alt": "Black-and-white aerial view of long port hangars, rail lines, roads and nearby city blocks.",
+      "reviewStatus": "reviewed_for_internal_concept",
+      "transform": "R2 JPEG derivative auto-oriented, resized within 1800 pixels and encoded as WebP. No generative alteration."
+    }
+  ]
+}

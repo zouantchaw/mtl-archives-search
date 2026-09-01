@@ -10,14 +10,14 @@
 - [ ] **Provenance Package v1 (#125)** — specify and build the portable client
   handoff for sources, rights, claims, uncertainty, transformations, review,
   and activation readiness.
-- [ ] **City Memory Client Pilot v2 (#126)** — build a client-sendable,
-  Hôtel Nelligan–based reference concept and pass internal visual, narrative,
-  rights, and production review without presuming the hotel is the first
-  recipient.
-- [ ] **City Memory Buyer Validation v2 (#127)** — after release approval,
-  select an institution or place-based path, obtain explicit approval for the
-  prospect list and outreach materials, then test the corresponding offer
-  without exposing private buyer data.
+- [x] **City Memory evidence reference (#126)** — replace the weak
+  property-first mockup with a dataset-led Port-to-City evidence core, a
+  canonical crosswalk, a 100-record retrieval pool, ten reviewed records, and
+  separate Old Port and SDC Vieux-Montréal internal-review routes.
+- [ ] **City Memory Buyer Validation v2 (#127)** — complete final rights and
+  sequence review, choose one recipient path, obtain explicit approval for the
+  prospect and outreach materials, then test the corresponding offer without
+  exposing private buyer data.
 
 The closed issue #128 indexes deferred research and exact reopening triggers.
 Historical issues #64, #69–#73, #92, #96, #97, #109, and #110 are not active

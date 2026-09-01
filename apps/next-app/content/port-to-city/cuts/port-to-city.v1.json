@@ -1,0 +1,61 @@
+{
+  "id": "port-to-city",
+  "path": "/port-to-city",
+  "audience": "Internal evidence review",
+  "title": "Port to City",
+  "dek": "Ten source-linked records trace a working relationship between harbour, street and district. The value is not any one photograph. It is the chain between them.",
+  "chapters": [
+    {
+      "id": "one-field",
+      "number": "01",
+      "title": "Harbour and city in one field",
+      "intro": "Early aerial records hold water, infrastructure and urban fabric in the same view. They establish the spatial question before interpretation begins.",
+      "recordIds": ["mtl_archives_metadata_132.json", "mtl_archives_metadata_165.json", "mtl_archives_metadata_141.json"]
+    },
+    {
+      "id": "working-edge",
+      "number": "02",
+      "title": "The working edge at street level",
+      "intro": "Rue de la Commune, Bonsecours and Place d'Armes move the evidence from city scale to the places people occupied and crossed.",
+      "recordIds": ["mtl_archives_metadata_88.json", "mtl_archives_metadata_38.json", "mtl_archives_metadata_67.json"]
+    },
+    {
+      "id": "port-sequences",
+      "number": "03",
+      "title": "Port reports, not isolated images",
+      "intro": "The mid-century material belongs to dated report sequences. That relationship makes the quays, warehouses and circulation legible as a system.",
+      "recordIds": ["mtl_archives_metadata_11487.json", "mtl_archives_metadata_11606.json", "mtl_archives_metadata_11708.json"]
+    },
+    {
+      "id": "transition",
+      "number": "04",
+      "title": "A documented threshold",
+      "intro": "The 1980 hangar report gives the sequence a precise stopping point before the tourist-era Vieux-Port. It supports a transformation question without pretending to answer every part of it.",
+      "recordIds": ["mtl_archives_metadata_16620.json"]
+    }
+  ],
+  "activations": [
+    {
+      "title": "Reviewed research packet",
+      "audience": "Interpretation, programming and public-realm teams",
+      "use": "A reusable source set for deciding which port-to-city stories deserve production.",
+      "records": [132, 88, 11606, 11708, 16620],
+      "dependency": "Final rights check and frame-level review of report-sequence records."
+    },
+    {
+      "title": "Cross-scale evidence walk",
+      "audience": "Stakeholders reviewing a visitor route",
+      "use": "Move from aerial context to rue de la Commune, then back to the working shoreline and its later transition.",
+      "records": [165, 141, 38, 88, 11487],
+      "dependency": "On-site viewpoint validation before route claims are published."
+    },
+    {
+      "title": "Source-linked editorial system",
+      "audience": "Writers, guides and exhibit teams",
+      "use": "Every public caption can retain its canonical ID, archive wording, source and unresolved questions.",
+      "records": [132, 67, 11606, 16620],
+      "dependency": "Editorial approval and production-resolution derivatives."
+    }
+  ],
+  "nextStep": "Complete the release gates, then test the same evidence core with one Old Port decision owner and one SDC decision owner."
+}
