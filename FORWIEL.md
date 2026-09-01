@@ -29,7 +29,7 @@ measured automation bottleneck. See `docs/product/provenance-activation-v1.md`.
 ## How The Pieces Fit
 
 - `apps/api` is the Cloudflare Worker. It serves `/api/photos`, `/api/search`, game routes, newsletter routes, and talks to D1, Vectorize, Workers AI, and R2.
-- `apps/city-memory` is the standalone client presentation for the Hôtel Nelligan reference concept: narrative chapters, reviewed records, production studies, and a conceptual interactive atrium.
+- `apps/city-memory` is the standalone client presentation for the Hôtel Nelligan reference concept, **The Street Within**: narrative chapters, reviewed records, source-separated application images, and a conceptual interactive hotel section.
 - `apps/next-app` is the customer-facing site: landing, search, photo detail, print checkout, auth, and game UI.
 - `packages/scripts` is the workshop. It contains ETL, vector ingestion, audits, autoresearch, and Dataset Factory scripts.
 - `pipelines/` holds Python-heavy workflows such as OCR, CLIP experiments, and daily social packaging.
@@ -43,9 +43,11 @@ concept based on Hôtel Nelligan (#126), not outreach. The hotel is not presumed
 first recipient; an approved warm partner or institution path may be stronger.
 The working reference package now lives in `apps/city-memory`, with its release
 and evidence boundary documented in `docs/city-memory-nelligan-reference/`.
-It is an uncommissioned, static-hosted HTML presentation with an original
-conceptual Three.js scene. It contains no current hotel photography and labels
-the spatial model as conceptual massing rather than a measured property model.
+It is an uncommissioned, static-hosted HTML presentation titled **The Street
+Within** with an original conceptual Three.js scene. Its four historical images
+are reviewed local archive files placed separately over blank conceptual
+settings. It contains no current hotel photography and labels the spatial model
+as conceptual massing rather than a measured property model.
 The predecessor issue #109 left a useful
 privacy-preserving operating kit in `docs/city-memory-validation-v1/`: the
 exact paid diagnostic proposal, interview order, consent/follow-up language,

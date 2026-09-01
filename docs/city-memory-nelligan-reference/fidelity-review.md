@@ -1,56 +1,64 @@
-# Hôtel Nelligan reference concept — fidelity and release review
+# Hôtel Nelligan reference concept fidelity review
 
 Review date: 2026-09-01
 
-This ledger compares the implemented client artifact with the three art-directed
-design references in `design-reference/`. It records intentional departures as
-well as defects corrected during the final Agent Browser pass.
+## Release position
 
-## Fidelity ledger
+The client concept is titled **The Street Within**. It proposes a four-part guest
+sequence through a conceptual Hôtel Nelligan setting:
 
-| Area | Reference intent | Implemented result | Release judgment |
-| --- | --- | --- | --- |
-| Opening composition | Editorial mineral-paper cover, oversized serif title, architectural cutaway, camera rail, compact hotel identity | Preserves the palette, typographic hierarchy, cutaway, rail, primary action, and restrained header; adapts the 16:10 board into a responsive first chapter | Faithful adaptation |
-| Spatial chapter | Dark, immersive atrium view with camera positions and an evidence panel | Original interactive Three.js conceptual massing, four camera presets, orbit control, visible record controls, evidence drawer, reduced-motion behavior, and non-WebGL fallback | Functionally exceeds the static reference; geometry is intentionally schematic |
-| Evidence | A work should reveal source, rights, visible/reported distinction, and production uncertainty | Four independently reviewed records open a modal drawer with cote, narrative role, evidence boundary, rights state, unresolved fields, and source link | Faithful and more explicit |
-| Production studies | Three resolved applications with room imagery and production criteria | Atrium Ledger, Room as Citation, and Listening Vault each have an original application image plus location, scale, substrate, light, maintenance, and rights fields | Faithful responsive expansion |
-| Provenance | Clear chain from source through fabrication | Five-step source, review, interpretation, approval, and fabrication chapter tied to the client-facing Provenance boundary | Faithful |
-| Close | Decisive paid next phase without implying contact or commission | Measured 4–6 week study scope; action records only an in-session review state and states that no message was sent | Faithful and release-safe |
-| Responsive behavior | Desktop presentation board | Responsive long-form presentation at 390 px with no horizontal page overflow, touch-friendly record rails, and stacked production data | Intentional delivery expansion |
+1. Meet the Street
+2. Cross the Layers
+3. Stay Among Traces
+4. Continue the Walk
 
-## Intentional departures
+The hotel is presented as a threshold to the surrounding district, not as a
+reconstruction of Old Montréal. The proposal is self-initiated and has not been
+commissioned or approved by Hôtel Nelligan.
 
-- The implementation uses four reviewed archive works rather than the twelve
-  illustrative positions in the spatial design reference. Unreviewed filler
-  would weaken the concept's evidence promise.
-- The Three.js model is conceptual massing, not a photoreal replica or measured
-  digital twin. It exists to test sequence, vertical reading, interaction, and
-  evidence access until a paid site study supplies plans and measurements.
-- No current hotel photography, floor plan, or scraped virtual-tour media is
-  bundled. Original visualizations carry the atmosphere without implying
-  property permission or undocumented existing conditions.
-- The reference boards use a slide-like 16:10 composition. The delivered HTML
-  is a responsive editorial sequence so a reviewer can read details, inspect
-  records, and use the 3D scene without shrinking all content into one viewport.
+## Image integrity
 
-## Corrected during release review
+The four historical images are the reviewed local derivatives for records 11,
+17, 54, and 88. They appear as separate image layers in the HTML applications
+and as direct textures in the Three.js study. The architectural settings contain
+no invented historical photographs.
 
-- Replaced root-absolute media URLs with `BASE_URL`-aware relative URLs and
-  verified the production build beneath `/dist/`.
-- Deferred the Three.js chunk until the spatial chapter approaches the viewport
-  and suspended its render loop when offscreen or when the document is hidden.
-- Added a complete WebGL teardown path, context-loss fallback, bounded pixel
-  ratio, reduced-motion camera changes, and pointer-drag click protection.
-- Added keyboard-accessible archive controls, meaningful non-canvas labels, a
-  modal focus trap, Escape close, focus return, and a non-interactive backdrop
-  in the accessibility tree.
-- Added the uncommissioned/non-affiliation language to page metadata, opening
-  release metadata, and the closing chapter.
-- Disabled production source maps and preserved local font/media bundling.
+The generated architectural images are blank concept settings. They are not
+photographs of the hotel and do not establish current property conditions. The
+HTML places the reviewed archive files over those settings after generation.
 
-## Verification
+## Property boundary
 
-The final local release pass completed:
+The factual anchor is the Québec heritage record for the former William-Cormack
+store-warehouse at 106 to 112 rue Saint-Paul Ouest. Public material supports the
+description of four connected former commercial buildings and a central atrium.
+
+The following remain inputs to a commissioned study:
+
+- current plans and circulation
+- exact atrium dimensions and suspension points
+- room categories and sightlines
+- structural, fire, and life-safety constraints
+- present-day photography approved for use
+- full-resolution archive masters and crop approvals
+
+The Three.js chapter is therefore labelled `Conceptual massing · not a measured
+survey` and avoids a floor plan, room count, or construction dimensions.
+
+## Visual review criteria
+
+| Area | Required result |
+| --- | --- |
+| Cover | Property-specific title, restrained editorial hierarchy, exact archive layers visible in the conceptual section |
+| Archive sequence | Four distinct records in the order 11, 17, 54, 88, with archive-reported identity kept separate from visible evidence |
+| Spatial study | Four-level conceptual section, four distinct image works, guided camera positions, selected-work response, and fallback behavior |
+| Applications | Atrium, room, and concierge settings composed with the reviewed archive files after generation |
+| Provenance | Plain account of source, review, interpretation, approval, and fabrication |
+| Commercial close | A fixed five-week study with inclusions, exclusions, payment schedule, and release boundary |
+
+## Verification record
+
+Before release, run:
 
 ```text
 npm run typecheck --workspace=@mtl-archives/city-memory
@@ -58,25 +66,14 @@ npm run validate:client --workspace=@mtl-archives/city-memory
 npm run build --workspace=@mtl-archives/city-memory
 ```
 
-Agent Browser verified:
+The final Agent Browser review covered the 1600 by 1000 presentation view, the
+390 by 844 mobile view, the four camera positions, the evidence drawer, all
+three applications, console errors, and horizontal overflow. The ten-page PDF
+was rendered to images and inspected before it replaced the previous handoff.
 
-- 1600 × 1000 opening, spatial, evidence, production, and closing chapters;
-- all four 3D camera controls and the accessible record controls;
-- modal focus entry, Escape close, and focus return to the invoking record;
-- closing action status with no external message or navigation;
-- 390 × 844 mobile opening with page width equal to viewport width;
-- production assets and reviewed record assets from a nested production path;
-- a dedicated 10-page letter-landscape PDF rendered to PNG at 120 dpi, with no
-  blank pages, clipping, overlap, broken glyphs, or unreadable appendix fields;
-- no page or JavaScript errors in the final browser pass.
+## Remaining gates
 
-## Remaining release gates
-
-The artifact is ready for owner review, but issue #126 should remain open until
-the owner approves the final package and chooses its access-controlled hosted or
-PDF handoff. `noindex` does not provide privacy. A real recipient, outreach
-message, channel, sender, and follow-up
-boundary remain separate #127 decisions. A commissioned property study still
-requires property-approved photography, current plans, measurements,
-attachment and life-safety review, crop-specific reproduction review, and
-fabrication samples.
+The reference package can be shared only after owner approval and a named,
+controlled recipient decision. A commissioned property study still requires
+site access, current plans, measured conditions, property-approved photography,
+crop-specific rights review, and fabrication tests.

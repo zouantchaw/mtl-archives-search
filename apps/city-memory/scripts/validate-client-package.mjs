@@ -6,6 +6,7 @@ const required = [
   'index.html',
   'src/App.tsx',
   'src/PrintDeck.tsx',
+  'src/SourceVisual.tsx',
   'src/SpatialScene.tsx',
   'src/data.ts',
   'src/styles.css',
@@ -13,10 +14,10 @@ const required = [
   'public/media/archive-17.jpg',
   'public/media/archive-54.jpg',
   'public/media/archive-88.jpg',
-  'public/media/atrium-cutaway-v2.jpg',
-  'public/media/application-atrium-v2.jpg',
-  'public/media/application-room-v1.jpg',
-  'public/media/application-listening-v1.jpg',
+  'public/media/street-within-cutaway-shell-v1.jpg',
+  'public/media/street-within-atrium-shell-v1.jpg',
+  'public/media/street-within-room-shell-v1.jpg',
+  'public/media/street-within-walk-shell-v1.jpg',
 ];
 
 const pdfPath = resolve(root, '../../output/pdf/city-memory-hotel-nelligan-reference-concept-v1.pdf');
@@ -51,12 +52,14 @@ const blockedPatterns = [
   [/github\.com\/.+\/issues\/\d+/i, 'internal issue link'],
   [/alex lesage|zebulonperron\.com\/.*\.(jpg|png)/i, 'unapproved property imagery'],
   [/src\s*=\s*['\"]https?:\/\//i, 'external runtime image'],
+  [/—/, 'em dash in client-facing copy'],
+  [/Atrium Ledger|Listening Vault|Dataset Factory|AI-generated|AI generated/i, 'internal or superseded concept language'],
 ];
 for (const [pattern, label] of blockedPatterns) {
   if (pattern.test(bundledText)) failures.push(`client boundary violation: ${label}`);
 }
 
-for (const phrase of ['Conceptual massing · not a measured survey', 'production review required', 'not commissioned by or affiliated with Hôtel Nelligan']) {
+for (const phrase of ['The Street Within', 'Conceptual massing · not a measured survey', 'production review required', 'not commissioned by or affiliated with Hôtel Nelligan']) {
   if (!bundledText.includes(phrase)) failures.push(`missing release boundary: ${phrase}`);
 }
 

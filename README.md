@@ -80,12 +80,12 @@ npm run build --workspace=@mtl-archives/city-memory
 
 The active sequence is to make the Hôtel Nelligan–based [client pilot (#126)](https://github.com/zouantchaw/mtl-archives-search/issues/126)
 sendable before running the approved [buyer-validation test (#127)](https://github.com/zouantchaw/mtl-archives-search/issues/127).
-The implemented [uncommissioned reference concept](docs/city-memory-nelligan-reference/README.md)
-is a standalone Vite/React presentation with an original conceptual Three.js
-atrium, four independently reviewed archive records, explicit evidence and
-rights boundaries, production studies, and a static-hosted client delivery
-contract. It bundles no current hotel photography and does not present its 3D
-scene as a measured survey.
+The implemented [uncommissioned reference concept](docs/city-memory-nelligan-reference/README.md),
+**The Street Within**, is a standalone Vite/React presentation with an original
+conceptual Three.js section, four independently reviewed archive records,
+source-separated application images, explicit evidence and rights boundaries,
+and a static-hosted client delivery contract. It bundles no current hotel
+photography and does not present its 3D scene as a measured survey.
 The hotel is a visual subject and possible recipient, not a presumed first
 buyer; recipient selection remains a separate, relationship-led decision.
 The predecessor issue #109 produced a privacy-preserving operating kit under

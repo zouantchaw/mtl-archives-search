@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { archiveRecords, interventions, mediaUrl, propertyFacts, type ArchiveRecord } from './data';
+import { archiveRecords, interventions, propertyFacts, type ArchiveRecord } from './data';
 import { PrintDeck } from './PrintDeck';
+import { SourceVisual } from './SourceVisual';
 
 const SpatialScene = lazy(() => import('./SpatialScene').then((module) => ({ default: module.SpatialScene })));
 
@@ -32,13 +33,13 @@ function Hero() {
     <section className="hero" id="top">
       <Header />
       <div className="hero-copy">
-        <h1>The Atrium<br />Ledger</h1>
-        <p>A cultural layer for Hôtel Nelligan—where the architecture behaves like an archive.</p>
+        <h1>The Street<br />Within</h1>
+        <p>A guest sequence through Hôtel Nelligan, built from four reviewed records of streets and public spaces in Old Montréal.</p>
         <a className="primary-action" href="#spatial">Walk the concept <Arrow /></a>
         <div className="release-meta">Uncommissioned reference concept · 01 September 2026 · Conceptual visualization</div>
       </div>
-      <div className="hero-model" role="img" aria-label="Original conceptual cutaway of a multi-level atrium with suspended archival works; not a representation of the current hotel">
-        <img src={mediaUrl('atrium-cutaway-v2.jpg')} alt="" />
+      <div className="hero-model" role="img" aria-label="Original conceptual hotel cutaway using exact reviewed MTL Archives records; not a representation of the current hotel">
+        <SourceVisual kind="cutaway" eager labelled />
         <div className="camera-index" aria-hidden="true">
           <span>04</span><span>03</span><span>02</span><span>01</span>
         </div>
@@ -53,8 +54,8 @@ function PropertyContext() {
     <section className="property-section" id="concept">
       <div className="section-number">01 / Property</div>
       <div className="property-intro">
-        <h2>Not a heritage theme.<br />A living record.</h2>
-        <p>Hôtel Nelligan already has a refined material language. City Memory does not redesign it. The proposal adds a precise cultural layer to the architecture’s central hinge: a way to encounter the district as street, commerce, medicine, labour, stone, and contemporary hospitality.</p>
+        <h2>Four buildings.<br />One interior street.</h2>
+        <p>Hôtel Nelligan occupies four connected former commercial buildings on rue Saint-Paul. Its central atrium suggests a clear sequence: street, threshold, upper levels, room, and return to the city outside.</p>
       </div>
       <div className="fact-source">
         <strong>Verified property basis</strong>
@@ -84,10 +85,10 @@ function Direction() {
   return (
     <section className="direction-section">
       <div className="section-number">02 / Direction</div>
-      <blockquote>“The atrium does not display history. It lets each floor read through it.”</blockquote>
+      <blockquote>“The hotel does not contain the city. It gives the guest a way to read it.”</blockquote>
       <div className="direction-columns">
-        <p>The central void becomes a vertical ledger. Lightweight translucent works hang at different depths: close enough to feel intimate, distant enough to be read as a field. From reception, the guest sees a chronology. From upper levels, individual records resolve.</p>
-        <p>Each work remains reversible, source-linked, and clearly contemporary in its treatment. The intervention makes no claim to reconstruct the hotel’s past. It activates verified records of the surrounding city and exposes their uncertainty.</p>
+        <p><strong>Meet the Street. Cross the Layers.</strong> Arrival begins with archive-reported Square d’Youville. Four reviewed records then occupy the atrium as a sequence of street, commerce, civic architecture, and waterfront work.</p>
+        <p><strong>Stay Among Traces. Continue the Walk.</strong> A room holds one source-linked viewpoint. A concierge encounter directs attention back to present-day Montréal. No image is presented as a reconstruction or as a view from the hotel.</p>
       </div>
     </section>
   );
@@ -96,10 +97,10 @@ function Direction() {
 function ArchiveSequence({ onSelect }: { onSelect: (record: ArchiveRecord) => void }) {
   return (
     <section className="archive-sequence" id="evidence">
-      <div className="section-number">03 / The city enters the building</div>
+      <div className="section-number">03 / Four exact records</div>
       <div className="sequence-heading">
-        <h2>Arrival.<br />Corridor.<br />Civic room.<br />Working edge.</h2>
-        <p>Four independently reviewed records give the concept a spatial rhythm without reducing Old Montréal to postcard nostalgia.</p>
+        <h2>Meet.<br />Cross.<br />Stay.<br />Continue.</h2>
+        <p>These are the exact reviewed files used in the applications. Their archive-reported identities remain separate from what the pixels alone establish.</p>
       </div>
       <div className="image-rail">
         {archiveRecords.map((record, index) => (
@@ -208,8 +209,8 @@ function SpatialStudy({ selected, onSelect }: { selected: ArchiveRecord; onSelec
           <SpatialScene records={archiveRecords} selected={selected} onSelect={onSelect} />
         </Suspense>
       ) : (
-        <div className="scene-poster" role="img" aria-label="Conceptual atrium preview">
-          <img src={mediaUrl('atrium-cutaway-v2.jpg')} alt="" loading="lazy" decoding="async" />
+        <div className="scene-poster" role="img" aria-label="Conceptual interior street preview using exact reviewed archive records">
+          <SourceVisual kind="cutaway" />
           <span>The spatial study loads as this chapter approaches.</span>
         </div>
       )}
@@ -219,7 +220,7 @@ function SpatialStudy({ selected, onSelect }: { selected: ArchiveRecord; onSelec
       </div>
       <div className="scene-record-list" role="group" aria-label="Archive works in the spatial study">
         {archiveRecords.map((record, index) => (
-          <button key={record.id} onClick={() => onSelect(record)}>
+          <button key={record.id} onClick={() => onSelect(record)} aria-pressed={selected.id === record.id} aria-label={`Inspect ${record.title}, ${record.date}`}>
             <span>0{index + 1}</span>{record.title}
           </button>
         ))}
@@ -233,14 +234,14 @@ function InterventionStudies() {
     <section className="interventions" id="production">
       <div className="section-number">05 / Production studies</div>
       <div className="intervention-heading">
-        <h2>From record to room</h2>
-        <p>Three studies translate documented memory into material, light, and sound. Each is described at concept level and deliberately exposes what a measured study must resolve.</p>
+        <h2>Exact records,<br />placed with intent</h2>
+        <p>The architectural settings are conceptual. Every historical image shown within them is one of the four reviewed MTL Archives files. No archival content has been invented inside the visualizations.</p>
       </div>
       <div className="intervention-list">
         {interventions.map((item) => (
           <article className="intervention" key={item.number}>
             <div className="intervention-title"><span>{item.number}</span><h3>{item.title}</h3><p>{item.summary}</p></div>
-            <figure><img src={item.image} alt="" loading="lazy" decoding="async" /></figure>
+            <SourceVisual kind={item.visual} labelled />
             <dl>{item.fields.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
           </article>
         ))}
@@ -270,7 +271,7 @@ function ProvenanceChain() {
           </li>
         ))}
       </ol>
-      <p className="chain-note">This is the client-facing expression of Provenance: a portable chain from collection authority to approved physical or digital output. The underlying Dataset Factory remains backstage.</p>
+      <p className="chain-note">Provenance keeps the source, review decisions, permissions, design use, and final production file connected. The client sees the approved work and can inspect the record behind it.</p>
     </section>
   );
 }
@@ -281,7 +282,7 @@ function NextMove() {
     <section className="next-move">
       <div>
         <h2>The next move is a<br />measured site study.</h2>
-        <p>This reference concept proves the direction. A 4–6 week paid study would replace assumptions with property-approved photography, measured sightlines, structural constraints, light studies, a rights-reviewed image shortlist, and fabrication samples.</p>
+        <p>This reference concept establishes the direction. A five-week paid study would replace assumptions with property-approved photography, measured sightlines, structural constraints, light studies, a rights-reviewed image shortlist, and fabrication samples.</p>
       </div>
       <ul>
         <li>Property walk + measured surfaces</li>

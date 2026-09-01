@@ -1,4 +1,5 @@
-import { archiveRecords, interventions, mediaUrl, propertyFacts } from './data';
+import { archiveRecords, interventions, propertyFacts } from './data';
+import { SourceVisual } from './SourceVisual';
 
 const offer = {
   name: 'City Memory Concept Study',
@@ -23,11 +24,11 @@ export function PrintDeck() {
       <section className="deck-page deck-cover">
         <DeckHeader page="01" label="Uncommissioned reference concept" />
         <div className="deck-cover-copy">
-          <p className="deck-kicker">A cultural layer for Hôtel Nelligan</p>
-          <h1>The Atrium<br />Ledger</h1>
-          <p>Where the architecture behaves like an archive.</p>
+          <p className="deck-kicker">Hôtel Nelligan and rue Saint-Paul</p>
+          <h1>The Street<br />Within</h1>
+          <p>A guest sequence built from four reviewed Montréal street records.</p>
         </div>
-        <img src={mediaUrl('atrium-cutaway-v2.jpg')} alt="" />
+        <SourceVisual kind="cutaway" eager />
         <footer>Version 1 · 01 September 2026 · Conceptual visualization · controlled review</footer>
       </section>
 
@@ -35,8 +36,8 @@ export function PrintDeck() {
         <DeckHeader page="02" label="Property opportunity" />
         <div className="deck-title-block">
           <p className="deck-kicker">The opportunity</p>
-          <h2>Not a heritage theme.<br />A living record.</h2>
-          <p className="deck-lede">Add a precise cultural layer to the renewed property: one that roots the guest experience in the street and district without turning hospitality into a museum treatment.</p>
+          <h2>Four buildings.<br />One interior street.</h2>
+          <p className="deck-lede">The documented hotel complex joins former commercial buildings through an interior atrium. The proposal uses that structure to connect the stay to rue Saint-Paul and the surrounding district.</p>
         </div>
         <ol className="deck-timeline">
           {propertyFacts.map(([date, detail]) => <li key={date}><time>{date}</time><p>{detail}</p></li>)}
@@ -50,11 +51,12 @@ export function PrintDeck() {
 
       <section className="deck-page deck-direction">
         <DeckHeader page="03" label="Recommended direction" />
-        <blockquote>“The atrium does not display history. It lets each floor read through it.”</blockquote>
+        <blockquote>“The hotel gives the guest a way to read the city outside.”</blockquote>
         <div className="deck-direction-copy">
-          <div><strong>Arrival</strong><p>A field is visible before individual pictures resolve.</p></div>
-          <div><strong>Vertical ledger</strong><p>Each level offers a different reading distance and fragment.</p></div>
-          <div><strong>Source at hand</strong><p>A quiet citation turns atmosphere back into a trustworthy record.</p></div>
+          <div><strong>Meet the Street</strong><p>Arrival begins with one archive-reported public space and a clear source.</p></div>
+          <div><strong>Cross the Layers</strong><p>Four records occupy a conceptual atrium at different levels and reading distances.</p></div>
+          <div><strong>Stay Among Traces</strong><p>One room application gives a record quiet attention without claiming a hotel sightline.</p></div>
+          <div><strong>Continue the Walk</strong><p>The final record directs attention back to present-day Montréal.</p></div>
         </div>
         <div className="deck-materials">
           {['Limestone', 'Heritage brick', 'Smoked oak', 'Aged copper', 'Verde stone'].map((name, index) => <span key={name} className={`deck-material deck-material-${index}`}>{name}</span>)}
@@ -64,8 +66,8 @@ export function PrintDeck() {
       <section className="deck-page deck-sequence">
         <DeckHeader page="04" label="Guest sequence" />
         <div className="deck-title-block compact">
-          <p className="deck-kicker">Four purposeful roles</p>
-          <h2>The city enters<br />the building.</h2>
+          <p className="deck-kicker">Four reviewed files</p>
+          <h2>One record for<br />each encounter.</h2>
         </div>
         <div className="deck-record-grid">
           {archiveRecords.map((record, index) => (
@@ -84,16 +86,16 @@ export function PrintDeck() {
       <section className="deck-page deck-application deck-application-atrium">
         <DeckHeader page="05" label="Arrival application" />
         <div className="deck-application-copy">
-          <p className="deck-kicker">01 / Atrium Ledger</p>
-          <h2>A building<br />that reads<br />upward.</h2>
-          <p>Reversible, fire-rated translucent planes create a vertical chronology. The image field is experienced first as light and depth, then as specific records.</p>
+          <p className="deck-kicker">01 / Cross the Layers</p>
+          <h2>Four records.<br />Four levels<br />of attention.</h2>
+          <p>The conceptual atrium shell is blank by design. The visible historical content comes from the four reviewed archive files and no other source.</p>
           <dl>
             <div><dt>Scale</dt><dd>Variable; measured next phase</dd></div>
             <div><dt>Light</dt><dd>Linear graze + available daylight</dd></div>
             <div><dt>Decision</dt><dd>Sightline, loading, attachment, life safety</dd></div>
           </dl>
         </div>
-        <img src={interventions[0].image} alt="" />
+        <SourceVisual kind={interventions[0].visual} />
         <span className="deck-caveat">Conceptual application · not a photograph or measured model of the current property</span>
       </section>
 
@@ -101,7 +103,7 @@ export function PrintDeck() {
         <DeckHeader page="06" label="Guest-facing applications" />
         {interventions.slice(1).map((item) => (
           <article key={item.number}>
-            <img src={item.image} alt="" />
+            <SourceVisual kind={item.visual} />
             <div>
               <p className="deck-kicker">{item.number} / {item.title}</p>
               <h2>{item.title}</h2>
@@ -124,7 +126,7 @@ export function PrintDeck() {
           <li><span>03</span><h3>Human review</h3><p>Source, rights, visible claims, crop, material, and production decisions are reviewed.</p></li>
           <li><span>04</span><h3>Approved output</h3><p>Only approved imagery, claims, drawings, credits, and fabrication files are released.</p></li>
         </ol>
-        <p className="deck-trust-note">City Memory is the client-facing expression. Dataset Factory remains backstage as the evidence engine.</p>
+        <p className="deck-trust-note">The approved work remains connected to its source record, review decisions, permissions, design use, and production file.</p>
       </section>
 
       <section className="deck-page deck-appendix">
