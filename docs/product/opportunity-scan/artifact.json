@@ -1,0 +1,446 @@
+{
+  "surface": "report",
+  "manifest": {
+    "version": 1,
+    "surface": "report",
+    "title": "Where MTL Archives should go first",
+    "description": "A dataset-led opportunity scan for the first City Memory evidence packet and buyer-validation route.",
+    "generatedAt": "2026-09-01T19:19:26Z",
+    "cards": [
+      {
+        "id": "canonical_records_card",
+        "description": "Deduplicated records in the current canonical and scored corpus.",
+        "dataset": "canonical_metrics",
+        "sourceId": "canonical_snapshot",
+        "metrics": [
+          { "label": "Canonical records", "field": "canonical_records", "format": "compact" }
+        ]
+      },
+      {
+        "id": "waterfront_theme_card",
+        "description": "Directional waterfront labels in the 14,822-row taxonomy source grain.",
+        "dataset": "taxonomy_metrics",
+        "sourceId": "taxonomy_report",
+        "metrics": [
+          { "label": "Waterfront labels", "field": "waterfront_labels", "format": "compact" }
+        ]
+      },
+      {
+        "id": "coordinate_coverage_card",
+        "description": "Share of local source-grain rows with coordinates. Several name-based matches are inaccurate.",
+        "dataset": "geocode_metrics",
+        "sourceId": "geocoded_manifest",
+        "metrics": [
+          { "label": "Coordinate coverage", "field": "coordinate_coverage", "format": "percent" }
+        ]
+      }
+    ],
+    "charts": [
+      {
+        "id": "archive_themes_chart",
+        "title": "Largest archive themes",
+        "subtitle": "Directional labels from the 14,822-row taxonomy source grain; categories can overlap.",
+        "type": "bar",
+        "dataset": "archive_themes",
+        "sourceId": "taxonomy_report",
+        "valueFormat": "compact",
+        "encodings": {
+          "x": { "field": "theme", "type": "nominal", "label": "Theme" },
+          "y": { "field": "records", "type": "quantitative", "label": "Records" },
+          "tooltip": [
+            { "field": "records", "type": "quantitative", "label": "Records", "format": "number" },
+            { "field": "source_grain", "type": "text", "label": "Source grain" }
+          ]
+        },
+        "layout": "full",
+        "maxRows": 8
+      },
+      {
+        "id": "candidate_fit_chart",
+        "title": "Archive and market fit by candidate",
+        "subtitle": "Public-source hypothesis scores on a 100-point scale. Market Fit is not buyer intent.",
+        "type": "bar",
+        "dataset": "candidate_fit_long",
+        "sourceId": "candidate_scores",
+        "valueFormat": "number",
+        "encodings": {
+          "x": { "field": "candidate_short", "type": "nominal", "label": "Candidate" },
+          "y": { "field": "score", "type": "quantitative", "label": "Fit score" },
+          "color": { "field": "score_type", "type": "nominal", "label": "Score" },
+          "tooltip": [
+            { "field": "score", "type": "quantitative", "label": "Score", "format": "number" },
+            { "field": "balanced_fit", "type": "quantitative", "label": "Balanced Fit", "format": "number" },
+            { "field": "confidence", "type": "text", "label": "Confidence" },
+            { "field": "gate", "type": "text", "label": "Gate" }
+          ]
+        },
+        "layout": "full",
+        "maxRows": 16
+      }
+    ],
+    "tables": [
+      {
+        "id": "capability_table",
+        "title": "Capability maturity",
+        "subtitle": "Production means integrated; research-complete and review-ready remain bounded by their evidence and review state.",
+        "dataset": "capability_maturity",
+        "sourceId": "capability_matrix",
+        "defaultSort": { "field": "capability", "direction": "asc" },
+        "density": "spacious",
+        "layout": "full",
+        "columns": [
+          { "field": "capability", "label": "Capability", "type": "text" },
+          { "field": "maturity", "label": "Maturity", "type": "text" },
+          { "field": "evidence", "label": "What exists", "type": "text" },
+          { "field": "commercial_implication", "label": "What we can safely say", "type": "text" }
+        ]
+      },
+      {
+        "id": "candidate_table",
+        "title": "Candidate decision table",
+        "subtitle": "Rank is provisional. Candidates within roughly one point are the same practical tier.",
+        "dataset": "candidate_scores_table",
+        "sourceId": "candidate_scores",
+        "defaultSort": { "field": "rank", "direction": "asc" },
+        "density": "spacious",
+        "layout": "full",
+        "columns": [
+          { "field": "rank", "label": "Rank", "format": "number" },
+          { "field": "candidate", "label": "Candidate", "type": "text" },
+          { "field": "archive_fit", "label": "Archive Fit", "format": "number" },
+          { "field": "market_fit", "label": "Market Fit", "format": "number" },
+          { "field": "balanced_fit", "label": "Balanced Fit", "format": "number" },
+          { "field": "confidence", "label": "Confidence", "type": "text" },
+          { "field": "gate", "label": "Gate", "type": "text" },
+          { "field": "decisive_gap", "label": "What blocks contact", "type": "text" }
+        ]
+      }
+    ],
+    "sources": [
+      {
+        "id": "opportunity_notebook",
+        "label": "Opportunity scan notebook",
+        "path": "docs/product/opportunity-scan/mtl-archives-opportunity-scan-v1.ipynb",
+        "query": {
+          "engine": "python",
+          "language": "python",
+          "description": "Profiles the local canonical, VLM, taxonomy, OCR, and geocoding artifacts and validates the candidate score calculation.",
+          "executed_at": "2026-09-01T19:19:26Z",
+          "tables_used": [
+            "data/mtl_archives/manifest_scored.jsonl",
+            "data/mtl_archives/reports/autoresearch_vlm_full/manifest_vlm_structured_full_detailed_llava7b.jsonl",
+            "data/mtl_archives/reports/autoresearch_taxonomy/taxonomy_labels.jsonl",
+            "data/mtl_archives/manifest_ocr.jsonl",
+            "data/mtl_archives/manifest_geocoded.jsonl",
+            "docs/product/opportunity-scan/candidate-scores-v1.csv"
+          ],
+          "filters": [
+            "Read-only local artifacts available on September 1, 2026",
+            "Corpus grains are reported separately and are not summed"
+          ]
+        }
+      },
+      {
+        "id": "candidate_scores",
+        "label": "Reviewed candidate scorecard",
+        "path": "docs/product/opportunity-scan/candidate-scores-v1.csv",
+        "query": {
+          "engine": "duckdb",
+          "language": "sql",
+          "sql": "SELECT * FROM read_csv_auto('docs/product/opportunity-scan/candidate-scores-v1.csv') ORDER BY rank",
+          "description": "Scores bounded place, organization, buyer-role, and use-case hypotheses against Archive Fit and Market Fit.",
+          "executed_at": "2026-09-01T19:19:26Z",
+          "tables_used": [
+            "docs/product/opportunity-scan/candidate-scores-v1.csv"
+          ],
+          "filters": [
+            "Public evidence only",
+            "No private contact data",
+            "No buyer-intent evidence",
+            "Prestige and presumed budget receive zero weight"
+          ],
+          "metric_definitions": [
+            "Archive Fit = place linkage 20 + story coherence 20 + evidence diversity 15 + trust and release readiness 20 + dataset-specific lift 15 + activation readiness 10.",
+            "Market Fit = live trigger 25 + buyer authority 20 + access route 20 + outcome fit 15 + timing 10 + repeatability 10.",
+            "Balanced Fit = 2 × Archive Fit × Market Fit ÷ (Archive Fit + Market Fit)."
+          ]
+        }
+      },
+      {
+        "id": "capability_matrix",
+        "label": "Client-safe capability maturity matrix",
+        "path": "docs/product/opportunity-scan/capability-maturity-v1.csv",
+        "query": {
+          "engine": "duckdb",
+          "language": "sql",
+          "sql": "SELECT * FROM read_csv_auto('docs/product/opportunity-scan/capability-maturity-v1.csv')",
+          "description": "Groups implemented and researched archive capabilities by their current maturity and safe commercial claim boundary.",
+          "executed_at": "2026-09-01T19:19:26Z",
+          "tables_used": [
+            "docs/dataset-factory/canonical-corpus-v1-snapshot-summary.json",
+            "docs/dataset-factory/visual-family-graph-v1.md",
+            "docs/dataset-factory/quality-repair-v0.md",
+            "docs/dataset-factory/ocr-entity-review-001.md",
+            "docs/dataset-factory/client-closeout-v1.md",
+            "docs/autoresearch.md"
+          ]
+        }
+      },
+      {
+        "id": "canonical_snapshot",
+        "label": "Canonical corpus v1 snapshot",
+        "path": "docs/dataset-factory/canonical-corpus-v1-snapshot-summary.json",
+        "query": {
+          "engine": "duckdb",
+          "language": "sql",
+          "sql": "SELECT count(*) AS canonical_records FROM read_json_auto('data/mtl_archives/manifest_scored.jsonl', format = 'newline_delimited')",
+          "description": "Current reconciled corpus and serving-system coverage snapshot.",
+          "tables_used": ["docs/dataset-factory/canonical-corpus-v1-snapshot-summary.json"],
+          "metric_definitions": ["Canonical records are the 13,499 current D1 records, distinct from reconciled identities and aliases."]
+        }
+      },
+      {
+        "id": "taxonomy_report",
+        "label": "Autoresearch taxonomy report",
+        "path": "data/mtl_archives/reports/autoresearch_taxonomy/taxonomy_report.json",
+        "query": {
+          "engine": "duckdb",
+          "language": "sql",
+          "sql": "WITH labels AS (SELECT unnest(taxonomy.themes) AS theme FROM read_json_auto('data/mtl_archives/reports/autoresearch_taxonomy/taxonomy_labels.jsonl', format = 'newline_delimited')) SELECT theme, count(*) AS records FROM labels GROUP BY theme ORDER BY records DESC",
+          "description": "Counts taxonomy labels across the historical 14,822-row source grain.",
+          "tables_used": [
+            "data/mtl_archives/reports/autoresearch_taxonomy/taxonomy_report.json",
+            "data/mtl_archives/reports/autoresearch_taxonomy/taxonomy_labels.jsonl"
+          ],
+          "filters": ["Labels can overlap and are directional, not canonical unique-asset counts"],
+          "metric_definitions": ["Theme counts are the number of source-grain rows carrying each generated taxonomy theme."]
+        }
+      },
+      {
+        "id": "geocoded_manifest",
+        "label": "Local geocoding artifact",
+        "path": "data/mtl_archives/manifest_geocoded.jsonl",
+        "query": {
+          "engine": "duckdb",
+          "language": "sql",
+          "sql": "SELECT count(*) FILTER (WHERE latitude IS NOT NULL AND longitude IS NOT NULL) AS coordinate_rows, count(*) AS source_rows FROM read_json_auto('data/mtl_archives/manifest_geocoded.jsonl', format = 'newline_delimited')",
+          "description": "Counts coordinate-bearing rows in the 14,822-row local geocoding artifact.",
+          "tables_used": ["data/mtl_archives/manifest_geocoded.jsonl"],
+          "filters": ["Latitude and longitude both present"],
+          "metric_definitions": ["Coordinate coverage = 162 coordinate-bearing rows ÷ 14,822 source-grain rows."]
+        }
+      },
+      {
+        "id": "client_closeout",
+        "label": "Dataset Factory client closeout v1",
+        "path": "docs/dataset-factory/client-closeout-v1.md",
+        "query": {
+          "engine": "repository-artifact",
+          "description": "Records the bounded 60-record client specimen lane and its accepted verified dossiers.",
+          "tables_used": [
+            "docs/dataset-factory/client-closeout-v1.md",
+            "docs/dataset-factory/verified-dossiers-v1.md"
+          ],
+          "metric_definitions": ["Verified dossiers are accepted fully_verified dossiers in the 60-record client specimen lane."]
+        }
+      },
+      {
+        "id": "old_port_mission",
+        "label": "Old Port of Montréal Corporation mission",
+        "href": "https://www.oldportcorporation.com/"
+      },
+      {
+        "id": "old_port_plan",
+        "label": "Old Port master plan",
+        "href": "https://www.oldportcorporation.com/press-room/master-plan-old-port-montreal"
+      },
+      {
+        "id": "old_port_charter",
+        "label": "Old Port heritage interpretation charter",
+        "href": "https://www.oldportofmontreal.com/sites/default/files/inline-files/2025_heritage.pdf"
+      },
+      {
+        "id": "sdc_vm_mission",
+        "label": "SDC Vieux-Montréal mission and territory",
+        "href": "https://sdcvieuxmontreal.com/en/page/mission-and-values"
+      },
+      {
+        "id": "sdc_vm_projects",
+        "label": "SDC Vieux-Montréal signature projects",
+        "href": "https://sdcvieuxmontreal.com/page/projets-signature"
+      },
+      {
+        "id": "phi_contemporary",
+        "label": "PHI Contemporary project",
+        "href": "https://phi.ca/en/phi-contemporary/"
+      },
+      {
+        "id": "centreville_plan",
+        "label": "Montréal centre-ville public-space plan",
+        "href": "https://montrealcentreville.ca/en/communiques-en/montreal-centre-ville-unveils-plan-to-enhance-60-downtown-public-spaces/"
+      },
+      {
+        "id": "quo_vadis_portfolio",
+        "label": "GI Quo Vadis portfolio",
+        "href": "https://giquovadis.com/portfolio/"
+      },
+      {
+        "id": "gray_notre_dame",
+        "label": "Gray Collection Notre-Dame project",
+        "href": "https://graycollection.com/fr/projet-notre-dame/"
+      },
+      {
+        "id": "tourisme_strategy",
+        "label": "Tourisme Montréal strategic orientations",
+        "href": "https://apropos.mtl.org/en/reports-and-strategies/strategic-orientations"
+      }
+    ],
+    "blocks": [
+      {
+        "id": "title",
+        "type": "markdown",
+        "body": "# Where MTL Archives should go first"
+      },
+      {
+        "id": "executive_summary",
+        "type": "markdown",
+        "body": "## Executive Summary\n\n- **Build the first archive evidence packet around the Old Port of Montréal.** The collection is strongest where port, waterfront, infrastructure, industrial change, public space, and long aerial sequences meet. The [Old Port Corporation](https://www.oldportcorporation.com/) also has a formal [heritage interpretation charter](https://www.oldportofmontreal.com/sites/default/files/inline-files/2025_heritage.pdf) and an active public-realm program, so the use case is concrete.\n\n- **Treat SDC Vieux-Montréal as the first buyer-validation hypothesis and the benchmark to beat.** Its territory is bounded, it represents about 2,400 businesses, and it already commissioned [Les Chroniques du Vieux](https://sdcvieuxmontreal.com/page/projets-signature), an archival and AI capsule series. That proves appetite, but it also raises the bar. MTL Archives must show exact source linkage, visual-family organization, reviewed claims, and repeatable district coverage.\n\n- **Do not lead with Hôtel Nelligan.** The existing concept uses four manually selected records. It demonstrates a presentation format, not a dataset-derived reason that this property is the best first client. Keep it as a reference-only subject until stronger property evidence or a real buyer trigger appears.\n\n- **Do not contact anyone yet.** Only 162 of 14,822 local source-grain rows have coordinates, several name-based matches are wrong, OCR confidence is low, and the strongest taxonomy work lives at a different grain from the canonical corpus. The next gate is a reviewed 6 to 12 record evidence packet, not outreach."
+      },
+      {
+        "id": "headline_metrics",
+        "type": "metric-strip",
+        "cardIds": [
+          "canonical_records_card",
+          "waterfront_theme_card",
+          "coordinate_coverage_card"
+        ]
+      },
+      {
+        "id": "factory_finding",
+        "type": "markdown",
+        "body": "## The Factory is real; the current concept hid it\n\nMTL Archives already has a production-backed canonical corpus, semantic and visual search, BGE and CLIP embeddings, reversible aliases, and source-linked identities. Research runs add VLM descriptions, taxonomy, visual families, long aerial sequences, image-quality review, candidate collections, OCR clues, and a bounded verified-dossier lane.\n\nThe safe claim is specific: **we can use the archive system to discover and review relationships among records, then assemble a source-linked place story.** We cannot yet claim a live archive-wide OCR index, reliable citywide geocoding, production taxonomy, DINO, SAM, or DETR."
+      },
+      {
+        "id": "capability_evidence",
+        "type": "table",
+        "tableId": "capability_table"
+      },
+      {
+        "id": "archive_shape_heading",
+        "type": "markdown",
+        "body": "## The archive points toward urban systems, not hotel decor\n\nThe generated taxonomy is dominated by aerial views and large urban themes. Waterfront, parks, residential change, transit, industry, and construction account for the most useful opportunity signals. Street-level commercial records are valuable because reviewed signs and businesses can support exact stories, but they are a small slice and should not carry the first product alone."
+      },
+      {
+        "id": "archive_themes",
+        "type": "chart",
+        "chartId": "archive_themes_chart"
+      },
+      {
+        "id": "archive_shape_interpretation",
+        "type": "markdown",
+        "body": "The chart shows generated labels, not canonical unique assets, and themes can overlap. Even with that limitation, the direction is unambiguous. The strongest first activation should explain change across a district, waterfront, infrastructure system, park network, or adaptive-reuse corridor. A hotel can become a delivery surface later, once the underlying place evidence is strong enough."
+      },
+      {
+        "id": "ranking_heading",
+        "type": "markdown",
+        "body": "## Two first-tier routes emerge\n\nThe Old Port and SDC Vieux-Montréal are effectively tied. Their 0.3-point Balanced Fit difference is not meaningful. They serve different immediate jobs: **the Old Port is the strongest place to build the archive proof; the SDC is the strongest first commercial-validation hypothesis once that proof passes review.**\n\nThe score separates Archive Fit from Market Fit, then uses their harmonic mean so a famous organization cannot outrank a better-balanced opportunity. Public facts can support a hypothesis, but no score substitutes for a buyer conversation."
+      },
+      {
+        "id": "candidate_fit",
+        "type": "chart",
+        "chartId": "candidate_fit_chart"
+      },
+      {
+        "id": "candidate_fit_interpretation",
+        "type": "markdown",
+        "body": "PHI Contemporary has the clearest dated project window, with a 2029 opening at Bonsecours and Saint-Paul, but exact archive coverage for that parcel is unproven. Montréal centre-ville has a credible public-space application. GI Quo Vadis aligns with the industrial and canal material. Gray Collection has a real Old Montréal portfolio and an active Notre-Dame project, but the work could easily collapse into decorative hospitality imagery. Tourisme Montréal is better treated as a later distribution route."
+      },
+      {
+        "id": "candidate_decision_table",
+        "type": "table",
+        "tableId": "candidate_table"
+      },
+      {
+        "id": "next_steps",
+        "type": "markdown",
+        "body": "## Recommended next steps\n\n1. **Create a canonical opportunity crosswalk for the Old Port and SDC Vieux-Montréal territories.** Join canonical identities to taxonomy, VLM, sequences, visual families, reviewed OCR entities, dates, source metadata, and rights state. Keep exact place evidence separate from model inference.\n\n2. **Build one Old Port evidence packet with 6 to 12 records.** Use at least three independent visual families and two periods or themes. Include canonical record IDs, original source links, claim labels, uncertainty, quality state, and rights boundaries.\n\n3. **Run a dataset-specific lift test.** Compare the packet with a basic Google and archive-site search and with Les Chroniques du Vieux. Keep only the relationships, sequences, entities, or provenance that the Factory materially improves.\n\n4. **Review the packet before outreach.** The owner should approve the exact artifact, recipient hypothesis, message, sender, channel, follow-up, and stop boundary. No public score or internal enthusiasm counts as buyer evidence.\n\n5. **Use a fixed paid offer only after a concrete action signal.** The likely place-path offer is the City Memory Concept Study. A smaller diagnostic is appropriate only if the brief is real but immature and its conversion path is explicit."
+      },
+      {
+        "id": "further_questions",
+        "type": "markdown",
+        "body": "## Questions that can still change the decision\n\n- Can the Old Port footprint produce 6 to 12 rights-reviewable records across independent visual families and at least two periods?\n- Does the Factory reveal something materially better than the Old Port's existing interpretation and the SDC's existing capsules?\n- Is there an approved warm route to a role that owns heritage interpretation, programming, visitor experience, or district projects?\n- Which records can support exact-place claims, and which must remain district-level or inferred?\n- Does the first paid path belong with a place operator, a district steward, or an institution that controls its own collection?"
+      },
+      {
+        "id": "caveats",
+        "type": "markdown",
+        "body": "## Caveats and assumptions\n\n- **The corpus has several valid grains.** The 13,499-row canonical corpus, 14,822-row VLM and taxonomy source grain, and 18,462-identity reconciled graph answer different questions and must not be added together.\n- **Taxonomy and VLM are historical research artifacts.** They are useful for discovery, but current D1 enrichment coverage is zero and labels are not publication authority.\n- **OCR is broad but weak.** The local OCR artifact has 13,553 nonempty results, yet median confidence is about 0.27 and many repeated terms come from municipal scan labels. Important entities require visual review.\n- **Geocoding is not representative.** Coordinate coverage is about 1.1 percent, and several name-only resolutions are wrong. Low mapped density does not mean low archive density.\n- **Market Fit is a public-source hypothesis.** No active problem, budget authority, procurement path, or buyer intent has been confirmed. Every candidate is `Explore only` except Hôtel Nelligan, which is `Hold`.\n- **No outreach is authorized by this report.** Public sources were reviewed as of September 1, 2026."
+      }
+    ]
+  },
+  "snapshot": {
+    "version": 1,
+    "generatedAt": "2026-09-01T19:19:26Z",
+    "status": "ready",
+    "datasets": {
+      "canonical_metrics": [
+        { "canonical_records": 13499 }
+      ],
+      "taxonomy_metrics": [
+        { "waterfront_labels": 3583 }
+      ],
+      "geocode_metrics": [
+        { "coordinate_coverage": 0.01093, "coordinate_rows": 162, "source_rows": 14822 }
+      ],
+      "archive_themes": [
+        { "theme": "Parks and green space", "records": 6020, "source_grain": 14822, "canonicalized": false },
+        { "theme": "Waterfront", "records": 3583, "source_grain": 14822, "canonicalized": false },
+        { "theme": "Residential", "records": 2920, "source_grain": 14822, "canonicalized": false },
+        { "theme": "Transit", "records": 1619, "source_grain": 14822, "canonicalized": false },
+        { "theme": "Industrial", "records": 1296, "source_grain": 14822, "canonicalized": false },
+        { "theme": "Construction", "records": 848, "source_grain": 14822, "canonicalized": false },
+        { "theme": "Winter", "records": 350, "source_grain": 14822, "canonicalized": false },
+        { "theme": "Crowd and event", "records": 310, "source_grain": 14822, "canonicalized": false }
+      ],
+      "candidate_fit_long": [
+        { "rank": 1, "candidate_short": "Old Port", "score_type": "Archive Fit", "score": 77, "balanced_fit": 73.3, "confidence": "Moderate", "gate": "Explore only" },
+        { "rank": 1, "candidate_short": "Old Port", "score_type": "Market Fit", "score": 70, "balanced_fit": 73.3, "confidence": "Moderate", "gate": "Explore only" },
+        { "rank": 2, "candidate_short": "SDC Vieux-Montréal", "score_type": "Archive Fit", "score": 74, "balanced_fit": 73.0, "confidence": "Moderate", "gate": "Explore only" },
+        { "rank": 2, "candidate_short": "SDC Vieux-Montréal", "score_type": "Market Fit", "score": 72, "balanced_fit": 73.0, "confidence": "Moderate", "gate": "Explore only" },
+        { "rank": 3, "candidate_short": "SDC centre-ville", "score_type": "Archive Fit", "score": 70, "balanced_fit": 66.3, "confidence": "Moderate-low", "gate": "Explore only" },
+        { "rank": 3, "candidate_short": "SDC centre-ville", "score_type": "Market Fit", "score": 63, "balanced_fit": 66.3, "confidence": "Moderate-low", "gate": "Explore only" },
+        { "rank": 4, "candidate_short": "PHI", "score_type": "Archive Fit", "score": 57, "balanced_fit": 62.0, "confidence": "Low", "gate": "Explore only" },
+        { "rank": 4, "candidate_short": "PHI", "score_type": "Market Fit", "score": 68, "balanced_fit": 62.0, "confidence": "Low", "gate": "Explore only" },
+        { "rank": 5, "candidate_short": "Tourisme Montréal", "score_type": "Archive Fit", "score": 61, "balanced_fit": 62.0, "confidence": "Low", "gate": "Explore only" },
+        { "rank": 5, "candidate_short": "Tourisme Montréal", "score_type": "Market Fit", "score": 63, "balanced_fit": 62.0, "confidence": "Low", "gate": "Explore only" },
+        { "rank": 6, "candidate_short": "GI Quo Vadis", "score_type": "Archive Fit", "score": 66, "balanced_fit": 61.7, "confidence": "Low", "gate": "Explore only" },
+        { "rank": 6, "candidate_short": "GI Quo Vadis", "score_type": "Market Fit", "score": 58, "balanced_fit": 61.7, "confidence": "Low", "gate": "Explore only" },
+        { "rank": 7, "candidate_short": "Gray Collection", "score_type": "Archive Fit", "score": 58, "balanced_fit": 61.7, "confidence": "Low", "gate": "Explore only" },
+        { "rank": 7, "candidate_short": "Gray Collection", "score_type": "Market Fit", "score": 66, "balanced_fit": 61.7, "confidence": "Low", "gate": "Explore only" },
+        { "rank": 8, "candidate_short": "Hôtel Nelligan", "score_type": "Archive Fit", "score": 44, "balanced_fit": 30.2, "confidence": "Low", "gate": "Hold" },
+        { "rank": 8, "candidate_short": "Hôtel Nelligan", "score_type": "Market Fit", "score": 23, "balanced_fit": 30.2, "confidence": "Low", "gate": "Hold" }
+      ],
+      "candidate_scores_table": [
+        { "rank": 1, "candidate": "Old Port of Montréal Corporation", "archive_fit": 77, "market_fit": 70, "balanced_fit": 73.3, "confidence": "Moderate", "gate": "Explore only", "decisive_gap": "Canonical place crosswalk, rights review, and approved route" },
+        { "rank": 2, "candidate": "SDC Vieux-Montréal", "archive_fit": 74, "market_fit": 72, "balanced_fit": 73.0, "confidence": "Moderate", "gate": "Explore only", "decisive_gap": "Prove lift over Les Chroniques du Vieux and establish a route" },
+        { "rank": 3, "candidate": "SDC Montréal centre-ville", "archive_fit": 70, "market_fit": 63, "balanced_fit": 66.3, "confidence": "Moderate-low", "gate": "Explore only", "decisive_gap": "Exact site mapping and approved route" },
+        { "rank": 4, "candidate": "PHI Contemporary", "archive_fit": 57, "market_fit": 68, "balanced_fit": 62.0, "confidence": "Low", "gate": "Explore only", "decisive_gap": "Archive density and exact parcel linkage" },
+        { "rank": 5, "candidate": "Tourisme Montréal", "archive_fit": 61, "market_fit": 63, "balanced_fit": 62.0, "confidence": "Low", "gate": "Explore only", "decisive_gap": "A bounded first product and confirmed buyer problem" },
+        { "rank": 6, "candidate": "GI Quo Vadis", "archive_fit": 66, "market_fit": 58, "balanced_fit": 61.7, "confidence": "Low", "gate": "Explore only", "decisive_gap": "Exact building matches, timing, and route" },
+        { "rank": 7, "candidate": "Gray Collection", "archive_fit": 58, "market_fit": 66, "balanced_fit": 61.7, "confidence": "Low", "gate": "Explore only", "decisive_gap": "Property evidence and a non-decorative use case" },
+        { "rank": 8, "candidate": "Hôtel Nelligan reference concept", "archive_fit": 44, "market_fit": 23, "balanced_fit": 30.2, "confidence": "Low", "gate": "Hold", "decisive_gap": "No buyer problem, trigger, authority, route, or dataset-derived site proof" }
+      ],
+      "capability_maturity": [
+        { "order": 1, "capability": "Canonical corpus and provenance", "maturity": "Production", "evidence": "18,462 reconciled identities, 13,499 D1 records, and 4,963 reversible aliases", "commercial_implication": "Trace selected images to source identity and avoid treating aliases as independent evidence" },
+        { "order": 2, "capability": "Semantic and visual search", "maturity": "Production", "evidence": "BGE text vectors cover 18,464 IDs; CLIP vectors cover 18,382 IDs; semantic, visual, and hybrid modes are active", "commercial_implication": "Discover concepts through archive search instead of manual image browsing" },
+        { "order": 3, "capability": "VLM descriptions and taxonomy", "maturity": "Research-complete", "evidence": "A 14,822-row run produced 14,706 captions and 14,283 high-confidence taxonomy labels", "commercial_implication": "Form reviewed themes and clusters without calling them a live classification service" },
+        { "order": 4, "capability": "OCR and entity clues", "maturity": "Review-ready", "evidence": "13,553 nonempty local OCR results; median confidence about 0.27; small reviewed entity seed", "commercial_implication": "Use signs and entities only after human verification" },
+        { "order": 5, "capability": "Location and geocoding", "maturity": "Review-ready", "evidence": "162 coordinate-bearing local rows with several inaccurate name-based matches", "commercial_implication": "Guide a bounded scan but do not claim archive-wide location coverage" },
+        { "order": 6, "capability": "Visual families, sequences, and dedupe", "maturity": "Research-complete", "evidence": "18,462 graph nodes, 920 components, 345,870 typed edges, and 120 reviewed decisions", "commercial_implication": "Assemble coherent sequences and remove repeated variants while keeping similarity review-bound" },
+        { "order": 7, "capability": "Image quality and derivatives", "maturity": "Review-ready", "evidence": "620 of 700 audit records assessed; 482 successful derivatives in a 500-record pilot", "commercial_implication": "Prepare a controlled specimen without promising uniform archive-wide quality" },
+        { "order": 8, "capability": "Candidates and collections", "maturity": "Review-ready", "evidence": "313 generated candidate rows and 21 collections containing 383 records", "commercial_implication": "Review several archive-derived directions without treating generation as publication authority" },
+        { "order": 9, "capability": "Dossiers and evaluation", "maturity": "Review-ready", "evidence": "Gold labels, active-learning queues, retrieval evaluation, and 32 accepted verified dossiers", "commercial_implication": "Make a bounded paid pilot auditable without overclaiming archive-wide accuracy" },
+        { "order": 10, "capability": "Advanced vision models", "maturity": "Deferred", "evidence": "DINO was not run; SAM was not used in the completed workflow; no DETR or DERT implementation was found", "commercial_implication": "Keep these models out of first-pilot capability claims" }
+      ]
+    }
+  }
+}
