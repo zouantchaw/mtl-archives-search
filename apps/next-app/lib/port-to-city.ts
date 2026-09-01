@@ -2,6 +2,7 @@ import evidenceCoreJson from '@/content/port-to-city/evidence-core.v1.json';
 import portToCityJson from '@/content/port-to-city/cuts/port-to-city.v1.json';
 import oldPortJson from '@/content/port-to-city/cuts/old-port.v1.json';
 import sdcJson from '@/content/port-to-city/cuts/sdc-vieux-montreal.v1.json';
+export { canRenderPortToCity } from '@/lib/port-to-city-access';
 
 export type EvidenceRecord = (typeof evidenceCoreJson.records)[number];
 export type EvidenceFamily = (typeof evidenceCoreJson.families)[number];

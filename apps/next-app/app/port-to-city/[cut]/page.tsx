@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { PortToCityExperience } from '@/components/port-to-city/PortToCityExperience';
-import { getPortToCityExperience, isRecipientCut } from '@/lib/port-to-city';
+import { canRenderPortToCity, getPortToCityExperience, isRecipientCut } from '@/lib/port-to-city';
 
 export const dynamicParams = false;
 
@@ -23,7 +23,7 @@ export async function generateMetadata({ params }: { params: Promise<{ cut: stri
 
 export default async function RecipientCutPage({ params }: { params: Promise<{ cut: string }> }) {
   const { cut } = await params;
-  if (!isRecipientCut(cut)) notFound();
+  if (!canRenderPortToCity() || !isRecipientCut(cut)) notFound();
 
   return <PortToCityExperience experience={getPortToCityExperience(cut)} />;
 }

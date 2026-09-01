@@ -1,5 +1,7 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+import type { NextFetchEvent, NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { canRenderPortToCity } from '@/lib/port-to-city-access';
 
 const isPublicRoute = createRouteMatcher([
   '/',
@@ -23,7 +25,7 @@ const isPublicRoute = createRouteMatcher([
   '/robots.txt',
 ]);
 
-export default clerkMiddleware(async (auth, req) => {
+const clerkProxy = clerkMiddleware(async (auth, req) => {
   const photoMatch = req.nextUrl.pathname.match(/^\/photo\/([^/]+)\.json$/i);
   if (photoMatch) {
     const normalizedId = photoMatch[1];
@@ -36,6 +38,20 @@ export default clerkMiddleware(async (auth, req) => {
     await auth.protect();
   }
 });
+
+export default function proxy(req: NextRequest, event: NextFetchEvent) {
+  if (req.nextUrl.pathname.startsWith('/port-to-city') && !canRenderPortToCity()) {
+    return new NextResponse('Not found', {
+      status: 404,
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'X-Robots-Tag': 'noindex, nofollow',
+      },
+    });
+  }
+
+  return clerkProxy(req, event);
+}
 
 export const config = {
   matcher: [

@@ -13,7 +13,8 @@
 - [x] **City Memory evidence reference (#126)** — replace the weak
   property-first mockup with a dataset-led Port-to-City evidence core, a
   canonical crosswalk, a 100-record retrieval pool, ten reviewed records, and
-  separate Old Port and SDC Vieux-Montréal internal-review routes.
+  separate Old Port and SDC Vieux-Montréal internal-review routes that fail
+  closed on the production deployment.
 - [ ] **City Memory Buyer Validation v2 (#127)** — complete final rights and
   sequence review, choose one recipient path, obtain explicit approval for the
   prospect and outreach materials, then test the corresponding offer without

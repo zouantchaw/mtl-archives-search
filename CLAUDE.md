@@ -200,6 +200,7 @@ Next app runtime env:
 - Public entry now defaults to the editorial landing page on `/`; do not reintroduce random home-to-game redirects.
 - Route-specific V4 surfaces exist for `/`, `/search`, `/photo/[id]`, `/print`, `/checkout`, `/order-confirmation`, `/sign-in`, `/sign-up`, and `/game`.
 - Port-to-City internal-review surfaces exist at `/port-to-city`, `/port-to-city/old-port`, and `/port-to-city/sdc-vieux-montreal`. They are `noindex`, use one versioned evidence core, and must keep archive-reported claims separate from observed evidence and unresolved questions.
+- Port-to-City routes must return 404 when `VERCEL_ENV=production` unless the evidence package release status is explicitly `public`. A private Vercel preview, not an unlinked production URL, is the review surface.
 - Stripe Checkout now handles payment collection for prints; fulfillment remains manual after the paid order webhook fires.
 - Hosted Stripe Checkout is not the shipping-pricing authority in this repo; the app validates the address and fixes the quote before redirect.
 - Newsletter consent is explicit-only. Do not auto-enroll Clerk/game signups without a dedicated opt-in action and audit log entry.

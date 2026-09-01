@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import { PortToCityExperience } from '@/components/port-to-city/PortToCityExperience';
-import { getPortToCityExperience } from '@/lib/port-to-city';
+import { canRenderPortToCity, getPortToCityExperience } from '@/lib/port-to-city';
 
 export const metadata: Metadata = {
   title: 'Port to City, evidence core',
@@ -9,5 +10,6 @@ export const metadata: Metadata = {
 };
 
 export default function PortToCityPage() {
+  if (!canRenderPortToCity()) notFound();
   return <PortToCityExperience experience={getPortToCityExperience('port-to-city')} />;
 }

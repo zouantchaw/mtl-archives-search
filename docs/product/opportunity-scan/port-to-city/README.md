@@ -34,8 +34,9 @@ the checked-in builder.
 - `/port-to-city/old-port`: Old Port Corporation cut
 - `/port-to-city/sdc-vieux-montreal`: SDC Vieux-Montréal cut
 
-All routes are `noindex`. The release status is `internal_review`, not public
-or buyer clearance.
+All routes are `noindex`. While release status is `internal_review`, they are
+available in local development and deployment-protected Vercel previews, but
+return 404 when `VERCEL_ENV=production`. This is not public or buyer clearance.
 
 ## Reproduce the crosswalk
 
