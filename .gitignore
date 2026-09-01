@@ -94,3 +94,4 @@ data/social/publish-registry.jsonl
 data/social/autoresearch_shortlist/
 data/social/cross-platform-content-analytics/
 .tmp_live_patch/
+/tmp/pdfs/

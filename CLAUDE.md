@@ -92,6 +92,10 @@ npm run dataset-factory:verified-multimodal-001
 npm run dataset-factory:verified-multimodal-self-test-001
 npm run city-memory:validation:self-test-v1
 npm run city-memory:validation:verify-v1
+npm run dev --workspace=@mtl-archives/city-memory
+npm run typecheck --workspace=@mtl-archives/city-memory
+npm run validate:client --workspace=@mtl-archives/city-memory
+npm run build --workspace=@mtl-archives/city-memory
 ```
 
 ## Architecture
@@ -101,6 +105,7 @@ npm run city-memory:validation:verify-v1
 apps/
 ├── api/                # Cloudflare Worker (REST API)
 │   └── src/worker.ts   # Single entry point: /api/photos, /api/search
+├── city-memory/        # Standalone City Memory client reference artifact
 ├── next-app/           # Next.js frontend (search, Leaflet map, game, prints)
 └── web/                # Research explorer (Vite + Three.js, CLIP point cloud)
 
@@ -226,6 +231,7 @@ Next app runtime env:
 - Post operations should use `pipelines/daily-reel/post_publish.py` against the persisted Meta token state. The repo supports daily-package publishing for Instagram carousel posts and Facebook Page reels, with idempotency through `data/social/publish-registry.jsonl`.
 - Do not imply feature parity with manual Story posting. Server-side Story publishing does not support link, poll, or location stickers. If the creative depends on a clickable `DEFI DU JOUR` link to `/game`, that is a manual/mobile step, not something the repo can silently fake.
 - Dataset Factory v0 lives under `docs/dataset-factory/` and `packages/scripts/src/dataset-factory/`. Keep large generated output under ignored `data/mtl_archives/reports/`; do not commit generated report trees.
+- The Hôtel Nelligan City Memory reference lives under `apps/city-memory/`, with its evidence and release boundary under `docs/city-memory-nelligan-reference/`. Keep it standalone and static-hostable, preserve the uncommissioned/non-affiliation label, never describe conceptual Three.js massing as a measured survey, and do not add current hotel photography without explicit permission and rights review.
 - The artifact registry is `docs/dataset-factory/artifact-registry.v0.jsonl`. Its 118 entries include the issue #69 synthetic pilot plus tracked candidate, primary visual-promotion, independent visual-review, and Gate H2 runtime-source descriptors; they must stay a schema-valid acyclic graph with stable IDs, SHA-256 digests, exact non-overlapping membership, lineage, explicit human decision/external acquisition boundaries, generation methods/commands, dependency IDs, rights boundaries, and created timestamps. Never put secrets, `.env` values, private keys, cursors, or expiring signed URLs in it.
 - Gold Label Batch 002 for issue #68 is complete, reviewed, validated, and durably published. Keep the ignored evidence tree (`data/mtl_archives/reports/gold_label_batch_002`) distinct from the hash-bound R2 final archive (`r2://wiel-codex-worker-cache/artifacts/mtl-archives/gold-label-batch-002/11c4577c5fa2b0393d2c83a9c9a75effcf7c97252febc646fa8ceca4e6789fcd.tar.gz`). Completion reports must derive adjudication-change rates from the existing per-target change counts divided by the explicit 300-row denominator; do not invent counts or expose temporary URLs.
 - Verified Multimodal Intelligence Batch 001 for issue #69 has a synthetic foundation, a 26-record canonical-real candidate pool, and a hash-bound primary visual promotion of 12 selected plus 4 reserves. The selected set is balanced 6 ground and 6 aerial/control. Independent visual review approved all 16 primary decisions with zero disagreements; historical verification, dossiers, and benchmarks remain zero. Run all three stages' build, self-test, verify, and integration commands. Do not claim the 60-record target is complete until reviewed dossiers, metrics, overlays, external verification, and independent review are present.
