@@ -75,7 +75,7 @@ export const interventions = [
   {
     number: '01',
     title: 'Cross the Layers',
-    summary: 'Four exact reviewed street records move through a conceptual atrium, making the hotel’s connected building history legible without inventing archival content.',
+    summary: 'Four full-frame records occupy a conceptual atrium elevation at different heights and viewing distances, moving from street scale to civic detail.',
     visual: 'atrium' as const,
     fields: [
       ['Location', 'Central atrium / multi-level void'],
@@ -104,7 +104,7 @@ export const interventions = [
     number: '03',
     title: 'Continue the Walk',
     summary: 'A concierge encounter uses the exact waterfront record as an invitation to notice the working city beyond the hotel.',
-    visual: 'walk' as const,
+    visual: 'concierge' as const,
     fields: [
       ['Location', 'Concierge / outward-facing salon'],
       ['Scale', 'Approx. 1100 × 750 mm; verify'],

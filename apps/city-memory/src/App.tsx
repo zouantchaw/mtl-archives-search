@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { archiveRecords, interventions, propertyFacts, type ArchiveRecord } from './data';
+import { ApplicationVisual, ArchiveCover } from './ApplicationVisual';
 import { PrintDeck } from './PrintDeck';
-import { SourceVisual } from './SourceVisual';
 
 const SpatialScene = lazy(() => import('./SpatialScene').then((module) => ({ default: module.SpatialScene })));
 
@@ -22,7 +22,7 @@ function Header() {
         <a href="#concept">Concept</a>
         <a href="#spatial">Spatial study</a>
         <a href="#evidence">Evidence</a>
-        <a href="#production">Production</a>
+        <a href="#production">Applications</a>
       </nav>
     </header>
   );
@@ -34,15 +34,12 @@ function Hero() {
       <Header />
       <div className="hero-copy">
         <h1>The Street<br />Within</h1>
-        <p>A guest sequence through Hôtel Nelligan, built from four reviewed records of streets and public spaces in Old Montréal.</p>
+        <p>Four reviewed Montréal records become three guest encounters across arrival, stay, and the return to the city outside.</p>
         <a className="primary-action" href="#spatial">Walk the concept <Arrow /></a>
         <div className="release-meta">Uncommissioned reference concept · 01 September 2026 · Conceptual visualization</div>
       </div>
-      <div className="hero-model" role="img" aria-label="Original conceptual hotel cutaway using exact reviewed MTL Archives records; not a representation of the current hotel">
-        <SourceVisual kind="cutaway" eager labelled />
-        <div className="camera-index" aria-hidden="true">
-          <span>04</span><span>03</span><span>02</span><span>01</span>
-        </div>
+      <div className="hero-model">
+        <ArchiveCover />
       </div>
       <a href="#concept" className="scroll-cue">Scroll <span /></a>
     </section>
@@ -82,6 +79,12 @@ function PropertyContext() {
 }
 
 function Direction() {
+  const journey = [
+    ['Arrive', 'Notice the archive sequence and orient to the district.', 'Atrium / guest experience', 'Arrival sightline and dwell time'],
+    ['Cross', 'Look up, pause, and encounter four records at distinct distances.', 'Atrium / facilities', 'Suspension, loading, light, and life safety'],
+    ['Stay', 'Discover one full-frame work and its source inside a pilot room.', 'Rooms / housekeeping', 'Room category, wall fixing, and maintenance'],
+    ['Continue', 'Ask for a present-day walk linked to one historical view.', 'Concierge / content owner', 'Route, bilingual copy, and seasonal review'],
+  ];
   return (
     <section className="direction-section">
       <div className="section-number">02 / Direction</div>
@@ -90,6 +93,16 @@ function Direction() {
         <p><strong>Meet the Street. Cross the Layers.</strong> Arrival begins with archive-reported Square d’Youville. Four reviewed records then occupy the atrium as a sequence of street, commerce, civic architecture, and waterfront work.</p>
         <p><strong>Stay Among Traces. Continue the Walk.</strong> A room holds one source-linked viewpoint. A concierge encounter directs attention back to present-day Montréal. No image is presented as a reconstruction or as a view from the hotel.</p>
       </div>
+      <ol className="guest-journey">
+        {journey.map(([moment, action, owner, decision], index) => (
+          <li key={moment}>
+            <span>0{index + 1}</span>
+            <h3>{moment}</h3>
+            <p>{action}</p>
+            <dl><div><dt>Owner</dt><dd>{owner}</dd></div><div><dt>Decision</dt><dd>{decision}</dd></div></dl>
+          </li>
+        ))}
+      </ol>
     </section>
   );
 }
@@ -107,11 +120,11 @@ function ArchiveSequence({ onSelect }: { onSelect: (record: ArchiveRecord) => vo
           <button key={record.id} className="archive-panel" onClick={() => onSelect(record)}>
             <span className="archive-index">0{index + 1}</span>
             <img src={record.image} alt={`${record.title}, ${record.date}`} loading="lazy" decoding="async" />
-            <span className="archive-caption"><strong>{record.title}</strong>{record.date} · archive-reported</span>
+            <span className="archive-caption"><strong>{record.title}</strong>{record.date}<small>{record.role}</small></span>
           </button>
         ))}
       </div>
-      <p className="attribution">Images: Ville de Montréal / Archives de la Ville de Montréal · CC BY 4.0 authority captured · production review required.</p>
+      <p className="attribution">Source confirmed · reproduction approval pending · detailed record and rights notes available on selection.</p>
     </section>
   );
 }
@@ -209,8 +222,8 @@ function SpatialStudy({ selected, onSelect }: { selected: ArchiveRecord; onSelec
           <SpatialScene records={archiveRecords} selected={selected} onSelect={onSelect} />
         </Suspense>
       ) : (
-        <div className="scene-poster" role="img" aria-label="Conceptual interior street preview using exact reviewed archive records">
-          <SourceVisual kind="cutaway" />
+        <div className="scene-poster" role="img" aria-label="Four reviewed archive records awaiting the spatial study">
+          <ArchiveCover compact />
           <span>The spatial study loads as this chapter approaches.</span>
         </div>
       )}
@@ -232,16 +245,16 @@ function SpatialStudy({ selected, onSelect }: { selected: ArchiveRecord; onSelec
 function InterventionStudies() {
   return (
     <section className="interventions" id="production">
-      <div className="section-number">05 / Production studies</div>
+      <div className="section-number">05 / Proposed applications</div>
       <div className="intervention-heading">
-        <h2>Exact records,<br />placed with intent</h2>
-        <p>The architectural settings are conceptual. Every historical image shown within them is one of the four reviewed MTL Archives files. No archival content has been invented inside the visualizations.</p>
+        <h2>Three guest<br />encounters</h2>
+        <p>The archive becomes a guest sequence through three proposed encounters. Each has a specific moment, physical format, operational owner, and approval path.</p>
       </div>
       <div className="intervention-list">
         {interventions.map((item) => (
           <article className="intervention" key={item.number}>
             <div className="intervention-title"><span>{item.number}</span><h3>{item.title}</h3><p>{item.summary}</p></div>
-            <SourceVisual kind={item.visual} labelled />
+            <ApplicationVisual kind={item.visual} />
             <dl>{item.fields.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
           </article>
         ))}
@@ -251,27 +264,24 @@ function InterventionStudies() {
 }
 
 function ProvenanceChain() {
-  const steps = [
-    ['Source', 'Record and pixels are captured with authority and identifiers.'],
-    ['Review', 'Visible evidence is separated from archive-reported metadata.'],
-    ['Interpretation', 'Design intent, crop, material, and uncertainty are recorded.'],
-    ['Approval', 'Rights holder and property stakeholders approve the use.'],
-    ['Fabrication', 'Samples, drawings, production files, and credits are released.'],
+  const decisions = [
+    ['Archive selection', 'Four reviewed candidates', 'Brand and curatorial approval'],
+    ['Image use', 'Full-frame concept treatment', 'Reproduction and crop approval'],
+    ['Placement', 'Three proposed guest encounters', 'Property, facilities, and life-safety review'],
+    ['Guest language', 'English concept copy drafted', 'French and English brand review'],
+    ['Operations', 'Maintenance and route assumptions', 'Housekeeping and concierge sign-off'],
   ];
   return (
     <section className="provenance-chain">
-      <div className="section-number">06 / Provenance chain</div>
-      <h2>Nothing crosses the room<br />without its source.</h2>
-      <ol>
-        {steps.map(([title, detail], index) => (
-          <li key={title}>
-            <span>0{index + 1}</span>
-            <h3>{title}</h3>
-            <p>{detail}</p>
-          </li>
+      <div className="section-number">06 / Hotel decisions</div>
+      <h2>What Nelligan<br />would approve.</h2>
+      <div className="decision-table" role="table" aria-label="Current proposal status and hotel approvals">
+        <div className="decision-row decision-head" role="row"><span role="columnheader">Area</span><span role="columnheader">Current position</span><span role="columnheader">Hotel approval</span></div>
+        {decisions.map(([area, current, approval]) => (
+          <div className="decision-row" role="row" key={area}><strong role="cell">{area}</strong><span role="cell">{current}</span><span role="cell">{approval}</span></div>
         ))}
-      </ol>
-      <p className="chain-note">Provenance keeps the source, review decisions, permissions, design use, and final production file connected. The client sees the approved work and can inspect the record behind it.</p>
+      </div>
+      <p className="chain-note">Provenance keeps the approved source, treatment, permissions, placement, guest copy, and production file connected behind these decisions.</p>
     </section>
   );
 }
@@ -282,15 +292,15 @@ function NextMove() {
     <section className="next-move">
       <div>
         <h2>The next move is a<br />measured site study.</h2>
-        <p>This reference concept establishes the direction. A five-week paid study would replace assumptions with property-approved photography, measured sightlines, structural constraints, light studies, a rights-reviewed image shortlist, and fabrication samples.</p>
+        <p>A five-week study would replace the remaining assumptions and end with one recommended pilot, three resolved applications, named approvals, and a costed route to fabrication.</p>
       </div>
       <ul>
-        <li>Property walk + measured surfaces</li>
-        <li>Current plan and circulation review</li>
-        <li>Archive shortlist + rights requests</li>
+        <li>Property walk, sightlines, and guest journey</li>
+        <li>One recommended pilot application</li>
+        <li>Rights-reviewed archive shortlist</li>
         <li>Three resolved spatial applications</li>
-        <li>Material, light, and maintenance tests</li>
-        <li>Cost class + production roadmap</li>
+        <li>Material, light, maintenance, and staff playbook</li>
+        <li>Cost class, approval gates, and fabrication roadmap</li>
       </ul>
       <div className="fixed-offer" aria-label="Reference commercial scope">
         <span>City Memory Concept Study</span>

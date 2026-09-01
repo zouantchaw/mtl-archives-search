@@ -17,8 +17,8 @@ approved by the owner.
 
 Preserve two commercial projections over one technical contract: institution
 fit/activation work and place-based City Memory concept studies. Preserve the
-four trust zones—client collection, private processing, human review, and
-approved output—in product contracts and handoffs. Hôtel Nelligan is the pilot's
+four trust zones: client collection, private processing, human review, and
+approved output. Hôtel Nelligan is the pilot's
 subject and a possible recipient, not an assumed first buyer. The historical
 $3,500 proposal may be used only as explicitly approved, credited discovery;
 it must not silently replace the service ladder or a City Memory Concept Study.
@@ -129,7 +129,7 @@ pipelines/
 ### Search Modes
 | Mode | Vector Index | Embedding |
 |------|--------------|-----------|
-| `text` | None (SQL LIKE) | — |
+| `text` | None (SQL LIKE) | None |
 | `semantic` | mtl-archives | Workers AI BGE |
 | `visual` | mtl-archives-clip | HuggingFace CLIP |
 
@@ -231,7 +231,7 @@ Next app runtime env:
 - Post operations should use `pipelines/daily-reel/post_publish.py` against the persisted Meta token state. The repo supports daily-package publishing for Instagram carousel posts and Facebook Page reels, with idempotency through `data/social/publish-registry.jsonl`.
 - Do not imply feature parity with manual Story posting. Server-side Story publishing does not support link, poll, or location stickers. If the creative depends on a clickable `DEFI DU JOUR` link to `/game`, that is a manual/mobile step, not something the repo can silently fake.
 - Dataset Factory v0 lives under `docs/dataset-factory/` and `packages/scripts/src/dataset-factory/`. Keep large generated output under ignored `data/mtl_archives/reports/`; do not commit generated report trees.
-- The Hôtel Nelligan City Memory reference, **The Street Within**, lives under `apps/city-memory/`, with its evidence and release boundary under `docs/city-memory-nelligan-reference/`. Keep it standalone and static-hostable, preserve the uncommissioned/non-affiliation label, keep reviewed archive files separate from blank conceptual settings, never describe conceptual Three.js massing as a measured survey, and do not add current hotel photography without explicit permission and rights review.
+- The Hôtel Nelligan City Memory reference, **The Street Within**, lives under `apps/city-memory/`, with its evidence and release boundary under `docs/city-memory-nelligan-reference/`. Keep it standalone and static-hostable, preserve the uncommissioned/non-affiliation label, show reviewed archive files as unaltered full-frame objects, never describe conceptual Three.js massing as a measured survey, and do not add current hotel photography without explicit permission and rights review.
 - The artifact registry is `docs/dataset-factory/artifact-registry.v0.jsonl`. Its 118 entries include the issue #69 synthetic pilot plus tracked candidate, primary visual-promotion, independent visual-review, and Gate H2 runtime-source descriptors; they must stay a schema-valid acyclic graph with stable IDs, SHA-256 digests, exact non-overlapping membership, lineage, explicit human decision/external acquisition boundaries, generation methods/commands, dependency IDs, rights boundaries, and created timestamps. Never put secrets, `.env` values, private keys, cursors, or expiring signed URLs in it.
 - Gold Label Batch 002 for issue #68 is complete, reviewed, validated, and durably published. Keep the ignored evidence tree (`data/mtl_archives/reports/gold_label_batch_002`) distinct from the hash-bound R2 final archive (`r2://wiel-codex-worker-cache/artifacts/mtl-archives/gold-label-batch-002/11c4577c5fa2b0393d2c83a9c9a75effcf7c97252febc646fa8ceca4e6789fcd.tar.gz`). Completion reports must derive adjudication-change rates from the existing per-target change counts divided by the explicit 300-row denominator; do not invent counts or expose temporary URLs.
 - Verified Multimodal Intelligence Batch 001 for issue #69 has a synthetic foundation, a 26-record canonical-real candidate pool, and a hash-bound primary visual promotion of 12 selected plus 4 reserves. The selected set is balanced 6 ground and 6 aerial/control. Independent visual review approved all 16 primary decisions with zero disagreements; historical verification, dossiers, and benchmarks remain zero. Run all three stages' build, self-test, verify, and integration commands. Do not claim the 60-record target is complete until reviewed dossiers, metrics, overlays, external verification, and independent review are present.

@@ -19,13 +19,9 @@ commissioned or approved by Hôtel Nelligan.
 ## Image integrity
 
 The four historical images are the reviewed local derivatives for records 11,
-17, 54, and 88. They appear as separate image layers in the HTML applications
-and as direct textures in the Three.js study. The architectural settings contain
-no invented historical photographs.
-
-The generated architectural images are blank concept settings. They are not
-photographs of the hotel and do not establish current property conditions. The
-HTML places the reviewed archive files over those settings after generation.
+17, 54, and 88. They appear as full-frame archive objects in the HTML
+applications and as direct textures in the Three.js study. The application
+chapter contains no simulated room, lobby, or concierge photography.
 
 ## Property boundary
 
@@ -49,11 +45,11 @@ survey` and avoids a floor plan, room count, or construction dimensions.
 
 | Area | Required result |
 | --- | --- |
-| Cover | Property-specific title, restrained editorial hierarchy, exact archive layers visible in the conceptual section |
+| Cover | Property-specific title, restrained editorial hierarchy, and four unaltered archive objects |
 | Archive sequence | Four distinct records in the order 11, 17, 54, 88, with archive-reported identity kept separate from visible evidence |
 | Spatial study | Four-level conceptual section, four distinct image works, guided camera positions, selected-work response, and fallback behavior |
-| Applications | Atrium, room, and concierge settings composed with the reviewed archive files after generation |
-| Provenance | Plain account of source, review, interpretation, approval, and fabrication |
+| Applications | Coded atrium elevation, room-scale archive object, and concierge folio using full-frame reviewed files |
+| Provenance | Hotel decision matrix backed by detailed source and rights records |
 | Commercial close | A fixed five-week study with inclusions, exclusions, payment schedule, and release boundary |
 
 ## Verification record
@@ -68,7 +64,7 @@ npm run build --workspace=@mtl-archives/city-memory
 
 The final Agent Browser review covered the 1600 by 1000 presentation view, the
 390 by 844 mobile view, the four camera positions, the evidence drawer, all
-three applications, console errors, and horizontal overflow. The ten-page PDF
+three applications, console errors, and horizontal overflow. The eleven-page PDF
 was rendered to images and inspected before it replaced the previous handoff.
 
 ## Remaining gates

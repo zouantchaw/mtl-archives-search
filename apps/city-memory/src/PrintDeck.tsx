@@ -1,5 +1,5 @@
 import { archiveRecords, interventions, propertyFacts } from './data';
-import { SourceVisual } from './SourceVisual';
+import { ApplicationVisual, ArchiveCover } from './ApplicationVisual';
 
 const offer = {
   name: 'City Memory Concept Study',
@@ -13,7 +13,7 @@ function DeckHeader({ page, label }: { page: string; label: string }) {
     <header className="deck-header">
       <span>City Memory × Hôtel Nelligan</span>
       <span>{label}</span>
-      <span>{page} / 10</span>
+      <span>{page} / 11</span>
     </header>
   );
 }
@@ -28,7 +28,7 @@ export function PrintDeck() {
           <h1>The Street<br />Within</h1>
           <p>A guest sequence built from four reviewed Montréal street records.</p>
         </div>
-        <SourceVisual kind="cutaway" eager />
+        <ArchiveCover />
         <footer>Version 1 · 01 September 2026 · Conceptual visualization · controlled review</footer>
       </section>
 
@@ -88,49 +88,62 @@ export function PrintDeck() {
         <div className="deck-application-copy">
           <p className="deck-kicker">01 / Cross the Layers</p>
           <h2>Four records.<br />Four levels<br />of attention.</h2>
-          <p>The conceptual atrium shell is blank by design. The visible historical content comes from the four reviewed archive files and no other source.</p>
+          <p>Four full-frame archive objects establish a vertical sequence of street scale, movement, civic detail, and the working waterfront.</p>
           <dl>
             <div><dt>Scale</dt><dd>Variable; measured next phase</dd></div>
             <div><dt>Light</dt><dd>Linear graze + available daylight</dd></div>
             <div><dt>Decision</dt><dd>Sightline, loading, attachment, life safety</dd></div>
           </dl>
         </div>
-        <SourceVisual kind={interventions[0].visual} />
-        <span className="deck-caveat">Conceptual application · not a photograph or measured model of the current property</span>
+        <ApplicationVisual kind={interventions[0].visual} />
+        <span className="deck-caveat">Conceptual elevation · site scale and attachment pending</span>
       </section>
 
-      <section className="deck-page deck-two-applications">
-        <DeckHeader page="06" label="Guest-facing applications" />
-        {interventions.slice(1).map((item) => (
-          <article key={item.number}>
-            <SourceVisual kind={item.visual} />
-            <div>
-              <p className="deck-kicker">{item.number} / {item.title}</p>
-              <h2>{item.title}</h2>
-              <p>{item.summary}</p>
-              <dl>{item.fields.slice(0, 4).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
-            </div>
-          </article>
-        ))}
+      <section className="deck-page deck-object-application">
+        <DeckHeader page="06" label="Room application" />
+        <div className="deck-object-copy">
+          <p className="deck-kicker">02 / Room</p>
+          <h2>Stay Among Traces</h2>
+          <p>One full-frame civic image gives the guest a quiet moment of attention. It is presented as an artwork with a source, not as a view from the room.</p>
+          <dl>{interventions[1].fields.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
+          <aside><strong>Fixed now</strong><span>Record 54 · full-frame portrait · source label · low-glare object</span></aside>
+          <aside><strong>Test on site</strong><span>Room category · wall fixing · final size · picture light · housekeeping access</span></aside>
+        </div>
+        <ApplicationVisual kind="room" />
+      </section>
+
+      <section className="deck-page deck-object-application deck-object-concierge">
+        <DeckHeader page="07" label="Concierge application" />
+        <div className="deck-object-copy">
+          <p className="deck-kicker">03 / Concierge</p>
+          <h2>Continue the Walk</h2>
+          <p>The concierge pairs one wide archival object with a current recommendation. The source record and the present-day route remain separate.</p>
+          <dl>{interventions[2].fields.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
+          <aside><strong>Fixed now</strong><span>Record 88 · landscape format · route folio · guest conversation</span></aside>
+          <aside><strong>Test on site</strong><span>Wall location · content owner · route timing · seasonal review · staff use</span></aside>
+        </div>
+        <ApplicationVisual kind="concierge" />
       </section>
 
       <section className="deck-page deck-trust">
-        <DeckHeader page="07" label="Trust and production" />
+        <DeckHeader page="08" label="Hotel decisions" />
         <div className="deck-title-block compact">
-          <p className="deck-kicker">Plain-language trust boundary</p>
-          <h2>Nothing crosses the room<br />without its source.</h2>
+          <p className="deck-kicker">Current position and approval path</p>
+          <h2>What Nelligan<br />would approve.</h2>
         </div>
-        <ol className="deck-zones">
-          <li><span>01</span><h3>Client collection</h3><p>Approved plans, photography, constraints, and intended use enter the study.</p></li>
-          <li><span>02</span><h3>Private processing</h3><p>Research, image preparation, spatial tests, and unresolved hypotheses stay private.</p></li>
-          <li><span>03</span><h3>Human review</h3><p>Source, rights, visible claims, crop, material, and production decisions are reviewed.</p></li>
-          <li><span>04</span><h3>Approved output</h3><p>Only approved imagery, claims, drawings, credits, and fabrication files are released.</p></li>
-        </ol>
-        <p className="deck-trust-note">The approved work remains connected to its source record, review decisions, permissions, design use, and production file.</p>
+        <div className="deck-decision-table">
+          <div className="deck-decision-head"><span>Area</span><span>Current position</span><span>Hotel approval</span></div>
+          <div><strong>Archive selection</strong><span>Four reviewed candidates</span><span>Brand and curatorial approval</span></div>
+          <div><strong>Image use</strong><span>Full-frame concept treatment</span><span>Reproduction and crop approval</span></div>
+          <div><strong>Placement</strong><span>Three proposed guest encounters</span><span>Property, facilities, and life-safety review</span></div>
+          <div><strong>Guest language</strong><span>English concept copy drafted</span><span>French and English brand review</span></div>
+          <div><strong>Operations</strong><span>Maintenance and route assumptions</span><span>Housekeeping and concierge sign-off</span></div>
+        </div>
+        <p className="deck-trust-note">Provenance keeps the approved source, treatment, permissions, placement, guest copy, and production file connected behind these decisions.</p>
       </section>
 
       <section className="deck-page deck-appendix">
-        <DeckHeader page="08" label="Concise Provenance appendix · 01–02" />
+        <DeckHeader page="09" label="Concise Provenance appendix · 01–02" />
         {archiveRecords.slice(0, 2).map((record) => (
           <article key={record.id}>
             <img src={record.image} alt="" />
@@ -152,7 +165,7 @@ export function PrintDeck() {
       </section>
 
       <section className="deck-page deck-appendix">
-        <DeckHeader page="09" label="Concise Provenance appendix · 03–04" />
+        <DeckHeader page="10" label="Concise Provenance appendix · 03–04" />
         {archiveRecords.slice(2).map((record) => (
           <article key={record.id}>
             <img src={record.image} alt="" />
@@ -174,7 +187,7 @@ export function PrintDeck() {
       </section>
 
       <section className="deck-page deck-offer">
-        <DeckHeader page="10" label="Fixed next step" />
+        <DeckHeader page="11" label="Fixed next step" />
         <div className="deck-offer-title">
           <p className="deck-kicker">One decisive next phase</p>
           <h2>{offer.name}</h2>
@@ -182,7 +195,7 @@ export function PrintDeck() {
           <span>{offer.payment}</span>
         </div>
         <div className="deck-offer-grid">
-          <article><h3>Included</h3><ul><li>Property walk and measured surfaces</li><li>Guest journey and sightline map</li><li>Rights-reviewed image shortlist</li><li>Three resolved spatial applications</li><li>Material, light, and maintenance tests</li><li>Cost class and production roadmap</li></ul></article>
+          <article><h3>Included</h3><ul><li>Property walk, sightlines, and guest journey</li><li>One recommended pilot application</li><li>Rights-reviewed image shortlist</li><li>Three resolved spatial applications</li><li>Material, light, maintenance, and staff playbook</li><li>Cost class, approval gates, and fabrication roadmap</li></ul></article>
           <article><h3>Client decisions</h3><ul><li>Named project owner and reviewers</li><li>Access to current plans and site</li><li>Approved property photography</li><li>Direction approval at week two</li><li>Final shortlist and use approval</li></ul></article>
           <article><h3>Excluded</h3><ul><li>Final licensing and reproduction fees</li><li>Engineering, permits, fabrication, install</li><li>Measured survey by licensed professionals</li><li>Travel outside Montréal</li><li>Ongoing software or content operations</li></ul></article>
         </div>

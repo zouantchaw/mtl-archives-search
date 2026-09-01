@@ -5,8 +5,8 @@ const root = resolve(import.meta.dirname, '..');
 const required = [
   'index.html',
   'src/App.tsx',
+  'src/ApplicationVisual.tsx',
   'src/PrintDeck.tsx',
-  'src/SourceVisual.tsx',
   'src/SpatialScene.tsx',
   'src/data.ts',
   'src/styles.css',
@@ -14,10 +14,6 @@ const required = [
   'public/media/archive-17.jpg',
   'public/media/archive-54.jpg',
   'public/media/archive-88.jpg',
-  'public/media/street-within-cutaway-shell-v1.jpg',
-  'public/media/street-within-atrium-shell-v1.jpg',
-  'public/media/street-within-room-shell-v1.jpg',
-  'public/media/street-within-walk-shell-v1.jpg',
 ];
 
 const pdfPath = resolve(root, '../../output/pdf/city-memory-hotel-nelligan-reference-concept-v1.pdf');

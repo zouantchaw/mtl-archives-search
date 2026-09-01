@@ -31,20 +31,16 @@ npm run build --workspace=@mtl-archives/city-memory
 ```
 
 The interactive artifact lives under `apps/city-memory`. The visually reviewed
-ten-page PDF handoff lives at
+eleven-page PDF handoff lives at
 `output/pdf/city-memory-hotel-nelligan-reference-concept-v1.pdf`.
 
-## Construction of the application images
+## Construction of the application studies
 
-Each architectural application has two separate parts:
-
-- a blank, original conceptual setting
-- one or more reviewed MTL Archives image files placed by the web application
-
-The architectural settings contain no fabricated historical photographs. The
-cutaway and atrium use records 11, 17, 54, and 88. The room uses record 54. The
-concierge encounter uses record 88. The component responsible for those layers
-is `apps/city-memory/src/SourceVisual.tsx`.
+The application chapter contains no simulated hotel photography. It uses a
+coded atrium elevation, a room-scale archive-object study, and a concierge folio
+study. The images are displayed full-frame without opacity, blend modes, sepia
+filters, or forced landscape crops. The responsible component is
+`apps/city-memory/src/ApplicationVisual.tsx`.
 
 ## Evidence boundary
 

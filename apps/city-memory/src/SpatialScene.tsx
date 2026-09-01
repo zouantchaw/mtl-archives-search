@@ -19,10 +19,10 @@ const presets: Record<PresetName, { position: [number, number, number]; target: 
 };
 
 const presetLabels: Array<{ name: PresetName; label: string }> = [
-  { name: 'threshold', label: 'Threshold' },
-  { name: 'layers', label: 'Layers' },
-  { name: 'viewpoint', label: 'Viewpoint' },
-  { name: 'horizon', label: 'Horizon' },
+  { name: 'threshold', label: 'Arrival sightline' },
+  { name: 'layers', label: 'Atrium sequence' },
+  { name: 'viewpoint', label: 'Landing view' },
+  { name: 'horizon', label: 'Upper horizon' },
 ];
 
 export function SpatialScene({ records, selected, onSelect }: Props) {
@@ -164,8 +164,8 @@ export function SpatialScene({ records, selected, onSelect }: Props) {
     const planeMeshes: THREE.Mesh[] = [];
     const workPlacements = [
       { recordId: 11, position: [-2.85, 2.25, 1.1] as [number, number, number], size: [2.65, 1.95] as [number, number], rotationY: 0.08 },
-      { recordId: 17, position: [-1.05, 5.55, 0.3] as [number, number, number], size: [1.55, 3.15] as [number, number], rotationY: -0.04 },
-      { recordId: 54, position: [1.25, 6.35, -0.45] as [number, number, number], size: [1.7, 2.7] as [number, number], rotationY: 0.05 },
+      { recordId: 17, position: [-1.25, 5.55, 0.3] as [number, number, number], size: [2.3, 3.15] as [number, number], rotationY: -0.04 },
+      { recordId: 54, position: [1.45, 6.35, -0.45] as [number, number, number], size: [1.9, 2.7] as [number, number], rotationY: 0.05 },
       { recordId: 88, position: [2.8, 2.75, -1.15] as [number, number, number], size: [2.55, 1.82] as [number, number], rotationY: -0.08 },
     ];
     const workMeshes: Array<{ recordId: number; mesh: THREE.Mesh; material: THREE.MeshStandardMaterial; frameMaterial: THREE.MeshStandardMaterial }> = [];
@@ -181,7 +181,7 @@ export function SpatialScene({ records, selected, onSelect }: Props) {
         emissiveIntensity: 0.18,
         color: 0xf1e8d8,
         transparent: true,
-        opacity: 0.9,
+        opacity: 1,
         roughness: 0.76,
         side: THREE.DoubleSide,
       });
@@ -410,7 +410,7 @@ export function SpatialScene({ records, selected, onSelect }: Props) {
       )}
       <div className="scene-heading">
         <h2>Read the street<br />through the<br />building</h2>
-        <p>Threshold. Layers. Viewpoint. Horizon.</p>
+        <p>Arrival sightline. Atrium sequence. Landing view. Upper horizon.</p>
       </div>
       <div className="scene-disclaimer">Conceptual massing · not a measured survey</div>
       <div className="camera-rail" role="group" aria-label="Spatial study camera positions">
