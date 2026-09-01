@@ -1,5 +1,11 @@
 # City Memory Montréal prospect shortlist — 31 August 2026
 
+> **Status, September 1, 2026:** This public-source shortlist has been
+> superseded for prioritization by the dataset-led opportunity scan in
+> `docs/product/opportunity-scan/`. The organizations below remain useful
+> market hypotheses, but Hôtel Nelligan is no longer the default lead. No
+> outreach is authorized by either document.
+
 This is an internal public-source research snapshot. It contains no private
 contact data and authorizes no outreach. Before contact, the owner must approve
 the exact prospect, stakeholder, package, message, sender, channel, and
