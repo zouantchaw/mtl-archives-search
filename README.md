@@ -32,12 +32,13 @@ for the no-outreach research snapshot.
 
 ## Repo layout
 
-- `apps/api` — Cloudflare Worker API
-- `apps/next-app` — main site, game, prints, auth
-- `apps/web` — CLIP research explorer
-- `packages/scripts` — ETL, vectorize, dataset-factory, evals
-- `pipelines/` — OCR, VLM, and social/story scripts
-- `infrastructure/d1/` — schema and migrations
+- `apps/api`: Cloudflare Worker API
+- `apps/city-memory`: standalone City Memory client reference artifact
+- `apps/next-app`: main site, game, prints, auth
+- `apps/web`: CLIP research explorer
+- `packages/scripts`: ETL, vectorize, dataset-factory, evals
+- `pipelines/`: OCR, VLM, and social/story scripts
+- `infrastructure/d1/`: schema and migrations
 
 Deferred cross-platform content analytics is local-only, identity-gated, and
 provenance-explicit. Reports require `--evidence-kind` (`real_export` or
@@ -70,12 +71,21 @@ npm run gate-h2:builder-receipts-fixture-verify
 npm run gate-h2:builder-receipts-self-test
 npm run city-memory:validation:self-test-v1
 npm run city-memory:validation:verify-v1
+npm run typecheck --workspace=@mtl-archives/city-memory
+npm run validate:client --workspace=@mtl-archives/city-memory
+npm run build --workspace=@mtl-archives/city-memory
 ```
 
 ## City Memory client pilot and buyer validation
 
 The active sequence is to make the Hôtel Nelligan–based [client pilot (#126)](https://github.com/zouantchaw/mtl-archives-search/issues/126)
 sendable before running the approved [buyer-validation test (#127)](https://github.com/zouantchaw/mtl-archives-search/issues/127).
+The implemented [uncommissioned reference concept](docs/city-memory-nelligan-reference/README.md),
+**The Street Within**, is a standalone Vite/React presentation with an original
+conceptual Three.js section, four independently reviewed archive records,
+full-frame archive-object studies, explicit hotel decisions and rights
+boundaries, and a static-hosted client delivery contract. It bundles no current
+hotel photography and does not present its 3D scene as a measured survey.
 The hotel is a visual subject and possible recipient, not a presumed first
 buyer; recipient selection remains a separate, relationship-led decision.
 The predecessor issue #109 produced a privacy-preserving operating kit under

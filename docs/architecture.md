@@ -35,7 +35,7 @@ generation. This is preserved research history, not an active delivery claim.
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                              Client Applications                             │
-│                 (Next.js Web UI + Game, Research Explorer)                   │
+│        (Next.js Web UI + Game, Research Explorer, City Memory artifact)       │
 └─────────────────────────────────────────────────────────────────────────────┘
                                        │
                                        ▼
@@ -303,6 +303,17 @@ Client-sendable pilot (#126) ──▶ approved path + fixed offer (#127) ──
 - Names, recordings, raw notes, contact details, sensitive budgets, and other commercial material stay in an approved private system. The public ledger carries role/segment categories and opaque private reference tokens only; a token does not prove the private material exists.
 - No outreach, stakeholder conversation, proposal acceptance, payment, or commercial decision is claimed by the tracked template or local self-test.
 - Issue #127 must not begin until #126 passes internal release review and the owner approves the prospect, package, message, sender, channel, and follow-up boundary.
+
+The #126 reference implementation is isolated in `apps/city-memory`. It is a
+static Vite/React narrative artifact with local fonts and images, progressively
+loaded conceptual Three.js massing, a non-WebGL fallback, keyboard-accessible
+record controls, and evidence drawers projected from four independently
+reviewed archive records. It has no runtime API or production-data dependency.
+Relative asset URLs support static hosting below a protected subpath; delivery
+is through HTTP hosting or local preview, not an unsupported `file://` claim.
+No current hotel photograph is bundled, and all property-specific dimensions,
+attachment conditions, sightlines, and final image rights remain paid-study
+inputs rather than verified facts.
 
 #### Verified Multimodal Intelligence Batch 001 Foundation
 

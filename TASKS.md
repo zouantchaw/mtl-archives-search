@@ -13,7 +13,12 @@
 - [ ] **City Memory Client Pilot v2 (#126)** — build a client-sendable,
   Hôtel Nelligan–based reference concept and pass internal visual, narrative,
   rights, and production review without presuming the hotel is the first
-  recipient.
+  recipient. The standalone HTML/Three.js reference package, reviewed four-record
+  evidence set, production studies, release boundary, and deterministic package
+  validator are implemented under `apps/city-memory` and
+  `docs/city-memory-nelligan-reference/`; the 10-page PDF handoff is rendered
+  and inspected. Final owner release approval and selection of an
+  access-controlled delivery path remain before the issue can close.
 - [ ] **City Memory Buyer Validation v2 (#127)** — after release approval,
   select an institution or place-based path, obtain explicit approval for the
   prospect list and outreach materials, then test the corresponding offer

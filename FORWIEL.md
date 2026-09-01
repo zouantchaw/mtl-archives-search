@@ -14,8 +14,8 @@ application.
 There are two commercial paths over the same method. Institutions buy a fit
 review or archive activation pilot for collections they control. Art,
 built-environment, and hospitality partners buy a City Memory Concept Study
-for one real place. Both paths move through four zones—client collection,
-private processing, human review, and approved client/public output—and paid
+for one real place. Both paths move through four zones: client collection,
+private processing, human review, and approved client/public output. Paid
 delivery must earn any later recurring software or automation.
 
 The active roadmap is issues #123–#127: define the product, bound Dataset
@@ -29,6 +29,7 @@ measured automation bottleneck. See `docs/product/provenance-activation-v1.md`.
 ## How The Pieces Fit
 
 - `apps/api` is the Cloudflare Worker. It serves `/api/photos`, `/api/search`, game routes, newsletter routes, and talks to D1, Vectorize, Workers AI, and R2.
+- `apps/city-memory` is the standalone client presentation for the Hôtel Nelligan reference concept, **The Street Within**: narrative chapters, reviewed records, full-frame archive-object studies, hotel approval decisions, and a conceptual interactive hotel section.
 - `apps/next-app` is the customer-facing site: landing, search, photo detail, print checkout, auth, and game UI.
 - `packages/scripts` is the workshop. It contains ETL, vector ingestion, audits, autoresearch, and Dataset Factory scripts.
 - `pipelines/` holds Python-heavy workflows such as OCR, CLIP experiments, and daily social packaging.
@@ -40,6 +41,14 @@ measured automation bottleneck. See `docs/product/provenance-activation-v1.md`.
 The current sequence begins with an internally approved City Memory reference
 concept based on Hôtel Nelligan (#126), not outreach. The hotel is not presumed to be the
 first recipient; an approved warm partner or institution path may be stronger.
+The working reference package now lives in `apps/city-memory`, with its release
+and evidence boundary documented in `docs/city-memory-nelligan-reference/`.
+It is an uncommissioned, static-hosted HTML presentation titled **The Street
+Within** with an original conceptual Three.js scene. Its four historical images
+are reviewed local archive files shown as full-frame objects in a coded atrium
+elevation, room study, and concierge folio. It contains no current hotel
+photography and labels the spatial model as conceptual massing rather than a
+measured property model.
 The predecessor issue #109 left a useful
 privacy-preserving operating kit in `docs/city-memory-validation-v1/`: the
 exact paid diagnostic proposal, interview order, consent/follow-up language,
@@ -53,7 +62,7 @@ opaque reference tokens here.
 
 The key engineering idea is separation of durable code from bulky generated evidence. Code, schemas, small fixtures, and reproducibility manifests are tracked. Large generated report trees stay local and ignored.
 
-## Dataset Factory v0 — internal engine
+## Dataset Factory v0: internal engine
 
 Dataset Factory is the offline layer for making search quality measurable. It builds review packets, calibration labels, benchmark tasks, active-learning queues, quality-repair queues, visual-family graphs, research-enrichment packets, search judgments, and reward-data rows.
 
