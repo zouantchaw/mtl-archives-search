@@ -250,6 +250,7 @@ Technical audit and baseline are in `docs/quality-baseline-v1/README.md`. Verifi
 
 Issue #136 caption review now uses a versioned three-dimension rubric (accuracy, coverage, retrieval usefulness); see `docs/quality-baseline-v1/caption-contract.md`. Owner viewpoints are preserved; all 36 caption assessments are complete. Candidate caption generation and retrieval validation remain in #139.
 
+<<<<<<< HEAD
 ## Canonical search repair (September 2026)
 
 The canonical-ID repair and its rollout/evaluation procedure are documented in [docs/search-canonical-repair.md](docs/search-canonical-repair.md). Smart search combines CLIP and BGE with explicit branch-health diagnostics and separate ranking scores. Future ingestion defaults to `manifest_search_canonical.jsonl`; retain original archival descriptions alongside generated captions. See the repair report for verified coverage and remaining relevance limitations.
@@ -270,3 +271,7 @@ See [Reading room implementation and operations](docs/reading-room.md) for deplo
 - [x] Add date/citation/quota regression tests and a live browser/evaluation harness.
 - [x] Reconcile the live reading-room and canonical-search source with `main` so ordinary merges cannot drop `/research` again. See [production source reconciliation](docs/production-source-reconciliation.md).
 - [ ] Expand human judgments beyond the initial women/helicopter and landscape examples before making broad retrieval-quality claims.
+
+## Issue #139 — retrieval/enrichment pilot (2026-09-13)
+
+Built and measured a 50-image offline enrichment/candidate-index pilot and 20-query, 102-request live retrieval comparison. Bounded variants plus pilot feature filtering recover all four reviewed street positives for original/French/correction wording. Caption replacement alone does not reliably improve retrieval; Mistral object/text/rotation errors block bulk promotion. See `docs/retrieval-pilot-v1/README.md`. Candidate captions remain inactive. #145 restored a reviewed production source, so this tooling can merge independently of model promotion. Frontier OpenAI/xAI comparison is #148.
