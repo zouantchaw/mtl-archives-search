@@ -1,0 +1,712 @@
+[
+  {
+    "audit_id": "A01",
+    "record_id": "mtl_archives_metadata_18173.json",
+    "lane": "random",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "aerial",
+    "tags": [
+      "aerial"
+    ],
+    "caption_unsupported_or_wrong_detail": true,
+    "caption_missing_viewpoint": true,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Aerial city; caption omits viewpoint and adds early-20th-century/people detail not established."
+  },
+  {
+    "audit_id": "A02",
+    "record_id": "mtl_archives_metadata_18188.json",
+    "lane": "random",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "aerial",
+    "tags": [
+      "aerial"
+    ],
+    "caption_unsupported_or_wrong_detail": true,
+    "caption_missing_viewpoint": true,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Aerial bridge and city; era-specific clothing claim is not visible."
+  },
+  {
+    "audit_id": "A03",
+    "record_id": "mtl_archives_metadata_9322.json",
+    "lane": "random",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "unavailable",
+    "tags": [],
+    "caption_unsupported_or_wrong_detail": null,
+    "caption_missing_viewpoint": null,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Research image endpoint excluded large asset; raw public fetch returned 403. Not proof of missing R2 object."
+  },
+  {
+    "audit_id": "A04",
+    "record_id": "mtl_archives_metadata_12666.json",
+    "lane": "random",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "aerial",
+    "tags": [
+      "aerial"
+    ],
+    "caption_unsupported_or_wrong_detail": false,
+    "caption_missing_viewpoint": false,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Aerial urban blocks; broad objects and viewpoint supported."
+  },
+  {
+    "audit_id": "A05",
+    "record_id": "mtl_archives_metadata_1471.json",
+    "lane": "random",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "aerial",
+    "tags": [
+      "aerial"
+    ],
+    "caption_unsupported_or_wrong_detail": true,
+    "caption_missing_viewpoint": true,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Overhead woods/road; claimed large tree, car and person are not discernible."
+  },
+  {
+    "audit_id": "A06",
+    "record_id": "mtl_archives_metadata_16641.json",
+    "lane": "random",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "aerial",
+    "tags": [
+      "aerial"
+    ],
+    "caption_unsupported_or_wrong_detail": true,
+    "caption_missing_viewpoint": true,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Aerial industrial roof and yard; early-20th-century clothing claim is unsupported."
+  },
+  {
+    "audit_id": "A07",
+    "record_id": "mtl_archives_metadata_18740.json",
+    "lane": "random",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "aerial",
+    "tags": [
+      "aerial"
+    ],
+    "caption_unsupported_or_wrong_detail": true,
+    "caption_missing_viewpoint": true,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Aerial roads and hillside; era and people claims unsupported."
+  },
+  {
+    "audit_id": "A08",
+    "record_id": "mtl_archives_metadata_3019.json",
+    "lane": "random",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "aerial",
+    "tags": [
+      "aerial"
+    ],
+    "caption_unsupported_or_wrong_detail": false,
+    "caption_missing_viewpoint": true,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Overhead fields and roads; caption omits viewpoint; date requires source."
+  },
+  {
+    "audit_id": "A09",
+    "record_id": "mtl_archives_metadata_2963.json",
+    "lane": "random",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "uncertain",
+    "tags": [],
+    "caption_unsupported_or_wrong_detail": true,
+    "caption_missing_viewpoint": null,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Water texture; claimed central boat not discernible."
+  },
+  {
+    "audit_id": "A10",
+    "record_id": "mtl_archives_metadata_9452.json",
+    "lane": "random",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "unavailable",
+    "tags": [],
+    "caption_unsupported_or_wrong_detail": null,
+    "caption_missing_viewpoint": null,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Research image endpoint excluded large asset; raw public fetch returned 403. Not proof of missing R2 object."
+  },
+  {
+    "audit_id": "A11",
+    "record_id": "mtl_archives_metadata_13207.json",
+    "lane": "random",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "aerial",
+    "tags": [
+      "aerial"
+    ],
+    "caption_unsupported_or_wrong_detail": true,
+    "caption_missing_viewpoint": true,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Overhead construction supported; people and nearby park not established."
+  },
+  {
+    "audit_id": "A12",
+    "record_id": "mtl_archives_metadata_2213.json",
+    "lane": "random",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "aerial",
+    "tags": [
+      "aerial"
+    ],
+    "caption_unsupported_or_wrong_detail": true,
+    "caption_missing_viewpoint": true,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Overhead fields; specific cars/truck and dating by vehicle style unsupported."
+  },
+  {
+    "audit_id": "A13",
+    "record_id": "mtl_archives_metadata_18698.json",
+    "lane": "random",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "aerial",
+    "tags": [
+      "aerial"
+    ],
+    "caption_unsupported_or_wrong_detail": true,
+    "caption_missing_viewpoint": true,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Oblique wooded hill; clock-tower building and crowds not established."
+  },
+  {
+    "audit_id": "A14",
+    "record_id": "mtl_archives_metadata_16589.json",
+    "lane": "random",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "aerial",
+    "tags": [
+      "aerial"
+    ],
+    "caption_unsupported_or_wrong_detail": false,
+    "caption_missing_viewpoint": true,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Oblique rail/field/road scene; broad content mostly supported but no viewpoint."
+  },
+  {
+    "audit_id": "A15",
+    "record_id": "mtl_archives_metadata_12571.json",
+    "lane": "random",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "aerial",
+    "tags": [
+      "aerial"
+    ],
+    "caption_unsupported_or_wrong_detail": true,
+    "caption_missing_viewpoint": true,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Overhead parking/terminal scene; passenger diversity and scattered people unsupported."
+  },
+  {
+    "audit_id": "A16",
+    "record_id": "mtl_archives_metadata_15240.json",
+    "lane": "random",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "aerial",
+    "tags": [
+      "aerial"
+    ],
+    "caption_unsupported_or_wrong_detail": true,
+    "caption_missing_viewpoint": true,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Overhead school/sports grounds; claimed clock tower and era unsupported."
+  },
+  {
+    "audit_id": "A17",
+    "record_id": "mtl_archives_metadata_17906.json",
+    "lane": "random",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "aerial",
+    "tags": [
+      "aerial"
+    ],
+    "caption_unsupported_or_wrong_detail": false,
+    "caption_missing_viewpoint": true,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Oblique harbor with ships supported; fine vehicle details uncertain."
+  },
+  {
+    "audit_id": "A18",
+    "record_id": "mtl_archives_metadata_10313.json",
+    "lane": "random",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "unavailable",
+    "tags": [],
+    "caption_unsupported_or_wrong_detail": null,
+    "caption_missing_viewpoint": null,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Research image endpoint excluded large asset; raw public fetch returned 403. Not proof of missing R2 object."
+  },
+  {
+    "audit_id": "A19",
+    "record_id": "mtl_archives_metadata_10260.json",
+    "lane": "random",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "unavailable",
+    "tags": [],
+    "caption_unsupported_or_wrong_detail": null,
+    "caption_missing_viewpoint": null,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Research image endpoint excluded large asset; raw public fetch returned 403. Not proof of missing R2 object."
+  },
+  {
+    "audit_id": "A20",
+    "record_id": "mtl_archives_metadata_16475.json",
+    "lane": "random",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "aerial",
+    "tags": [
+      "aerial"
+    ],
+    "caption_unsupported_or_wrong_detail": true,
+    "caption_missing_viewpoint": true,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Oblique city blocks; clock tower and early-20th-century inference unsupported."
+  },
+  {
+    "audit_id": "A21",
+    "record_id": "mtl_archives_metadata_12024.json",
+    "lane": "random",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "aerial",
+    "tags": [
+      "aerial"
+    ],
+    "caption_unsupported_or_wrong_detail": true,
+    "caption_missing_viewpoint": true,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Overhead oval sports field/stands; baseball field not established."
+  },
+  {
+    "audit_id": "A22",
+    "record_id": "mtl_archives_metadata_1022.json",
+    "lane": "random",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "aerial",
+    "tags": [
+      "aerial"
+    ],
+    "caption_unsupported_or_wrong_detail": true,
+    "caption_missing_viewpoint": true,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Overhead rural land; car not discernible; date requires source."
+  },
+  {
+    "audit_id": "A23",
+    "record_id": "mtl_archives_metadata_18830.json",
+    "lane": "random",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "aerial",
+    "tags": [
+      "aerial"
+    ],
+    "caption_unsupported_or_wrong_detail": true,
+    "caption_missing_viewpoint": true,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Oblique institutional complex with tower; readable clock and pedestrians not established."
+  },
+  {
+    "audit_id": "A24",
+    "record_id": "mtl_archives_metadata_1700.json",
+    "lane": "random",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "aerial",
+    "tags": [
+      "aerial"
+    ],
+    "caption_unsupported_or_wrong_detail": false,
+    "caption_missing_viewpoint": true,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Overhead fields/road/buildings supported; missing viewpoint; date requires source."
+  },
+  {
+    "audit_id": "A25",
+    "record_id": "mtl_archives_metadata_0.json",
+    "lane": "targeted",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "ground",
+    "tags": [
+      "commercial_ground",
+      "signs"
+    ],
+    "caption_unsupported_or_wrong_detail": false,
+    "caption_missing_viewpoint": false,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Ground commercial street; caption broadly supported but omits conspicuous signs."
+  },
+  {
+    "audit_id": "A26",
+    "record_id": "mtl_archives_metadata_13.json",
+    "lane": "targeted",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "ground",
+    "tags": [
+      "commercial_ground",
+      "signs"
+    ],
+    "caption_unsupported_or_wrong_detail": false,
+    "caption_missing_viewpoint": false,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Ground storefront intersection; short caption supported."
+  },
+  {
+    "audit_id": "A27",
+    "record_id": "mtl_archives_metadata_31.json",
+    "lane": "targeted",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "ground",
+    "tags": [
+      "commercial_ground",
+      "signs"
+    ],
+    "caption_unsupported_or_wrong_detail": false,
+    "caption_missing_viewpoint": false,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Ground commercial facade; short caption supported."
+  },
+  {
+    "audit_id": "A28",
+    "record_id": "mtl_archives_metadata_59.json",
+    "lane": "targeted",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "ground",
+    "tags": [
+      "commercial_ground",
+      "signs"
+    ],
+    "caption_unsupported_or_wrong_detail": true,
+    "caption_missing_viewpoint": false,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Ground Metropolitan Stores facade; name supported; corner and stylistic dating need evidence."
+  },
+  {
+    "audit_id": "A29",
+    "record_id": "mtl_archives_metadata_67.json",
+    "lane": "targeted",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "ground",
+    "tags": [
+      "church_exterior"
+    ],
+    "caption_unsupported_or_wrong_detail": false,
+    "caption_missing_viewpoint": false,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Ground church facade; short caption supported."
+  },
+  {
+    "audit_id": "A30",
+    "record_id": "mtl_archives_metadata_102.json",
+    "lane": "targeted",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "ground",
+    "tags": [
+      "church_exterior"
+    ],
+    "caption_unsupported_or_wrong_detail": false,
+    "caption_missing_viewpoint": false,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Ground church exterior; specific location and date are metadata claims, not pixel judgments."
+  },
+  {
+    "audit_id": "A31",
+    "record_id": "mtl_archives_metadata_104.json",
+    "lane": "targeted",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "ground",
+    "tags": [
+      "church_exterior"
+    ],
+    "caption_unsupported_or_wrong_detail": false,
+    "caption_missing_viewpoint": false,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Ground damaged church exterior; title/date require source corroboration."
+  },
+  {
+    "audit_id": "A32",
+    "record_id": "mtl_archives_metadata_13693.json",
+    "lane": "targeted",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "aerial",
+    "tags": [
+      "aerial"
+    ],
+    "caption_unsupported_or_wrong_detail": true,
+    "caption_missing_viewpoint": true,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Aerial open stadium; calling this interior/dome omits or confuses camera viewpoint."
+  },
+  {
+    "audit_id": "A33",
+    "record_id": "mtl_archives_metadata_13695.json",
+    "lane": "targeted",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "aerial",
+    "tags": [
+      "aerial"
+    ],
+    "caption_unsupported_or_wrong_detail": true,
+    "caption_missing_viewpoint": true,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Aerial open stadium; calling this interior/dome omits or confuses camera viewpoint."
+  },
+  {
+    "audit_id": "A34",
+    "record_id": "mtl_archives_metadata_16177.json",
+    "lane": "targeted",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "aerial",
+    "tags": [
+      "aerial"
+    ],
+    "caption_unsupported_or_wrong_detail": true,
+    "caption_missing_viewpoint": false,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Aerial parking and roads; pedestrians not discernible."
+  },
+  {
+    "audit_id": "A35",
+    "record_id": "mtl_archives_metadata_13004.json",
+    "lane": "targeted",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "aerial",
+    "tags": [
+      "aerial"
+    ],
+    "caption_unsupported_or_wrong_detail": true,
+    "caption_missing_viewpoint": true,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Overhead highway/overpass, not conventional street flanked by apartment buildings; pedestrians unsupported."
+  },
+  {
+    "audit_id": "A36",
+    "record_id": "mtl_archives_metadata_17336.json",
+    "lane": "targeted",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "aerial",
+    "tags": [
+      "aerial"
+    ],
+    "caption_unsupported_or_wrong_detail": true,
+    "caption_missing_viewpoint": true,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Oblique modern towers; clock tower, early-20th-century era and pedestrians unsupported."
+  },
+  {
+    "audit_id": "A37",
+    "record_id": "mtl_archives_metadata_12557.json",
+    "lane": "targeted",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "aerial",
+    "tags": [
+      "aerial"
+    ],
+    "caption_unsupported_or_wrong_detail": false,
+    "caption_missing_viewpoint": false,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Overhead church exterior; church supported; clock detail uncertain."
+  },
+  {
+    "audit_id": "A38",
+    "record_id": "mtl_archives_metadata_18526.json",
+    "lane": "targeted",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "aerial",
+    "tags": [
+      "aerial"
+    ],
+    "caption_unsupported_or_wrong_detail": false,
+    "caption_missing_viewpoint": false,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Oblique suburban aerial supported; not straight-down."
+  },
+  {
+    "audit_id": "A39",
+    "record_id": "mtl_archives_metadata_11659.json",
+    "lane": "targeted",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "aerial",
+    "tags": [
+      "nadir_urban",
+      "aerial"
+    ],
+    "caption_unsupported_or_wrong_detail": true,
+    "caption_missing_viewpoint": false,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Near-nadir urban blocks; aerial supported; small people/bus uncertain."
+  },
+  {
+    "audit_id": "A40",
+    "record_id": "mtl_archives_metadata_16144.json",
+    "lane": "targeted",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "aerial",
+    "tags": [
+      "nadir_urban",
+      "aerial"
+    ],
+    "caption_unsupported_or_wrong_detail": true,
+    "caption_missing_viewpoint": false,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Near-nadir snowy blocks supported; traffic-light and vehicle-type detail uncertain."
+  },
+  {
+    "audit_id": "A41",
+    "record_id": "mtl_archives_metadata_17638.json",
+    "lane": "targeted",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "ground",
+    "tags": [
+      "people_helicopter"
+    ],
+    "caption_unsupported_or_wrong_detail": true,
+    "caption_missing_viewpoint": false,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "People beside helicopter supported; tie/handbag not established."
+  },
+  {
+    "audit_id": "A42",
+    "record_id": "mtl_archives_metadata_18557.json",
+    "lane": "targeted",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "ground",
+    "tags": [
+      "people_helicopter"
+    ],
+    "caption_unsupported_or_wrong_detail": true,
+    "caption_missing_viewpoint": false,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "People beside helicopter supported; black-and-white claim contradicted by color image."
+  },
+  {
+    "audit_id": "A43",
+    "record_id": "mtl_archives_metadata_18558.json",
+    "lane": "targeted",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "ground",
+    "tags": [
+      "people_helicopter"
+    ],
+    "caption_unsupported_or_wrong_detail": true,
+    "caption_missing_viewpoint": false,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "People beside helicopter supported; tie not established."
+  },
+  {
+    "audit_id": "A44",
+    "record_id": "mtl_archives_metadata_12519.json",
+    "lane": "targeted",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "ground",
+    "tags": [
+      "flying_helicopter"
+    ],
+    "caption_unsupported_or_wrong_detail": true,
+    "caption_missing_viewpoint": false,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Flying helicopter above ground scene; people standing near helicopter unsupported."
+  },
+  {
+    "audit_id": "A45",
+    "record_id": "mtl_archives_metadata_12469.json",
+    "lane": "targeted",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "uncertain",
+    "tags": [],
+    "caption_unsupported_or_wrong_detail": true,
+    "caption_missing_viewpoint": null,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Rotated treeline/water; sky claim questionable; camera viewpoint unresolved."
+  },
+  {
+    "audit_id": "A46",
+    "record_id": "mtl_archives_metadata_12470.json",
+    "lane": "targeted",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "uncertain",
+    "tags": [],
+    "caption_unsupported_or_wrong_detail": false,
+    "caption_missing_viewpoint": null,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Rotated treeline/water; broad objects supported; viewpoint unresolved."
+  },
+  {
+    "audit_id": "A47",
+    "record_id": "mtl_archives_metadata_12467.json",
+    "lane": "targeted",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "uncertain",
+    "tags": [],
+    "caption_unsupported_or_wrong_detail": true,
+    "caption_missing_viewpoint": null,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Rotated trees/water; frozen-river assertion not established; viewpoint unresolved."
+  },
+  {
+    "audit_id": "A48",
+    "record_id": "mtl_archives_metadata_16274.json",
+    "lane": "targeted",
+    "reviewer": "codex-primary-visual-audit",
+    "review_class": "assistant_provisional_not_human_gold",
+    "viewpoint": "aerial",
+    "tags": [
+      "aerial"
+    ],
+    "caption_unsupported_or_wrong_detail": true,
+    "caption_missing_viewpoint": false,
+    "source_identity": "requires_source_lineage_check_not_inferred_from_pixels",
+    "notes": "Oblique water/trees/settlement supported; fine vehicle details uncertain."
+  }
+]
