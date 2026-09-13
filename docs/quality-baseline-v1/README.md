@@ -112,3 +112,9 @@ Inventory and artifact digests are checked in. Raw evidence is retained in the o
 - Operational metric tests: five passed.
 
 Contract tests establish reusable machinery, not corpus-wide semantic accuracy. No production deployment, broad recaptioning, model promotion, or GPU execution occurred.
+
+## Caption review clarification (v2)
+
+The owner requested a clearer definition of caption quality before completing the review. See `caption-contract.md` and `caption-rubric-v2.json`. The review now separates accuracy, essential visual coverage and retrieval usefulness. Saved viewpoint and legacy responses are retained; missing dimensions are not inferred. The A01 discussion is calibration, not blind caption evidence. Original baseline metrics remain unchanged.
+
+Render the updated packet with `python3 packages/scripts/src/quality-baseline-v1/render-review.py "$AUDIT_OUTPUT"`; it writes the private review HTML without assistant judgments. Test answer migration/completion with `node --test packages/scripts/src/quality-baseline-v1/review-state.test.mjs`.

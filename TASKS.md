@@ -247,3 +247,5 @@ Geography: Montreal 57%, rest of QC 24%, US 14%, International 5%.
 ## Issue #136 — operational archive quality baseline (2026-09-13)
 
 Technical audit and baseline are in `docs/quality-baseline-v1/README.md`. Verified canonical/index membership, recovered hash-bound gold/family artifacts, sampled caption quality, and measured 20 queries / 72 API calls. Existing benchmark remains no-ship. Independent owner review of 12 sample images is pending; do not close #136 or treat assistant judgments as human gold. Follow-up repairs belong to #137–#139.
+
+Issue #136 caption review now uses a versioned three-dimension rubric (accuracy, coverage, retrieval usefulness); see `docs/quality-baseline-v1/caption-contract.md`. Owner viewpoints are preserved; caption assessments remain pending. Candidate caption generation and retrieval validation remain in #139.

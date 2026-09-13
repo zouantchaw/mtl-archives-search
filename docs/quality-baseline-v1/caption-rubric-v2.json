@@ -1,0 +1,47 @@
+{
+  "version": "caption-review-v2",
+  "purpose": "Describe visible evidence precisely enough to distinguish and retrieve an image; keep source-supported context separate.",
+  "dimensions": [
+    {
+      "key": "accuracy",
+      "title": "Are the stated details supported?",
+      "help": "Judge what the caption claims, not what it leaves out. A date, place or identity needs source evidence; choose unsure if you cannot verify it. Do not mistake architectural age for photograph date.",
+      "options": {
+        "supported": "Supported by the image / supplied evidence",
+        "contradicted": "Contains a visibly wrong detail",
+        "unsupported": "Contains details the evidence does not establish",
+        "uncertain": "Unsure / needs source review"
+      }
+    },
+    {
+      "key": "coverage",
+      "title": "Does it describe the important visual information?",
+      "help": "Look for camera viewpoint, main subjects and their relationships. Do not require every small object or unreadable sign.",
+      "options": {
+        "adequate": "Viewpoint and main scene are clear",
+        "missing_viewpoint": "Important viewpoint is missing or unclear",
+        "missing_subjects": "Important subjects or relationships are missing",
+        "missing_both": "Both viewpoint and important scene details are missing",
+        "uncertain": "Unsure"
+      }
+    },
+    {
+      "key": "retrieval",
+      "title": "Would this help distinguish the image in search?",
+      "help": "Does it describe this particular image, or could it fit hundreds of unrelated photos? This is a reviewer assessment; actual retrieval improvement still needs testing.",
+      "options": {
+        "distinctive": "Specific and useful",
+        "generic": "Plausible but too generic",
+        "misleading": "Would suggest the wrong kind of image",
+        "uncertain": "Unsure"
+      }
+    }
+  ],
+  "evidence_layers": {
+    "visual_description": "Concise pixel-grounded description: viewpoint, main subjects and distinctive visible relationships. No invented era, mood or historical explanation.",
+    "visual_features": "Separate viewpoint, perspective, medium, objects and spatial relationships. Unknown values remain unknown. Every generated field needs provenance and review state.",
+    "source_context": "Names, dates, places and attribution remain separately sourced. Do not infer them solely from appearance or silently mix them into visual evidence."
+  },
+  "decision_rule": "Do not collapse these dimensions into one score. Contradictions need correction; unsupported claims need removal or evidence; missing information needs enrichment; generic wording needs a retrieval test. No automatic publication.",
+  "migration": "Preserve v1 answers verbatim. Do not infer v2 dimension answers from a v1 overall assessment. Previous sample and baseline scores remain frozen under their original rubric."
+}
