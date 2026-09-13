@@ -1,6 +1,6 @@
 # Archive quality baseline v1 — issue #136
 
-Status: technical baseline prepared; independent owner review pending. No production changes or model promotion. This operational audit does not lock Benchmark v1 or complete deferred research gates.
+Status: audit complete, including the submitted owner review. No production changes or model promotion. This operational audit does not lock Benchmark v1 or complete deferred research gates.
 
 ## Decision
 
@@ -86,7 +86,7 @@ The old preflight was rerun with recovered artifacts. Gold is now available and 
 
 ## Promotion targets
 
-`protocol.json` freezes proposed engineering gates before candidate tuning: zero confirmed viewpoint/exclusion violations, zero failed checks counted as matches, preserved follow-up constraints, reviewed-pool P@6 and recall@36 at least 0.80, visual completion at least 0.98, search p95 at most 2 s, research p95 at most 10 s, estimated research request cost at most $0.02, and no worst-slice precision drop above 0.05. Incomplete judgments/cost observations cannot pass a gate. These are initial targets, not current performance or shipping authorization; owner review remains pending.
+`protocol.json` freezes proposed engineering gates before candidate tuning: zero confirmed viewpoint/exclusion violations, zero failed checks counted as matches, preserved follow-up constraints, reviewed-pool P@6 and recall@36 at least 0.80, visual completion at least 0.98, search p95 at most 2 s, research p95 at most 10 s, estimated research request cost at most $0.02, and no worst-slice precision drop above 0.05. Incomplete judgments/cost observations cannot pass a gate. These are initial targets, not current performance or shipping authorization; owner review is recorded separately below.
 
 ## Reproduction and artifacts
 
@@ -118,3 +118,13 @@ Contract tests establish reusable machinery, not corpus-wide semantic accuracy. 
 The owner requested a clearer definition of caption quality before completing the review. See `caption-contract.md` and `caption-rubric-v2.json`. The review now separates accuracy, essential visual coverage and retrieval usefulness. Saved viewpoint and legacy responses are retained; missing dimensions are not inferred. The A01 discussion is calibration, not blind caption evidence. Original baseline metrics remain unchanged.
 
 Render the updated packet with `python3 packages/scripts/src/quality-baseline-v1/render-review.py "$AUDIT_OUTPUT"`; it writes the private review HTML without assistant judgments. Test answer migration/completion with `node --test packages/scripts/src/quality-baseline-v1/review-state.test.mjs`.
+
+## Completed owner review — 2026-09-13
+
+All 48 required answers (12 viewpoints and 36 caption dimensions) validated against the v2 rubric. The raw submission remains private; `owner-review-summary.json` records its SHA-256, safe labels, provenance and discrepancy dispositions.
+
+Across 12 captions, 7 contain unsupported details, 1 contains a visibly contradicted detail, and 4 are supported. Ten omit important information (5 missing both viewpoint/subjects, 5 missing subjects); 2 have adequate coverage. Eight are generic and 4 misleading; none was rated distinctive. These are judgments on a selected subset, not corpus-wide error rates or measured retrieval scores.
+
+A01 was discussed with the assistant and is assisted caption calibration. The other 11 caption reviews are independent: 6 unsupported, 1 contradicted, 4 supported; 9 missing information; 7 generic and 4 misleading. All 12 earlier viewpoint answers retain independent provenance.
+
+Discrepancies are resolved for audit reporting by retaining both reviewers and using the owner submission as a separate v2 baseline, never overwriting the frozen assistant metrics or claiming consensus. A09 resolves an assistant-uncertain viewpoint to owner-rated aerial. Accuracy judgments differ on A09, A25, A32 and A34; viewpoint-coverage judgments differ on A13, A32 and A44. These records require factual rechecking before training or promotion in #139. The review reinforces a controlled caption replacement pilot, while showing why assistant assessments alone cannot be treated as gold.

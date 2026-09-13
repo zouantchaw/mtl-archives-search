@@ -1,0 +1,155 @@
+{
+  "rubric_version": "caption-review-v2",
+  "raw_review_sha256": "f6a8a77f468f50bbff907b1865fac8c72b8024d1b3a74139b76954ead6749b12",
+  "completed_at": "2026-09-13T17:48:45.119Z",
+  "reviewer_class": "repository_owner",
+  "sample_note": "Selected 12-image audit subset, not a population estimate. A01 caption is assisted calibration; prior viewpoint judgment remains independent.",
+  "counts_all_12": {
+    "accuracy": {
+      "unsupported": 7,
+      "supported": 4,
+      "contradicted": 1
+    },
+    "coverage": {
+      "missing_both": 5,
+      "adequate": 2,
+      "missing_subjects": 5
+    },
+    "retrieval": {
+      "generic": 8,
+      "misleading": 4
+    }
+  },
+  "counts_independent_11": {
+    "accuracy": {
+      "unsupported": 6,
+      "supported": 4,
+      "contradicted": 1
+    },
+    "coverage": {
+      "missing_both": 4,
+      "adequate": 2,
+      "missing_subjects": 5
+    },
+    "retrieval": {
+      "misleading": 4,
+      "generic": 7
+    }
+  },
+  "rows": [
+    {
+      "audit_id": "A01",
+      "record_id": "mtl_archives_metadata_18173.json",
+      "viewpoint": "aerial / from above",
+      "caption_review_provenance": "assisted_calibration",
+      "accuracy": "unsupported",
+      "coverage": "missing_both",
+      "retrieval": "generic"
+    },
+    {
+      "audit_id": "A05",
+      "record_id": "mtl_archives_metadata_1471.json",
+      "viewpoint": "aerial / from above",
+      "caption_review_provenance": "independent_owner_review",
+      "accuracy": "unsupported",
+      "coverage": "missing_both",
+      "retrieval": "misleading"
+    },
+    {
+      "audit_id": "A09",
+      "record_id": "mtl_archives_metadata_2963.json",
+      "viewpoint": "aerial / from above",
+      "caption_review_provenance": "independent_owner_review",
+      "accuracy": "supported",
+      "coverage": "adequate",
+      "retrieval": "generic"
+    },
+    {
+      "audit_id": "A13",
+      "record_id": "mtl_archives_metadata_18698.json",
+      "viewpoint": "aerial / from above",
+      "caption_review_provenance": "independent_owner_review",
+      "accuracy": "unsupported",
+      "coverage": "missing_subjects",
+      "retrieval": "generic"
+    },
+    {
+      "audit_id": "A16",
+      "record_id": "mtl_archives_metadata_15240.json",
+      "viewpoint": "aerial / from above",
+      "caption_review_provenance": "independent_owner_review",
+      "accuracy": "unsupported",
+      "coverage": "missing_both",
+      "retrieval": "misleading"
+    },
+    {
+      "audit_id": "A20",
+      "record_id": "mtl_archives_metadata_16475.json",
+      "viewpoint": "aerial / from above",
+      "caption_review_provenance": "independent_owner_review",
+      "accuracy": "unsupported",
+      "coverage": "missing_both",
+      "retrieval": "misleading"
+    },
+    {
+      "audit_id": "A25",
+      "record_id": "mtl_archives_metadata_0.json",
+      "viewpoint": "ground level",
+      "caption_review_provenance": "independent_owner_review",
+      "accuracy": "contradicted",
+      "coverage": "missing_subjects",
+      "retrieval": "generic"
+    },
+    {
+      "audit_id": "A29",
+      "record_id": "mtl_archives_metadata_67.json",
+      "viewpoint": "ground level",
+      "caption_review_provenance": "independent_owner_review",
+      "accuracy": "supported",
+      "coverage": "missing_subjects",
+      "retrieval": "generic"
+    },
+    {
+      "audit_id": "A32",
+      "record_id": "mtl_archives_metadata_13693.json",
+      "viewpoint": "aerial / from above",
+      "caption_review_provenance": "independent_owner_review",
+      "accuracy": "supported",
+      "coverage": "missing_subjects",
+      "retrieval": "generic"
+    },
+    {
+      "audit_id": "A34",
+      "record_id": "mtl_archives_metadata_16177.json",
+      "viewpoint": "aerial / from above",
+      "caption_review_provenance": "independent_owner_review",
+      "accuracy": "supported",
+      "coverage": "adequate",
+      "retrieval": "generic"
+    },
+    {
+      "audit_id": "A41",
+      "record_id": "mtl_archives_metadata_17638.json",
+      "viewpoint": "ground level",
+      "caption_review_provenance": "independent_owner_review",
+      "accuracy": "unsupported",
+      "coverage": "missing_subjects",
+      "retrieval": "generic"
+    },
+    {
+      "audit_id": "A44",
+      "record_id": "mtl_archives_metadata_12519.json",
+      "viewpoint": "ground level",
+      "caption_review_provenance": "independent_owner_review",
+      "accuracy": "unsupported",
+      "coverage": "missing_both",
+      "retrieval": "misleading"
+    }
+  ],
+  "discrepancy_disposition": {
+    "policy": "Preserve original assistant audit and frozen metrics. Owner labels are the operative separate v2 owner baseline; differences are not averaged or treated as consensus gold. Recheck disputed facts before using these records for training or promotion in #139. Audit completion does not require artificial reviewer agreement.",
+    "viewpoint": "11/11 definite assistant viewpoints agree; A09 owner supplies aerial where assistant was uncertain.",
+    "accuracy": "A09, A32 and A34 owner supported versus assistant flagged; A25 owner contradicted versus assistant unflagged. Rubrics differ; retain both.",
+    "viewpoint_coverage": "A13 and A32 owner reports missing subjects only versus assistant missing viewpoint; A44 owner missing both versus assistant viewpoint not missing. Retain both; do not retrofit v1 scores."
+  }
+}
