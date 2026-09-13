@@ -6,6 +6,7 @@ import { canRenderPortToCity } from '@/lib/port-to-city-access';
 const isPublicRoute = createRouteMatcher([
   '/',
   '/search(.*)',
+  '/research(.*)',
   '/print(.*)',
   '/checkout(.*)',
   '/order-confirmation(.*)',

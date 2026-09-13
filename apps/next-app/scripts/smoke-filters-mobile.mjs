@@ -5,7 +5,8 @@ import { chromium, devices } from 'playwright';
 const rawTarget = process.argv[2] || process.env.SMOKE_URL || 'http://localhost:3001/';
 const iterations = Number(process.env.FILTER_STRESS_ITERATIONS || 2);
 const targetUrl = new URL(rawTarget);
-targetUrl.searchParams.set('ab', 'home');
+targetUrl.pathname = '/search';
+targetUrl.searchParams.set('q', 'trees');
 const target = targetUrl.toString();
 
 const scenarios = [
@@ -25,7 +26,7 @@ function fail(message) {
 }
 
 async function clickDiscoveryFilter(page, index) {
-  const buttons = page.locator('div.will-change-transform button');
+  const buttons = page.getByRole('button', { name: /^(Miron|Plateau|Ahuntsic|Portuguais|Vieux-Montréal|Villeray|Hochelaga|Rosemont)$/ });
   const count = await buttons.count();
   if (count === 0) return false;
   const targetButton = buttons.nth(index % count);
@@ -59,7 +60,7 @@ async function runScenario(scenario) {
     await page.goto(target, { waitUntil: 'domcontentloaded', timeout: 45000 });
     await page.waitForTimeout(1200);
 
-    const pills = page.locator('div.will-change-transform button');
+    const pills = page.getByRole('button', { name: /^(Miron|Plateau|Ahuntsic|Portuguais|Vieux-Montréal|Villeray|Hochelaga|Rosemont)$/ });
     await pills.first().waitFor({ timeout: 10000 });
 
     let taps = 0;

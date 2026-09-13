@@ -176,3 +176,19 @@ Evidence keeps the merged #98 v1 exchange/transcript bytes, semantics, and IDs u
 
 The Packet 3A builder contract uses an image-owned verifier to bind the retained source-descriptor digest, Git commit/tree/archive/exact blob bytes, and a sealed measured snapshot; transformed `.gitattributes` bytes are rejected. Its runtime closure is an exact root-owned `0755` directory tree and inventory with offline Cargo vendor/config, Git config, musl compiler/subtools/libc, CMake, Ninja, and static ELF64 little-endian x86-64 output checks. Rootless Podman uses keep-id mapping, a no-new-privileges root proof supervisor with only `SETUID`, `SETGID`, and `SETPCAP`, and an exact drop to `65532:65532` with zero child capabilities. Exactly two host helper families are independently rebuilt and host-admitted. Expected and candidate SBOMs are derived independently from Cargo tree and metadata and disagreement fails. The retained staging receipt carries the original descriptor SHA-256 into both container verification and host admission. The contract is inactive here; Issue #101 still requires reviewed external pins, two real x86 Linux builds, receipt comparison, worker termination, and later Podman/network/lifecycle/broker/D1/admission packets.
 Packet 3C local machinery is now implemented for synthetic fixtures: digest-pinned acquisition, deterministic offline materialization, exact receipt emission, and two-bundle byte comparison. This does not claim a final real lock, x86 Linux build, signed host-independence evidence, D1 action, or production admission.
+
+## Canonical search repair (September 2026)
+
+The canonical-ID repair and its rollout/evaluation procedure are documented in [docs/search-canonical-repair.md](docs/search-canonical-repair.md). Smart search combines CLIP and BGE with explicit branch-health diagnostics and separate ranking scores. Future ingestion defaults to `manifest_search_canonical.jsonl`; retain original archival descriptions alongside generated captions. See the repair report for verified coverage and remaining relevance limitations.
+
+### Search gap repair (2026-09-13)
+
+The follow-up backfill restores 29 missing canonical R2 objects, fills 184 caption gaps and adds 40 CLIP vectors. Captions retain AI provenance and their text vectors are regenerated together. See [the gap-repair runbook](docs/search-gap-repair.md) for checks, recovery and evidence.
+
+Degraded smart-search responses now bypass caching so temporary inference outages can recover on the next request.
+
+## Conversational reading room (September 2026)
+
+`/research` adds a French/English conversation beside a photo collection, local pins, and a source/evidence drawer. Vercel AI SDK renders typed tool results; Mistral Small 3.1 on the existing Cloudflare AI binding interprets requests and checks bounded image candidates. Result summaries and historical-evidence limitations are rendered from controlled tool output. Canonical metadata stays separate from AI observations. No training or GPU provisioning is required.
+
+See [Reading room implementation and operations](docs/reading-room.md) for deployment, quotas, failure modes and live evaluation commands.

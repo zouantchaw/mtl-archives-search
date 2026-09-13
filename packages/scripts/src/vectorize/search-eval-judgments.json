@@ -1,0 +1,13 @@
+{
+  "reviewedAt": "2026-09-12",
+  "reviewer": "Codex visual review of browser-rendered before/preview contact sheets",
+  "scale": {"2": "clearly relevant to visible-scene request", "1": "partial or visually ambiguous", "0": "irrelevant", "null": "image unavailable; not judged"},
+  "scope": "Top five smart results for five queries, 50 result positions. These are a small manual sample, not whole-corpus relevance or an independent human benchmark.",
+  "judgments": [
+    {"query":"helicopter","before":[2,0,2,0,2],"preview":[2,2,2,2,2],"note":"Small helicopter is visible in baseline rank one; preview top five all visibly contain helicopters."},
+    {"query":"women helicopter","before":[1,1,0,2,0],"preview":[2,2,1,1,1],"note":"Preview first two show people consistent with the requested scene beside helicopters. Remaining top-five images show helicopters without a discernible matching person. Visual presentation only; no identity claims."},
+    {"query":"church","before":[2,null,null,2,1],"preview":[2,2,2,1,2],"note":"Two baseline image URLs do not render; one confirmed R2 404. Preview rank four is visually ambiguous. Do not report an apples-to-apples precision gain for this query."},
+    {"query":"water","before":[2,2,2,2,2],"preview":[2,2,2,2,2],"note":"Both sets show bodies of water, including frozen water in the baseline."},
+    {"query":"trees","before":[2,2,2,2,1],"preview":[2,2,2,2,2],"note":"Baseline rank five is a wide aerial/coastline view with trees not prominent; preview trees are readily discernible."}
+  ]
+}

@@ -1,3 +1,5 @@
+import { researchInference } from './research-inference';
+import { reserveResearchTurn } from './research-budget';
 import type { VectorizeIndex, Ai } from '@cloudflare/workers-types';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { type PhotoRecord, validateMetadataQuality } from '@mtl-archives/core';
@@ -30,6 +32,7 @@ import {
 } from './newsletter-email';
 
 type Env = {
+  RESEARCH_API_SECRET?: string;
   DB: D1Database;
   AI: Ai;
   VECTORIZE?: VectorizeIndex;
@@ -63,7 +66,7 @@ const JSON_HEADERS: HeadersInit = {
   ...CORS_HEADERS,
 };
 
-const SELECT_FIELDS = `metadata_filename, image_filename, resolved_image_filename, image_size_bytes, rotation_degrees, name, description, vlm_caption, date_value, credits, cote, external_url, portal_match, portal_title, portal_description, portal_date, portal_cote, aerial_datasets, latitude, longitude, geocode_confidence, taxonomy_primary_category, taxonomy_themes, taxonomy_search_facets, taxonomy_review_required, taxonomy_exclude_default_visual, image_quality_labels, image_quality_severity, image_quality_action`;
+const SELECT_FIELDS = `metadata_filename, image_filename, resolved_image_filename, image_size_bytes, rotation_degrees, name, description, vlm_caption, vlm_caption_source, vlm_caption_model, vlm_caption_status, date_value, credits, cote, external_url, portal_match, portal_title, portal_description, portal_date, portal_cote, aerial_datasets, latitude, longitude, geocode_confidence, taxonomy_primary_category, taxonomy_themes, taxonomy_search_facets, taxonomy_review_required, taxonomy_exclude_default_visual, image_quality_labels, image_quality_severity, image_quality_action`;
 
 // Lightweight fields for map pins (faster queries)
 const MAP_FIELDS = `metadata_filename, name, date_value, latitude, longitude, external_url, resolved_image_filename`;
@@ -82,7 +85,7 @@ const CACHE_TTL = {
 const SIGNED_URL_TTL_SECONDS = 3600;
 const SIGNED_URL_TTL_BUFFER_SECONDS = 60;
 const COTE_PATTERN = /^[A-Z]{1,4}[\d-]+/i;
-const CACHE_KEY_VERSION = '2026-02-20-orientation-v3';
+const CACHE_KEY_VERSION = '2026-09-13-canonical-gap-repair-v3';
 const NEWSLETTER_FROM_EMAIL = 'MTL Archives <support@support.mtlarchives.com>';
 const DEFAULT_SITE_URL = 'https://www.mtlarchives.com';
 const DEFAULT_NEWSLETTER_REPLY_TO = 'zouantchaw74@gmail.com';
@@ -118,6 +121,7 @@ type SearchPolicyAnnotation = {
 
 type SearchAwarePhotoRecord = PhotoRecord & {
   searchMetadata?: SearchMetadata;
+  captionProvenance?: { source: string | null; model: string | null; status: string | null };
 };
 
 type SearchPolicyAnnotated<T extends PhotoRecord> = T & {
@@ -194,7 +198,7 @@ async function withCache(
   const response = await handler();
 
   // Only cache successful responses
-  if (response.status === 200) {
+  if (response.status === 200 && !/\bno-store\b/i.test(response.headers.get('Cache-Control') ?? '')) {
     const toCache = new Response(response.body, response);
     toCache.headers.set('Cache-Control', `public, max-age=${ttl}`);
     toCache.headers.set('X-Cache-TTL', String(ttl));
@@ -231,6 +235,14 @@ export default {
     const url = new URL(request.url);
 
     try {
+      if (url.pathname === '/api/research/v1/chat/completions') {
+        if (request.method !== 'POST') return methodNotAllowed();
+        return researchInference(request, env);
+      }
+      if (url.pathname === '/api/research/budget') {
+        if (request.method !== 'POST') return methodNotAllowed();
+        return reserveResearchTurn(request, env);
+      }
       if (url.pathname === '/api/photos') {
         if (request.method !== 'GET') {
           return methodNotAllowed();
@@ -373,6 +385,11 @@ async function buildPhotoRecord(row: Record<string, unknown>, env: Env): Promise
     name: normalizeNullableText(row.name),
     description: normalizeNullableText(row.description),
     vlmCaption: normalizeNullableText(row.vlm_caption),
+    captionProvenance: {
+      source: normalizeNullableText(row.vlm_caption_source),
+      model: normalizeNullableText(row.vlm_caption_model),
+      status: normalizeNullableText(row.vlm_caption_status),
+    },
     dateValue: normalizeNullableText(row.date_value),
     credits: normalizeNullableText(row.credits),
     cote: normalizeNullableText(row.cote),
@@ -1589,7 +1606,7 @@ async function handleSearch(url: URL, env: Env, request: Request): Promise<Respo
 
   const mode = (url.searchParams.get('mode') ?? 'smart').toLowerCase();
   const limitParam = Number(url.searchParams.get('limit') ?? '25');
-  const limit = clamp(Number.isFinite(limitParam) ? limitParam : 25, 1, 100);
+  const limit = clamp(Math.floor(Number.isFinite(limitParam) ? limitParam : 25), 1, 100);
   const maxSizeParam = Number(url.searchParams.get('maxSize') ?? '0');
   const maxSize = Number.isFinite(maxSizeParam) && maxSizeParam > 0 ? maxSizeParam : 0;
   const searchPolicy: SearchPolicyOptions = {
@@ -1623,7 +1640,7 @@ async function handleSearch(url: URL, env: Env, request: Request): Promise<Respo
 
   // Text mode: redirect to semantic search to avoid full table scans (LIKE on 4 columns).
   // Fast-path: if query looks like a cote/reference (e.g. "VM94-A0123-045"), do exact PK lookup.
-  if (COTE_PATTERN.test(q)) {
+  if (COTE_PATTERN.test(q) || /^mtl_archives_metadata_\d+(?:\.json)?$/i.test(q)) {
     const maxSizeSqlFilter = maxSize > 0 ? ' AND image_size_bytes <= ?' : '';
     const maxSizeSqlParams = maxSize > 0 ? [maxSize] : [];
     const { results = [] } = await env.DB.prepare(
@@ -1737,366 +1754,134 @@ function escapeForLike(value: string): string {
   return value.replaceAll('\\', '\\\\').replaceAll('%', '\\%').replaceAll('_', '\\_');
 }
 
-// Smart search: combines visual (CLIP) + semantic (BGE) for best results
-async function handleSmartSearch(query: string, limit: number, env: Env, maxSize = 0, searchPolicy: SearchPolicyOptions = { includeExcluded: false }): Promise<Response> {
-  const maxSizeSqlFilter = maxSize > 0 ? ' AND image_size_bytes <= ?' : '';
-  const maxSizeSqlParams = maxSize > 0 ? [maxSize] : [];
-  if (COTE_PATTERN.test(query)) {
+type BranchName = 'visual' | 'semantic';
+type SearchHit = SearchAwarePhotoRecord & { score: number; searchPolicy?: SearchPolicyAnnotation };
+type BranchDiagnostics = {
+  status: 'ok' | 'unavailable' | 'error';
+  candidates: number;
+  hydrated: number;
+  missingRecords: number;
+  filteredBySize: number;
+};
+type BranchResult = { items: SearchHit[]; diagnostics: BranchDiagnostics };
+
+async function retrieveSearchBranch(query: string, limit: number, env: Env, branch: BranchName,
+  maxSize: number, policy: SearchPolicyOptions, precomputed?: number[]): Promise<BranchResult> {
+  const diagnostics: BranchDiagnostics = { status: 'ok', candidates: 0, hydrated: 0, missingRecords: 0, filteredBySize: 0 };
+  const index = branch === 'visual' ? env.VECTORIZE_CLIP : env.VECTORIZE;
+  if (!index || (branch === 'semantic' && !env.AI) || (branch === 'visual' && !precomputed && !env.CLIP_EMBEDDING_URL)) {
+    return { items: [], diagnostics: { ...diagnostics, status: 'unavailable' } };
+  }
+  try {
+    const embedding = precomputed ?? (branch === 'visual'
+      ? await generateClipTextEmbedding(query, env)
+      : extractEmbedding(await env.AI.run('@cf/baai/bge-m3', { text: [query] })));
+    if (!embedding || (branch === 'visual' && embedding.length !== 512) || !embedding.every(Number.isFinite)) {
+      throw new Error('Invalid query embedding');
+    }
+    const result = await index.query(embedding, {
+      topK: Math.min(limit, 50), returnMetadata: true, returnValues: false,
+    });
+    const matches = result.matches ?? [];
+    diagnostics.candidates = matches.length;
+    if (!matches.length) return { items: [], diagnostics };
+    const ids = matches.map(m => m.id);
+    // Resolve all candidate IDs before applying size limits, so missing records and
+    // intentional mobile filtering are independently observable.
+    const { results = [] } = await env.DB.prepare(
+      `SELECT ${SELECT_FIELDS} FROM manifest WHERE metadata_filename IN (${ids.map(() => '?').join(',')})`
+    ).bind(...ids).all();
+    const records = new Map(results.map(row => [String(row.metadata_filename), row]));
+    diagnostics.hydrated = matches.filter(m => records.has(m.id)).length;
+    diagnostics.missingRecords = matches.length - diagnostics.hydrated;
+    if (diagnostics.missingRecords) console.warn('search_missing_records', { branch, count: diagnostics.missingRecords });
+    const items: SearchHit[] = [];
+    for (const match of matches) {
+      const row = records.get(match.id);
+      if (!row) continue;
+      if (maxSize > 0 && (row.image_size_bytes == null || Number(row.image_size_bytes) > maxSize)) {
+        diagnostics.filteredBySize++; continue;
+      }
+      items.push({ ...await buildPhotoRecord(row, env), score: match.score });
+    }
+    return { items: applySearchPolicy(items, policy, query), diagnostics };
+  } catch (error) {
+    console.error('search_branch_failed', { branch, error: error instanceof Error ? error.message : 'Unknown error' });
+    return { items: [], diagnostics: { ...diagnostics, status: 'error' } };
+  }
+}
+
+async function handleSmartSearch(query: string, limit: number, env: Env, maxSize = 0,
+  searchPolicy: SearchPolicyOptions = { includeExcluded: false }): Promise<Response> {
+  if (COTE_PATTERN.test(query) || /^mtl_archives_metadata_\d+(?:\.json)?$/i.test(query)) {
     const { results = [] } = await env.DB.prepare(
       `SELECT ${SELECT_FIELDS} FROM manifest
        WHERE (cote = ? OR portal_cote = ? OR metadata_filename = ? OR metadata_filename = ?)
-       ${maxSizeSqlFilter}
-       LIMIT ?`
-    ).bind(query, query, query, `${query}.json`, ...maxSizeSqlParams, limit).all();
-    if (results.length > 0) {
-      const items = await Promise.all(results.map((row) => buildPhotoRecord(row, env)));
-      return jsonResponse({ items, mode: 'smart', count: items.length });
+       ${maxSize > 0 ? 'AND image_size_bytes <= ?' : ''} LIMIT ?`
+    ).bind(query, query, query, `${query}.json`, ...(maxSize > 0 ? [maxSize] : []), limit).all();
+    if (results.length) {
+      const items = await Promise.all(results.map(row => buildPhotoRecord(row, env)));
+      return jsonResponse({ items, mode: 'smart', count: items.length, countKind: 'returned', retrieval: { exact: true } });
     }
   }
-
-  // Run visual and semantic searches in parallel
-  const [visualResult, semanticResult] = await Promise.allSettled([
-    getVisualResults(query, limit, env, maxSize, searchPolicy),
-    getSemanticResults(query, limit, env, maxSize, searchPolicy),
+  const [visual, semantic] = await Promise.all([
+    retrieveSearchBranch(query, limit, env, 'visual', maxSize, searchPolicy),
+    retrieveSearchBranch(query, limit, env, 'semantic', maxSize, searchPolicy),
   ]);
-
-  type ScoredPhoto = SearchAwarePhotoRecord & { score?: number; source?: string; searchPolicy?: SearchPolicyAnnotation };
-  const visualItems = visualResult.status === 'fulfilled' ? visualResult.value : null;
-  const semanticItems = semanticResult.status === 'fulfilled' ? semanticResult.value : null;
-
-  if (!visualItems && !semanticItems) {
-    return jsonResponse({ items: [], mode: 'smart', count: 0 });
+  const diagnostics = { visual: visual.diagnostics, semantic: semantic.diagnostics };
+  if (visual.diagnostics.status !== 'ok' && semantic.diagnostics.status !== 'ok') {
+    return jsonResponse({ error: 'Search is temporarily unavailable', items: [], mode: 'smart', count: 0, retrieval: diagnostics }, 503);
   }
-
-  if (visualItems && !semanticItems) {
-    const items = visualItems.slice(0, limit).map((item) => ({ ...item, source: 'visual' }));
-    return jsonResponse({ items, mode: 'smart', count: items.length });
-  }
-
-  if (semanticItems && !visualItems) {
-    const items = semanticItems.slice(0, limit).map((item) => ({ ...item, source: 'semantic' }));
-    return jsonResponse({ items, mode: 'smart', count: items.length });
-  }
-
-  const k = 60;
-  const scored = new Map<string, { item: ScoredPhoto; score: number; sources: Set<string>; ranks: { visual?: number; semantic?: number } }>();
-
-  const applyRrf = (items: (SearchAwarePhotoRecord & { score?: number })[], source: 'visual' | 'semantic') => {
-    items.forEach((item, index) => {
-      const id = item.metadataFilename;
-      const rank = index + 1;
-      const policy = searchPolicyFor(item, query);
-      if (!searchPolicy.includeExcluded && policy.excludedFromDefault) return;
-      const increment = (1 / (k + rank)) * policy.demotion * policy.boost;
-      const existing = scored.get(id);
-      if (existing) {
-        existing.score += increment;
-        existing.sources.add(source);
-        existing.ranks[source] = rank;
-        return;
-      }
-      scored.set(id, {
-        item: { ...item, searchPolicy: policy },
-        score: increment,
-        sources: new Set([source]),
-        ranks: { [source]: rank },
-      });
+  const merged = new Map<string, {
+    item: SearchHit; rankingScore: number;
+    branchScores: Partial<Record<BranchName, number>>; ranks: Partial<Record<BranchName, number>>;
+  }>();
+  for (const [branch, result] of [['visual', visual], ['semantic', semantic]] as const) {
+    result.items.forEach((item, i) => {
+      const rank = i + 1;
+      const entry = merged.get(item.metadataFilename) ?? { item, rankingScore: 0, branchScores: {}, ranks: {} };
+      entry.rankingScore += 1 / (60 + rank);
+      entry.branchScores[branch] = item.score;
+      entry.ranks[branch] = rank;
+      merged.set(item.metadataFilename, entry);
     });
-  };
-
-  applyRrf(visualItems!, 'visual');
-  applyRrf(semanticItems!, 'semantic');
-
-  const merged = Array.from(scored.values())
-    .sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score;
-      const aSemantic = a.ranks.semantic ?? Number.POSITIVE_INFINITY;
-      const bSemantic = b.ranks.semantic ?? Number.POSITIVE_INFINITY;
-      if (aSemantic !== bSemantic) return aSemantic - bSemantic;
-      const aVisual = a.ranks.visual ?? Number.POSITIVE_INFINITY;
-      const bVisual = b.ranks.visual ?? Number.POSITIVE_INFINITY;
-      return aVisual - bVisual;
-    })
-    .map((entry) => ({
-      ...entry.item,
-      source: entry.sources.size > 1 ? 'both' : entry.sources.has('visual') ? 'visual' : 'semantic',
-    }));
-
-  return jsonResponse({
-    items: merged.slice(0, limit),
-    mode: 'smart',
-    count: Math.min(merged.length, limit),
-  });
+  }
+  const items = [...merged.values()].sort((a, b) =>
+    b.rankingScore - a.rankingScore ||
+    (a.ranks.semantic ?? Infinity) - (b.ranks.semantic ?? Infinity) ||
+    (a.ranks.visual ?? Infinity) - (b.ranks.visual ?? Infinity)
+  ).slice(0, limit).map(entry => ({
+    ...entry.item,
+    // Retain legacy score for callers; expose the actual ranking score separately.
+    rankingScore: entry.rankingScore, branchScores: entry.branchScores, ranks: entry.ranks,
+    source: entry.ranks.visual && entry.ranks.semantic ? 'both' : entry.ranks.visual ? 'visual' : 'semantic',
+  }));
+  const degraded = visual.diagnostics.status !== 'ok' || semantic.diagnostics.status !== 'ok';
+  return jsonResponse({ items, mode: 'smart', count: items.length, countKind: 'returned', retrieval: diagnostics,
+    degraded }, 200, degraded ? { 'Cache-Control': 'no-store' } : {});
 }
 
-// Helper: get visual search results without Response wrapper
-// Note: Vectorize topK is capped at 50
-async function getVisualResults(query: string, limit: number, env: Env, maxSize = 0, searchPolicy: SearchPolicyOptions = { includeExcluded: false }): Promise<(PhotoRecord & { score?: number })[] | null> {
-  if (!env.VECTORIZE_CLIP || !env.CLIP_EMBEDDING_URL) return null;
-
-  try {
-    const embedding = await generateClipTextEmbedding(query, env);
-    if (!embedding || embedding.length !== 512) return null;
-
-    const vectorResults = await env.VECTORIZE_CLIP.query(embedding, {
-      topK: Math.min(limit, 50),
-      returnMetadata: true,
-      returnValues: false,
-    });
-
-    if (!vectorResults.matches?.length) return null;
-
-    const metadataFilenames = vectorResults.matches.map((m) => m.id);
-    const placeholders = metadataFilenames.map(() => '?').join(',');
-    const maxSizeSqlFilter = maxSize > 0 ? ' AND image_size_bytes <= ?' : '';
-    const maxSizeSqlParams = maxSize > 0 ? [maxSize] : [];
-    const { results = [] } = await env.DB.prepare(
-      `SELECT ${SELECT_FIELDS} FROM manifest WHERE metadata_filename IN (${placeholders})${maxSizeSqlFilter}`
-    ).bind(...metadataFilenames, ...maxSizeSqlParams).all();
-
-    const recordMap = new Map<string, Record<string, unknown>>();
-    for (const row of results) recordMap.set(String(row.metadata_filename), row);
-
-    const items = await Promise.all(
-      vectorResults.matches.map(async (match) => {
-        const row = recordMap.get(match.id);
-        if (!row) return null;
-        const photo = await buildPhotoRecord(row, env);
-        return { ...photo, score: match.score };
-      })
-    );
-
-    return applySearchPolicy(items.filter((i): i is PhotoRecord & { score: number } => i !== null), searchPolicy, query);
-  } catch (e) {
-    console.error('Smart search visual error:', e);
-    return null;
-  }
+async function handleSemanticSearch(query: string, limit: number, env: Env, maxSize = 0,
+  policy: SearchPolicyOptions = { includeExcluded: false }): Promise<Response> {
+  const result = await retrieveSearchBranch(query, limit, env, 'semantic', maxSize, policy);
+  if (result.diagnostics.status !== 'ok') return jsonResponse({
+    error: result.diagnostics.status === 'unavailable' ? 'Semantic search is not configured' : 'Semantic search failed',
+    retrieval: { semantic: result.diagnostics },
+  }, result.diagnostics.status === 'unavailable' ? 501 : 503);
+  return jsonResponse({ items: result.items, mode: 'semantic', count: result.items.length, countKind: 'returned', retrieval: { semantic: result.diagnostics } });
 }
 
-// Helper: get semantic search results without Response wrapper
-// Note: Vectorize topK is capped at 50
-async function getSemanticResults(query: string, limit: number, env: Env, maxSize = 0, searchPolicy: SearchPolicyOptions = { includeExcluded: false }): Promise<(PhotoRecord & { score?: number })[] | null> {
-  if (!env.VECTORIZE || !env.AI) return null;
-
-  try {
-    const embeddingResponse = await env.AI.run('@cf/baai/bge-m3', { text: [query] });
-    const embedding = extractEmbedding(embeddingResponse);
-    if (!embedding) return null;
-
-    const vectorResults = await env.VECTORIZE.query(embedding, {
-      topK: Math.min(limit, 50),
-      returnMetadata: true,
-      returnValues: false,
-    });
-
-    if (!vectorResults.matches?.length) return null;
-
-    const metadataFilenames = vectorResults.matches.map((m) => m.id);
-    const placeholders = metadataFilenames.map(() => '?').join(',');
-    const maxSizeSqlFilter = maxSize > 0 ? ' AND image_size_bytes <= ?' : '';
-    const maxSizeSqlParams = maxSize > 0 ? [maxSize] : [];
-    const { results = [] } = await env.DB.prepare(
-      `SELECT ${SELECT_FIELDS} FROM manifest WHERE metadata_filename IN (${placeholders})${maxSizeSqlFilter}`
-    ).bind(...metadataFilenames, ...maxSizeSqlParams).all();
-
-    const recordMap = new Map<string, Record<string, unknown>>();
-    for (const row of results) recordMap.set(String(row.metadata_filename), row);
-
-    const items = await Promise.all(
-      vectorResults.matches.map(async (match) => {
-        const row = recordMap.get(match.id);
-        if (!row) return null;
-        const photo = await buildPhotoRecord(row, env);
-        return { ...photo, score: match.score };
-      })
-    );
-
-    return applySearchPolicy(items.filter((i): i is PhotoRecord & { score: number } => i !== null), searchPolicy, query);
-  } catch (e) {
-    console.error('Smart search semantic error:', e);
-    return null;
+async function handleVisualSearch(query: string, limit: number, env: Env, precomputed?: number[], maxSize = 0,
+  policy: SearchPolicyOptions = { includeExcluded: false }): Promise<Response> {
+  if (precomputed && (precomputed.length !== 512 || !precomputed.every(v => typeof v === 'number' && Number.isFinite(v)))) {
+    return jsonResponse({ error: 'Invalid embedding: expected 512 finite numbers' }, 400);
   }
-}
-
-async function handleSemanticSearch(query: string, limit: number, env: Env, maxSize = 0, searchPolicy: SearchPolicyOptions = { includeExcluded: false }): Promise<Response> {
-  if (!env.VECTORIZE || !env.AI) {
-    return jsonResponse(
-      { error: 'Semantic search is not configured. Bind Vectorize + Workers AI to enable this feature.' },
-      501
-    );
-  }
-
-  try {
-    // Generate embedding for the search query using Workers AI
-    // Using bge-m3 for multilingual support (French/English for Quebec users)
-    const embeddingResponse = await env.AI.run('@cf/baai/bge-m3', {
-      text: [query],
-    });
-
-    // Extract the embedding vector from the response
-    const embedding = extractEmbedding(embeddingResponse);
-    if (!embedding) {
-      return jsonResponse({ error: 'Failed to generate query embedding' }, 500);
-    }
-
-    // Query Vectorize for similar vectors (topK capped at 50)
-    const vectorResults = await env.VECTORIZE.query(embedding, {
-      topK: Math.min(limit, 50),
-      returnMetadata: true,
-      returnValues: false,
-    });
-
-    if (!vectorResults.matches || vectorResults.matches.length === 0) {
-      return jsonResponse({ items: [], mode: 'semantic', count: 0 });
-    }
-
-    // Extract metadata_filenames (IDs) from vector matches
-    const metadataFilenames = vectorResults.matches.map((match) => match.id);
-
-    // Fetch full records from D1 using the IDs
-    const placeholders = metadataFilenames.map(() => '?').join(',');
-    const maxSizeSqlFilter = maxSize > 0 ? ' AND image_size_bytes <= ?' : '';
-    const maxSizeSqlParams = maxSize > 0 ? [maxSize] : [];
-    const { results = [] } = await env.DB.prepare(
-      `SELECT ${SELECT_FIELDS} FROM manifest WHERE metadata_filename IN (${placeholders})${maxSizeSqlFilter}`
-    )
-      .bind(...metadataFilenames, ...maxSizeSqlParams)
-      .all();
-
-    // Build a map for quick lookup
-    const recordMap = new Map<string, Record<string, unknown>>();
-    for (const row of results) {
-      recordMap.set(String(row.metadata_filename), row);
-    }
-
-    // Build photo records in the same order as vector results, preserving scores
-    const items = await Promise.all(
-      vectorResults.matches.map(async (match) => {
-        const row = recordMap.get(match.id);
-        if (!row) {
-          return null;
-        }
-        const photo = await buildPhotoRecord(row, env);
-        return {
-          ...photo,
-          score: match.score,
-        };
-      })
-    );
-
-    // Filter out any null results
-    const filteredItems = applySearchPolicy(items.filter((item): item is PhotoRecord & { score: number } => item !== null), searchPolicy, query).slice(0, limit);
-
-    return jsonResponse({
-      items: filteredItems,
-      mode: 'semantic',
-      count: filteredItems.length,
-    });
-  } catch (error) {
-    console.error('Semantic search error:', error);
-    return jsonResponse(
-      {
-        error: 'Semantic search failed',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      500
-    );
-  }
-}
-
-async function handleVisualSearch(query: string, limit: number, env: Env, precomputedEmbedding?: number[], maxSize = 0, searchPolicy: SearchPolicyOptions = { includeExcluded: false }): Promise<Response> {
-  if (!env.VECTORIZE_CLIP) {
-    return jsonResponse(
-      { error: 'Visual search is not configured. Bind VECTORIZE_CLIP index to enable this feature.' },
-      501
-    );
-  }
-
-  try {
-    // Use pre-computed embedding if provided, otherwise try to generate one
-    let embedding = precomputedEmbedding;
-
-    if (!embedding) {
-      if (!env.CLIP_EMBEDDING_URL) {
-        return jsonResponse(
-          { error: 'Visual search requires either a pre-computed embedding or CLIP_EMBEDDING_URL secret' },
-          501
-        );
-      }
-      const generatedEmbedding = await generateClipTextEmbedding(query, env);
-      if (!generatedEmbedding) {
-        return jsonResponse({ error: 'Failed to generate CLIP text embedding' }, 500);
-      }
-      embedding = generatedEmbedding;
-    }
-
-    // Validate embedding dimension
-    if (embedding.length !== 512) {
-      return jsonResponse({ error: `Invalid embedding dimension: expected 512, got ${embedding.length}` }, 400);
-    }
-
-    // Query CLIP Vectorize for similar image vectors (topK capped at 50)
-    const vectorResults = await env.VECTORIZE_CLIP.query(embedding, {
-      topK: Math.min(limit, 50),
-      returnMetadata: true,
-      returnValues: false,
-    });
-
-    if (!vectorResults.matches || vectorResults.matches.length === 0) {
-      return jsonResponse({ items: [], mode: 'visual', count: 0 });
-    }
-
-    // Extract metadata_filenames (IDs) from vector matches
-    const metadataFilenames = vectorResults.matches.map((match) => match.id);
-
-    // Fetch full records from D1
-    const placeholders = metadataFilenames.map(() => '?').join(',');
-    const maxSizeSqlFilter = maxSize > 0 ? ' AND image_size_bytes <= ?' : '';
-    const maxSizeSqlParams = maxSize > 0 ? [maxSize] : [];
-    const { results = [] } = await env.DB.prepare(
-      `SELECT ${SELECT_FIELDS} FROM manifest WHERE metadata_filename IN (${placeholders})${maxSizeSqlFilter}`
-    )
-      .bind(...metadataFilenames, ...maxSizeSqlParams)
-      .all();
-
-    // Build a map for quick lookup
-    const recordMap = new Map<string, Record<string, unknown>>();
-    for (const row of results) {
-      recordMap.set(String(row.metadata_filename), row);
-    }
-
-    // Build photo records in the same order as vector results, preserving scores
-    const items = await Promise.all(
-      vectorResults.matches.map(async (match) => {
-        const row = recordMap.get(match.id);
-        if (!row) {
-          return null;
-        }
-        const photo = await buildPhotoRecord(row, env);
-        return {
-          ...photo,
-          score: match.score,
-        };
-      })
-    );
-
-    const filteredItems = applySearchPolicy(items.filter((item): item is PhotoRecord & { score: number } => item !== null), searchPolicy, query).slice(0, limit);
-
-    return jsonResponse({
-      items: filteredItems,
-      mode: 'visual',
-      count: filteredItems.length,
-    });
-  } catch (error) {
-    console.error('Visual search error:', error);
-    return jsonResponse(
-      {
-        error: 'Visual search failed',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      500
-    );
-  }
+  const result = await retrieveSearchBranch(query, limit, env, 'visual', maxSize, policy, precomputed);
+  if (result.diagnostics.status !== 'ok') return jsonResponse({
+    error: result.diagnostics.status === 'unavailable' ? 'Visual search is not configured' : 'Visual search failed',
+    retrieval: { visual: result.diagnostics },
+  }, result.diagnostics.status === 'unavailable' ? 501 : 503);
+  return jsonResponse({ items: result.items, mode: 'visual', count: result.items.length, countKind: 'returned', retrieval: { visual: result.diagnostics } });
 }
 
 async function generateClipTextEmbedding(text: string, env: Env): Promise<number[] | null> {

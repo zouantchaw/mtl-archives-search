@@ -5,15 +5,8 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MONOREPO_ROOT = path.resolve(__dirname, '../../../../');
 
-// Prefer scored manifest (with OCR + VLM) > VLM-captioned > clean > enriched
-const SCORED_PATH = path.resolve(MONOREPO_ROOT, 'data/mtl_archives/manifest_scored.jsonl');
-const VLM_PATH = path.resolve(MONOREPO_ROOT, 'data/mtl_archives/manifest_vlm_complete.jsonl');
-const CLEAN_PATH = path.resolve(MONOREPO_ROOT, 'data/mtl_archives/manifest_clean.jsonl');
-const ENRICHED_PATH = path.resolve(MONOREPO_ROOT, 'data/mtl_archives/export/manifest_enriched.ndjson');
-const INPUT_PATH = fs.existsSync(SCORED_PATH) ? SCORED_PATH
-  : fs.existsSync(VLM_PATH) ? VLM_PATH
-  : fs.existsSync(CLEAN_PATH) ? CLEAN_PATH
-  : ENRICHED_PATH;
+// Production seeds must use canonical IDs. A research manifest requires an explicit override.
+const INPUT_PATH = process.env.MTL_MANIFEST_PATH || path.resolve(MONOREPO_ROOT, 'data/mtl_archives/manifest_search_canonical.jsonl');
 const TAXONOMY_PATH = path.resolve(MONOREPO_ROOT, 'data/mtl_archives/reports/autoresearch_taxonomy/taxonomy_downstream.jsonl');
 const QUALITY_PATH = path.resolve(MONOREPO_ROOT, 'data/mtl_archives/reports/autoresearch_image_quality/quality_labels.jsonl');
 
@@ -63,6 +56,9 @@ function buildInsertStatement(rows: any[], taxonomyById: Map<string, any>, quali
     'name',
     'description',
     'vlm_caption',
+    'vlm_caption_source',
+    'vlm_caption_model',
+    'vlm_caption_status',
     'ocr_text',
     'trust_score',
     'date_value',
@@ -103,6 +99,9 @@ function buildInsertStatement(rows: any[], taxonomyById: Map<string, any>, quali
       escapeValue(row.name ?? null),
       escapeValue(row.description ?? null),
       escapeValue(row.vlm_caption ?? null),
+      escapeValue(row.caption_source ?? row.vlm_caption_source ?? null),
+      escapeValue(row.caption_model ?? row.vlm_caption_model ?? null),
+      escapeValue(row.caption_status ?? row.vlm_caption_status ?? null),
       escapeValue(null), // OCR text omitted for initial seed - too large
       escapeValue(row.trust_score ?? null),
       escapeValue(row.date_value ?? null),

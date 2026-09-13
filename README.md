@@ -109,3 +109,19 @@ Issue #100 and Issue #101 Packets 1 and 2 remain merged inactive synthetic/local
 - Manual print fulfillment stays manual.
 - Newsletter signup is explicit opt-in.
 - See `FORWIEL.md` for the longer project overview.
+
+## Canonical search repair (September 2026)
+
+The canonical-ID repair and its rollout/evaluation procedure are documented in [docs/search-canonical-repair.md](docs/search-canonical-repair.md). Smart search combines CLIP and BGE with explicit branch-health diagnostics and separate ranking scores. Future ingestion defaults to `manifest_search_canonical.jsonl`; retain original archival descriptions alongside generated captions. See the repair report for verified coverage and remaining relevance limitations.
+
+### Search gap repair (2026-09-13)
+
+The follow-up backfill restores 29 missing canonical R2 objects, fills 184 caption gaps and adds 40 CLIP vectors. Captions retain AI provenance and their text vectors are regenerated together. See [the gap-repair runbook](docs/search-gap-repair.md) for checks, recovery and evidence.
+
+Degraded smart-search responses now bypass caching so temporary inference outages can recover on the next request.
+
+## Conversational reading room (September 2026)
+
+`/research` adds a French/English conversation beside a photo collection, local pins, and a source/evidence drawer. Vercel AI SDK renders typed tool results; Mistral Small 3.1 on the existing Cloudflare AI binding interprets requests and checks bounded image candidates. Result summaries and historical-evidence limitations are rendered from controlled tool output. Canonical metadata stays separate from AI observations. No training or GPU provisioning is required.
+
+See [Reading room implementation and operations](docs/reading-room.md) for deployment, quotas, failure modes and live evaluation commands.

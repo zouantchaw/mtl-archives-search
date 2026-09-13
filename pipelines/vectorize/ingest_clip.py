@@ -32,7 +32,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--input",
         default=None,
-        help="Path to manifest JSONL (default: data/mtl_archives/manifest_vlm_complete.jsonl)",
+        help="Path to manifest JSONL (default: data/mtl_archives/manifest_search_canonical.jsonl)",
     )
     parser.add_argument("--limit", type=int, default=0, help="Process only first N records.")
     parser.add_argument("--offset", type=int, default=0, help="Skip first N records.")
@@ -141,14 +141,14 @@ def main() -> None:
     repo_root = Path(__file__).resolve().parents[2]
     load_env(repo_root)
 
-    input_path = Path(args.input) if args.input else repo_root / "data/mtl_archives/manifest_vlm_complete.jsonl"
+    input_path = Path(args.input) if args.input else repo_root / "data/mtl_archives/manifest_search_canonical.jsonl"
     if not input_path.exists():
         raise SystemExit(f"Manifest not found: {input_path}")
 
     account_id = os.getenv("CLOUDFLARE_ACCOUNT_ID") or os.getenv("CLOUDFLARE_R2_ACCOUNT_ID")
     api_token = os.getenv("CLOUDFLARE_API_TOKEN") or os.getenv("CLOUDFLARE_AI_TOKEN") or os.getenv("CF_AI_TOKEN")
     r2_domain = os.getenv("CLOUDFLARE_R2_PUBLIC_DOMAIN")
-    vectorize_index = os.getenv("CLOUDFLARE_VECTORIZE_INDEX", "mtl-archives-clip")
+    vectorize_index = os.getenv("CLOUDFLARE_VECTORIZE_INDEX", "mtl-archives-clip-canonical-20260912")
 
     if not account_id or not api_token:
         raise SystemExit("Missing CLOUDFLARE_ACCOUNT_ID or CLOUDFLARE_API_TOKEN.")

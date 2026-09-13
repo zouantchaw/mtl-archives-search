@@ -290,3 +290,19 @@ Place precision and coverage use only the opaque official-source-search task joi
 
 For issue #68 pixel review, read only the assigned sealed packet, instruction file, neutral templates, and referenced orientation views. Do not inspect hidden inputs, record/source/licensing fields, metadata, acquisition scores, prior labels, VLM/taxonomy, components/splits, search tasks, lineage, or another pass. Use `gold_label_review_pass_v1.0.0`; record directly observed pixels or explicit abstention only. Never add inferred, metadata, verified, identity, date, or location claims.
 Packet 3C local machinery is now implemented for synthetic fixtures: digest-pinned acquisition, deterministic offline materialization, exact receipt emission, and two-bundle byte comparison. This does not claim a final real lock, x86 Linux build, signed host-independence evidence, D1 action, or production admission. See [`gate-h2-builder-packet-3c-local-machinery-v1.md`](docs/dataset-factory/gate-h2-builder-packet-3c-local-machinery-v1.md).
+
+## Canonical search repair (September 2026)
+
+The canonical-ID repair and its rollout/evaluation procedure are documented in [docs/search-canonical-repair.md](docs/search-canonical-repair.md). Smart search combines CLIP and BGE with explicit branch-health diagnostics and separate ranking scores. Future ingestion defaults to `manifest_search_canonical.jsonl`; retain original archival descriptions alongside generated captions. See the repair report for verified coverage and remaining relevance limitations.
+
+### Search gap repair (2026-09-13)
+
+The follow-up backfill restores 29 missing canonical R2 objects, fills 184 caption gaps and adds 40 CLIP vectors. Captions retain AI provenance and their text vectors are regenerated together. See [the gap-repair runbook](docs/search-gap-repair.md) for checks, recovery and evidence.
+
+Degraded smart-search responses now bypass caching so temporary inference outages can recover on the next request.
+
+## Conversational reading room (September 2026)
+
+`/research` adds a French/English conversation beside a photo collection, local pins, and a source/evidence drawer. Vercel AI SDK renders typed tool results; Mistral Small 3.1 on the existing Cloudflare AI binding interprets requests and checks bounded image candidates. Result summaries and historical-evidence limitations are rendered from controlled tool output. Canonical metadata stays separate from AI observations. No training or GPU provisioning is required.
+
+See [Reading room implementation and operations](docs/reading-room.md) for deployment, quotas, failure modes and live evaluation commands.
