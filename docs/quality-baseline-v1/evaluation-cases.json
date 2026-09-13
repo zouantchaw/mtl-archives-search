@@ -1,0 +1,1068 @@
+[
+  {
+    "id": "street-original",
+    "query": "street view images with businesses and brands",
+    "tag": "commercial_ground",
+    "split": "stress_tuning",
+    "judgment_class": "assistant_provisional",
+    "positive_ids": [
+      "mtl_archives_metadata_0.json",
+      "mtl_archives_metadata_13.json",
+      "mtl_archives_metadata_31.json",
+      "mtl_archives_metadata_59.json"
+    ],
+    "reviewed_pool_ids": [
+      "mtl_archives_metadata_18173.json",
+      "mtl_archives_metadata_18188.json",
+      "mtl_archives_metadata_12666.json",
+      "mtl_archives_metadata_1471.json",
+      "mtl_archives_metadata_16641.json",
+      "mtl_archives_metadata_18740.json",
+      "mtl_archives_metadata_3019.json",
+      "mtl_archives_metadata_13207.json",
+      "mtl_archives_metadata_2213.json",
+      "mtl_archives_metadata_18698.json",
+      "mtl_archives_metadata_16589.json",
+      "mtl_archives_metadata_12571.json",
+      "mtl_archives_metadata_15240.json",
+      "mtl_archives_metadata_17906.json",
+      "mtl_archives_metadata_16475.json",
+      "mtl_archives_metadata_12024.json",
+      "mtl_archives_metadata_1022.json",
+      "mtl_archives_metadata_18830.json",
+      "mtl_archives_metadata_1700.json",
+      "mtl_archives_metadata_0.json",
+      "mtl_archives_metadata_13.json",
+      "mtl_archives_metadata_31.json",
+      "mtl_archives_metadata_59.json",
+      "mtl_archives_metadata_67.json",
+      "mtl_archives_metadata_102.json",
+      "mtl_archives_metadata_104.json",
+      "mtl_archives_metadata_13693.json",
+      "mtl_archives_metadata_13695.json",
+      "mtl_archives_metadata_16177.json",
+      "mtl_archives_metadata_13004.json",
+      "mtl_archives_metadata_17336.json",
+      "mtl_archives_metadata_12557.json",
+      "mtl_archives_metadata_18526.json",
+      "mtl_archives_metadata_11659.json",
+      "mtl_archives_metadata_16144.json",
+      "mtl_archives_metadata_17638.json",
+      "mtl_archives_metadata_18557.json",
+      "mtl_archives_metadata_18558.json",
+      "mtl_archives_metadata_12519.json",
+      "mtl_archives_metadata_16274.json"
+    ],
+    "positive_families": [
+      {
+        "id": "mtl_archives_metadata_0.json",
+        "component": "leakage-component:50e304537b4401e4c38874b3d16bf4871fbbbe14bfa879bd1e44a1049c3e1466",
+        "historical_split": "train"
+      },
+      {
+        "id": "mtl_archives_metadata_13.json",
+        "component": "leakage-component:68c1a9d9e3b74eb02c7d309c696567e50ae6c82ac3440b5c740d14ae1a8eef9e",
+        "historical_split": "train"
+      },
+      {
+        "id": "mtl_archives_metadata_31.json",
+        "component": "leakage-component:e820987fd365047fbe4bc7858de17b9b8062f424f4138c0328e972aeef44c133",
+        "historical_split": "train"
+      },
+      {
+        "id": "mtl_archives_metadata_59.json",
+        "component": "leakage-component:54d72a9c4f53fcf91fc9580f629845d73e17d84349a2e01b5b8e816fcb971115",
+        "historical_split": "train"
+      }
+    ]
+  },
+  {
+    "id": "street-concrete",
+    "query": "street level storefronts shop signs",
+    "tag": "commercial_ground",
+    "split": "stress_tuning",
+    "judgment_class": "assistant_provisional",
+    "positive_ids": [
+      "mtl_archives_metadata_0.json",
+      "mtl_archives_metadata_13.json",
+      "mtl_archives_metadata_31.json",
+      "mtl_archives_metadata_59.json"
+    ],
+    "reviewed_pool_ids": [
+      "mtl_archives_metadata_18173.json",
+      "mtl_archives_metadata_18188.json",
+      "mtl_archives_metadata_12666.json",
+      "mtl_archives_metadata_1471.json",
+      "mtl_archives_metadata_16641.json",
+      "mtl_archives_metadata_18740.json",
+      "mtl_archives_metadata_3019.json",
+      "mtl_archives_metadata_13207.json",
+      "mtl_archives_metadata_2213.json",
+      "mtl_archives_metadata_18698.json",
+      "mtl_archives_metadata_16589.json",
+      "mtl_archives_metadata_12571.json",
+      "mtl_archives_metadata_15240.json",
+      "mtl_archives_metadata_17906.json",
+      "mtl_archives_metadata_16475.json",
+      "mtl_archives_metadata_12024.json",
+      "mtl_archives_metadata_1022.json",
+      "mtl_archives_metadata_18830.json",
+      "mtl_archives_metadata_1700.json",
+      "mtl_archives_metadata_0.json",
+      "mtl_archives_metadata_13.json",
+      "mtl_archives_metadata_31.json",
+      "mtl_archives_metadata_59.json",
+      "mtl_archives_metadata_67.json",
+      "mtl_archives_metadata_102.json",
+      "mtl_archives_metadata_104.json",
+      "mtl_archives_metadata_13693.json",
+      "mtl_archives_metadata_13695.json",
+      "mtl_archives_metadata_16177.json",
+      "mtl_archives_metadata_13004.json",
+      "mtl_archives_metadata_17336.json",
+      "mtl_archives_metadata_12557.json",
+      "mtl_archives_metadata_18526.json",
+      "mtl_archives_metadata_11659.json",
+      "mtl_archives_metadata_16144.json",
+      "mtl_archives_metadata_17638.json",
+      "mtl_archives_metadata_18557.json",
+      "mtl_archives_metadata_18558.json",
+      "mtl_archives_metadata_12519.json",
+      "mtl_archives_metadata_16274.json"
+    ],
+    "positive_families": [
+      {
+        "id": "mtl_archives_metadata_0.json",
+        "component": "leakage-component:50e304537b4401e4c38874b3d16bf4871fbbbe14bfa879bd1e44a1049c3e1466",
+        "historical_split": "train"
+      },
+      {
+        "id": "mtl_archives_metadata_13.json",
+        "component": "leakage-component:68c1a9d9e3b74eb02c7d309c696567e50ae6c82ac3440b5c740d14ae1a8eef9e",
+        "historical_split": "train"
+      },
+      {
+        "id": "mtl_archives_metadata_31.json",
+        "component": "leakage-component:e820987fd365047fbe4bc7858de17b9b8062f424f4138c0328e972aeef44c133",
+        "historical_split": "train"
+      },
+      {
+        "id": "mtl_archives_metadata_59.json",
+        "component": "leakage-component:54d72a9c4f53fcf91fc9580f629845d73e17d84349a2e01b5b8e816fcb971115",
+        "historical_split": "train"
+      }
+    ]
+  },
+  {
+    "id": "street-fr",
+    "query": "Des photographies prises depuis le trottoir, au niveau du sol, avec des commerces et des enseignes. Pas de vues aériennes.",
+    "tag": "commercial_ground",
+    "split": "stress_tuning",
+    "judgment_class": "assistant_provisional",
+    "positive_ids": [
+      "mtl_archives_metadata_0.json",
+      "mtl_archives_metadata_13.json",
+      "mtl_archives_metadata_31.json",
+      "mtl_archives_metadata_59.json"
+    ],
+    "reviewed_pool_ids": [
+      "mtl_archives_metadata_18173.json",
+      "mtl_archives_metadata_18188.json",
+      "mtl_archives_metadata_12666.json",
+      "mtl_archives_metadata_1471.json",
+      "mtl_archives_metadata_16641.json",
+      "mtl_archives_metadata_18740.json",
+      "mtl_archives_metadata_3019.json",
+      "mtl_archives_metadata_13207.json",
+      "mtl_archives_metadata_2213.json",
+      "mtl_archives_metadata_18698.json",
+      "mtl_archives_metadata_16589.json",
+      "mtl_archives_metadata_12571.json",
+      "mtl_archives_metadata_15240.json",
+      "mtl_archives_metadata_17906.json",
+      "mtl_archives_metadata_16475.json",
+      "mtl_archives_metadata_12024.json",
+      "mtl_archives_metadata_1022.json",
+      "mtl_archives_metadata_18830.json",
+      "mtl_archives_metadata_1700.json",
+      "mtl_archives_metadata_0.json",
+      "mtl_archives_metadata_13.json",
+      "mtl_archives_metadata_31.json",
+      "mtl_archives_metadata_59.json",
+      "mtl_archives_metadata_67.json",
+      "mtl_archives_metadata_102.json",
+      "mtl_archives_metadata_104.json",
+      "mtl_archives_metadata_13693.json",
+      "mtl_archives_metadata_13695.json",
+      "mtl_archives_metadata_16177.json",
+      "mtl_archives_metadata_13004.json",
+      "mtl_archives_metadata_17336.json",
+      "mtl_archives_metadata_12557.json",
+      "mtl_archives_metadata_18526.json",
+      "mtl_archives_metadata_11659.json",
+      "mtl_archives_metadata_16144.json",
+      "mtl_archives_metadata_17638.json",
+      "mtl_archives_metadata_18557.json",
+      "mtl_archives_metadata_18558.json",
+      "mtl_archives_metadata_12519.json",
+      "mtl_archives_metadata_16274.json"
+    ],
+    "positive_families": [
+      {
+        "id": "mtl_archives_metadata_0.json",
+        "component": "leakage-component:50e304537b4401e4c38874b3d16bf4871fbbbe14bfa879bd1e44a1049c3e1466",
+        "historical_split": "train"
+      },
+      {
+        "id": "mtl_archives_metadata_13.json",
+        "component": "leakage-component:68c1a9d9e3b74eb02c7d309c696567e50ae6c82ac3440b5c740d14ae1a8eef9e",
+        "historical_split": "train"
+      },
+      {
+        "id": "mtl_archives_metadata_31.json",
+        "component": "leakage-component:e820987fd365047fbe4bc7858de17b9b8062f424f4138c0328e972aeef44c133",
+        "historical_split": "train"
+      },
+      {
+        "id": "mtl_archives_metadata_59.json",
+        "component": "leakage-component:54d72a9c4f53fcf91fc9580f629845d73e17d84349a2e01b5b8e816fcb971115",
+        "historical_split": "train"
+      }
+    ]
+  },
+  {
+    "id": "street-fr-short",
+    "query": "rue commerces enseignes",
+    "tag": "commercial_ground",
+    "split": "stress_tuning",
+    "judgment_class": "assistant_provisional",
+    "positive_ids": [
+      "mtl_archives_metadata_0.json",
+      "mtl_archives_metadata_13.json",
+      "mtl_archives_metadata_31.json",
+      "mtl_archives_metadata_59.json"
+    ],
+    "reviewed_pool_ids": [
+      "mtl_archives_metadata_18173.json",
+      "mtl_archives_metadata_18188.json",
+      "mtl_archives_metadata_12666.json",
+      "mtl_archives_metadata_1471.json",
+      "mtl_archives_metadata_16641.json",
+      "mtl_archives_metadata_18740.json",
+      "mtl_archives_metadata_3019.json",
+      "mtl_archives_metadata_13207.json",
+      "mtl_archives_metadata_2213.json",
+      "mtl_archives_metadata_18698.json",
+      "mtl_archives_metadata_16589.json",
+      "mtl_archives_metadata_12571.json",
+      "mtl_archives_metadata_15240.json",
+      "mtl_archives_metadata_17906.json",
+      "mtl_archives_metadata_16475.json",
+      "mtl_archives_metadata_12024.json",
+      "mtl_archives_metadata_1022.json",
+      "mtl_archives_metadata_18830.json",
+      "mtl_archives_metadata_1700.json",
+      "mtl_archives_metadata_0.json",
+      "mtl_archives_metadata_13.json",
+      "mtl_archives_metadata_31.json",
+      "mtl_archives_metadata_59.json",
+      "mtl_archives_metadata_67.json",
+      "mtl_archives_metadata_102.json",
+      "mtl_archives_metadata_104.json",
+      "mtl_archives_metadata_13693.json",
+      "mtl_archives_metadata_13695.json",
+      "mtl_archives_metadata_16177.json",
+      "mtl_archives_metadata_13004.json",
+      "mtl_archives_metadata_17336.json",
+      "mtl_archives_metadata_12557.json",
+      "mtl_archives_metadata_18526.json",
+      "mtl_archives_metadata_11659.json",
+      "mtl_archives_metadata_16144.json",
+      "mtl_archives_metadata_17638.json",
+      "mtl_archives_metadata_18557.json",
+      "mtl_archives_metadata_18558.json",
+      "mtl_archives_metadata_12519.json",
+      "mtl_archives_metadata_16274.json"
+    ],
+    "positive_families": [
+      {
+        "id": "mtl_archives_metadata_0.json",
+        "component": "leakage-component:50e304537b4401e4c38874b3d16bf4871fbbbe14bfa879bd1e44a1049c3e1466",
+        "historical_split": "train"
+      },
+      {
+        "id": "mtl_archives_metadata_13.json",
+        "component": "leakage-component:68c1a9d9e3b74eb02c7d309c696567e50ae6c82ac3440b5c740d14ae1a8eef9e",
+        "historical_split": "train"
+      },
+      {
+        "id": "mtl_archives_metadata_31.json",
+        "component": "leakage-component:e820987fd365047fbe4bc7858de17b9b8062f424f4138c0328e972aeef44c133",
+        "historical_split": "train"
+      },
+      {
+        "id": "mtl_archives_metadata_59.json",
+        "component": "leakage-component:54d72a9c4f53fcf91fc9580f629845d73e17d84349a2e01b5b8e816fcb971115",
+        "historical_split": "train"
+      }
+    ]
+  },
+  {
+    "id": "street-corrected",
+    "query": "ground-level street photographs with businesses and signs, not aerial views",
+    "tag": "commercial_ground",
+    "split": "stress_tuning",
+    "judgment_class": "assistant_provisional",
+    "positive_ids": [
+      "mtl_archives_metadata_0.json",
+      "mtl_archives_metadata_13.json",
+      "mtl_archives_metadata_31.json",
+      "mtl_archives_metadata_59.json"
+    ],
+    "reviewed_pool_ids": [
+      "mtl_archives_metadata_18173.json",
+      "mtl_archives_metadata_18188.json",
+      "mtl_archives_metadata_12666.json",
+      "mtl_archives_metadata_1471.json",
+      "mtl_archives_metadata_16641.json",
+      "mtl_archives_metadata_18740.json",
+      "mtl_archives_metadata_3019.json",
+      "mtl_archives_metadata_13207.json",
+      "mtl_archives_metadata_2213.json",
+      "mtl_archives_metadata_18698.json",
+      "mtl_archives_metadata_16589.json",
+      "mtl_archives_metadata_12571.json",
+      "mtl_archives_metadata_15240.json",
+      "mtl_archives_metadata_17906.json",
+      "mtl_archives_metadata_16475.json",
+      "mtl_archives_metadata_12024.json",
+      "mtl_archives_metadata_1022.json",
+      "mtl_archives_metadata_18830.json",
+      "mtl_archives_metadata_1700.json",
+      "mtl_archives_metadata_0.json",
+      "mtl_archives_metadata_13.json",
+      "mtl_archives_metadata_31.json",
+      "mtl_archives_metadata_59.json",
+      "mtl_archives_metadata_67.json",
+      "mtl_archives_metadata_102.json",
+      "mtl_archives_metadata_104.json",
+      "mtl_archives_metadata_13693.json",
+      "mtl_archives_metadata_13695.json",
+      "mtl_archives_metadata_16177.json",
+      "mtl_archives_metadata_13004.json",
+      "mtl_archives_metadata_17336.json",
+      "mtl_archives_metadata_12557.json",
+      "mtl_archives_metadata_18526.json",
+      "mtl_archives_metadata_11659.json",
+      "mtl_archives_metadata_16144.json",
+      "mtl_archives_metadata_17638.json",
+      "mtl_archives_metadata_18557.json",
+      "mtl_archives_metadata_18558.json",
+      "mtl_archives_metadata_12519.json",
+      "mtl_archives_metadata_16274.json"
+    ],
+    "positive_families": [
+      {
+        "id": "mtl_archives_metadata_0.json",
+        "component": "leakage-component:50e304537b4401e4c38874b3d16bf4871fbbbe14bfa879bd1e44a1049c3e1466",
+        "historical_split": "train"
+      },
+      {
+        "id": "mtl_archives_metadata_13.json",
+        "component": "leakage-component:68c1a9d9e3b74eb02c7d309c696567e50ae6c82ac3440b5c740d14ae1a8eef9e",
+        "historical_split": "train"
+      },
+      {
+        "id": "mtl_archives_metadata_31.json",
+        "component": "leakage-component:e820987fd365047fbe4bc7858de17b9b8062f424f4138c0328e972aeef44c133",
+        "historical_split": "train"
+      },
+      {
+        "id": "mtl_archives_metadata_59.json",
+        "component": "leakage-component:54d72a9c4f53fcf91fc9580f629845d73e17d84349a2e01b5b8e816fcb971115",
+        "historical_split": "train"
+      }
+    ]
+  },
+  {
+    "id": "church-interior",
+    "query": "Inside a church, looking toward the altar. No exterior facades.",
+    "tag": "church_interior",
+    "split": "stress_tuning",
+    "judgment_class": "assistant_provisional",
+    "positive_ids": [],
+    "reviewed_pool_ids": [
+      "mtl_archives_metadata_18173.json",
+      "mtl_archives_metadata_18188.json",
+      "mtl_archives_metadata_12666.json",
+      "mtl_archives_metadata_1471.json",
+      "mtl_archives_metadata_16641.json",
+      "mtl_archives_metadata_18740.json",
+      "mtl_archives_metadata_3019.json",
+      "mtl_archives_metadata_13207.json",
+      "mtl_archives_metadata_2213.json",
+      "mtl_archives_metadata_18698.json",
+      "mtl_archives_metadata_16589.json",
+      "mtl_archives_metadata_12571.json",
+      "mtl_archives_metadata_15240.json",
+      "mtl_archives_metadata_17906.json",
+      "mtl_archives_metadata_16475.json",
+      "mtl_archives_metadata_12024.json",
+      "mtl_archives_metadata_1022.json",
+      "mtl_archives_metadata_18830.json",
+      "mtl_archives_metadata_1700.json",
+      "mtl_archives_metadata_0.json",
+      "mtl_archives_metadata_13.json",
+      "mtl_archives_metadata_31.json",
+      "mtl_archives_metadata_59.json",
+      "mtl_archives_metadata_67.json",
+      "mtl_archives_metadata_102.json",
+      "mtl_archives_metadata_104.json",
+      "mtl_archives_metadata_13693.json",
+      "mtl_archives_metadata_13695.json",
+      "mtl_archives_metadata_16177.json",
+      "mtl_archives_metadata_13004.json",
+      "mtl_archives_metadata_17336.json",
+      "mtl_archives_metadata_12557.json",
+      "mtl_archives_metadata_18526.json",
+      "mtl_archives_metadata_11659.json",
+      "mtl_archives_metadata_16144.json",
+      "mtl_archives_metadata_17638.json",
+      "mtl_archives_metadata_18557.json",
+      "mtl_archives_metadata_18558.json",
+      "mtl_archives_metadata_12519.json",
+      "mtl_archives_metadata_16274.json"
+    ],
+    "positive_families": []
+  },
+  {
+    "id": "church-exterior",
+    "query": "church facade viewed from the ground",
+    "tag": "church_exterior",
+    "split": "stress_tuning",
+    "judgment_class": "assistant_provisional",
+    "positive_ids": [
+      "mtl_archives_metadata_67.json",
+      "mtl_archives_metadata_102.json",
+      "mtl_archives_metadata_104.json"
+    ],
+    "reviewed_pool_ids": [
+      "mtl_archives_metadata_18173.json",
+      "mtl_archives_metadata_18188.json",
+      "mtl_archives_metadata_12666.json",
+      "mtl_archives_metadata_1471.json",
+      "mtl_archives_metadata_16641.json",
+      "mtl_archives_metadata_18740.json",
+      "mtl_archives_metadata_3019.json",
+      "mtl_archives_metadata_13207.json",
+      "mtl_archives_metadata_2213.json",
+      "mtl_archives_metadata_18698.json",
+      "mtl_archives_metadata_16589.json",
+      "mtl_archives_metadata_12571.json",
+      "mtl_archives_metadata_15240.json",
+      "mtl_archives_metadata_17906.json",
+      "mtl_archives_metadata_16475.json",
+      "mtl_archives_metadata_12024.json",
+      "mtl_archives_metadata_1022.json",
+      "mtl_archives_metadata_18830.json",
+      "mtl_archives_metadata_1700.json",
+      "mtl_archives_metadata_0.json",
+      "mtl_archives_metadata_13.json",
+      "mtl_archives_metadata_31.json",
+      "mtl_archives_metadata_59.json",
+      "mtl_archives_metadata_67.json",
+      "mtl_archives_metadata_102.json",
+      "mtl_archives_metadata_104.json",
+      "mtl_archives_metadata_13693.json",
+      "mtl_archives_metadata_13695.json",
+      "mtl_archives_metadata_16177.json",
+      "mtl_archives_metadata_13004.json",
+      "mtl_archives_metadata_17336.json",
+      "mtl_archives_metadata_12557.json",
+      "mtl_archives_metadata_18526.json",
+      "mtl_archives_metadata_11659.json",
+      "mtl_archives_metadata_16144.json",
+      "mtl_archives_metadata_17638.json",
+      "mtl_archives_metadata_18557.json",
+      "mtl_archives_metadata_18558.json",
+      "mtl_archives_metadata_12519.json",
+      "mtl_archives_metadata_16274.json"
+    ],
+    "positive_families": [
+      {
+        "id": "mtl_archives_metadata_67.json",
+        "component": "leakage-component:d141d9e82f766a684e5d5c1c84446caf5d3198ec8574dcca719ebc0bcb256578",
+        "historical_split": "train"
+      },
+      {
+        "id": "mtl_archives_metadata_102.json",
+        "component": "leakage-component:72622a8e6f7691f38267951d34b7e1ddd215e82ac5d4f81ab0d2ba1540f18628",
+        "historical_split": "train"
+      },
+      {
+        "id": "mtl_archives_metadata_104.json",
+        "component": "leakage-component:782dc9ebf7ed3332c83a3021d2c03856723f511096684ab72922bbee40e6a305",
+        "historical_split": "train"
+      }
+    ]
+  },
+  {
+    "id": "church-fr",
+    "query": "église vue de la rue, façade extérieure",
+    "tag": "church_exterior",
+    "split": "stress_tuning",
+    "judgment_class": "assistant_provisional",
+    "positive_ids": [
+      "mtl_archives_metadata_67.json",
+      "mtl_archives_metadata_102.json",
+      "mtl_archives_metadata_104.json"
+    ],
+    "reviewed_pool_ids": [
+      "mtl_archives_metadata_18173.json",
+      "mtl_archives_metadata_18188.json",
+      "mtl_archives_metadata_12666.json",
+      "mtl_archives_metadata_1471.json",
+      "mtl_archives_metadata_16641.json",
+      "mtl_archives_metadata_18740.json",
+      "mtl_archives_metadata_3019.json",
+      "mtl_archives_metadata_13207.json",
+      "mtl_archives_metadata_2213.json",
+      "mtl_archives_metadata_18698.json",
+      "mtl_archives_metadata_16589.json",
+      "mtl_archives_metadata_12571.json",
+      "mtl_archives_metadata_15240.json",
+      "mtl_archives_metadata_17906.json",
+      "mtl_archives_metadata_16475.json",
+      "mtl_archives_metadata_12024.json",
+      "mtl_archives_metadata_1022.json",
+      "mtl_archives_metadata_18830.json",
+      "mtl_archives_metadata_1700.json",
+      "mtl_archives_metadata_0.json",
+      "mtl_archives_metadata_13.json",
+      "mtl_archives_metadata_31.json",
+      "mtl_archives_metadata_59.json",
+      "mtl_archives_metadata_67.json",
+      "mtl_archives_metadata_102.json",
+      "mtl_archives_metadata_104.json",
+      "mtl_archives_metadata_13693.json",
+      "mtl_archives_metadata_13695.json",
+      "mtl_archives_metadata_16177.json",
+      "mtl_archives_metadata_13004.json",
+      "mtl_archives_metadata_17336.json",
+      "mtl_archives_metadata_12557.json",
+      "mtl_archives_metadata_18526.json",
+      "mtl_archives_metadata_11659.json",
+      "mtl_archives_metadata_16144.json",
+      "mtl_archives_metadata_17638.json",
+      "mtl_archives_metadata_18557.json",
+      "mtl_archives_metadata_18558.json",
+      "mtl_archives_metadata_12519.json",
+      "mtl_archives_metadata_16274.json"
+    ],
+    "positive_families": [
+      {
+        "id": "mtl_archives_metadata_67.json",
+        "component": "leakage-component:d141d9e82f766a684e5d5c1c84446caf5d3198ec8574dcca719ebc0bcb256578",
+        "historical_split": "train"
+      },
+      {
+        "id": "mtl_archives_metadata_102.json",
+        "component": "leakage-component:72622a8e6f7691f38267951d34b7e1ddd215e82ac5d4f81ab0d2ba1540f18628",
+        "historical_split": "train"
+      },
+      {
+        "id": "mtl_archives_metadata_104.json",
+        "component": "leakage-component:782dc9ebf7ed3332c83a3021d2c03856723f511096684ab72922bbee40e6a305",
+        "historical_split": "train"
+      }
+    ]
+  },
+  {
+    "id": "nadir",
+    "query": "Aerial photographs looking straight down on city streets and buildings.",
+    "tag": "nadir_urban",
+    "split": "stress_tuning",
+    "judgment_class": "assistant_provisional",
+    "positive_ids": [
+      "mtl_archives_metadata_11659.json",
+      "mtl_archives_metadata_16144.json"
+    ],
+    "reviewed_pool_ids": [
+      "mtl_archives_metadata_18173.json",
+      "mtl_archives_metadata_18188.json",
+      "mtl_archives_metadata_12666.json",
+      "mtl_archives_metadata_1471.json",
+      "mtl_archives_metadata_16641.json",
+      "mtl_archives_metadata_18740.json",
+      "mtl_archives_metadata_3019.json",
+      "mtl_archives_metadata_13207.json",
+      "mtl_archives_metadata_2213.json",
+      "mtl_archives_metadata_18698.json",
+      "mtl_archives_metadata_16589.json",
+      "mtl_archives_metadata_12571.json",
+      "mtl_archives_metadata_15240.json",
+      "mtl_archives_metadata_17906.json",
+      "mtl_archives_metadata_16475.json",
+      "mtl_archives_metadata_12024.json",
+      "mtl_archives_metadata_1022.json",
+      "mtl_archives_metadata_18830.json",
+      "mtl_archives_metadata_1700.json",
+      "mtl_archives_metadata_0.json",
+      "mtl_archives_metadata_13.json",
+      "mtl_archives_metadata_31.json",
+      "mtl_archives_metadata_59.json",
+      "mtl_archives_metadata_67.json",
+      "mtl_archives_metadata_102.json",
+      "mtl_archives_metadata_104.json",
+      "mtl_archives_metadata_13693.json",
+      "mtl_archives_metadata_13695.json",
+      "mtl_archives_metadata_16177.json",
+      "mtl_archives_metadata_13004.json",
+      "mtl_archives_metadata_17336.json",
+      "mtl_archives_metadata_12557.json",
+      "mtl_archives_metadata_18526.json",
+      "mtl_archives_metadata_11659.json",
+      "mtl_archives_metadata_16144.json",
+      "mtl_archives_metadata_17638.json",
+      "mtl_archives_metadata_18557.json",
+      "mtl_archives_metadata_18558.json",
+      "mtl_archives_metadata_12519.json",
+      "mtl_archives_metadata_16274.json"
+    ],
+    "positive_families": [
+      {
+        "id": "mtl_archives_metadata_11659.json",
+        "component": "leakage-component:a7020e1d64b51f2cd8cf1d325190e4bed247c6d15465c142d03eeaaf10ea1f2e",
+        "historical_split": "test"
+      },
+      {
+        "id": "mtl_archives_metadata_16144.json",
+        "component": "leakage-component:705b1f123018b1dfafa2076e0502257c09d9e15551b320b5e0ddbbf74222d36d",
+        "historical_split": "train"
+      }
+    ]
+  },
+  {
+    "id": "helicopter",
+    "query": "women beside a helicopter",
+    "tag": "people_helicopter",
+    "split": "stress_tuning",
+    "judgment_class": "assistant_provisional",
+    "positive_ids": [
+      "mtl_archives_metadata_17638.json",
+      "mtl_archives_metadata_18557.json",
+      "mtl_archives_metadata_18558.json"
+    ],
+    "reviewed_pool_ids": [
+      "mtl_archives_metadata_18173.json",
+      "mtl_archives_metadata_18188.json",
+      "mtl_archives_metadata_12666.json",
+      "mtl_archives_metadata_1471.json",
+      "mtl_archives_metadata_16641.json",
+      "mtl_archives_metadata_18740.json",
+      "mtl_archives_metadata_3019.json",
+      "mtl_archives_metadata_13207.json",
+      "mtl_archives_metadata_2213.json",
+      "mtl_archives_metadata_18698.json",
+      "mtl_archives_metadata_16589.json",
+      "mtl_archives_metadata_12571.json",
+      "mtl_archives_metadata_15240.json",
+      "mtl_archives_metadata_17906.json",
+      "mtl_archives_metadata_16475.json",
+      "mtl_archives_metadata_12024.json",
+      "mtl_archives_metadata_1022.json",
+      "mtl_archives_metadata_18830.json",
+      "mtl_archives_metadata_1700.json",
+      "mtl_archives_metadata_0.json",
+      "mtl_archives_metadata_13.json",
+      "mtl_archives_metadata_31.json",
+      "mtl_archives_metadata_59.json",
+      "mtl_archives_metadata_67.json",
+      "mtl_archives_metadata_102.json",
+      "mtl_archives_metadata_104.json",
+      "mtl_archives_metadata_13693.json",
+      "mtl_archives_metadata_13695.json",
+      "mtl_archives_metadata_16177.json",
+      "mtl_archives_metadata_13004.json",
+      "mtl_archives_metadata_17336.json",
+      "mtl_archives_metadata_12557.json",
+      "mtl_archives_metadata_18526.json",
+      "mtl_archives_metadata_11659.json",
+      "mtl_archives_metadata_16144.json",
+      "mtl_archives_metadata_17638.json",
+      "mtl_archives_metadata_18557.json",
+      "mtl_archives_metadata_18558.json",
+      "mtl_archives_metadata_12519.json",
+      "mtl_archives_metadata_16274.json"
+    ],
+    "positive_families": [
+      {
+        "id": "mtl_archives_metadata_17638.json",
+        "component": "leakage-component:4130d2587a0302adb4e6169c9721622d446b821684a045efa946a355429f5835",
+        "historical_split": "validation"
+      },
+      {
+        "id": "mtl_archives_metadata_18557.json",
+        "component": "leakage-component:7bbb3345f7ebdb13211d0ed309616f31a14f8fd3e77f86a4dc0e4f6d0b57de8c",
+        "historical_split": "train"
+      },
+      {
+        "id": "mtl_archives_metadata_18558.json",
+        "component": "leakage-component:7bbb3345f7ebdb13211d0ed309616f31a14f8fd3e77f86a4dc0e4f6d0b57de8c",
+        "historical_split": "train"
+      }
+    ]
+  },
+  {
+    "id": "helicopter-fr",
+    "query": "personnes debout à côté d’un hélicoptère",
+    "tag": "people_helicopter",
+    "split": "stress_tuning",
+    "judgment_class": "assistant_provisional",
+    "positive_ids": [
+      "mtl_archives_metadata_17638.json",
+      "mtl_archives_metadata_18557.json",
+      "mtl_archives_metadata_18558.json"
+    ],
+    "reviewed_pool_ids": [
+      "mtl_archives_metadata_18173.json",
+      "mtl_archives_metadata_18188.json",
+      "mtl_archives_metadata_12666.json",
+      "mtl_archives_metadata_1471.json",
+      "mtl_archives_metadata_16641.json",
+      "mtl_archives_metadata_18740.json",
+      "mtl_archives_metadata_3019.json",
+      "mtl_archives_metadata_13207.json",
+      "mtl_archives_metadata_2213.json",
+      "mtl_archives_metadata_18698.json",
+      "mtl_archives_metadata_16589.json",
+      "mtl_archives_metadata_12571.json",
+      "mtl_archives_metadata_15240.json",
+      "mtl_archives_metadata_17906.json",
+      "mtl_archives_metadata_16475.json",
+      "mtl_archives_metadata_12024.json",
+      "mtl_archives_metadata_1022.json",
+      "mtl_archives_metadata_18830.json",
+      "mtl_archives_metadata_1700.json",
+      "mtl_archives_metadata_0.json",
+      "mtl_archives_metadata_13.json",
+      "mtl_archives_metadata_31.json",
+      "mtl_archives_metadata_59.json",
+      "mtl_archives_metadata_67.json",
+      "mtl_archives_metadata_102.json",
+      "mtl_archives_metadata_104.json",
+      "mtl_archives_metadata_13693.json",
+      "mtl_archives_metadata_13695.json",
+      "mtl_archives_metadata_16177.json",
+      "mtl_archives_metadata_13004.json",
+      "mtl_archives_metadata_17336.json",
+      "mtl_archives_metadata_12557.json",
+      "mtl_archives_metadata_18526.json",
+      "mtl_archives_metadata_11659.json",
+      "mtl_archives_metadata_16144.json",
+      "mtl_archives_metadata_17638.json",
+      "mtl_archives_metadata_18557.json",
+      "mtl_archives_metadata_18558.json",
+      "mtl_archives_metadata_12519.json",
+      "mtl_archives_metadata_16274.json"
+    ],
+    "positive_families": [
+      {
+        "id": "mtl_archives_metadata_17638.json",
+        "component": "leakage-component:4130d2587a0302adb4e6169c9721622d446b821684a045efa946a355429f5835",
+        "historical_split": "validation"
+      },
+      {
+        "id": "mtl_archives_metadata_18557.json",
+        "component": "leakage-component:7bbb3345f7ebdb13211d0ed309616f31a14f8fd3e77f86a4dc0e4f6d0b57de8c",
+        "historical_split": "train"
+      },
+      {
+        "id": "mtl_archives_metadata_18558.json",
+        "component": "leakage-component:7bbb3345f7ebdb13211d0ed309616f31a14f8fd3e77f86a4dc0e4f6d0b57de8c",
+        "historical_split": "train"
+      }
+    ]
+  },
+  {
+    "id": "flying-helicopter",
+    "query": "helicopter flying above the ground",
+    "tag": "flying_helicopter",
+    "split": "stress_tuning",
+    "judgment_class": "assistant_provisional",
+    "positive_ids": [
+      "mtl_archives_metadata_12519.json"
+    ],
+    "reviewed_pool_ids": [
+      "mtl_archives_metadata_18173.json",
+      "mtl_archives_metadata_18188.json",
+      "mtl_archives_metadata_12666.json",
+      "mtl_archives_metadata_1471.json",
+      "mtl_archives_metadata_16641.json",
+      "mtl_archives_metadata_18740.json",
+      "mtl_archives_metadata_3019.json",
+      "mtl_archives_metadata_13207.json",
+      "mtl_archives_metadata_2213.json",
+      "mtl_archives_metadata_18698.json",
+      "mtl_archives_metadata_16589.json",
+      "mtl_archives_metadata_12571.json",
+      "mtl_archives_metadata_15240.json",
+      "mtl_archives_metadata_17906.json",
+      "mtl_archives_metadata_16475.json",
+      "mtl_archives_metadata_12024.json",
+      "mtl_archives_metadata_1022.json",
+      "mtl_archives_metadata_18830.json",
+      "mtl_archives_metadata_1700.json",
+      "mtl_archives_metadata_0.json",
+      "mtl_archives_metadata_13.json",
+      "mtl_archives_metadata_31.json",
+      "mtl_archives_metadata_59.json",
+      "mtl_archives_metadata_67.json",
+      "mtl_archives_metadata_102.json",
+      "mtl_archives_metadata_104.json",
+      "mtl_archives_metadata_13693.json",
+      "mtl_archives_metadata_13695.json",
+      "mtl_archives_metadata_16177.json",
+      "mtl_archives_metadata_13004.json",
+      "mtl_archives_metadata_17336.json",
+      "mtl_archives_metadata_12557.json",
+      "mtl_archives_metadata_18526.json",
+      "mtl_archives_metadata_11659.json",
+      "mtl_archives_metadata_16144.json",
+      "mtl_archives_metadata_17638.json",
+      "mtl_archives_metadata_18557.json",
+      "mtl_archives_metadata_18558.json",
+      "mtl_archives_metadata_12519.json",
+      "mtl_archives_metadata_16274.json"
+    ],
+    "positive_families": [
+      {
+        "id": "mtl_archives_metadata_12519.json",
+        "component": "leakage-component:694d2c0540ba0057aaa87d2cc2478e59c61b5fa97290141c4f40c8556fc02c4c",
+        "historical_split": "train"
+      }
+    ]
+  },
+  {
+    "id": "trees-water",
+    "query": "Trees beside water, photographed from the ground, not aerial views.",
+    "tag": "ground_water",
+    "split": "stress_tuning",
+    "judgment_class": "assistant_provisional",
+    "positive_ids": [],
+    "reviewed_pool_ids": [
+      "mtl_archives_metadata_18173.json",
+      "mtl_archives_metadata_18188.json",
+      "mtl_archives_metadata_12666.json",
+      "mtl_archives_metadata_1471.json",
+      "mtl_archives_metadata_16641.json",
+      "mtl_archives_metadata_18740.json",
+      "mtl_archives_metadata_3019.json",
+      "mtl_archives_metadata_13207.json",
+      "mtl_archives_metadata_2213.json",
+      "mtl_archives_metadata_18698.json",
+      "mtl_archives_metadata_16589.json",
+      "mtl_archives_metadata_12571.json",
+      "mtl_archives_metadata_15240.json",
+      "mtl_archives_metadata_17906.json",
+      "mtl_archives_metadata_16475.json",
+      "mtl_archives_metadata_12024.json",
+      "mtl_archives_metadata_1022.json",
+      "mtl_archives_metadata_18830.json",
+      "mtl_archives_metadata_1700.json",
+      "mtl_archives_metadata_0.json",
+      "mtl_archives_metadata_13.json",
+      "mtl_archives_metadata_31.json",
+      "mtl_archives_metadata_59.json",
+      "mtl_archives_metadata_67.json",
+      "mtl_archives_metadata_102.json",
+      "mtl_archives_metadata_104.json",
+      "mtl_archives_metadata_13693.json",
+      "mtl_archives_metadata_13695.json",
+      "mtl_archives_metadata_16177.json",
+      "mtl_archives_metadata_13004.json",
+      "mtl_archives_metadata_17336.json",
+      "mtl_archives_metadata_12557.json",
+      "mtl_archives_metadata_18526.json",
+      "mtl_archives_metadata_11659.json",
+      "mtl_archives_metadata_16144.json",
+      "mtl_archives_metadata_17638.json",
+      "mtl_archives_metadata_18557.json",
+      "mtl_archives_metadata_18558.json",
+      "mtl_archives_metadata_12519.json",
+      "mtl_archives_metadata_16274.json"
+    ],
+    "positive_families": []
+  },
+  {
+    "id": "absent-target",
+    "query": "A purple elephant standing beside a helicopter.",
+    "tag": "purple_elephant",
+    "split": "stress_tuning",
+    "judgment_class": "assistant_provisional",
+    "positive_ids": [],
+    "reviewed_pool_ids": [
+      "mtl_archives_metadata_18173.json",
+      "mtl_archives_metadata_18188.json",
+      "mtl_archives_metadata_12666.json",
+      "mtl_archives_metadata_1471.json",
+      "mtl_archives_metadata_16641.json",
+      "mtl_archives_metadata_18740.json",
+      "mtl_archives_metadata_3019.json",
+      "mtl_archives_metadata_13207.json",
+      "mtl_archives_metadata_2213.json",
+      "mtl_archives_metadata_18698.json",
+      "mtl_archives_metadata_16589.json",
+      "mtl_archives_metadata_12571.json",
+      "mtl_archives_metadata_15240.json",
+      "mtl_archives_metadata_17906.json",
+      "mtl_archives_metadata_16475.json",
+      "mtl_archives_metadata_12024.json",
+      "mtl_archives_metadata_1022.json",
+      "mtl_archives_metadata_18830.json",
+      "mtl_archives_metadata_1700.json",
+      "mtl_archives_metadata_0.json",
+      "mtl_archives_metadata_13.json",
+      "mtl_archives_metadata_31.json",
+      "mtl_archives_metadata_59.json",
+      "mtl_archives_metadata_67.json",
+      "mtl_archives_metadata_102.json",
+      "mtl_archives_metadata_104.json",
+      "mtl_archives_metadata_13693.json",
+      "mtl_archives_metadata_13695.json",
+      "mtl_archives_metadata_16177.json",
+      "mtl_archives_metadata_13004.json",
+      "mtl_archives_metadata_17336.json",
+      "mtl_archives_metadata_12557.json",
+      "mtl_archives_metadata_18526.json",
+      "mtl_archives_metadata_11659.json",
+      "mtl_archives_metadata_16144.json",
+      "mtl_archives_metadata_17638.json",
+      "mtl_archives_metadata_18557.json",
+      "mtl_archives_metadata_18558.json",
+      "mtl_archives_metadata_12519.json",
+      "mtl_archives_metadata_16274.json"
+    ],
+    "positive_families": []
+  },
+  {
+    "id": "ret-silver-0001",
+    "query": "parc La Fontaine Étang du parc La",
+    "split": "historical_test_report_only",
+    "judgment_class": "historical_agent_reviewed",
+    "positive_ids": [
+      "mtl_archives_metadata_84.json"
+    ],
+    "reviewed_pool_ids": [
+      "mtl_archives_metadata_84.json"
+    ],
+    "component_id": "leakage-component:c2b0f52ef294bbfb99db408bffbbe8286d5cb8102af89c11d525ed6b360506b3",
+    "positive_families": [
+      {
+        "id": "mtl_archives_metadata_84.json",
+        "component": "leakage-component:c2b0f52ef294bbfb99db408bffbbe8286d5cb8102af89c11d525ed6b360506b3",
+        "historical_split": "test"
+      }
+    ]
+  },
+  {
+    "id": "ret-silver-0006",
+    "query": "American Can Company",
+    "split": "historical_test_report_only",
+    "judgment_class": "historical_agent_reviewed",
+    "positive_ids": [
+      "mtl_archives_metadata_30.json"
+    ],
+    "reviewed_pool_ids": [
+      "mtl_archives_metadata_30.json"
+    ],
+    "component_id": "leakage-component:a06b022ca6283d065b12b8b7e0f8adaa0df64cdeba1154aa0fd3342397cdcfc7",
+    "positive_families": [
+      {
+        "id": "mtl_archives_metadata_30.json",
+        "component": "leakage-component:a06b022ca6283d065b12b8b7e0f8adaa0df64cdeba1154aa0fd3342397cdcfc7",
+        "historical_split": "test"
+      }
+    ]
+  },
+  {
+    "id": "ret-silver-0007",
+    "query": "Marché Saint-Laurent",
+    "split": "historical_test_report_only",
+    "judgment_class": "historical_agent_reviewed",
+    "positive_ids": [
+      "mtl_archives_metadata_51.json"
+    ],
+    "reviewed_pool_ids": [
+      "mtl_archives_metadata_51.json"
+    ],
+    "component_id": "leakage-component:ac969d3b5adfa0e6fd5fbd2b73b0097e1e6e8b5ca57d292e3fda299618d133c8",
+    "positive_families": [
+      {
+        "id": "mtl_archives_metadata_51.json",
+        "component": "leakage-component:ac969d3b5adfa0e6fd5fbd2b73b0097e1e6e8b5ca57d292e3fda299618d133c8",
+        "historical_split": "test"
+      }
+    ]
+  },
+  {
+    "id": "ret-silver-0023",
+    "query": "rue Tupper",
+    "split": "historical_test_report_only",
+    "judgment_class": "historical_agent_reviewed",
+    "positive_ids": [
+      "mtl_archives_metadata_75.json"
+    ],
+    "reviewed_pool_ids": [
+      "mtl_archives_metadata_75.json"
+    ],
+    "component_id": "leakage-component:d78175d897da87888077ebde879bb0d225c71adf9ead71b084fa6e207b47ba7d",
+    "positive_families": [
+      {
+        "id": "mtl_archives_metadata_75.json",
+        "component": "leakage-component:d78175d897da87888077ebde879bb0d225c71adf9ead71b084fa6e207b47ba7d",
+        "historical_split": "test"
+      }
+    ]
+  },
+  {
+    "id": "ret-silver-0030",
+    "query": "Aérogare de Dorval / Rhéal Benny . - 10 avril 1975",
+    "split": "historical_test_report_only",
+    "judgment_class": "historical_agent_reviewed",
+    "positive_ids": [
+      "mtl_archives_metadata_14283.json"
+    ],
+    "reviewed_pool_ids": [
+      "mtl_archives_metadata_14283.json"
+    ],
+    "component_id": "leakage-component:ed2beb502bf4102903b9521e9c8f44e280a3e4cc7e6fb19b8506f6cdd0fba223",
+    "positive_families": [
+      {
+        "id": "mtl_archives_metadata_14283.json",
+        "component": "leakage-component:ed2beb502bf4102903b9521e9c8f44e280a3e4cc7e6fb19b8506f6cdd0fba223",
+        "historical_split": "test"
+      }
+    ]
+  },
+  {
+    "id": "ret-silver-0048",
+    "query": "rue des Carrières",
+    "split": "historical_test_report_only",
+    "judgment_class": "historical_agent_reviewed",
+    "positive_ids": [
+      "mtl_archives_metadata_44.json"
+    ],
+    "reviewed_pool_ids": [
+      "mtl_archives_metadata_44.json"
+    ],
+    "component_id": "leakage-component:25293aadeead66c700176d36846fad666aa4cf35fb3242eaa1cb3561d2cb8cf2",
+    "positive_families": [
+      {
+        "id": "mtl_archives_metadata_44.json",
+        "component": "leakage-component:25293aadeead66c700176d36846fad666aa4cf35fb3242eaa1cb3561d2cb8cf2",
+        "historical_split": "test"
+      }
+    ]
+  }
+]

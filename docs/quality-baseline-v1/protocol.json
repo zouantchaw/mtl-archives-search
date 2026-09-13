@@ -1,0 +1,29 @@
+{
+  "version": "operational-quality-v1",
+  "created": "2026-09-13",
+  "scope": "read-only production audit, no model tuning or promotion",
+  "sample": {
+    "seed": "issue136-v1",
+    "random": 24,
+    "targeted": 24,
+    "random_reporting": "separate from targeted; small sample, no corpus-wide guarantee"
+  },
+  "proposed_promotion_targets": {
+    "confirmed_constraint_violations": 0,
+    "technical_failures_counted_as_matches": 0,
+    "constraint_retention_regressions": 0,
+    "reviewed_pool_precision_at_6_min": 0.8,
+    "reviewed_pool_recall_at_36_min": 0.8,
+    "visual_check_completion_min": 0.98,
+    "search_p95_ms_max": 2000,
+    "research_p95_ms_max": 10000,
+    "research_estimated_usd_per_request_max": 0.02,
+    "worst_slice_precision_regression_max": 0.05
+  },
+  "authority": "engineering targets frozen before further tuning; owner review pending; not authorization to ship",
+  "cost_rule": "unknown when usage or billing attribution is absent; never report zero by assumption",
+  "split_rule": "inherit verified full family map when available; quarantine unknown families; seed failures tuning/stress; held-out results report-only; existing benchmark lock unchanged",
+  "human_review": "owner independently reviews 12 images, with no model caption initially shown; disagreements resolved before closing issue",
+  "hypothesis": "identity coverage can be correct while generated metadata and retrieval are poor; audit can falsify blanket-regeneration assumption",
+  "compute": "local CPU/network only; no GPU; live reads bounded; no production writes"
+}
