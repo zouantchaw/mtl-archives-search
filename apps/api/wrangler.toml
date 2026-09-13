@@ -10,11 +10,11 @@ migrations_dir = "../../infrastructure/d1/migrations"
 
 [[vectorize]]
 binding = "VECTORIZE"
-index_name = "mtl-archives"
+index_name = "mtl-archives-text-canonical-20260912"
 
 [[vectorize]]
 binding = "VECTORIZE_CLIP"
-index_name = "mtl-archives-clip"
+index_name = "mtl-archives-clip-canonical-20260912"
 
 [ai]
 binding = "AI"

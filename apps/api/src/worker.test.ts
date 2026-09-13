@@ -655,6 +655,97 @@ test('/api/search visual mode accepts precomputed POST embedding', async () => {
   assert.equal(data.items[0].score, 0.88);
 });
 
+test('/api/search distinguishes missing IDs from mobile size filtering', async () => {
+  setupCacheMock();
+  const env = { ...createPublicEnv([
+    createManifestRow({metadata_filename:'large',image_size_bytes:2000000}),
+    createManifestRow({metadata_filename:'small',image_size_bytes:100}),
+  ]), AI:{async run(){return {data:[[0.1]]};}},
+    VECTORIZE:createMockVector([{id:'orphan',score:0.9},{id:'large',score:0.8},{id:'small',score:0.7}]) };
+  const response=await worker.fetch(new Request('https://example.com/api/search?q=trees&mode=semantic&maxSize=1000000'),env,ctx);
+  const data=await response.json() as any;
+  assert.equal(data.count,1);
+  assert.deepEqual(data.retrieval.semantic,{status:'ok',candidates:3,hydrated:2,missingRecords:1,filteredBySize:1});
+});
+
+test('/api/search smart exposes fused ranking, branch scores and empty-branch health', async () => {
+  setupCacheMock();
+  const originalFetch=globalThis.fetch;
+  globalThis.fetch=async()=>new Response(JSON.stringify(Array(512).fill(0.1)),{headers:{'content-type':'application/json'}});
+  try {
+    const env={...createPublicEnv(['a','b','c'].map(metadata_filename=>createManifestRow({metadata_filename}))),
+      CLIP_EMBEDDING_URL:'https://embedding.example.test',AI:{async run(){return {data:[[0.1]]};}},
+      VECTORIZE_CLIP:createMockVector([{id:'a',score:0.2},{id:'b',score:0.1}]),
+      VECTORIZE:createMockVector([{id:'c',score:0.9},{id:'b',score:0.8}])};
+    const response=await worker.fetch(new Request('https://example.com/api/search?q=church&mode=smart'),env,ctx);
+    const data=await response.json() as any;
+    assert.deepEqual(data.items.map((x:any)=>x.metadataFilename),['b','c','a']);
+    assert.equal(data.items[0].source,'both');
+    assert.deepEqual(data.items[0].branchScores,{visual:0.1,semantic:0.8});
+    assert.equal(data.items[0].rankingScore,2/62);
+    assert.equal(data.degraded,false);
+    assert.equal(data.countKind,'returned');
+  } finally {globalThis.fetch=originalFetch;}
+});
+
+test('/api/search smart returns 503 if both branches are unavailable', async () => {
+  setupCacheMock();
+  const response=await worker.fetch(new Request('https://example.com/api/search?q=water'),createPublicEnv(),ctx);
+  assert.equal(response.status,503);
+});
+
+test('/api/search smart retains semantic results when visual branch is unavailable', async () => {
+  setupCacheMock();
+  const env={...createPublicEnv([createManifestRow({metadata_filename:'a'})]),
+    AI:{async run(){return {data:[[0.1]]};}},VECTORIZE:createMockVector([{id:'a',score:0.8}])};
+  const response=await worker.fetch(new Request('https://example.com/api/search?q=water'),env,ctx);
+  const data=await response.json() as any;
+  assert.equal(response.status,200);assert.equal(data.degraded,true);assert.equal(data.items[0].source,'semantic');
+});
+
+test('/api/search rejects non-numeric precomputed visual embeddings', async () => {
+  setupCacheMock();
+  const response=await worker.fetch(new Request('https://example.com/api/search?q=water&mode=visual',{
+    method:'POST',body:JSON.stringify({embedding:Array(512).fill('bad')})
+  }),createPublicEnv(),ctx);
+  assert.equal(response.status,400);
+});
+
+test('/api/search retries a degraded response and caches the recovered result', async () => {
+  setupCacheMock();
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify(Array(512).fill(0.1)), {
+    headers: { 'content-type': 'application/json' },
+  });
+  let embeddingCalls = 0;
+  try {
+    const env = {
+      ...createPublicEnv(['visual', 'semantic'].map(metadata_filename => createManifestRow({ metadata_filename }))),
+      CLIP_EMBEDDING_URL: 'https://embedding.example.test',
+      AI: { async run() {
+        if (++embeddingCalls === 1) throw new Error('Temporary inference outage');
+        return { data: [[0.1]] };
+      } },
+      VECTORIZE_CLIP: createMockVector([{ id: 'visual', score: 0.8 }]),
+      VECTORIZE: createMockVector([{ id: 'semantic', score: 0.8 }]),
+    };
+    const request = new Request('https://example.com/api/search?q=recovery');
+    const partial = await worker.fetch(request, env, ctx);
+    assert.equal(partial.headers.get('Cache-Control'), 'no-store');
+    assert.equal((await partial.json() as any).degraded, true);
+    const recovered = await worker.fetch(request, env, ctx);
+    const data = await recovered.json() as any;
+    assert.equal(data.degraded, false);
+    assert.equal(data.items.length, 2);
+    assert.match(recovered.headers.get('Cache-Control') ?? '', /public/);
+    const cached = await worker.fetch(request, env, ctx);
+    assert.equal((await cached.json() as any).degraded, false);
+    assert.equal(embeddingCalls, 2);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test('/api/newsletter/subscribe stores an active subscription', async () => {
   setupCacheMock();
   await withMockedResend(async () => {

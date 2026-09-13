@@ -20,7 +20,7 @@ dotenv.config({ path: path.resolve(MONOREPO_ROOT, '.env') });
 
 const ACCOUNT_ID = process.env.CLOUDFLARE_R2_ACCOUNT_ID || process.env.CLOUDFLARE_ACCOUNT_ID;
 const API_TOKEN = process.env.CLOUDFLARE_AI_TOKEN || process.env.CF_AI_TOKEN || process.env.CLOUDFLARE_API_TOKEN;
-const VECTORIZE_INDEX = process.env.CLOUDFLARE_VECTORIZE_INDEX || 'mtl-archives';
+const VECTORIZE_INDEX = process.env.CLOUDFLARE_VECTORIZE_INDEX || 'mtl-archives-text-canonical-20260912';
 const EMBEDDING_MODEL = process.env.CLOUDFLARE_EMBEDDING_MODEL || '@cf/baai/bge-m3';
 const BATCH_SIZE = Number(process.env.VECTORIZE_BATCH_SIZE || '16');
 const MAX_RETRIES = Number(process.env.VECTORIZE_MAX_RETRIES || '4');
@@ -209,16 +209,12 @@ async function upsertVectors(vectors: any[]) {
 }
 
 function buildText(record: any): string {
-  if (record.vlm_caption) {
-    const name = record.name || '';
-    return name ? `${name}\n${record.vlm_caption}` : record.vlm_caption;
-  }
-
-  const parts = [record.name, record.description, record.portal_title, record.portal_description]
-    .filter(Boolean)
-    .map((v) => String(v));
-
-  return parts.length ? parts.join('\n') : record.metadata_filename;
+  const archival = [...new Set([record.name, record.description, record.portal_title,
+    record.portal_description, record.date_value, record.portal_date, record.cote, record.portal_cote]
+    .map(v => String(v ?? '').trim()).filter(Boolean))].join('\n');
+  return [archival && `Archival metadata:\n${archival}`,
+    record.vlm_caption && `Image description (AI-generated):\n${record.vlm_caption}`]
+    .filter(Boolean).join('\n\n') || record.metadata_filename;
 }
 
 async function processBatch(batch: any[], batchStartIndex: number, total: number, manifestPath: string, checkpointPath: string, selectionKey: string) {
@@ -271,13 +267,7 @@ async function main() {
     },
   });
 
-  const manifestPath = values.input
-    ? path.resolve(process.cwd(), values.input)
-    : fs.existsSync(DEFAULT_VLM_PATH)
-      ? DEFAULT_VLM_PATH
-      : fs.existsSync(DEFAULT_CLEAN_PATH)
-        ? DEFAULT_CLEAN_PATH
-        : DEFAULT_ENRICHED_PATH;
+  const manifestPath = values.input ? path.resolve(values.input) : path.resolve(MONOREPO_ROOT, 'data/mtl_archives/manifest_search_canonical.jsonl');
 
   const limit = values.limit ? parseInt(values.limit, 10) : undefined;
   const checkpointPath = values.checkpoint

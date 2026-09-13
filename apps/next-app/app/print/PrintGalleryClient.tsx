@@ -159,14 +159,15 @@ function getPhotoDate(photo: PhotoRecord) {
   return cleanText(photo.dateValue) || cleanText(photo.portalDate);
 }
 
-function getPhotoStory(photo: PhotoRecord) {
+function getPhotoStory(photo: PhotoRecord, lang: Lang) {
   const description = cleanText(photo.description);
   if (description && description !== 'S/O') return description;
 
   const portalDescription = cleanText(photo.portalDescription);
   if (portalDescription) return portalDescription;
 
-  return cleanText(photo.vlmCaption);
+  const caption = cleanText(photo.vlmCaption);
+  return caption ? `${lang === 'fr' ? 'Description générée par IA (non vérifiée)' : 'AI-generated description (unverified)'} : ${caption}` : '';
 }
 
 function getPhotoLocation(photo: PhotoRecord, lang: Lang) {
@@ -205,7 +206,7 @@ function PhotoPrintCard({
   const title = getPhotoTitle(photo, lang);
   const date = getPhotoDate(photo);
   const location = getPhotoLocation(photo, lang);
-  const story = getPhotoStory(photo);
+  const story = getPhotoStory(photo, lang);
   const photoImage = getPhotoImage(photo);
 
   return (
@@ -357,7 +358,7 @@ export function PrintGalleryClient() {
   );
 
   const selectedTitle = selectedPhoto ? getPhotoTitle(selectedPhoto, lang) : t.untitled;
-  const selectedStory = selectedPhoto ? getPhotoStory(selectedPhoto) : '';
+  const selectedStory = selectedPhoto ? getPhotoStory(selectedPhoto, lang) : '';
   const selectedDate = selectedPhoto ? getPhotoDate(selectedPhoto) : '';
   const selectedLocation = selectedPhoto ? getPhotoLocation(selectedPhoto, lang) : '';
   const selectedImage = selectedPhoto

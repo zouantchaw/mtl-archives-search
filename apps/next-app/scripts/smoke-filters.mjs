@@ -5,16 +5,7 @@ import { execFileSync } from 'node:child_process';
 const target = process.argv[2] || process.env.SMOKE_URL || 'http://localhost:3001/';
 const session = `mtl-filters-smoke-${Date.now()}`;
 
-const filterLabels = [
-  'Tramway',
-  'Rosemont',
-  'Neige',
-  'Hochelaga',
-  'Mont Royal',
-  'Hiver',
-  'Bridge',
-  'Villeray',
-];
+const filterLabels = ['Miron', 'Plateau', 'Ahuntsic', 'Portuguais', 'Vieux-Montréal', 'Villeray', 'Hochelaga', 'Rosemont'];
 
 const failMarkers = [
   'Something went wrong',
@@ -78,7 +69,8 @@ try {
     fail(`Only ${taps} filter taps succeeded; expected at least 4`);
   }
 
-  run(['wait', '2000']);
+  // Wait for the async search to render instead of assuming cold embeddings finish in 2s.
+  run(['wait', '--fn', "document.querySelectorAll('button.aspect-square img').length > 0"], { timeoutMs: 60000 });
 
   const bodyText = run(['get', 'text', 'body']);
   for (const marker of failMarkers) {

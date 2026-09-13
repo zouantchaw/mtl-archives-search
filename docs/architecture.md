@@ -462,7 +462,8 @@ Issue #100 is merged and complete as an inactive synthetic Podman supervisor con
 | Mode | Backend | Embedding | Matches On | Best For |
 |------|---------|-----------|------------|----------|
 | `text` | D1 (cote PK lookup) → semantic fallback | None / BGE | Cote references, then meaning | Known cotes, or falls through to semantic |
-| `semantic` | Vectorize (BGE) | 1024-dim | Description + VLM caption text | Conceptual queries, synonyms |
+| `smart` (default) | CLIP + BGE → canonical D1 → reciprocal rank fusion | Both | Image content + archival/caption text | General discovery |
+| `semantic` | Vectorize (BGE) | 1024-dim | Canonical archival metadata + generated caption | Conceptual queries, synonyms |
 | `visual` | Vectorize (CLIP) | 512-dim | Image content | "Show me X", visual similarity |
 
 ## Technology Stack
@@ -564,3 +565,19 @@ Issue #104 adds an independent source-pinned post-begin enrollment contract befo
 
 The merged issue #98 v1 exchange/transcript semantics and IDs remain the admission oracle. Inactive issue #100 places them behind one retained combined relay/supervisor pin. The fixed inherited inputs are canonical request bytes, authorizer socket, and relay liveness; source-pinned compiled enrollment supplies verifier trust. The signed SCM_RIGHTS grant carries the replay journal plus exact supervisor config, empty report, canonical completion-expectation bytes, exact supervisor-config expectation bytes, one retained run-root directory descriptor, and HTTPS broker descriptors. The config, grant, and completion bytes bind the root descriptor role/order/FD target plus its path-for-diagnostics and device, inode, owner, group, mode, and link identity. Rust validates the received root FD before replay and uses that retained directory FD directly for `mkdirat`; it never re-opens the named path for run-tree authority. Only after full validation can the supervisor exclusively create and later remove that one child. HTTPS raw-response roles exact-join their declared writable host paths, and retained broker evidence includes that path. The supervisor owns an internal liveness-pipe write end and the container stage runtime exits when its fixed read end reaches EOF, including abrupt supervisor death. The handshake cap is separate from Rust's absolute lifecycle deadline and mandatory cleanup reserve. Eleven launches are brokerless none mode and one is HTTPS. Every read-only source is copied descriptor-relatively into an fsynced immutable supervisor-owned snapshot; only snapshot FDs and explicit child targets survive exec. Strict reports for all 12 stages retain the signed grant expectation payload and exact D1/session/program/runtime-source/image/Podman/trust/mount/output joins; none mode alone has null broker evidence. Synthetic fixtures remain production-ineligible; issue #100 is inactive/synthetic; issue #101 exclusively owns real-Linux/Podman conformance and admission; no authority is activated.
 Packet 3C local machinery is now implemented for synthetic fixtures: digest-pinned acquisition, deterministic offline materialization, exact receipt emission, and two-bundle byte comparison. This does not claim a final real lock, x86 Linux build, signed host-independence evidence, D1 action, or production admission. See `dataset-factory/gate-h2-builder-packet-3c-local-machinery-v1.md`.
+
+## Canonical search repair (September 2026)
+
+The canonical-ID repair and its rollout/evaluation procedure are documented in [search-canonical-repair.md](search-canonical-repair.md). Smart search combines CLIP and BGE with explicit branch-health diagnostics and separate ranking scores. Future ingestion defaults to `manifest_search_canonical.jsonl`; retain original archival descriptions alongside generated captions. See the repair report for verified coverage and remaining relevance limitations.
+
+### Search gap repair (2026-09-13)
+
+The follow-up backfill restores 29 missing canonical R2 objects, fills 184 caption gaps and adds 40 CLIP vectors. Captions retain AI provenance and their text vectors are regenerated together. See [the gap-repair runbook](search-gap-repair.md) for checks, recovery and evidence.
+
+Degraded smart-search responses now bypass caching so temporary inference outages can recover on the next request.
+
+## Conversational reading room (September 2026)
+
+`/research` adds a French/English conversation beside a photo collection, local pins, and a source/evidence drawer. Vercel AI SDK renders typed tool results; Mistral Small 3.1 on the existing Cloudflare AI binding interprets requests and checks bounded image candidates. Result summaries and historical-evidence limitations are rendered from controlled tool output. Canonical metadata stays separate from AI observations. No training or GPU provisioning is required.
+
+See [Reading room implementation and operations](reading-room.md) for deployment, quotas, failure modes and live evaluation commands.

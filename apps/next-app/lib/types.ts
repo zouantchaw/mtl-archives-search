@@ -26,6 +26,7 @@ export type PhotoRecord = {
   name: string | null;
   description: string | null;
   vlmCaption: string | null;
+  captionProvenance?: { source: string | null; model: string | null; status: string | null };
   dateValue: string | null;
   credits: string | null;
   cote: string | null;
@@ -51,6 +52,8 @@ export type PhotoRecord = {
     qualityAction: string | null;
   };
   score?: number;
+  rankingScore?: number;
+  branchScores?: Partial<Record<'visual' | 'semantic', number>>;
 };
 
 export type SearchResponse = {

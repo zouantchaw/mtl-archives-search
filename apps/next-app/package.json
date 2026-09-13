@@ -17,6 +17,8 @@
     "validate:port-to-city": "node ./scripts/validate-port-to-city.mjs"
   },
   "dependencies": {
+    "@ai-sdk/openai-compatible": "^3.0.48",
+    "@ai-sdk/react": "^4.0.102",
     "@clerk/localizations": "^3.35.3",
     "@clerk/nextjs": "^6.37.1",
     "@radix-ui/react-dialog": "^1.1.15",
@@ -26,6 +28,7 @@
     "@radix-ui/react-slot": "^1.2.4",
     "@react-email/components": "^1.0.4",
     "@vercel/analytics": "^1.6.1",
+    "ai": "^7.0.99",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
