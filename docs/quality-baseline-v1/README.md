@@ -35,7 +35,7 @@ Four random images were unavailable through the research image endpoint: IDs 932
 
 An additional diagnostic reviewed all five historical `ground_interior` labels. Records 46 (room with adults/babies) and 53 (classroom) support interior. Record 47 is an exposed building under demolition, requiring a boundary decision. Records 13090 and 13102 show open stadium fields and require re-adjudication of the interior label. The supplement is not part of the random-rate denominator. These examples show why sealed review artifacts still need semantic spot checks.
 
-The independent 12-image owner packet asks for viewpoint first, then caption assessment without exposing assistant judgments. Completion is deliberately pending; no owner answer is fabricated or inferred from silence.
+The 12-image owner packet collected viewpoints before caption assessments. The completed v2 review and A01 assisted-calibration exception are documented below; no owner answer was fabricated or inferred from silence.
 
 ## Retrieval and speed baseline
 

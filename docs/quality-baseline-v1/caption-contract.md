@@ -36,4 +36,4 @@ Prefer validated offline features for routine filtering; do not require a live v
 
 Original baseline scores and `protocol.json` remain immutable. V2 answers use distinct keys and are never inferred from old overall assessments. Preserve all saved and browser-draft values, including notes and legacy assessments. The review page exposes every question and permits partial saves. An unanswered dimension is missing evidence, never approval.
 
-The initial twelve owner viewpoint answers are saved. Caption review is pending under the clarified rubric. Keep A01 assisted calibration separate from the remaining independently assessed caption subset before closing #136.
+All twelve owner viewpoint answers and 36 caption dimension answers are complete under the clarified rubric. See owner-review-summary.json for validated results and discrepancy dispositions. A01 assisted calibration remains separate from the eleven independently assessed captions.
