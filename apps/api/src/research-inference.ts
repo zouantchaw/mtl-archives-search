@@ -1,7 +1,17 @@
 /** Private AI SDK adapter. Credentials stay between the Next server and Worker. */
+export const RESEARCH_CHEAP_MODEL =
+  "@cf/mistralai/mistral-small-3.1-24b-instruct";
+export const RESEARCH_FALLBACK_MODEL = "openai/gpt-5.4";
+
+export function resolveResearchModel(requested: unknown) {
+  return requested === RESEARCH_FALLBACK_MODEL
+    ? RESEARCH_FALLBACK_MODEL
+    : RESEARCH_CHEAP_MODEL;
+}
+
 export async function researchInference(
   request: Request,
-  env: { AI: Ai; RESEARCH_API_SECRET?: string },
+  env: { AI: Ai; RESEARCH_API_SECRET?: string; RESEARCH_AI_GATEWAY_ID?: string },
 ) {
   if (
     !env.RESEARCH_API_SECRET ||
@@ -14,19 +24,35 @@ export async function researchInference(
   const input = JSON.parse(raw) as Record<string, any>;
   if (!Array.isArray(input.messages) || input.messages.length > 40)
     return Response.json({ error: "Invalid messages" }, { status: 400 });
+  const model = resolveResearchModel(input.model);
+  const fallback = model === RESEARCH_FALLBACK_MODEL;
+  const maxTokens = Math.min(Number(input.max_tokens) || 800, 2200);
   const result = (await env.AI.run(
-    "@cf/mistralai/mistral-small-3.1-24b-instruct" as any,
+    model as any,
     {
       messages: input.messages,
       tools: input.tools,
       tool_choice: input.tool_choice,
       stream: false,
       response_format: input.response_format,
-      max_tokens: Math.min(Number(input.max_tokens) || 800, 2200),
-      ...(input.response_format?.json_schema?.schema
-        ? { guided_json: input.response_format.json_schema.schema }
-        : {}),
+      ...(fallback
+        ? { max_completion_tokens: maxTokens }
+        : {
+            max_tokens: maxTokens,
+            ...(input.response_format?.json_schema?.schema
+              ? { guided_json: input.response_format.json_schema.schema }
+              : {}),
+          }),
     } as any,
+    fallback
+      ? ({
+          gateway: {
+            id: env.RESEARCH_AI_GATEWAY_ID || "default",
+            skipCache: true,
+          },
+          metadata: { feature: "research-inspect-fallback" },
+        } as any)
+      : undefined,
   )) as any;
   const calls = result.tool_calls?.map((call: any, index: number) => ({
     index,
@@ -52,7 +78,7 @@ export async function researchInference(
   const base = {
     id: crypto.randomUUID(),
     created: Math.floor(Date.now() / 1000),
-    model: "mistral-small-3.1-24b-instruct",
+    model: fallback ? RESEARCH_FALLBACK_MODEL : "mistral-small-3.1-24b-instruct",
   };
   const finish_reason = message.tool_calls?.length
     ? "tool_calls"

@@ -33,6 +33,7 @@ import {
 
 type Env = {
   RESEARCH_API_SECRET?: string;
+  RESEARCH_AI_GATEWAY_ID?: string;
   DB: D1Database;
   AI: Ai;
   VECTORIZE?: VectorizeIndex;
