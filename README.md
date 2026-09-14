@@ -1,69 +1,49 @@
-# Montréal Archives Search
+# MTL Archives
 
-Semantic + visual search for Montréal city archives, plus a daily location game and print ordering.
+Search, play, and print from ~14k photographs in the City of Montreal archives.
 
-Built on Cloudflare Workers, D1, Vectorize, R2, Workers AI, and a Next.js frontend.
+**Live:** [www.mtlarchives.com](https://www.mtlarchives.com)
 
-[Live site](https://mtlarchives.com) · [Architecture](docs/architecture.md) · [Tasks](TASKS.md)
+A visitor can search by what a picture *looks like* or what its caption says, play a daily “where is this?” game, order a print, or ask the [reading room](https://www.mtlarchives.com/research) in French or English.
 
-## Current product direction
+## Stack
 
-Live MTL Archives is search, `/research`, game, and print on Cloudflare + Vercel.
-Operator jobs live in D1; the Eve agent uses Cloudflare AI Gateway. Remaining
-work: [#142](https://github.com/zouantchaw/mtl-archives-search/issues/142) budgeted GPU.
-Commercial Provenance/City Memory issues #123–#127 stay deferred.
+| Layer | What |
+|---|---|
+| [apps/next-app](apps/next-app) | Next.js site — search, game, prints, newsletter, `/research` (Vercel) |
+| [apps/api](apps/api) | Cloudflare Worker — D1, Vectorize, R2, Workers AI, operator jobs |
+| [apps/operator-agent](apps/operator-agent) | Eve control surface; completions go through Cloudflare AI Gateway |
+| [packages/scripts](packages/scripts) | ETL, CLIP/text index ingest, evals |
+| [pipelines](pipelines) | OCR / VLM / Instagram packaging |
 
-Keep vs archive: [docs/archive-v1/KEEP-LIST.md](docs/archive-v1/KEEP-LIST.md).
+Search is CLIP (visual) + BGE (captions) on Cloudflare Vectorize. `/research` uses Mistral Small on Workers AI, with GPT-5.4 only as a bounded inspect fallback. Original archive bytes are never overwritten.
 
-## Repo layout
-
-- `apps/api` — Cloudflare Worker API (search, game, newsletter, operator jobs)
-- `apps/next-app` — main site, game, prints, `/research`
-- `apps/operator-agent` — Eve control surface (Gateway completions)
-- `apps/web` — CLIP research explorer
-- `packages/scripts` — ETL, vectorize, ingest-v1, evals
-- `pipelines/` — OCR, VLM, social/story
-- `infrastructure/d1/` — schema and migrations
-
-## Common commands
+## Develop
 
 ```bash
-npm run dev
-npm run typecheck
-npm run deploy
-npm run smoke:game:prod
+npm install
+cp .env.example .env   # if present; otherwise see env below
+npm run dev --workspace=apps/next-app
+npm run dev --workspace=apps/api
 ```
 
-## Required env
+```bash
+npm run typecheck
+npm run test --workspace=apps/api
+npm run deploy --workspace=apps/api   # Worker
+```
 
-- `NEXT_PUBLIC_API_URL`
-- `NEXT_PUBLIC_R2_PUBLIC_DOMAIN`
-- `STRIPE_SECRET_KEY`
-- `STRIPE_WEBHOOK_SECRET`
-- `RESEND_SECRET_KEY`
-- `CRON_SECRET`
-- `NEWSLETTER_ADMIN_SECRET`
+**Env (site):** `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_R2_PUBLIC_DOMAIN`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `RESEND_SECRET_KEY`, `CRON_SECRET`, `NEWSLETTER_ADMIN_SECRET`, `RESEARCH_API_SECRET`.
 
-## Notes
+**Secrets (Worker):** `RESEARCH_API_SECRET`, optional `LAMBDA_API_KEY` (GPU stays off until a named job is authorized).
 
-- Manual print fulfillment stays manual.
-- Newsletter signup is explicit opt-in.
-- See `FORWIEL.md` for the longer project overview.
+## Docs
 
-## Canonical search repair (September 2026)
+- [Architecture](docs/architecture.md) — data flow, search, reading room, operator jobs
+- [Reading room](docs/reading-room.md) — `/research` behavior and quotas
+- [Operator](docs/operator-v1/README.md) — D1 job store, Eve, AI Gateway
+- [GPU](docs/gpu-v1/README.md) — budgeted Lambda jobs (mock-first)
+- [Ingest](docs/ingest-v1/README.md) / [Onboarding](docs/onboard-v1/README.md) — versioned ingest, second source
+- [Evals](docs/evals.md) — frozen vision/OCR labels used by tests
 
-The canonical-ID repair and its rollout/evaluation procedure are documented in [docs/search-canonical-repair.md](docs/search-canonical-repair.md). Smart search combines CLIP and BGE with explicit branch-health diagnostics and separate ranking scores. Future ingestion defaults to `manifest_search_canonical.jsonl`; retain original archival descriptions alongside generated captions. See the repair report for verified coverage and remaining relevance limitations.
-
-### Search gap repair (2026-09-13)
-
-The follow-up backfill restores 29 missing canonical R2 objects, fills 184 caption gaps and adds 40 CLIP vectors. Captions retain AI provenance and their text vectors are regenerated together. See [the gap-repair runbook](docs/search-gap-repair.md) for checks, recovery and evidence.
-
-Degraded smart-search responses now bypass caching so temporary inference outages can recover on the next request.
-
-## Conversational reading room (September 2026)
-
-`/research` adds a French/English conversation beside a photo collection, local pins, and a source/evidence drawer. Vercel AI SDK renders typed tool results; Mistral Small 3.1 on the existing Cloudflare AI binding interprets requests and checks bounded image candidates. GPT-5.4 is a query-time inspect fallback only (failed/uncertain cheap checks, or reviewed sideways/document flags). Result summaries and historical-evidence limitations are rendered from controlled tool output. Canonical metadata stays separate from AI observations. No training or GPU provisioning is required.
-
-See [Reading room implementation and operations](docs/reading-room.md) for deployment, quotas, failure modes and live evaluation commands.
-
-Offline #148 Gateway vision comparison (`openai/gpt-5.4`, `xai/grok-4.6`) is documented in [docs/vision-gateway-v1/README.md](docs/vision-gateway-v1/README.md). Frozen OCR/orientation eval is in [docs/vision-eval-v1/README.md](docs/vision-eval-v1/README.md). Image-kind and orientation provenance is in [docs/orientation-eval-v1/README.md](docs/orientation-eval-v1/README.md). OCR-as-separate-evidence is in [docs/ocr-eval-v1/README.md](docs/ocr-eval-v1/README.md). Versioned ingest and candidate indexes are in [docs/ingest-v1/README.md](docs/ingest-v1/README.md). Eve vs Cloudflare runtime split is in [docs/runtime-v1/README.md](docs/runtime-v1/README.md). Second-source onboarding is in [docs/onboard-v1/README.md](docs/onboard-v1/README.md). Operator D1 jobs and the Eve/Gateway agent are in [docs/operator-v1/README.md](docs/operator-v1/README.md). Budgeted GPU jobs are in [docs/gpu-v1/README.md](docs/gpu-v1/README.md). Selective frontier fallback (sideways/documents only) is in [docs/fallback-v1/README.md](docs/fallback-v1/README.md). Query-time `/research` inspect fallback is in [docs/inspect-fallback-v1/README.md](docs/inspect-fallback-v1/README.md). Candidate captions stay inactive.
+Print fulfillment is still manual after Stripe payment. Newsletter is explicit opt-in.

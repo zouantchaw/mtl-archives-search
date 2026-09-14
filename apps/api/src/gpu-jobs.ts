@@ -292,7 +292,7 @@ export async function handleGpu(
   if (pathname.endsWith("/admit")) {
     return Response.json(admit(body.spec || defaultClipGapSpec(), Boolean(body.owner_authorized)));
   }
-  return Response.json({ error: "Not found" }, 404);
+  return Response.json({ error: "Not found" }, { status: 404 });
 }
 
 export function defaultClipGapSpec(n = 40): GpuSpec {

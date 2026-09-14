@@ -1,7 +1,0 @@
-{
-  "sha256": "2bec4e1dffa19fef6607593033ee950966bc31f0e7e1bad16eb698f628bbaf8a",
-  "frozen_at": "2026-09-13T16:48:13.731Z",
-  "no_training": true,
-  "no_tuning": true,
-  "heldout_rule": "Historical test queries are report-only. Stress queries are not a disjoint held-out benchmark. Family-crossing checks must precede any later fitting."
-}
