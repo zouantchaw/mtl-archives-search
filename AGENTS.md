@@ -1,49 +1,29 @@
 # AGENTS.md
 
-## Purpose
-This repo powers **MTL Archives**: a Montreal city archives photo search engine with a daily location-guessing game and a Stripe-backed print-order flow. It is optimized for fast, mobile-first discovery (Instagram traffic is a major funnel).
+MTL Archives: Montreal city photo search, daily location game, Stripe prints, `/research`.
 
-## Product Invariants
-- **Manual fulfillment stays enabled**: Stripe handles payment collection, and Resend still kicks off the manual print-fulfillment workflow.
-- **Leaflet maps** are the current map stack (gallery map + game map).
-- **3D embedding explorer is research-facing** (`apps/web`) and not a core user product surface.
+## Invariants
 
-## Key Paths
-- `apps/api/` — Cloudflare Worker API (`/api/search`, `/api/photos`, `/api/game/*`, `/api/map`, `/api/sitemap`).
-- `apps/next-app/` — Main Next.js site, game UI, and print ordering.
-- `apps/web/` — Vite + Three.js CLIP embedding explorer (research/outreach).
-- `packages/scripts/` — TypeScript ETL, vectorize, and database tooling.
-- `pipelines/` — Python OCR + CLIP pipelines.
-- `infrastructure/d1/` — D1 migrations and schema.
+- Manual print fulfillment after Stripe.
+- Leaflet maps (not Mapbox).
+- Do not overwrite original archive bytes or recaption the 14k corpus unless explicitly asked.
+- `apps/web` (3D CLIP explorer) is not the core product.
 
-## Common Commands
-- `npm run dev` — run all workspaces in dev mode
-- `npm run dev --workspace=apps/api` — Worker only
-- `npm run dev --workspace=apps/next-app` — Next.js only
-- `npm run deploy` — deploy Worker
-- `npm run typecheck` — typecheck all workspaces
+## Paths
 
-## Data & Infra
-- D1, Vectorize, R2, and Workers AI are configured in `apps/api/wrangler.toml`.
-- Game tables live in D1: `daily_challenge`, `daily_guess`, `practice_guess`.
+- `apps/api` — Cloudflare Worker
+- `apps/next-app` — site, game, prints, reading room
+- `apps/operator-agent` — Eve → Worker / AI Gateway
+- `packages/scripts` — ETL and indexes
+- `infrastructure/d1` — migrations (keep applied ones)
 
-## Docs to Keep in Sync
-When behavior changes, update these together:
-- `README.md`
-- `FORWIEL.md`
-- `TASKS.md`
-- `docs/architecture.md`
-- `CLAUDE.md`
+## Commands
 
-## Practical Guidance
-- Favor **mobile performance** and **fast first paint** (IG traffic is impatient).
-- Keep counts in marketing copy **approximate** (e.g., “14k+ photos”) unless you’ve verified exact numbers.
-- Avoid heavy refactors across the pipeline unless you also update the eval/quality notes in `TASKS.md`.
+- `npm run dev --workspace=apps/next-app`
+- `npm run deploy --workspace=apps/api`
+- `npm run typecheck`
+- `npm run test --workspace=apps/api`
 
-## Skills Directory
-- Use **only** `./.agents/skills` for repository-local skills.
-- `./.skills` is deprecated and should not be used.
-- Current repo-local skills:
-  - `./.agents/skills/game-design-theory`
-  - `./.agents/skills/game-developer`
-  - `./.agents/skills/agent-browser`
+## Docs
+
+Keep [README.md](README.md) and [docs/architecture.md](docs/architecture.md) in sync with behavior. Do not resurrect `FORWIEL.md`, `CLAUDE.md`, or `TASKS.md`.

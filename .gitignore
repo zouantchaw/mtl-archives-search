@@ -85,7 +85,8 @@ docs/analytics/january-2026.md
 FORWIEL.md
 apps/api/.dev.vars
 
-# Local social runtime state
+# Social exports and local runtime state
+data/social/
 data/social/meta-token-state.json
 data/social/story-publish-log.jsonl
 data/social/story-registry.jsonl
