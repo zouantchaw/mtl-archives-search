@@ -140,6 +140,52 @@ class GrammarRegression(unittest.TestCase):
         self.assertEqual(len(pool), 72)
         self.assertIn("y35", pool)
 
+    def test_image_kind_is_not_viewpoint(self):
+        self.assertEqual(validate_image_kind("map"), "map")
+        with self.assertRaises(ValueError):
+            validate_image_kind("aerial_oblique")
+
+    def test_orientation_keeps_original_bytes_and_abstains(self):
+        original = "a" * 64
+        rotated = "b" * 64
+        ident = orientation_provenance(
+            original, original, 0, "exif", "v1", "accepted"
+        )
+        self.assertEqual(ident["derived_sha256"], original)
+        rotated_rec = orientation_provenance(
+            original, rotated, 90, "exif", "v1", "accepted"
+        )
+        self.assertNotEqual(rotated_rec["derived_sha256"], original)
+        abstain = orientation_provenance(
+            original, None, None, "exif", "v1", "abstain"
+        )
+        self.assertIsNone(abstain["degrees"])
+        with self.assertRaises(ValueError):
+            orientation_provenance(original, original, 90, "exif", "v1", "accepted")
+
+    def test_ocr_does_not_invent_illegible_words(self):
+        validate_ocr_evidence(
+            {
+                "text": "",
+                "status": "illegible",
+                "method": "pilot",
+                "version": "v1",
+                "region": None,
+            }
+        )
+        with self.assertRaises(ValueError):
+            validate_ocr_evidence(
+                {
+                    "text": "GAZETTE",
+                    "status": "unknown",
+                    "method": "pilot",
+                    "version": "v1",
+                    "region": None,
+                }
+            )
+        with self.assertRaises(ValueError):
+            reject_contradictory_features("no water is visible", {"water": "present"})
+
 
 if __name__ == "__main__":
     unittest.main()

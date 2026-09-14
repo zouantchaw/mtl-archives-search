@@ -13,6 +13,9 @@ VIEWPOINTS = (
     "document",
     "unknown",
 )
+IMAGE_KINDS = ("photograph", "map", "document", "unknown")
+ORIENTATION_DEGREES = (0, 90, 180, 270)
+OCR_STATUSES = ("exact", "partial", "illegible", "unknown")
 FEATURES = (
     "storefronts",
     "signs",
@@ -24,6 +27,81 @@ FEATURES = (
     "trees",
     "water",
 )
+
+
+def validate_image_kind(kind):
+    if kind not in IMAGE_KINDS:
+        raise ValueError("image kind")
+    return kind
+
+
+def orientation_provenance(
+    original_sha256,
+    derived_sha256,
+    degrees,
+    method,
+    version,
+    review_state,
+):
+    """Derived orientation never overwrites original bytes; uncertain cases abstain."""
+    if not isinstance(original_sha256, str) or len(original_sha256) != 64:
+        raise ValueError("original hash")
+    if degrees is None or review_state in ("abstain", "review"):
+        if review_state not in ("abstain", "review"):
+            raise ValueError("orientation review")
+        return {
+            "original_sha256": original_sha256,
+            "derived_sha256": None,
+            "degrees": None,
+            "method": method,
+            "version": version,
+            "review_state": review_state,
+        }
+    if degrees not in ORIENTATION_DEGREES:
+        raise ValueError("orientation degrees")
+    if not isinstance(derived_sha256, str) or len(derived_sha256) != 64:
+        raise ValueError("derived hash")
+    if degrees == 0 and derived_sha256 != original_sha256:
+        raise ValueError("identity transform must keep bytes")
+    if degrees != 0 and derived_sha256 == original_sha256:
+        raise ValueError("rotated output must not reuse original bytes")
+    return {
+        "original_sha256": original_sha256,
+        "derived_sha256": derived_sha256,
+        "degrees": degrees,
+        "method": method,
+        "version": version,
+        "review_state": review_state,
+    }
+
+
+def validate_ocr_evidence(x):
+    if not isinstance(x, dict) or set(x) != {
+        "text",
+        "status",
+        "method",
+        "version",
+        "region",
+    }:
+        raise ValueError("ocr schema")
+    if x["status"] not in OCR_STATUSES:
+        raise ValueError("ocr status")
+    if not isinstance(x["text"], str) or not isinstance(x["method"], str):
+        raise ValueError("ocr text")
+    if x["status"] in ("illegible", "unknown") and x["text"]:
+        raise ValueError("unknown ocr must not invent words")
+    if x["status"] == "exact" and not x["text"].strip():
+        raise ValueError("exact ocr requires text")
+    return x
+
+
+def reject_contradictory_features(description, features):
+    lowered = description.lower()
+    if "no water" in lowered and features.get("water") == "present":
+        raise ValueError("contradictory water")
+    if "unsigned" in lowered and features.get("signs") == "present":
+        raise ValueError("contradictory signs")
+    return features
 
 
 def digest(value):
