@@ -312,3 +312,7 @@ Eve.dev chooses typed tools and collects human approval. ingest-v1 JobStore (lat
 ## Second-source onboarding demo (#141, 2026-09-14)
 
 A non-MTL fixture (item_id/caption/license) is discovered with bounded paths, planned with cost, piloted privately, and published only after frozen review policy + JobStore approval. Interrupt resume, tombstones, and a human-intervention report are tested. Production indexes are unchanged. See [onboard-v1](docs/onboard-v1/README.md).
+
+## Operator cutover (#160, 2026-09-14)
+
+D1 holds operator jobs, receipts, candidates, and the index pointer. The Eve agent calls Worker tools and uses Cloudflare AI Gateway (`openai/gpt-5.4`) for completions. Publish does not write live captions. See [operator-v1](docs/operator-v1/README.md).
