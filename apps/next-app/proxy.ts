@@ -1,7 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import type { NextFetchEvent, NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { canRenderPortToCity } from '@/lib/port-to-city-access';
 
 const isPublicRoute = createRouteMatcher([
   '/',
@@ -41,16 +40,6 @@ const clerkProxy = clerkMiddleware(async (auth, req) => {
 });
 
 export default function proxy(req: NextRequest, event: NextFetchEvent) {
-  if (req.nextUrl.pathname.startsWith('/port-to-city') && !canRenderPortToCity()) {
-    return new NextResponse('Not found', {
-      status: 404,
-      headers: {
-        'Content-Type': 'text/plain; charset=utf-8',
-        'X-Robots-Tag': 'noindex, nofollow',
-      },
-    });
-  }
-
   return clerkProxy(req, event);
 }
 
