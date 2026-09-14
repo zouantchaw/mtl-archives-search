@@ -15,7 +15,11 @@ summary={'version':'issue136-inventory-v1','production':{'records':len(r),'uniqu
 for kind in ['text','clip']:
  a=read(kind+'-ids.json');aset=set(a);summary['indexes'][kind]={'vectors':len(a),'unique_ids':len(aset),'missing':sorted(ids-aset),'orphan':sorted(aset-ids),'scope':'membership only; vector values and semantic correctness not revalidated by membership'}
 for root in ['recovered-gold','recovered-family']:
- descriptor=repo/('docs/dataset-factory/fixtures/gold-label-batch-002/final-bundle-v1.json' if root=='recovered-gold' else 'docs/dataset-factory/fixtures/canonical-image-recovery-v1/reproducibility-bundle-v1.json');desc=json.loads(descriptor.read_text());bad=[]
+ descriptor=repo/('docs/dataset-factory/fixtures/gold-label-batch-002/final-bundle-v1.json' if root=='recovered-gold' else 'docs/dataset-factory/fixtures/canonical-image-recovery-v1/reproducibility-bundle-v1.json')
+ if not descriptor.is_file():
+  summary['artifacts'].append({'name':root,'status':'archived'})
+  continue
+ desc=json.loads(descriptor.read_text());bad=[]
  for m in desc['members']:
   file=p/root/m['path']
   if not file.exists() or digest(file)!=m['sha256'] or file.stat().st_size!=m['bytes']:bad.append(m['path'])

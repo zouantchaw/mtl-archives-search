@@ -8,52 +8,22 @@ Built on Cloudflare Workers, D1, Vectorize, R2, Workers AI, and a Next.js fronte
 
 ## Current product direction
 
-**Provenance Activation** is the product and service: it turns visual,
-cultural, archival, and historically significant collections into trusted,
-usable assets. **Dataset Factory** is the internal evidence engine. **MTL
-Archives** is the reference implementation, and **City Memory** is the first
-commercial application.
+Live MTL Archives is search, `/research`, game, and print on Cloudflare + Vercel.
+Operator jobs live in D1; the Eve agent uses Cloudflare AI Gateway. Remaining
+work: [#142](https://github.com/zouantchaw/mtl-archives-search/issues/142) budgeted GPU.
+Commercial Provenance/City Memory issues #123–#127 stay deferred.
 
-The commercial model has two paths over the same trust contract: institutions
-buy collection fit reviews or activation pilots; art, built-environment, and
-hospitality partners buy City Memory concept studies for real places. Every
-engagement moves through client collection, private processing, human review,
-and approved output zones. Paid pilots come before recurring software or
-workflow automation.
-
-The active roadmap is deliberately small: [product definition (#123)](https://github.com/zouantchaw/mtl-archives-search/issues/123),
-[Dataset Factory Core (#124)](https://github.com/zouantchaw/mtl-archives-search/issues/124),
-[Provenance Package (#125)](https://github.com/zouantchaw/mtl-archives-search/issues/125),
-[one client-sendable City Memory reference concept (#126)](https://github.com/zouantchaw/mtl-archives-search/issues/126),
-and [buyer validation after internal release approval (#127)](https://github.com/zouantchaw/mtl-archives-search/issues/127).
-See [Provenance Activation v1](docs/product/provenance-activation-v1.md) for the
-product model and the [Montréal prospect shortlist](docs/product/city-memory-montreal-prospects-2026-08-31.md)
-for the no-outreach research snapshot.
+Keep vs archive: [docs/archive-v1/KEEP-LIST.md](docs/archive-v1/KEEP-LIST.md).
 
 ## Repo layout
 
-- `apps/api` — Cloudflare Worker API
-- `apps/next-app` — main site, game, prints, auth
+- `apps/api` — Cloudflare Worker API (search, game, newsletter, operator jobs)
+- `apps/next-app` — main site, game, prints, `/research`
+- `apps/operator-agent` — Eve control surface (Gateway completions)
 - `apps/web` — CLIP research explorer
-- `packages/scripts` — ETL, vectorize, dataset-factory, evals
-- `pipelines/` — OCR, VLM, and social/story scripts
+- `packages/scripts` — ETL, vectorize, ingest-v1, evals
+- `pipelines/` — OCR, VLM, social/story
 - `infrastructure/d1/` — schema and migrations
-
-Deferred cross-platform content analytics is local-only, identity-gated, and
-provenance-explicit. Reports require `--evidence-kind` (`real_export` or
-`synthetic_fixture`); `no_personal_data` events cannot carry raw queries or
-candidate lists, and aggregate capture time is report-generation time. See
-`docs/dataset-factory/content-signal-v1.md` for the required canonical join,
-product-event contract, and self-test command.
-
-Deferred Benchmark v1 research has only a pre-lock candidate/preflight
-foundation. See
-`docs/dataset-factory/benchmark-v1.md`; it does not claim a locked benchmark,
-model result, or issue #70 completion.
-Historical issue #71 also has an offline promotion-challenge preflight
-scaffold; see
-`docs/dataset-factory/promotion-challenge-preflight-v1.md`. It is permanently
-no-ship and runs no models, GPU, production checks, or promotion.
 
 ## Common commands
 
@@ -62,37 +32,7 @@ npm run dev
 npm run typecheck
 npm run deploy
 npm run smoke:game:prod
-npm run social:today
-npm run dataset-factory:packets
-npm run gate-h2:linux-conformance-fixture-verify
-npm run gate-h2:linux-conformance-self-test
-npm run gate-h2:builder-receipts-fixture-verify
-npm run gate-h2:builder-receipts-self-test
-npm run city-memory:validation:self-test-v1
-npm run city-memory:validation:verify-v1
-npm run city-memory:opportunity-v1:self-test --workspace=@mtl-archives/scripts
-npm run validate:port-to-city --workspace=mtl-archives-next
 ```
-
-## City Memory client pilot and buyer validation
-
-The current reference is the dataset-led [Port-to-City evidence core](docs/product/opportunity-scan/port-to-city/README.md),
-not the earlier Hôtel Nelligan mockup. It starts from a 100-record retrieval
-pool and a ten-record reviewed selection, then projects the same evidence into
-separate Old Port and SDC Vieux-Montréal routes. All three routes are `noindex`
-and fail closed to 404 in production while release status is `internal_review`.
-Buyer outreach still requires explicit owner
-approval under [issue #127](https://github.com/zouantchaw/mtl-archives-search/issues/127).
-The predecessor issue #109 produced a privacy-preserving operating kit under
-[`docs/city-memory-validation-v1/`](docs/city-memory-validation-v1/), but no
-buyer evidence. Its checked-in ledger is intentionally empty: the validator
-reports `kit_ready: true` with `status: "template_only"`; `--require-acceptance`
-must fail until real, consented evidence is recorded. No outreach is authorized
-by this repository.
-
-## Gate H2 Linux Conformance
-
-Issue #100 and Issue #101 Packets 1 and 2 remain merged inactive synthetic/local contracts. Packet 3A is the approved local, no-secrets, pre-launch builder implementation contract: [read the canonical Packet 3A document](docs/dataset-factory/gate-h2-builder-packet-3a-v1.md) for the future Rust/Cargo `1.85.0` and Node `22.22.0` floor, source proof, rootless boundary, dual helper rebuilds, and SBOM comparison. Packet 3B defines strict external-input-lock and builder-receipt schemas/validators. Packet 3C adds local digest-pinned acquisition, deterministic offline materialization, receipt emission, and two-bundle byte comparison: [read the Packet 3C contract](docs/dataset-factory/gate-h2-builder-packet-3c-local-machinery-v1.md). These packets still do not supply the final real upstream lock, x86 Linux/Podman build, signed independent-host evidence, or production admission, so Issue #101 remains incomplete.
 
 ## Required env
 

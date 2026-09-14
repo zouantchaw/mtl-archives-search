@@ -2,34 +2,15 @@
 
 ## Active product roadmap
 
-- [ ] **Provenance Activation v1 (#123)** — define the customer, collection,
-  transformation, trust boundary, offer, and acceptance evidence.
-- [ ] **Dataset Factory Core v1 (#124)** — bound the reusable internal engine
-  needed by the first delivery; do not turn every historical research track
-  into a V1 dependency.
-- [ ] **Provenance Package v1 (#125)** — specify and build the portable client
-  handoff for sources, rights, claims, uncertainty, transformations, review,
-  and activation readiness.
-- [x] **City Memory evidence reference (#126)** — replace the weak
-  property-first mockup with a dataset-led Port-to-City evidence core, a
-  canonical crosswalk, a 100-record retrieval pool, ten reviewed records, and
-  separate Old Port and SDC Vieux-Montréal internal-review routes that fail
-  closed on the production deployment.
-- [ ] **City Memory Buyer Validation v2 (#127)** — complete final rights and
-  sequence review, choose one recipient path, obtain explicit approval for the
-  prospect and outreach materials, then test the corresponding offer without
-  exposing private buyer data.
+Archive Platform v2 (#135): live search, reading room, D1 operator jobs, Eve on
+Cloudflare AI Gateway. Keep-list: [docs/archive-v1/KEEP-LIST.md](docs/archive-v1/KEEP-LIST.md).
 
-The closed issue #128 indexes deferred research and exact reopening triggers.
-Historical issues #64, #69–#73, #92, #96, #97, #109, and #110 are not active
-tasks and are not claimed complete. Agent-platform work has no active
-replacement issue.
+- [x] #136–#141, #146, #147, #160 — quality, reading room, ingest contracts, operator D1
+- [x] **#161** — unused research trees archived from HEAD (git history kept)
+- [ ] **#142** — budgeted GPU jobs after owner spend authorization
+- Deferred, not current: #123–#125, #127 Provenance/City Memory commercial work
 
-Current goal: turn the existing collection intelligence into one trusted,
-client-sendable Provenance Activation and use approved buyer evidence to decide
-what to productize next. DTC print and the public MTL Archives experience
-remain operating surfaces, not the organizing principle for this roadmap.
-Note: Non-code growth tasks and high-level goals live in the Logseq graph (MTL Archives Operating Plan). This file is for engineering tasks only.
+Note: Non-code growth tasks live in the Logseq graph. This file is for engineering tasks.
 
 Historical funnel snapshot (Feb 16, 2026): last 30d shows `page_loaded` 343 -> `order_mode_entered` 19 -> `cart_item_added` 3 -> `checkout_clicked` 2 -> `orders_completed` 0. Last 7d shows `page_loaded` 96 -> `order_mode_entered` 3 -> `cart_item_added` 1 -> `checkout_clicked` 1 -> `orders_completed` 0. Facebook was the largest referrer.
 

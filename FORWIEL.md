@@ -1,39 +1,20 @@
 # MTL Archives Search, In Plain Language
 
-MTL Archives Search turns a large municipal photo archive into a product people can explore, play with, learn from, and eventually buy from. The public app is the visible part: search, maps, photo pages, the daily game, newsletter signup, and print ordering. Under that is a data system that cleans archive metadata, enriches records with vision/OCR signals, builds search indexes, and now keeps evaluation/training data reproducible through Dataset Factory v0.
+MTL Archives Search turns a large municipal photo archive into a product people can explore, play with, learn from, and eventually buy from. The public app is the visible part: search, maps, photo pages, the daily game, newsletter signup, print ordering, and `/research`. Under that, Cloudflare D1/R2/Vectorize hold truth; operator jobs live in D1; the Eve agent uses Cloudflare AI Gateway.
 
 ## The Product Direction Now
 
-Provenance Activation is the product and service: take a visual, cultural,
-archival, or historically significant collection and turn it into trusted,
-usable assets. Dataset Factory is the internal engine that handles identity,
-enrichment, evidence, review, and reproducibility. MTL Archives proves the
-method on a real collection. City Memory is the first client-facing
-application.
-
-There are two commercial paths over the same method. Institutions buy a fit
-review or archive activation pilot for collections they control. Art,
-built-environment, and hospitality partners buy a City Memory Concept Study
-for one real place. Both paths move through four zones—client collection,
-private processing, human review, and approved client/public output—and paid
-delivery must earn any later recurring software or automation.
-
-The active roadmap is issues #123–#127: define the product, bound Dataset
-Factory Core, specify a portable Provenance Package, build one client-sendable
-City Memory pilot, and only then test it with approved buyer outreach. The old
-research issues are preserved as technical history under the closed #128
-index; they are not current delivery commitments. Agent-platform work is not
-an active dependency and should only return after repeated delivery reveals a
-measured automation bottleneck. See `docs/product/provenance-activation-v1.md`.
+Live work is Archive Platform v2: search, reading room, D1 operator jobs, then budgeted GPU (#142). Commercial Provenance/City Memory issues #123–#127 stay deferred. Unused research trees were archived in #161; see `docs/archive-v1/KEEP-LIST.md`.
 
 ## How The Pieces Fit
 
-- `apps/api` is the Cloudflare Worker. It serves `/api/photos`, `/api/search`, game routes, newsletter routes, and talks to D1, Vectorize, Workers AI, and R2.
-- `apps/next-app` is the customer-facing site: landing, search, photo detail, print checkout, auth, and game UI.
-- `packages/scripts` is the workshop. It contains ETL, vector ingestion, audits, autoresearch, and Dataset Factory scripts.
-- `pipelines/` holds Python-heavy workflows such as OCR, CLIP experiments, and daily social packaging.
-- `docs/` explains the system and now includes Dataset Factory schemas, registry, and smoke fixtures.
-- `data/` is local and ignored. It can contain large manifests, reports, generated packets, and experiment outputs. Do not assume a clean clone has it.
+- `apps/api` is the Cloudflare Worker: photos, search, game, newsletter, operator jobs.
+- `apps/next-app` is the customer-facing site including `/research`.
+- `apps/operator-agent` is the Eve control surface (Gateway completions).
+- `packages/scripts` is ETL, vectorize, ingest-v1, and evals.
+- `pipelines/` holds OCR, VLM, and daily social packaging.
+- `docs/` explains live contracts (ingest, operator, reading room, vision evals).
+- `data/` is local and ignored.
 
 ## City Memory client pilot and buyer validation (#126–#127)
 
