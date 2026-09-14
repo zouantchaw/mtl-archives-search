@@ -270,3 +270,13 @@ See [Reading room implementation and operations](docs/reading-room.md) for deplo
 - [x] Add date/citation/quota regression tests and a live browser/evaluation harness.
 - [x] Reconcile the live reading-room and canonical-search source with `main` so ordinary merges cannot drop `/research` again. See [production source reconciliation](docs/production-source-reconciliation.md).
 - [ ] Expand human judgments beyond the initial women/helicopter and landscape examples before making broad retrieval-quality claims.
+
+## Issue #139 — retrieval/enrichment pilot (2026-09-13)
+
+Built and measured a 50-image offline enrichment/candidate-index pilot and 20-query, 102-request live retrieval comparison. Bounded variants plus pilot feature filtering recover all four reviewed street positives for original/French/correction wording. Caption replacement alone does not reliably improve retrieval; Mistral object/text/rotation errors block bulk promotion. See `docs/retrieval-pilot-v1/README.md`. Candidate captions remain inactive. #145 restored a reviewed production source, so this tooling can merge independently of model promotion.
+
+Issue #139 vision comparison: Scout and Gemma each completed 50 identical-input images; Moondream failed the two-image structured smoke gate. All three full models agree with 11/12 owner coarse viewpoints. Upright A44 fixes Mistral/Gemma, not Scout. Fresh Gemma validation is 10/11 after one scene-overlap quarantine, with a map misclassified as an aerial photograph. Strict storefront filtering loses a relevant advertisement image with the more cautious models: intent semantics also need repair. See `docs/vision-comparison-v1/README.md`. No production promotion or GPU work.
+
+## Issue #148 — Cloudflare AI Gateway frontier vision (2026-09-13)
+
+Unified Billing `/ai/run` adapters for `openai/gpt-5.4` and `xai/grok-4.6` reuse the #144 runner, skip cache, and use a 4096-token output budget. On the unchanged 50-image diagnostic set both score 12/12 owner coarse viewpoints, including the sideways helicopter A44 as ground. Mistral/Gemma remain 11/12 on the same bytes. No production caption promotion. See `docs/vision-gateway-v1/README.md`.

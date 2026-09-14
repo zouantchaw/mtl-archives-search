@@ -1,0 +1,89 @@
+{
+  "protocol": "vision-gateway-v1",
+  "models": {
+    "mistral": {
+      "completed": 50,
+      "latency_ms": {
+        "n": 50,
+        "p50": 5971.911624998029,
+        "p95": 8003.037791000679
+      },
+      "estimated_generation_usd": 0.026982113999999998,
+      "owner_coarse_viewpoint": {
+        "correct": 11,
+        "n": 12,
+        "disagreements": [
+          "A44"
+        ]
+      },
+      "image_sha256_match": true
+    },
+    "gemma": {
+      "completed": 50,
+      "latency_ms": {
+        "n": 50,
+        "p50": 7219.343000004301,
+        "p95": 17343.74325000681
+      },
+      "estimated_generation_usd": 0.0055384,
+      "owner_coarse_viewpoint": {
+        "correct": 11,
+        "n": 12,
+        "disagreements": [
+          "A44"
+        ]
+      },
+      "image_sha256_match": true
+    },
+    "openai_gpt_54": {
+      "completed": 50,
+      "latency_ms": {
+        "n": 50,
+        "p50": 2960.323770501418,
+        "p95": 3634.927624982083
+      },
+      "estimated_generation_usd": 0.29673,
+      "owner_coarse_viewpoint": {
+        "correct": 12,
+        "n": 12,
+        "disagreements": []
+      },
+      "image_sha256_match": true
+    },
+    "xai_grok_46": {
+      "completed": 50,
+      "latency_ms": {
+        "n": 50,
+        "p50": 45203.461124998285,
+        "p95": 66603.0747909972
+      },
+      "estimated_generation_usd": 0.785616,
+      "owner_coarse_viewpoint": {
+        "correct": 12,
+        "n": 12,
+        "disagreements": []
+      },
+      "image_sha256_match": true
+    }
+  },
+  "orientation_diagnostic_unchanged_bytes": {
+    "mistral": {
+      "viewpoint": "aerial_oblique",
+      "image_sha256": "c7e825022ff57250bda3831acc96ce8c85afa3d6ed84670f5f84ff4f664f31a9"
+    },
+    "gemma": {
+      "viewpoint": "aerial_oblique",
+      "image_sha256": "c7e825022ff57250bda3831acc96ce8c85afa3d6ed84670f5f84ff4f664f31a9"
+    },
+    "openai_gpt_54": {
+      "viewpoint": "ground",
+      "image_sha256": "c7e825022ff57250bda3831acc96ce8c85afa3d6ed84670f5f84ff4f664f31a9"
+    },
+    "xai_grok_46": {
+      "viewpoint": "ground",
+      "image_sha256": "c7e825022ff57250bda3831acc96ce8c85afa3d6ed84670f5f84ff4f664f31a9"
+    }
+  },
+  "production_promotable": false,
+  "cost_limitations": "Unified Billing receipts where cost_in_usd_ticks is present; otherwise published token-rate estimates. No full-corpus recaptioning."
+}
