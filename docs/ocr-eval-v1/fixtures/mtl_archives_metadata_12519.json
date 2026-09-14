@@ -1,0 +1,34 @@
+{
+  "id": "mtl_archives_metadata_12519.json",
+  "status": "generated_unreviewed",
+  "production_promotable": false,
+  "visual": {
+    "description": "A helicopter sits above a paved area with buildings along one side and a bright cloudy sky.",
+    "viewpoint": "ground",
+    "image_kind": "photograph",
+    "features": {
+      "storefronts": "unknown",
+      "signs": "unknown",
+      "church_exterior": "unknown",
+      "church_interior": "unknown",
+      "helicopter": "present",
+      "people_beside_helicopter": "unknown",
+      "flying_helicopter": "present",
+      "trees": "unknown",
+      "water": "unknown"
+    },
+    "uncertainties": [],
+    "ocr": [],
+    "feature_basis": {
+      "storefronts": "unknown",
+      "signs": "unknown",
+      "church_exterior": "unknown",
+      "church_interior": "unknown",
+      "helicopter": "pixels",
+      "people_beside_helicopter": "unknown",
+      "flying_helicopter": "pixels",
+      "trees": "unknown",
+      "water": "unknown"
+    }
+  }
+}

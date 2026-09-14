@@ -1,0 +1,59 @@
+{
+  "id": "mtl_archives_metadata_15507.json",
+  "status": "generated_unreviewed",
+  "production_promotable": false,
+  "visual": {
+    "description": "A scanned planning sheet shows a printed aerial of suburban streets and a title block along the lower right. Lettering in that block is OCR evidence, not a canonical photograph date.",
+    "viewpoint": "unknown",
+    "image_kind": "document",
+    "features": {
+      "storefronts": "unknown",
+      "signs": "unknown",
+      "church_exterior": "unknown",
+      "church_interior": "unknown",
+      "helicopter": "unknown",
+      "people_beside_helicopter": "unknown",
+      "flying_helicopter": "unknown",
+      "trees": "unknown",
+      "water": "unknown"
+    },
+    "uncertainties": [],
+    "ocr": [
+      {
+        "text": "SERVICE D'URBANISME",
+        "status": "exact",
+        "method": "human-visual",
+        "version": "ocr-v1",
+        "region": "title block, lower right",
+        "image_sha256": "9100d4f99269303d6c58a331b65b370127361b330af07a6913b172cfca814e76"
+      },
+      {
+        "text": "PLANNING DEPARTMENT",
+        "status": "exact",
+        "method": "human-visual",
+        "version": "ocr-v1",
+        "region": "title block, lower right",
+        "image_sha256": "9100d4f99269303d6c58a331b65b370127361b330af07a6913b172cfca814e76"
+      },
+      {
+        "text": "NOVEMBRE 1969",
+        "status": "exact",
+        "method": "human-visual",
+        "version": "ocr-v1",
+        "region": "title block date line",
+        "image_sha256": "9100d4f99269303d6c58a331b65b370127361b330af07a6913b172cfca814e76"
+      }
+    ],
+    "feature_basis": {
+      "storefronts": "unknown",
+      "signs": "unknown",
+      "church_exterior": "unknown",
+      "church_interior": "unknown",
+      "helicopter": "unknown",
+      "people_beside_helicopter": "unknown",
+      "flying_helicopter": "unknown",
+      "trees": "unknown",
+      "water": "unknown"
+    }
+  }
+}

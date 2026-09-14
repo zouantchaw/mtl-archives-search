@@ -1,0 +1,34 @@
+{
+  "id": "mtl_archives_metadata_16144.json",
+  "status": "generated_unreviewed",
+  "production_promotable": false,
+  "visual": {
+    "description": "Snow-covered roofs with dark channels between them. Those channels are not identified as water.",
+    "viewpoint": "aerial_nadir",
+    "image_kind": "photograph",
+    "features": {
+      "storefronts": "unknown",
+      "signs": "unknown",
+      "church_exterior": "unknown",
+      "church_interior": "unknown",
+      "helicopter": "unknown",
+      "people_beside_helicopter": "unknown",
+      "flying_helicopter": "unknown",
+      "trees": "unknown",
+      "water": "unknown"
+    },
+    "uncertainties": [],
+    "ocr": [],
+    "feature_basis": {
+      "storefronts": "unknown",
+      "signs": "unknown",
+      "church_exterior": "unknown",
+      "church_interior": "unknown",
+      "helicopter": "unknown",
+      "people_beside_helicopter": "unknown",
+      "flying_helicopter": "unknown",
+      "trees": "unknown",
+      "water": "unknown"
+    }
+  }
+}

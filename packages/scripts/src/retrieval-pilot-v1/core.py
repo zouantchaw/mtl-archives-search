@@ -26,6 +26,20 @@ SHEET_KINDS = ("map", "document")
 ENRICHMENT_STAGE = "enrichment-v2"
 ORIENTATION_DEGREES = (0, 90, 180, 270)
 OCR_STATUSES = ("exact", "partial", "illegible", "unknown")
+OCR_REQUIRED = ("text", "status", "method", "version", "region")
+OCR_OPTIONAL = ("image_sha256",)
+OCR_FORBIDDEN = ("confidence", "probability", "score", "p")
+FEATURE_BASIS = ("pixels", "unknown")
+INFERRED_CANONICAL_KEYS = (
+    "date",
+    "identity",
+    "location",
+    "person",
+    "latitude",
+    "longitude",
+    "motion",
+)
+OCR_STAGE = "ocr-v1"
 FEATURES = (
     "storefronts",
     "signs",
@@ -124,13 +138,12 @@ def orientation_provenance(
 
 
 def validate_ocr_evidence(x):
-    if not isinstance(x, dict) or set(x) != {
-        "text",
-        "status",
-        "method",
-        "version",
-        "region",
-    }:
+    if not isinstance(x, dict):
+        raise ValueError("ocr schema")
+    keys = set(x)
+    if keys & set(OCR_FORBIDDEN):
+        raise ValueError("uncalibrated ocr confidence")
+    if not set(OCR_REQUIRED) <= keys or not keys <= set(OCR_REQUIRED) | set(OCR_OPTIONAL):
         raise ValueError("ocr schema")
     if x["status"] not in OCR_STATUSES:
         raise ValueError("ocr status")
@@ -138,9 +151,39 @@ def validate_ocr_evidence(x):
         raise ValueError("ocr text")
     if x["status"] in ("illegible", "unknown") and x["text"]:
         raise ValueError("unknown ocr must not invent words")
-    if x["status"] == "exact" and not x["text"].strip():
+    if x["status"] in ("exact", "partial") and not x["text"].strip():
         raise ValueError("exact ocr requires text")
+    sha = x.get("image_sha256")
+    if sha is not None and (not isinstance(sha, str) or len(sha) != 64):
+        raise ValueError("ocr image hash")
     return x
+
+
+def validate_feature_basis(features, basis):
+    if not isinstance(basis, dict) or set(basis) != set(FEATURES):
+        raise ValueError("feature basis")
+    for key, value in features.items():
+        evidence = basis.get(key)
+        if evidence not in FEATURE_BASIS:
+            raise ValueError("feature basis")
+        if value == "unknown" and evidence != "unknown":
+            raise ValueError("unknown feature basis")
+        if value in ("present", "absent") and evidence != "pixels":
+            raise ValueError("asserted feature needs pixels")
+    return basis
+
+
+def assert_inactive_visual(x):
+    if x.get("canonical") is True or x.get("production_promotable") is True:
+        raise ValueError("inactive candidate")
+    inferred = [k for k in INFERRED_CANONICAL_KEYS if k in x]
+    if inferred:
+        raise ValueError("inferred canonical")
+    return x
+
+
+def ocr_stage_inputs(image_sha256, ocr):
+    return {"stage": OCR_STAGE, "input": image_sha256, "ocr": digest(ocr)}
 
 
 def reject_contradictory_features(description, features):
@@ -210,6 +253,36 @@ def validate_enrichment_v2(x):
         }
     )
     assert_kind_viewpoint(x["image_kind"], x["viewpoint"])
+    return x
+
+
+def validate_enrichment_v3(x):
+    """OCR is stored beside the caption, never as the caption."""
+    if not isinstance(x, dict) or set(x) != {
+        "description",
+        "viewpoint",
+        "image_kind",
+        "features",
+        "uncertainties",
+        "ocr",
+        "feature_basis",
+    }:
+        raise ValueError("enrichment v3 schema")
+    validate_enrichment_v2(
+        {
+            "description": x["description"],
+            "viewpoint": x["viewpoint"],
+            "image_kind": x["image_kind"],
+            "features": x["features"],
+            "uncertainties": x["uncertainties"],
+        }
+    )
+    if not isinstance(x["ocr"], list):
+        raise ValueError("ocr list")
+    for item in x["ocr"]:
+        validate_ocr_evidence(item)
+    validate_feature_basis(x["features"], x["feature_basis"])
+    reject_contradictory_features(x["description"], x["features"])
     return x
 
 

@@ -5,7 +5,8 @@ These labels are frozen against the quality-baseline JPEGs. Candidate captions s
 - **A25** (street with painted ads): exact OCR includes `The Gazette` (water tower) and `MAGIC BAKING POWDER`. `The Gazel` is unsupported.
 - **A40** (snowy roofs, dark channels): water is **unknown**. Hedged “waterways or streets” cannot assert `water=present`.
 - **A44** (sideways helicopter): photograph, ground-level. No EXIF orientation tag, so automatic uprighting must **abstain** unless a reviewed transform is recorded.
-- **F12**: scanned map. Image kind is `map`; viewpoint is not aerial.
+- **F12** (fresh OCR): scanned planning sheet. Exact OCR includes `SERVICE D'URBANISME`, `PLANNING DEPARTMENT`, and `NOVEMBRE 1969` as title-block lettering, not a canonical photo date. Image kind is `document`.
+- OCR must be stored in `ocr[]`. A caption that contains `The Gazette` without an OCR record fails. See [ocr-eval-v1](../ocr-eval-v1/README.md).
 
 Orientation helpers (`orientation.py`) apply EXIF 1/3/6/8, keep original bytes, re-encode only when a real rotation happens, and cache derived JPEGs under `orientation-v1` keys. Missing EXIF abstains; mirrored tags enter review. Multi-example comparison is in [orientation-eval-v1](../orientation-eval-v1/README.md).
 
