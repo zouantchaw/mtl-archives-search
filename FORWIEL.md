@@ -192,3 +192,5 @@ Degraded smart-search responses now bypass caching so temporary inference outage
 `/research` adds a French/English conversation beside a photo collection, local pins, and a source/evidence drawer. Vercel AI SDK renders typed tool results; Mistral Small 3.1 on the existing Cloudflare AI binding interprets requests and checks bounded image candidates. Result summaries and historical-evidence limitations are rendered from controlled tool output. Canonical metadata stays separate from AI observations. No training or GPU provisioning is required.
 
 See [Reading room implementation and operations](docs/reading-room.md) for deployment, quotas, failure modes and live evaluation commands.
+
+Offline #148 Gateway vision comparison (`openai/gpt-5.4`, `xai/grok-4.6`) is documented in [docs/vision-gateway-v1/README.md](docs/vision-gateway-v1/README.md). Candidate captions stay inactive.

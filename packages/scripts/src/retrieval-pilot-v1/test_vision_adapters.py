@@ -1,6 +1,17 @@
 import unittest
 
-from vision_adapters import GEMMA, MOONDREAM, normalize_response, prepare_body
+from vision_adapters import (
+    GEMMA,
+    MOONDREAM,
+    OPENAI_GPT_54,
+    XAI_GROK_46,
+    estimate_usd,
+    gateway_run_url,
+    gateway_headers,
+    normalize_response,
+    prepare_body,
+    uses_max_completion_tokens,
+)
 
 
 class VisionAdapters(unittest.TestCase):
@@ -48,3 +59,51 @@ class VisionAdapters(unittest.TestCase):
     def test_generic_passthrough(self):
         x = {"response": "value"}
         self.assertEqual(normalize_response("other", x), x)
+
+    def test_openai_reasoning_uses_max_completion_tokens(self):
+        body = {
+            "messages": [{"role": "user", "content": "prompt"}],
+            "max_tokens": 4096,
+            "temperature": 0,
+        }
+        adapted = prepare_body(OPENAI_GPT_54, body)
+        self.assertEqual(adapted["model"], OPENAI_GPT_54)
+        self.assertEqual(adapted["input"]["max_completion_tokens"], 4096)
+        self.assertNotIn("max_tokens", adapted["input"])
+        self.assertEqual(adapted["input"]["response_format"], {"type": "json_object"})
+        self.assertTrue(uses_max_completion_tokens(OPENAI_GPT_54))
+        self.assertFalse(uses_max_completion_tokens(XAI_GROK_46))
+
+    def test_grok_keeps_max_tokens_and_does_not_truncate_to_650(self):
+        body = {
+            "messages": [{"role": "user", "content": "prompt"}],
+            "max_tokens": 4096,
+            "temperature": 0,
+        }
+        adapted = prepare_body(XAI_GROK_46, body)
+        self.assertEqual(adapted["input"]["max_tokens"], 4096)
+        self.assertNotIn("max_completion_tokens", adapted["input"])
+
+    def test_gateway_headers_skip_cache_and_keep_receipt_metadata(self):
+        headers = gateway_headers("token", {"issue": "148"})
+        self.assertEqual(headers["cf-aig-skip-cache"], "true")
+        self.assertIn("148", headers["cf-aig-metadata"])
+        self.assertTrue(gateway_run_url("acct").endswith("/accounts/acct/ai/run"))
+
+    def test_openai_chat_completion_text_and_ticks_cost(self):
+        result = normalize_response(
+            OPENAI_GPT_54,
+            {
+                "result": {
+                    "model": OPENAI_GPT_54,
+                    "choices": [{"message": {"content": '{"viewpoint":"ground"}'}}],
+                    "usage": {
+                        "prompt_tokens": 10,
+                        "completion_tokens": 20,
+                        "cost_in_usd_ticks": 100000000,
+                    },
+                }
+            },
+        )
+        self.assertEqual(result["response"], '{"viewpoint":"ground"}')
+        self.assertEqual(estimate_usd(OPENAI_GPT_54, result["usage"]), 0.01)
