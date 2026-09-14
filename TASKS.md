@@ -300,3 +300,7 @@ Frontier GPT-5.4 is used only for reviewed sideways photos, EXIF 90/270, and map
 ## OCR evidence and field-level uncertainty (2026-09-14)
 
 Literal OCR is stored beside the caption, with region/method/version and no invented illegible words. Features carry present/absent/unknown plus a pixels/unknown basis. Hedged water cannot be present. Inferred date/identity/location stay off the candidate. Inactive fixtures pass Gazette/water/A44-empty/F12 title-block labels 4/4 and are not promotable. See [ocr-eval-v1](docs/ocr-eval-v1/README.md).
+
+## Versioned ingest (#138, 2026-09-14)
+
+Offline ingest-v1 snapshots source bytes, canonicalizes identities, stores candidate enrichment beside archive facts, and builds versioned candidate indexes with validate-before-activate and rollback. Interrupt resume skips completed work. It does not write production D1, R2, or Vectorize. See [ingest-v1](docs/ingest-v1/README.md).
