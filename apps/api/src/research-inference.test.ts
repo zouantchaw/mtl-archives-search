@@ -1,6 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { researchInference } from "./research-inference";
+import {
+  RESEARCH_CHEAP_MODEL,
+  RESEARCH_FALLBACK_MODEL,
+  researchInference,
+  resolveResearchModel,
+} from "./research-inference";
 const request = (body: unknown) =>
   new Request("https://worker.test/api/research/v1/chat/completions", {
     method: "POST",
@@ -64,4 +69,52 @@ test("AI adapter is private even though the reading room is public", async () =>
     AI: {} as Ai,
   });
   assert.equal(result.status, 401);
+});
+test("unknown model names stay on cheap Mistral; only GPT-5.4 is allowlisted", () => {
+  assert.equal(resolveResearchModel("not-allowed"), RESEARCH_CHEAP_MODEL);
+  assert.equal(resolveResearchModel(undefined), RESEARCH_CHEAP_MODEL);
+  assert.equal(
+    resolveResearchModel(RESEARCH_FALLBACK_MODEL),
+    RESEARCH_FALLBACK_MODEL,
+  );
+});
+test("inspect fallback uses GPT-5.4 through AI Gateway and never max_tokens", async () => {
+  let call: any;
+  const env = {
+    RESEARCH_API_SECRET: "private-test",
+    RESEARCH_AI_GATEWAY_ID: "reading-room",
+    AI: {
+      run: async (model: string, input: unknown, options?: unknown) => {
+        call = { model, input, options };
+        return {
+          choices: [
+            {
+              message: {
+                role: "assistant",
+                content: '{"verdict":"match","observation":"A helicopter sits on a paved apron beside two people."}',
+              },
+            },
+          ],
+        };
+      },
+    } as unknown as Ai,
+  };
+  const result = await researchInference(
+    request({
+      messages: [{ role: "user", content: "Inspect this image" }],
+      stream: false,
+      max_tokens: 350,
+      model: RESEARCH_FALLBACK_MODEL,
+    }),
+    env,
+  );
+  assert.equal(result.status, 200);
+  assert.equal(call.model, RESEARCH_FALLBACK_MODEL);
+  assert.equal(call.input.max_completion_tokens, 350);
+  assert.equal(call.input.max_tokens, undefined);
+  assert.equal(call.input.guided_json, undefined);
+  assert.deepEqual(call.options, {
+    gateway: { id: "reading-room", skipCache: true },
+    metadata: { feature: "research-inspect-fallback" },
+  });
 });

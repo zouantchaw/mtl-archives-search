@@ -288,3 +288,7 @@ EXIF orientation 1/3/6/8 is tested; missing EXIF abstains; originals are never o
 ## Selective fallback (2026-09-14)
 
 Frontier GPT-5.4 is used only for reviewed sideways photos, EXIF 90/270, and map/document sheets. Missing EXIF is not a trigger. A25 was not selected. A44 and F12 were; both passed frozen viewpoint/kind checks (~$0.012). Production captions unchanged. See [fallback-v1](docs/fallback-v1/README.md).
+
+## Query-time inspect fallback (2026-09-14)
+
+`/research` still inspects with Mistral first. GPT-5.4 runs only when that cheap check failed, returned `uncertain`, or the record is a reviewed sideways/document flag. Confident cheap `no_match` is not escalated. Captions and indexes stay unchanged. See [inspect-fallback-v1](docs/inspect-fallback-v1/README.md).
