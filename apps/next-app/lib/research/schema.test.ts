@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { dateMatches, recordId } from "./schema";
+import { dateMatches, recordId, mergeSearchConstraints } from "./schema";
 test("date constraints never invent a date for an undated photo", () => {
   assert.equal(dateMatches(null, null, null), true);
   assert.equal(dateMatches(null, null, 1950), false);
@@ -47,9 +47,52 @@ test("result summaries cite only actual matches and never claim failed inspectio
     collectionSummary({ ...collection, checked: 0 }, "en"),
     /No visual checks could be completed/,
   );
+  const failed = collectionSummary(
+    {
+      ...collection,
+      checked: 2,
+      degraded: false,
+      photos: [
+        { visualCheck: { status: "failed" } },
+        { visualCheck: { status: "match" } },
+      ],
+    } as ArchiveCollection,
+    "en",
+  );
+  assert.match(failed, /1 appear to match.*\[2\]/);
+  assert.doesNotMatch(failed, /\[1\]/);
+  assert.match(failed, /failed technically/);
+  assert.match(
+    collectionSummary(
+      { ...collection, checked: 0, degraded: true, photos: [{ visualCheck: { status: "failed" } }] } as ArchiveCollection,
+      "en",
+    ),
+    /No visual checks could be completed/,
+  );
 });
 
 import { hasRequestedDates } from "./schema";
+test("follow-ups keep prior subjects unless the new query already contains them", () => {
+  const merged = mergeSearchConstraints(
+    "women beside helicopters",
+    "only the ones standing outside",
+    "women beside helicopters",
+    "people standing outside",
+  );
+  assert.match(merged.query, /women beside helicopters/i);
+  assert.match(merged.query, /standing outside/i);
+  assert.match(merged.visualCriteria || "", /helicopter/i);
+  const replaced = mergeSearchConstraints(
+    "women beside helicopters",
+    "women beside helicopters standing outside",
+    "women beside helicopters",
+    "women beside helicopters standing outside",
+  );
+  assert.equal(
+    replaced.query,
+    "women beside helicopters standing outside",
+  );
+});
 test("unrequested dates and record IDs cannot activate date filtering", () => {
   assert.equal(hasRequestedDates("women beside helicopters"), false);
   assert.equal(hasRequestedDates("mtl_archives_metadata_18557.json"), false);
