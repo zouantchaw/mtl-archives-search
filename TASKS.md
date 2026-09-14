@@ -280,3 +280,7 @@ Issue #139 vision comparison: Scout and Gemma each completed 50 identical-input 
 ## Issue #148 — Cloudflare AI Gateway frontier vision (2026-09-13)
 
 Unified Billing `/ai/run` adapters for `openai/gpt-5.4` and `xai/grok-4.6` reuse the #144 runner, skip cache, and use a 4096-token output budget. On the unchanged 50-image diagnostic set both score 12/12 owner coarse viewpoints, including the sideways helicopter A44 as ground. Mistral/Gemma remain 11/12 on the same bytes. No production caption promotion. See `docs/vision-gateway-v1/README.md`.
+
+## Frozen orientation and OCR eval (2026-09-14)
+
+EXIF orientation 1/3/6/8 is tested; missing EXIF abstains; originals are never overwritten. Frozen labels cover A25 (`The Gazette`, `MAGIC BAKING POWDER`, forbid `The Gazel`), A40 (water unknown), A44 (ground photograph), and F12 (map, not aerial). No model passes the frozen OCR/water set. See [vision-eval-v1](docs/vision-eval-v1/README.md). Candidate captions stay inactive.

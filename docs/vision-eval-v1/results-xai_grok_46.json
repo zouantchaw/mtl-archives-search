@@ -1,0 +1,113 @@
+{
+  "protocol": "vision-eval-v1",
+  "n": 3,
+  "passed": 1,
+  "production_promotable": false,
+  "records": [
+    {
+      "audit_id": "A25",
+      "id": "mtl_archives_metadata_0.json",
+      "skipped": false,
+      "passed": false,
+      "checks": [
+        {
+          "check": "viewpoint",
+          "ok": true,
+          "expected": "ground",
+          "actual": "ground"
+        },
+        {
+          "check": "image_kind",
+          "ok": true,
+          "expected": "photograph",
+          "actual": null,
+          "note": "missing kind is not a fail until the field is emitted"
+        },
+        {
+          "check": "ocr_exact",
+          "ok": false,
+          "expected": "The Gazette"
+        },
+        {
+          "check": "ocr_exact",
+          "ok": false,
+          "expected": "MAGIC BAKING POWDER"
+        },
+        {
+          "check": "ocr_unsupported",
+          "ok": true,
+          "forbidden": "The Gazel"
+        },
+        {
+          "check": "water",
+          "ok": true,
+          "expected": "absent",
+          "actual": "absent",
+          "hedged": false
+        }
+      ]
+    },
+    {
+      "audit_id": "A40",
+      "id": "mtl_archives_metadata_16144.json",
+      "skipped": false,
+      "passed": false,
+      "checks": [
+        {
+          "check": "viewpoint",
+          "ok": true,
+          "expected": "aerial_nadir",
+          "actual": "aerial_nadir"
+        },
+        {
+          "check": "image_kind",
+          "ok": true,
+          "expected": "photograph",
+          "actual": null,
+          "note": "missing kind is not a fail until the field is emitted"
+        },
+        {
+          "check": "water",
+          "ok": false,
+          "expected": "unknown",
+          "actual": "present",
+          "hedged": true
+        }
+      ]
+    },
+    {
+      "audit_id": "A44",
+      "id": "mtl_archives_metadata_12519.json",
+      "skipped": false,
+      "passed": true,
+      "checks": [
+        {
+          "check": "viewpoint",
+          "ok": true,
+          "expected": "ground",
+          "actual": "ground"
+        },
+        {
+          "check": "image_kind",
+          "ok": true,
+          "expected": "photograph",
+          "actual": null,
+          "note": "missing kind is not a fail until the field is emitted"
+        }
+      ]
+    },
+    {
+      "audit_id": "F12",
+      "id": "mtl_archives_metadata_15507.json",
+      "skipped": true,
+      "passed": false,
+      "checks": [
+        {
+          "check": "missing",
+          "ok": false
+        }
+      ]
+    }
+  ],
+  "model": "xai_grok_46"
+}

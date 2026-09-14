@@ -185,6 +185,10 @@ class GrammarRegression(unittest.TestCase):
             )
         with self.assertRaises(ValueError):
             reject_contradictory_features("no water is visible", {"water": "present"})
+        with self.assertRaises(ValueError):
+            reject_contradictory_features(
+                "dark waterways or streets between roofs", {"water": "present"}
+            )
 
 
 if __name__ == "__main__":

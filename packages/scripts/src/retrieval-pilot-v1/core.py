@@ -99,6 +99,10 @@ def reject_contradictory_features(description, features):
     lowered = description.lower()
     if "no water" in lowered and features.get("water") == "present":
         raise ValueError("contradictory water")
+    if re.search(r"waterways or streets|water vs\.? (?:roads|streets)", lowered) and features.get(
+        "water"
+    ) == "present":
+        raise ValueError("contradictory water")
     if "unsigned" in lowered and features.get("signs") == "present":
         raise ValueError("contradictory signs")
     return features
