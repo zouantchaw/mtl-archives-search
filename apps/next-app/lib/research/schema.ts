@@ -35,6 +35,22 @@ export const searchInput = z.object({
     .describe(
       "Null unless the user explicitly asks for a lower date bound. Never invent a default.",
     ),
+  previousQuery: z
+    .string()
+    .max(240)
+    .nullable()
+    .optional()
+    .describe(
+      "The previous standalone search query to retain unless the user replaced it.",
+    ),
+  previousCriteria: z
+    .string()
+    .max(240)
+    .nullable()
+    .optional()
+    .describe(
+      "Previous visible-object criteria to retain unless the user replaced them.",
+    ),
 });
 export type ArchivePhoto = {
   id: string;
@@ -48,7 +64,7 @@ export type ArchivePhoto = {
   caption: string | null;
   credits: string | null;
   visualCheck: {
-    status: "match" | "uncertain" | "not_checked";
+    status: "match" | "no_match" | "uncertain" | "failed" | "not_checked";
     observation: string;
   };
 };
@@ -78,4 +94,26 @@ export function dateMatches(
 
 export function hasRequestedDates(text: string) {
   return /\b(?:18|19|20)\d{2}(?=\b|s\b)|\b(?:century|siècle)\b/i.test(text);
+}
+
+/** Follow-ups keep prior visible subjects unless the new text explicitly replaces them. */
+export function mergeSearchConstraints(
+  previousQuery: string,
+  nextQuery: string,
+  previousCriteria: string | null,
+  nextCriteria: string | null,
+) {
+  const prior = previousQuery.trim();
+  const next = nextQuery.trim();
+  const query =
+    prior && next && !next.toLowerCase().includes(prior.toLowerCase())
+      ? `${prior}; ${next}`
+      : next || prior;
+  const criteria =
+    nextCriteria &&
+    previousCriteria &&
+    !nextCriteria.toLowerCase().includes(previousCriteria.toLowerCase())
+      ? `${previousCriteria}; ${nextCriteria}`
+      : nextCriteria || previousCriteria;
+  return { query, visualCriteria: criteria };
 }
