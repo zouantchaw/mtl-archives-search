@@ -201,6 +201,23 @@ class GrammarRegression(unittest.TestCase):
             validate_enrichment_v2(base)
         validate_enrichment_v2({**base, "image_kind": "photograph"})
 
+    def test_unknown_kind_and_sheets_cannot_claim_a_camera(self):
+        base = {
+            "description": "A scanned sheet with a printed title block and map grid.",
+            "viewpoint": "aerial_nadir",
+            "image_kind": "map",
+            "features": {k: "unknown" for k in FEATURES},
+            "uncertainties": [],
+        }
+        with self.assertRaises(ValueError):
+            validate_enrichment_v2(base)
+        validate_enrichment_v2({**base, "viewpoint": "unknown", "image_kind": "map"})
+        with self.assertRaises(ValueError):
+            validate_enrichment_v2({**base, "viewpoint": "ground", "image_kind": "unknown"})
+        validate_enrichment_v2(
+            {**base, "viewpoint": "unknown", "image_kind": "unknown"}
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

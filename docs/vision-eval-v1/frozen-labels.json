@@ -32,7 +32,8 @@
           "region": null
         }
       ],
-      "features": { "signs": "present", "water": "absent", "storefronts": "unknown" }
+      "features": { "signs": "present", "water": "absent", "storefronts": "unknown" },
+      "orientation": { "exif": null, "expected_review_state": "abstain" }
     },
     {
       "audit_id": "A40",
@@ -41,6 +42,7 @@
       "viewpoint": "aerial_nadir",
       "ocr": [],
       "features": { "water": "unknown" },
+      "orientation": { "exif": null, "expected_review_state": "abstain" },
       "notes": "Dark channels may be canal or street. Hedged prose cannot assert water=present."
     },
     {
@@ -59,6 +61,7 @@
       "viewpoint": "unknown",
       "ocr": [],
       "features": {},
+      "orientation": { "exif": null, "expected_review_state": "abstain" },
       "notes": "Scanned aerial sheet with a planning-department title block. Kind is document, not an aerial photograph viewpoint."
     }
   ]

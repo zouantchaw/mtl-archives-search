@@ -7,7 +7,7 @@ These labels are frozen against the quality-baseline JPEGs. Candidate captions s
 - **A44** (sideways helicopter): photograph, ground-level. No EXIF orientation tag, so automatic uprighting must **abstain** unless a reviewed transform is recorded.
 - **F12**: scanned map. Image kind is `map`; viewpoint is not aerial.
 
-Orientation helpers (`orientation.py`) apply EXIF 1/3/6/8, keep original bytes, re-encode only when a real rotation happens, and cache derived JPEGs under `orientation-v1` keys.
+Orientation helpers (`orientation.py`) apply EXIF 1/3/6/8, keep original bytes, re-encode only when a real rotation happens, and cache derived JPEGs under `orientation-v1` keys. Missing EXIF abstains; mirrored tags enter review. Multi-example comparison is in [orientation-eval-v1](../orientation-eval-v1/README.md).
 
 ```sh
 python3 packages/scripts/src/retrieval-pilot-v1/eval_frozen.py \
