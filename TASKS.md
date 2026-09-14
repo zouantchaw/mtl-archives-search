@@ -7,7 +7,7 @@ Cloudflare AI Gateway. Keep-list: [docs/archive-v1/KEEP-LIST.md](docs/archive-v1
 
 - [x] #136–#141, #146, #147, #160 — quality, reading room, ingest contracts, operator D1
 - [x] **#161** — unused research trees archived from HEAD (git history kept)
-- [ ] **#142** — budgeted GPU jobs after owner spend authorization
+- [x] **#142** — budgeted GPU job spec, admission, mock lifecycle, orphan sweep. Live Lambda is off until a Cloudflare `LAMBDA_API_KEY` secret and owner authorization.
 - Deferred, not current: #123–#125, #127 Provenance/City Memory commercial work
 
 Note: Non-code growth tasks live in the Logseq graph. This file is for engineering tasks.

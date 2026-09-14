@@ -15,6 +15,8 @@ export const operatorAgent = {
     "validate_index",
     "request_review",
     "publish",
+    "gpu_compare",
+    "gpu_admit",
   ],
   env: {
     OPENAI_BASE_URL: "${OPERATOR_ORIGIN}/api/operator/v1",
