@@ -1,0 +1,6 @@
+{
+  "name": "mtl-operator-agent",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Eve control-surface config. Completions hit Cloudflare AI Gateway through the Worker."
+}

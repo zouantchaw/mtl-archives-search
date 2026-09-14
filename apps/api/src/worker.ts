@@ -1,4 +1,5 @@
 import { researchInference } from './research-inference';
+import { handleOperator } from './operator';
 import { reserveResearchTurn } from './research-budget';
 import type { VectorizeIndex, Ai } from '@cloudflare/workers-types';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
@@ -236,6 +237,9 @@ export default {
     const url = new URL(request.url);
 
     try {
+      if (url.pathname.startsWith('/api/operator/v1/')) {
+        return handleOperator(request, env, url.pathname);
+      }
       if (url.pathname === '/api/research/v1/chat/completions') {
         if (request.method !== 'POST') return methodNotAllowed();
         return researchInference(request, env);
