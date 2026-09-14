@@ -308,3 +308,7 @@ Offline ingest-v1 snapshots source bytes, canonicalizes identities, stores candi
 ## Eve vs Cloudflare runtime split (#140, 2026-09-14)
 
 Eve.dev chooses typed tools and collects human approval. ingest-v1 JobStore (later Cloudflare Workflows + D1) owns job state, retries, and publication. A second orchestrator is rejected. Spike tools cover inspect/plan/pilot/validate/review/publish; replay and pending approval cannot duplicate work or publish. See [runtime-v1](docs/runtime-v1/README.md).
+
+## Second-source onboarding demo (#141, 2026-09-14)
+
+A non-MTL fixture (item_id/caption/license) is discovered with bounded paths, planned with cost, piloted privately, and published only after frozen review policy + JobStore approval. Interrupt resume, tombstones, and a human-intervention report are tested. Production indexes are unchanged. See [onboard-v1](docs/onboard-v1/README.md).
