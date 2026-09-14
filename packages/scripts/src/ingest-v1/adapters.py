@@ -84,7 +84,60 @@ class OtherAdapter(SourceAdapter):
         return rows
 
 
-ADAPTERS = {"mtl": MtlAdapter, "other": OtherAdapter}
+class SecondAdapter(SourceAdapter):
+    """Small non-MTL collection (item_id / caption / license / file)."""
+
+    name = "second"
+    ALLOWED_FILES = frozenset({"records.jsonl"})
+    UNTRUSTED = frozenset(
+        {"agent_permissions", "instructions", "grant", "policy", "orchestrator"}
+    )
+
+    def list_records(self, source_dir):
+        source_dir = Path(source_dir).resolve()
+        manifest = source_dir / "records.jsonl"
+        if manifest.name not in self.ALLOWED_FILES:
+            raise ValueError("source file")
+        images = source_dir / "images"
+        rows = []
+        for raw in _read_jsonl(manifest):
+            raw = {k: v for k, v in raw.items() if k not in self.UNTRUSTED}
+            file_name = raw.get("file")
+            if file_name:
+                image_path = (images / Path(file_name).name).resolve()
+                if images not in image_path.parents and image_path.parent != images:
+                    raise ValueError("path escape")
+                if not str(image_path).startswith(str(images)):
+                    raise ValueError("path escape")
+            else:
+                image_path = None
+            media = image_path.read_bytes() if image_path and image_path.is_file() else b""
+            source_record_id = raw.get("item_id")
+            rows.append(
+                {
+                    "id": record_id(self.name, source_record_id),
+                    "adapter": self.name,
+                    "source_record_id": source_record_id,
+                    "cote": raw.get("shelfmark") or raw.get("cote"),
+                    "media_sha256": digest(media) if media else digest(source_record_id or ""),
+                    "media": media,
+                    "canonical": {
+                        "description": raw.get("caption") or raw.get("description"),
+                        "title": raw.get("title"),
+                        "date": raw.get("date"),
+                        "attribution": raw.get("license") or raw.get("attribution"),
+                    },
+                    "source": {
+                        "path": str(image_path) if image_path else None,
+                        "image_filename": Path(file_name).name if file_name else None,
+                        "evidence": digest(raw),
+                    },
+                }
+            )
+        return rows
+
+
+ADAPTERS = {"mtl": MtlAdapter, "other": OtherAdapter, "second": SecondAdapter}
 
 
 def load_adapter(name):
