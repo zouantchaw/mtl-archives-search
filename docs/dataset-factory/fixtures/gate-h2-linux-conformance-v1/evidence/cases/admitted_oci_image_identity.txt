@@ -1,1 +1,0 @@
-synthetic local evidence for admitted_oci_image_identity

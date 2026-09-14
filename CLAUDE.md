@@ -2,33 +2,9 @@
 
 ## Current product direction
 
-Provenance Activation is the product/service, Dataset Factory is its internal
-engine, MTL Archives is the reference implementation, and City Memory is the
-first commercial application. The active roadmap is issues #123–#127 and is
-defined in `docs/product/provenance-activation-v1.md`. Older issue references
-in this file describe preserved technical contracts, not active roadmap items
-or completion claims; deferred research is indexed by closed issue #128.
-
-Do not build or activate an agent platform as part of the current roadmap.
-Reopen workflow automation only after repeated manual delivery identifies a
-measured bottleneck. Do not contact any City Memory prospect until the pilot,
-prospect list, message, sender, channel, and follow-up boundary are explicitly
-approved by the owner.
-
-Preserve two commercial projections over one technical contract: institution
-fit/activation work and place-based City Memory concept studies. Preserve the
-four trust zones—client collection, private processing, human review, and
-approved output—in product contracts and handoffs. The dataset-led Port-to-City
-evidence core replaces Hôtel Nelligan as the current reference. It has separate
-Old Port and SDC Vieux-Montréal internal cuts over the same reviewed records.
-The historical $3,500 proposal may be used only as explicitly approved, credited discovery;
-it must not silently replace the service ladder or a City Memory Concept Study.
-
-For historical Issue #69 Gate B ground research, use the
-`dataset-factory:ground-authoritative-research-*-v1` scripts and
-`docs/dataset-factory/ground-authoritative-research-v1.md`. This artifact is
-evidence capture and pending claim drafting only, never a production or
-claim-promotion surface.
+Live product is MTL Archives search, `/research`, game, and print. Operator jobs
+are D1-backed; the Eve agent uses Cloudflare AI Gateway. Remaining: #142 GPU.
+Commercial issues #123–#127 stay deferred. Keep-list: `docs/archive-v1/KEEP-LIST.md`.
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
@@ -71,28 +47,6 @@ npm run vectorize:clip:photos  # CLIP ingest excluding document-likely records
 npm run dev --workspace=apps/api
 npm run dev --workspace=apps/next-app
 npm run social:fallback -- --date 2026-03-19 --id mtl_archives_metadata_65.json
-npm run social:fallback -- --date 2026-03-19 --package-dir /absolute/path/to/package --reuse-research
-npm run social:promote-story -- --package-dir /absolute/path/to/package
-npm run autoresearch:search     # Evaluate smart-search fusion experiment config
-npm run autoresearch:social     # Score saved daily social packages
-npm run autoresearch:lambda:plan # Check Lambda Labs GPU capacity/env; does not launch
-npm run dataset-factory:artifacts:check
-npm run dataset-factory:artifacts:self-test
-npm run dataset-factory:clock:self-test
-npm run dataset-factory:artifacts:check -- --verify-files --artifact-root /absolute/path/to/populated/repo
-npm run dataset-factory:smoke-v0 # Fixture contract smoke; no Cloudflare/social mutation
-npm run canonical-corpus-v1:fixture-smoke # All 12 states; no credentials/network
-npm run canonical-corpus-v1:self-test # 72 negative lineage/path/summary/raw-provenance cases
-npm run canonical-corpus-v1:r2-sample:self-test # Bounded planner; no credentials/network
-npm run canonical-corpus-v1:build
-npm run canonical-corpus-v1:check
-npm run dataset-factory:canonical-image-recovery-self-test-v1
-npm run dataset-factory:canonical-image-recovery-impact-v1
-npm run dataset-factory:canonical-image-recovery-reproduce-v1 -- /path/to/content-addressed-bundle.tar.gz
-npm run dataset-factory:verified-multimodal-001
-npm run dataset-factory:verified-multimodal-self-test-001
-npm run city-memory:validation:self-test-v1
-npm run city-memory:validation:verify-v1
 ```
 
 ## Architecture

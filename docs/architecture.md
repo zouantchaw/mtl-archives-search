@@ -2,33 +2,10 @@
 
 ## Product boundary
 
-Provenance Activation is the external product/service boundary. Dataset Factory
-is its internal evidence engine, MTL Archives is the reference implementation,
-and City Memory is the first commercial application. The active delivery path
-is issues #123–#127; `docs/product/provenance-activation-v1.md` defines how the
-pieces fit. Historical benchmark, model-promotion, feedback-learning, GPU, and
-agent-platform work is deferred and does not block the first client pilot.
-
-The commercial projections are distinct but share one evidence contract:
-
-```text
-Institution path ──┐
-                   ├─▶ Dataset Factory ─▶ Provenance Package ─▶ approved output
-Place/City Memory ─┘
-
-client collection ─▶ private processing ─▶ human review ─▶ client/public output
-```
-
-The source collection is not silently mutated, private hypotheses do not cross
-the release boundary, and machine suggestions are never approved by default.
-Each transition retains access, transformation, reviewer, approval, rights,
-and release state.
-
-The Dataset Factory includes an offline-replayable
-`ground-authoritative-research-v1` research artifact. Its network stage is
-exact-URL public capture; tracked build and verification are isolated from
-production data and enforce zero claim promotion, dossier generation, and task
-generation. This is preserved research history, not an active delivery claim.
+Live MTL Archives is search, `/research`, game, and print. Operator job state is
+D1; Eve completions use Cloudflare AI Gateway. GPU (#142) is the remaining
+platform issue. Commercial Provenance/City Memory work (#123–#127) is deferred.
+Keep-list: [archive-v1/KEEP-LIST.md](archive-v1/KEEP-LIST.md).
 
 ## System Overview
 
