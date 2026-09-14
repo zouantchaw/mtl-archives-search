@@ -51,6 +51,7 @@
       "image_kind": "photograph",
       "viewpoint": "ground",
       "ocr": [],
+      "ocr_empty": true,
       "features": { "helicopter": "present", "flying_helicopter": "present" },
       "orientation": { "exif": null, "expected_review_state": "abstain" }
     },
@@ -59,10 +60,32 @@
       "id": "mtl_archives_metadata_15507.json",
       "image_kind": "document",
       "viewpoint": "unknown",
-      "ocr": [],
+      "ocr": [
+        {
+          "text": "SERVICE D'URBANISME",
+          "status": "exact",
+          "method": "human-visual",
+          "version": "vision-eval-v1",
+          "region": "title block, lower right"
+        },
+        {
+          "text": "PLANNING DEPARTMENT",
+          "status": "exact",
+          "method": "human-visual",
+          "version": "vision-eval-v1",
+          "region": "title block, lower right"
+        },
+        {
+          "text": "NOVEMBRE 1969",
+          "status": "exact",
+          "method": "human-visual",
+          "version": "vision-eval-v1",
+          "region": "title block date line"
+        }
+      ],
       "features": {},
       "orientation": { "exif": null, "expected_review_state": "abstain" },
-      "notes": "Scanned aerial sheet with a planning-department title block. Kind is document, not an aerial photograph viewpoint."
+      "notes": "Fresh OCR case. Title-block lettering is OCR evidence, not a canonical photo date. Kind is document, not an aerial photograph viewpoint."
     }
   ]
 }

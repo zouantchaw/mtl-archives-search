@@ -5,7 +5,12 @@ import json
 import re
 from pathlib import Path
 
-from core import reject_contradictory_features, validate_ocr_evidence
+from core import (
+    INFERRED_CANONICAL_KEYS,
+    reject_contradictory_features,
+    validate_feature_basis,
+    validate_ocr_evidence,
+)
 
 HEDGE_WATER = re.compile(
     r"waterways or streets|water vs\.? (?:roads|streets)|may be pavement|dark channels versus|canals? form|unfrozen",
@@ -21,10 +26,27 @@ def contains_phrase(text, phrase):
     return phrase.lower() in (text or "").lower()
 
 
+def ocr_blob(visual):
+    items = visual.get("ocr")
+    if not isinstance(items, list):
+        return None
+    return " ".join(
+        item.get("text") or "" for item in items if isinstance(item, dict)
+    )
+
+
 def score_record(label, visual):
     description = visual.get("description") or ""
     features = visual.get("features") or {}
     rows = []
+    inferred = [k for k in INFERRED_CANONICAL_KEYS if k in visual]
+    rows.append(
+        {
+            "check": "inferred_canonical",
+            "ok": not inferred,
+            "actual": inferred,
+        }
+    )
     if label.get("viewpoint"):
         actual = visual.get("viewpoint")
         expected = label["viewpoint"]
@@ -56,23 +78,56 @@ def score_record(label, visual):
                 "note": note,
             }
         )
+    ocr_text = ocr_blob(visual)
     for ocr in label.get("ocr") or []:
         if ocr["status"] == "exact":
             rows.append(
                 {
                     "check": "ocr_exact",
-                    "ok": contains_phrase(description, ocr["text"]),
+                    "ok": ocr_text is not None
+                    and contains_phrase(ocr_text, ocr["text"]),
                     "expected": ocr["text"],
+                    "stored_separately": ocr_text is not None,
                 }
             )
         elif ocr["status"] == "unsupported":
             rows.append(
                 {
                     "check": "ocr_unsupported",
-                    "ok": not contains_phrase(description, ocr["text"]),
+                    "ok": not contains_phrase(description, ocr["text"])
+                    and not contains_phrase(ocr_text or "", ocr["text"]),
                     "forbidden": ocr["text"],
                 }
             )
+    if label.get("ocr_empty"):
+        items = visual.get("ocr")
+        empty = items == [] or (
+            isinstance(items, list)
+            and all(
+                isinstance(i, dict)
+                and i.get("status") in ("unknown", "illegible")
+                and not i.get("text")
+                for i in items
+            )
+        )
+        rows.append({"check": "ocr_empty", "ok": items is not None and empty})
+    if isinstance(visual.get("ocr"), list):
+        valid = True
+        try:
+            for item in visual["ocr"]:
+                validate_ocr_evidence(item)
+        except ValueError:
+            valid = False
+        rows.append({"check": "ocr_schema", "ok": valid})
+    if visual.get("feature_basis") is not None:
+        basis_ok = False
+        try:
+            if set(features) == set(visual["feature_basis"]):
+                validate_feature_basis(features, visual["feature_basis"])
+                basis_ok = True
+        except ValueError:
+            basis_ok = False
+        rows.append({"check": "feature_basis", "ok": basis_ok})
     if "water" in (label.get("features") or {}):
         expected = label["features"]["water"]
         actual = features.get("water")

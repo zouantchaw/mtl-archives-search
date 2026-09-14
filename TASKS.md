@@ -296,3 +296,7 @@ Frontier GPT-5.4 is used only for reviewed sideways photos, EXIF 90/270, and map
 ## Image kind and orientation provenance (2026-09-14)
 
 `image_kind` is separate from camera viewpoint. Maps/documents cannot claim an aerial pose. Derived orientation stores hashes, degrees, method/version and review state; originals are never overwritten. Frozen labeled eval is 11/11 and not promotable. Live captions still do not emit kind. See [orientation-eval-v1](docs/orientation-eval-v1/README.md).
+
+## OCR evidence and field-level uncertainty (2026-09-14)
+
+Literal OCR is stored beside the caption, with region/method/version and no invented illegible words. Features carry present/absent/unknown plus a pixels/unknown basis. Hedged water cannot be present. Inferred date/identity/location stay off the candidate. Inactive fixtures pass Gazette/water/A44-empty/F12 title-block labels 4/4 and are not promotable. See [ocr-eval-v1](docs/ocr-eval-v1/README.md).

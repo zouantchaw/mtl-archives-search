@@ -1,0 +1,51 @@
+{
+  "id": "mtl_archives_metadata_0.json",
+  "status": "generated_unreviewed",
+  "production_promotable": false,
+  "visual": {
+    "description": "Ground-level street with painted wall advertisements and a rooftop tank. Sign wording is stored as OCR, not as archive metadata.",
+    "viewpoint": "ground",
+    "image_kind": "photograph",
+    "features": {
+      "storefronts": "unknown",
+      "signs": "present",
+      "church_exterior": "unknown",
+      "church_interior": "unknown",
+      "helicopter": "unknown",
+      "people_beside_helicopter": "unknown",
+      "flying_helicopter": "unknown",
+      "trees": "unknown",
+      "water": "absent"
+    },
+    "uncertainties": [],
+    "ocr": [
+      {
+        "text": "The Gazette",
+        "status": "exact",
+        "method": "human-visual",
+        "version": "ocr-v1",
+        "region": "rooftop water tower, right",
+        "image_sha256": "d1a40336b008d076d0ad7d3e5f18f459f931de14e8656a06bf9dae0a4d72c1f3"
+      },
+      {
+        "text": "MAGIC BAKING POWDER",
+        "status": "exact",
+        "method": "human-visual",
+        "version": "ocr-v1",
+        "region": "left billboard",
+        "image_sha256": "d1a40336b008d076d0ad7d3e5f18f459f931de14e8656a06bf9dae0a4d72c1f3"
+      }
+    ],
+    "feature_basis": {
+      "storefronts": "unknown",
+      "signs": "pixels",
+      "church_exterior": "unknown",
+      "church_interior": "unknown",
+      "helicopter": "unknown",
+      "people_beside_helicopter": "unknown",
+      "flying_helicopter": "unknown",
+      "trees": "unknown",
+      "water": "pixels"
+    }
+  }
+}

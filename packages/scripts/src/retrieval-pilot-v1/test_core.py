@@ -218,6 +218,56 @@ class GrammarRegression(unittest.TestCase):
             {**base, "viewpoint": "unknown", "image_kind": "unknown"}
         )
 
+    def test_ocr_rejects_confidence_and_invented_illegible_words(self):
+        with self.assertRaises(ValueError):
+            validate_ocr_evidence(
+                {
+                    "text": "GAZETTE",
+                    "status": "exact",
+                    "method": "pilot",
+                    "version": "v1",
+                    "region": None,
+                    "confidence": 0.9,
+                }
+            )
+        validate_ocr_evidence(
+            {
+                "text": "GAZ",
+                "status": "partial",
+                "method": "pilot",
+                "version": "v1",
+                "region": "sign",
+            }
+        )
+
+    def test_enrichment_v3_keeps_ocr_out_of_canonical_facts(self):
+        features = {k: "unknown" for k in FEATURES}
+        features["signs"] = "present"
+        basis = {k: "unknown" for k in FEATURES}
+        basis["signs"] = "pixels"
+        visual = {
+            "description": "Ground-level street with painted advertisements on a wall.",
+            "viewpoint": "ground",
+            "image_kind": "photograph",
+            "features": features,
+            "uncertainties": ["storefront occupancy is unknown"],
+            "ocr": [
+                {
+                    "text": "The Gazette",
+                    "status": "exact",
+                    "method": "pilot",
+                    "version": "ocr-v1",
+                    "region": "rooftop tank",
+                }
+            ],
+            "feature_basis": basis,
+        }
+        validate_enrichment_v3(visual)
+        with self.assertRaises(ValueError):
+            validate_enrichment_v3({**visual, "date": "1969"})
+        with self.assertRaises(ValueError):
+            validate_feature_basis(features, {**basis, "signs": "unknown"})
+
 
 if __name__ == "__main__":
     unittest.main()
