@@ -304,3 +304,7 @@ Literal OCR is stored beside the caption, with region/method/version and no inve
 ## Versioned ingest (#138, 2026-09-14)
 
 Offline ingest-v1 snapshots source bytes, canonicalizes identities, stores candidate enrichment beside archive facts, and builds versioned candidate indexes with validate-before-activate and rollback. Interrupt resume skips completed work. It does not write production D1, R2, or Vectorize. See [ingest-v1](docs/ingest-v1/README.md).
+
+## Eve vs Cloudflare runtime split (#140, 2026-09-14)
+
+Eve.dev chooses typed tools and collects human approval. ingest-v1 JobStore (later Cloudflare Workflows + D1) owns job state, retries, and publication. A second orchestrator is rejected. Spike tools cover inspect/plan/pilot/validate/review/publish; replay and pending approval cannot duplicate work or publish. See [runtime-v1](docs/runtime-v1/README.md).
