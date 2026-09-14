@@ -292,3 +292,7 @@ Frontier GPT-5.4 is used only for reviewed sideways photos, EXIF 90/270, and map
 ## Query-time inspect fallback (2026-09-14)
 
 `/research` still inspects with Mistral first. GPT-5.4 runs only when that cheap check failed, returned `uncertain`, or the record is a reviewed sideways/document flag. Confident cheap `no_match` is not escalated. Captions and indexes stay unchanged. See [inspect-fallback-v1](docs/inspect-fallback-v1/README.md).
+
+## Image kind and orientation provenance (2026-09-14)
+
+`image_kind` is separate from camera viewpoint. Maps/documents cannot claim an aerial pose. Derived orientation stores hashes, degrees, method/version and review state; originals are never overwritten. Frozen labeled eval is 11/11 and not promotable. Live captions still do not emit kind. See [orientation-eval-v1](docs/orientation-eval-v1/README.md).

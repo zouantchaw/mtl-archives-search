@@ -13,7 +13,17 @@ VIEWPOINTS = (
     "document",
     "unknown",
 )
+# Camera pose only. "document" is an image_kind, not a viewpoint.
+CAMERA_VIEWPOINTS = (
+    "ground",
+    "aerial_oblique",
+    "aerial_nadir",
+    "interior",
+    "unknown",
+)
 IMAGE_KINDS = ("photograph", "map", "document", "unknown")
+SHEET_KINDS = ("map", "document")
+ENRICHMENT_STAGE = "enrichment-v2"
 ORIENTATION_DEGREES = (0, 90, 180, 270)
 OCR_STATUSES = ("exact", "partial", "illegible", "unknown")
 FEATURES = (
@@ -33,6 +43,44 @@ def validate_image_kind(kind):
     if kind not in IMAGE_KINDS:
         raise ValueError("image kind")
     return kind
+
+
+def assert_kind_viewpoint(kind, viewpoint):
+    """Unknown kind/sheets do not inherit a camera pose."""
+    validate_image_kind(kind)
+    if viewpoint == "document":
+        raise ValueError("document is image_kind")
+    if viewpoint not in CAMERA_VIEWPOINTS:
+        raise ValueError("viewpoint")
+    if kind in (*SHEET_KINDS, "unknown") and viewpoint != "unknown":
+        raise ValueError("sheet viewpoint")
+    return True
+
+
+def orientation_stage_inputs(original_sha256):
+    return {"stage": "orientation-v1", "input": original_sha256}
+
+
+def enrichment_stage_inputs(original_sha256, orientation_receipt):
+    receipt = orientation_receipt or {}
+    return {
+        "stage": ENRICHMENT_STAGE,
+        "input": original_sha256,
+        "orientation_version": receipt.get("version"),
+        "orientation_derived": receipt.get("derived_sha256"),
+        "orientation_review": receipt.get("review_state"),
+        "orientation_degrees": receipt.get("degrees"),
+    }
+
+
+def stage_cache_id(inputs):
+    return digest(inputs)
+
+
+def stale_receipt(receipt, inputs, version):
+    if not receipt:
+        return True
+    return receipt.get("version") != version or receipt.get("inputs") != inputs
 
 
 def orientation_provenance(
@@ -149,6 +197,10 @@ def validate_enrichment_v2(x):
         "uncertainties",
     }:
         raise ValueError("enrichment v2 schema")
+    if x["viewpoint"] == "document":
+        raise ValueError("document is image_kind")
+    if x["viewpoint"] not in CAMERA_VIEWPOINTS:
+        raise ValueError("viewpoint")
     validate_enrichment(
         {
             "description": x["description"],
@@ -157,7 +209,7 @@ def validate_enrichment_v2(x):
             "uncertainties": x["uncertainties"],
         }
     )
-    validate_image_kind(x["image_kind"])
+    assert_kind_viewpoint(x["image_kind"], x["viewpoint"])
     return x
 
 
