@@ -46,4 +46,6 @@ npm run deploy --workspace=apps/api   # Worker
 - [Ingest](docs/ingest-v1/README.md) / [Onboarding](docs/onboard-v1/README.md) — versioned ingest, second source
 - [Evals](docs/evals.md) — frozen vision/OCR labels used by tests
 
+Instagram/Facebook packaging lives in `pipelines/daily-reel` and `apps/story-video` (`npm run social:today`). That is the social funnel, not search.
+
 Print fulfillment is still manual after Stripe payment. Newsletter is explicit opt-in.
