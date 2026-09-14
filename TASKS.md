@@ -284,3 +284,7 @@ Unified Billing `/ai/run` adapters for `openai/gpt-5.4` and `xai/grok-4.6` reuse
 ## Frozen orientation and OCR eval (2026-09-14)
 
 EXIF orientation 1/3/6/8 is tested; missing EXIF abstains; originals are never overwritten. Frozen labels cover A25 (`The Gazette`, `MAGIC BAKING POWDER`, forbid `The Gazel`), A40 (water unknown), A44 (ground photograph), and F12 (map, not aerial). No model passes the frozen OCR/water set. See [vision-eval-v1](docs/vision-eval-v1/README.md). Candidate captions stay inactive.
+
+## Selective fallback (2026-09-14)
+
+Frontier GPT-5.4 is used only for reviewed sideways photos, EXIF 90/270, and map/document sheets. Missing EXIF is not a trigger. A25 was not selected. A44 and F12 were; both passed frozen viewpoint/kind checks (~$0.012). Production captions unchanged. See [fallback-v1](docs/fallback-v1/README.md).

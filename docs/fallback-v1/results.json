@@ -1,0 +1,75 @@
+{
+  "protocol": "vision-eval-v1",
+  "n": 2,
+  "passed": 2,
+  "production_promotable": false,
+  "records": [
+    {
+      "audit_id": "A25",
+      "id": "mtl_archives_metadata_0.json",
+      "skipped": true,
+      "passed": false,
+      "checks": [
+        {
+          "check": "missing",
+          "ok": false
+        }
+      ]
+    },
+    {
+      "audit_id": "A40",
+      "id": "mtl_archives_metadata_16144.json",
+      "skipped": true,
+      "passed": false,
+      "checks": [
+        {
+          "check": "missing",
+          "ok": false
+        }
+      ]
+    },
+    {
+      "audit_id": "A44",
+      "id": "mtl_archives_metadata_12519.json",
+      "skipped": false,
+      "passed": true,
+      "checks": [
+        {
+          "check": "viewpoint",
+          "ok": true,
+          "expected": "ground",
+          "actual": "ground"
+        },
+        {
+          "check": "image_kind",
+          "ok": true,
+          "expected": "photograph",
+          "actual": "photograph",
+          "note": null
+        }
+      ]
+    },
+    {
+      "audit_id": "F12",
+      "id": "mtl_archives_metadata_15507.json",
+      "skipped": false,
+      "passed": true,
+      "checks": [
+        {
+          "check": "viewpoint",
+          "ok": true,
+          "expected": "unknown",
+          "actual": "unknown"
+        },
+        {
+          "check": "image_kind",
+          "ok": true,
+          "expected": "document",
+          "actual": "document",
+          "note": null
+        }
+      ]
+    }
+  ],
+  "model": "fallback_gpt_54"
+}

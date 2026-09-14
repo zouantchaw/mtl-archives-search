@@ -190,6 +190,17 @@ class GrammarRegression(unittest.TestCase):
                 "dark waterways or streets between roofs", {"water": "present"}
             )
 
+    def test_enrichment_v2_requires_image_kind(self):
+        base = {
+            "description": "Ground view of a street with parked cars along both sides.",
+            "viewpoint": "ground",
+            "features": {k: "unknown" for k in FEATURES},
+            "uncertainties": [],
+        }
+        with self.assertRaises(ValueError):
+            validate_enrichment_v2(base)
+        validate_enrichment_v2({**base, "image_kind": "photograph"})
+
 
 if __name__ == "__main__":
     unittest.main()

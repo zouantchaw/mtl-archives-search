@@ -139,6 +139,28 @@ def validate_enrichment(x):
     return x
 
 
+def validate_enrichment_v2(x):
+    """Adds image_kind. Viewpoint is camera pose, not map vs photograph."""
+    if not isinstance(x, dict) or set(x) != {
+        "description",
+        "viewpoint",
+        "image_kind",
+        "features",
+        "uncertainties",
+    }:
+        raise ValueError("enrichment v2 schema")
+    validate_enrichment(
+        {
+            "description": x["description"],
+            "viewpoint": x["viewpoint"],
+            "features": x["features"],
+            "uncertainties": x["uncertainties"],
+        }
+    )
+    validate_image_kind(x["image_kind"])
+    return x
+
+
 def validate_plan(x, query):
     if isinstance(x, dict) and "original_query" in x:
         if x["original_query"] != query:
