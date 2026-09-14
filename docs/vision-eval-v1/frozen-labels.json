@@ -55,11 +55,11 @@
     {
       "audit_id": "F12",
       "id": "mtl_archives_metadata_15507.json",
-      "image_kind": "map",
+      "image_kind": "document",
       "viewpoint": "unknown",
       "ocr": [],
       "features": {},
-      "notes": "Scanned map/document. Kind is map; camera viewpoint is unknown, not aerial."
+      "notes": "Scanned aerial sheet with a planning-department title block. Kind is document, not an aerial photograph viewpoint."
     }
   ]
 }

@@ -37,13 +37,23 @@ def score_record(label, visual):
         rows.append({"check": "viewpoint", "ok": ok, "expected": expected, "actual": actual})
     if label.get("image_kind"):
         actual = visual.get("image_kind")
+        expected = label["image_kind"]
+        if actual is None:
+            ok = expected == "photograph"
+            note = "missing kind allowed only for ordinary photographs"
+        elif expected in ("map", "document"):
+            ok = actual in ("map", "document")
+            note = None
+        else:
+            ok = actual == expected
+            note = None
         rows.append(
             {
                 "check": "image_kind",
-                "ok": actual is None or actual == label["image_kind"],
-                "expected": label["image_kind"],
+                "ok": ok,
+                "expected": expected,
                 "actual": actual,
-                "note": "missing kind is not a fail until the field is emitted",
+                "note": note,
             }
         )
     for ocr in label.get("ocr") or []:
