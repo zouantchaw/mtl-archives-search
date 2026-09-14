@@ -3,6 +3,7 @@ import {
   OperatorStore,
 } from "./operator-store";
 import { operatorInference } from "./operator-inference";
+import { handleGpu } from "./gpu-jobs";
 
 function json(body: unknown, status = 200) {
   return Response.json(body, { status });
@@ -23,6 +24,7 @@ export async function handleOperator(
     AI: Ai;
     RESEARCH_API_SECRET?: string;
     RESEARCH_AI_GATEWAY_ID?: string;
+    LAMBDA_API_KEY?: string;
   },
   pathname: string,
 ) {
@@ -35,6 +37,9 @@ export async function handleOperator(
     if (pathname === "/api/operator/v1/chat/completions") {
       if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
       return operatorInference(request, env);
+    }
+    if (pathname.startsWith("/api/operator/v1/gpu/")) {
+      return handleGpu(request, env, pathname);
     }
     const jobs = store(env);
     if (pathname === "/api/operator/v1/invoke" && request.method === "POST") {
