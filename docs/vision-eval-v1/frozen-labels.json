@@ -1,0 +1,65 @@
+{
+  "version": "vision-eval-v1",
+  "frozen_at": "2026-09-14",
+  "authority": "Visual inspection of the quality-baseline sample JPEGs plus the earlier owner viewpoint labels. Not independent human gold for every OCR token.",
+  "production_promotable": false,
+  "records": [
+    {
+      "audit_id": "A25",
+      "id": "mtl_archives_metadata_0.json",
+      "image_kind": "photograph",
+      "viewpoint": "ground",
+      "ocr": [
+        {
+          "text": "The Gazette",
+          "status": "exact",
+          "method": "human-visual",
+          "version": "vision-eval-v1",
+          "region": "rooftop water tower, right"
+        },
+        {
+          "text": "MAGIC BAKING POWDER",
+          "status": "exact",
+          "method": "human-visual",
+          "version": "vision-eval-v1",
+          "region": "left billboard"
+        },
+        {
+          "text": "The Gazel",
+          "status": "unsupported",
+          "method": "human-visual",
+          "version": "vision-eval-v1",
+          "region": null
+        }
+      ],
+      "features": { "signs": "present", "water": "absent", "storefronts": "unknown" }
+    },
+    {
+      "audit_id": "A40",
+      "id": "mtl_archives_metadata_16144.json",
+      "image_kind": "photograph",
+      "viewpoint": "aerial_nadir",
+      "ocr": [],
+      "features": { "water": "unknown" },
+      "notes": "Dark channels may be canal or street. Hedged prose cannot assert water=present."
+    },
+    {
+      "audit_id": "A44",
+      "id": "mtl_archives_metadata_12519.json",
+      "image_kind": "photograph",
+      "viewpoint": "ground",
+      "ocr": [],
+      "features": { "helicopter": "present", "flying_helicopter": "present" },
+      "orientation": { "exif": null, "expected_review_state": "abstain" }
+    },
+    {
+      "audit_id": "F12",
+      "id": "mtl_archives_metadata_15507.json",
+      "image_kind": "map",
+      "viewpoint": "unknown",
+      "ocr": [],
+      "features": {},
+      "notes": "Scanned map/document. Kind is map; camera viewpoint is unknown, not aerial."
+    }
+  ]
+}

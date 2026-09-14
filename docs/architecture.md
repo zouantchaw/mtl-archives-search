@@ -582,4 +582,4 @@ Degraded smart-search responses now bypass caching so temporary inference outage
 
 See [Reading room implementation and operations](reading-room.md) for deployment, quotas, failure modes and live evaluation commands.
 
-Offline #148 Gateway vision comparison (`openai/gpt-5.4`, `xai/grok-4.6`) is documented in [vision-gateway-v1/README.md](vision-gateway-v1/README.md). Candidate captions stay inactive.
+Offline #148 Gateway vision comparison (`openai/gpt-5.4`, `xai/grok-4.6`) is documented in [vision-gateway-v1/README.md](vision-gateway-v1/README.md). Frozen OCR/orientation eval is in [vision-eval-v1/README.md](vision-eval-v1/README.md). Candidate captions stay inactive.
