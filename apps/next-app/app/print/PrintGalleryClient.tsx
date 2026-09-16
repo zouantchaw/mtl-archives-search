@@ -293,12 +293,34 @@ export function PrintGalleryClient() {
       setHasError(false);
 
       try {
-        const response = await fetch('/api/photos?limit=18&sort=print_best&maxSize=10000000&minTrust=0.55');
-        if (!response.ok) throw new Error(`Failed to load print photos (${response.status})`);
-        const data = await response.json();
+        const ids = (searchParams.get('ids') || '')
+          .split(',')
+          .map((id) => id.replace(/[^\d]/g, ''))
+          .filter(Boolean)
+          .slice(0, 24);
+        let items: PhotoRecord[] = [];
+        if (ids.length) {
+          const loaded = await Promise.all(
+            ids.map(async (id) => {
+              const response = await fetch(
+                `/api/photos?id=${encodeURIComponent(`mtl_archives_metadata_${id}.json`)}`,
+              );
+              if (!response.ok) return null;
+              const data = await response.json();
+              return data.items?.[0] as PhotoRecord | undefined;
+            }),
+          );
+          items = loaded.filter(Boolean) as PhotoRecord[];
+        }
+        if (!items.length) {
+          const response = await fetch('/api/photos?limit=18&sort=print_best&maxSize=10000000&minTrust=0.55');
+          if (!response.ok) throw new Error(`Failed to load print photos (${response.status})`);
+          const data = await response.json();
+          items = Array.isArray(data.items) ? data.items : [];
+        }
 
         if (!cancelled) {
-          setPhotos(Array.isArray(data.items) ? data.items : []);
+          setPhotos(items);
         }
       } catch {
         if (!cancelled) {
@@ -315,7 +337,7 @@ export function PrintGalleryClient() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [searchParams]);
 
   useEffect(() => {
     const handleScroll = () => {
