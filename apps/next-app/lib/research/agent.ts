@@ -180,14 +180,14 @@ export function createArchiveAgent(
           const curate = isCuratorialIntent(
             `${conversationText} ${query} ${visualCriteria || ""}`,
           );
-          const inspect =
+          const inspectCandidates =
             !curate &&
             shouldInspectVisualCriteria(
               visualCriteria,
               conversationText,
               query,
             );
-          if (!inspect) visualCriteria = null;
+          if (!inspectCandidates) visualCriteria = null;
           // A model-supplied default range must not silently remove undated images.
           if (!requestedDates) {
             beforeYear = null;
@@ -202,7 +202,7 @@ export function createArchiveAgent(
           const dated = (data.items ?? []).filter((r: PhotoRecord) =>
             dateMatches(r.dateValue, afterYear, beforeYear),
           );
-          const records: PhotoRecord[] = inspect
+          const records: PhotoRecord[] = inspectCandidates
             ? dated.slice(0, 8)
             : curate
               ? curateRecords(dated, 12)
@@ -210,7 +210,7 @@ export function createArchiveAgent(
           const photos = records.map(presentPhoto);
           let excluded = 0;
           let completedChecks = 0;
-          if (inspect && visualCriteria) {
+          if (inspectCandidates && visualCriteria) {
             for (let i = 0; i < records.length; i += 4)
               await Promise.all(
                 records.slice(i, i + 4).map(async (r, j) => {
@@ -248,13 +248,13 @@ export function createArchiveAgent(
               (a, b) =>
                 rank(b.visualCheck.status) - rank(a.visualCheck.status),
             ),
-            intent: inspect ? "inspect" : curate ? "curate" : "browse",
+            intent: inspectCandidates ? "inspect" : curate ? "curate" : "browse",
             searched: (data.items ?? []).length,
             checked: completedChecks,
             excluded,
             degraded:
               Boolean(data.degraded) ||
-              Boolean(inspect && visualCriteria && completedChecks === 0),
+              Boolean(inspectCandidates && visualCriteria && completedChecks === 0),
             note: `${beforeYear !== null || afterYear !== null ? "Only documented dates wholly within the requested range are included. " : ""}This is a bounded candidate search, not an exhaustive archive review. Very large originals are omitted from this interactive view.`,
           };
         },
