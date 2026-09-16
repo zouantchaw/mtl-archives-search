@@ -20,7 +20,6 @@ import type { ArchivePhoto, ArchiveCollection } from "@/lib/research/schema";
 import styles from "./reading-room.module.css";
 import { collectionSummary, limitsSummary } from "@/lib/research/summary";
 import { encodeCollection } from "@/lib/research/collection-url";
-import { presentPhoto } from "@/lib/research/archive";
 import type { PhotoRecord } from "@/lib/types";
 const copy = {
   en: {
@@ -256,7 +255,19 @@ export default function ReadingRoom({
           return data.items?.[0] as PhotoRecord | undefined;
         }),
       ).then((rows) => {
-        const loaded = rows.filter(Boolean).map((r) => presentPhoto(r!));
+        const loaded = rows.filter(Boolean).map((r) => ({
+          id: r!.metadataFilename,
+          title: r!.name || r!.portalTitle,
+          date: r!.dateValue,
+          description: r!.description,
+          reference: r!.cote || r!.portalCote,
+          sourceUrl: r!.externalUrl,
+          archiveUrl: `/photo/${r!.metadataFilename.replace(/\.json$/, "")}`,
+          imageUrl: `/api/research/image?id=${encodeURIComponent(r!.metadataFilename)}`,
+          caption: r!.vlmCaption,
+          credits: r!.credits,
+          visualCheck: { status: "not_checked" as const, observation: "" },
+        }));
         if (loaded.length) {
           setPins(loaded);
           setView("pins");
