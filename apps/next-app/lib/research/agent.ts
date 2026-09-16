@@ -205,7 +205,9 @@ export function createArchiveAgent(
           const wall = curate
             ? curateRecords(dated, 12)
             : dated.slice(0, 12);
-          const inspectSlice = inspectCandidates ? wall.slice(0, 8) : [];
+          const inspectSlice: PhotoRecord[] = inspectCandidates
+            ? wall.slice(0, 8)
+            : [];
           const photos = wall.map(presentPhoto);
           let excluded = 0;
           let completedChecks = 0;
@@ -213,7 +215,7 @@ export function createArchiveAgent(
             for (let i = 0; i < inspectSlice.length; i += 4)
               await Promise.all(
                 inspectSlice.slice(i, i + 4).map(async (r, j) => {
-                  const checked = await inspect(r, visualCriteria);
+                  const checked = await inspect(r, visualCriteria as string);
                   if (checked.checked) completedChecks++;
                   if (!checked.checked) {
                     photos[i + j].visualCheck = {
