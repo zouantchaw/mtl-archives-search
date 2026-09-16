@@ -16,6 +16,7 @@ import {
   hasRequestedDates,
   mergeSearchConstraints,
   type ArchiveCollection,
+  type ArchivePhoto,
 } from "./schema";
 import { researchInspectFallbackModel, researchModel } from "./model";
 import {
@@ -208,7 +209,7 @@ export function createArchiveAgent(
           const inspectSlice: PhotoRecord[] = inspectCandidates
             ? wall.slice(0, 8)
             : [];
-          const photos = wall.map(presentPhoto);
+          const photos: ArchivePhoto[] = wall.map(presentPhoto);
           let excluded = 0;
           let completedChecks = 0;
           if (inspectCandidates && visualCriteria) {
