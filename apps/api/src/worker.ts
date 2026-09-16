@@ -31,6 +31,7 @@ import {
   renderUnsubscribeConfirmationEmail,
   renderWelcomeEmail,
 } from './newsletter-email';
+import { handleProvenancePackage } from './provenance-package';
 
 type Env = {
   RESEARCH_API_SECRET?: string;
@@ -241,6 +242,8 @@ export default {
       if (url.pathname.startsWith('/api/operator/v1/')) {
         return handleOperator(request, env, url.pathname);
       }
+      const provenance = await handleProvenancePackage(request, env, url.pathname);
+      if (provenance) return provenance;
       if (url.pathname === '/api/research/v1/chat/completions') {
         if (request.method !== 'POST') return methodNotAllowed();
         return researchInference(request, env);

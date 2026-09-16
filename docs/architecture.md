@@ -2,7 +2,7 @@
 
 ```
 Browser  →  Next.js (Vercel)  →  Cloudflare Worker
-                                  ├─ D1          canonical records, game, newsletter, operator jobs
+                                  ├─ D1          canonical records, game, newsletter, operator jobs, provenance packages
                                   ├─ Vectorize   CLIP + BGE indexes
                                   ├─ R2          original JPEGs (never overwritten)
                                   ├─ Workers AI  Mistral inspect
@@ -14,8 +14,9 @@ Browser  →  Next.js (Vercel)  →  Cloudflare Worker
 - **Search** (`/`): visual (CLIP), text (captions), hybrid. Worker `/api/search` and `/api/photos`.
 - **Photo + print**: Stripe checkout, Resend email, manual fulfillment.
 - **Game**: daily location guess; D1 `daily_challenge` / `daily_guess`.
-- **Reading room** (`/research`): one typed tool per turn. Search fills a wall of up to 12 photographs; inspect labels objects without emptying the grid. Taste questions curate city prints. Pins share via `?c=` and print via `/print?ids=`. Details: [reading-room.md](reading-room.md).
+- **Reading room** (`/research`): one typed tool per turn. Search fills a wall of up to 12 photographs; inspect labels objects without emptying the grid. Taste questions curate city prints. Pins share via `?c=` and print via `/print?ids=`. **Save as package** writes a D1 provenance package and opens `/package/{id}` — sources, claims, unknowns, assembler review. `client-ok` is not City certification. Details: [reading-room.md](reading-room.md).
 - **Operator**: Eve (or curl) calls `/api/operator/v1/*`. Job state is D1, not the chat session. Publish flips an index *pointer*; it does not rewrite live captions.
+- **Provenance packages**: `POST /api/packages` (secret) snapshots selected record ids + intended use. `GET /api/packages/:id` is the unguessable public handoff. Review is `POST /api/packages/:id/review`. Layers are assembled from live D1; captions are not rewritten.
 
 ## Invariants
 

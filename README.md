@@ -4,14 +4,14 @@ Search, play, and print from ~14k photographs in the City of Montreal archives.
 
 **Live:** [www.mtlarchives.com](https://www.mtlarchives.com)
 
-A visitor can search by what a picture *looks like* or what its caption says, play a daily “where is this?” game, order a print, or ask the [reading room](https://www.mtlarchives.com/research) in French or English.
+A visitor can search by what a picture *looks like* or what its caption says, play a daily “where is this?” game, order a print, or ask the [reading room](https://www.mtlarchives.com/research) in French or English. A reading-room collection can be saved as a [provenance package](https://www.mtlarchives.com/research) — a shareable handoff of sources, claims, unknowns, and assembler review. `client-ok` is not a City certification.
 
 ## Stack
 
 | Layer | What |
 |---|---|
 | [apps/next-app](apps/next-app) | Next.js site — search, game, prints, newsletter, `/research` (Vercel) |
-| [apps/api](apps/api) | Cloudflare Worker — D1, Vectorize, R2, Workers AI, operator jobs |
+| [apps/api](apps/api) | Cloudflare Worker — D1, Vectorize, R2, Workers AI, operator jobs, provenance packages |
 | [apps/operator-agent](apps/operator-agent) | Eve control surface; completions go through Cloudflare AI Gateway |
 | [packages/scripts](packages/scripts) | ETL, CLIP/text index ingest, evals |
 | [pipelines](pipelines) | OCR / VLM / Instagram packaging |

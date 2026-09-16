@@ -20,12 +20,21 @@ import type { ArchivePhoto, ArchiveCollection } from "@/lib/research/schema";
 import styles from "./reading-room.module.css";
 import { collectionSummary, limitsSummary } from "@/lib/research/summary";
 import { encodeCollection } from "@/lib/research/collection-url";
+import { useLabels, type PackageIntendedUse } from "@/lib/research/package";
 import type { PhotoRecord } from "@/lib/types";
 const copy = {
   en: {
     room: "Reading room",
     share: "Share collection",
     print: "Print these",
+    package: "Save as package",
+    packageTitle: "Save as a provenance package",
+    packageHelp:
+      "A shareable handoff with sources, claims, unknowns, and assembler review. client-ok is not City certification.",
+    packageUse: "Intended use",
+    packageGo: "Create package",
+    packageBusy: "Saving package",
+    packageError: "Could not save this collection as a package.",
     copied: "Link copied",
     aside: "Not those objects",
     example4: "A hotel wall",
@@ -92,6 +101,14 @@ const copy = {
     room: "Salle de lecture",
     share: "Partager la collection",
     print: "Imprimer celles-ci",
+    package: "Enregistrer en dossier",
+    packageTitle: "Enregistrer un dossier de provenance",
+    packageHelp:
+      "Un dossier partageable avec sources, affirmations, inconnues et revue d’assembleur. client-ok n’est pas une certification de la Ville.",
+    packageUse: "Usage prévu",
+    packageGo: "Créer le dossier",
+    packageBusy: "Enregistrement du dossier",
+    packageError: "Impossible d’enregistrer cette collection.",
     copied: "Lien copié",
     aside: "Pas ces objets",
     example4: "Un mur d’hôtel",
@@ -224,6 +241,10 @@ export default function ReadingRoom({
     [pins, setPins] = useState<ArchivePhoto[]>([]),
     [view, setView] = useState<"results" | "pins">("results");
   const [copied, setCopied] = useState(false);
+  const [packageOpen, setPackageOpen] = useState(false);
+  const [packageUse, setPackageUse] = useState<PackageIntendedUse>("hotel_wall");
+  const [packageBusy, setPackageBusy] = useState(false);
+  const [packageError, setPackageError] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const end = useRef<HTMLDivElement>(null);
   const textarea = useRef<HTMLTextAreaElement>(null);
@@ -335,6 +356,30 @@ export default function ReadingRoom({
   const printHref = encodeCollection(shareIds)
     ? `/print?lang=${lang}&ids=${encodeCollection(shareIds)}`
     : `/print?lang=${lang}`;
+  async function savePackage() {
+    if (!shareIds.length || packageBusy) return;
+    setPackageBusy(true);
+    setPackageError(null);
+    try {
+      const response = await fetch("/api/research/package", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          ids: shareIds,
+          intendedUse: packageUse,
+          title: collection?.query || (view === "pins" ? t.pins : undefined),
+          query: collection?.query,
+        }),
+      });
+      const data = (await response.json()) as { id?: string; error?: string };
+      if (!response.ok || !data.id)
+        throw new Error(data.error || t.packageError);
+      window.location.href = `/package/${data.id}?lang=${lang}`;
+    } catch {
+      setPackageError(t.packageError);
+      setPackageBusy(false);
+    }
+  }
   function ask(text: string, selectedId?: string) {
     if (busy || !text.trim()) return;
     clearError();
@@ -661,6 +706,20 @@ export default function ReadingRoom({
                   {copied ? t.copied : t.share}
                 </button>
                 <Link href={printHref}>{t.print}</Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPackageUse(
+                      collection?.intent === "curate"
+                        ? "hotel_wall"
+                        : "research",
+                    );
+                    setPackageError(null);
+                    setPackageOpen(true);
+                  }}
+                >
+                  {t.package}
+                </button>
               </div>
             )}
             <span className={styles.canvasIndex}>02 / COLLECTION</span>
@@ -926,6 +985,49 @@ export default function ReadingRoom({
                 </div>
               </>
             )}
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+      <Dialog.Root open={packageOpen} onOpenChange={setPackageOpen}>
+        <Dialog.Portal>
+          <Dialog.Overlay className={styles.overlay} />
+          <Dialog.Content className={styles.packageDialog}>
+            <Dialog.Title>{t.packageTitle}</Dialog.Title>
+            <Dialog.Description>{t.packageHelp}</Dialog.Description>
+            <fieldset className={styles.packageUses}>
+              <legend>{t.packageUse}</legend>
+              {(
+                [
+                  "hotel_wall",
+                  "print",
+                  "research",
+                  "client_review",
+                ] as PackageIntendedUse[]
+              ).map((use) => (
+                <label key={use}>
+                  <input
+                    type="radio"
+                    name="package-use"
+                    checked={packageUse === use}
+                    onChange={() => setPackageUse(use)}
+                  />
+                  {useLabels[lang][use]}
+                </label>
+              ))}
+            </fieldset>
+            {packageError && <p className={styles.packageError}>{packageError}</p>}
+            <div className={styles.packageActions}>
+              <Dialog.Close asChild>
+                <button type="button">{t.close}</button>
+              </Dialog.Close>
+              <button
+                type="button"
+                disabled={packageBusy || !shareIds.length}
+                onClick={() => void savePackage()}
+              >
+                {packageBusy ? t.packageBusy : t.packageGo}
+              </button>
+            </div>
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
