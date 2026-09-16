@@ -71,6 +71,7 @@ export type ArchivePhoto = {
 export type ArchiveCollection = {
   query: string;
   criteria: string | null;
+  intent?: "inspect" | "browse" | "curate";
   photos: ArchivePhoto[];
   searched: number;
   checked: number;

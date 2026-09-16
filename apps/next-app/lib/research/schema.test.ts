@@ -26,6 +26,7 @@ test("only canonical record identifiers can reach archive/image lookups", () => 
   );
 });
 import { collectionSummary } from "./summary";
+import { CURATE_QUERY, curateSearchQuery, isCuratorialIntent } from "./curate";
 import type { ArchiveCollection } from "./schema";
 test("result summaries cite only actual matches and never claim failed inspections succeeded", () => {
   const collection = {
@@ -92,6 +93,27 @@ test("follow-ups keep prior subjects unless the new query already contains them"
     replaced.query,
     "women beside helicopters standing outside",
   );
+});
+test("curate summaries do not claim a hotel hanging or a visual object match", () => {
+  const text = collectionSummary(
+    {
+      query: CURATE_QUERY,
+      criteria: null,
+      intent: "curate",
+      checked: 0,
+      searched: 36,
+      excluded: 0,
+      photos: [{}, {}, {}],
+    } as ArchiveCollection,
+    "en",
+  );
+  assert.match(text, /could work as prints/);
+  assert.doesNotMatch(text, /appear to match/);
+  assert.equal(
+    curateSearchQuery("Montreal hotel lobby", "hang on the wall in a hotel"),
+    CURATE_QUERY,
+  );
+  assert.equal(isCuratorialIntent("women beside helicopters"), false);
 });
 test("unrequested dates and record IDs cannot activate date filtering", () => {
   assert.equal(hasRequestedDates("women beside helicopters"), false);

@@ -5,6 +5,10 @@ export function collectionSummary(
   lang: "en" | "fr",
 ) {
   const { photos, checked, criteria, searched } = collection;
+  if (collection.intent === "curate")
+    return lang === "en"
+      ? `Here are ${photos.length} photographs that could work as prints or wall pieces, drawn from “${collection.query}”. Maps and forms were set aside when labeled. This is a suggested set, not a claim these hung in a particular hotel.`
+      : `Voici ${photos.length} photographies qui pourraient convenir comme tirages ou pièces murales, à partir de « ${collection.query} ». Les cartes et formulaires ont été écartés lorsqu’ils sont identifiés. Il s’agit d’une suggestion, non d’une affirmation qu’elles ont accroché dans un hôtel.`
   if (!criteria)
     return lang === "en"
       ? `Here are ${photos.length} candidate photographs for “${collection.query}”. They have not been visually checked.`

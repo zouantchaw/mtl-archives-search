@@ -14,7 +14,7 @@ Browser  →  Next.js (Vercel)  →  Cloudflare Worker
 - **Search** (`/`): visual (CLIP), text (captions), hybrid. Worker `/api/search` and `/api/photos`.
 - **Photo + print**: Stripe checkout, Resend email, manual fulfillment.
 - **Game**: daily location guess; D1 `daily_challenge` / `daily_guess`.
-- **Reading room** (`/research`): one typed tool per turn (`searchArchive`, `explainPhoto`, `explainLimits`). Cheap inspect first; GPT-5.4 only on failed, uncertain, or flagged records. Quotas in D1. Details: [reading-room.md](reading-room.md).
+- **Reading room** (`/research`): one typed tool per turn (`searchArchive`, `explainPhoto`, `explainLimits`). Cheap inspect first; GPT-5.4 only on failed, uncertain, or flagged records. Print/taste questions browse and filter instead of object-matching. Quotas in D1. Details: [reading-room.md](reading-room.md).
 - **Operator**: Eve (or curl) calls `/api/operator/v1/*`. Job state is D1, not the chat session. Publish flips an index *pointer*; it does not rewrite live captions.
 
 ## Invariants
