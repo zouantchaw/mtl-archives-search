@@ -12,13 +12,13 @@ The interface pairs a conversation with a responsive photo collection. It suppor
 - `RESEARCH_PROVIDER=gateway` optionally selects Vercel AI Gateway, with `RESEARCH_MODEL` defaulting to `mistral/mistral-large-3`. The initial live Gateway experiment hit free-tier 429s under image-inspection load; it is not the production default. No GPU rental, fine-tuning, or model training is involved.
 - `searchArchive` calls the existing Cloudflare smart search: canonical BGE-M3 caption/text retrieval and multilingual CLIP visual retrieval remain the underlying search systems. It requests 36 candidates, keeps up to 12 for general browsing, or inspects up to 8 for compound visual criteria. Taste, print, or “hang on a hotel wall” requests skip object inspection, search city photographs rather than hotel lobbies, and drop labeled maps/forms. Inspections run in groups of four with independent image evidence. At most two searches/10 image inspections are allowed in one agent invocation.
 - Cheap visual checks stay on Mistral Small 3.1. GPT-5.4 is used only as a query-time inspect fallback when that cheap check failed, returned `uncertain`, or the record is a reviewed sideways/document flag (A44, F12). Confident cheap `no_match` is not escalated. Fallback is routed through the Worker AI Gateway binding so Vercel does not receive a Cloudflare account token. Captions and indexes are not rewritten.
-- Inspected photographs stay on the wall. Object `no_match` is a label, not a deletion. Taste/print requests skip inspect and keep a suggested set. Pins can be shared (`?c=`) and sent to `/print?ids=`. AI visual assessments are not ground truth. A 36-candidate pool can miss relevant records; the system does not exhaustively review the archive.
+- Inspected photographs stay on the wall. Object `no_match` is a label, not a deletion. Taste/print requests skip inspect and keep a suggested set. Pins can be shared (`?c=`) and sent to `/print?ids=`. **Save as package** creates an unguessable `/package/{id}` handoff in D1 (`provenance_package`). Each photograph has four fields: supplied archive metadata, claims allowed/forbidden for the intended use, unknowns (missing date/rights/quality), and assembler review. Processing is computed from live D1; originals and captions are not rewritten. `client-ok` is assembler review, not City certification. AI visual assessments are not ground truth. A 36-candidate pool can miss relevant records; the system does not exhaustively review the archive.
 - Date constraints require a documented date or whole interval within the requested inclusive bounds. Unknown dates are excluded when a date filter is requested. Date bounds are ignored unless the user conversation actually mentions a year or century; model-invented default bounds must not remove undated photos. An empty date-filtered candidate set is not evidence that no matching photograph exists in the archive.
 - `/api/research/image?id=...` fetches only a canonical record and a fixed R2 object origin, bounds the download to 12 MB and 100 million decoded pixels, rotates/resizes to a 900 px JPEG, and sets CDN cache headers. Large originals are omitted from this interactive view. Image failures never become fabricated captions.
 
 ## Deployment and operation
 
-1. Apply `infrastructure/d1/migrations/0013_research_usage.sql` to D1.
+1. Apply `infrastructure/d1/migrations/0013_research_usage.sql` and `0016_provenance_package.sql` to D1.
 2. Configure the same random `RESEARCH_API_SECRET` as a Worker secret and a Vercel server environment variable (Production, Preview, Development). Never prefix it with `NEXT_PUBLIC_`.
 3. Deploy the Worker budget/inference endpoints before deploying the Next.js frontend. Existing API and image origin environment variables are reused.
 4. The public endpoint allows 30 turns per IP-derived HMAC per UTC day and 300 total turns per UTC day. D1 uses atomic conditional upserts. Blocked users cannot drain the global counter; expired buckets are removed after two days. No raw IP is stored. Rejected/failed inference may consume a turn, deliberately conservatively.
@@ -33,6 +33,7 @@ Rollback the frontend to the preceding Vercel deployment to remove the new entry
 npm run typecheck --workspace=apps/api
 npm run test --workspace=apps/api
 npm run typecheck --workspace=apps/next-app
+node --import tsx --test apps/api/src/provenance-package.test.ts
 node --import tsx --test apps/next-app/lib/research/schema.test.ts apps/next-app/lib/research/inspect-fallback.test.ts apps/next-app/lib/research/curate.test.ts apps/next-app/lib/research/collection-url.test.ts
 npm run build --workspace=apps/next-app
 # Live: uses .env.local, existing inference, and archive production data.
