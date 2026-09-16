@@ -202,18 +202,17 @@ export function createArchiveAgent(
           const dated = (data.items ?? []).filter((r: PhotoRecord) =>
             dateMatches(r.dateValue, afterYear, beforeYear),
           );
-          const records: PhotoRecord[] = inspectCandidates
-            ? dated.slice(0, 8)
-            : curate
-              ? curateRecords(dated, 12)
-              : dated.slice(0, 12);
-          const photos = records.map(presentPhoto);
+          const wall = curate
+            ? curateRecords(dated, 12)
+            : dated.slice(0, 12);
+          const inspectSlice = inspectCandidates ? wall.slice(0, 8) : [];
+          const photos = wall.map(presentPhoto);
           let excluded = 0;
           let completedChecks = 0;
           if (inspectCandidates && visualCriteria) {
-            for (let i = 0; i < records.length; i += 4)
+            for (let i = 0; i < inspectSlice.length; i += 4)
               await Promise.all(
-                records.slice(i, i + 4).map(async (r, j) => {
+                inspectSlice.slice(i, i + 4).map(async (r, j) => {
                   const checked = await inspect(r, visualCriteria);
                   if (checked.checked) completedChecks++;
                   if (!checked.checked) {
@@ -223,14 +222,7 @@ export function createArchiveAgent(
                     };
                     return;
                   }
-                  if (checked.verdict === "no_match") {
-                    excluded++;
-                    photos[i + j].visualCheck = {
-                      status: "no_match",
-                      observation: checked.observation,
-                    };
-                    return;
-                  }
+                  if (checked.verdict === "no_match") excluded++;
                   photos[i + j].visualCheck = {
                     status: checked.verdict,
                     observation: checked.observation,
@@ -238,13 +230,20 @@ export function createArchiveAgent(
                 }),
               );
           }
-          const visible = photos.filter((p) => p.visualCheck.status !== "no_match");
           const rank = (status: string) =>
-            status === "match" ? 2 : status === "uncertain" ? 1 : 0;
+            status === "match"
+              ? 4
+              : status === "uncertain"
+                ? 3
+                : status === "not_checked"
+                  ? 2
+                  : status === "failed"
+                    ? 1
+                    : 0;
           return {
             query,
             criteria: visualCriteria,
-            photos: visible.sort(
+            photos: photos.sort(
               (a, b) =>
                 rank(b.visualCheck.status) - rank(a.visualCheck.status),
             ),

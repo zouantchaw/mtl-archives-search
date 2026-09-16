@@ -19,9 +19,19 @@ import type { ArchiveMessage } from "@/lib/research/agent";
 import type { ArchivePhoto, ArchiveCollection } from "@/lib/research/schema";
 import styles from "./reading-room.module.css";
 import { collectionSummary, limitsSummary } from "@/lib/research/summary";
+import { encodeCollection } from "@/lib/research/collection-url";
+import { presentPhoto } from "@/lib/research/archive";
+import type { PhotoRecord } from "@/lib/types";
 const copy = {
   en: {
     room: "Reading room",
+    share: "Share collection",
+    print: "Print these",
+    copied: "Link copied",
+    aside: "Not those objects",
+    example4: "A hotel wall",
+    question4:
+      "Photographs that would be good to hang on the wall in a high-end Montreal hotel.",
     beta: "EXPERIMENT",
     back: "All photographs",
     intro: "An archive. A conversation. A closer look.",
@@ -81,6 +91,13 @@ const copy = {
   },
   fr: {
     room: "Salle de lecture",
+    share: "Partager la collection",
+    print: "Imprimer celles-ci",
+    copied: "Lien copié",
+    aside: "Pas ces objets",
+    example4: "Un mur d’hôtel",
+    question4:
+      "Des photographies qui iraient bien accrochées au mur d’un bel hôtel à Montréal.",
     beta: "EXPÉRIMENTATION",
     back: "Toutes les photos",
     intro: "Des archives. Une conversation. Un regard de plus près.",
@@ -187,8 +204,10 @@ const transport = new DefaultChatTransport({
 });
 export default function ReadingRoom({
   initialLang,
+  initialIds = [],
 }: {
   initialLang: "fr" | "en";
+  initialIds?: string[];
 }) {
   const [lang, setLang] = useState(initialLang),
     t = copy[lang];
@@ -205,6 +224,7 @@ export default function ReadingRoom({
     [selected, setSelected] = useState<ArchivePhoto | null>(null),
     [pins, setPins] = useState<ArchivePhoto[]>([]),
     [view, setView] = useState<"results" | "pins">("results");
+  const [copied, setCopied] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const end = useRef<HTMLDivElement>(null);
   const textarea = useRef<HTMLTextAreaElement>(null);
@@ -224,10 +244,27 @@ export default function ReadingRoom({
       );
       if (saved && Array.isArray(saved.messages))
         setMessages(saved.messages.slice(-12));
-      if (saved && Array.isArray(saved.pins)) setPins(saved.pins.slice(0, 24));
+      if (saved && Array.isArray(saved.pins) && !initialIds.length)
+        setPins(saved.pins.slice(0, 24));
     } catch {}
+    if (initialIds.length) {
+      void Promise.all(
+        initialIds.map(async (id) => {
+          const data = await fetch(
+            `/api/photos?id=${encodeURIComponent(id)}`,
+          ).then((r) => r.json());
+          return data.items?.[0] as PhotoRecord | undefined;
+        }),
+      ).then((rows) => {
+        const loaded = rows.filter(Boolean).map((r) => presentPhoto(r!));
+        if (loaded.length) {
+          setPins(loaded);
+          setView("pins");
+        }
+      });
+    }
     setHydrated(true);
-  }, [setMessages]);
+  }, [setMessages, initialIds]);
   useEffect(() => {
     if (hydrated && !busy)
       try {
@@ -271,6 +308,22 @@ export default function ReadingRoom({
         : [...current, photo].slice(-24),
     );
   }
+  const shareIds = (view === "pins" && pins.length ? pins : photos).map(
+    (p) => p.id,
+  );
+  async function shareCollection() {
+    const ids = encodeCollection(shareIds);
+    if (!ids) return;
+    const url = `${window.location.origin}/research?lang=${lang}&c=${ids}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {}
+  }
+  const printHref = encodeCollection(shareIds)
+    ? `/print?lang=${lang}&ids=${encodeCollection(shareIds)}`
+    : `/print?lang=${lang}`;
   function ask(text: string, selectedId?: string) {
     if (busy || !text.trim()) return;
     clearError();
@@ -318,10 +371,7 @@ export default function ReadingRoom({
         <Link href={`/?lang=${lang}`} className={styles.brand}>
           <span className={styles.mark}>✳</span> MTL ARCHIVES
         </Link>
-        <span className={styles.roomName}>
-          {t.room}
-          <span className={styles.beta}>{t.beta}</span>
-        </span>
+        <span className={styles.roomName}>{t.room}</span>
         <nav>
           <Link href={`/search?lang=${lang}`}>
             {t.back}
@@ -362,7 +412,7 @@ export default function ReadingRoom({
                 <h1>{t.start}</h1>
                 <p>{t.sub}</p>
                 <div className={styles.starters}>
-                  {[1, 2, 3].map((n) => (
+                  {[1, 2, 3, 4].map((n) => (
                     <button
                       key={n}
                       onClick={() => ask(t[`question${n}` as "question1"])}
@@ -594,6 +644,14 @@ export default function ReadingRoom({
                 <span>{pins.length}</span>
               </button>
             </div>
+            {shareIds.length > 0 && (
+              <div className={styles.collectionActions}>
+                <button type="button" onClick={() => void shareCollection()}>
+                  {copied ? t.copied : t.share}
+                </button>
+                <Link href={printHref}>{t.print}</Link>
+              </div>
+            )}
             <span className={styles.canvasIndex}>02 / COLLECTION</span>
           </div>
           <div className={styles.canvasScroll}>
@@ -721,14 +779,16 @@ export default function ReadingRoom({
                         </div>
                         {photo.visualCheck.status !== "not_checked" && (
                           <span
-                            className={`${styles.verdict} ${photo.visualCheck.status === "match" ? styles.match : ""}`}
+                            className={`${styles.verdict} ${photo.visualCheck.status === "match" ? styles.match : ""} ${photo.visualCheck.status === "no_match" ? styles.aside : ""}`}
                           >
                             {photo.visualCheck.status === "match" ? (
                               <Check size={12} />
                             ) : null}
                             {photo.visualCheck.status === "match"
                               ? t.matches
-                              : t.uncertain}
+                              : photo.visualCheck.status === "no_match"
+                                ? t.aside
+                                : t.uncertain}
                           </span>
                         )}
                       </article>

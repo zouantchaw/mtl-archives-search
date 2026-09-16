@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import ReadingRoom from "./reading-room";
+import { decodeCollection } from "@/lib/research/collection-url";
 export const metadata: Metadata = {
   title: "Salle de lecture — Reading room",
   description:
@@ -8,11 +9,13 @@ export const metadata: Metadata = {
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ lang?: string }>;
+  searchParams: Promise<{ lang?: string; c?: string }>;
 }) {
+  const params = await searchParams;
   return (
     <ReadingRoom
-      initialLang={(await searchParams).lang === "en" ? "en" : "fr"}
+      initialLang={params.lang === "en" ? "en" : "fr"}
+      initialIds={decodeCollection(params.c)}
     />
   );
 }

@@ -42,12 +42,22 @@
   padding-left: 28px;
   font-size: 14px;
 }
-.beta {
-  font: 9px var(--font-mono);
-  letter-spacing: 0.08em;
-  color: var(--accent);
-  border: 1px solid #bfc8b9;
-  padding: 4px 6px;
+.collectionActions {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+  margin-right: 16px;
+}
+.collectionActions button,
+.collectionActions a {
+  font: 11px var(--font-mono);
+  letter-spacing: 0.04em;
+  border: 1px solid var(--line);
+  padding: 6px 10px;
+  border-radius: 999px;
+}
+.aside {
+  color: var(--muted);
 }
 .header nav {
   margin-left: auto;
@@ -770,8 +780,25 @@
 }
 @media (max-width: 740px) {
   .room {
-    height: auto;
+    height: 100dvh;
     min-height: 100dvh;
+  }
+  .workspace {
+    display: flex;
+    flex-direction: column;
+  }
+  .canvas {
+    order: 1;
+    min-height: 0;
+    flex: 1.2;
+  }
+  .conversation {
+    order: 2;
+    border-right: 0;
+    min-height: 0;
+    max-height: 42dvh;
+    border-top: 1px solid var(--line);
+    border-bottom: 0;
   }
   .header {
     height: 60px;
@@ -798,16 +825,6 @@
   }
   .header nav a {
     display: none;
-  }
-  .workspace {
-    display: flex;
-    flex-direction: column;
-  }
-  .conversation {
-    border-right: 0;
-    min-height: 430px;
-    max-height: 68dvh;
-    border-bottom: 1px solid var(--line);
   }
   .conversationTop {
     height: 46px;
@@ -844,9 +861,6 @@
   .disclaimer {
     padding: 9px 20px;
     font-size: 9px;
-  }
-  .canvas {
-    min-height: 500px;
   }
   .canvasToolbar {
     height: 54px;

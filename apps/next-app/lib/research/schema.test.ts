@@ -65,6 +65,19 @@ test("result summaries cite only actual matches and never claim failed inspectio
   assert.match(failed, /failed technically/);
   assert.match(
     collectionSummary(
+      {
+        ...collection,
+        photos: [
+          { visualCheck: { status: "no_match" } },
+          { visualCheck: { status: "no_match" } },
+        ],
+      } as ArchiveCollection,
+      "en",
+    ),
+    /stay on the wall/,
+  );
+  assert.match(
+    collectionSummary(
       { ...collection, checked: 0, degraded: true, photos: [{ visualCheck: { status: "failed" } }] } as ArchiveCollection,
       "en",
     ),
