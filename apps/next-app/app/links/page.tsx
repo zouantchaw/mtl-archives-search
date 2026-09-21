@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { HubStoryLink } from '@/components/stories/StoryLinks';
+import { SiteHeader } from '@/components/SiteHeader';
 import { formatStoryDate, getLatestStory } from '@/lib/stories';
 
 export const metadata: Metadata = {
@@ -40,8 +41,10 @@ export default async function LinksPage({
   ];
 
   return (
-    <main className="min-h-screen bg-background px-5 py-8">
-      <div className="mx-auto flex max-w-md flex-col gap-4">
+    <>
+      <SiteHeader />
+      <main className="min-h-[calc(100vh-3.5rem)] bg-background px-5 py-8">
+        <div className="mx-auto flex max-w-md flex-col gap-4">
         <header className="px-1 pb-2">
           <p className="text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">MTL Archives</p>
           <h1 className="mt-2 font-serif text-4xl text-foreground">Aujourd&apos;hui</h1>
@@ -76,7 +79,8 @@ export default async function LinksPage({
             <p className="mt-1 text-sm text-muted-foreground">{link.detail}</p>
           </a>
         ))}
-      </div>
-    </main>
+        </div>
+      </main>
+    </>
   );
 }

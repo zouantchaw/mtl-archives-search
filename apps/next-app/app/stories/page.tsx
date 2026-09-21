@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
+import { SiteHeader } from '@/components/SiteHeader';
 import { formatStoryDate, getStoriesPage } from '@/lib/stories';
 
 export const metadata: Metadata = {
@@ -28,8 +29,10 @@ export default async function StoriesIndexPage({
   const page = await getStoriesPage(24, cursor);
 
   return (
-    <main className="min-h-screen bg-background px-5 py-8 sm:px-8 sm:py-12">
-      <div className="mx-auto max-w-3xl">
+    <>
+      <SiteHeader />
+      <main className="min-h-[calc(100vh-3.5rem)] bg-background px-5 py-8 sm:px-8 sm:py-12">
+        <div className="mx-auto max-w-4xl">
         <header className="mb-8">
           <p className="text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">MTL Archives</p>
           <h1 className="mt-3 font-serif text-4xl text-foreground sm:text-5xl">Histoires</h1>
@@ -79,7 +82,8 @@ export default async function StoriesIndexPage({
             Plus d&apos;histoires
           </Link>
         ) : null}
-      </div>
-    </main>
+        </div>
+      </main>
+    </>
   );
 }

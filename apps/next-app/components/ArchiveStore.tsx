@@ -127,6 +127,7 @@ const translations = {
     footerUrl: 'mtlarchives.com',
     // Desktop nav (landing mode)
     navExplore: 'Explorer',
+    navStories: 'Histoires',
     navDailyGame: 'Jeu quotidien',
     navPrints: 'Impressions',
     modeSemantic: 'Sémantique',
@@ -204,6 +205,7 @@ const translations = {
     footerUrl: 'mtlarchives.com',
     // Desktop nav (landing mode)
     navExplore: 'Explore',
+    navStories: 'Stories',
     navDailyGame: 'Daily game',
     navPrints: 'Prints',
     modeSemantic: 'Semantic',
@@ -1286,6 +1288,9 @@ function ArchiveStoreInner({ initialView = 'landing' }: ArchiveStoreProps) {
               >
                 {t.game}
               </a>
+              <a href="/stories" className="text-[13px] font-medium text-foreground/70 transition-colors hover:text-foreground">
+                {t.navStories}
+              </a>
               <button onClick={handleLangChange} className="p-1.5 animate-lang-nudge" aria-label={lang === 'fr' ? 'Changer en anglais' : 'Switch to French'}>
                 {lang === 'fr' ? <FlagEN /> : <FlagQC />}
               </button>
@@ -1370,6 +1375,12 @@ function ArchiveStoreInner({ initialView = 'landing' }: ArchiveStoreProps) {
               className="px-2.5 py-1 rounded-full border border-input text-[10px] uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground"
             >
               {t.navPrints}
+            </a>
+            <a
+              href="/stories"
+              className="px-2.5 py-1 rounded-full border border-input text-[10px] uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground"
+            >
+              {t.navStories}
             </a>
             <div className="flex-1 flex justify-center">
               <div className="w-full max-w-lg">
@@ -1464,6 +1475,12 @@ function ArchiveStoreInner({ initialView = 'landing' }: ArchiveStoreProps) {
                 className="text-[14px] font-medium text-primary hover:text-primary/80 transition-colors"
               >
                 {t.navDailyGame}
+              </a>
+              <a
+                href="/stories"
+                className="text-[14px] text-foreground/60 hover:text-foreground transition-colors"
+              >
+                {t.navStories}
               </a>
               <a
                 href={printLink}

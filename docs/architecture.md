@@ -13,6 +13,7 @@ Browser  →  Next.js (Vercel)  →  Cloudflare Worker
 
 - **Search** (`/`): visual (CLIP), text (captions), hybrid. Worker `/api/search` and `/api/photos`.
 - **Photo + print**: Stripe checkout, Resend email, manual fulfillment.
+- **Stories** (`/stories`, `/stories/[slug]`, `/links`): archive-led editorial pages served from the Stories D1 database. They use the same public navigation, cart, typography, and visual tokens as Search, Game, and Prints.
 - **Game**: daily location guess; D1 `daily_challenge` / `daily_guess`.
 - **Reading room** (`/research`): one typed tool per turn. Search fills a wall of up to 12 photographs; inspect labels objects without emptying the grid. Taste questions curate city prints. Pins share via `?c=` and print via `/print?ids=`. **Save as package** writes a D1 provenance package and opens `/package/{id}` — sources, claims, unknowns, assembler review. `client-ok` is not City certification. Details: [reading-room.md](reading-room.md).
 - **Operator**: Eve (or curl) calls `/api/operator/v1/*`. Job state is D1, not the chat session. Publish flips an index *pointer*; it does not rewrite live captions.

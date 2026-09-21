@@ -10,7 +10,7 @@ A visitor can search by what a picture *looks like* or what its caption says, pl
 
 | Layer | What |
 |---|---|
-| [apps/next-app](apps/next-app) | Next.js site — search, game, prints, newsletter, `/research` (Vercel) |
+| [apps/next-app](apps/next-app) | Next.js site — search, stories, game, prints, newsletter, `/research` (Vercel) |
 | [apps/api](apps/api) | Cloudflare Worker — D1, Vectorize, R2, Workers AI, operator jobs, provenance packages |
 | [apps/operator-agent](apps/operator-agent) | Eve control surface; completions go through Cloudflare AI Gateway |
 | [packages/scripts](packages/scripts) | ETL, CLIP/text index ingest, evals |

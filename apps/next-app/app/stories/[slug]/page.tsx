@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { StoryEmailCapture } from '@/components/stories/StoryEmailCapture';
 import { StoryGameLink, StoryPrintLink } from '@/components/stories/StoryLinks';
+import { SiteHeader } from '@/components/SiteHeader';
 import { formatStoryDate, getStoriesPage, getStoryBySlug, type StoryRecord } from '@/lib/stories';
 import { SITE_URL } from '@/lib/seo';
 
@@ -77,8 +78,10 @@ export default async function StoryPage({
   const midpoint = Math.min(1, story.sections.length);
 
   return (
-    <main className="min-h-screen bg-background">
-      <article className="mx-auto max-w-3xl pb-16">
+    <>
+      <SiteHeader />
+      <main className="min-h-[calc(100vh-3.5rem)] bg-background">
+        <article className="mx-auto max-w-3xl pb-16">
         <div className="relative aspect-[3/4] w-full bg-muted sm:aspect-[16/10]">
           {story.photo_url ? <StoryPhoto src={story.photo_url} alt={story.title} priority /> : null}
         </div>
@@ -153,8 +156,8 @@ export default async function StoryPage({
             <StoryEmailCapture slug={story.slug} variant={story.email_capture_variant} lang={story.lang} compact />
           </footer>
         </div>
-      </article>
-      <script
+        </article>
+        <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
           __html: JSON.stringify({
@@ -168,8 +171,9 @@ export default async function StoryPage({
             mainEntityOfPage: `${SITE_URL}/stories/${story.slug}`,
           }),
         }}
-      />
-    </main>
+        />
+      </main>
+    </>
   );
 }
 
