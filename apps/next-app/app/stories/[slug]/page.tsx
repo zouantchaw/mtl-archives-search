@@ -80,13 +80,9 @@ export default async function StoryPage({
   return (
     <>
       <SiteHeader />
-      <main className="min-h-[calc(100vh-3.5rem)] bg-background">
-        <article className="mx-auto max-w-3xl pb-16">
-        <div className="relative aspect-[3/4] w-full bg-muted sm:aspect-[16/10]">
-          {story.photo_url ? <StoryPhoto src={story.photo_url} alt={story.title} priority /> : null}
-        </div>
-
-        <div className="px-5 pt-6 sm:px-8">
+      <main className="min-h-[calc(100vh-3.5rem)] bg-background px-5 py-8 sm:px-12 sm:py-12">
+        <article className="mx-auto max-w-6xl pb-16">
+        <div className="max-w-3xl">
           <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs uppercase tracking-[0.16em] text-muted-foreground">
             <Link href="/stories" className="hover:text-foreground">Histoires</Link>
             <span>{story.theme_label}</span>
@@ -98,7 +94,14 @@ export default async function StoryPage({
             {[story.cote, story.photo_credit, formatStoryDate(story.date, story.lang)].filter(Boolean).join(' · ')}
           </p>
 
-          <div className="mt-10 space-y-8">
+        </div>
+
+        <div className="relative mt-9 aspect-[3/4] w-full overflow-hidden rounded-3xl bg-muted sm:mt-12 sm:aspect-[16/8]">
+          {story.photo_url ? <StoryPhoto src={story.photo_url} alt={story.title} priority /> : null}
+        </div>
+
+        <div className="max-w-3xl pt-10 sm:pt-12">
+          <div className="space-y-8">
             {story.sections.slice(0, midpoint).map((section) => (
               <section key={section.heading}>
                 <h2 className="font-serif text-2xl text-foreground">{section.heading}</h2>

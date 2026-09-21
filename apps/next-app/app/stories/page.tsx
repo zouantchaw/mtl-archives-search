@@ -31,12 +31,12 @@ export default async function StoriesIndexPage({
   return (
     <>
       <SiteHeader />
-      <main className="min-h-[calc(100vh-3.5rem)] bg-background px-5 py-8 sm:px-8 sm:py-12">
-        <div className="mx-auto max-w-4xl">
-        <header className="mb-8">
+      <main className="min-h-[calc(100vh-3.5rem)] bg-background px-5 py-12 sm:px-12 sm:py-16">
+        <div className="mx-auto max-w-[1900px]">
+        <header className="mb-10 max-w-3xl">
           <p className="text-xs font-medium uppercase tracking-[0.22em] text-muted-foreground">MTL Archives</p>
-          <h1 className="mt-3 font-serif text-4xl text-foreground sm:text-5xl">Histoires</h1>
-          <p className="mt-4 max-w-xl text-base leading-7 text-muted-foreground">
+          <h1 className="mt-3 font-serif text-5xl leading-[0.98] text-foreground sm:text-7xl">Histoires</h1>
+          <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
             Chaque jour, une photo d&apos;archives et l&apos;histoire qui va avec.
           </p>
         </header>
@@ -46,15 +46,15 @@ export default async function StoriesIndexPage({
             La prochaine histoire arrive bientôt.
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
             {page.items.map((story) => (
               <Link
                 key={story.slug}
                 href={`/stories/${story.slug}`}
-                className="block overflow-hidden rounded-3xl border border-border bg-card"
+                className="group block overflow-hidden rounded-3xl border border-border bg-card transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-[var(--shadow-card)]"
               >
                 {story.photo_url ? (
-                  <div className="relative aspect-[16/10] bg-muted">
+                  <div className="relative aspect-[4/3] bg-muted">
                     {canUseNextImage(story.photo_url) ? (
                       <Image src={story.photo_url} alt="" fill sizes="(max-width: 768px) 100vw, 720px" className="object-cover" />
                     ) : (
@@ -62,11 +62,11 @@ export default async function StoriesIndexPage({
                     )}
                   </div>
                 ) : null}
-                <div className="px-5 py-5">
+                <div className="px-5 py-5 sm:px-6 sm:py-6">
                   <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
                     {story.theme_label} · {formatStoryDate(story.date)}
                   </p>
-                  <h2 className="mt-2 font-serif text-2xl text-foreground">{story.title}</h2>
+                  <h2 className="mt-2 font-serif text-2xl text-foreground transition-colors group-hover:text-primary">{story.title}</h2>
                   {story.dek ? <p className="mt-2 text-sm leading-6 text-muted-foreground">{story.dek}</p> : null}
                 </div>
               </Link>
