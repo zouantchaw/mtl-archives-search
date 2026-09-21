@@ -8,6 +8,15 @@ database_name = "mtl-archives"
 database_id = "5c847f8e-5f2a-4d5e-8a7d-fae70025c398"
 migrations_dir = "../../infrastructure/d1/migrations"
 
+[[d1_databases]]
+binding = "STORIES_DB"
+database_name = "mtl-stories"
+database_id = "56fc7eab-9931-42b6-8a36-41292e00373a"
+migrations_dir = "../../infrastructure/d1/stories-migrations"
+
+[triggers]
+crons = ["0 13,14 * * *"]
+
 [[vectorize]]
 binding = "VECTORIZE"
 index_name = "mtl-archives-text-canonical-20260912"

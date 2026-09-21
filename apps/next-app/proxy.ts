@@ -1,13 +1,13 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
-import type { NextFetchEvent, NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
 const isPublicRoute = createRouteMatcher([
   '/',
   '/search(.*)',
   '/research(.*)',
-  '/package(.*)',
   '/print(.*)',
+  '/stories(.*)',
+  '/links(.*)',
   '/checkout(.*)',
   '/order-confirmation(.*)',
   '/game(.*)',
@@ -26,7 +26,7 @@ const isPublicRoute = createRouteMatcher([
   '/robots.txt',
 ]);
 
-const clerkProxy = clerkMiddleware(async (auth, req) => {
+export default clerkMiddleware(async (auth, req) => {
   const photoMatch = req.nextUrl.pathname.match(/^\/photo\/([^/]+)\.json$/i);
   if (photoMatch) {
     const normalizedId = photoMatch[1];
@@ -39,10 +39,6 @@ const clerkProxy = clerkMiddleware(async (auth, req) => {
     await auth.protect();
   }
 });
-
-export default function proxy(req: NextRequest, event: NextFetchEvent) {
-  return clerkProxy(req, event);
-}
 
 export const config = {
   matcher: [

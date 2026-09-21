@@ -12,6 +12,10 @@ type DailyNewsletterEmailData = {
   surpriseTitle: string;
   surpriseUrl: string;
   unsubscribeUrl: string;
+  storyTitle?: string | null;
+  storyExcerpt?: string | null;
+  storyImageUrl?: string | null;
+  storyUrl?: string | null;
 };
 
 type WelcomeEmailData = {
@@ -181,11 +185,44 @@ export function renderDailyNewsletterEmail({
   surpriseTitle,
   surpriseUrl,
   unsubscribeUrl,
+  storyTitle,
+  storyExcerpt,
+  storyImageUrl,
+  storyUrl,
 }: DailyNewsletterEmailData): { html: string; text: string } {
   const question = lang === 'fr' ? 'Où cette photo a-t-elle été prise?' : 'Where was this photo taken?';
   const play = lang === 'fr' ? 'Jouer' : 'Play';
   const surpriseLabel = lang === 'fr' ? 'PHOTO DU JOUR' : 'SURPRISE PHOTO';
   const surpriseLink = lang === 'fr' ? 'Voir la photo \u2192' : 'View the photo \u2192';
+  const hasStory = Boolean(storyTitle && storyExcerpt && storyImageUrl && storyUrl);
+  const storyLabel = lang === 'fr' ? 'HISTOIRE DU JOUR' : 'TODAY\'S STORY';
+  const storyLink = lang === 'fr' ? 'Lire l\'histoire \u2192' : 'Read the story \u2192';
+  const storyBlock = hasStory ? `
+            <tr>
+              <td style="padding:0 32px 8px;">
+                <p style="margin:0;font-family:'IBM Plex Mono',monospace;font-size:10px;line-height:12px;letter-spacing:0.08em;color:${BLUE};text-transform:uppercase;font-weight:500;">${escapeHtml(storyLabel)}</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:0 32px 24px;">
+                <img src="${storyImageUrl}" alt="${escapeHtml(storyTitle || '')}" width="536" style="display:block;width:100%;height:auto;border-radius:16px;background:#cfd5de;" />
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:0 32px 10px;">
+                <h2 style="margin:0;font-family:Spectral,Georgia,serif;font-size:28px;line-height:34px;font-weight:700;color:${TEXT_PRIMARY};">${escapeHtml(storyTitle || '')}</h2>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:0 32px 16px;">
+                <p style="margin:0;font-size:16px;line-height:24px;color:${TEXT_BODY};">${escapeHtml(storyExcerpt || '')}</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:0 32px 32px;">
+                <p style="margin:0;"><a href="${storyUrl}" style="color:${BLUE};font-size:15px;line-height:20px;font-weight:600;text-decoration:none;">${escapeHtml(storyLink)}</a></p>
+              </td>
+            </tr>` : '';
   const preview = lang === 'fr'
     ? 'Le jeu du jour et une photo surprise vous attendent.'
     : 'Today\u2019s game and a surprise archive photo are waiting.';
@@ -207,6 +244,7 @@ export function renderDailyNewsletterEmail({
                 <p style="margin:0;font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:14px;letter-spacing:0.08em;color:#999999;text-transform:uppercase;font-weight:500;">${escapeHtml(dateLabel)}</p>
               </td>
             </tr>
+            ${storyBlock}
             <!-- Hero image -->
             <tr>
               <td style="padding:0 32px 24px;">
@@ -231,7 +269,7 @@ export function renderDailyNewsletterEmail({
                 ${renderButton(play, playUrl)}
               </td>
             </tr>
-            <!-- Divider -->
+            ${hasStory ? '' : `<!-- Divider -->
             <tr>
               <td style="padding:0 32px;">
                 <div style="border-top:1px solid ${BORDER};"></div>
@@ -254,7 +292,7 @@ export function renderDailyNewsletterEmail({
                   </tr>
                 </table>
               </td>
-            </tr>
+            </tr>`}
             <!-- Footer with tagline -->
             <tr>
               <td style="padding:0 32px;">
@@ -271,15 +309,13 @@ export function renderDailyNewsletterEmail({
     'MTL Archives',
     dateLabel,
     '',
+    ...(hasStory ? [storyLabel, storyTitle || '', storyExcerpt || '', storyUrl || '', ''] : []),
     question,
     dailyBody,
     '',
     `${play}: ${playUrl}`,
     '',
-    `${surpriseLabel}: ${surpriseTitle}`,
-    surpriseBody,
-    surpriseUrl,
-    '',
+    ...(hasStory ? [] : [`${surpriseLabel}: ${surpriseTitle}`, surpriseBody, surpriseUrl, '']),
     `${lang === 'fr' ? 'Se désabonner' : 'Unsubscribe'}: ${unsubscribeUrl}`,
   ].join('\n');
 

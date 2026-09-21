@@ -331,4 +331,20 @@ export const events = {
 
   abRedirected: (variant: string) =>
     track('ab_redirected', { experiment: 'home_to_game', variant }),
+
+  storyEmailSignup: (slug: string, variant?: string | null) =>
+    track('story_email_signup', {
+      slug,
+      ...(variant ? { variant } : {}),
+      ...getReferrerContext(),
+    }),
+
+  storyPrintClick: (slug: string, photoId: string) =>
+    track('story_print_click', { slug, photoId, ...getReferrerContext() }),
+
+  storyGameClick: (slug: string) =>
+    track('story_game_click', { slug, ...getReferrerContext() }),
+
+  hubStoryClick: (slug: string) =>
+    track('hub_story_click', { slug, ...getReferrerContext() }),
 };

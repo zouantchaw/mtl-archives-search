@@ -9,6 +9,7 @@ import {
   createNewsletterToken,
   formatNewsletterDateLabel,
   getTorontoDateKey,
+  getTorontoHour,
   isValidEmail,
   normalizeEmail,
   normalizeNewsletterLang,
@@ -32,6 +33,19 @@ import {
   renderWelcomeEmail,
 } from './newsletter-email';
 import { handleProvenancePackage } from './provenance-package';
+import {
+  getLatestPublishedStory,
+  getPublishedStoryByDate,
+  getPublishedStoryBySlug,
+  hasPublishedStoryForDate,
+  insertStory,
+  isStoriesAdminAuthorized,
+  listPublishedStories,
+  storyExcerpt,
+  storySiteUrl,
+  validateStoryPublishBody,
+  type PublicStory,
+} from './stories';
 
 type Env = {
   RESEARCH_API_SECRET?: string;
@@ -57,12 +71,14 @@ type Env = {
   API_ORIGIN?: string;
   NEWSLETTER_REPLY_TO?: string;
   NEWSLETTER_ADMIN_SECRET?: string;
+  STORIES_ADMIN_SECRET?: string;
+  STORIES_DB?: D1Database;
 };
 
 const CORS_HEADERS: HeadersInit = {
   'access-control-allow-origin': '*',
   'access-control-allow-methods': 'GET, POST, OPTIONS',
-  'access-control-allow-headers': 'Content-Type, Authorization',
+  'access-control-allow-headers': 'Content-Type, Authorization, x-stories-admin-secret',
 };
 
 const JSON_HEADERS: HeadersInit = {
@@ -84,6 +100,7 @@ const CACHE_TTL = {
   SEARCH: 600,         // 10 min — deterministic for same query
   MAP: 43200,          // 12 hours — geo data rarely changes
   SITEMAP: 86400,      // 24 hours — only changes on data reload
+  STORIES: 60,         // 1 min — publish also purges these keys so a story is live immediately
 } as const;
 
 const SIGNED_URL_TTL_SECONDS = 3600;
@@ -347,6 +364,10 @@ export default {
         return handleGameLeaderboard(url, env);
       }
 
+      if (url.pathname === '/api/stories/publish' || url.pathname === '/api/stories/latest' || url.pathname === '/api/stories' || isStorySlugPath(url.pathname)) {
+        return handleStories(request, url, env, ctx);
+      }
+
       if (url.pathname === '/' || url.pathname === '/health') {
         return jsonResponse({ status: 'ok' });
       }
@@ -356,6 +377,10 @@ export default {
       console.error('Worker error', error);
       return jsonResponse({ error: 'Internal Server Error' }, 500);
     }
+  },
+
+  async scheduled(_event: unknown, env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(runStoriesWatchdog(env));
   },
 };
 
@@ -663,6 +688,7 @@ function normalizeNewsletterSource(value: unknown): string {
   switch (normalized) {
     case 'landing':
     case 'game':
+    case 'story':
     case 'resubscribe':
     case 'admin':
       return normalized;
@@ -1060,6 +1086,14 @@ async function sendDailyNewsletterIssue(
     year: 'numeric',
     timeZone: 'America/Toronto',
   }).format(issue.runDate);
+  const story = await loadNewsletterStory(env, issue.dateKey);
+  const storyUrl = story
+    ? buildNewsletterSiteUrl(env, `/stories/${encodeURIComponent(story.slug)}`, lang, {
+      utm_source: 'newsletter',
+      utm_medium: 'email',
+      utm_campaign: 'daily_newsletter',
+    })
+    : null;
   const { html, text } = renderDailyNewsletterEmail({
     lang,
     archiveUrl,
@@ -1074,6 +1108,10 @@ async function sendDailyNewsletterIssue(
     surpriseTitle: getNewsletterPhotoTitle(issue.surprisePhoto, lang),
     surpriseUrl,
     unsubscribeUrl,
+    storyTitle: story?.title ?? null,
+    storyExcerpt: story ? storyExcerpt(story) : null,
+    storyImageUrl: story?.photo_url ?? null,
+    storyUrl,
   });
 
   try {
@@ -1494,6 +1532,121 @@ async function handleNewsletterAdminRun(
   });
 
   return jsonResponse({ success: true, summary });
+}
+
+const STORY_SLUG_PATH = /^\/api\/stories\/([a-z0-9]+(?:-[a-z0-9]+)*)$/;
+
+function isStorySlugPath(pathname: string): boolean {
+  return pathname !== '/api/stories/publish' && pathname !== '/api/stories/latest' && STORY_SLUG_PATH.test(pathname);
+}
+
+async function handleStories(request: Request, url: URL, env: Env, ctx: ExecutionContext): Promise<Response> {
+  if (url.pathname === '/api/stories/publish') {
+    if (request.method !== 'POST') return methodNotAllowed();
+    return handleStoryPublish(request, url, env);
+  }
+  if (request.method !== 'GET') return methodNotAllowed();
+  return withCache(buildCacheKey(url), ctx, CACHE_TTL.STORIES, () => handleStoryRead(url, env));
+}
+
+async function handleStoryPublish(request: Request, url: URL, env: Env): Promise<Response> {
+  if (!isStoriesAdminAuthorized(request, env)) {
+    return jsonResponse({ ok: false, error: 'Unauthorized' }, 401, { 'cache-control': 'no-store' });
+  }
+  if (!env.STORIES_DB) {
+    return jsonResponse({ ok: false, error: 'Stories database is not configured' }, 503, { 'cache-control': 'no-store' });
+  }
+
+  let payload: unknown;
+  try {
+    payload = await request.json();
+  } catch {
+    return jsonResponse({ ok: false, error: 'Invalid JSON body' }, 400, { 'cache-control': 'no-store' });
+  }
+
+  const validated = validateStoryPublishBody(payload);
+  if ('error' in validated) {
+    return jsonResponse({ ok: false, error: validated.error }, 400, { 'cache-control': 'no-store' });
+  }
+
+  const { inserted } = await insertStory(env.STORIES_DB, validated.story);
+  await purgeStoryCaches(url.origin, validated.story.slug);
+  return jsonResponse({
+    ok: true,
+    slug: validated.story.slug,
+    url: `${storySiteUrl(env)}/stories/${validated.story.slug}`,
+    inserted,
+  }, 200, { 'cache-control': 'no-store' });
+}
+
+async function handleStoryRead(url: URL, env: Env): Promise<Response> {
+  const cacheHeaders = { 'cache-control': `public, max-age=${CACHE_TTL.STORIES}` };
+  if (!env.STORIES_DB) {
+    if (url.pathname === '/api/stories/latest') return jsonResponse({ story: null }, 200, cacheHeaders);
+    if (url.pathname === '/api/stories') return jsonResponse({ items: [], nextCursor: null }, 200, cacheHeaders);
+    return jsonResponse({ error: 'Not found' }, 404);
+  }
+
+  if (url.pathname === '/api/stories/latest') {
+    const story = await getLatestPublishedStory(env.STORIES_DB);
+    return jsonResponse({ story }, 200, cacheHeaders);
+  }
+
+  if (url.pathname === '/api/stories') {
+    const limit = Number(url.searchParams.get('limit') ?? '24');
+    const cursor = url.searchParams.get('cursor');
+    const page = await listPublishedStories(env.STORIES_DB, Number.isFinite(limit) ? limit : 24, cursor);
+    return jsonResponse(page, 200, cacheHeaders);
+  }
+
+  const slug = url.pathname.match(STORY_SLUG_PATH)?.[1];
+  if (!slug) return jsonResponse({ error: 'Not found' }, 404);
+  const story = await getPublishedStoryBySlug(env.STORIES_DB, slug);
+  if (!story) return jsonResponse({ error: 'Not found' }, 404);
+  return jsonResponse({ story }, 200, cacheHeaders);
+}
+
+async function purgeStoryCaches(origin: string, slug: string): Promise<void> {
+  if (typeof caches === 'undefined') return;
+  const cache = caches.default;
+  if (!cache?.delete) return;
+  const paths = [
+    '/api/stories/latest',
+    `/api/stories/${slug}`,
+    '/api/stories',
+    '/api/stories?limit=4',
+    '/api/stories?limit=12',
+    '/api/stories?limit=24',
+    '/api/stories?limit=50',
+  ];
+  await Promise.all(paths.map((path) => cache.delete(buildCacheKey(new URL(path, origin)))));
+}
+
+async function loadNewsletterStory(env: Env, dateKey: string): Promise<PublicStory | null> {
+  if (!env.STORIES_DB) return null;
+  try {
+    return await getPublishedStoryByDate(env.STORIES_DB, dateKey);
+  } catch (error) {
+    console.error('Newsletter story lookup failed', error);
+    return null;
+  }
+}
+
+async function runStoriesWatchdog(env: Env): Promise<void> {
+  if (getTorontoHour() !== 9) return;
+  const dateKey = getTorontoDateKey();
+  if (!env.STORIES_DB) {
+    console.error(`STORIES_WATCHDOG missing STORIES_DB for ${dateKey}`);
+    return;
+  }
+  try {
+    const published = await hasPublishedStoryForDate(env.STORIES_DB, dateKey);
+    if (!published) {
+      console.error(`STORIES_WATCHDOG missing published story for ${dateKey}`);
+    }
+  } catch (error) {
+    console.error(`STORIES_WATCHDOG failed for ${dateKey}`, error);
+  }
 }
 
 async function handlePhotos(url: URL, env: Env): Promise<Response> {

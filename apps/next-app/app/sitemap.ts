@@ -1,6 +1,6 @@
 import { MetadataRoute } from 'next';
 import { API_BASE } from '@/lib/runtime-config';
-import { getAllStories } from '@/lib/story-pages';
+import { getAllPublishedStories } from '@/lib/stories';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.mtlarchives.com';
 const API_URL = API_BASE;
@@ -10,6 +10,8 @@ type SitemapPhoto = {
   name: string | null;
   dateValue: string | null;
 };
+
+export const dynamic = 'force-dynamic';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Fetch all photo IDs from the API
@@ -34,7 +36,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: '/search', changeFrequency: 'daily' as const, priority: 0.9 },
     { path: '/game', changeFrequency: 'daily' as const, priority: 0.8 },
     { path: '/print', changeFrequency: 'weekly' as const, priority: 0.7 },
-    { path: '/stories', changeFrequency: 'weekly' as const, priority: 0.7 },
+    { path: '/stories', changeFrequency: 'daily' as const, priority: 0.8 },
+    { path: '/links', changeFrequency: 'daily' as const, priority: 0.6 },
   ];
 
   const staticPages: MetadataRoute.Sitemap = staticRoutes.flatMap((route) => [
@@ -67,12 +70,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   }));
 
-  const storyPages: MetadataRoute.Sitemap = getAllStories().map((story) => ({
+  const stories = await getAllPublishedStories();
+  const storyPages: MetadataRoute.Sitemap = stories.map((story) => ({
     url: `${SITE_URL}/stories/${encodeURIComponent(story.slug)}`,
-    lastModified: story.generated_at ? new Date(story.generated_at) : new Date(story.date),
+    lastModified: story.published_at ? new Date(story.published_at) : new Date(story.date),
     changeFrequency: 'monthly' as const,
     priority: 0.7,
-    images: story.hero_image ? [`${SITE_URL}${story.hero_image}`] : undefined,
+    images: story.photo_url ? [story.photo_url] : undefined,
   }));
 
   return [...staticPages, ...photoPages, ...storyPages];
