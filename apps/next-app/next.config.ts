@@ -51,6 +51,14 @@ const nextConfig: NextConfig = {
         source: '/api/newsletter/subscribe',
         destination: `${apiBase}/api/newsletter/subscribe`,
       },
+      {
+        source: '/kit_fr.pdf',
+        destination: 'https://pub-6a29793ea7664738880d1cc5afb21b87.r2.dev/kit_fr.pdf',
+      },
+      {
+        source: '/kit_en.pdf',
+        destination: 'https://pub-6a29793ea7664738880d1cc5afb21b87.r2.dev/kit_en.pdf',
+      },
     ];
   },
 };
