@@ -22,6 +22,8 @@ const isPublicRoute = createRouteMatcher([
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/pitch(.*)',
+  '/kit_fr.pdf',
+  '/kit_en.pdf',
   '/sitemap.xml',
   '/robots.txt',
 ]);
