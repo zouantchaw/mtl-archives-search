@@ -110,9 +110,7 @@ export function EmbeddingExplorer() {
   const searchModeRef = useRef(searchMode)
   const selectRef = useRef<(id: string) => void>(() => {})
   const hoverRef = useRef<(id: string | null) => void>(() => {})
-  const restoreRef = useRef<HTMLElement | null>(null)
-  const aboutRef = useRef<HTMLDivElement>(null)
-  const researchRef = useRef<HTMLDivElement>(null)
+  const overlayRestoreRef = useRef<HTMLElement | null>(null)
   const queryModeRef = useRef<string | null>(null)
 
   snapshotRef.current = snapshot
@@ -127,33 +125,15 @@ export function EmbeddingExplorer() {
   }
   hoverRef.current = setHoverId
 
-  useEffect(() => {
-    const node = aboutOpen ? aboutRef.current : advancedOpen ? researchRef.current : null
-    if (!node) return
-    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null
-    const restoreTarget = restoreRef.current ?? previous
-    const selector = 'button, a[href], input, select, textarea'
-    node.querySelector<HTMLElement>(selector)?.focus()
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key !== 'Tab') return
-      const items = [...node.querySelectorAll<HTMLElement>(selector)].filter((item) => !item.hasAttribute('disabled'))
-      if (items.length === 0) return
-      const first = items[0]
-      const last = items[items.length - 1]
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault()
-        last?.focus()
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault()
-        first?.focus()
-      }
-    }
-    document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('keydown', onKey)
-      if (restoreTarget?.isConnected) restoreTarget.focus()
-    }
-  }, [aboutOpen, advancedOpen])
+  function rememberOverlayFocus() {
+    const active = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    overlayRestoreRef.current = active?.isConnected ? active : null
+  }
+
+  function restoreOverlayFocus(event: Event) {
+    event.preventDefault()
+    overlayRestoreRef.current?.focus()
+  }
 
   useEffect(() => {
     document.documentElement.lang = lang
@@ -337,6 +317,8 @@ export function EmbeddingExplorer() {
   }, [projection, decade, colorMode, snapshot?.legacyLayout, highlighted, selectedId, anomalies, theme])
 
   useEffect(() => { rendererRef.current?.setPoints(cloudPoints) }, [cloudPoints, rendererReady])
+  useEffect(() => { rendererRef.current?.setSelected(selectedId) }, [selectedId, rendererReady])
+  useEffect(() => { rendererRef.current?.setSelectionLabel(lang === 'fr' ? 'Sélection' : 'Selected') }, [lang, rendererReady])
   useEffect(() => {
     const ids = listItems.filter((item) => item.projected).slice(0, 12).map((item) => item.id)
     rendererRef.current?.setLines(ids, lines)
@@ -345,22 +327,21 @@ export function EmbeddingExplorer() {
   const neighborSignature = neighborItems.map((item) => item.id).join('|')
   useEffect(() => {
     const source = neighbors !== null ? neighborItems : searchItems
-    if (source.length === 0) return
+    if (selectedId || source.length === 0) return
     rendererRef.current?.focus(source.filter((item) => item.projected).map((item) => item.id))
-  }, [resultSignature, neighborSignature, neighbors, rendererReady, neighborItems, searchItems])
+  }, [resultSignature, neighborSignature, neighbors, rendererReady, neighborItems, searchItems, selectedId])
   useEffect(() => {
     if (!selectedId) return
     rendererRef.current?.focus([selectedId])
-  }, [selectedId, rendererReady])
+  }, [selectedId, rendererReady, projection])
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
+      if (event.defaultPrevented || aboutOpen || advancedOpen) return
       const target = event.target
       if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return
       if (target instanceof HTMLElement && target.isContentEditable) return
-      if (aboutOpen) { setAboutOpen(false); return }
-      if (advancedOpen) { setAdvancedOpen(false); return }
       if (selectedId) setSelectedId(null)
     }
     document.addEventListener('keydown', onKey)
@@ -388,17 +369,6 @@ export function EmbeddingExplorer() {
   const decades = useMemo(() => decadeChoices([...(projection?.byId.values() ?? [])].map((point) => point.year)), [projection])
   const hoverTitle = hoverId ? displayTitle(sourceTitle(projection?.byId.get(hoverId)?.name), text.untitled) : null
 
-  function rememberFocus() {
-    const active = document.activeElement instanceof HTMLElement ? document.activeElement : null
-    if (active?.isConnected && !active.closest('.header-menu')) {
-      restoreRef.current = active
-      return
-    }
-    restoreRef.current = document.querySelector<HTMLElement>('.menu-button') ?? active
-  }
-  function restoreFocus() {
-    restoreRef.current?.focus()
-  }
   async function copyText(value: string) {
     try {
       await navigator.clipboard.writeText(value)
@@ -602,10 +572,9 @@ export function EmbeddingExplorer() {
     </div>
   )
 
-  const dialogOpen = aboutOpen || advancedOpen
   return (
     <div className="explorer-app">
-      <div className="explorer-content" inert={dialogOpen ? true : undefined}>
+      <div className="explorer-content">
       <Shell
         text={text}
         lang={lang}
@@ -622,8 +591,8 @@ export function EmbeddingExplorer() {
         onLang={setLang}
         onTheme={() => setTheme((current) => current === 'dark' ? 'light' : 'dark')}
         onReset={() => rendererRef.current?.reset()}
-        onAbout={() => { rememberFocus(); setAboutOpen(true); setAdvancedOpen(false) }}
-        onAdvanced={() => { rememberFocus(); setAdvancedOpen((open) => !open); setAboutOpen(false) }}
+        onAbout={() => { rememberOverlayFocus(); setAboutOpen(true); setAdvancedOpen(false) }}
+        onAdvanced={() => { rememberOverlayFocus(); setAdvancedOpen((open) => !open); setAboutOpen(false) }}
         onCollection={() => { setPanel('collection'); setNeighbors(null); setSelectedId(null); setSheetOpen(true) }}
         collectionActive={activeMode === 'collection'}
         onSkip={() => {
@@ -631,10 +600,10 @@ export function EmbeddingExplorer() {
           window.setTimeout(() => document.getElementById('explorer-results')?.focus(), 0)
         }}
       />
-      <p className="map-sentence">{text.mapSentence}</p>
+      <p className="map-sentence"><span className="map-sentence-copy">{text.mapSentence}</span><span className="interaction-hint">{view === '3d' ? text.interaction3d : text.interaction2d}</span></p>
       <div className="explorer-body">
         <div className="map-stage">
-          <div ref={containerRef} className="explorer-canvas" role="img" aria-label={text.mapLabel} />
+          <div ref={containerRef} className="explorer-canvas" role="group" aria-label={text.mapLabel} />
           {webglError ? (
             <div className="webgl-fallback" role="status">
               <h2>{text.webglTitle}</h2>
@@ -643,8 +612,8 @@ export function EmbeddingExplorer() {
           ) : null}
           {loadingSnapshot && !webglError ? <p className="map-status" role="status">{text.loadingSnapshot}</p> : null}
           <div className="map-controls" aria-label={text.view}>
+            {mobile ? <button type="button" className="btn icon-btn" title={text.resetView} aria-label={text.resetView} onClick={() => rendererRef.current?.reset()}>↺</button> : null}
             <button type="button" className="btn icon-btn" title={text.zoomOut} aria-label={text.zoomOut} onClick={() => rendererRef.current?.zoomOut()}>−</button>
-            <button type="button" className="btn icon-btn" title={text.resetView} aria-label={text.resetView} onClick={() => rendererRef.current?.reset()}>↺</button>
             <button type="button" className="btn icon-btn" title={text.zoomIn} aria-label={text.zoomIn} onClick={() => rendererRef.current?.zoomIn()}>+</button>
             <label className="map-decade-control">
               <span className="sr-only">{text.decade}</span>
@@ -682,7 +651,7 @@ export function EmbeddingExplorer() {
         )}
         </div>
       </div>
-      {advancedOpen ? <div ref={researchRef} className="overlay-anchor"><ResearchControls
+      <ResearchControls
           text={text}
           open={advancedOpen}
           searchMode={searchMode}
@@ -694,7 +663,8 @@ export function EmbeddingExplorer() {
           legacyLayout={snapshot?.legacyLayout ?? false}
           decade={decade}
           decades={decades}
-          onClose={() => { setAdvancedOpen(false); restoreFocus() }}
+          onClose={() => setAdvancedOpen(false)}
+          onCloseAutoFocus={restoreOverlayFocus}
           onSearchMode={(mode) => { setPanel('results'); setNeighbors(null); setSelectedId(null); setSearchMode(mode) }}
           onColor={setColorMode}
           onLines={setLines}
@@ -703,12 +673,13 @@ export function EmbeddingExplorer() {
           onDecade={setDecade}
           onExportCsv={exportCsv}
           onExportJson={exportJson}
-        /></div> : null}
-        {aboutOpen ? <div ref={aboutRef} className="overlay-anchor"><AboutPanel
+        />
+        <AboutPanel
           text={text}
           open={aboutOpen}
-          onClose={() => { setAboutOpen(false); restoreFocus() }}
-          sourceLabel={snapshot == null ? text.unknownTime : snapshot.source === 'manifest' ? text.aboutManifest : text.aboutLegacy}
+          onClose={() => setAboutOpen(false)}
+          onCloseAutoFocus={restoreOverlayFocus}
+          sourceLabel={snapshot == null ? text.snapshotUnavailable : snapshot.source === 'manifest' ? text.aboutManifest : text.aboutLegacy}
           snapshotCount={projection?.count ?? 0}
           modelId={snapshot?.modelId ?? null}
           indexId={snapshot?.indexId ?? null}
@@ -716,7 +687,7 @@ export function EmbeddingExplorer() {
           vectorLabel={snapshot?.vectorHeader ? `${snapshot.vectorHeader.count} × ${snapshot.vectorHeader.dimensions}` : text.vectorUnread}
           returnedCount={activeReturnedCount}
           dropped={projection?.dropped ?? 0}
-        /></div> : null}
+        />
       {toast ? <p className="toast" role="status">{toast}</p> : null}
     </div>
   )

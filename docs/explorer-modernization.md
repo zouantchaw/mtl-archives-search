@@ -12,11 +12,12 @@ Proximity on the map is model similarity. It is not Montreal geography and it is
 | `packages/scripts/src/explorer/artifact-contract.ts` | Schema, checksum, ID, and embedding checks |
 | `apps/web/src/explorer/search.ts` | Shared `/api/search` client, cancellation, normalization |
 | `apps/web/src/explorer/projection.ts` | Map positions. Records without a projection stay in the list and get no coordinates |
-| `apps/web/src/explorer/renderer.ts` | Three.js lifecycle, container sizing, disposal |
+| `apps/web/src/explorer/renderer.ts` | Three.js lifecycle, container sizing, disposal, selected-point marker, and 2D/3D pointer controls |
 | `apps/web/src/explorer/locale.ts` | English and French interface copy |
-| `apps/web/src/explorer/Shell.tsx` | Brand, return link, search, 2D/3D, theme, language |
-| `apps/web/src/explorer/ResultsPanel.tsx`, `DetailsPanel.tsx` | Result list and selected photograph |
-| `apps/web/src/explorer/ResearchControls.tsx` | Color, lines, geometric date check, decade emphasis, export |
+| `apps/web/src/explorer/Shell.tsx` | Brand, return link, search, 2D/3D, theme, language, map color, and research actions |
+| `apps/web/src/explorer/ResultsPanel.tsx`, `DetailsPanel.tsx` | Result list and selected photograph, with explicit selection status and archival actions |
+| `apps/web/src/explorer/ResearchControls.tsx` | Controlled research Sheet for search mode, color, lines, geometric date check, decade emphasis, and export |
+| `apps/web/src/components/ui/` | Official shadcn primitives used by the Explorer toolbar, Sheet, Dialog, Select, and toggles |
 
 Default search is `GET /api/search?mode=smart&limit=50`. The worker clamps `limit` to 100 and each Vectorize branch uses at most 50 neighbors. The UI shows the returned count separately from the loaded snapshot count. Visual research uses `mode=visual` on the same API. It does not load a browser CLIP model and it does not send snapshot vectors to the live index.
 
@@ -106,6 +107,8 @@ In development, Vite proxies `/snapshot` to the fixed R2 prefix `https://pub-6a2
 
 The explorer uses the main site's SVG mark and a responsive full-height map. Desktop navigation separates search from map controls. Mobile navigation keeps the results in a bottom sheet. Results and the device-local collection have separate tabs and counts; snapshot similarity opens a 20-record neighbor list with a return path to the original search.
 
+The map announces the current interaction model in the toolbar hint: 2D uses drag-to-pan and scroll-to-zoom; 3D uses drag-to-rotate, right-drag-to-pan, and scroll-to-zoom. Selecting a point updates the selected photograph panel and the renderer’s theme-aware glow anchored to the projected point. Selection zooms into the photograph’s neighborhood; a localized locator appears when zoomed out or when the point moves off-screen, and clicking it returns to the selected point. Research tools open in a focus-managed Sheet and About opens in a focus-managed Dialog; both restore focus to the invoking control when closed.
+
 Date colors use a discrete decade palette with an undated category and a visible legend. Projection-region coloring remains available for the legacy layout. Zoom, fit-to-view, and decade emphasis are visible controls. Initial/reset camera fitting respects aspect ratio and 3D depth; manual camera movement is preserved. Copy citation includes available title, source date, reference, credits, record URL, and official source. CSV/JSON exports use the active list and contextual counts; CSV neutralizes formula-prefixed text.
 
 Codex browser QA on 2026-09-23 used the in-app browser at `http://127.0.0.1:3021` with 1280×900, 1040×760, 390×844, and 320×740 viewports. Verified:
@@ -119,3 +122,5 @@ Codex browser QA on 2026-09-23 used the in-app browser at `http://127.0.0.1:3021
 - Keyboard skip link opens/focuses mobile results. Fresh browser session has no runtime errors or framework overlay.
 
 Automated verification: 19 explorer tests, 11 artifact/export tests, explorer TypeScript, production build, and `git diff --check`. Coverage includes checksum/manifest validation, traversal rejection, search races, date palettes, export escaping, and camera fitting. Hardware WebGL failure, reduced-motion OS emulation, and exhaustive API/network failure combinations were not browser-tested. The existing legacy snapshot does not identify its model or generation date; About retains those limitations. No live vectors or archive bytes were regenerated.
+
+The September 23 follow-up uses shadcn controls for the toolbar and focus-managed overlays. Browser checks covered 1040px desktop, 390px mobile and 320px French dark mode, drawer sizing, full color labels, selected URL restoration, 2D dragging, 3D rotation, and preserving selection when closing dialogs. Selection uses a soft CSS glow in close-up, with a minimal clickable locator only when needed. Browser checks also verified zoom-out and off-screen locators and returning to the selected point.

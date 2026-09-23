@@ -1,3 +1,7 @@
+import { ArrowLeft, Bookmark, Copy, ExternalLink, Link2, Quote, Search, Share2 } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
 import { useState } from 'react'
 import { parseArchiveDate } from './dates'
 import { imageIsBroken, imageKey } from './images'
@@ -37,8 +41,12 @@ export function DetailsPanel(props: {
 
   return (
     <article className="details-panel" aria-label={text.selectedPhoto}>
-      <div className="panel-actions">
-        <button type="button" className="btn" onClick={props.onClose}>{text.closeDetails}</button>
+      <div className="detail-header">
+        <div className="detail-heading selection-banner">
+          <Badge className="selected-status" variant="secondary">{text.selectedPhoto}</Badge>
+          <span>{item.placement === 'projected' ? text.onMap : item.placement === 'unprojected' ? text.notOnMap : text.placementPending}</span>
+        </div>
+        <Button type="button" variant="ghost" size="sm" onClick={props.onClose}><ArrowLeft aria-hidden="true" data-icon="inline-start" />{text.back}</Button>
       </div>
       {image ? (
         <img className="detail-photo" src={image} alt={title} onError={() => setBrokenKey(imageKey(item.id, item.imageUrl))} />
@@ -46,24 +54,27 @@ export function DetailsPanel(props: {
         <div className="photo-fallback large">{text.imageUnavailable}</div>
       )}
       <h2>{title}</h2>
-      <p>{parsed.status === 'missing' ? text.dateMissing : parsed.source}</p>
+      <p className="detail-date">{parsed.status === 'missing' ? text.dateMissing : parsed.source}</p>
       {parsed.status === 'unparsed' ? <p className="help-copy">{text.dateUnparsed}</p> : null}
-      <p>{item.placement === 'projected' ? text.onMap : item.placement === 'unprojected' ? text.unprojectedDetail : text.placementPending}</p>
       {item.cote ? <p>{text.reference}: {item.cote}</p> : null}
       {item.credits ? <p>{text.credits}: {item.credits}</p> : null}
       <p className="meta-id">{text.recordId}: {item.id}</p>
       {anomaly ? <p className="help-copy">{formatMessage(text.anomalyDetail, { nearer: anomaly.nearerDecade, stated: anomaly.statedDecade })}</p> : null}
-      <div className="stack-actions">
-        <a className="btn btn-primary" href={recordUrl} target="_blank" rel="noreferrer">{text.recordLink}</a>
-        {sourceUrl ? <a className="btn" href={sourceUrl} target="_blank" rel="noreferrer">{text.sourceLink}</a> : null}
-        <button type="button" className="btn" onClick={() => props.onCopy(recordUrl)}>{text.copyRecord}</button>
-        <button type="button" className="btn" onClick={props.onCopyCitation}>{text.copyCitation}</button>
-        <button type="button" className="btn" onClick={() => props.onCopy(window.location.href)}>{text.share}</button>
-        {sourceUrl ? <button type="button" className="btn" onClick={() => props.onCopy(sourceUrl)}>{text.copySource}</button> : null}
-        <button type="button" className="btn" onClick={props.onToggleSave}>{props.saved ? text.collectionRemove : text.collectionAdd}</button>
-        <button type="button" className="btn" disabled={props.similarDisabled || props.similarWorking} onClick={props.onSimilar}>
-          {props.similarWorking ? text.similarWorking : text.similar}
-        </button>
+
+      <div className="detail-primary-actions">
+        <Button type="button" variant="default" asChild><a href={recordUrl} target="_blank" rel="noreferrer"><ExternalLink aria-hidden="true" data-icon="inline-start" />{text.recordLink}</a></Button>
+        {sourceUrl ? <Button type="button" variant="outline" asChild><a href={sourceUrl} target="_blank" rel="noreferrer"><Link2 aria-hidden="true" data-icon="inline-start" />{text.sourceLink}</a></Button> : null}
+      </div>
+      <Separator />
+      <div className="detail-utility-actions" aria-label={text.selectedPhoto}>
+        <Button type="button" variant="ghost" size="sm" onClick={() => props.onCopy(recordUrl)}><Copy aria-hidden="true" data-icon="inline-start" />{text.copyRecord}</Button>
+        <Button type="button" variant="ghost" size="sm" onClick={props.onCopyCitation}><Quote aria-hidden="true" data-icon="inline-start" />{text.copyCitation}</Button>
+        <Button type="button" variant="ghost" size="sm" onClick={() => props.onCopy(window.location.href)}><Share2 aria-hidden="true" data-icon="inline-start" />{text.share}</Button>
+        {sourceUrl ? <Button type="button" variant="ghost" size="sm" onClick={() => props.onCopy(sourceUrl)}><Link2 aria-hidden="true" data-icon="inline-start" />{text.copySource}</Button> : null}
+      </div>
+      <div className="detail-secondary-actions">
+        <Button type="button" variant="outline" size="sm" onClick={props.onToggleSave}><Bookmark aria-hidden="true" data-icon="inline-start" />{props.saved ? text.collectionRemove : text.collectionAdd}</Button>
+        <Button type="button" variant="outline" size="sm" disabled={props.similarDisabled || props.similarWorking} onClick={props.onSimilar}><Search aria-hidden="true" data-icon="inline-start" />{props.similarWorking ? text.similarWorking : text.similar}</Button>
       </div>
       {props.similarDisabled ? <p className="help-copy">{text.similarUnavailable}</p> : <p className="help-copy">{text.similarHelp}</p>}
       {item.caption ? (

@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import { MOUSE, TOUCH } from 'three'
 import { cameraBoundsForPoints, cameraFitForBounds, type CameraBounds } from './camera-fit'
 import { MAP_SCALE } from './projection'
 import type { ViewMode } from './url-state'
@@ -38,7 +39,8 @@ function poseFor(mode: ViewMode, aspect = 1, bounds = defaultBounds(mode)): Came
     aspect,
     fov,
     padding: 1.14,
-    minDistance: mode === '2d' ? 220 : 260,
+    minDistance: bounds.minX === bounds.maxX && bounds.minY === bounds.maxY
+      ? (mode === '2d' ? 110 : 130) : (mode === '2d' ? 220 : 260),
   })
   return { position: fit.position, target: fit.target, fov }
 }
@@ -74,8 +76,11 @@ export class PointCloudRenderer {
   private readonly renderer: THREE.WebGLRenderer
   private readonly controls: OrbitControls
   private geometry = new THREE.BufferGeometry()
+  private readonly pointAlphaTexture: THREE.DataTexture
   private readonly material: THREE.PointsMaterial
   private readonly cloud: THREE.Points
+  private readonly selectionMarkerElement: HTMLDivElement
+  private readonly selectionMarkerLabel: HTMLButtonElement
   private lines: THREE.LineSegments | null = null
   private ids: string[] = []
   private indexById = new Map<string, number>()
@@ -85,7 +90,9 @@ export class PointCloudRenderer {
   private focusedBounds: CameraBounds | null = null
   private overviewFit = true
   private cameraManuallyControlled = false
+  private selectedId: string | null = null
   private dragDistance = 0
+  private activePointerId: number | null = null
   private lastPointerX = 0
   private lastPointerY = 0
   private readonly raycaster = new THREE.Raycaster()
@@ -100,17 +107,27 @@ export class PointCloudRenderer {
     if (!this.hidden && !this.disposed) this.start()
   }
   private readonly onPointerDown = (event: PointerEvent) => {
+    this.activePointerId = event.pointerId
     this.dragDistance = 0
     this.lastPointerX = event.clientX
     this.lastPointerY = event.clientY
   }
   private readonly onPointerMove = (event: PointerEvent) => {
-    this.dragDistance += Math.hypot(event.clientX - this.lastPointerX, event.clientY - this.lastPointerY)
-    this.lastPointerX = event.clientX
-    this.lastPointerY = event.clientY
+    if (this.activePointerId != null && event.pointerId === this.activePointerId) {
+      this.dragDistance += Math.hypot(event.clientX - this.lastPointerX, event.clientY - this.lastPointerY)
+      this.lastPointerX = event.clientX
+      this.lastPointerY = event.clientY
+      if (this.dragDistance > 8) {
+        if (this.finePointer) this.onHover(null)
+        return
+      }
+    }
     if (!this.finePointer) return
     const id = this.pick(event)
     this.onHover(id)
+  }
+  private readonly onPointerUp = (event: PointerEvent) => {
+    if (event.pointerId === this.activePointerId) this.activePointerId = null
   }
   private readonly onPointerLeave = () => {
     this.onHover(null)
@@ -119,11 +136,17 @@ export class PointCloudRenderer {
     this.overviewFit = false
     this.focusedBounds = null
     this.cameraManuallyControlled = true
+    this.cameraAnim = null
   }
   private readonly onClick = (event: MouseEvent) => {
     if (this.dragDistance > 8) return
     const id = this.pick(event)
     if (id) this.onSelect(id)
+  }
+  private readonly onDoubleClick = (event: MouseEvent) => {
+    if (this.dragDistance > 8) return
+    const id = this.pick(event)
+    if (id) this.focus([id])
   }
   private readonly onLost = (event: Event) => {
     event.preventDefault()
@@ -164,19 +187,60 @@ export class PointCloudRenderer {
     this.controls.target.copy(initial.target)
     this.controls.enableDamping = true
     this.controls.dampingFactor = 0.08
-    this.controls.enableRotate = false
+    this.controls.zoomToCursor = true
     this.controls.maxDistance = MAP_SCALE * 4
     this.controls.minDistance = 40
     this.controls.addEventListener('start', this.onControlStart)
+    const pointMaskSize = 32
+    const pointMask = new Uint8Array(pointMaskSize * pointMaskSize * 4)
+    for (let y = 0; y < pointMaskSize; y += 1) {
+      for (let x = 0; x < pointMaskSize; x += 1) {
+        const dx = (x + 0.5) / pointMaskSize - 0.5
+        const dy = (y + 0.5) / pointMaskSize - 0.5
+        const distance = Math.hypot(dx, dy)
+        const alpha = Math.round(255 * THREE.MathUtils.clamp((0.5 - distance) / 0.025 + 0.5, 0, 1))
+        const offset = (y * pointMaskSize + x) * 4
+        pointMask.set([alpha, alpha, alpha, 255], offset)
+      }
+    }
+    this.pointAlphaTexture = new THREE.DataTexture(pointMask, pointMaskSize, pointMaskSize, THREE.RGBAFormat)
+    this.pointAlphaTexture.magFilter = THREE.LinearFilter
+    this.pointAlphaTexture.minFilter = THREE.LinearFilter
+    this.pointAlphaTexture.needsUpdate = true
     this.material = new THREE.PointsMaterial({
       size: 6,
       vertexColors: true,
       sizeAttenuation: true,
+      alphaMap: this.pointAlphaTexture,
+      alphaTest: 0.1,
       transparent: true,
       opacity: 0.92,
     })
     this.cloud = new THREE.Points(this.geometry, this.material)
     this.scene.add(this.cloud)
+    const selectionMarker = document.createElement('div')
+    selectionMarker.className = 'map-selection-marker'
+    selectionMarker.style.position = 'absolute'
+    selectionMarker.style.display = 'none'
+    selectionMarker.style.pointerEvents = 'none'
+    selectionMarker.style.zIndex = '1'
+    const label = document.createElement('button')
+    label.type = 'button'
+    label.className = 'map-selection-label'
+    label.textContent = 'Selected'
+    label.setAttribute('aria-label', 'Selected')
+    label.hidden = true
+    label.style.pointerEvents = 'auto'
+    label.addEventListener('click', () => {
+      if (!this.selectedId) return
+      label.blur()
+      this.focus([this.selectedId])
+    })
+    selectionMarker.append(label)
+    this.selectionMarkerElement = selectionMarker
+    this.selectionMarkerLabel = label
+    this.container.append(selectionMarker)
+    this.setInteractionMode('2d')
     this.raycaster.params.Points ??= { threshold: 12 }
     this.resizeObserver = new ResizeObserver(() => this.resize())
     this.resizeObserver.observe(this.container)
@@ -185,8 +249,11 @@ export class PointCloudRenderer {
     window.addEventListener('orientationchange', this.resize)
     this.renderer.domElement.addEventListener('pointerdown', this.onPointerDown)
     this.renderer.domElement.addEventListener('pointermove', this.onPointerMove)
+    this.renderer.domElement.addEventListener('pointerup', this.onPointerUp)
+    this.renderer.domElement.addEventListener('pointercancel', this.onPointerUp)
     this.renderer.domElement.addEventListener('pointerleave', this.onPointerLeave)
     this.renderer.domElement.addEventListener('click', this.onClick)
+    this.renderer.domElement.addEventListener('dblclick', this.onDoubleClick)
     this.renderer.domElement.addEventListener('webglcontextlost', this.onLost)
     this.resize()
     this.start()
@@ -203,6 +270,18 @@ export class PointCloudRenderer {
 
   setAutoRotate(value: boolean): void {
     this.autoRotate = value && !this.reducedMotion && this.mode === '3d'
+  }
+
+  /** Keep the selected item visually anchored to its projected point. */
+  setSelected(id: string | null): void {
+    this.selectedId = id
+    this.updateSelectedMarker()
+  }
+
+  setSelectionLabel(label: string): void {
+    const text = label.trim() || 'Selected'
+    this.selectionMarkerLabel.textContent = text
+    this.selectionMarkerLabel.setAttribute('aria-label', text)
   }
 
   setPoints(points: CloudPoint[]): void {
@@ -229,6 +308,7 @@ export class PointCloudRenderer {
     this.geometry.setAttribute('position', new THREE.BufferAttribute(this.positions, 3))
     this.geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
     this.cloud.geometry = this.geometry
+    this.updateSelectedMarker()
     if (this.pointBounds && (!hadPoints || (this.overviewFit && !sameBounds(previousBounds, this.pointBounds)))) {
       this.overviewFit = true
       this.fitOverview()
@@ -253,9 +333,18 @@ export class PointCloudRenderer {
       target: this.controls.target.clone(),
       fov: this.camera.fov,
     }
-    const to = poseFor(mode, this.camera.aspect, this.pointBounds ?? defaultBounds(mode))
-    this.overviewFit = true
-    this.focusedBounds = null
+    const index = this.selectedId && this.focusedBounds && !this.cameraManuallyControlled
+      ? this.indexById.get(this.selectedId) : undefined
+    let targetBounds = this.pointBounds ?? defaultBounds(mode)
+    if (index != null) {
+      const x = this.positions[index * 3]
+      const y = this.positions[index * 3 + 1]
+      const z = mode === '3d' ? this.zValues[index] : 0
+      targetBounds = { minX: x, maxX: x, minY: y, maxY: y, minZ: z, maxZ: z }
+    }
+    const to = poseFor(mode, this.camera.aspect, targetBounds)
+    this.overviewFit = index == null
+    this.focusedBounds = index == null ? null : targetBounds
     this.cameraManuallyControlled = false
     this.cameraAnim = null
     if (this.reducedMotion) {
@@ -263,12 +352,12 @@ export class PointCloudRenderer {
       this.mode = mode
       this.transition = null
       this.writeZ(mode === '3d' ? 1 : 0)
-      this.controls.enableRotate = mode === '3d'
+      this.setInteractionMode(mode)
       return
     }
     this.transition = { start: performance.now(), from, to, fromMode: this.mode, toMode: mode }
     this.mode = mode
-    this.controls.enableRotate = mode === '3d'
+    this.setInteractionMode(mode)
   }
 
   setLines(ids: string[], visible: boolean): void {
@@ -317,7 +406,7 @@ export class PointCloudRenderer {
       aspect: this.camera.aspect,
       fov: FOV_BY_MODE[this.mode],
       padding: 1.24,
-      minDistance: this.mode === '2d' ? 220 : 260,
+      minDistance: this.mode === '2d' ? 110 : 130,
     })
     this.overviewFit = false
     this.focusedBounds = { minX, maxX, minY, maxY, minZ, maxZ }
@@ -367,14 +456,19 @@ export class PointCloudRenderer {
     window.removeEventListener('orientationchange', this.resize)
     this.renderer.domElement.removeEventListener('pointerdown', this.onPointerDown)
     this.renderer.domElement.removeEventListener('pointermove', this.onPointerMove)
+    this.renderer.domElement.removeEventListener('pointerup', this.onPointerUp)
+    this.renderer.domElement.removeEventListener('pointercancel', this.onPointerUp)
     this.renderer.domElement.removeEventListener('pointerleave', this.onPointerLeave)
     this.renderer.domElement.removeEventListener('click', this.onClick)
+    this.renderer.domElement.removeEventListener('dblclick', this.onDoubleClick)
     this.renderer.domElement.removeEventListener('webglcontextlost', this.onLost)
     this.clearLines()
     this.controls.removeEventListener('start', this.onControlStart)
     this.controls.dispose()
     this.geometry.dispose()
     this.material.dispose()
+    this.pointAlphaTexture.dispose()
+    this.selectionMarkerElement.remove()
     this.renderer.dispose()
     this.renderer.forceContextLoss()
     this.renderer.domElement.remove()
@@ -443,6 +537,9 @@ export class PointCloudRenderer {
       this.camera.position.z = this.controls.target.z + Math.cos(angle) * radius * 0.7
     }
     this.controls.update()
+    // Project after damping and mode-transition depth writes so the DOM marker
+    // remains anchored to the selected point during every camera movement.
+    this.updateSelectedMarker()
     this.renderer.render(this.scene, this.camera)
   }
 
@@ -474,6 +571,65 @@ export class PointCloudRenderer {
     this.camera.updateProjectionMatrix()
   }
 
+  private setInteractionMode(mode: ViewMode): void {
+    const is3d = mode === '3d'
+    this.controls.enableRotate = is3d
+    this.controls.mouseButtons.LEFT = is3d ? MOUSE.ROTATE : MOUSE.PAN
+    this.controls.mouseButtons.RIGHT = MOUSE.PAN
+    this.controls.touches.ONE = is3d ? TOUCH.ROTATE : TOUCH.PAN
+    this.controls.touches.TWO = TOUCH.DOLLY_PAN
+  }
+
+  private updateSelectedMarker(): void {
+    const index = this.selectedId == null ? undefined : this.indexById.get(this.selectedId)
+    const position = this.geometry.getAttribute('position') as THREE.BufferAttribute | undefined
+    if (index == null || !position) {
+      this.selectionMarkerElement.style.display = 'none'
+      this.selectionMarkerLabel.hidden = true
+      return
+    }
+    const source = position.array as Float32Array
+    this.camera.updateMatrixWorld()
+    const selectedWorld = new THREE.Vector3(
+      source[index * 3] ?? 0,
+      source[index * 3 + 1] ?? 0,
+      source[index * 3 + 2] ?? 0,
+    )
+    const projected = new THREE.Vector3(
+      selectedWorld.x,
+      selectedWorld.y,
+      selectedWorld.z,
+    ).project(this.camera)
+    const canvasRect = this.renderer.domElement.getBoundingClientRect()
+    const containerRect = this.container.getBoundingClientRect()
+    const inFrame = projected.z >= -1 && projected.z <= 1
+      && projected.x >= -1 && projected.x <= 1
+      && projected.y >= -1 && projected.y <= 1
+    const directionX = Number.isFinite(projected.x) ? (projected.z > 1 ? -projected.x : projected.x) : 0
+    const directionY = Number.isFinite(projected.y) ? (projected.z > 1 ? -projected.y : projected.y) : 0
+    const inset = 20
+    const minX = inset / Math.max(1, canvasRect.width) * 2 - 1
+    const maxX = 1 - inset / Math.max(1, canvasRect.width) * 2
+    const minY = inset / Math.max(1, canvasRect.height) * 2 - 1
+    const maxY = 1 - inset / Math.max(1, canvasRect.height) * 2
+    const anchorX = inFrame ? projected.x : THREE.MathUtils.clamp(directionX, minX, maxX)
+    const anchorY = inFrame ? projected.y : THREE.MathUtils.clamp(directionY, minY, maxY)
+    const left = canvasRect.left - containerRect.left + ((anchorX + 1) / 2) * canvasRect.width
+    const top = canvasRect.top - containerRect.top + ((1 - anchorY) / 2) * canvasRect.height
+    const distance = this.camera.position.distanceTo(selectedWorld)
+    const showLabel = !inFrame || distance > 350
+    const direction = !inFrame
+      ? projected.x < -1 ? 'left' : projected.x > 1 ? 'right' : projected.y < -1 ? 'up' : projected.y > 1 ? 'down' : directionX < 0 ? 'left' : 'right'
+      : ''
+    this.selectionMarkerElement.style.left = `${left}px`
+    this.selectionMarkerElement.style.top = `${top}px`
+    this.selectionMarkerElement.dataset.offscreen = String(!inFrame)
+    this.selectionMarkerElement.dataset.side = anchorX > 0.62 ? 'left' : 'right'
+    this.selectionMarkerElement.dataset.direction = direction
+    this.selectionMarkerLabel.hidden = !showLabel
+    this.selectionMarkerElement.style.display = 'flex'
+  }
+
   private writeZ(blend: number): void {
     const attribute = this.geometry.getAttribute('position') as THREE.BufferAttribute | undefined
     if (!attribute) return
@@ -497,12 +653,38 @@ export class PointCloudRenderer {
   private pick(event: { clientX: number; clientY: number }): string | null {
     const rect = this.renderer.domElement.getBoundingClientRect()
     if (rect.width < 2 || rect.height < 2) return null
+    const pickRadiusPixels = this.finePointer ? 12 : 18
+    const distance = this.camera.position.distanceTo(this.controls.target)
+    const worldPerPixel = (2 * distance * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2))) / rect.height
+    this.raycaster.params.Points.threshold = THREE.MathUtils.clamp(worldPerPixel * pickRadiusPixels, 2, 24)
     this.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
     this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
+    this.camera.updateMatrixWorld()
     this.raycaster.setFromCamera(this.pointer, this.camera)
-    const hit = this.raycaster.intersectObject(this.cloud)[0]
-    if (hit?.index == null) return null
-    return this.ids[hit.index] ?? null
+    const hits = this.raycaster.intersectObject(this.cloud)
+    const pointerX = event.clientX - rect.left
+    const pointerY = event.clientY - rect.top
+    const attribute = this.geometry.getAttribute('position') as THREE.BufferAttribute | undefined
+    if (!attribute) return null
+    const positions = attribute.array as Float32Array
+    let bestId: string | null = null
+    let bestDistance = pickRadiusPixels * pickRadiusPixels
+    for (const hit of hits) {
+      if (hit.index == null) continue
+      const projected = new THREE.Vector3(
+        positions[hit.index * 3] ?? 0,
+        positions[hit.index * 3 + 1] ?? 0,
+        positions[hit.index * 3 + 2] ?? 0,
+      ).project(this.camera)
+      const screenX = ((projected.x + 1) / 2) * rect.width
+      const screenY = ((1 - projected.y) / 2) * rect.height
+      const screenDistance = (screenX - pointerX) ** 2 + (screenY - pointerY) ** 2
+      if (screenDistance < bestDistance) {
+        bestDistance = screenDistance
+        bestId = this.ids[hit.index] ?? null
+      }
+    }
+    return bestId
   }
 
   private clearLines(): void {
