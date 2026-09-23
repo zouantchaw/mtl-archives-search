@@ -1,0 +1,133 @@
+import { describe, expect, it } from 'vitest'
+import { parseArchiveDate, yearToZ } from './dates'
+import { resultsToCsv } from './export-results'
+import { mainSiteHome, mainSiteRecord, officialSourceUrl } from './links'
+import { buildProjection, focusableIds, locateRecord } from './projection'
+import { displayTitle } from './titles'
+import { SearchSession, normalizeSearchResponse } from './search'
+import { parseExplorerSearch, serializeExplorerSearch, withLocale } from './url-state'
+
+describe('archive dates', () => {
+  it('parses snapshot dates and refuses titles', () => {
+    expect(parseArchiveDate('1932')).toMatchObject({ status: 'year', year: 1932 })
+    expect(parseArchiveDate('1947-1949')).toMatchObject({ status: 'range', year: 1947 })
+    expect(parseArchiveDate('Décennie 1920')).toMatchObject({ status: 'decade', year: 1920 })
+    expect(parseArchiveDate('Années 1930')).toMatchObject({ status: 'decade', year: 1930 })
+    expect(parseArchiveDate('1930s')).toMatchObject({ status: 'decade', year: 1930 })
+    expect(parseArchiveDate('24 juin 1925')).toMatchObject({ status: 'date', year: 1925 })
+    expect(parseArchiveDate('08-avr.-36')).toMatchObject({ status: 'date', year: 1936 })
+    expect(parseArchiveDate('Printemps 1929')).toMatchObject({ status: 'year', year: 1929 })
+    expect(parseArchiveDate('')).toMatchObject({ status: 'missing', year: null })
+    expect(parseArchiveDate(null)).toMatchObject({ status: 'missing', year: null })
+    expect(parseArchiveDate('Rue Saint-Antoine').year).toBeNull()
+    expect(parseArchiveDate('1201').year).toBeNull()
+    const titled = 'Pont Papineau-Leblanc / Rhéal Benny . - 28 septembre 1972'
+    expect(parseArchiveDate(titled)).toMatchObject({ status: 'unparsed', year: null, source: titled })
+    expect(parseArchiveDate('Eglise Saint-Pierre (1201, rue de la Visitation)').year).toBeNull()
+  })
+
+  it('places missing dates apart from dated photographs without random coordinates', () => {
+    expect(yearToZ(null, 'mtl_archives_metadata_1.json')).toBeLessThan(0)
+    expect(yearToZ(1947, 'same')).toBeGreaterThan(yearToZ(1920, 'same'))
+    expect(yearToZ(1932, 'same-id')).toBe(yearToZ(1932, 'same-id'))
+  })
+})
+
+describe('projection', () => {
+  it('keeps unprojected records out of the map', () => {
+    const index = buildProjection([
+      { id: 'on-map', x: 0.25, y: 0.5, name: 'Rue', date: '1932', imageUrl: null, caption: null },
+      { id: 'bad', x: Number.NaN, y: 0.2, name: null, date: null, imageUrl: null, caption: null },
+    ])
+    const missing = locateRecord({ id: 'worker-only', sourceTitle: 'Escalier' }, index)
+    expect(missing.projected).toBe(false)
+    expect(missing).not.toHaveProperty('x')
+    expect(missing).not.toHaveProperty('y')
+    expect(missing).not.toHaveProperty('z')
+    expect(focusableIds(index, ['worker-only', 'on-map', 'bad'])).toEqual(['on-map'])
+    expect(index.byId.has('bad')).toBe(false)
+    expect(displayTitle(null, 'Untitled photograph')).toBe('Untitled photograph')
+  })
+})
+
+describe('search normalization', () => {
+  it('keeps returned counts and does not treat scores as confidence', () => {
+    const normalized = normalizeSearchResponse({
+      mode: 'smart',
+      count: 1,
+      countKind: 'returned',
+      degraded: false,
+      items: [{
+        metadataFilename: 'mtl_archives_metadata_7.json',
+        name: null,
+        portalTitle: null,
+        dateValue: '1930s',
+        imageUrl: 'https://example.test/7.jpg',
+        score: 0.41,
+        rankingScore: 0.016,
+        branchScores: { semantic: 0.41 },
+        source: 'semantic',
+      }],
+    })
+    expect(normalized.returnedCount).toBe(1)
+    expect(normalized.countKind).toBe('returned')
+    expect(normalized.items[0]?.year).toBe(1930)
+    expect(normalized.items[0]?.sourceTitle).toBeNull()
+    expect(normalized.items[0]?.vectorScore).toBe(0.41)
+    expect('confidence' in (normalized.items[0] ?? {})).toBe(false)
+  })
+
+  it('drops a stale response when a newer search starts', async () => {
+    const session = new SearchSession()
+    const first = session.start()
+    const order: string[] = []
+    const firstTask = new Promise<string | null>((resolve) => {
+      setTimeout(() => resolve(session.isCurrent(first.id) ? 'first' : null), 20)
+    })
+    const second = session.start()
+    expect(first.signal.aborted).toBe(true)
+    expect(session.isCurrent(first.id)).toBe(false)
+    expect(session.isCurrent(second.id)).toBe(true)
+    order.push(await firstTask ?? 'stale')
+    order.push(session.isCurrent(second.id) ? 'second' : 'lost')
+    expect(order).toEqual(['stale', 'second'])
+  })
+})
+
+describe('url and locale', () => {
+  it('reloads view, language, and selection without dropping the query', () => {
+    const parsed = parseExplorerSearch('?q=tramway&mode=3d&selected=mtl_archives_metadata_7.json&lang=en')
+    expect(parsed.view).toBe('3d')
+    expect(parsed.q).toBe('tramway')
+    expect(withLocale(parsed, 'fr')).toMatchObject({ q: 'tramway', selected: 'mtl_archives_metadata_7.json', lang: 'fr' })
+    const serialized = serializeExplorerSearch({ ...parsed, lang: 'fr', theme: 'dark', search: 'visual' })
+    expect(parseExplorerSearch(serialized)).toMatchObject({ q: 'tramway', view: '3d', lang: 'fr', theme: 'dark', search: 'visual' })
+    expect(mainSiteHome('fr')).toBe('https://www.mtlarchives.com/')
+    expect(mainSiteRecord('mtl_archives_metadata_7.json', 'en')).toBe('https://www.mtlarchives.com/photo/mtl_archives_metadata_7?lang=en')
+    expect(officialSourceUrl('javascript:alert(1)')).toBeNull()
+    expect(officialSourceUrl('http://depot.ville.montreal.qc.ca/phototheque-archives/jpeg/VM94-Z9-1.jpg')).toContain('depot.ville.montreal.qc.ca')
+  })
+})
+
+describe('export', () => {
+  it('labels scores and keeps unprojected rows', () => {
+    const csv = resultsToCsv([{
+      id: 'missing',
+      title: 'Untitled photograph',
+      dateSource: null,
+      dateStatus: 'missing',
+      year: null,
+      cote: null,
+      projected: false,
+      recordUrl: 'https://www.mtlarchives.com/photo/missing',
+      sourceUrl: null,
+      rankingScore: 0.2,
+      visualIndexScore: null,
+      semanticIndexScore: null,
+    }])
+    expect(csv).toContain('projected')
+    expect(csv).toContain('ranking_score')
+    expect(csv.toLowerCase()).not.toContain('confidence')
+    expect(csv).toContain('false')
+  })
+})

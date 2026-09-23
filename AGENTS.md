@@ -7,7 +7,7 @@ MTL Archives: Montreal city photo search, daily location game, Stripe prints, `/
 - Manual print fulfillment after Stripe.
 - Leaflet maps (not Mapbox).
 - Do not overwrite original archive bytes or recaption the 14k corpus unless explicitly asked.
-- `apps/web` (3D CLIP explorer) is not the core product.
+- `apps/web` (snapshot explorer) is not the core product. Do not deploy it with the root deploy script. See [docs/explorer-modernization.md](docs/explorer-modernization.md).
 
 ## Paths
 

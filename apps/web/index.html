@@ -1,41 +1,28 @@
 <!doctype html>
-<html lang="en">
+<html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-    <!-- Primary Meta Tags -->
-    <title>Montreal Archives Explorer | 14,000+ Historical Photos</title>
-    <meta name="title" content="Montreal Archives Explorer | 14,000+ Historical Photos" />
-    <meta name="description" content="Explore Montreal's history through an interactive 3D visualization of 14,000+ archival photos. Search by text or visual similarity." />
-    <meta name="keywords" content="Montreal, archives, historical photos, 3D visualization, Montreal history, vintage photos" />
-    <meta name="author" content="MTL Archives" />
-
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://explore.mtlarchives.com/" />
-    <meta property="og:title" content="Montreal Archives Explorer | 14,000+ Historical Photos" />
-    <meta property="og:description" content="Explore Montreal's history through an interactive 3D visualization of 14,000+ archival photos." />
-    <meta property="og:image" content="https://explore.mtlarchives.com/og-image.jpg" />
-
-    <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:url" content="https://explore.mtlarchives.com/" />
-    <meta property="twitter:title" content="Montreal Archives Explorer | 14,000+ Historical Photos" />
-    <meta property="twitter:description" content="Explore Montreal's history through an interactive 3D visualization of 14,000+ archival photos." />
-    <meta property="twitter:image" content="https://explore.mtlarchives.com/og-image.jpg" />
-
-    <!-- Favicon -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>MTL Archives Explorer</title>
+    <meta name="description" content="A similarity map of one published MTL Archives snapshot. Proximity is model similarity, not geography or historical certainty." />
+    <meta name="theme-color" content="#F5F2EA" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-
-    <!-- Theme Color -->
-    <meta name="theme-color" content="#0a0a0a" />
-
-    <!-- PWA -->
     <link rel="manifest" href="/manifest.json" />
-
-    <!-- Seline Analytics -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;600&family=Spectral:wght@500;600&display=swap" rel="stylesheet" />
+    <script>
+      try {
+        var params = new URLSearchParams(location.search);
+        var theme = params.get('theme');
+        if (theme !== 'light' && theme !== 'dark') theme = localStorage.getItem('mtl-explorer-theme');
+        if (theme !== 'light' && theme !== 'dark') theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        document.documentElement.dataset.theme = theme;
+        var lang = params.get('lang');
+        if (lang !== 'en' && lang !== 'fr') lang = localStorage.getItem('mtl-explorer-locale');
+        document.documentElement.lang = lang === 'en' ? 'en' : 'fr';
+      } catch (error) {}
+    </script>
     <script src="https://cdn.seline.com/seline.js" data-token="ba441af9ffc2d81" async></script>
   </head>
   <body>

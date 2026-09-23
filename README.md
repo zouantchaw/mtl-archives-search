@@ -13,7 +13,8 @@ A visitor can search by what a picture *looks like* or what its caption says, pl
 | [apps/next-app](apps/next-app) | Next.js site — search, stories, game, prints, newsletter, `/research` (Vercel) |
 | [apps/api](apps/api) | Cloudflare Worker — D1, Vectorize, R2, Workers AI, operator jobs, provenance packages |
 | [apps/operator-agent](apps/operator-agent) | Eve control surface; completions go through Cloudflare AI Gateway |
-| [packages/scripts](packages/scripts) | ETL, CLIP/text index ingest, evals |
+| [packages/scripts](packages/scripts) | ETL, CLIP/text index ingest, evals, explorer snapshot export |
+| [apps/web](apps/web) | Optional similarity explorer for one published snapshot. Not the main site. See [explorer notes](docs/explorer-modernization.md). |
 | [pipelines](pipelines) | OCR / VLM / Instagram packaging |
 
 Search is CLIP (visual) + BGE (captions) on Cloudflare Vectorize. `/research` uses Mistral Small on Workers AI, with GPT-5.4 only as a bounded inspect fallback. Original archive bytes are never overwritten.

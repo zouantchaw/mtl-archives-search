@@ -1,0 +1,108 @@
+# Explorer modernization
+
+The explorer (`apps/web`) is a research view of one published snapshot. It is not the main site. Search, the game, prints, stories, newsletters, and `/research` stay in `apps/next-app` and `apps/api`.
+
+Proximity on the map is model similarity. It is not Montreal geography and it is not historical certainty.
+
+## Architecture
+
+| Module | Responsibility |
+|---|---|
+| `apps/web/src/explorer/artifacts.ts` | Load a versioned manifest or the legacy R2 files |
+| `packages/scripts/src/explorer/artifact-contract.ts` | Schema, checksum, ID, and embedding checks |
+| `apps/web/src/explorer/search.ts` | Shared `/api/search` client, cancellation, normalization |
+| `apps/web/src/explorer/projection.ts` | Map positions. Records without a projection stay in the list and get no coordinates |
+| `apps/web/src/explorer/renderer.ts` | Three.js lifecycle, container sizing, disposal |
+| `apps/web/src/explorer/locale.ts` | English and French interface copy |
+| `apps/web/src/explorer/Shell.tsx` | Brand, return link, search, 2D/3D, theme, language |
+| `apps/web/src/explorer/ResultsPanel.tsx`, `DetailsPanel.tsx` | Result list and selected photograph |
+| `apps/web/src/explorer/ResearchControls.tsx` | Color, lines, geometric date check, decade emphasis, export |
+
+Default search is `GET /api/search?mode=smart&limit=50`. The worker clamps `limit` to 100 and each Vectorize branch uses at most 50 neighbors. The UI shows the returned count separately from the loaded snapshot count. Visual research uses `mode=visual` on the same API. It does not load a browser CLIP model and it does not send snapshot vectors to the live index.
+
+The selected-record link is `https://www.mtlarchives.com/photo/{id}` with `.json` removed. English adds `?lang=en`. French omits `lang`, matching the main site. `externalUrl` is used only when it is an `http` or `https` URL.
+
+`deck.gl` and `@xenova/transformers` were removed from `apps/web` after the only browser CLIP import was retired. React in this workspace is 19.2.3, the same version as `apps/next-app`. Vite remains 5 and Tailwind remains 3. A Vite 6/7 or Tailwind 4 migration would change the explorer toolchain without fixing the snapshot or search behavior, so it is deferred. This worktree's Node was v22.22.0; `.nvmrc` and the root engine ask for Node 23.5.0, which was not installed here.
+
+## Artifact contract
+
+Schema version 1. A version folder contains `points.json`, `ids.json`, `embeddings.bin`, then `manifest.json` written last.
+
+The manifest records:
+
+- `schemaVersion`, `generatedAt`, `legacy`
+- `modelId` and `indexId` (`null` when unknown; never inferred from dimensions)
+- `embeddingDimension`, `count`, `seed`
+- UMAP settings (`nNeighbors`, `minDist`, `spread`, `nComponents: 2`)
+- artifact `path`, `sha256`, and `bytes`
+
+`embeddings.bin` is little-endian: `uint32` count, `uint32` dimensions, then `float32` rows. Byte length must be `8 + count * dimensions * 4`. Published folders require the point IDs and embedding IDs in the same order. Validation fails if a requested model id differs from the manifest, including when the manifest model is unknown.
+
+The public prefix `https://pub-6a29793ea7664738880d1cc5afb21b87.r2.dev/embeddings/` currently has no `manifest.json` (HTTP 404). The legacy adapter reads `embeddings_2d.json`, `embeddings_ids.json`, and the 8-byte header of `embeddings_512d.bin`. A read on 2026-09-23 showed 14,715 points and a header of 14,715 × 512. That count is whatever the files contain, not a claim about the live corpus. Legacy model, index, seed, and generation time stay unknown. Embedding IDs with no point are reported and are not given coordinates.
+
+## Commands
+
+```bash
+npm install
+npm run test --workspace=apps/web
+npm run typecheck --workspace=apps/web
+npm run build --workspace=apps/web
+npm run test --workspace=@mtl-archives/scripts
+npm run dev --workspace=apps/web
+```
+
+Do not use the root `npm run deploy` script. That deploys the Worker.
+
+Dry-run a local vector file (no Vectorize, R2, or D1 calls):
+
+```bash
+npm run explorer:export --workspace=@mtl-archives/scripts -- \
+  --input vectors.json \
+  --out ./tmp/explorer-artifacts \
+  --model-id MODEL \
+  --index-id INDEX \
+  --seed 42 \
+  --dry-run
+```
+
+Omit `--dry-run` to write `./tmp/explorer-artifacts/v1/<timestamp>/`. `vectors.json` is `{ "ids": [], "vectors": [], "records": {} }`. IDs must be unique and each vector the same finite dimension.
+
+```bash
+npm run explorer:validate --workspace=@mtl-archives/scripts -- \
+  --dir ./tmp/explorer-artifacts/v1/<timestamp> \
+  --expect-model MODEL
+```
+
+`npm run vectorize:export` now exits before any network call and points here.
+
+## Regenerate and roll back
+
+1. Export vectors for a known model and index into a local JSON file. Do that with an explicit, reviewed job. This repository command does not fetch Vectorize.
+2. Dry-run the export, then write a new version folder.
+3. Validate it. `--expect-model` must match the manifest. A null model does not match a named model.
+4. Upload the folder to a new immutable R2 prefix. Upload `manifest.json` last. Do not overwrite the live legacy files in place.
+5. Point a new explorer deployment at that prefix with `VITE_R2_EMBEDDINGS_BASE_URL`.
+6. Rollback is another deployment whose base URL is the previous prefix. The legacy prefix keeps working through the adapter as long as its three files remain.
+
+Region colors and the geometric date check are tied to the legacy layout. A versioned manifest turns them off instead of pretending the old centroids still apply.
+
+## Deployment
+
+`apps/web/vercel.json` only rewrites two kit PDFs. `index.html` used to name `https://explore.mtlarchives.com/`. A read-only GET on 2026-09-23 returned 404 from Vercel. `https://www.mtlarchives.com/explore` also returned 404. `https://www.mtlarchives.com/` is the Next.js site on Vercel. This change set does not deploy, change DNS, or write R2.
+
+## Browser QA
+
+No approved browser-control tool was available, and shell-driven browser automation was not used. The matrix below is pending a human or a later browser-tool pass.
+
+| Check | 390px | 320px | 1280px |
+|---|---|---|---|
+| EN / FR | pending | pending | pending |
+| Light / dark | pending | pending | pending |
+| Empty, query, no results, error | pending | pending | pending |
+| 2D / 3D and resize | pending | pending | pending |
+| Projected and unprojected selection | pending | pending | pending |
+| Return link and source link | pending | pending | pending |
+| Copy and local export | pending | pending | pending |
+| Reduced motion and WebGL fallback | pending | pending | pending |
+
+Automated coverage is the unit tests for dates, unprojected IDs, search races, URL/locale state, manifest validation, and seeded export. Reduced motion disables slow rotation and camera easing in `renderer.ts`. WebGL failure leaves the result list usable.

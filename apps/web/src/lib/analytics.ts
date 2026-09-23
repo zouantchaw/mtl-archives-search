@@ -17,7 +17,7 @@ export function track(event: string, properties?: Record<string, unknown>) {
 
 export const events = {
   // Search
-  searchPerformed: (query: string, mode: 'text' | 'visual', resultCount: number) =>
+  searchPerformed: (query: string, mode: 'smart' | 'visual' | 'text', resultCount: number) =>
     track('explorer: search', { query, mode, resultCount }),
 
   // View mode
