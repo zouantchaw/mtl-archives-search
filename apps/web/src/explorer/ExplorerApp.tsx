@@ -2,12 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { events } from '../lib/analytics'
 import { AboutPanel } from './AboutPanel'
 import { SnapshotIntegrityError, SnapshotUnavailableError, loadEmbeddingMatrix, loadExplorerSnapshot, type LoadedSnapshot } from './artifacts'
-import { pointColor, type ColorMode } from './colors'
+import { dateColorForYear, pointColor, type ColorMode } from './colors'
 import { addToCollection, browserStorage, readCollection, removeFromCollection, writeCollection, type CollectionItem } from './collection'
 import { apiOrigin, mapBackground, snapshotBase } from './config'
 import { DetailsPanel } from './DetailsPanel'
 import { downloadLocalFile, resultsToCsv, resultsToJson, type ExportRow } from './export-results'
-import { mainSiteHome, mainSiteRecord, type Lang } from './links'
+import { mainSiteHome, mainSiteRecord, officialSourceUrl, type Lang } from './links'
 import { dictionaryFor, formatMessage, LOCALE_KEY, SUGGESTIONS, THEME_KEY, type Dictionary } from './locale'
 import { buildProjection, type ProjectionIndex } from './projection'
 import { itemFromId, itemFromPoint, itemFromSearch, type ExplorerItem } from './records'
@@ -88,7 +88,7 @@ export function EmbeddingExplorer() {
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [aboutOpen, setAboutOpen] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
-  const [colorMode, setColorMode] = useState<ColorMode>('neutral')
+  const [colorMode, setColorMode] = useState<ColorMode>('date')
   const [lines, setLines] = useState(false)
   const [anomalies, setAnomalies] = useState(false)
   const [rotate, setRotate] = useState(false)
@@ -103,13 +103,22 @@ export function EmbeddingExplorer() {
   const containerRef = useRef<HTMLDivElement>(null)
   const rendererRef = useRef<PointCloudRenderer | null>(null)
   const sessionRef = useRef(new SearchSession())
-  const matrixRef = useRef<{ matrix: Float32Array; dimensions: number } | null>(null)
+  const matrixRef = useRef<{ snapshot: LoadedSnapshot; matrix: Float32Array; dimensions: number } | null>(null)
+  const snapshotRef = useRef<LoadedSnapshot | null>(null)
+  const selectedIdRef = useRef<string | null>(null)
+  const queryRef = useRef(query)
+  const searchModeRef = useRef(searchMode)
   const selectRef = useRef<(id: string) => void>(() => {})
   const hoverRef = useRef<(id: string | null) => void>(() => {})
   const restoreRef = useRef<HTMLElement | null>(null)
   const aboutRef = useRef<HTMLDivElement>(null)
   const researchRef = useRef<HTMLDivElement>(null)
   const queryModeRef = useRef<string | null>(null)
+
+  snapshotRef.current = snapshot
+  selectedIdRef.current = selectedId
+  queryRef.current = query
+  searchModeRef.current = searchMode
 
   selectRef.current = (id: string) => {
     setSelectedId(id)
@@ -122,6 +131,7 @@ export function EmbeddingExplorer() {
     const node = aboutOpen ? aboutRef.current : advancedOpen ? researchRef.current : null
     if (!node) return
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const restoreTarget = restoreRef.current ?? previous
     const selector = 'button, a[href], input, select, textarea'
     node.querySelector<HTMLElement>(selector)?.focus()
     const onKey = (event: KeyboardEvent) => {
@@ -141,7 +151,7 @@ export function EmbeddingExplorer() {
     document.addEventListener('keydown', onKey)
     return () => {
       document.removeEventListener('keydown', onKey)
-      previous?.focus()
+      if (restoreTarget?.isConnected) restoreTarget.focus()
     }
   }, [aboutOpen, advancedOpen])
 
@@ -166,12 +176,17 @@ export function EmbeddingExplorer() {
 
   useEffect(() => {
     const controller = new AbortController()
+    matrixRef.current = null
+    snapshotRef.current = null
+    setSnapshot(null)
+    setProjection(null)
     setLoadingSnapshot(true)
     setSnapshotStatus('loading')
     loadExplorerSnapshot(snapshotBase(), controller.signal)
       .then((loaded) => {
         if (controller.signal.aborted) return
         setSnapshot(loaded)
+        snapshotRef.current = loaded
         setProjection(buildProjection(loaded.points))
         setSnapshotStatus(loaded.points.length === 0 ? 'empty' : 'ready')
       })
@@ -286,7 +301,13 @@ export function EmbeddingExplorer() {
     }
   }), [collection, projection, snapshotStatus])
 
-  const listItems = neighbors ? neighborItems : panel === 'collection' ? collectionItems : searchItems
+  const activeMode = neighbors !== null ? 'similarity' : panel === 'collection' ? 'collection' : 'search'
+  const listItems = activeMode === 'similarity' ? neighborItems : activeMode === 'collection' ? collectionItems : searchItems
+  const activeReturnedCount = activeMode === 'similarity'
+    ? neighborItems.length
+    : activeMode === 'collection'
+      ? collectionItems.length
+      : shownBoard.returnedCount
   const highlighted = useMemo(() => new Set(listItems.filter((item) => item.projected).map((item) => item.id)), [listItems])
 
   const cloudPoints = useMemo<CloudPoint[]>(() => {
@@ -323,10 +344,10 @@ export function EmbeddingExplorer() {
   const resultSignature = searchItems.map((item) => item.id).join('|')
   const neighborSignature = neighborItems.map((item) => item.id).join('|')
   useEffect(() => {
-    const source = neighborSignature ? neighborItems : searchItems
+    const source = neighbors !== null ? neighborItems : searchItems
     if (source.length === 0) return
     rendererRef.current?.focus(source.filter((item) => item.projected).map((item) => item.id))
-  }, [resultSignature, neighborSignature, rendererReady, neighborItems, searchItems])
+  }, [resultSignature, neighborSignature, neighbors, rendererReady, neighborItems, searchItems])
   useEffect(() => {
     if (!selectedId) return
     rendererRef.current?.focus([selectedId])
@@ -368,7 +389,12 @@ export function EmbeddingExplorer() {
   const hoverTitle = hoverId ? displayTitle(sourceTitle(projection?.byId.get(hoverId)?.name), text.untitled) : null
 
   function rememberFocus() {
-    restoreRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const active = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    if (active?.isConnected && !active.closest('.header-menu')) {
+      restoreRef.current = active
+      return
+    }
+    restoreRef.current = document.querySelector<HTMLElement>('.menu-button') ?? active
   }
   function restoreFocus() {
     restoreRef.current?.focus()
@@ -403,28 +429,42 @@ export function EmbeddingExplorer() {
     setToast(next.added ? text.collectionSaved : text.collectionAlready)
   }
   async function findSimilar() {
-    if (!selected || !snapshot?.vectorUrl || !snapshot.embeddingIds?.includes(selected.id)) return
+    const embeddingIds = snapshot?.embeddingIds
+    const vectorUrl = snapshot?.vectorUrl
+    if (!selected || !vectorUrl || !embeddingIds?.includes(selected.id)) return
+    const sourceId = selected.id
+    const sourceSnapshot = snapshot
+    const sourceQuery = query
+    const sourceSearchMode = searchMode
     setSimilarWorking(true)
     try {
-      matrixRef.current ??= await loadEmbeddingMatrix({
-        url: snapshot.vectorUrl,
-        idCount: snapshot.embeddingIds.length,
-        sha256: snapshot.vectorSha256,
-        byteLength: snapshot.vectorBytes,
-        signal: new AbortController().signal,
-      })
+      let loadedMatrix = matrixRef.current?.snapshot === sourceSnapshot ? matrixRef.current : null
+      if (!loadedMatrix) {
+        const matrix = await loadEmbeddingMatrix({
+          url: vectorUrl,
+          idCount: embeddingIds.length,
+          sha256: sourceSnapshot.vectorSha256,
+          byteLength: sourceSnapshot.vectorBytes,
+          signal: new AbortController().signal,
+        })
+        if (snapshotRef.current !== sourceSnapshot || selectedIdRef.current !== sourceId || queryRef.current !== sourceQuery || searchModeRef.current !== sourceSearchMode) return
+        loadedMatrix = { snapshot: sourceSnapshot, ...matrix }
+        matrixRef.current = loadedMatrix
+      }
+      if (snapshotRef.current !== sourceSnapshot || selectedIdRef.current !== sourceId || queryRef.current !== sourceQuery || searchModeRef.current !== sourceSearchMode) return
       const found = nearestInSnapshot({
-        matrix: matrixRef.current.matrix,
-        dimensions: matrixRef.current.dimensions,
-        ids: snapshot.embeddingIds,
-        sourceId: selected.id,
+        matrix: loadedMatrix.matrix,
+        dimensions: loadedMatrix.dimensions,
+        ids: embeddingIds,
+        sourceId,
         limit: 20,
       })
       setNeighbors(found)
       setPanel('results')
+      setSelectedId(null)
       setSheetOpen(true)
     } catch {
-      setToast(text.searchError)
+      if (snapshotRef.current === sourceSnapshot && selectedIdRef.current === sourceId && queryRef.current === sourceQuery && searchModeRef.current === sourceSearchMode) setToast(text.searchError)
     } finally {
       setSimilarWorking(false)
     }
@@ -455,23 +495,66 @@ export function EmbeddingExplorer() {
   function exportJson() {
     downloadLocalFile('mtl-explorer-results.json', resultsToJson({
       exportedAt: new Date().toISOString(),
-      query,
-      searchMode: neighbors ? 'snapshot' : searchMode,
-      returnedCount: shownBoard.returnedCount ?? listItems.length,
+      query: activeMode === 'search' ? query : '',
+      searchMode: activeMode === 'similarity' ? 'snapshot' : activeMode === 'collection' ? 'collection' : searchMode,
+      returnedCount: activeReturnedCount ?? listItems.length,
       snapshotCount: projection?.count ?? 0,
       rows: exportRows(),
     }), 'application/json')
   }
 
+  function copyCitation() {
+    if (!selected) return
+    const title = displayTitle(sourceTitle(selected.sourceTitle), text.untitled)
+    const recordUrl = mainSiteRecord(selected.id, lang)
+    const sourceUrl = officialSourceUrl(selected.externalUrl)
+    const fields = [
+      `“${title}”`,
+      selected.dateRaw,
+      selected.cote ? `${text.reference}: ${selected.cote}` : null,
+      selected.credits ? `${text.credits}: ${selected.credits}` : null,
+      `MTL Archives: ${recordUrl}`,
+      sourceUrl ? `${text.sourceLink}: ${sourceUrl}` : null,
+    ].filter((value): value is string => Boolean(value && value.trim()))
+    void copyText(fields.join('. '))
+  }
+
   const emptyMessage = query.trim() ? text.noResults : text.emptyPrompt
   const showDetails = Boolean(selected)
-  const searchError = shownBoard.error === 'timeout' ? text.searchTimeout : shownBoard.error === 'failed' ? text.searchError : null
+  const searchError = activeMode === 'search'
+    ? shownBoard.error === 'timeout' ? text.searchTimeout : shownBoard.error === 'failed' ? text.searchError : null
+    : null
   const side = (
     <div id="explorer-results" tabIndex={-1}>
+      <nav className="panel-tabs" aria-label={text.results}>
+        <button type="button" className="btn" aria-pressed={activeMode !== 'collection'} onClick={() => { setPanel('results'); setNeighbors(null); setSelectedId(null) }}>{text.results}</button>
+        <button type="button" className="btn" aria-pressed={activeMode === 'collection'} onClick={() => { setPanel('collection'); setNeighbors(null); setSelectedId(null) }}>{text.collection} ({collection.length})</button>
+      </nav>
       <div className="count-row">
-        <p>{loadingSnapshot ? text.loadingSnapshot : snapshotStatus === 'empty' ? text.snapshotEmpty : formatMessage(text.snapshotCount, { count: projection?.count ?? 0 })}</p>
-        {shownBoard.returnedCount != null ? <p>{formatMessage(text.returnedCount, { count: shownBoard.returnedCount })}{neighbors ? ` · ${text.snapshotSimilar}` : ''}</p> : null}
-        {shownBoard.degraded ? <p className="help-copy">{text.degraded}</p> : null}
+        {activeMode === 'collection' ? (
+          <>
+            <h2 className="count-heading">{text.collection}</h2>
+            <p>{formatMessage(text.collectionCount, { count: collectionItems.length })}</p>
+            <button type="button" className="btn panel-back" onClick={() => { setPanel('results'); setNeighbors(null); setSelectedId(null) }}>{text.back}</button>
+          </>
+        ) : activeMode === 'similarity' ? (
+          <>
+            <h2 className="count-heading">{text.snapshotSimilar}</h2>
+            <p>{formatMessage(text.similarCount, { count: neighborItems.length })}</p>
+            <button type="button" className="btn panel-back" onClick={() => { setNeighbors(null); setSelectedId(null); setPanel('results') }}>{text.back}</button>
+          </>
+        ) : (
+          <>
+            <p>{loadingSnapshot ? text.loadingSnapshot : snapshotStatus === 'empty' ? text.snapshotEmpty : formatMessage(text.snapshotCount, { count: projection?.count ?? 0 })}</p>
+            {activeReturnedCount != null ? <p>{formatMessage(text.returnedCount, { count: activeReturnedCount })}</p> : null}
+            {projection?.dropped ? <p className="help-copy">{formatMessage(text.warningDropped, { count: projection.dropped })}</p> : null}
+            {shownBoard.degraded ? <p className="help-copy">{text.degraded}</p> : null}
+          </>
+        )}
+      </div>
+      <div className="list-actions" aria-label={text.exportHelp}>
+        <button type="button" className="btn" onClick={exportCsv}>{text.exportCsv}</button>
+        <button type="button" className="btn" onClick={exportJson}>{text.exportJson}</button>
       </div>
       {!query.trim() && !neighbors && panel === 'results' ? (
         <div className="suggestion-row" aria-label={text.suggestions}>
@@ -498,6 +581,7 @@ export function EmbeddingExplorer() {
           similarWorking={similarWorking}
           onClose={() => setSelectedId(null)}
           onCopy={(value) => { void copyText(value) }}
+          onCopyCitation={copyCitation}
           onToggleSave={toggleSave}
           onSimilar={() => { void findSimilar() }}
         />
@@ -506,10 +590,10 @@ export function EmbeddingExplorer() {
           text={text}
           items={listItems}
           selectedId={selectedId}
-          searching={shownBoard.searching && !neighbors}
+          searching={shownBoard.searching && activeMode === 'search'}
           query={query}
           error={searchError}
-          empty={panel === 'collection' ? text.collectionEmpty : emptyMessage}
+          empty={activeMode === 'collection' ? text.collectionEmpty : emptyMessage}
           origin={apiOrigin()}
           onSelect={(id) => selectRef.current(id)}
           onRetry={searchError ? () => setRetryToken((value) => value + 1) : undefined}
@@ -521,7 +605,7 @@ export function EmbeddingExplorer() {
   const dialogOpen = aboutOpen || advancedOpen
   return (
     <div className="explorer-app">
-      <div inert={dialogOpen ? true : undefined}>
+      <div className="explorer-content" inert={dialogOpen ? true : undefined}>
       <Shell
         text={text}
         lang={lang}
@@ -529,15 +613,19 @@ export function EmbeddingExplorer() {
         homeHref={mainSiteHome(lang)}
         query={query}
         view={view}
+        colorMode={colorMode}
+        legacyLayout={snapshot?.legacyLayout ?? false}
+        onColor={setColorMode}
         advancedOpen={advancedOpen}
-        onQuery={(value) => { setPanel('results'); setQuery(value) }}
+        onQuery={(value) => { setPanel('results'); setNeighbors(null); setSelectedId(null); setQuery(value) }}
         onView={(next) => { setView(next); events.viewModeChanged(next) }}
         onLang={setLang}
         onTheme={() => setTheme((current) => current === 'dark' ? 'light' : 'dark')}
         onReset={() => rendererRef.current?.reset()}
         onAbout={() => { rememberFocus(); setAboutOpen(true); setAdvancedOpen(false) }}
         onAdvanced={() => { rememberFocus(); setAdvancedOpen((open) => !open); setAboutOpen(false) }}
-        onCollection={() => { setPanel('collection'); setSelectedId(null); setSheetOpen(true) }}
+        onCollection={() => { setPanel('collection'); setNeighbors(null); setSelectedId(null); setSheetOpen(true) }}
+        collectionActive={activeMode === 'collection'}
         onSkip={() => {
           setSheetOpen(true)
           window.setTimeout(() => document.getElementById('explorer-results')?.focus(), 0)
@@ -554,13 +642,38 @@ export function EmbeddingExplorer() {
             </div>
           ) : null}
           {loadingSnapshot && !webglError ? <p className="map-status" role="status">{text.loadingSnapshot}</p> : null}
+          <div className="map-controls" aria-label={text.view}>
+            <button type="button" className="btn icon-btn" title={text.zoomOut} aria-label={text.zoomOut} onClick={() => rendererRef.current?.zoomOut()}>−</button>
+            <button type="button" className="btn icon-btn" title={text.resetView} aria-label={text.resetView} onClick={() => rendererRef.current?.reset()}>↺</button>
+            <button type="button" className="btn icon-btn" title={text.zoomIn} aria-label={text.zoomIn} onClick={() => rendererRef.current?.zoomIn()}>+</button>
+            <label className="map-decade-control">
+              <span className="sr-only">{text.decade}</span>
+              <select value={decade} aria-label={text.decade} onChange={(event) => setDecade(event.target.value)}>
+                <option value="all">{text.decadeAll}</option>
+                <option value="undated">{text.decadeUndated}</option>
+                {decades.map((value) => <option key={value} value={String(value)}>{value}s</option>)}
+              </select>
+            </label>
+          </div>
+          {colorMode === 'date' ? (
+            <div className={`map-legend${sheetOpen ? ' sheet-open' : ''}`} aria-label={text.legendDate}>
+              <strong>{text.legendDate}</strong>
+              <div className="legend-items">
+                {decades.map((year) => {
+                  const color = dateColorForYear(year, theme)
+                  return <span key={year}><i style={{ backgroundColor: `rgb(${color.join(',')})` }} />{year}s</span>
+                })}
+              </div>
+              <span className="legend-undated"><i />{text.legendUndated}</span>
+            </div>
+          ) : null}
           {hoverTitle && !mobile ? <p className="hover-label">{hoverTitle}</p> : null}
         </div>
         {mobile ? (
           <div className={`mobile-sheet${sheetOpen ? ' open' : ''}`}>
             <button type="button" className="btn sheet-toggle" aria-expanded={sheetOpen} onClick={() => setSheetOpen((open) => !open)}>
               {sheetOpen ? text.hideResults : text.openResults}
-              {shownBoard.returnedCount != null ? ` · ${shownBoard.returnedCount}` : ''}
+              {activeReturnedCount != null ? ` · ${activeReturnedCount}` : ''}
             </button>
             {sheetOpen ? <div className="sheet-body">{side}</div> : null}
           </div>
@@ -582,7 +695,7 @@ export function EmbeddingExplorer() {
           decade={decade}
           decades={decades}
           onClose={() => { setAdvancedOpen(false); restoreFocus() }}
-          onSearchMode={setSearchMode}
+          onSearchMode={(mode) => { setPanel('results'); setNeighbors(null); setSelectedId(null); setSearchMode(mode) }}
           onColor={setColorMode}
           onLines={setLines}
           onAnomalies={setAnomalies}
@@ -601,7 +714,7 @@ export function EmbeddingExplorer() {
           indexId={snapshot?.indexId ?? null}
           generatedAt={snapshot?.generatedAt ?? null}
           vectorLabel={snapshot?.vectorHeader ? `${snapshot.vectorHeader.count} × ${snapshot.vectorHeader.dimensions}` : text.vectorUnread}
-          returnedCount={shownBoard.returnedCount}
+          returnedCount={activeReturnedCount}
           dropped={projection?.dropped ?? 0}
         /></div> : null}
       {toast ? <p className="toast" role="status">{toast}</p> : null}

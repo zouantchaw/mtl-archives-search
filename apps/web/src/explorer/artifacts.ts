@@ -52,7 +52,9 @@ export function artifactUrl(root: string, relativePath: string): string {
     ? new URL(`${root.replace(/\/$/, '')}/`)
     : new URL(`${root.startsWith('/') ? root : `/${root}`}`.replace(/\/?$/, '/'), 'http://explorer.local')
   const url = new URL(relativePath, base)
-  if (url.origin !== base.origin) throw new SnapshotIntegrityError([{ level: 'error', code: 'artifact-origin', message: 'Artifact URL leaves the snapshot origin.' }])
+  if (url.origin !== base.origin || !url.pathname.startsWith(base.pathname)) {
+    throw new SnapshotIntegrityError([{ level: 'error', code: 'artifact-origin', message: 'Artifact URL leaves the snapshot prefix.' }])
+  }
   if (!absoluteRoot) return `${url.pathname}${url.search}`
   return url.toString()
 }

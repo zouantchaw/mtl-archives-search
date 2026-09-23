@@ -18,6 +18,7 @@ export function DetailsPanel(props: {
   similarWorking: boolean
   onClose: () => void
   onCopy: (value: string) => void
+  onCopyCitation: () => void
   onToggleSave: () => void
   onSimilar: () => void
 }) {
@@ -56,6 +57,7 @@ export function DetailsPanel(props: {
         <a className="btn btn-primary" href={recordUrl} target="_blank" rel="noreferrer">{text.recordLink}</a>
         {sourceUrl ? <a className="btn" href={sourceUrl} target="_blank" rel="noreferrer">{text.sourceLink}</a> : null}
         <button type="button" className="btn" onClick={() => props.onCopy(recordUrl)}>{text.copyRecord}</button>
+        <button type="button" className="btn" onClick={props.onCopyCitation}>{text.copyCitation}</button>
         <button type="button" className="btn" onClick={() => props.onCopy(window.location.href)}>{text.share}</button>
         {sourceUrl ? <button type="button" className="btn" onClick={() => props.onCopy(sourceUrl)}>{text.copySource}</button> : null}
         <button type="button" className="btn" onClick={props.onToggleSave}>{props.saved ? text.collectionRemove : text.collectionAdd}</button>

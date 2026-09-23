@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import { cameraBoundsForPoints, cameraFitForBounds, type CameraBounds } from './camera-fit'
 import { MAP_SCALE } from './projection'
 import type { ViewMode } from './url-state'
 
@@ -17,19 +18,41 @@ type CameraPose = {
   fov: number
 }
 
-function poseFor(mode: ViewMode): CameraPose {
-  if (mode === '2d') {
-    return {
-      position: new THREE.Vector3(MAP_SCALE / 2, -MAP_SCALE * 0.1, MAP_SCALE * 1.2),
-      target: new THREE.Vector3(MAP_SCALE / 2, MAP_SCALE / 2, 0),
-      fov: 50,
-    }
-  }
+const FOV_BY_MODE: Record<ViewMode, number> = { '2d': 50, '3d': 55 }
+
+function defaultBounds(mode: ViewMode): CameraBounds {
   return {
-    position: new THREE.Vector3(MAP_SCALE * 1.15, -MAP_SCALE * 0.15, MAP_SCALE * 0.85),
-    target: new THREE.Vector3(MAP_SCALE / 2, MAP_SCALE / 2, 40),
-    fov: 55,
+    minX: 0,
+    maxX: MAP_SCALE,
+    minY: 0,
+    maxY: MAP_SCALE,
+    minZ: mode === '3d' ? -66 : 0,
+    maxZ: mode === '3d' ? 168 : 0,
   }
+}
+
+function poseFor(mode: ViewMode, aspect = 1, bounds = defaultBounds(mode)): CameraPose {
+  const fov = FOV_BY_MODE[mode]
+  const fit = cameraFitForBounds(bounds, {
+    mode,
+    aspect,
+    fov,
+    padding: 1.14,
+    minDistance: mode === '2d' ? 220 : 260,
+  })
+  return { position: fit.position, target: fit.target, fov }
+}
+
+function sameBounds(left: CameraBounds | null, right: CameraBounds | null): boolean {
+  if (!left || !right) return left === right
+  return left.minX === right.minX && left.maxX === right.maxX
+    && left.minY === right.minY && left.maxY === right.maxY
+    && left.minZ === right.minZ && left.maxZ === right.maxZ
+}
+
+function srgbByteToLinear(value: number): number {
+  const srgb = Math.min(255, Math.max(0, value)) / 255
+  return srgb <= 0.04045 ? srgb / 12.92 : ((srgb + 0.055) / 1.055) ** 2.4
 }
 
 function ease(value: number): number {
@@ -58,6 +81,10 @@ export class PointCloudRenderer {
   private indexById = new Map<string, number>()
   private positions = new Float32Array()
   private zValues = new Float32Array()
+  private pointBounds: CameraBounds | null = null
+  private focusedBounds: CameraBounds | null = null
+  private overviewFit = true
+  private cameraManuallyControlled = false
   private dragDistance = 0
   private lastPointerX = 0
   private lastPointerY = 0
@@ -87,6 +114,11 @@ export class PointCloudRenderer {
   }
   private readonly onPointerLeave = () => {
     this.onHover(null)
+  }
+  private readonly onControlStart = () => {
+    this.overviewFit = false
+    this.focusedBounds = null
+    this.cameraManuallyControlled = true
   }
   private readonly onClick = (event: MouseEvent) => {
     if (this.dragDistance > 8) return
@@ -135,6 +167,7 @@ export class PointCloudRenderer {
     this.controls.enableRotate = false
     this.controls.maxDistance = MAP_SCALE * 4
     this.controls.minDistance = 40
+    this.controls.addEventListener('start', this.onControlStart)
     this.material = new THREE.PointsMaterial({
       size: 6,
       vertexColors: true,
@@ -173,6 +206,10 @@ export class PointCloudRenderer {
   }
 
   setPoints(points: CloudPoint[]): void {
+    const previousBounds = this.pointBounds
+    const nextBounds = cameraBoundsForPoints(points)
+    const hadPoints = previousBounds !== null
+    this.pointBounds = nextBounds
     this.ids = points.map((point) => point.id)
     this.indexById = new Map(this.ids.map((id, index) => [id, index]))
     this.positions = new Float32Array(points.length * 3)
@@ -183,24 +220,28 @@ export class PointCloudRenderer {
       this.positions[index * 3 + 1] = point.y
       this.positions[index * 3 + 2] = this.mode === '3d' && !this.transition ? point.z : 0
       this.zValues[index] = point.z
-      colors[index * 3] = point.color[0] / 255
-      colors[index * 3 + 1] = point.color[1] / 255
-      colors[index * 3 + 2] = point.color[2] / 255
+      colors[index * 3] = srgbByteToLinear(point.color[0])
+      colors[index * 3 + 1] = srgbByteToLinear(point.color[1])
+      colors[index * 3 + 2] = srgbByteToLinear(point.color[2])
     })
     this.geometry.dispose()
     this.geometry = new THREE.BufferGeometry()
     this.geometry.setAttribute('position', new THREE.BufferAttribute(this.positions, 3))
     this.geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
     this.cloud.geometry = this.geometry
+    if (this.pointBounds && (!hadPoints || (this.overviewFit && !sameBounds(previousBounds, this.pointBounds)))) {
+      this.overviewFit = true
+      this.fitOverview()
+    }
   }
 
   setColors(colors: Array<[number, number, number]>): void {
     if (colors.length !== this.ids.length) return
     const buffer = new Float32Array(colors.length * 3)
     colors.forEach((color, index) => {
-      buffer[index * 3] = color[0] / 255
-      buffer[index * 3 + 1] = color[1] / 255
-      buffer[index * 3 + 2] = color[2] / 255
+      buffer[index * 3] = srgbByteToLinear(color[0])
+      buffer[index * 3 + 1] = srgbByteToLinear(color[1])
+      buffer[index * 3 + 2] = srgbByteToLinear(color[2])
     })
     this.geometry.setAttribute('color', new THREE.BufferAttribute(buffer, 3))
   }
@@ -212,7 +253,10 @@ export class PointCloudRenderer {
       target: this.controls.target.clone(),
       fov: this.camera.fov,
     }
-    const to = poseFor(mode)
+    const to = poseFor(mode, this.camera.aspect, this.pointBounds ?? defaultBounds(mode))
+    this.overviewFit = true
+    this.focusedBounds = null
+    this.cameraManuallyControlled = false
     this.cameraAnim = null
     if (this.reducedMotion) {
       this.applyPose(to)
@@ -257,25 +301,60 @@ export class PointCloudRenderer {
     let maxX = -Infinity
     let minY = Infinity
     let maxY = -Infinity
+    let minZ = Infinity
+    let maxZ = -Infinity
     for (const index of indexes) {
       minX = Math.min(minX, this.positions[index * 3])
       maxX = Math.max(maxX, this.positions[index * 3])
       minY = Math.min(minY, this.positions[index * 3 + 1])
       maxY = Math.max(maxY, this.positions[index * 3 + 1])
+      const z = this.mode === '3d' ? this.zValues[index] ?? 0 : 0
+      minZ = Math.min(minZ, z)
+      maxZ = Math.max(maxZ, z)
     }
-    const centerX = (minX + maxX) / 2
-    const centerY = (minY + maxY) / 2
-    const span = Math.max(maxX - minX, maxY - minY, 160)
-    const target = new THREE.Vector3(centerX, centerY, this.mode === '3d' ? 30 : 0)
-    const position = this.mode === '2d'
-      ? new THREE.Vector3(centerX, centerY - span * 0.12, Math.max(span * 1.15, 220))
-      : new THREE.Vector3(centerX + span * 0.35, centerY - span * 0.2, Math.max(span * 0.75, 180))
-    this.moveCamera(position, target)
+    const fit = cameraFitForBounds({ minX, maxX, minY, maxY, minZ, maxZ }, {
+      mode: this.mode,
+      aspect: this.camera.aspect,
+      fov: FOV_BY_MODE[this.mode],
+      padding: 1.24,
+      minDistance: this.mode === '2d' ? 220 : 260,
+    })
+    this.overviewFit = false
+    this.focusedBounds = { minX, maxX, minY, maxY, minZ, maxZ }
+    this.cameraManuallyControlled = false
+    this.moveCamera(fit.position, fit.target)
   }
 
   reset(): void {
-    const pose = poseFor(this.mode)
-    this.moveCamera(pose.position, pose.target)
+    this.overviewFit = true
+    this.focusedBounds = null
+    this.cameraManuallyControlled = false
+    this.fitOverview()
+  }
+
+  /** Move the camera along its current view axis. factor < 1 zooms in. */
+  zoomBy(factor: number): void {
+    if (!Number.isFinite(factor) || factor <= 0) return
+    const offset = this.camera.position.clone().sub(this.controls.target)
+    const distance = THREE.MathUtils.clamp(
+      offset.length() * factor,
+      this.controls.minDistance,
+      this.controls.maxDistance,
+    )
+    if (offset.lengthSq() < 1e-8) return
+    this.overviewFit = false
+    this.focusedBounds = null
+    this.cameraManuallyControlled = true
+    this.camera.position.copy(this.controls.target).add(offset.setLength(distance))
+    this.controls.update()
+  }
+
+  zoomIn(): void {
+    this.zoomBy(0.8)
+  }
+
+  zoomOut(): void {
+    this.zoomBy(1.25)
   }
 
   dispose(): void {
@@ -292,6 +371,7 @@ export class PointCloudRenderer {
     this.renderer.domElement.removeEventListener('click', this.onClick)
     this.renderer.domElement.removeEventListener('webglcontextlost', this.onLost)
     this.clearLines()
+    this.controls.removeEventListener('start', this.onControlStart)
     this.controls.dispose()
     this.geometry.dispose()
     this.material.dispose()
@@ -311,6 +391,20 @@ export class PointCloudRenderer {
     this.renderer.setSize(width, height, false)
     this.material.size = width < 700 ? 9 : 5.5
     this.raycaster.params.Points.threshold = width < 700 ? 18 : 12
+    const fitBounds = this.overviewFit
+      ? this.pointBounds ?? defaultBounds(this.mode)
+      : !this.cameraManuallyControlled ? this.focusedBounds : null
+    if (fitBounds) {
+      const pose = poseFor(this.mode, this.camera.aspect, fitBounds)
+      if (this.transition) {
+        this.transition.to = pose
+      } else if (this.cameraAnim) {
+        this.cameraAnim.toPosition = pose.position
+        this.cameraAnim.toTarget = pose.target
+      } else {
+        this.applyPose(pose)
+      }
+    }
   }
 
   private start(): void {
@@ -366,6 +460,11 @@ export class PointCloudRenderer {
       fromTarget: this.controls.target.clone(),
       toTarget: target,
     }
+  }
+
+  private fitOverview(): void {
+    const pose = poseFor(this.mode, this.camera.aspect, this.pointBounds ?? defaultBounds(this.mode))
+    this.moveCamera(pose.position, pose.target)
   }
 
   private applyPose(pose: CameraPose): void {

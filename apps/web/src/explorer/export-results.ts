@@ -15,8 +15,10 @@ export type ExportRow = {
 }
 
 function csvCell(value: string | number | boolean | null): string {
-  const text = value == null ? '' : String(value)
-  if (/[",\n]/.test(text)) return `"${text.replace(/"/g, '""')}"`
+  const raw = value == null ? '' : String(value)
+  // Prefix spreadsheet formula-looking archive text so opening an export cannot execute it.
+  const text = typeof value === 'string' && /^[=+\-@\t]/.test(raw) ? `'${raw}` : raw
+  if (/[",\r\n]/.test(text)) return `"${text.replace(/"/g, '""')}"`
   return text
 }
 

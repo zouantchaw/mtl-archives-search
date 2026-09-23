@@ -102,19 +102,20 @@ The production explorer is [https://explorer.mtlarchives.com/](https://explorer.
 
 In development, Vite proxies `/snapshot` to the fixed R2 prefix `https://pub-6a29793ea7664738880d1cc5afb21b87.r2.dev/embeddings` and forwards Range headers. The dev app requests `/snapshot` unless `VITE_R2_EMBEDDINGS_BASE_URL` is set. Production builds keep the direct R2 URL. The proxy is not an open proxy.
 
-## Browser QA
+## Research workspace and verification
 
-No approved browser-control tool was available, and shell-driven browser automation was not used. The matrix below is pending a human or a later browser-tool pass.
+The explorer uses the main site's SVG mark and a responsive full-height map. Desktop navigation separates search from map controls. Mobile navigation keeps the results in a bottom sheet. Results and the device-local collection have separate tabs and counts; snapshot similarity opens a 20-record neighbor list with a return path to the original search.
 
-| Check | 390px | 320px | 1280px |
-|---|---|---|---|
-| EN / FR | pending | pending | pending |
-| Light / dark | pending | pending | pending |
-| Empty, query, no results, error | pending | pending | pending |
-| 2D / 3D and resize | pending | pending | pending |
-| Projected and unprojected selection | pending | pending | pending |
-| Return link and source link | pending | pending | pending |
-| Copy and local export | pending | pending | pending |
-| Reduced motion and WebGL fallback | pending | pending | pending |
+Date colors use a discrete decade palette with an undated category and a visible legend. Projection-region coloring remains available for the legacy layout. Zoom, fit-to-view, and decade emphasis are visible controls. Initial/reset camera fitting respects aspect ratio and 3D depth; manual camera movement is preserved. Copy citation includes available title, source date, reference, credits, record URL, and official source. CSV/JSON exports use the active list and contextual counts; CSV neutralizes formula-prefixed text.
 
-Automated coverage is the unit tests for dates, unprojected IDs, search races, URL/locale state, manifest validation, and seeded export. Reduced motion disables slow rotation and camera easing in `renderer.ts`. WebGL failure leaves the result list usable.
+Codex browser QA on 2026-09-23 used the in-app browser at `http://127.0.0.1:3021` with 1280×900, 1040×760, 390×844, and 320×740 viewports. Verified:
+
+- Snapshot loads 14,715 points through the fixed-target development proxy.
+- Full-height map, responsive navigation, correct wordmark, EN/FR, light/dark, 2D/3D, and resizing.
+- Live search returns 50 records, details show photographs and archival source links, and saving a record displays it in the local collection.
+- Similarity displays 20 neighbors; collection switches to its own count; returning to search restores the 50 results.
+- CSV and JSON downloads each contain the expected 50 records and matching query/count metadata.
+- Citation action shows its copied confirmation; mobile About focus enters the dialog and returns to More on Escape.
+- Keyboard skip link opens/focuses mobile results. Fresh browser session has no runtime errors or framework overlay.
+
+Automated verification: 19 explorer tests, 11 artifact/export tests, explorer TypeScript, production build, and `git diff --check`. Coverage includes checksum/manifest validation, traversal rejection, search races, date palettes, export escaping, and camera fitting. Hardware WebGL failure, reduced-motion OS emulation, and exhaustive API/network failure combinations were not browser-tested. The existing legacy snapshot does not identify its model or generation date; About retains those limitations. No live vectors or archive bytes were regenerated.

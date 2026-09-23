@@ -43,6 +43,13 @@ function mockFetch(routes: Record<string, { status?: number; body: string }>) {
 const root = 'https://example.test/embeddings'
 
 describe('snapshot loader', () => {
+  it('keeps artifact URLs inside the configured snapshot prefix', () => {
+    expect(artifactUrl(root, 'points.json')).toBe('https://example.test/embeddings/points.json')
+    expect(() => artifactUrl(root, '../outside.json')).toThrow(SnapshotIntegrityError)
+    expect(() => artifactUrl(root, '/outside.json')).toThrow(SnapshotIntegrityError)
+    expect(() => artifactUrl('/snapshot', '../outside.json')).toThrow(SnapshotIntegrityError)
+  })
+
   it('accepts a manifest only after the artifact hashes match', async () => {
     const { points, ids, manifest } = await fixture()
     const { fetchImpl, calls } = mockFetch({

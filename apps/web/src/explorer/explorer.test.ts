@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { parseArchiveDate, yearToZ } from './dates'
+import { dateColorForYear } from './colors'
 import { resultsToCsv } from './export-results'
 import { mainSiteHome, mainSiteRecord, officialSourceUrl } from './links'
 import { buildProjection, focusableIds, locateRecord } from './projection'
@@ -32,6 +33,14 @@ describe('archive dates', () => {
     expect(yearToZ(null, 'mtl_archives_metadata_1.json')).toBeLessThan(0)
     expect(yearToZ(1947, 'same')).toBeGreaterThan(yearToZ(1920, 'same'))
     expect(yearToZ(1932, 'same-id')).toBe(yearToZ(1932, 'same-id'))
+  })
+})
+
+describe('date map colors', () => {
+  it('keeps archive decades visibly distinct while separating undated points', () => {
+    expect(dateColorForYear(1920, 'light')).not.toEqual(dateColorForYear(1930, 'light'))
+    expect(dateColorForYear(1930, 'light')).not.toEqual(dateColorForYear(1970, 'light'))
+    expect(dateColorForYear(null, 'light')).not.toEqual(dateColorForYear(1930, 'light'))
   })
 })
 
@@ -175,5 +184,27 @@ describe('export', () => {
     expect(csv).toContain('ranking_score')
     expect(csv.toLowerCase()).not.toContain('confidence')
     expect(csv).toContain('false')
+  })
+
+  it('quotes line breaks and neutralizes spreadsheet formulas in archive text', () => {
+    const csv = resultsToCsv([{
+      id: 'row',
+      title: '=HYPERLINK("https://example.test")',
+      dateSource: '1930\r\n1931',
+      dateStatus: 'date',
+      year: 1930,
+      cote: '@archive',
+      projected: true,
+      placement: 'projected',
+      recordUrl: 'https://www.mtlarchives.com/photo/row',
+      sourceUrl: '+unsafe',
+      rankingScore: null,
+      visualIndexScore: null,
+      semanticIndexScore: null,
+    }])
+    expect(csv).toContain("'=HYPERLINK(\"\"https://example.test\"\")")
+    expect(csv).toContain('"1930\r\n1931"')
+    expect(csv).toContain("'@archive")
+    expect(csv).toContain("'+unsafe")
   })
 })
