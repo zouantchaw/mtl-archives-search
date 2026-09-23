@@ -38,7 +38,7 @@ The manifest records:
 
 `embeddings.bin` is little-endian: `uint32` count, `uint32` dimensions, then `float32` rows. Byte length must be `8 + count * dimensions * 4`. Published folders require the point IDs and embedding IDs in the same order. Validation fails if a requested model id differs from the manifest, including when the manifest model is unknown.
 
-The public prefix `https://pub-6a29793ea7664738880d1cc5afb21b87.r2.dev/embeddings/` currently has no `manifest.json` (HTTP 404). The legacy adapter reads `embeddings_2d.json`, `embeddings_ids.json`, and the 8-byte header of `embeddings_512d.bin`. A read on 2026-09-23 showed 14,715 points and a header of 14,715 × 512. That count is whatever the files contain, not a claim about the live corpus. Legacy model, index, seed, and generation time stay unknown. Embedding IDs with no point are reported and are not given coordinates.
+The public prefix `https://pub-6a29793ea7664738880d1cc5afb21b87.r2.dev/embeddings/` currently has no `manifest.json` (HTTP 404). Only that 404 uses the legacy adapter. A present manifest that fails schema, checksum, byte length, or ID order is rejected and does not fall back. The legacy adapter reads `embeddings_2d.json`, `embeddings_ids.json`, and the 8-byte header of `embeddings_512d.bin`. The full vector file is checked against the manifest hash only when a similarity comparison asks for it. A read on 2026-09-23 showed 14,715 points and a header of 14,715 × 512. That count is whatever the files contain, not a claim about the live corpus. Legacy model, index, seed, and generation time stay unknown. Embedding IDs with no point are reported and are not given coordinates.
 
 ## Commands
 
@@ -73,7 +73,17 @@ npm run explorer:validate --workspace=@mtl-archives/scripts -- \
   --expect-model MODEL
 ```
 
-`npm run vectorize:export` now exits before any network call and points here.
+`npm run vectorize:export` is a dry run unless `--write` is present. It does not upload.
+
+Vectors for the historical visual index `mtl-archives-clip` are read, not written, with Cloudflare's `get_by_ids` API. Ids come from a local manifest or an `--ids` file. Pass the model that produced those vectors with `--model-id`; if you omit it, the manifest stores null. The default seed is 42.
+
+```bash
+npm run vectorize:export --workspace=@mtl-archives/scripts
+npm run vectorize:export --workspace=@mtl-archives/scripts -- --input vectors.json --model-id MODEL --write --out ./tmp/explorer-artifacts
+npm run vectorize:export --workspace=@mtl-archives/scripts -- --fetch --write --ids ids.txt --model-id MODEL --out ./tmp/explorer-artifacts
+```
+
+`--fetch` uses `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` (or the existing `CLOUDFLARE_AI_TOKEN` / `CF_AI_TOKEN` aliases). A dry run never calls that API. `--fetch` without `--write` also stays local.
 
 ## Regenerate and roll back
 
@@ -88,7 +98,9 @@ Region colors and the geometric date check are tied to the legacy layout. A vers
 
 ## Deployment
 
-`apps/web/vercel.json` only rewrites two kit PDFs. `index.html` used to name `https://explore.mtlarchives.com/`. A read-only GET on 2026-09-23 returned 404 from Vercel. `https://www.mtlarchives.com/explore` also returned 404. `https://www.mtlarchives.com/` is the Next.js site on Vercel. This change set does not deploy, change DNS, or write R2.
+The production explorer is [https://explorer.mtlarchives.com/](https://explorer.mtlarchives.com/). `apps/web/vercel.json` only rewrites two kit PDFs. `https://www.mtlarchives.com/` is the Next.js site and does not serve `/explore`. This change set does not deploy, change DNS, or write R2.
+
+In development, Vite proxies `/snapshot` to the fixed R2 prefix `https://pub-6a29793ea7664738880d1cc5afb21b87.r2.dev/embeddings` and forwards Range headers. The dev app requests `/snapshot` unless `VITE_R2_EMBEDDINGS_BASE_URL` is set. Production builds keep the direct R2 URL. The proxy is not an open proxy.
 
 ## Browser QA
 

@@ -6,6 +6,7 @@ export type ExportRow = {
   year: number | null
   cote: string | null
   projected: boolean
+  placement: 'pending' | 'projected' | 'unprojected'
   recordUrl: string
   sourceUrl: string | null
   rankingScore: number | null
@@ -28,6 +29,7 @@ export function resultsToCsv(rows: ExportRow[]): string {
     'year',
     'cote',
     'projected',
+    'placement',
     'record_url',
     'source_url',
     'ranking_score',
@@ -44,6 +46,7 @@ export function resultsToCsv(rows: ExportRow[]): string {
       row.year,
       row.cote,
       row.projected,
+      row.placement,
       row.recordUrl,
       row.sourceUrl,
       row.rankingScore,

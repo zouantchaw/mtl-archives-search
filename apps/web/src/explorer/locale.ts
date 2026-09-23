@@ -20,7 +20,7 @@ const en = {
   closeAdvanced: 'Close research tools',
   about: 'About this map',
   closeAbout: 'Close about this map',
-  mapSentence: 'Proximity shows model similarity, not geography or historical certainty.',
+  mapSentence: 'Nearby points are model-similar, not places.',
   results: 'Results',
   returnedCount: '{count} returned',
   snapshotCount: '{count} in this snapshot',
@@ -124,6 +124,11 @@ const en = {
   exportHelp: 'Exports the current returned list on this device.',
   anomalyDetail: 'Closer to the {nearer}s projection centroid than to the stated {stated}s centroid. Geometric check only.',
   clearSelection: 'Clear selection',
+  snapshotIntegrity: 'This snapshot failed its integrity check and was not opened.',
+  snapshotEmpty: 'This snapshot loaded and contains no photographs.',
+  placementPending: 'Snapshot position not loaded',
+  menu: 'More',
+  closeMenu: 'Close menu',
 } as const
 
 const fr: { [K in keyof typeof en]: string } = {
@@ -146,7 +151,7 @@ const fr: { [K in keyof typeof en]: string } = {
   closeAdvanced: 'Fermer les outils de recherche',
   about: 'À propos de cette carte',
   closeAbout: 'Fermer le panneau',
-  mapSentence: 'La proximité indique une similarité de modèle, pas la géographie ni une certitude historique.',
+  mapSentence: 'Points proches : similarité, pas un lieu.',
   results: 'Résultats',
   returnedCount: '{count} renvoyés',
   snapshotCount: '{count} dans cet instantané',
@@ -250,6 +255,11 @@ const fr: { [K in keyof typeof en]: string } = {
   exportHelp: 'Exporte la liste renvoyée, sur cet appareil.',
   anomalyDetail: 'Plus proche du centroïde de projection des années {nearer} que de celui des années {stated}. Contrôle géométrique seulement.',
   clearSelection: 'Effacer la sélection',
+  snapshotIntegrity: 'Cet instantané a échoué au contrôle d’intégrité et n’a pas été ouvert.',
+  snapshotEmpty: 'Cet instantané est chargé et ne contient aucune photographie.',
+  placementPending: 'Position dans l’instantané non chargée',
+  menu: 'Plus',
+  closeMenu: 'Fermer le menu',
 }
 
 export type Dictionary = { [K in keyof typeof en]: string }

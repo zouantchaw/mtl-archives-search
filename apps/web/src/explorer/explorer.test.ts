@@ -4,7 +4,9 @@ import { resultsToCsv } from './export-results'
 import { mainSiteHome, mainSiteRecord, officialSourceUrl } from './links'
 import { buildProjection, focusableIds, locateRecord } from './projection'
 import { displayTitle } from './titles'
-import { SearchSession, normalizeSearchResponse } from './search'
+import { imageIsBroken, imageKey } from './images'
+import { beginSearch, boardKey, commitSearchFailure, commitSearchSuccess, emptyBoard, visibleBoard, SearchSession, normalizeSearchResponse } from './search'
+import { resolveSnapshotBase, rewriteSnapshotPath } from './snapshot-proxy'
 import { parseExplorerSearch, serializeExplorerSearch, withLocale } from './url-state'
 
 describe('archive dates', () => {
@@ -109,6 +111,49 @@ describe('url and locale', () => {
   })
 })
 
+describe('search result board', () => {
+  const item = (id: string) => ({ id })
+
+  it('drops the previous list when the next query starts or fails, and ignores a stale success', () => {
+    const keyA = boardKey('tramway', 'smart')
+    const loaded = commitSearchSuccess(beginSearch(keyA, 1, true), 1, keyA, { items: [item('a')], returnedCount: 1, degraded: false })
+    const keyB = boardKey('église', 'smart')
+    const started = beginSearch<typeof loaded.results[number]>(keyB, 2, true)
+    expect(visibleBoard(loaded, 'église', 'smart').results).toEqual([])
+    expect(started.results).toEqual([])
+    expect(started.searching).toBe(true)
+    const failed = commitSearchFailure(started, 2, keyB, 'failed')
+    expect(failed.results).toEqual([])
+    expect(failed.error).toBe('failed')
+    const stale = commitSearchSuccess(started, 1, keyA, { items: [item('a')], returnedCount: 1, degraded: false })
+    expect(stale.results).toEqual([])
+    expect(stale.requestId).toBe(2)
+    const cleared = beginSearch(boardKey('', 'smart'), 3, false)
+    expect(visibleBoard(loaded, '', 'smart').results).toEqual([])
+    expect(cleared.searching).toBe(false)
+    expect(emptyBoard().results).toEqual([])
+  })
+})
+
+describe('image failure', () => {
+  it('does not keep a broken image after the selection changes', () => {
+    const broken = imageKey('bad', 'https://example.test/bad.jpg')
+    expect(imageIsBroken(broken, 'bad', 'https://example.test/bad.jpg')).toBe(true)
+    expect(imageIsBroken(broken, 'good', 'https://example.test/good.jpg')).toBe(false)
+    expect(imageIsBroken(broken, 'bad', 'https://example.test/replaced.jpg')).toBe(false)
+  })
+})
+
+describe('snapshot dev proxy', () => {
+  it('uses the fixed dev prefix unless a snapshot URL is configured', () => {
+    expect(resolveSnapshotBase({ dev: true })).toBe('/snapshot')
+    expect(resolveSnapshotBase({ dev: false })).toBe('https://pub-6a29793ea7664738880d1cc5afb21b87.r2.dev/embeddings')
+    expect(resolveSnapshotBase({ dev: true, configured: 'https://example.test/custom/' })).toBe('https://example.test/custom')
+    expect(rewriteSnapshotPath('/snapshot/embeddings_2d.json')).toBe('/embeddings/embeddings_2d.json')
+    expect(() => rewriteSnapshotPath('/api/search')).toThrow(/snapshot-proxy-path/)
+  })
+})
+
 describe('export', () => {
   it('labels scores and keeps unprojected rows', () => {
     const csv = resultsToCsv([{
@@ -119,6 +164,7 @@ describe('export', () => {
       year: null,
       cote: null,
       projected: false,
+      placement: 'unprojected',
       recordUrl: 'https://www.mtlarchives.com/photo/missing',
       sourceUrl: null,
       rankingScore: 0.2,

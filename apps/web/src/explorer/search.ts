@@ -131,6 +131,72 @@ export function normalizeSearchResponse(payload: unknown): NormalizedSearch {
   }
 }
 
+export type SearchFailure = 'timeout' | 'failed'
+
+export type ResultBoard<T> = {
+  key: string
+  requestId: number
+  results: T[]
+  returnedCount: number | null
+  error: SearchFailure | null
+  searching: boolean
+  degraded: boolean
+}
+
+export function boardKey(query: string, mode: string): string {
+  return `${mode}\n${query.trim()}`
+}
+
+export function emptyBoard<T>(key = ''): ResultBoard<T> {
+  return { key, requestId: 0, results: [], returnedCount: null, error: null, searching: false, degraded: false }
+}
+
+export function beginSearch<T>(key: string, requestId: number, hasQuery: boolean): ResultBoard<T> {
+  return {
+    key,
+    requestId,
+    results: [],
+    returnedCount: null,
+    error: null,
+    searching: hasQuery,
+    degraded: false,
+  }
+}
+
+export function commitSearchSuccess<T>(
+  board: ResultBoard<T>,
+  requestId: number,
+  key: string,
+  payload: { items: T[]; returnedCount: number; degraded: boolean },
+): ResultBoard<T> {
+  if (board.requestId !== requestId || board.key !== key) return board
+  return {
+    key,
+    requestId,
+    results: payload.items,
+    returnedCount: payload.returnedCount,
+    error: null,
+    searching: false,
+    degraded: payload.degraded,
+  }
+}
+
+export function commitSearchFailure<T>(
+  board: ResultBoard<T>,
+  requestId: number,
+  key: string,
+  error: SearchFailure,
+): ResultBoard<T> {
+  if (board.requestId !== requestId || board.key !== key) return board
+  return { key, requestId, results: [], returnedCount: null, error, searching: false, degraded: false }
+}
+
+export function visibleBoard<T>(board: ResultBoard<T>, query: string, mode: string): ResultBoard<T> {
+  const key = boardKey(query, mode)
+  if (board.key !== key) return { ...emptyBoard<T>(key), searching: false }
+  return board
+}
+
 export function shouldRetry(status: number | null, attempt: number): boolean {
   if (attempt >= 1) return false
   return status == null || status === 408 || status === 429 || status >= 500

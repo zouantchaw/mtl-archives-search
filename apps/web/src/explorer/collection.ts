@@ -30,6 +30,14 @@ function normalizeItem(value: unknown): CollectionItem | null {
   }
 }
 
+export function browserStorage(): Storage | null {
+  try {
+    return window.localStorage
+  } catch {
+    return null
+  }
+}
+
 export function readCollection(storage: Storage | null): CollectionItem[] {
   if (!storage) return []
   try {

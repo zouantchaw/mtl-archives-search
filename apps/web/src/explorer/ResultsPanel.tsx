@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { parseArchiveDate } from './dates'
+import { imageIsBroken, imageKey } from './images'
 import { thumbnailUrl } from './links'
 import { displayTitle, sourceTitle } from './titles'
 import type { Dictionary } from './locale'
@@ -39,7 +40,7 @@ export function ResultsPanel(props: {
   }, [props.items])
 
   return (
-    <div id="explorer-results" className="results-panel" ref={listRef} tabIndex={0} aria-label={text.results}>
+    <div className="results-panel" ref={listRef} tabIndex={0} aria-label={text.results}>
       {props.searching ? <p className="status-line" role="status">{text.searching}</p> : null}
       {props.error ? (
         <div className="status-block" role="alert">
@@ -62,16 +63,12 @@ export function ResultsPanel(props: {
                 aria-pressed={props.selectedId === item.id}
                 onClick={() => props.onSelect(item.id)}
               >
-                {item.imageUrl ? (
-                  <img src={thumbnailUrl(props.origin, item.imageUrl, 320, 200)} alt="" />
-                ) : (
-                  <span className="photo-fallback">{text.imageUnavailable}</span>
-                )}
+                <ResultThumb id={item.id} url={item.imageUrl} origin={props.origin} fallback={text.imageUnavailable} />
                 <span>
                   <strong>{title}</strong>
                   <span>{dateLine}</span>
                   {parsed.status === 'unparsed' ? <span>{text.dateUnparsed}</span> : null}
-                  <span>{item.projected ? text.onMap : text.notOnMap}</span>
+                  <span>{item.placement === 'projected' ? text.onMap : item.placement === 'unprojected' ? text.notOnMap : text.placementPending}</span>
                   {item.cote ? <span>{item.cote}</span> : null}
                 </span>
               </button>
@@ -80,5 +77,19 @@ export function ResultsPanel(props: {
         })}
       </ul>
     </div>
+  )
+}
+
+function ResultThumb(props: { id: string; url: string | null; origin: string; fallback: string }) {
+  const [brokenKey, setBrokenKey] = useState<string | null>(null)
+  if (!props.url || imageIsBroken(brokenKey, props.id, props.url)) {
+    return <span className="photo-fallback">{props.fallback}</span>
+  }
+  return (
+    <img
+      src={thumbnailUrl(props.origin, props.url, 320, 200)}
+      alt=""
+      onError={() => setBrokenKey(imageKey(props.id, props.url))}
+    />
   )
 }

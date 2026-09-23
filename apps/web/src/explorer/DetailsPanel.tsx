@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { parseArchiveDate } from './dates'
+import { imageIsBroken, imageKey } from './images'
 import { mainSiteRecord, officialSourceUrl, thumbnailUrl, type Lang } from './links'
 import { displayTitle, sourceTitle } from './titles'
 import { geometricAnomaly } from './research'
@@ -15,14 +16,14 @@ export function DetailsPanel(props: {
   saved: boolean
   similarDisabled: boolean
   similarWorking: boolean
-  onBack: () => void
   onClose: () => void
   onCopy: (value: string) => void
   onToggleSave: () => void
   onSimilar: () => void
 }) {
   const { text, item } = props
-  const [imageFailed, setImageFailed] = useState(false)
+  const [brokenKey, setBrokenKey] = useState<string | null>(null)
+  const imageFailed = imageIsBroken(brokenKey, item.id, item.imageUrl)
   const parsed = parseArchiveDate(item.dateRaw)
   const title = displayTitle(sourceTitle(item.sourceTitle), text.untitled)
   const recordUrl = mainSiteRecord(item.id, props.lang)
@@ -36,18 +37,17 @@ export function DetailsPanel(props: {
   return (
     <article className="details-panel" aria-label={text.selectedPhoto}>
       <div className="panel-actions">
-        <button type="button" className="btn" onClick={props.onBack}>{text.back}</button>
         <button type="button" className="btn" onClick={props.onClose}>{text.closeDetails}</button>
       </div>
       {image ? (
-        <img className="detail-photo" src={image} alt={title} onError={() => setImageFailed(true)} />
+        <img className="detail-photo" src={image} alt={title} onError={() => setBrokenKey(imageKey(item.id, item.imageUrl))} />
       ) : (
         <div className="photo-fallback large">{text.imageUnavailable}</div>
       )}
       <h2>{title}</h2>
       <p>{parsed.status === 'missing' ? text.dateMissing : parsed.source}</p>
       {parsed.status === 'unparsed' ? <p className="help-copy">{text.dateUnparsed}</p> : null}
-      <p>{item.projected ? text.onMap : text.unprojectedDetail}</p>
+      <p>{item.placement === 'projected' ? text.onMap : item.placement === 'unprojected' ? text.unprojectedDetail : text.placementPending}</p>
       {item.cote ? <p>{text.reference}: {item.cote}</p> : null}
       {item.credits ? <p>{text.credits}: {item.credits}</p> : null}
       <p className="meta-id">{text.recordId}: {item.id}</p>

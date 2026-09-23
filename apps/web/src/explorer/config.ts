@@ -1,4 +1,5 @@
 import type { ThemeName } from './url-state'
+import { resolveSnapshotBase } from './snapshot-proxy'
 
 export const WORKER_ORIGIN = 'https://mtl-archives-worker.wiel.workers.dev'
 export const DEFAULT_SNAPSHOT_BASE = 'https://pub-6a29793ea7664738880d1cc5afb21b87.r2.dev/embeddings'
@@ -10,7 +11,10 @@ export function apiOrigin(): string {
 }
 
 export function snapshotBase(): string {
-  return (import.meta.env.VITE_R2_EMBEDDINGS_BASE_URL ?? DEFAULT_SNAPSHOT_BASE).replace(/\/$/, '')
+  return resolveSnapshotBase({
+    dev: import.meta.env.DEV,
+    configured: import.meta.env.VITE_R2_EMBEDDINGS_BASE_URL,
+  })
 }
 
 export function mapBackground(theme: ThemeName): number {

@@ -25,7 +25,7 @@
     "vectorize:export": "tsx src/vectorize/export-embeddings.ts",
     "explorer:export": "tsx src/explorer/export-projection.ts",
     "explorer:validate": "tsx src/explorer/validate-cli.ts",
-    "test": "node --import tsx --test src/explorer/artifact-contract.test.ts",
+    "test": "node --import tsx --test src/explorer/artifact-contract.test.ts src/vectorize/export-embeddings.test.ts",
     "db:generate": "tsx src/db/generate-sql.ts",
     "link-records:report": "tsx src/analysis/record-linkage-report.ts",
     "search-quality:audit": "tsx src/analysis/search-quality-audit.ts",

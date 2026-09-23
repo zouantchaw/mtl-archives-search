@@ -17,6 +17,7 @@ export type ExplorerItem = {
   visualScore: number | null
   semanticScore: number | null
   cosine: number | null
+  placement: 'pending' | 'projected' | 'unprojected'
   projected: boolean
   x?: number
   y?: number
@@ -25,7 +26,12 @@ export type ExplorerItem = {
   normalizedY?: number
 }
 
-export function itemFromSearch(record: SearchRecord, point: ProjectedPoint | undefined, cosine: number | null = null): ExplorerItem {
+export function itemFromSearch(
+  record: SearchRecord,
+  point: ProjectedPoint | undefined,
+  placement: ExplorerItem['placement'],
+  cosine: number | null = null,
+): ExplorerItem {
   return {
     id: record.id,
     sourceTitle: record.sourceTitle ?? point?.name ?? null,
@@ -42,7 +48,8 @@ export function itemFromSearch(record: SearchRecord, point: ProjectedPoint | und
     visualScore: record.branchScores?.visual ?? (record.source === 'visual' || (record.rankingScore == null && record.source == null) ? record.vectorScore : null),
     semanticScore: record.branchScores?.semantic ?? (record.source === 'semantic' ? record.vectorScore : null),
     cosine,
-    projected: Boolean(point),
+    placement,
+    projected: placement === 'projected',
     x: point?.x,
     y: point?.y,
     z: point?.z,
@@ -68,6 +75,7 @@ export function itemFromPoint(point: ProjectedPoint): ExplorerItem {
     visualScore: null,
     semanticScore: null,
     cosine: null,
+    placement: 'projected',
     projected: true,
     x: point.x,
     y: point.y,
@@ -77,8 +85,8 @@ export function itemFromPoint(point: ProjectedPoint): ExplorerItem {
   }
 }
 
-export function itemFromId(id: string, point: ProjectedPoint | undefined): ExplorerItem {
-  if (point) return itemFromPoint(point)
+export function itemFromId(id: string, point: ProjectedPoint | undefined, placement: ExplorerItem['placement'] = point ? 'projected' : 'pending'): ExplorerItem {
+  if (point && placement === 'projected') return itemFromPoint(point)
   return {
     id,
     sourceTitle: null,
@@ -95,6 +103,7 @@ export function itemFromId(id: string, point: ProjectedPoint | undefined): Explo
     visualScore: null,
     semanticScore: null,
     cosine: null,
-    projected: false,
+    placement,
+    projected: placement === 'projected',
   }
 }
