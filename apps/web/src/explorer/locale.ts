@@ -1,6 +1,15 @@
 import type { Lang } from './links'
 
 const en = {
+  similarityWeb: 'Similarity web',
+  webLoading: 'Finding connections…',
+  webError: 'Connections unavailable',
+  webEmpty: 'No mapped connections',
+  webConnections: '{count} connections',
+  webHelp: 'Search connects each mapped result to up to two similar snapshot vectors. Snapshot neighbors connect to the chosen photo. These are model similarities, not historical relationships.',
+  closeCollection: 'Close collection',
+  collectionLocal: 'Photographs saved on this device. Open a photograph to inspect it or remove it from your collection.',
+
   product: 'mtl archives',
   explorer: 'Explorer',
   returnHome: 'Archives',
@@ -85,8 +94,8 @@ const en = {
   legendOld: 'Earlier',
   legendNew: 'Later',
   legendUndated: 'Undated',
-  lines: 'Connection lines',
-  linesHelp: 'Lines join returned records that already have a map position. Off by default.',
+  lines: 'Similarity web',
+  linesHelp: 'Connects mapped photographs using snapshot vector similarity. Search links nearby vector neighbors; a similarity search links back to its source photo.',
   anomalies: 'Geometric date check',
   anomaliesHelp: 'Marks a point when it sits closer to another decade centroid than to its stated decade. This does not correct the date.',
   anomaliesUnavailable: 'This check is defined only for the legacy snapshot layout.',
@@ -150,6 +159,15 @@ const en = {
 } as const
 
 const fr: { [K in keyof typeof en]: string } = {
+  similarityWeb: 'Liens de similarité',
+  webLoading: 'Recherche des liens…',
+  webError: 'Liens indisponibles',
+  webEmpty: 'Aucun lien sur la carte',
+  webConnections: '{count} liens',
+  webHelp: 'La recherche relie chaque résultat placé à deux vecteurs semblables au maximum. Les voisins sont reliés à la photo choisie. Ce sont des similarités du modèle, pas des liens historiques.',
+  closeCollection: 'Fermer la collection',
+  collectionLocal: 'Photographies enregistrées sur cet appareil. Ouvrez une photographie pour l’examiner ou la retirer de votre collection.',
+
   product: 'mtl archives',
   explorer: 'Explorateur',
   returnHome: 'Archives',
@@ -235,7 +253,7 @@ const fr: { [K in keyof typeof en]: string } = {
   legendNew: 'Récentes',
   legendUndated: 'Sans date',
   lines: 'Lignes de liaison',
-  linesHelp: 'Les lignes relient les dossiers déjà placés sur la carte. Désactivées par défaut.',
+  linesHelp: 'Relie les photographies placées selon les vecteurs de l’instantané. Une recherche de similarité relie les voisins à la photo source.',
   anomalies: 'Contrôle géométrique des dates',
   anomaliesHelp: 'Signale un point plus proche du centroïde d’une autre décennie que de celui de sa décennie indiquée. Cela ne corrige pas la date.',
   anomaliesUnavailable: 'Ce contrôle ne vaut que pour la disposition de l’instantané ancien.',

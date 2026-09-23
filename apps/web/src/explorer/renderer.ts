@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { MOUSE, TOUCH } from 'three'
 import { cameraBoundsForPoints, cameraFitForBounds, type CameraBounds } from './camera-fit'
+import type { GraphEdge } from './graph'
 import { MAP_SCALE } from './projection'
 import type { ViewMode } from './url-state'
 
@@ -82,6 +83,12 @@ export class PointCloudRenderer {
   private readonly selectionMarkerElement: HTMLDivElement
   private readonly selectionMarkerLabel: HTMLButtonElement
   private lines: THREE.LineSegments | null = null
+  private connectionEdges: GraphEdge[] = []
+  private connectionVisible = false
+  private connectionTheme: 'light' | 'dark' = 'light'
+  private renderedConnectionEdges: GraphEdge[] = []
+  private renderedConnectionNodeIds: string[] = []
+  private connectionNodes: THREE.Points | null = null
   private ids: string[] = []
   private indexById = new Map<string, number>()
   private positions = new Float32Array()
@@ -308,6 +315,7 @@ export class PointCloudRenderer {
     this.geometry.setAttribute('position', new THREE.BufferAttribute(this.positions, 3))
     this.geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
     this.cloud.geometry = this.geometry
+    this.rebuildConnectionLines()
     this.updateSelectedMarker()
     if (this.pointBounds && (!hadPoints || (this.overviewFit && !sameBounds(previousBounds, this.pointBounds)))) {
       this.overviewFit = true
@@ -324,6 +332,7 @@ export class PointCloudRenderer {
       buffer[index * 3 + 2] = srgbByteToLinear(color[2])
     })
     this.geometry.setAttribute('color', new THREE.BufferAttribute(buffer, 3))
+    this.updateConnectionNodeColors()
   }
 
   setView(mode: ViewMode): void {
@@ -333,7 +342,7 @@ export class PointCloudRenderer {
       target: this.controls.target.clone(),
       fov: this.camera.fov,
     }
-    const index = this.selectedId && this.focusedBounds && !this.cameraManuallyControlled
+    const index = this.selectedId && !this.cameraManuallyControlled
       ? this.indexById.get(this.selectedId) : undefined
     let targetBounds = this.pointBounds ?? defaultBounds(mode)
     if (index != null) {
@@ -361,23 +370,22 @@ export class PointCloudRenderer {
   }
 
   setLines(ids: string[], visible: boolean): void {
-    this.clearLines()
-    if (!visible || ids.length < 2) return
-    const present = ids.filter((id) => this.indexById.has(id))
-    if (present.length < 2) return
-    const positions: number[] = []
-    for (let index = 0; index < present.length - 1; index += 1) {
-      const from = this.coordinates(present[index])
-      const to = this.coordinates(present[index + 1])
-      if (!from || !to) continue
-      positions.push(from[0], from[1], from[2], to[0], to[1], to[2])
+    const edges: GraphEdge[] = []
+    for (let index = 0; index < ids.length - 1; index += 1) {
+      const source = ids[index]
+      const target = ids[index + 1]
+      if (source && target) edges.push({ source, target, score: 1 })
     }
-    if (positions.length === 0) return
-    const geometry = new THREE.BufferGeometry()
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
-    const material = new THREE.LineBasicMaterial({ color: 0x0f5ea8, transparent: true, opacity: 0.7 })
-    this.lines = new THREE.LineSegments(geometry, material)
-    this.scene.add(this.lines)
+    this.setConnectionGraph(edges, visible, this.connectionTheme)
+  }
+
+  /** Render snapshot similarity connections whose endpoints are present in the cloud. */
+  setConnectionGraph(edges: GraphEdge[], visible: boolean, theme: 'light' | 'dark'): void {
+    this.connectionEdges = edges.filter((edge) => edge.source && edge.target && edge.source !== edge.target && Number.isFinite(edge.score))
+    this.connectionVisible = visible
+    this.connectionTheme = theme
+    this.material.size = (this.container.clientWidth < 700 ? 9 : 5.5) * (visible && edges.length > 0 ? 0.5 : 1)
+    this.rebuildConnectionLines()
   }
 
   focus(ids: string[]): void {
@@ -483,7 +491,7 @@ export class PointCloudRenderer {
     this.camera.updateProjectionMatrix()
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
     this.renderer.setSize(width, height, false)
-    this.material.size = width < 700 ? 9 : 5.5
+    this.material.size = (width < 700 ? 9 : 5.5) * (this.connectionVisible && this.connectionEdges.length > 0 ? 0.5 : 1)
     this.raycaster.params.Points.threshold = width < 700 ? 18 : 12
     const fitBounds = this.overviewFit
       ? this.pointBounds ?? defaultBounds(this.mode)
@@ -638,6 +646,158 @@ export class PointCloudRenderer {
       array[index * 3 + 2] = this.zValues[index] * blend
     }
     attribute.needsUpdate = true
+    this.updateConnectionLinePositions()
+  }
+
+  private rebuildConnectionLines(): void {
+    this.clearLines()
+    if (!this.connectionVisible || this.connectionEdges.length === 0) return
+    const cloudPosition = this.geometry.getAttribute('position') as THREE.BufferAttribute | undefined
+    if (!cloudPosition) return
+    const cloudArray = cloudPosition.array as Float32Array
+    const present = this.connectionEdges.filter((edge) => {
+      const source = this.indexById.get(edge.source)
+      const target = this.indexById.get(edge.target)
+      if (source == null || target == null) return false
+      return [source, target].every((index) => [0, 1, 2].every((component) => Number.isFinite(cloudArray[index * 3 + component])))
+    })
+    if (present.length === 0) return
+    const positions = new Float32Array(present.length * 6)
+    const colors = new Float32Array(present.length * 6)
+    const base = new THREE.Color(this.connectionTheme === 'dark' ? 0x86b9f2 : 0x1f67a7)
+    const muted = new THREE.Color(this.connectionTheme === 'dark' ? 0x304b69 : 0x8ba8bd)
+    present.forEach((edge, index) => {
+      const source = this.indexById.get(edge.source)
+      const target = this.indexById.get(edge.target)
+      if (source == null || target == null) return
+      const lineOffset = index * 6
+      const sourceOffset = source * 3
+      const targetOffset = target * 3
+      positions[lineOffset] = cloudArray[sourceOffset] ?? 0
+      positions[lineOffset + 1] = cloudArray[sourceOffset + 1] ?? 0
+      positions[lineOffset + 2] = cloudArray[sourceOffset + 2] ?? 0
+      positions[lineOffset + 3] = cloudArray[targetOffset] ?? 0
+      positions[lineOffset + 4] = cloudArray[targetOffset + 1] ?? 0
+      positions[lineOffset + 5] = cloudArray[targetOffset + 2] ?? 0
+      const strength = THREE.MathUtils.clamp((edge.score - 0.2) / 0.8, 0, 1)
+      const color = base.clone().lerp(muted, 0.45 * (1 - strength))
+      colors[lineOffset] = color.r
+      colors[lineOffset + 1] = color.g
+      colors[lineOffset + 2] = color.b
+      colors[lineOffset + 3] = color.r
+      colors[lineOffset + 4] = color.g
+      colors[lineOffset + 5] = color.b
+    })
+    const geometry = new THREE.BufferGeometry()
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+    const material = new THREE.LineBasicMaterial({
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.56,
+      depthTest: false,
+      depthWrite: false,
+    })
+    this.lines = new THREE.LineSegments(geometry, material)
+    this.lines.renderOrder = 1
+    this.renderedConnectionEdges = present
+    this.scene.add(this.lines)
+
+    const nodeIds = [...new Set(present.flatMap((edge) => [edge.source, edge.target]))]
+    const nodePositions = new Float32Array(nodeIds.length * 3)
+    const nodeColors = new Float32Array(nodeIds.length * 3)
+    const cloudColors = this.geometry.getAttribute('color') as THREE.BufferAttribute | undefined
+    if (cloudColors) {
+      const cloudColorArray = cloudColors.array as Float32Array
+      nodeIds.forEach((id, index) => {
+        const pointIndex = this.indexById.get(id)
+        if (pointIndex == null) return
+        const pointOffset = pointIndex * 3
+        const nodeOffset = index * 3
+        nodePositions[nodeOffset] = cloudArray[pointOffset] ?? 0
+        nodePositions[nodeOffset + 1] = cloudArray[pointOffset + 1] ?? 0
+        nodePositions[nodeOffset + 2] = cloudArray[pointOffset + 2] ?? 0
+        nodeColors[nodeOffset] = cloudColorArray[pointOffset] ?? 1
+        nodeColors[nodeOffset + 1] = cloudColorArray[pointOffset + 1] ?? 1
+        nodeColors[nodeOffset + 2] = cloudColorArray[pointOffset + 2] ?? 1
+      })
+    }
+    const nodeGeometry = new THREE.BufferGeometry()
+    nodeGeometry.setAttribute('position', new THREE.BufferAttribute(nodePositions, 3))
+    nodeGeometry.setAttribute('color', new THREE.BufferAttribute(nodeColors, 3))
+    const nodeMaterial = new THREE.PointsMaterial({
+      size: 6,
+      sizeAttenuation: false,
+      vertexColors: true,
+      alphaMap: this.pointAlphaTexture,
+      alphaTest: 0.1,
+      transparent: true,
+      opacity: 1,
+      depthTest: false,
+      depthWrite: false,
+    })
+    this.connectionNodes = new THREE.Points(nodeGeometry, nodeMaterial)
+    this.connectionNodes.renderOrder = 2
+    this.renderedConnectionNodeIds = nodeIds
+    this.scene.add(this.connectionNodes)
+  }
+
+  private updateConnectionLinePositions(): void {
+    if (!this.lines || this.renderedConnectionEdges.length === 0) return
+    const linePosition = this.lines.geometry.getAttribute('position') as THREE.BufferAttribute | undefined
+    const cloudPosition = this.geometry.getAttribute('position') as THREE.BufferAttribute | undefined
+    if (!linePosition || !cloudPosition) return
+    const lineArray = linePosition.array as Float32Array
+    const cloudArray = cloudPosition.array as Float32Array
+    this.renderedConnectionEdges.forEach((edge, index) => {
+      const source = this.indexById.get(edge.source)
+      const target = this.indexById.get(edge.target)
+      if (source == null || target == null) return
+      const lineOffset = index * 6
+      const sourceOffset = source * 3
+      const targetOffset = target * 3
+      lineArray[lineOffset] = cloudArray[sourceOffset] ?? 0
+      lineArray[lineOffset + 1] = cloudArray[sourceOffset + 1] ?? 0
+      lineArray[lineOffset + 2] = cloudArray[sourceOffset + 2] ?? 0
+      lineArray[lineOffset + 3] = cloudArray[targetOffset] ?? 0
+      lineArray[lineOffset + 4] = cloudArray[targetOffset + 1] ?? 0
+      lineArray[lineOffset + 5] = cloudArray[targetOffset + 2] ?? 0
+    })
+    linePosition.needsUpdate = true
+    if (this.connectionNodes && this.renderedConnectionNodeIds.length > 0) {
+      const nodePosition = this.connectionNodes.geometry.getAttribute('position') as THREE.BufferAttribute | undefined
+      if (!nodePosition) return
+      const nodeArray = nodePosition.array as Float32Array
+      this.renderedConnectionNodeIds.forEach((id, index) => {
+        const pointIndex = this.indexById.get(id)
+        if (pointIndex == null) return
+        const pointOffset = pointIndex * 3
+        const nodeOffset = index * 3
+        nodeArray[nodeOffset] = cloudArray[pointOffset] ?? 0
+        nodeArray[nodeOffset + 1] = cloudArray[pointOffset + 1] ?? 0
+        nodeArray[nodeOffset + 2] = cloudArray[pointOffset + 2] ?? 0
+      })
+      nodePosition.needsUpdate = true
+    }
+  }
+
+  private updateConnectionNodeColors(): void {
+    if (!this.connectionNodes || this.renderedConnectionNodeIds.length === 0) return
+    const nodeColor = this.connectionNodes.geometry.getAttribute('color') as THREE.BufferAttribute | undefined
+    const cloudColor = this.geometry.getAttribute('color') as THREE.BufferAttribute | undefined
+    if (!nodeColor || !cloudColor) return
+    const nodeArray = nodeColor.array as Float32Array
+    const cloudArray = cloudColor.array as Float32Array
+    this.renderedConnectionNodeIds.forEach((id, index) => {
+      const pointIndex = this.indexById.get(id)
+      if (pointIndex == null) return
+      const pointOffset = pointIndex * 3
+      const nodeOffset = index * 3
+      nodeArray[nodeOffset] = cloudArray[pointOffset] ?? 1
+      nodeArray[nodeOffset + 1] = cloudArray[pointOffset + 1] ?? 1
+      nodeArray[nodeOffset + 2] = cloudArray[pointOffset + 2] ?? 1
+    })
+    nodeColor.needsUpdate = true
   }
 
   private coordinates(id: string): [number, number, number] | null {
@@ -688,10 +848,19 @@ export class PointCloudRenderer {
   }
 
   private clearLines(): void {
-    if (!this.lines) return
-    this.scene.remove(this.lines)
-    this.lines.geometry.dispose()
-    ;(this.lines.material as THREE.Material).dispose()
-    this.lines = null
+    this.renderedConnectionEdges = []
+    this.renderedConnectionNodeIds = []
+    if (this.lines) {
+      this.scene.remove(this.lines)
+      this.lines.geometry.dispose()
+      ;(this.lines.material as THREE.Material).dispose()
+      this.lines = null
+    }
+    if (this.connectionNodes) {
+      this.scene.remove(this.connectionNodes)
+      this.connectionNodes.geometry.dispose()
+      ;(this.connectionNodes.material as THREE.Material).dispose()
+      this.connectionNodes = null
+    }
   }
 }

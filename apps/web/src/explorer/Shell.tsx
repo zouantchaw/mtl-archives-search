@@ -78,7 +78,7 @@ export function Shell(props: {
         <div className="desktop-actions">
           <Button type="button" variant={props.advancedOpen ? 'secondary' : 'outline'} size="sm" aria-label={text.advanced} title={text.advanced} aria-expanded={props.advancedOpen} onClick={props.onAdvanced}><SlidersHorizontal aria-hidden="true" data-icon="inline-start" /><span className="action-label">{text.advanced}</span><span className="mobile-action-label">{props.lang === 'fr' ? 'Outils' : 'Tools'}</span></Button>
           <Button type="button" variant="outline" size="sm" aria-label={text.about} title={text.about} onClick={props.onAbout}><Info aria-hidden="true" data-icon="inline-start" /><span className="action-label">{text.about}</span><span className="mobile-action-label">{props.lang === 'fr' ? 'À propos' : 'About'}</span></Button>
-          <Button type="button" variant={props.collectionActive ? 'secondary' : 'outline'} size="sm" aria-label={text.collection} title={text.collection} aria-pressed={props.collectionActive} onClick={props.onCollection}><Bookmark aria-hidden="true" data-icon="inline-start" /><span className="action-label">{text.collection}</span><span className="mobile-action-label">{text.collection}</span></Button>
+          <Button type="button" variant={props.collectionActive ? 'secondary' : 'outline'} size="sm" aria-label={text.collection} title={text.collection} aria-haspopup="dialog" aria-expanded={props.collectionActive} onClick={props.onCollection}><Bookmark aria-hidden="true" data-icon="inline-start" /><span className="action-label">{text.collection}</span><span className="mobile-action-label">{text.collection}</span></Button>
         </div>
       </div>
     </header>

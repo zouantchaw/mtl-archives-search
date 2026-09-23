@@ -12,6 +12,7 @@ Proximity on the map is model similarity. It is not Montreal geography and it is
 | `packages/scripts/src/explorer/artifact-contract.ts` | Schema, checksum, ID, and embedding checks |
 | `apps/web/src/explorer/search.ts` | Shared `/api/search` client, cancellation, normalization |
 | `apps/web/src/explorer/projection.ts` | Map positions. Records without a projection stay in the list and get no coordinates |
+| `apps/web/src/explorer/graph.ts` | Sparse cosine-similarity edges among search results and source-to-neighbor edges |
 | `apps/web/src/explorer/renderer.ts` | Three.js lifecycle, container sizing, disposal, selected-point marker, and 2D/3D pointer controls |
 | `apps/web/src/explorer/locale.ts` | English and French interface copy |
 | `apps/web/src/explorer/Shell.tsx` | Brand, return link, search, 2D/3D, theme, language, map color, and research actions |
@@ -39,7 +40,7 @@ The manifest records:
 
 `embeddings.bin` is little-endian: `uint32` count, `uint32` dimensions, then `float32` rows. Byte length must be `8 + count * dimensions * 4`. Published folders require the point IDs and embedding IDs in the same order. Validation fails if a requested model id differs from the manifest, including when the manifest model is unknown.
 
-The public prefix `https://pub-6a29793ea7664738880d1cc5afb21b87.r2.dev/embeddings/` currently has no `manifest.json` (HTTP 404). Only that 404 uses the legacy adapter. A present manifest that fails schema, checksum, byte length, or ID order is rejected and does not fall back. The legacy adapter reads `embeddings_2d.json`, `embeddings_ids.json`, and the 8-byte header of `embeddings_512d.bin`. The full vector file is checked against the manifest hash only when a similarity comparison asks for it. A read on 2026-09-23 showed 14,715 points and a header of 14,715 × 512. That count is whatever the files contain, not a claim about the live corpus. Legacy model, index, seed, and generation time stay unknown. Embedding IDs with no point are reported and are not given coordinates.
+The public prefix `https://pub-6a29793ea7664738880d1cc5afb21b87.r2.dev/embeddings/` currently has no `manifest.json` (HTTP 404). Only that 404 uses the legacy adapter. A present manifest that fails schema, checksum, byte length, or ID order is rejected and does not fall back. The legacy adapter reads `embeddings_2d.json`, `embeddings_ids.json`, and the 8-byte header of `embeddings_512d.bin`. The full vector file is loaded lazily for the search similarity web or a snapshot-neighbor comparison and checked against the manifest hash when available. Both flows share the pending download and cached matrix for that snapshot. A read on 2026-09-23 showed 14,715 points and a header of 14,715 × 512. That count is whatever the files contain, not a claim about the live corpus. Legacy model, index, seed, and generation time stay unknown. Embedding IDs with no point are reported and are not given coordinates.
 
 ## Commands
 
@@ -105,7 +106,7 @@ In development, Vite proxies `/snapshot` to the fixed R2 prefix `https://pub-6a2
 
 ## Research workspace and verification
 
-The explorer uses the main site's SVG mark and a responsive full-height map. Desktop navigation separates search from map controls. Mobile navigation keeps the results in a bottom sheet. Results and the device-local collection have separate tabs and counts; snapshot similarity opens a 20-record neighbor list with a return path to the original search.
+The explorer uses the main site's SVG mark and a responsive full-height map. Desktop navigation separates search from map controls. Mobile navigation keeps the results in a bottom sheet. The sidebar stays dedicated to the current search or photograph. The navigation’s Collection button opens a separate sheet with its own count and exports, preserving the active search; snapshot similarity opens a 20-record neighbor list with a return path to the original search.
 
 The map announces the current interaction model in the toolbar hint: 2D uses drag-to-pan and scroll-to-zoom; 3D uses drag-to-rotate, right-drag-to-pan, and scroll-to-zoom. Selecting a point updates the selected photograph panel and the renderer’s theme-aware glow anchored to the projected point. Selection zooms into the photograph’s neighborhood; a localized locator appears when zoomed out or when the point moves off-screen, and clicking it returns to the selected point. Research tools open in a focus-managed Sheet and About opens in a focus-managed Dialog; both restore focus to the invoking control when closed.
 
@@ -116,11 +117,15 @@ Codex browser QA on 2026-09-23 used the in-app browser at `http://127.0.0.1:3021
 - Snapshot loads 14,715 points through the fixed-target development proxy.
 - Full-height map, responsive navigation, correct wordmark, EN/FR, light/dark, 2D/3D, and resizing.
 - Live search returns 50 records, details show photographs and archival source links, and saving a record displays it in the local collection.
-- Similarity displays 20 neighbors; collection switches to its own count; returning to search restores the 50 results.
+- Similarity displays 20 neighbors connected to the source photograph; Collection opens a separate sheet; returning to search restores the 50 results.
 - CSV and JSON downloads each contain the expected 50 records and matching query/count metadata.
 - Citation action shows its copied confirmation; mobile About focus enters the dialog and returns to More on Escape.
 - Keyboard skip link opens/focuses mobile results. Fresh browser session has no runtime errors or framework overlay.
 
-Automated verification: 19 explorer tests, 11 artifact/export tests, explorer TypeScript, production build, and `git diff --check`. Coverage includes checksum/manifest validation, traversal rejection, search races, date palettes, export escaping, and camera fitting. Hardware WebGL failure, reduced-motion OS emulation, and exhaustive API/network failure combinations were not browser-tested. The existing legacy snapshot does not identify its model or generation date; About retains those limitations. No live vectors or archive bytes were regenerated.
+Automated verification: 22 explorer tests, 11 artifact/export tests, explorer TypeScript, production build, and `git diff --check`. Coverage includes checksum/manifest validation, traversal rejection, search races, date palettes, export escaping, and camera fitting. Hardware WebGL failure, reduced-motion OS emulation, and exhaustive API/network failure combinations were not browser-tested. The existing legacy snapshot does not identify its model or generation date; About retains those limitations. No live vectors or archive bytes were regenerated.
 
 The September 23 follow-up uses shadcn controls for the toolbar and focus-managed overlays. Browser checks covered 1040px desktop, 390px mobile and 320px French dark mode, drawer sizing, full color labels, selected URL restoration, 2D dragging, 3D rotation, and preserving selection when closing dialogs. Selection uses a soft CSS glow in close-up, with a minimal clickable locator only when needed. Browser checks also verified zoom-out and off-screen locators and returning to the selected point.
+
+### Similarity web
+
+The web is enabled by default and can be hidden from the map toolbar. For search, up to 50 mapped results each contribute their two strongest cosine-similarity neighbors (minimum 0.2); undirected edges are deduplicated and capped at 80. Snapshot similarity draws a star from the source photograph to its 20 returned neighbors. Only endpoints with published map positions are drawn. Lines indicate similarity in the snapshot model, not historical relationships or geographic proximity. Stronger edges are clearer; circular endpoints retain date or projection-region colors while the surrounding cloud is subdued. Edges follow points during 2D/3D transitions.

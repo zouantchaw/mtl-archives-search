@@ -619,3 +619,21 @@ button, input, select, a { font: inherit; }
 .map-selection-marker[data-offscreen="true"][data-direction="right"] .map-selection-label::before { content: '→ '; }
 .map-selection-marker[data-offscreen="true"][data-direction="up"] .map-selection-label::before { content: '↑ '; }
 .map-selection-marker[data-offscreen="true"][data-direction="down"] .map-selection-label::before { content: '↓ '; }
+
+/* A saved collection lives in its own drawer; the working list stays in place. */
+.collection-sheet[data-slot="sheet-content"][data-side="right"] { width: min(27rem, calc(100vw - 16px)); max-width: none; background: var(--paper); color: var(--ink); gap: 0; }
+.collection-sheet [data-slot="sheet-header"] { padding: 22px 44px 16px 20px; border-bottom: 1px solid var(--line); }
+.collection-sheet [data-slot="sheet-title"] { display: flex; align-items: center; gap: 9px; font-size: 1.15rem; }
+.collection-sheet [data-slot="sheet-title"] svg { width: 18px; height: 18px; }
+.collection-sheet [data-slot="sheet-title"] span { color: var(--ink-muted); font-size: .85rem; }
+.collection-export { display: flex; gap: 8px; padding: 14px 12px 6px; }
+.collection-sheet .results-panel { flex: 1; }
+.side-panel .count-row { padding-top: 14px; }
+.count-row > p { font-size: .85rem; color: var(--ink-muted); }
+.count-row > p:last-of-type { color: var(--ink); font-weight: 600; }
+.similarity-anchor { border: 0; padding: 0; margin: 4px 0 6px; text-align: left; background: transparent; color: var(--action); font-size: .82rem; line-height: 1.4; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.graph-toolbar { position: absolute; top: 12px; left: 12px; z-index: 2; display: flex; align-items: center; gap: 7px; padding: 3px; background: color-mix(in srgb, var(--paper) 95%, transparent); border: 1px solid var(--line); border-radius: 7px; }
+.graph-toolbar > span { font-size: .7rem; color: var(--ink-muted); padding-right: 5px; }
+.graph-toolbar [aria-pressed="true"] { background: var(--secondary); color: var(--ink); border-color: var(--action); }
+@media (max-width: 1100px) { .graph-toolbar { top: 60px; } }
+@media (max-width: 767px) { .graph-toolbar { left: 8px; max-width: calc(100% - 16px); gap: 4px; } .graph-toolbar > span { font-size: .68rem; } }

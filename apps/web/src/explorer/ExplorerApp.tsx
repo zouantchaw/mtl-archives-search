@@ -1,3 +1,7 @@
+import { Network, Bookmark } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
+import { buildSearchGraph, buildNeighborGraph, type GraphEdge } from './graph'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { events } from '../lib/analytics'
 import { AboutPanel } from './AboutPanel'
@@ -84,12 +88,16 @@ export function EmbeddingExplorer() {
   const [neighbors, setNeighbors] = useState<Neighbor[] | null>(null)
   const [similarWorking, setSimilarWorking] = useState(false)
   const [collection, setCollection] = useState<CollectionItem[]>(() => readCollection(browserStorage()))
-  const [panel, setPanel] = useState<'results' | 'collection'>('results')
+  const [collectionOpen, setCollectionOpen] = useState(false)
+  const [graphAnchor, setGraphAnchor] = useState<ExplorerItem | null>(null)
+  const [graphEdges, setGraphEdges] = useState<GraphEdge[]>([])
+  const [graphStatus, setGraphStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
+  const [graphRetry, setGraphRetry] = useState(0)
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [aboutOpen, setAboutOpen] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [colorMode, setColorMode] = useState<ColorMode>('date')
-  const [lines, setLines] = useState(false)
+  const [lines, setLines] = useState(true)
   const [anomalies, setAnomalies] = useState(false)
   const [rotate, setRotate] = useState(false)
   const [decade, setDecade] = useState('all')
@@ -104,6 +112,7 @@ export function EmbeddingExplorer() {
   const rendererRef = useRef<PointCloudRenderer | null>(null)
   const sessionRef = useRef(new SearchSession())
   const matrixRef = useRef<{ snapshot: LoadedSnapshot; matrix: Float32Array; dimensions: number } | null>(null)
+  const vectorRequestRef = useRef<{ snapshot: LoadedSnapshot; promise: Promise<{ matrix: Float32Array; dimensions: number }>; controller: AbortController } | null>(null)
   const snapshotRef = useRef<LoadedSnapshot | null>(null)
   const selectedIdRef = useRef<string | null>(null)
   const queryRef = useRef(query)
@@ -249,7 +258,7 @@ export function EmbeddingExplorer() {
     }
   }, [query, searchMode, retryToken])
 
-  const shownBoard = visibleBoard(board, query, searchMode)
+  const shownBoard = useMemo(() => visibleBoard(board, query, searchMode), [board, query, searchMode])
   const place = (id: string): ExplorerItem['placement'] => {
     if (snapshotStatus !== 'ready' && snapshotStatus !== 'empty') return 'pending'
     return projection?.byId.has(id) ? 'projected' : 'unprojected'
@@ -281,20 +290,18 @@ export function EmbeddingExplorer() {
     }
   }), [collection, projection, snapshotStatus])
 
-  const activeMode = neighbors !== null ? 'similarity' : panel === 'collection' ? 'collection' : 'search'
-  const listItems = activeMode === 'similarity' ? neighborItems : activeMode === 'collection' ? collectionItems : searchItems
+  const activeMode = neighbors !== null ? 'similarity' : 'search'
+  const listItems = activeMode === 'similarity' ? neighborItems : searchItems
   const activeReturnedCount = activeMode === 'similarity'
     ? neighborItems.length
-    : activeMode === 'collection'
-      ? collectionItems.length
-      : shownBoard.returnedCount
-  const highlighted = useMemo(() => new Set(listItems.filter((item) => item.projected).map((item) => item.id)), [listItems])
+    : shownBoard.returnedCount
+  const highlighted = useMemo(() => new Set([...listItems.filter((item) => item.projected).map((item) => item.id), ...(neighbors && graphAnchor ? [graphAnchor.id] : [])]), [listItems, neighbors, graphAnchor])
 
   const cloudPoints = useMemo<CloudPoint[]>(() => {
     if (!projection) return []
     return [...projection.byId.values()].map((point) => {
       const decadeNumber = point.year == null ? null : Math.floor(point.year / 10) * 10
-      const dimmed = decade !== 'all' && (decade === 'undated' ? point.year != null : decadeNumber !== Number(decade))
+      const dimmed = (decade !== 'all' && (decade === 'undated' ? point.year != null : decadeNumber !== Number(decade))) || (lines && graphEdges.length > 0 && !highlighted.has(point.id))
       return {
         id: point.id,
         x: point.x,
@@ -314,22 +321,42 @@ export function EmbeddingExplorer() {
         }),
       }
     })
-  }, [projection, decade, colorMode, snapshot?.legacyLayout, highlighted, selectedId, anomalies, theme])
+  }, [projection, decade, colorMode, snapshot?.legacyLayout, highlighted, selectedId, anomalies, theme, lines, graphEdges])
 
   useEffect(() => { rendererRef.current?.setPoints(cloudPoints) }, [cloudPoints, rendererReady])
-  useEffect(() => { rendererRef.current?.setSelected(selectedId) }, [selectedId, rendererReady])
+  useEffect(() => { rendererRef.current?.setSelected(selectedId ?? (neighbors ? graphAnchor?.id ?? null : null)) }, [selectedId, rendererReady, neighbors, graphAnchor])
   useEffect(() => { rendererRef.current?.setSelectionLabel(lang === 'fr' ? 'Sélection' : 'Selected') }, [lang, rendererReady])
   useEffect(() => {
-    const ids = listItems.filter((item) => item.projected).slice(0, 12).map((item) => item.id)
-    rendererRef.current?.setLines(ids, lines)
-  }, [listItems, lines, rendererReady, view])
+    rendererRef.current?.setConnectionGraph(graphEdges, lines, theme)
+  }, [graphEdges, lines, theme, rendererReady])
+  useEffect(() => {
+    let current = true
+    setGraphEdges([])
+    if (!lines || !snapshot || listItems.filter((item) => item.projected).length < 2) {
+      setGraphStatus('idle')
+      return
+    }
+    if (neighbors && graphAnchor) {
+      setGraphEdges(buildNeighborGraph(graphAnchor.id, neighbors.map((neighbor) => ({ id: neighbor.id, score: neighbor.cosine }))))
+      setGraphStatus('ready')
+      return
+    }
+    setGraphStatus('loading')
+    void loadVectors(snapshot).then((loaded) => {
+      if (!current) return
+      setGraphEdges(buildSearchGraph(listItems.filter((item) => item.projected).map((item) => item.id), loaded.matrix, snapshot.embeddingIds ?? [], loaded.dimensions))
+      setGraphStatus('ready')
+    }).catch(() => { if (current) setGraphStatus('error') })
+    return () => { current = false }
+  }, [snapshot, listItems, neighbors, graphAnchor, lines, graphRetry])
+  useEffect(() => () => { vectorRequestRef.current?.controller.abort() }, [])
   const resultSignature = searchItems.map((item) => item.id).join('|')
   const neighborSignature = neighborItems.map((item) => item.id).join('|')
   useEffect(() => {
     const source = neighbors !== null ? neighborItems : searchItems
     if (selectedId || source.length === 0) return
-    rendererRef.current?.focus(source.filter((item) => item.projected).map((item) => item.id))
-  }, [resultSignature, neighborSignature, neighbors, rendererReady, neighborItems, searchItems, selectedId])
+    rendererRef.current?.focus([...source.filter((item) => item.projected).map((item) => item.id), ...(neighbors && graphAnchor ? [graphAnchor.id] : [])])
+  }, [resultSignature, neighborSignature, neighbors, rendererReady, neighborItems, searchItems, selectedId, graphAnchor])
   useEffect(() => {
     if (!selectedId) return
     rendererRef.current?.focus([selectedId])
@@ -338,7 +365,7 @@ export function EmbeddingExplorer() {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
-      if (event.defaultPrevented || aboutOpen || advancedOpen) return
+      if (event.defaultPrevented || aboutOpen || advancedOpen || collectionOpen) return
       const target = event.target
       if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return
       if (target instanceof HTMLElement && target.isContentEditable) return
@@ -346,7 +373,7 @@ export function EmbeddingExplorer() {
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [aboutOpen, advancedOpen, selectedId])
+  }, [aboutOpen, advancedOpen, collectionOpen, selectedId])
 
   useEffect(() => {
     if (!toast) return
@@ -358,16 +385,32 @@ export function EmbeddingExplorer() {
     if (webglError) setSheetOpen(true)
   }, [webglError])
 
+  const mappedEdgeCount = graphEdges.filter((edge) => projection?.byId.has(edge.source) && projection?.byId.has(edge.target)).length
+
   const selected = useMemo(() => {
     if (!selectedId) return null
     return listItems.find((item) => item.id === selectedId)
       ?? searchItems.find((item) => item.id === selectedId)
       ?? collectionItems.find((item) => item.id === selectedId)
+      ?? (graphAnchor?.id === selectedId ? graphAnchor : null)
       ?? itemFromId(selectedId, projection?.byId.get(selectedId))
-  }, [selectedId, listItems, searchItems, collectionItems, projection])
+  }, [selectedId, listItems, searchItems, collectionItems, projection, graphAnchor])
 
   const decades = useMemo(() => decadeChoices([...(projection?.byId.values() ?? [])].map((point) => point.year)), [projection])
   const hoverTitle = hoverId ? displayTitle(sourceTitle(projection?.byId.get(hoverId)?.name), text.untitled) : null
+
+  async function loadVectors(source: LoadedSnapshot) {
+    if (!source.vectorUrl || !source.embeddingIds) throw new Error('Snapshot vectors unavailable')
+    if (matrixRef.current?.snapshot === source) return matrixRef.current
+    if (vectorRequestRef.current?.snapshot === source) return vectorRequestRef.current.promise
+    vectorRequestRef.current?.controller.abort()
+    const controller = new AbortController()
+    const promise = loadEmbeddingMatrix({url: source.vectorUrl, idCount: source.embeddingIds.length, sha256: source.vectorSha256, byteLength: source.vectorBytes, signal: controller.signal})
+      .then((loaded) => { if (snapshotRef.current === source) matrixRef.current = { snapshot: source, ...loaded }; return loaded })
+      .finally(() => { if (vectorRequestRef.current?.snapshot === source) vectorRequestRef.current = null })
+    vectorRequestRef.current = { snapshot: source, promise, controller }
+    return promise
+  }
 
   async function copyText(value: string) {
     try {
@@ -408,19 +451,7 @@ export function EmbeddingExplorer() {
     const sourceSearchMode = searchMode
     setSimilarWorking(true)
     try {
-      let loadedMatrix = matrixRef.current?.snapshot === sourceSnapshot ? matrixRef.current : null
-      if (!loadedMatrix) {
-        const matrix = await loadEmbeddingMatrix({
-          url: vectorUrl,
-          idCount: embeddingIds.length,
-          sha256: sourceSnapshot.vectorSha256,
-          byteLength: sourceSnapshot.vectorBytes,
-          signal: new AbortController().signal,
-        })
-        if (snapshotRef.current !== sourceSnapshot || selectedIdRef.current !== sourceId || queryRef.current !== sourceQuery || searchModeRef.current !== sourceSearchMode) return
-        loadedMatrix = { snapshot: sourceSnapshot, ...matrix }
-        matrixRef.current = loadedMatrix
-      }
+      const loadedMatrix = await loadVectors(sourceSnapshot)
       if (snapshotRef.current !== sourceSnapshot || selectedIdRef.current !== sourceId || queryRef.current !== sourceQuery || searchModeRef.current !== sourceSearchMode) return
       const found = nearestInSnapshot({
         matrix: loadedMatrix.matrix,
@@ -430,7 +461,8 @@ export function EmbeddingExplorer() {
         limit: 20,
       })
       setNeighbors(found)
-      setPanel('results')
+      setGraphAnchor(selected)
+      setLines(true)
       setSelectedId(null)
       setSheetOpen(true)
     } catch {
@@ -439,8 +471,8 @@ export function EmbeddingExplorer() {
       setSimilarWorking(false)
     }
   }
-  function exportRows(): ExportRow[] {
-    return listItems.map((item) => {
+  function exportRows(items = listItems): ExportRow[] {
+    return items.map((item) => {
       const parsed = parseArchiveDate(item.dateRaw)
       return {
         id: item.id,
@@ -466,7 +498,7 @@ export function EmbeddingExplorer() {
     downloadLocalFile('mtl-explorer-results.json', resultsToJson({
       exportedAt: new Date().toISOString(),
       query: activeMode === 'search' ? query : '',
-      searchMode: activeMode === 'similarity' ? 'snapshot' : activeMode === 'collection' ? 'collection' : searchMode,
+      searchMode: activeMode === 'similarity' ? 'snapshot' : searchMode,
       returnedCount: activeReturnedCount ?? listItems.length,
       snapshotCount: projection?.count ?? 0,
       rows: exportRows(),
@@ -496,22 +528,13 @@ export function EmbeddingExplorer() {
     : null
   const side = (
     <div id="explorer-results" tabIndex={-1}>
-      <nav className="panel-tabs" aria-label={text.results}>
-        <button type="button" className="btn" aria-pressed={activeMode !== 'collection'} onClick={() => { setPanel('results'); setNeighbors(null); setSelectedId(null) }}>{text.results}</button>
-        <button type="button" className="btn" aria-pressed={activeMode === 'collection'} onClick={() => { setPanel('collection'); setNeighbors(null); setSelectedId(null) }}>{text.collection} ({collection.length})</button>
-      </nav>
       <div className="count-row">
-        {activeMode === 'collection' ? (
-          <>
-            <h2 className="count-heading">{text.collection}</h2>
-            <p>{formatMessage(text.collectionCount, { count: collectionItems.length })}</p>
-            <button type="button" className="btn panel-back" onClick={() => { setPanel('results'); setNeighbors(null); setSelectedId(null) }}>{text.back}</button>
-          </>
-        ) : activeMode === 'similarity' ? (
+        {activeMode === 'similarity' ? (
           <>
             <h2 className="count-heading">{text.snapshotSimilar}</h2>
+            {graphAnchor ? <button className="similarity-anchor" onClick={() => selectRef.current(graphAnchor.id)}>{displayTitle(sourceTitle(graphAnchor.sourceTitle), text.untitled)}</button> : null}
             <p>{formatMessage(text.similarCount, { count: neighborItems.length })}</p>
-            <button type="button" className="btn panel-back" onClick={() => { setNeighbors(null); setSelectedId(null); setPanel('results') }}>{text.back}</button>
+            <button type="button" className="btn panel-back" onClick={() => { setNeighbors(null); setGraphAnchor(null); setSelectedId(null) }}>{text.back}</button>
           </>
         ) : (
           <>
@@ -526,10 +549,10 @@ export function EmbeddingExplorer() {
         <button type="button" className="btn" onClick={exportCsv}>{text.exportCsv}</button>
         <button type="button" className="btn" onClick={exportJson}>{text.exportJson}</button>
       </div>
-      {!query.trim() && !neighbors && panel === 'results' ? (
+      {!query.trim() && !neighbors ? (
         <div className="suggestion-row" aria-label={text.suggestions}>
           {SUGGESTIONS.map((item) => (
-            <button key={item.query} type="button" className="btn" onClick={() => { setPanel('results'); setQuery(item.query) }}>{item.label[lang]}</button>
+            <button key={item.query} type="button" className="btn" onClick={() => { setQuery(item.query) }}>{item.label[lang]}</button>
           ))}
         </div>
       ) : null}
@@ -563,7 +586,7 @@ export function EmbeddingExplorer() {
           searching={shownBoard.searching && activeMode === 'search'}
           query={query}
           error={searchError}
-          empty={activeMode === 'collection' ? text.collectionEmpty : emptyMessage}
+          empty={emptyMessage}
           origin={apiOrigin()}
           onSelect={(id) => selectRef.current(id)}
           onRetry={searchError ? () => setRetryToken((value) => value + 1) : undefined}
@@ -586,15 +609,15 @@ export function EmbeddingExplorer() {
         legacyLayout={snapshot?.legacyLayout ?? false}
         onColor={setColorMode}
         advancedOpen={advancedOpen}
-        onQuery={(value) => { setPanel('results'); setNeighbors(null); setSelectedId(null); setQuery(value) }}
+        onQuery={(value) => { setNeighbors(null); setSelectedId(null); setQuery(value) }}
         onView={(next) => { setView(next); events.viewModeChanged(next) }}
         onLang={setLang}
         onTheme={() => setTheme((current) => current === 'dark' ? 'light' : 'dark')}
         onReset={() => rendererRef.current?.reset()}
         onAbout={() => { rememberOverlayFocus(); setAboutOpen(true); setAdvancedOpen(false) }}
         onAdvanced={() => { rememberOverlayFocus(); setAdvancedOpen((open) => !open); setAboutOpen(false) }}
-        onCollection={() => { setPanel('collection'); setNeighbors(null); setSelectedId(null); setSheetOpen(true) }}
-        collectionActive={activeMode === 'collection'}
+        onCollection={() => { rememberOverlayFocus(); setCollectionOpen(true) }}
+        collectionActive={collectionOpen}
         onSkip={() => {
           setSheetOpen(true)
           window.setTimeout(() => document.getElementById('explorer-results')?.focus(), 0)
@@ -624,6 +647,11 @@ export function EmbeddingExplorer() {
               </select>
             </label>
           </div>
+          {(query.trim() || neighbors) ? <div className="graph-toolbar">
+            <Button variant="outline" size="sm" aria-pressed={lines} title={text.webHelp} onClick={() => setLines((value) => !value)}><Network aria-hidden="true" />{text.similarityWeb}</Button>
+            {lines ? <span role="status">{(loadingSnapshot || shownBoard.searching || graphStatus === 'loading') ? text.webLoading : graphStatus === 'error' ? text.webError : mappedEdgeCount ? formatMessage(text.webConnections, { count: mappedEdgeCount }) : text.webEmpty}</span> : null}
+            {lines && graphStatus === 'error' ? <Button variant="ghost" size="sm" onClick={() => setGraphRetry((value) => value + 1)}>{text.retry}</Button> : null}
+          </div> : null}
           {colorMode === 'date' ? (
             <div className={`map-legend${sheetOpen ? ' sheet-open' : ''}`} aria-label={text.legendDate}>
               <strong>{text.legendDate}</strong>
@@ -651,6 +679,13 @@ export function EmbeddingExplorer() {
         )}
         </div>
       </div>
+      <Sheet open={collectionOpen} onOpenChange={setCollectionOpen}>
+        <SheetContent className="collection-sheet" closeLabel={text.closeCollection} onCloseAutoFocus={restoreOverlayFocus}>
+          <SheetHeader><SheetTitle><Bookmark aria-hidden="true" />{text.collection} <span>{collection.length}</span></SheetTitle><SheetDescription>{text.collectionLocal}</SheetDescription></SheetHeader>
+          <div className="collection-export"><Button variant="outline" size="sm" disabled={!collectionItems.length} onClick={() => downloadLocalFile('mtl-explorer-collection.csv', resultsToCsv(exportRows(collectionItems)), 'text/csv;charset=utf-8')}>{text.exportCsv}</Button><Button variant="outline" size="sm" disabled={!collectionItems.length} onClick={() => downloadLocalFile('mtl-explorer-collection.json', resultsToJson({exportedAt: new Date().toISOString(), query: '', searchMode: 'collection', returnedCount: collectionItems.length, snapshotCount: projection?.count ?? 0, rows: exportRows(collectionItems)}), 'application/json')}>{text.exportJson}</Button></div>
+          <ResultsPanel text={text} items={collectionItems} selectedId={selectedId} searching={false} query="" error={null} empty={text.collectionEmpty} origin={apiOrigin()} onSelect={(id) => { setCollectionOpen(false); selectRef.current(id) }} />
+        </SheetContent>
+      </Sheet>
       <ResearchControls
           text={text}
           open={advancedOpen}
@@ -665,7 +700,7 @@ export function EmbeddingExplorer() {
           decades={decades}
           onClose={() => setAdvancedOpen(false)}
           onCloseAutoFocus={restoreOverlayFocus}
-          onSearchMode={(mode) => { setPanel('results'); setNeighbors(null); setSelectedId(null); setSearchMode(mode) }}
+          onSearchMode={(mode) => { setNeighbors(null); setSelectedId(null); setSearchMode(mode) }}
           onColor={setColorMode}
           onLines={setLines}
           onAnomalies={setAnomalies}
