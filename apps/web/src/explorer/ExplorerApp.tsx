@@ -13,7 +13,9 @@ import { DetailsPanel } from './DetailsPanel'
 import { downloadLocalFile, resultsToCsv, resultsToJson, type ExportRow } from './export-results'
 import { mainSiteHome, mainSiteRecord, officialSourceUrl, type Lang } from './links'
 import { dictionaryFor, formatMessage, LOCALE_KEY, THEME_KEY, type Dictionary } from './locale'
-import { buildProjection, type ProjectionIndex } from './projection'
+import { MapSettings } from './MapSettings'
+import { useMapLayout } from './use-map-layout'
+import { writeLayout, LAYOUT_VERSION } from './layout-state'
 import { itemFromId, itemFromPoint, itemFromSearch, type ExplorerItem } from './records'
 import { PointCloudRenderer, type CloudPoint } from './renderer'
 import { ResearchControls } from './ResearchControls'
@@ -79,7 +81,9 @@ export function EmbeddingExplorer() {
   const [searchMode, setSearchMode] = useState<ExplorerSearchMode>(boot.search)
   const [selectedId, setSelectedId] = useState<string | null>(boot.selected)
   const [snapshot, setSnapshot] = useState<LoadedSnapshot | null>(null)
-  const [projection, setProjection] = useState<ProjectionIndex | null>(null)
+  const layout = useMapLayout(snapshot, loadVectors)
+  const projection = layout.projection
+  const [mapSettingsOpen, setMapSettingsOpen] = useState(false)
   const [loadingSnapshot, setLoadingSnapshot] = useState(true)
   const [snapshotStatus, setSnapshotStatus] = useState<'loading' | 'ready' | 'empty' | 'integrity' | 'unavailable'>('loading')
   const [snapshotToken, setSnapshotToken] = useState(0)
@@ -159,17 +163,17 @@ export function EmbeddingExplorer() {
   }, [lang, theme])
 
   useEffect(() => {
-    const next = serializeExplorerSearch({ q: query, view, lang, theme, selected: selectedId, search: searchMode })
+    if (!snapshot) return
+    const next = writeLayout(serializeExplorerSearch({ q: query, view, lang, theme, selected: selectedId, search: searchMode }), layout.urlSettings, snapshot?.vectorSha256 ?? null)
     const path = `${window.location.pathname}${next}`
     if (`${window.location.pathname}${window.location.search}` !== path) window.history.replaceState({}, '', path)
-  }, [query, view, lang, theme, selectedId, searchMode])
+  }, [query, view, lang, theme, selectedId, searchMode, layout.urlSettings, snapshot?.vectorSha256])
 
   useEffect(() => {
     const controller = new AbortController()
     matrixRef.current = null
     snapshotRef.current = null
     setSnapshot(null)
-    setProjection(null)
     setLoadingSnapshot(true)
     setSnapshotStatus('loading')
     loadExplorerSnapshot(snapshotBase(), controller.signal)
@@ -177,13 +181,11 @@ export function EmbeddingExplorer() {
         if (controller.signal.aborted) return
         setSnapshot(loaded)
         snapshotRef.current = loaded
-        setProjection(buildProjection(loaded.points))
         setSnapshotStatus(loaded.points.length === 0 ? 'empty' : 'ready')
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return
         setSnapshot(null)
-        setProjection(null)
         setSnapshotStatus(error instanceof SnapshotIntegrityError ? 'integrity' : error instanceof SnapshotUnavailableError ? 'unavailable' : 'unavailable')
       })
       .finally(() => {
@@ -221,6 +223,7 @@ export function EmbeddingExplorer() {
     rendererRef.current?.setReducedMotion(reducedMotion)
     if (reducedMotion) setRotate(false)
   }, [reducedMotion, rendererReady])
+  useEffect(() => { setView(layout.active.mode === '2d' ? '2d' : '3d') }, [layout.active.mode])
   useEffect(() => { rendererRef.current?.setView(view) }, [view, rendererReady])
   useEffect(() => { rendererRef.current?.setAutoRotate(rotate && view === '3d') }, [rotate, view, reducedMotion, rendererReady])
 
@@ -367,7 +370,7 @@ export function EmbeddingExplorer() {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
-      if (event.defaultPrevented || aboutOpen || advancedOpen || collectionOpen) return
+      if (event.defaultPrevented || aboutOpen || advancedOpen || collectionOpen || mapSettingsOpen) return
       const target = event.target
       if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return
       if (target instanceof HTMLElement && target.isContentEditable) return
@@ -376,7 +379,7 @@ export function EmbeddingExplorer() {
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [aboutOpen, advancedOpen, collectionOpen, selectedId])
+  }, [aboutOpen, advancedOpen, collectionOpen, mapSettingsOpen, selectedId])
 
   useEffect(() => {
     if (!toast) return
@@ -495,11 +498,14 @@ export function EmbeddingExplorer() {
     })
   }
   function exportCsv(items = listItems) {
-    downloadLocalFile('mtl-explorer-results.csv', resultsToCsv(exportRows(items)), 'text/csv;charset=utf-8')
+    downloadLocalFile('mtl-explorer-results.csv', resultsToCsv(exportRows(items), { snapshot: snapshot?.vectorSha256 ?? null, layout: { ...layout.active, version: LAYOUT_VERSION }, viewUrl: window.location.href }), 'text/csv;charset=utf-8')
   }
   function exportJson(items = listItems) {
     downloadLocalFile('mtl-explorer-results.json', resultsToJson({
       exportedAt: new Date().toISOString(),
+      layout: { ...layout.active, version: LAYOUT_VERSION },
+      snapshot: { generatedAt: snapshot?.generatedAt, vectorSha256: snapshot?.vectorSha256 },
+      viewUrl: window.location.href,
       query: activeMode === 'search' ? query : '',
       searchMode: activeMode === 'similarity' ? 'snapshot' : searchMode,
       returnedCount: items.length,
@@ -617,7 +623,10 @@ export function EmbeddingExplorer() {
         homeHref={mainSiteHome(lang)}
         query={query}
         searchMode={searchMode}
-        view={view}
+        layoutMode={layout.active.mode}
+        layoutBusy={layout.busy}
+        onLayoutMode={(mode) => { void layout.apply({ ...layout.active, mode }) }}
+        onMapSettings={() => { rememberOverlayFocus(); setMapSettingsOpen(true) }}
         colorMode={colorMode}
         legacyLayout={snapshot?.legacyLayout ?? false}
         exportCount={(selected ? [selected] : listItems).length}
@@ -628,7 +637,6 @@ export function EmbeddingExplorer() {
         advancedOpen={advancedOpen}
         onQuery={(value) => { setNeighbors(null); setSelectedId(null); setQuery(value); if (!value.trim()) rendererRef.current?.reset() }}
         onSearchMode={(mode) => { setNeighbors(null); setSelectedId(null); setSearchMode(mode) }}
-        onView={(next) => { setView(next); events.viewModeChanged(next) }}
         onLang={setLang}
         onTheme={() => setTheme((current) => current === 'dark' ? 'light' : 'dark')}
         onReset={() => rendererRef.current?.reset()}
@@ -641,7 +649,7 @@ export function EmbeddingExplorer() {
           window.setTimeout(() => document.getElementById('explorer-results')?.focus(), 0)
         }}
       />
-      <p className="map-sentence"><span className="map-sentence-copy">{text.mapSentence}</span><span className="interaction-hint">{view === '3d' ? text.interaction3d : text.interaction2d}</span></p>
+      <p className="map-sentence"><span className="map-sentence-copy">{text.mapSentence}</span><button type="button" className="layout-status" onClick={() => { rememberOverlayFocus(); setMapSettingsOpen(true) }}>{layout.busy ? (lang === 'fr' ? 'Calcul en cours…' : 'Computing layout…') : layout.active.preset === 'published' ? (lang === 'fr' ? 'Disposition publiée' : 'Published layout') : layout.active.preset === 'custom' ? (lang === 'fr' ? 'Disposition personnalisée' : 'Custom layout') : layout.active.preset === 'local' ? (lang === 'fr' ? 'Détail local' : 'Local detail') : (lang === 'fr' ? 'Vue globale' : 'Broad structure')}</button><span className="interaction-hint">{view === '3d' ? text.interaction3d : text.interaction2d}</span></p>
       <div className={`explorer-body${hasResultContext && sheetOpen ? ' results-visible' : ''}`}>
         <div className="map-stage">
           <div ref={containerRef} className="explorer-canvas" role="group" aria-label={text.mapLabel} />
@@ -695,10 +703,15 @@ export function EmbeddingExplorer() {
         ) : null}
         </div>
       </div>
+      <MapSettings lang={lang} open={mapSettingsOpen} onOpenChange={setMapSettingsOpen} onCloseAutoFocus={restoreOverlayFocus} active={layout.active} busy={layout.busy} progress={layout.progress}
+        error={layout.error ? (lang === 'fr' ? 'Impossible de charger cette disposition. La carte précédente est conservée. Réessayez ou revenez à la carte publiée.' : 'This layout could not be loaded. Your previous map is preserved. Try again or reset to the published map.') : null}
+        onApply={(settings) => { void layout.apply(settings) }} onCancel={() => { layout.cancel(); if (!layout.busy) setMapSettingsOpen(false) }} onReset={() => { void layout.reset() }}
+        onShare={() => { void navigator.clipboard.writeText(window.location.href).then(() => setToast(lang === 'fr' ? 'Lien de la disposition copié' : 'Layout link copied')).catch(() => setToast(lang === 'fr' ? 'Copiez le lien dans la barre d’adresse' : 'Copy the link from the address bar')) }} />
+      {layout.error && !mapSettingsOpen ? <button className="layout-error-notice" onClick={() => setMapSettingsOpen(true)}>{lang === 'fr' ? 'Disposition indisponible · Détails' : 'Layout unavailable · Details'}</button> : null}
       <Sheet open={collectionOpen} onOpenChange={setCollectionOpen}>
         <SheetContent className="collection-sheet" closeLabel={text.closeCollection} onCloseAutoFocus={restoreOverlayFocus}>
           <SheetHeader><SheetTitle><Bookmark aria-hidden="true" />{text.collection} <span>{collection.length}</span></SheetTitle><SheetDescription>{text.collectionLocal}</SheetDescription></SheetHeader>
-          <div className="collection-export"><Button variant="outline" size="sm" disabled={!collectionItems.length} onClick={() => downloadLocalFile('mtl-explorer-collection.csv', resultsToCsv(exportRows(collectionItems)), 'text/csv;charset=utf-8')}>{text.exportCsv}</Button><Button variant="outline" size="sm" disabled={!collectionItems.length} onClick={() => downloadLocalFile('mtl-explorer-collection.json', resultsToJson({exportedAt: new Date().toISOString(), query: '', searchMode: 'collection', returnedCount: collectionItems.length, snapshotCount: projection?.count ?? 0, rows: exportRows(collectionItems)}), 'application/json')}>{text.exportJson}</Button></div>
+          <div className="collection-export"><Button variant="outline" size="sm" disabled={!collectionItems.length} onClick={() => downloadLocalFile('mtl-explorer-collection.csv', resultsToCsv(exportRows(collectionItems), { snapshot: snapshot?.vectorSha256 ?? null, layout: { ...layout.active, version: LAYOUT_VERSION }, viewUrl: window.location.href }), 'text/csv;charset=utf-8')}>{text.exportCsv}</Button><Button variant="outline" size="sm" disabled={!collectionItems.length} onClick={() => downloadLocalFile('mtl-explorer-collection.json', resultsToJson({layout: { ...layout.active, version: LAYOUT_VERSION }, snapshot: { generatedAt: snapshot?.generatedAt, vectorSha256: snapshot?.vectorSha256 }, viewUrl: window.location.href, exportedAt: new Date().toISOString(), query: '', searchMode: 'collection', returnedCount: collectionItems.length, snapshotCount: projection?.count ?? 0, rows: exportRows(collectionItems)}), 'application/json')}>{text.exportJson}</Button></div>
           <ResultsPanel text={text} items={collectionItems} selectedId={selectedId} searching={false} query="" error={null} empty={text.collectionEmpty} origin={apiOrigin()} onSelect={(id) => { setCollectionOpen(false); selectRef.current(id) }} />
         </SheetContent>
       </Sheet>

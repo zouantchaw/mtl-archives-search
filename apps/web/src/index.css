@@ -676,3 +676,8 @@ button, input, select, a { font: inherit; }
   .toolbar-divider { margin-inline: 0; }
 }
 .action-row { flex-wrap: wrap; overflow: visible; }
+
+.layout-mode-select { width: 178px; min-width: 170px; }
+.layout-status { color: var(--muted-foreground); text-decoration: underline; text-underline-offset: 3px; font-size: 12px; background: transparent; border: 0; cursor: pointer; padding: 0 6px; }
+.layout-status:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.layout-error-notice { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 10; padding: 10px 16px; background: var(--paper); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; }

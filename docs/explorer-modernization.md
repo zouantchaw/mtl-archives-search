@@ -154,3 +154,15 @@ The [September 24 publication receipt](explorer-snapshot-20260924.json) records 
 ### Map-first workspace
 
 Search examples live in the search field, with rotating hints when idle and selectable bilingual examples on focus. Motion pauses while typing and respects reduced-motion preferences. Contextual navigation exports appear only for a nonempty result set or a selected photograph; the exported count matches that scope. Closing the non-modal result overlay preserves the query and selected photograph. Collection continues to use its own separate sheet.
+
+### Researcher-controlled layouts
+
+Map settings offers Similarity 2D, true Similarity 3D, and Similarity + time (2D similarity with archival date depth). Published 2D/time retains the snapshot coordinates exactly. Local (8 neighbours, 0.05 minimum distance), Broad (40, 0.30), and Published 3D (15, 0.10) are precomputed from the same verified 512D vectors with seed 42. Five versioned preset files ship under `apps/web/public/layouts`; they include ordered IDs, input vector SHA-256, configuration, library/engine versions and epoch count. A preset from a different snapshot is rejected.
+
+Custom layouts run cosine UMAP in a disposable Web Worker, with explicit Apply, phase/epoch progress, and immediate termination on cancellation. The last successful layout stays visible until the replacement has passed finite-coordinate and ID coverage checks. A bounded eight-layout session cache avoids repeat work. All axes use one common scale, preserving the projection's aspect ratio. A layout change preserves the query, selected photograph and saved collection; it does not change search ranking or underlying vector similarities.
+
+Links include the layout configuration, engine version and snapshot vector hash. Custom shared views recompute on the recipient's device; mismatched snapshot/version links show an error and retain the published map rather than silently claiming reproducibility. CSV and JSON result exports carry the applied settings, snapshot identity and view URL. Colour/decade emphasis remains a display control and does not alter the UMAP calculation.
+
+Generate the five presets from an already-verified snapshot directory with `npm run generate-layout-presets --workspace=apps/web -- --input <snapshot-directory>`. See the script's arguments for output and preset selection. This is CPU-only local computation; it neither re-embeds photographs nor writes to the live vector index. Layout controls affect an exploratory projection, not historical classifications or geographic coordinates.
+
+Validation for the initial configurable-layout release: the five presets each retain all 13,499 IDs and finite coordinates; deterministic 2D/3D fixture tests and sync/async parity pass. Browser checks cover preset application, full-corpus custom 3D completion, immediate cancellation, shared custom-view restoration, retained search/selection, and mobile settings. Presets are exploratory choices, not a claim that one parameter set is scientifically optimal; neighbourhood-preservation comparisons across the corpus remain future evaluation work.

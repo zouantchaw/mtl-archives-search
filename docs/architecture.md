@@ -37,3 +37,5 @@ Browser  →  Next.js (Vercel)  →  Cloudflare Worker
 | `apps/story-video` | Instagram / print stills |
 
 Schema lives in `infrastructure/d1/migrations/`. Do not delete applied migrations.
+
+Explorer layout presets are served as static, snapshot-bound coordinate artifacts. Custom cosine UMAP runs in a browser Web Worker; applying a layout changes display coordinates only. Shared links and exports include the configuration, engine version and vector snapshot hash.

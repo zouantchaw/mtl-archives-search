@@ -22,7 +22,7 @@ function csvCell(value: string | number | boolean | null): string {
   return text
 }
 
-export function resultsToCsv(rows: ExportRow[]): string {
+export function resultsToCsv(rows: ExportRow[], context?: { snapshot: string | null; layout: unknown; viewUrl: string }): string {
   const header = [
     'id',
     'title',
@@ -38,6 +38,7 @@ export function resultsToCsv(rows: ExportRow[]): string {
     'visual_index_score',
     'semantic_index_score',
   ]
+  if (context) header.push('snapshot_sha256', 'layout_json', 'view_url')
   const lines = [header.join(',')]
   for (const row of rows) {
     lines.push([
@@ -54,12 +55,16 @@ export function resultsToCsv(rows: ExportRow[]): string {
       row.rankingScore,
       row.visualIndexScore,
       row.semanticIndexScore,
+      ...(context ? [context.snapshot, JSON.stringify(context.layout), context.viewUrl] : []),
     ].map(csvCell).join(','))
   }
   return `\uFEFF${lines.join('\n')}`
 }
 
 export function resultsToJson(payload: {
+  layout?: unknown
+  snapshot?: unknown
+  viewUrl?: string
   exportedAt: string
   query: string
   searchMode: string

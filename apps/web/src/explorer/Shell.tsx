@@ -6,7 +6,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import type { Dictionary } from './locale'
 import type { Lang } from './links'
 import type { ColorMode } from './colors'
-import type { ExplorerSearchMode, ViewMode } from './url-state'
+import type { ExplorerSearchMode } from './url-state'
 import { formatMessage } from './locale'
 import { SearchField } from './SearchField'
 
@@ -17,10 +17,12 @@ export function Shell(props: {
   homeHref: string
   query: string
   searchMode: ExplorerSearchMode
-  view: ViewMode
+  layoutMode: '2d' | '3d' | 'time'
+  layoutBusy: boolean
+  onLayoutMode: (mode: '2d' | '3d' | 'time') => void
+  onMapSettings: () => void
   onQuery: (value: string) => void
   onSearchMode: (mode: ExplorerSearchMode) => void
-  onView: (view: ViewMode) => void
   colorMode: ColorMode
   legacyLayout: boolean
   onColor: (mode: ColorMode) => void
@@ -68,10 +70,15 @@ export function Shell(props: {
           <ToggleGroupItem value="visual">{text.searchVisualPrimary}</ToggleGroupItem>
         </ToggleGroup>
         <div className="toolbar-divider" aria-hidden="true" />
-        <ToggleGroup type="single" value={props.view} onValueChange={(value) => { if (value) props.onView(value as ViewMode) }} variant="outline" size="sm" aria-label={text.view}>
-          <ToggleGroupItem value="2d">{text.view2d}</ToggleGroupItem>
-          <ToggleGroupItem value="3d">{text.view3d}</ToggleGroupItem>
-        </ToggleGroup>
+        <Select value={props.layoutMode} onValueChange={(value) => props.onLayoutMode(value as '2d'|'3d'|'time')} disabled={props.layoutBusy}>
+          <SelectTrigger className="layout-mode-select" aria-label={props.lang === 'fr' ? 'Disposition' : 'Layout'}><SelectValue /></SelectTrigger>
+          <SelectContent><SelectGroup>
+            <SelectItem value="2d">{props.lang === 'fr' ? 'Similarité · 2D' : 'Similarity · 2D'}</SelectItem>
+            <SelectItem value="3d">{props.lang === 'fr' ? 'Similarité · 3D' : 'Similarity · 3D'}</SelectItem>
+            <SelectItem value="time">{props.lang === 'fr' ? 'Similarité + temps' : 'Similarity + time'}</SelectItem>
+          </SelectGroup></SelectContent>
+        </Select>
+        <Button variant="outline" size="icon-sm" onClick={props.onMapSettings} aria-label={props.lang === 'fr' ? 'Réglages de la carte' : 'Map settings'} title={props.lang === 'fr' ? 'Réglages de la carte' : 'Map settings'}><SlidersHorizontal aria-hidden="true" /></Button>
         <div className="toolbar-divider" aria-hidden="true" />
         <Select value={props.colorMode} onValueChange={(value) => props.onColor(value as ColorMode)}>
           <SelectTrigger className="color-select" aria-label={text.color}><SelectValue /></SelectTrigger>
