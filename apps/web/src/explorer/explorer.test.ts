@@ -6,7 +6,7 @@ import { mainSiteHome, mainSiteRecord, officialSourceUrl } from './links'
 import { buildProjection, focusableIds, locateRecord } from './projection'
 import { displayTitle } from './titles'
 import { imageIsBroken, imageKey } from './images'
-import { beginSearch, boardKey, commitSearchFailure, commitSearchSuccess, emptyBoard, visibleBoard, SearchSession, normalizeSearchResponse } from './search'
+import { beginSearch, boardKey, classifySearchError, commitSearchFailure, commitSearchSuccess, emptyBoard, visibleBoard, SearchSession, normalizeSearchResponse, runSearch, SearchRequestError } from './search'
 import { resolveSnapshotBase, rewriteSnapshotPath } from './snapshot-proxy'
 import { parseExplorerSearch, serializeExplorerSearch, withLocale } from './url-state'
 
@@ -88,6 +88,21 @@ describe('search normalization', () => {
     expect('confidence' in (normalized.items[0] ?? {})).toBe(false)
   })
 
+  it('preserves which Smart branch degraded so the UI can explain partial results', () => {
+    const normalized = normalizeSearchResponse({
+      mode: 'smart',
+      count: 1,
+      countKind: 'returned',
+      degraded: true,
+      retrieval: {
+        visual: { status: 'unavailable' },
+        semantic: { status: 'ok' },
+      },
+      items: [{ metadataFilename: 'semantic-only.json' }],
+    })
+    expect(normalized.degradedBranches).toEqual(['visual'])
+  })
+
   it('drops a stale response when a newer search starts', async () => {
     const session = new SearchSession()
     const first = session.start()
@@ -102,6 +117,62 @@ describe('search normalization', () => {
     order.push(await firstTask ?? 'stale')
     order.push(session.isCurrent(second.id) ? 'second' : 'lost')
     expect(order).toEqual(['stale', 'second'])
+  })
+
+  it('does not turn an explicit error with an empty item list into a no-results response', () => {
+    expect(() => normalizeSearchResponse({ error: 'Visual search is not configured', items: [] })).toThrowError(SearchRequestError)
+  })
+
+  it('only trusts a server count when the response identifies it as returned', () => {
+    const normalized = normalizeSearchResponse({
+      mode: 'smart',
+      count: 99,
+      items: [{ metadataFilename: 'one.json' }],
+    })
+    expect(normalized.returnedCount).toBe(1)
+    expect(normalized.countKind).toBe('unknown')
+  })
+
+  it('keeps the worker error message and retries one transient response', async () => {
+    const responses = [
+      new Response(JSON.stringify({ error: 'Search is temporarily unavailable' }), { status: 503 }),
+      new Response(JSON.stringify({ mode: 'visual', count: 0, countKind: 'returned', items: [] }), { status: 200 }),
+    ]
+    const requests: string[] = []
+    const result = await runSearch({
+      query: 'tramway',
+      mode: 'visual',
+      origin: 'https://worker.example/',
+      signal: new AbortController().signal,
+      fetchImpl: async (url) => {
+        requests.push(String(url))
+        return responses.shift() as Response
+      },
+    })
+    expect(result.items).toEqual([])
+    expect(requests).toHaveLength(2)
+    expect(requests[0]).toContain('mode=visual')
+    expect(requests[0]).toContain('q=tramway')
+  })
+
+  it('surfaces a non-transient worker error as SearchRequestError', async () => {
+    await expect(runSearch({
+      query: 'tramway',
+      mode: 'visual',
+      origin: 'https://worker.example',
+      signal: new AbortController().signal,
+      fetchImpl: async () => new Response(JSON.stringify({ error: 'Visual search is not configured' }), { status: 501 }),
+    })).rejects.toMatchObject({
+      name: 'SearchRequestError',
+      status: 501,
+      message: 'Visual search is not configured',
+    })
+  })
+
+  it('classifies service configuration errors separately from request failures', () => {
+    expect(classifySearchError(new SearchRequestError('Visual search is not configured', 501))).toBe('unavailable')
+    expect(classifySearchError(new SearchRequestError('Search timed out.', 408, true))).toBe('timeout')
+    expect(classifySearchError(new SearchRequestError('Search failed.', 503))).toBe('failed')
   })
 })
 
@@ -156,9 +227,9 @@ describe('image failure', () => {
 describe('snapshot dev proxy', () => {
   it('uses the fixed dev prefix unless a snapshot URL is configured', () => {
     expect(resolveSnapshotBase({ dev: true })).toBe('/snapshot')
-    expect(resolveSnapshotBase({ dev: false })).toBe('https://pub-6a29793ea7664738880d1cc5afb21b87.r2.dev/embeddings')
+    expect(resolveSnapshotBase({ dev: false })).toBe('https://pub-6a29793ea7664738880d1cc5afb21b87.r2.dev/embeddings/v1/20260924T101335Z')
     expect(resolveSnapshotBase({ dev: true, configured: 'https://example.test/custom/' })).toBe('https://example.test/custom')
-    expect(rewriteSnapshotPath('/snapshot/embeddings_2d.json')).toBe('/embeddings/embeddings_2d.json')
+    expect(rewriteSnapshotPath('/snapshot/embeddings_2d.json')).toBe('/embeddings/v1/20260924T101335Z/embeddings_2d.json')
     expect(() => rewriteSnapshotPath('/api/search')).toThrow(/snapshot-proxy-path/)
   })
 })

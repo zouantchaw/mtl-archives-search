@@ -1,0 +1,48 @@
+{
+  "snapshotBase": "https://pub-6a29793ea7664738880d1cc5afb21b87.r2.dev/embeddings/v1/20260924T101335Z",
+  "manifest": {
+    "schemaVersion": 1,
+    "generatedAt": "2026-09-24T10:13:35.762Z",
+    "legacy": false,
+    "modelId": null,
+    "indexId": "mtl-archives-clip-canonical-20260912",
+    "embeddingDimension": 512,
+    "count": 13499,
+    "seed": 42,
+    "projection": {
+      "algorithm": "umap",
+      "metric": "cosine",
+      "nNeighbors": 15,
+      "minDist": 0.1,
+      "spread": 1,
+      "nComponents": 2
+    },
+    "artifacts": {
+      "points": {
+        "path": "points.json",
+        "sha256": "ae36a536bb445a650cb6d2671658d233def61462dd15e9ec32cdf4b0b7ca4bc3",
+        "bytes": 9976537
+      },
+      "ids": {
+        "path": "ids.json",
+        "sha256": "8d41bffdbe6b41bc47badd74945efbaf09944544e965767e487f26ca71418afc",
+        "bytes": 466976
+      },
+      "embeddings": {
+        "path": "embeddings.bin",
+        "sha256": "9f89b542b9d53dc4bd3820fb69844ed6b8757ba6a50f7ca7718caab37a90a7e4",
+        "bytes": 27645960
+      }
+    }
+  },
+  "catalogueCount": 13499,
+  "indexCount": 13499,
+  "missingVectorIds": [],
+  "orphanVectorIds": [],
+  "vectorModelMetadataCounts": {
+    "unrecorded": 13459,
+    "Xenova/clip-vit-base-patch32": 40
+  },
+  "sourceInputSha256": "1b6dc29f68f0ddd985b02cb7eb0a9b80c8304a07490a3c2e7534ed5fd7369980",
+  "previousSnapshotBase": "https://pub-6a29793ea7664738880d1cc5afb21b87.r2.dev/embeddings"
+}

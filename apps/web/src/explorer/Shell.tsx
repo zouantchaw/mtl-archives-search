@@ -6,7 +6,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import type { Dictionary } from './locale'
 import type { Lang } from './links'
 import type { ColorMode } from './colors'
-import type { ViewMode } from './url-state'
+import type { ExplorerSearchMode, ViewMode } from './url-state'
 
 export function Shell(props: {
   text: Dictionary
@@ -14,8 +14,10 @@ export function Shell(props: {
   theme: 'light' | 'dark'
   homeHref: string
   query: string
+  searchMode: ExplorerSearchMode
   view: ViewMode
   onQuery: (value: string) => void
+  onSearchMode: (mode: ExplorerSearchMode) => void
   onView: (view: ViewMode) => void
   colorMode: ColorMode
   legacyLayout: boolean
@@ -59,7 +61,12 @@ export function Shell(props: {
           <Button type="button" variant="outline" size="icon" aria-pressed={props.theme === 'dark'} aria-label={props.theme === 'dark' ? text.themeToLight : text.themeToDark} onClick={props.onTheme}>{props.theme === 'dark' ? <Sun aria-hidden="true" /> : <Moon aria-hidden="true" />}</Button>
         </div>
       </div>
-      <div className="action-row" aria-label={text.view}>
+      <div className="action-row">
+        <ToggleGroup type="single" value={props.searchMode} onValueChange={(value) => { if (value) props.onSearchMode(value as ExplorerSearchMode) }} variant="outline" size="sm" aria-label={text.searchMode}>
+          <ToggleGroupItem value="smart">{text.searchSmartPrimary}</ToggleGroupItem>
+          <ToggleGroupItem value="visual">{text.searchVisualPrimary}</ToggleGroupItem>
+        </ToggleGroup>
+        <div className="toolbar-divider" aria-hidden="true" />
         <ToggleGroup type="single" value={props.view} onValueChange={(value) => { if (value) props.onView(value as ViewMode) }} variant="outline" size="sm" aria-label={text.view}>
           <ToggleGroupItem value="2d">{text.view2d}</ToggleGroupItem>
           <ToggleGroupItem value="3d">{text.view3d}</ToggleGroupItem>

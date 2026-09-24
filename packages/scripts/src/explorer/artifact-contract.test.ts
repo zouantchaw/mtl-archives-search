@@ -15,7 +15,7 @@ import {
   validatePublishedSet,
   expectedEmbeddingBytes,
 } from './artifact-contract.js'
-import { buildVersion, commitVersion, encodeEmbeddings, projectVectors, writeVersion } from './export-projection.js'
+import { buildVersion, commitVersion, encodeEmbeddings, normalizeVectors, projectVectors, writeVersion } from './export-projection.js'
 import { mulberry32 } from './seed.js'
 
 function sampleManifest(overrides: Record<string, unknown> = {}) {
@@ -123,6 +123,26 @@ test('seeded projection is repeatable', () => {
   assert.equal(sequence(), mulberry32(7)())
 })
 
+test('CLIP vectors are normalized for cosine projection and stored normalized', () => {
+  const normalized = normalizeVectors([[3, 4], [0, -2]])
+  assert.deepEqual(normalized[0], [0.6, 0.8])
+  assert.deepEqual(normalized[1], [0, -1])
+  assert.throws(() => normalizeVectors([[0, 0]]), /zero length/)
+  const built = buildVersion({
+    input: { ids: ['a', 'b', 'c'], vectors: [[3, 0], [0, 4], [3, 4]] },
+    seed: 42,
+    modelId: null,
+    indexId: 'mtl-archives-clip-canonical-20260912',
+    nNeighbors: 2,
+    minDist: 0.1,
+    spread: 1,
+    generatedAt: '2026-09-23T12:00:00.000Z',
+  })
+  assert.equal(built.manifest.projection.metric, 'cosine')
+  const view = new DataView(built.files['embeddings.bin'].buffer)
+  assert.ok(Math.abs(view.getFloat32(8, true) - 1) < 1e-6)
+})
+
 test('version folder writes the manifest last', () => {
   const input = {
     ids: ['a', 'b', 'c', 'd'],
@@ -162,6 +182,29 @@ test('version folder writes the manifest last', () => {
   }
 })
 
+test('version folders are immutable and cannot be overwritten', () => {
+  const built = buildVersion({
+    input: {
+      ids: ['a', 'b', 'c'],
+      vectors: [[1, 0], [0, 1], [1, 1]],
+    },
+    seed: 42,
+    modelId: null,
+    indexId: null,
+    nNeighbors: 2,
+    minDist: 0.1,
+    spread: 1,
+    generatedAt: '2026-09-23T12:00:00.000Z',
+  })
+  const dir = mkdtempSync(path.join(tmpdir(), 'explorer-immutable-'))
+  try {
+    writeVersion(dir, '2026-09-23T12:00:00.000Z', built)
+    assert.throws(() => writeVersion(dir, '2026-09-23T12:00:00.000Z', built), /EEXIST|ENOTEMPTY|exists|file already exists/i)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
 test('dry-run prints a manifest and does not create the output folder', () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'explorer-dry-run-'))
   try {
@@ -186,4 +229,3 @@ test('dry-run prints a manifest and does not create the output folder', () => {
     rmSync(dir, { recursive: true, force: true })
   }
 })
-

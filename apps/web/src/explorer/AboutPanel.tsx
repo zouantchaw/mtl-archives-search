@@ -34,6 +34,8 @@ export function AboutPanel(props: {
             <div><strong>{text.snapshotLabel}</strong><span>{formatMessage(text.snapshotCount, { count: props.snapshotCount })}</span></div>
             <Badge variant="secondary">{props.sourceLabel}</Badge>
           </div>
+          {props.generatedAt ? <p className="snapshot-updated"><strong>{formatMessage(text.snapshotUpdated, { date: new Intl.DateTimeFormat(document.documentElement.lang === 'fr' ? 'fr-CA' : 'en-CA', { dateStyle: 'long', timeZone: 'UTC' }).format(new Date(props.generatedAt)) })}</strong></p> : null}
+          <p className="about-note">{text.snapshotFixed}</p>
           <p className="about-note">{text.liveCorpus}</p>
           {props.dropped > 0 ? <p className="about-warning">{formatMessage(text.warningDropped, { count: props.dropped })}</p> : null}
           <Separator />

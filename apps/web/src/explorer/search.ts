@@ -32,6 +32,7 @@ export type NormalizedSearch = {
   returnedCount: number
   countKind: 'returned' | 'unknown'
   degraded: boolean
+  degradedBranches: Array<'visual' | 'semantic'>
   items: SearchRecord[]
 }
 
@@ -84,7 +85,10 @@ function branchScores(value: unknown): BranchScores | null {
 export function normalizeSearchResponse(payload: unknown): NormalizedSearch {
   if (!payload || typeof payload !== 'object') throw new SearchRequestError('Search response was not an object.', null)
   const body = payload as Record<string, unknown>
-  if (typeof body.error === 'string' && !Array.isArray(body.items)) {
+  // The worker may include an empty items array with a diagnostic error on a
+  // degraded response. Treat any explicit error as a failed contract instead
+  // of turning it into a misleading empty-result state.
+  if (typeof body.error === 'string') {
     throw new SearchRequestError(body.error, null)
   }
   if (!Array.isArray(body.items)) throw new SearchRequestError('Search response did not include items.', null)
@@ -121,17 +125,35 @@ export function normalizeSearchResponse(payload: unknown): NormalizedSearch {
       source: textOrNull(row.source),
     })
   }
-  const returnedCount = typeof body.count === 'number' && Number.isFinite(body.count) ? body.count : items.length
+  const count = numberOrNull(body.count)
+  const hasReturnedCount = body.countKind === 'returned' && count != null && count >= 0
+  const degradedBranches: Array<'visual' | 'semantic'> = []
+  const retrieval = body.retrieval && typeof body.retrieval === 'object' ? body.retrieval as Record<string, unknown> : null
+  if (body.degraded === true && retrieval) {
+    for (const branch of ['visual', 'semantic'] as const) {
+      const diagnostics = retrieval[branch]
+      if (diagnostics && typeof diagnostics === 'object' && (diagnostics as Record<string, unknown>).status !== 'ok') degradedBranches.push(branch)
+    }
+  }
   return {
     mode: typeof body.mode === 'string' ? body.mode : 'unknown',
-    returnedCount,
-    countKind: body.countKind === 'returned' ? 'returned' : 'unknown',
+    returnedCount: hasReturnedCount ? count : items.length,
+    countKind: hasReturnedCount ? 'returned' : 'unknown',
     degraded: body.degraded === true,
+    degradedBranches,
     items,
   }
 }
 
-export type SearchFailure = 'timeout' | 'failed'
+export type SearchFailure = 'timeout' | 'unavailable' | 'failed'
+
+export function classifySearchError(error: unknown): SearchFailure {
+  if (error instanceof SearchRequestError) {
+    if (error.timedOut || error.status === 408) return 'timeout'
+    if (error.status === 501) return 'unavailable'
+  }
+  return 'failed'
+}
 
 export type ResultBoard<T> = {
   key: string
@@ -141,6 +163,7 @@ export type ResultBoard<T> = {
   error: SearchFailure | null
   searching: boolean
   degraded: boolean
+  degradedBranches: Array<'visual' | 'semantic'>
 }
 
 export function boardKey(query: string, mode: string): string {
@@ -148,7 +171,7 @@ export function boardKey(query: string, mode: string): string {
 }
 
 export function emptyBoard<T>(key = ''): ResultBoard<T> {
-  return { key, requestId: 0, results: [], returnedCount: null, error: null, searching: false, degraded: false }
+  return { key, requestId: 0, results: [], returnedCount: null, error: null, searching: false, degraded: false, degradedBranches: [] }
 }
 
 export function beginSearch<T>(key: string, requestId: number, hasQuery: boolean): ResultBoard<T> {
@@ -160,6 +183,7 @@ export function beginSearch<T>(key: string, requestId: number, hasQuery: boolean
     error: null,
     searching: hasQuery,
     degraded: false,
+    degradedBranches: [],
   }
 }
 
@@ -167,7 +191,7 @@ export function commitSearchSuccess<T>(
   board: ResultBoard<T>,
   requestId: number,
   key: string,
-  payload: { items: T[]; returnedCount: number; degraded: boolean },
+  payload: { items: T[]; returnedCount: number; degraded: boolean; degradedBranches?: Array<'visual' | 'semantic'> },
 ): ResultBoard<T> {
   if (board.requestId !== requestId || board.key !== key) return board
   return {
@@ -178,6 +202,7 @@ export function commitSearchSuccess<T>(
     error: null,
     searching: false,
     degraded: payload.degraded,
+    degradedBranches: payload.degradedBranches ?? [],
   }
 }
 
@@ -188,7 +213,7 @@ export function commitSearchFailure<T>(
   error: SearchFailure,
 ): ResultBoard<T> {
   if (board.requestId !== requestId || board.key !== key) return board
-  return { key, requestId, results: [], returnedCount: null, error, searching: false, degraded: false }
+  return { key, requestId, results: [], returnedCount: null, error, searching: false, degraded: false, degradedBranches: [] }
 }
 
 export function visibleBoard<T>(board: ResultBoard<T>, query: string, mode: string): ResultBoard<T> {
@@ -202,17 +227,24 @@ export function shouldRetry(status: number | null, attempt: number): boolean {
   return status == null || status === 408 || status === 429 || status >= 500
 }
 
-function withTimeout(parent: AbortSignal, timeoutMs: number): AbortSignal {
+function withTimeout(parent: AbortSignal, timeoutMs: number): { signal: AbortSignal; cleanup: () => void } {
   if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function' && typeof AbortSignal.any === 'function') {
-    return AbortSignal.any([parent, AbortSignal.timeout(timeoutMs)])
+    return { signal: AbortSignal.any([parent, AbortSignal.timeout(timeoutMs)]), cleanup: () => {} }
   }
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
-  parent.addEventListener('abort', () => {
+  const onParentAbort = () => {
     clearTimeout(timer)
     controller.abort()
-  }, { once: true })
-  return controller.signal
+  }
+  parent.addEventListener('abort', onParentAbort, { once: true })
+  return {
+    signal: controller.signal,
+    cleanup: () => {
+      clearTimeout(timer)
+      parent.removeEventListener('abort', onParentAbort)
+    },
+  }
 }
 
 export async function runSearch(args: {
@@ -235,20 +267,29 @@ export async function runSearch(args: {
   })
   let attempt = 0
   while (true) {
-    const signal = withTimeout(args.signal, timeoutMs)
+    const timeout = withTimeout(args.signal, timeoutMs)
     try {
-      const response = await fetchImpl(`${origin}/api/search?${params.toString()}`, { signal, headers: { accept: 'application/json' } })
+      const response = await fetchImpl(`${origin}/api/search?${params.toString()}`, { signal: timeout.signal, headers: { accept: 'application/json' } })
       if (!response.ok) {
         if (shouldRetry(response.status, attempt)) {
           attempt += 1
           continue
         }
-        throw new SearchRequestError(`Search returned ${response.status}.`, response.status)
+        let message = `Search returned ${response.status}.`
+        try {
+          const body = await response.json() as unknown
+          if (body && typeof body === 'object' && typeof (body as Record<string, unknown>).error === 'string') {
+            message = (body as Record<string, string>).error
+          }
+        } catch {
+          // Keep the status message when the error body is unavailable.
+        }
+        throw new SearchRequestError(message, response.status)
       }
       return normalizeSearchResponse(await response.json())
     } catch (error) {
       if (args.signal.aborted) throw error
-      const timedOut = signal.aborted && !args.signal.aborted
+      const timedOut = timeout.signal.aborted && !args.signal.aborted
       if (timedOut) throw new SearchRequestError('Search timed out.', 408, true)
       const status = error instanceof SearchRequestError ? error.status : null
       if (error instanceof SearchRequestError && !shouldRetry(status, attempt)) throw error
@@ -256,7 +297,10 @@ export async function runSearch(args: {
         attempt += 1
         continue
       }
-      throw error
+      if (error instanceof SearchRequestError) throw error
+      throw new SearchRequestError('Search request failed.', null)
+    } finally {
+      timeout.cleanup()
     }
   }
 }

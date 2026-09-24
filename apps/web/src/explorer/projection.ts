@@ -8,6 +8,10 @@ export type SnapshotPoint = {
   date: string | null
   imageUrl: string | null
   caption: string | null
+  cote?: string | null
+  credits?: string | null
+  externalUrl?: string | null
+  captionModel?: string | null
 }
 
 export const MAP_SCALE = 1000
@@ -24,6 +28,10 @@ export type ProjectedPoint = {
   imageUrl: string | null
   caption: string | null
   year: number | null
+  cote?: string | null
+  credits?: string | null
+  externalUrl?: string | null
+  captionModel?: string | null
 }
 
 export type ProjectionIndex = {
@@ -71,6 +79,10 @@ export function buildProjection(points: SnapshotPoint[]): ProjectionIndex {
       date: point.date,
       imageUrl: point.imageUrl,
       caption: point.caption,
+      cote: point.cote ?? null,
+      credits: point.credits ?? null,
+      externalUrl: point.externalUrl ?? null,
+      captionModel: point.captionModel ?? null,
       year,
     })
   }

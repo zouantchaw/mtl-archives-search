@@ -43,11 +43,11 @@ export function ResearchControls(props: {
         <div className="research-content">
           <section className="research-section" aria-labelledby="research-search-heading">
             <div className="section-kicker" id="research-search-heading">{text.searchMode}</div>
-            <ToggleGroup type="single" value={props.searchMode} onValueChange={(value) => { if (value) props.onSearchMode(value as ExplorerSearchMode) }} variant="outline" className="mode-toggle" aria-label={text.searchMode}>
+            <ToggleGroup type="single" value={props.searchMode} onValueChange={(value) => { if (value) props.onSearchMode(value as ExplorerSearchMode) }} variant="outline" className="mode-toggle" aria-label={text.searchMode} aria-describedby="research-search-help">
               <ToggleGroupItem value="smart">{text.searchSmart}</ToggleGroupItem>
               <ToggleGroupItem value="visual">{text.searchVisual}</ToggleGroupItem>
             </ToggleGroup>
-            <p className="help-copy">{props.searchMode === 'visual' ? text.visualHelp : text.smartHelp}</p>
+            <p className="help-copy" id="research-search-help">{props.searchMode === 'visual' ? text.visualHelp : text.smartHelp}</p>
           </section>
 
           <section className="research-section" aria-labelledby="research-display-heading">

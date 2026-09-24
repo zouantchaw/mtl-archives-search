@@ -40,7 +40,11 @@ The manifest records:
 
 `embeddings.bin` is little-endian: `uint32` count, `uint32` dimensions, then `float32` rows. Byte length must be `8 + count * dimensions * 4`. Published folders require the point IDs and embedding IDs in the same order. Validation fails if a requested model id differs from the manifest, including when the manifest model is unknown.
 
-The public prefix `https://pub-6a29793ea7664738880d1cc5afb21b87.r2.dev/embeddings/` currently has no `manifest.json` (HTTP 404). Only that 404 uses the legacy adapter. A present manifest that fails schema, checksum, byte length, or ID order is rejected and does not fall back. The legacy adapter reads `embeddings_2d.json`, `embeddings_ids.json`, and the 8-byte header of `embeddings_512d.bin`. The full vector file is loaded lazily for the search similarity web or a snapshot-neighbor comparison and checked against the manifest hash when available. Both flows share the pending download and cached matrix for that snapshot. A read on 2026-09-23 showed 14,715 points and a header of 14,715 × 512. That count is whatever the files contain, not a claim about the live corpus. Legacy model, index, seed, and generation time stay unknown. Embedding IDs with no point are reported and are not given coordinates.
+The active snapshot is `https://pub-6a29793ea7664738880d1cc5afb21b87.r2.dev/embeddings/v1/20260924T101335Z`, generated September 24, 2026. It contains 13,499 records and 512-dimensional vectors from `mtl-archives-clip-canonical-20260912`, reconciled with the current D1 catalogue: zero missing and zero orphaned IDs. Its normalized vectors use cosine UMAP, seed 42. Source names, dates, captions, credits, archival references, and links are joined from D1.
+
+The canonical index carries 13,459 vectors without a recorded model and 40 labeled `Xenova/clip-vit-base-patch32`. The repair pipeline remapped historical vectors through verified image identities. The manifest therefore leaves the overall model null; index identity and generation date are known. This refresh did not generate new image embeddings or change source archive bytes.
+
+The old `/embeddings` prefix remains available for rollback. The loader only falls back to legacy files if a manifest is absent (404); malformed manifests or mismatched checksums fail closed. Points and IDs are verified on load; the full vector matrix is fetched and verified lazily for connection webs or snapshot neighbors, sharing one pending request and cache per snapshot. JSON artifacts are gzip-encoded in R2; hashes describe decoded bytes.
 
 ## Commands
 
@@ -77,7 +81,7 @@ npm run explorer:validate --workspace=@mtl-archives/scripts -- \
 
 `npm run vectorize:export` is a dry run unless `--write` is present. It does not upload.
 
-Vectors for the historical visual index `mtl-archives-clip` are read, not written, with Cloudflare's `get_by_ids` API. Ids come from a local manifest or an `--ids` file. Pass the model that produced those vectors with `--model-id`; if you omit it, the manifest stores null. The default seed is 42.
+Vectors for the canonical visual index `mtl-archives-clip-canonical-20260912` are read, not written, with Cloudflare's `get_by_ids` API. Ids come from a local manifest or an `--ids` file. Pass the model that produced those vectors with `--model-id` only when it is known; repaired canonical vectors may have mixed or unknown lineage, so the honest default is `null`. The exporter normalizes rows and records `projection.metric: "cosine"`; the default seed is 42.
 
 ```bash
 npm run vectorize:export --workspace=@mtl-archives/scripts
@@ -85,24 +89,33 @@ npm run vectorize:export --workspace=@mtl-archives/scripts -- --input vectors.js
 npm run vectorize:export --workspace=@mtl-archives/scripts -- --fetch --write --ids ids.txt --model-id MODEL --out ./tmp/explorer-artifacts
 ```
 
+To join a D1/API metadata export while writing a local snapshot, pass it with `--metadata`. Rows may be the `/api/photos` `{items: [...]}` response, a JSON array, or an ID-keyed object; IDs with and without `.json` are matched. Fetches fail closed when Vectorize omits requested IDs and print the missing list. Use `--allow-missing` only when the reduced snapshot is deliberate; its output reports requested and received counts.
+
+```bash
+npm run vectorize:export --workspace=@mtl-archives/scripts -- \
+  --input ./tmp/vectors.json --metadata ./tmp/records.json \
+  --index-id mtl-archives-clip-canonical-20260912 \
+  --seed 42 --model-id MODEL --write --out ./tmp/explorer-artifacts
+```
+
 `--fetch` uses `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` (or the existing `CLOUDFLARE_AI_TOKEN` / `CF_AI_TOKEN` aliases). A dry run never calls that API. `--fetch` without `--write` also stays local.
 
 ## Regenerate and roll back
 
-1. Export vectors for a known model and index into a local JSON file. Do that with an explicit, reviewed job. This repository command does not fetch Vectorize.
+1. Export current public catalogue metadata from D1 and enumerate the active visual index. Reconcile IDs and review missing/orphaned records. Fetch vectors using `vectorize:export --fetch --write --ids ids.txt --metadata records.json`; omit `--model-id` when source lineage is incomplete.
 2. Dry-run the export, then write a new version folder.
 3. Validate it. `--expect-model` must match the manifest. A null model does not match a named model.
 4. Upload the folder to a new immutable R2 prefix. Upload `manifest.json` last. Do not overwrite the live legacy files in place.
 5. Point a new explorer deployment at that prefix with `VITE_R2_EMBEDDINGS_BASE_URL`.
 6. Rollback is another deployment whose base URL is the previous prefix. The legacy prefix keeps working through the adapter as long as its three files remain.
 
-Region colors and the geometric date check are tied to the legacy layout. A versioned manifest turns them off instead of pretending the old centroids still apply.
+Region colors and the geometric date check are tied to the legacy layout and are disabled for the regenerated map. Date coloring remains available, including all decades present in the current catalogue.
 
 ## Deployment
 
-The production explorer is [https://explorer.mtlarchives.com/](https://explorer.mtlarchives.com/). `apps/web/vercel.json` only rewrites two kit PDFs. `https://www.mtlarchives.com/` is the Next.js site and does not serve `/explore`. This change set does not deploy, change DNS, or write R2.
+The production explorer is [https://explorer.mtlarchives.com/](https://explorer.mtlarchives.com/). `apps/web/vercel.json` only rewrites two kit PDFs. `https://www.mtlarchives.com/` is the Next.js site and does not serve `/explore`. The September 24 refresh publishes immutable snapshot artifacts in R2 and updates only the Explorer deployment; the live search indexes and Worker remain unchanged.
 
-In development, Vite proxies `/snapshot` to the fixed R2 prefix `https://pub-6a29793ea7664738880d1cc5afb21b87.r2.dev/embeddings` and forwards Range headers. The dev app requests `/snapshot` unless `VITE_R2_EMBEDDINGS_BASE_URL` is set. Production builds keep the direct R2 URL. The proxy is not an open proxy.
+In development, Vite proxies `/snapshot` to the fixed R2 prefix `https://pub-6a29793ea7664738880d1cc5afb21b87.r2.dev/embeddings` and forwards Range headers. The proxy rewrites to the versioned path in `snapshot-proxy.ts`. The dev app requests `/snapshot` unless `VITE_R2_EMBEDDINGS_BASE_URL` is set. Production builds keep the direct R2 URL. The proxy is not an open proxy.
 
 ## Research workspace and verification
 
@@ -122,10 +135,18 @@ Codex browser QA on 2026-09-23 used the in-app browser at `http://127.0.0.1:3021
 - Citation action shows its copied confirmation; mobile About focus enters the dialog and returns to More on Escape.
 - Keyboard skip link opens/focuses mobile results. Fresh browser session has no runtime errors or framework overlay.
 
-Automated verification: 22 explorer tests, 11 artifact/export tests, explorer TypeScript, production build, and `git diff --check`. Coverage includes checksum/manifest validation, traversal rejection, search races, date palettes, export escaping, and camera fitting. Hardware WebGL failure, reduced-motion OS emulation, and exhaustive API/network failure combinations were not browser-tested. The existing legacy snapshot does not identify its model or generation date; About retains those limitations. No live vectors or archive bytes were regenerated.
+Automated verification: 29 explorer tests, 16 artifact/export tests, explorer TypeScript, production build, and `git diff --check`. Coverage includes checksum/manifest validation, traversal rejection, search races, date palettes, export escaping, and camera fitting. Hardware WebGL failure, reduced-motion OS emulation, and exhaustive API/network failure combinations were not browser-tested. The current version identifies its index and generation date; its overall embedding model remains unknown because historical rows lack model metadata. No live vectors or archive bytes were regenerated.
 
 The September 23 follow-up uses shadcn controls for the toolbar and focus-managed overlays. Browser checks covered 1040px desktop, 390px mobile and 320px French dark mode, drawer sizing, full color labels, selected URL restoration, 2D dragging, 3D rotation, and preserving selection when closing dialogs. Selection uses a soft CSS glow in close-up, with a minimal clickable locator only when needed. Browser checks also verified zoom-out and off-screen locators and returning to the selected point.
 
 ### Similarity web
 
 The web is enabled by default and can be hidden from the map toolbar. For search, up to 50 mapped results each contribute their two strongest cosine-similarity neighbors (minimum 0.2); undirected edges are deduplicated and capped at 80. Snapshot similarity draws a star from the source photograph to its 20 returned neighbors. Only endpoints with published map positions are drawn. Lines indicate similarity in the snapshot model, not historical relationships or geographic proximity. Stronger edges are clearer; circular endpoints retain date or projection-region colors while the surrounding cloud is subdued. Edges follow points during 2D/3D transitions.
+
+## Search behavior (September 24 refresh)
+
+Smart search combines visual and semantic retrieval through the same Worker as the main application; exact archival references use its catalogue lookup. Visual search embeds a text description into the image index. Both search the live archive, while graph edges and snapshot-neighbor scores use the published visual matrix. The mode is visible in navigation and retained in the URL. Partial Smart results identify the unavailable branch; transport errors, timeouts, service unavailability, and empty responses are distinct. Only returned-count API values are trusted as result counts.
+
+Refreshes are explicit releases, not an automatic background sync: fetch, reconcile, generate, validate, upload into a new immutable prefix with manifest last, then update `PUBLISHED_SNAPSHOT_PATH` (and any configured Vercel override) and deploy. Never overwrite a published version. The old deployment/prefix remains the rollback path.
+
+The [September 24 publication receipt](explorer-snapshot-20260924.json) records artifact hashes, coverage reconciliation, and the previous snapshot for rollback.

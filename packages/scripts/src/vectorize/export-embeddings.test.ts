@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
-import { CANONICAL_VISUAL_INDEX, fetchVectorsByIds, runVectorizeExport, vectorizeGetByIdsUrl } from './export-embeddings.js'
+import { CANONICAL_VISUAL_INDEX, fetchVectorsByIds, normalizeMetadataRecords, runVectorizeExport, vectorizeGetByIdsUrl } from './export-embeddings.js'
 
 const input = {
   ids: ['a', 'b', 'c', 'd'],
@@ -44,6 +44,56 @@ test('fetch uses the canonical index and a dry run does not send it', async () =
   })
   assert.deepEqual(file.ids, ['a', 'b'])
   assert.equal(calls[0], vectorizeGetByIdsUrl('acct', CANONICAL_VISUAL_INDEX))
+})
+
+test('fetch reports missing rows, preserves requested order, and joins metadata', async () => {
+  const file = await fetchVectorsByIds({
+    ids: ['b', 'a', 'missing'],
+    accountId: 'acct',
+    token: 'tok',
+    records: { a: { name: 'A' }, b: { name: 'B' } },
+    fetchImpl: async () => new Response(JSON.stringify({ result: [
+      { id: 'a', values: [1, 0] },
+      { id: 'b', values: [0, 1] },
+    ] })),
+  })
+  assert.deepEqual(file.ids, ['b', 'a'])
+  assert.deepEqual(file.vectors, [[0, 1], [1, 0]])
+  assert.deepEqual(file.missingIds, ['missing'])
+  assert.deepEqual(file.requestedIds, ['b', 'a', 'missing'])
+  assert.deepEqual(file.records, { a: { name: 'A' }, b: { name: 'B' } })
+})
+
+test('metadata normalizer accepts D1 API rows and bare/json IDs', () => {
+  const records = normalizeMetadataRecords({ items: [{
+    metadataFilename: 'photo_a.json',
+    name: 'Rue A',
+    dateValue: '1932',
+    imageUrl: 'https://images.example/a.jpg',
+    vlmCaption: 'A street',
+    vlm_caption_model: 'model-x',
+    externalUrl: 'https://archives.example/a',
+    credits: 'Archives',
+  }] })
+  assert.equal(records.photo_a?.name, 'Rue A')
+  assert.equal(records.photo_a?.date, '1932')
+  assert.equal(records['photo_a.json']?.captionModel, 'model-x')
+  assert.equal(records.photo_a?.externalUrl, 'https://archives.example/a')
+})
+
+test('strict fetch refuses an incomplete requested set', async () => {
+  await assert.rejects(
+    () => runVectorizeExport({
+      fetchVectors: true,
+      write: true,
+      dryRun: false,
+      ids: ['a', 'missing'],
+      accountId: 'acct',
+      token: 'tok',
+      fetchImpl: async () => new Response(JSON.stringify({ result: [{ id: 'a', values: [1, 0, 0, 0] }] })),
+    }),
+    /omitted 1 of 2/,
+  )
 })
 
 test('local vectors project with the supplied model and seed without writing unless asked', async () => {

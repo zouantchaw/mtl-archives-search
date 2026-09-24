@@ -1,8 +1,8 @@
 import type { ThemeName } from './url-state'
-import { resolveSnapshotBase } from './snapshot-proxy'
+import { resolveSnapshotBase, SNAPSHOT_PROXY_TARGET, PUBLISHED_SNAPSHOT_PATH } from './snapshot-proxy'
 
 export const WORKER_ORIGIN = 'https://mtl-archives-worker.wiel.workers.dev'
-export const DEFAULT_SNAPSHOT_BASE = 'https://pub-6a29793ea7664738880d1cc5afb21b87.r2.dev/embeddings'
+export const DEFAULT_SNAPSHOT_BASE = `${SNAPSHOT_PROXY_TARGET}${PUBLISHED_SNAPSHOT_PATH}`
 
 export function apiOrigin(): string {
   const configured = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '')

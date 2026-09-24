@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { UMAP } from 'umap-js'
 import {
@@ -17,10 +17,24 @@ import { mulberry32 } from './seed.js'
 export type VectorRecord = {
   name?: string | null
   date?: string | null
+  date_value?: string | null
+  dateValue?: string | null
   image_url?: string | null
   imageUrl?: string | null
+  metadata_filename?: string | null
+  metadataFilename?: string | null
+  image_filename?: string | null
+  resolved_image_filename?: string | null
   vlm_caption?: string | null
+  vlmCaption?: string | null
+  vlm_caption_model?: string | null
+  captionModel?: string | null
   caption?: string | null
+  cote?: string | null
+  credits?: string | null
+  external_url?: string | null
+  externalUrl?: string | null
+  portal_title?: string | null
 }
 
 export type VectorFile = {
@@ -76,6 +90,29 @@ export function encodeEmbeddings(vectors: number[][]): Uint8Array {
   return bytes
 }
 
+/** Normalize CLIP rows before cosine UMAP and snapshot similarity use. */
+export function normalizeVectors(vectors: number[][]): number[][] {
+  return vectors.map((vector, index) => {
+    let squaredNorm = 0
+    for (const value of vector) {
+      if (typeof value !== 'number' || !Number.isFinite(value)) {
+        throw new Error(`Embedding ${index} contains a non-finite value.`)
+      }
+      squaredNorm += value * value
+    }
+    const norm = Math.sqrt(squaredNorm)
+    if (!(norm > 0)) throw new Error(`Embedding ${index} has zero length.`)
+    return vector.map((value) => value / norm)
+  })
+}
+
+function cosineDistance(left: number[], right: number[]): number {
+  let dot = 0
+  for (let index = 0; index < left.length; index += 1) dot += left[index] * right[index]
+  // UMAP expects a distance. Clamp rounding noise so the graph is valid.
+  return Math.max(0, Math.min(2, 1 - dot))
+}
+
 export function normalizePlane(coords: number[][]): Array<[number, number]> {
   let minX = Infinity
   let maxX = -Infinity
@@ -100,15 +137,17 @@ export function projectVectors(
   options: { seed: number; nNeighbors: number; minDist: number; spread: number },
 ): Array<[number, number]> {
   if (vectors.length < 3) throw new Error('Projection needs at least 3 vectors.')
+  const normalizedVectors = normalizeVectors(vectors)
   const neighbors = Math.max(2, Math.min(options.nNeighbors, vectors.length - 1))
   const umap = new UMAP({
     nComponents: 2,
     nNeighbors: neighbors,
     minDist: options.minDist,
     spread: options.spread,
+    distanceFn: cosineDistance,
     random: mulberry32(options.seed),
   })
-  return normalizePlane(umap.fit(vectors))
+  return normalizePlane(umap.fit(normalizedVectors))
 }
 
 export function buildVersion(request: ExportRequest): BuiltVersion {
@@ -121,23 +160,42 @@ export function buildVersion(request: ExportRequest): BuiltVersion {
   if (parsedIds.issues.some((item) => item.level === 'error')) {
     throw new Error(parsedIds.issues.find((item) => item.level === 'error')?.message ?? 'Invalid ids')
   }
-  const plane = projectVectors(vectors, request)
+  // Validate all cheap invariants before invoking the O(n log n) projection.
+  // This keeps malformed D1/vector responses from spending minutes in UMAP.
+  if (vectors.length < 3) throw new Error('Projection needs at least 3 vectors.')
+  const dimension = vectors[0]?.length ?? 0
+  if (!Number.isInteger(dimension) || dimension <= 0) throw new Error('Embeddings need a positive dimension.')
+  for (const [index, vector] of vectors.entries()) {
+    if (!Array.isArray(vector) || vector.length !== dimension) {
+      throw new Error(`Embedding dimensions are mixed at row ${index}. Refusing to project them together.`)
+    }
+    for (const value of vector) {
+      if (typeof value !== 'number' || !Number.isFinite(value)) throw new Error(`Embedding ${index} contains a non-finite value.`)
+    }
+  }
+  const normalizedVectors = normalizeVectors(vectors)
+  const plane = projectVectors(normalizedVectors, request)
   const points: SnapshotPoint[] = ids.map((id, index) => {
-    const record = request.input.records?.[id] ?? {}
+    const record = request.input.records?.[id]
+      ?? request.input.records?.[id.endsWith('.json') ? id.slice(0, -5) : `${id}.json`]
+      ?? {}
     return {
       id,
       x: plane[index][0],
       y: plane[index][1],
-      name: record.name ?? null,
-      date: record.date ?? null,
+      name: record.name ?? record.portal_title ?? null,
+      date: record.date ?? record.dateValue ?? record.date_value ?? null,
       imageUrl: record.imageUrl ?? record.image_url ?? null,
-      caption: record.caption ?? record.vlm_caption ?? null,
+      caption: record.caption ?? record.vlmCaption ?? record.vlm_caption ?? null,
+      cote: record.cote ?? null,
+      credits: record.credits ?? null,
+      externalUrl: record.externalUrl ?? record.external_url ?? null,
+      captionModel: record.captionModel ?? record.vlm_caption_model ?? null,
     }
   })
   const pointsBytes = new TextEncoder().encode(JSON.stringify(points))
   const idsBytes = new TextEncoder().encode(JSON.stringify(ids))
-  const embeddings = encodeEmbeddings(vectors)
-  const dimension = vectors[0]?.length ?? 0
+  const embeddings = encodeEmbeddings(normalizedVectors)
   const neighbors = Math.max(2, Math.min(request.nNeighbors, vectors.length - 1))
   const manifest: ExplorerManifest = {
     schemaVersion: EXPLORER_SCHEMA_VERSION,
@@ -150,6 +208,7 @@ export function buildVersion(request: ExportRequest): BuiltVersion {
     seed: request.seed,
     projection: {
       algorithm: 'umap',
+      metric: 'cosine',
       nNeighbors: neighbors,
       minDist: request.minDist,
       spread: request.spread,
@@ -191,16 +250,26 @@ export function commitVersion(built: BuiltVersion, emit: (name: string, bytes: U
 }
 
 export function versionFolderName(generatedAt: string): string {
-  const stamp = generatedAt.replace(/:/g, '').replace(/\.\d{3}Z$/, 'Z')
+  const parsed = new Date(generatedAt)
+  if (Number.isNaN(parsed.valueOf())) throw new Error(`generatedAt is not a valid ISO time: ${generatedAt}`)
+  const stamp = parsed.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z')
   return path.join(`v${EXPLORER_SCHEMA_VERSION}`, stamp)
 }
 
 export function writeVersion(outRoot: string, generatedAt: string, built: BuiltVersion): string {
   const folder = path.join(outRoot, versionFolderName(generatedAt))
-  mkdirSync(folder, { recursive: true })
-  commitVersion(built, (name, bytes) => {
-    writeFileSync(path.join(folder, name), bytes)
-  })
+  mkdirSync(path.dirname(folder), { recursive: true })
+  // Build in a sibling temp directory and publish with one rename. A version
+  // folder is immutable: rerunning the same generatedAt must fail rather than
+  // silently replacing a snapshot that may already be referenced by R2.
+  const temporary = mkdtempSync(`${folder}.tmp-`)
+  try {
+    commitVersion(built, (name, bytes) => writeFileSync(path.join(temporary, name), bytes, { flag: 'wx' }))
+    renameSync(temporary, folder)
+  } catch (error) {
+    rmSync(temporary, { recursive: true, force: true })
+    throw error
+  }
   return folder
 }
 

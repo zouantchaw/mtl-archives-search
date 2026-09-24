@@ -23,6 +23,8 @@ export type ExplorerManifest = {
   seed: number | null
   projection: {
     algorithm: 'umap' | 'legacy-published'
+    /** Distance used to build the high-dimensional neighborhood graph. */
+    metric?: 'euclidean' | 'cosine'
     nNeighbors: number | null
     minDist: number | null
     spread: number | null
@@ -43,6 +45,11 @@ export type SnapshotPoint = {
   date: string | null
   imageUrl: string | null
   caption: string | null
+  /** Optional public metadata retained for the explorer details panel. */
+  cote?: string | null
+  credits?: string | null
+  externalUrl?: string | null
+  captionModel?: string | null
 }
 
 export type ValidationResult = {
@@ -102,12 +109,16 @@ export function parsePointRecords(input: unknown): { points: SnapshotPoint[]; is
     const date = stringOrNull(row.date)
     const imageUrl = stringOrNull(row.imageUrl ?? row.image_url)
     const caption = stringOrNull(row.caption ?? row.vlm_caption)
-    if (name === undefined || date === undefined || imageUrl === undefined || caption === undefined) {
+    const cote = stringOrNull(row.cote)
+    const credits = stringOrNull(row.credits)
+    const externalUrl = stringOrNull(row.externalUrl ?? row.external_url)
+    const captionModel = stringOrNull(row.captionModel ?? row.vlm_caption_model)
+    if (name === undefined || date === undefined || imageUrl === undefined || caption === undefined || cote === undefined || credits === undefined || externalUrl === undefined || captionModel === undefined) {
       issues.push(issue('error', 'point-field', `Point ${id} has a field that is not a string or null.`))
       return
     }
     seen.add(id)
-    points.push({ id, x, y, name, date, imageUrl, caption })
+    points.push({ id, x, y, name, date, imageUrl, caption, cote, credits, externalUrl, captionModel })
   })
   return { points, issues }
 }
@@ -232,6 +243,8 @@ export function parseManifest(input: unknown): { manifest: ExplorerManifest | nu
     issues.push(issue('error', 'projection-algorithm', 'projection.algorithm is not a known value.'))
   } else if (projection.nComponents !== 2) {
     issues.push(issue('error', 'projection-components', 'projection.nComponents must be 2.'))
+  } else if (projection.metric != null && projection.metric !== 'euclidean' && projection.metric !== 'cosine') {
+    issues.push(issue('error', 'projection-metric', 'projection.metric must be euclidean or cosine.'))
   }
   const artifacts = isRecord(input.artifacts) ? input.artifacts : null
   const points = artifacts ? parseArtifactRef(artifacts.points, 'points', issues) : null
@@ -253,6 +266,7 @@ export function parseManifest(input: unknown): { manifest: ExplorerManifest | nu
       seed,
       projection: {
         algorithm: projection.algorithm as 'umap' | 'legacy-published',
+        metric: projection.metric === 'cosine' || projection.metric === 'euclidean' ? projection.metric : undefined,
         nNeighbors: typeof projection.nNeighbors === 'number' ? projection.nNeighbors : null,
         minDist: typeof projection.minDist === 'number' ? projection.minDist : null,
         spread: typeof projection.spread === 'number' ? projection.spread : null,

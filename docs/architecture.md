@@ -33,7 +33,7 @@ Browser  →  Next.js (Vercel)  →  Cloudflare Worker
 | `apps/next-app` | Public site |
 | `apps/api` | Worker |
 | `apps/operator-agent` | Eve config (Gateway base URL) |
-| `apps/web` | Optional snapshot explorer with sparse vector-similarity webs and a device-local Collection sheet. Shared `/api/search` (`mode=smart` by default). Map proximity is model similarity, not geography. Legacy R2 files load until a versioned manifest is published. See [explorer-modernization.md](explorer-modernization.md). |
+| `apps/web` | Optional snapshot explorer with sparse vector-similarity webs and a device-local Collection sheet. Shared `/api/search` (`mode=smart` by default). Map proximity is model similarity, not geography. Versioned R2 snapshot refreshed from the canonical visual index and D1 on September 24, 2026 (13,499 records); Smart/Visual search remains live. See [explorer-modernization.md](explorer-modernization.md). |
 | `apps/story-video` | Instagram / print stills |
 
 Schema lives in `infrastructure/d1/migrations/`. Do not delete applied migrations.

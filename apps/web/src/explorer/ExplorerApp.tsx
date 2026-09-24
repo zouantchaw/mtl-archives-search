@@ -19,7 +19,7 @@ import { PointCloudRenderer, type CloudPoint } from './renderer'
 import { ResearchControls } from './ResearchControls'
 import { decadeChoices } from './research'
 import { ResultsPanel } from './ResultsPanel'
-import { SearchRequestError, SearchSession, beginSearch, boardKey, commitSearchFailure, commitSearchSuccess, emptyBoard, runSearch, visibleBoard, type ResultBoard, type SearchRecord } from './search'
+import { classifySearchError, SearchSession, beginSearch, boardKey, commitSearchFailure, commitSearchSuccess, emptyBoard, runSearch, visibleBoard, type ResultBoard, type SearchRecord } from './search'
 import { Shell } from './Shell'
 import { nearestInSnapshot, type Neighbor } from './similarity'
 import { parseArchiveDate } from './dates'
@@ -244,12 +244,13 @@ export function EmbeddingExplorer() {
             items: result.items,
             returnedCount: result.returnedCount,
             degraded: result.degraded,
+            degradedBranches: result.degradedBranches,
           }))
           events.searchPerformed(query.trim(), searchMode === 'visual' ? 'visual' : 'smart', result.returnedCount)
         })
         .catch((error: unknown) => {
           if (!session.isCurrent(id) || signal.aborted) return
-          setBoard((current) => commitSearchFailure(current, id, key, error instanceof SearchRequestError && error.timedOut ? 'timeout' : 'failed'))
+          setBoard((current) => commitSearchFailure(current, id, key, classifySearchError(error)))
         })
     }, 300)
     return () => {
@@ -524,7 +525,7 @@ export function EmbeddingExplorer() {
   const emptyMessage = query.trim() ? text.noResults : text.emptyPrompt
   const showDetails = Boolean(selected)
   const searchError = activeMode === 'search'
-    ? shownBoard.error === 'timeout' ? text.searchTimeout : shownBoard.error === 'failed' ? text.searchError : null
+    ? shownBoard.error === 'timeout' ? text.searchTimeout : shownBoard.error === 'unavailable' ? text.searchUnavailable : shownBoard.error === 'failed' ? text.searchError : null
     : null
   const side = (
     <div id="explorer-results" tabIndex={-1}>
@@ -541,7 +542,13 @@ export function EmbeddingExplorer() {
             <p>{loadingSnapshot ? text.loadingSnapshot : snapshotStatus === 'empty' ? text.snapshotEmpty : formatMessage(text.snapshotCount, { count: projection?.count ?? 0 })}</p>
             {activeReturnedCount != null ? <p>{formatMessage(text.returnedCount, { count: activeReturnedCount })}</p> : null}
             {projection?.dropped ? <p className="help-copy">{formatMessage(text.warningDropped, { count: projection.dropped })}</p> : null}
-            {shownBoard.degraded ? <p className="help-copy">{text.degraded}</p> : null}
+            {shownBoard.degraded ? (
+              <p className="help-copy">
+                {shownBoard.degradedBranches.includes('visual') ? text.degradedVisual
+                  : shownBoard.degradedBranches.includes('semantic') ? text.degradedSemantic
+                    : text.degraded}
+              </p>
+            ) : null}
           </>
         )}
       </div>
@@ -604,12 +611,14 @@ export function EmbeddingExplorer() {
         theme={theme}
         homeHref={mainSiteHome(lang)}
         query={query}
+        searchMode={searchMode}
         view={view}
         colorMode={colorMode}
         legacyLayout={snapshot?.legacyLayout ?? false}
         onColor={setColorMode}
         advancedOpen={advancedOpen}
         onQuery={(value) => { setNeighbors(null); setSelectedId(null); setQuery(value) }}
+        onSearchMode={(mode) => { setNeighbors(null); setSelectedId(null); setSearchMode(mode) }}
         onView={(next) => { setView(next); events.viewModeChanged(next) }}
         onLang={setLang}
         onTheme={() => setTheme((current) => current === 'dark' ? 'light' : 'dark')}

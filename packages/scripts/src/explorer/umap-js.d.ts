@@ -5,6 +5,7 @@ declare module 'umap-js' {
       nNeighbors?: number
       minDist?: number
       spread?: number
+      distanceFn?: (left: number[], right: number[]) => number
       random?: () => number
     })
     fit(data: number[][]): number[][]

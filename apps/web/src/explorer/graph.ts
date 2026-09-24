@@ -37,11 +37,12 @@ export function buildSearchGraph(
   dimensions: number,
 ): GraphEdge[] {
   if (!Number.isInteger(dimensions) || dimensions <= 0) return []
+  const requested = new Set(ids)
   const rows = new Map<string, VectorRow>()
   const maxRows = Math.min(embeddingIds.length, Math.floor(matrix.length / dimensions))
   for (let index = 0; index < maxRows; index += 1) {
     const id = embeddingIds[index]
-    if (!id || rows.has(id)) continue
+    if (!id || !requested.has(id) || rows.has(id)) continue
     const vector = matrix.subarray(index * dimensions, (index + 1) * dimensions)
     if (vector.some((value) => !Number.isFinite(value)) || vector.every((value) => value === 0)) continue
     rows.set(id, { id, vector })

@@ -108,7 +108,7 @@ async function loadVerifiedManifest(root: string, payload: unknown, signal: Abor
     source: 'manifest',
     points: points.points.map(toPoint),
     embeddingIds: ids.ids,
-    vectorHeader: null,
+    vectorHeader: manifest.embeddingDimension ? { count: manifest.count, dimensions: manifest.embeddingDimension } : null,
     vectorBytes: embeddings?.bytes ?? null,
     vectorSha256: embeddings?.sha256 ?? null,
     vectorUrl: embeddings ? artifactUrl(root, embeddings.path) : null,
