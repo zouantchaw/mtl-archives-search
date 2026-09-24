@@ -1,4 +1,4 @@
-import { ChevronDown, Download, SlidersHorizontal } from 'lucide-react'
+import { ChevronDown, SlidersHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Label } from '@/components/ui/label'
@@ -29,8 +29,6 @@ export function ResearchControls(props: {
   onAnomalies: (value: boolean) => void
   onRotate: (value: boolean) => void
   onDecade: (value: string) => void
-  onExportCsv: () => void
-  onExportJson: () => void
 }) {
   const { text } = props
   return (
@@ -97,14 +95,7 @@ export function ResearchControls(props: {
             </CollapsibleContent>
           </Collapsible>
 
-          <section className="research-section export-section" aria-labelledby="research-export-heading">
-            <div className="section-kicker" id="research-export-heading">{text.exportLabel}</div>
-            <p className="help-copy">{text.exportHelp}</p>
-            <div className="export-actions">
-              <Button type="button" variant="outline" onClick={props.onExportCsv}><Download aria-hidden="true" data-icon="inline-start" />{text.exportCsv}</Button>
-              <Button type="button" variant="outline" onClick={props.onExportJson}><Download aria-hidden="true" data-icon="inline-start" />{text.exportJson}</Button>
-            </div>
-          </section>
+
         </div>
       </SheetContent>
     </Sheet>

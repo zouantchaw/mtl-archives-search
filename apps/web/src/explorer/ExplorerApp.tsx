@@ -1,4 +1,4 @@
-import { Network, Bookmark } from 'lucide-react'
+import { Network, Bookmark, X, PanelRightOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
 import { buildSearchGraph, buildNeighborGraph, type GraphEdge } from './graph'
@@ -12,7 +12,7 @@ import { apiOrigin, mapBackground, snapshotBase } from './config'
 import { DetailsPanel } from './DetailsPanel'
 import { downloadLocalFile, resultsToCsv, resultsToJson, type ExportRow } from './export-results'
 import { mainSiteHome, mainSiteRecord, officialSourceUrl, type Lang } from './links'
-import { dictionaryFor, formatMessage, LOCALE_KEY, SUGGESTIONS, THEME_KEY, type Dictionary } from './locale'
+import { dictionaryFor, formatMessage, LOCALE_KEY, THEME_KEY, type Dictionary } from './locale'
 import { buildProjection, type ProjectionIndex } from './projection'
 import { itemFromId, itemFromPoint, itemFromSearch, type ExplorerItem } from './records'
 import { PointCloudRenderer, type CloudPoint } from './renderer'
@@ -95,7 +95,7 @@ export function EmbeddingExplorer() {
   const [graphRetry, setGraphRetry] = useState(0)
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [aboutOpen, setAboutOpen] = useState(false)
-  const [sheetOpen, setSheetOpen] = useState(false)
+  const [sheetOpen, setSheetOpen] = useState(Boolean(boot.query || boot.selected))
   const [colorMode, setColorMode] = useState<ColorMode>('date')
   const [lines, setLines] = useState(true)
   const [anomalies, setAnomalies] = useState(false)
@@ -109,6 +109,7 @@ export function EmbeddingExplorer() {
   const reducedMotion = useMedia('(prefers-reduced-motion: reduce)')
   const mobile = useMedia('(max-width: 767px)')
   const containerRef = useRef<HTMLDivElement>(null)
+  const resultsOverlayRef = useRef<HTMLElement>(null)
   const rendererRef = useRef<PointCloudRenderer | null>(null)
   const sessionRef = useRef(new SearchSession())
   const matrixRef = useRef<{ snapshot: LoadedSnapshot; matrix: Float32Array; dimensions: number } | null>(null)
@@ -371,6 +372,7 @@ export function EmbeddingExplorer() {
       if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return
       if (target instanceof HTMLElement && target.isContentEditable) return
       if (selectedId) setSelectedId(null)
+      else setSheetOpen(false)
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
@@ -492,17 +494,17 @@ export function EmbeddingExplorer() {
       }
     })
   }
-  function exportCsv() {
-    downloadLocalFile('mtl-explorer-results.csv', resultsToCsv(exportRows()), 'text/csv;charset=utf-8')
+  function exportCsv(items = listItems) {
+    downloadLocalFile('mtl-explorer-results.csv', resultsToCsv(exportRows(items)), 'text/csv;charset=utf-8')
   }
-  function exportJson() {
+  function exportJson(items = listItems) {
     downloadLocalFile('mtl-explorer-results.json', resultsToJson({
       exportedAt: new Date().toISOString(),
       query: activeMode === 'search' ? query : '',
       searchMode: activeMode === 'similarity' ? 'snapshot' : searchMode,
-      returnedCount: activeReturnedCount ?? listItems.length,
+      returnedCount: items.length,
       snapshotCount: projection?.count ?? 0,
-      rows: exportRows(),
+      rows: exportRows(items),
     }), 'application/json')
   }
 
@@ -527,9 +529,23 @@ export function EmbeddingExplorer() {
   const searchError = activeMode === 'search'
     ? shownBoard.error === 'timeout' ? text.searchTimeout : shownBoard.error === 'unavailable' ? text.searchUnavailable : shownBoard.error === 'failed' ? text.searchError : null
     : null
+  const hasResultContext = Boolean(query.trim() || neighbors || selected || webglError || snapshotStatus === 'integrity' || snapshotStatus === 'unavailable')
+  useEffect(() => { setSheetOpen(Boolean(query.trim() || selectedId || neighbors || webglError || snapshotStatus === 'integrity' || snapshotStatus === 'unavailable')) }, [query, searchMode, selectedId, neighbors, webglError, snapshotStatus])
+  useEffect(() => {
+    const panel = resultsOverlayRef.current
+    const update = () => {
+      const bounds = panel?.getBoundingClientRect()
+      rendererRef.current?.setOcclusion(bounds ? (mobile ? 0 : bounds.width + 24) : 0, bounds ? (mobile ? bounds.height + 12 : 0) : 0)
+    }
+    update()
+    if (!panel) return
+    const observer = new ResizeObserver(update)
+    observer.observe(panel)
+    return () => observer.disconnect()
+  }, [sheetOpen, hasResultContext, mobile, rendererReady])
   const side = (
     <div id="explorer-results" tabIndex={-1}>
-      <div className="count-row">
+      <div className="count-row" hidden={showDetails}>
         {activeMode === 'similarity' ? (
           <>
             <h2 className="count-heading">{text.snapshotSimilar}</h2>
@@ -539,7 +555,7 @@ export function EmbeddingExplorer() {
           </>
         ) : (
           <>
-            <p>{loadingSnapshot ? text.loadingSnapshot : snapshotStatus === 'empty' ? text.snapshotEmpty : formatMessage(text.snapshotCount, { count: projection?.count ?? 0 })}</p>
+
             {activeReturnedCount != null ? <p>{formatMessage(text.returnedCount, { count: activeReturnedCount })}</p> : null}
             {projection?.dropped ? <p className="help-copy">{formatMessage(text.warningDropped, { count: projection.dropped })}</p> : null}
             {shownBoard.degraded ? (
@@ -552,17 +568,6 @@ export function EmbeddingExplorer() {
           </>
         )}
       </div>
-      <div className="list-actions" aria-label={text.exportHelp}>
-        <button type="button" className="btn" onClick={exportCsv}>{text.exportCsv}</button>
-        <button type="button" className="btn" onClick={exportJson}>{text.exportJson}</button>
-      </div>
-      {!query.trim() && !neighbors ? (
-        <div className="suggestion-row" aria-label={text.suggestions}>
-          {SUGGESTIONS.map((item) => (
-            <button key={item.query} type="button" className="btn" onClick={() => { setQuery(item.query) }}>{item.label[lang]}</button>
-          ))}
-        </div>
-      ) : null}
       {snapshotStatus === 'integrity' || snapshotStatus === 'unavailable' ? (
         <div className="status-block" role="alert">
           <p>{snapshotStatus === 'integrity' ? text.snapshotIntegrity : text.snapshotError}</p>
@@ -615,9 +620,13 @@ export function EmbeddingExplorer() {
         view={view}
         colorMode={colorMode}
         legacyLayout={snapshot?.legacyLayout ?? false}
+        exportCount={(selected ? [selected] : listItems).length}
+        exportContext={selected ? text.selectedPhoto : neighbors ? text.snapshotSimilar : text.results}
+        onExportCsv={() => exportCsv(selected ? [selected] : listItems)}
+        onExportJson={() => exportJson(selected ? [selected] : listItems)}
         onColor={setColorMode}
         advancedOpen={advancedOpen}
-        onQuery={(value) => { setNeighbors(null); setSelectedId(null); setQuery(value) }}
+        onQuery={(value) => { setNeighbors(null); setSelectedId(null); setQuery(value); if (!value.trim()) rendererRef.current?.reset() }}
         onSearchMode={(mode) => { setNeighbors(null); setSelectedId(null); setSearchMode(mode) }}
         onView={(next) => { setView(next); events.viewModeChanged(next) }}
         onLang={setLang}
@@ -633,7 +642,7 @@ export function EmbeddingExplorer() {
         }}
       />
       <p className="map-sentence"><span className="map-sentence-copy">{text.mapSentence}</span><span className="interaction-hint">{view === '3d' ? text.interaction3d : text.interaction2d}</span></p>
-      <div className="explorer-body">
+      <div className={`explorer-body${hasResultContext && sheetOpen ? ' results-visible' : ''}`}>
         <div className="map-stage">
           <div ref={containerRef} className="explorer-canvas" role="group" aria-label={text.mapLabel} />
           {webglError ? (
@@ -675,17 +684,15 @@ export function EmbeddingExplorer() {
           ) : null}
           {hoverTitle && !mobile ? <p className="hover-label">{hoverTitle}</p> : null}
         </div>
-        {mobile ? (
-          <div className={`mobile-sheet${sheetOpen ? ' open' : ''}`}>
-            <button type="button" className="btn sheet-toggle" aria-expanded={sheetOpen} onClick={() => setSheetOpen((open) => !open)}>
-              {sheetOpen ? text.hideResults : text.openResults}
-              {activeReturnedCount != null ? ` · ${activeReturnedCount}` : ''}
-            </button>
-            {sheetOpen ? <div className="sheet-body">{side}</div> : null}
-          </div>
-        ) : (
-          <aside className="side-panel">{side}</aside>
-        )}
+        {hasResultContext ? (
+          sheetOpen ? <aside ref={resultsOverlayRef} className="results-overlay" aria-label={selected ? text.selectedPhoto : text.results}>
+            <div className="results-overlay-heading">
+              <span>{selected ? text.selectedPhoto : neighbors ? text.snapshotSimilar : query}</span>
+              <Button variant="ghost" size="icon-sm" aria-label={text.hideResults} onClick={() => { setSheetOpen(false); window.requestAnimationFrame(() => document.getElementById('show-explorer-results')?.focus()) }}><X aria-hidden="true" /></Button>
+            </div>
+            {side}
+          </aside> : <Button id="show-explorer-results" className="results-reopen" variant="outline" size="sm" aria-controls="explorer-results" aria-expanded={false} onClick={() => { setSheetOpen(true); window.requestAnimationFrame(() => document.getElementById('explorer-results')?.focus()) }}><PanelRightOpen aria-hidden="true" />{selected ? text.selectedPhoto : text.openResults}{!selected && activeReturnedCount != null ? ` · ${activeReturnedCount}` : ''}</Button>
+        ) : null}
         </div>
       </div>
       <Sheet open={collectionOpen} onOpenChange={setCollectionOpen}>
@@ -715,8 +722,6 @@ export function EmbeddingExplorer() {
           onAnomalies={setAnomalies}
           onRotate={setRotate}
           onDecade={setDecade}
-          onExportCsv={exportCsv}
-          onExportJson={exportJson}
         />
         <AboutPanel
           text={text}

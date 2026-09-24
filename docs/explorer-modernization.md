@@ -119,7 +119,7 @@ In development, Vite proxies `/snapshot` to the fixed R2 prefix `https://pub-6a2
 
 ## Research workspace and verification
 
-The explorer uses the main site's SVG mark and a responsive full-height map. Desktop navigation separates search from map controls. Mobile navigation keeps the results in a bottom sheet. The sidebar stays dedicated to the current search or photograph. The navigation’s Collection button opens a separate sheet with its own count and exports, preserving the active search; snapshot similarity opens a 20-record neighbor list with a return path to the original search.
+The explorer uses the main site's SVG mark and a responsive full-height map. Desktop navigation separates search from map controls. The map fills the available workspace on every screen size. Results and photograph details appear in a collapsible, translucent overlay on the right on desktop and at the bottom on mobile; no empty sidebar reserves map space. The map remains interactive, and the camera offsets its focal point into the uncovered area. The navigation’s Collection button opens a separate sheet with its own count and exports, preserving the active search; snapshot similarity opens a 20-record neighbor list with a return path to the original search.
 
 The map announces the current interaction model in the toolbar hint: 2D uses drag-to-pan and scroll-to-zoom; 3D uses drag-to-rotate, right-drag-to-pan, and scroll-to-zoom. Selecting a point updates the selected photograph panel and the renderer’s theme-aware glow anchored to the projected point. Selection zooms into the photograph’s neighborhood; a localized locator appears when zoomed out or when the point moves off-screen, and clicking it returns to the selected point. Research tools open in a focus-managed Sheet and About opens in a focus-managed Dialog; both restore focus to the invoking control when closed.
 
@@ -150,3 +150,7 @@ Smart search combines visual and semantic retrieval through the same Worker as t
 Refreshes are explicit releases, not an automatic background sync: fetch, reconcile, generate, validate, upload into a new immutable prefix with manifest last, then update `PUBLISHED_SNAPSHOT_PATH` (and any configured Vercel override) and deploy. Never overwrite a published version. The old deployment/prefix remains the rollback path.
 
 The [September 24 publication receipt](explorer-snapshot-20260924.json) records artifact hashes, coverage reconciliation, and the previous snapshot for rollback.
+
+### Map-first workspace
+
+Search examples live in the search field, with rotating hints when idle and selectable bilingual examples on focus. Motion pauses while typing and respects reduced-motion preferences. Contextual navigation exports appear only for a nonempty result set or a selected photograph; the exported count matches that scope. Closing the non-modal result overlay preserves the query and selected photograph. Collection continues to use its own separate sheet.

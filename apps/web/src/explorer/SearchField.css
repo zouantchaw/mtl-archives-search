@@ -1,0 +1,204 @@
+.search-field-enhanced {
+  position: relative;
+  z-index: 8;
+}
+
+.search-field-enhanced [data-slot="input"] {
+  position: relative;
+  z-index: 0;
+}
+
+.search-field-enhanced > svg,
+.search-field-enhanced .search-clear {
+  z-index: 2;
+}
+
+.search-field-enhanced .search-field-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper-2);
+  color: var(--ink);
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--ink) 16%, transparent);
+}
+
+.search-field-popover-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.search-field-popover-header strong {
+  font-size: .76rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.search-field-popover-header span {
+  color: var(--ink-muted);
+  font-size: .7rem;
+}
+
+.search-field-example-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 5px;
+  max-height: min(56vh, 27rem);
+  overflow-y: auto;
+}
+
+.search-field-example {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 9px;
+  width: 100%;
+  padding: 9px 8px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.search-field-example:hover,
+.search-field-example:focus-visible {
+  border-color: color-mix(in srgb, var(--action) 36%, var(--line));
+  background: color-mix(in srgb, var(--action) 8%, var(--paper-2));
+}
+
+.search-field-example:focus-visible {
+  outline: 2px solid var(--action);
+  outline-offset: -2px;
+}
+
+.search-field-example-icon {
+  display: grid;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  margin-top: 1px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--action) 12%, var(--paper-2));
+  color: var(--action);
+}
+
+.search-field-example-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.search-field-example-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.search-field-example-meta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.search-field-example-meta strong {
+  overflow: hidden;
+  color: var(--ink-muted);
+  font-size: .69rem;
+  font-weight: 700;
+  letter-spacing: .03em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.search-field-example-meta span {
+  flex: 0 0 auto;
+  color: var(--action);
+  font-size: .66rem;
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+
+.search-field-example-description {
+  color: var(--ink);
+  font-size: .82rem;
+  line-height: 1.35;
+}
+
+.export-menu-content {
+  z-index: 30;
+  min-width: 13rem;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper-2);
+  color: var(--ink);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--ink) 16%, transparent);
+}
+
+.export-menu-heading {
+  padding: 7px 8px 6px;
+  color: var(--ink-muted);
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .03em;
+}
+
+.export-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--ink);
+  font-size: .8rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.export-menu-item:hover,
+.export-menu-item:focus-visible,
+.export-menu-item[data-highlighted] {
+  background: color-mix(in srgb, var(--action) 10%, var(--paper-2));
+  outline: none;
+}
+
+.export-menu-separator {
+  height: 1px;
+  margin: 4px 3px;
+  background: var(--line);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .search-field-enhanced *,
+  .export-menu-content * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .search-field-enhanced .search-field-popover {
+    top: calc(100% + 6px);
+  }
+
+  .search-field-example-list {
+    max-height: min(48vh, 22rem);
+  }
+}

@@ -1,12 +1,14 @@
-import { Search, Moon, Sun, RotateCcw, SlidersHorizontal, Info, Bookmark, X } from 'lucide-react'
+import { Bookmark, ChevronDown, Download, Info, Moon, RotateCcw, Sun, SlidersHorizontal } from 'lucide-react'
+import { DropdownMenu } from 'radix-ui'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import type { Dictionary } from './locale'
 import type { Lang } from './links'
 import type { ColorMode } from './colors'
 import type { ExplorerSearchMode, ViewMode } from './url-state'
+import { formatMessage } from './locale'
+import { SearchField } from './SearchField'
 
 export function Shell(props: {
   text: Dictionary
@@ -29,6 +31,10 @@ export function Shell(props: {
   onAdvanced: () => void
   onCollection: () => void
   collectionActive: boolean
+  exportCount: number
+  exportContext: string
+  onExportCsv: () => void
+  onExportJson: () => void
   onSkip: () => void
   advancedOpen: boolean
 }) {
@@ -47,12 +53,7 @@ export function Shell(props: {
           </svg>
           <span><strong>{text.product}</strong><small>{text.explorer}</small></span>
         </a>
-        <label className="search-field">
-          <Search aria-hidden="true" />
-          <span className="sr-only">{text.searchLabel}</span>
-          <Input value={props.query} placeholder={text.searchPlaceholder} aria-label={text.searchLabel} onChange={(event) => props.onQuery(event.target.value)} />
-          {props.query ? <button type="button" className="search-clear" aria-label={text.clearSearch} onClick={() => props.onQuery('')}><X aria-hidden="true" /></button> : null}
-        </label>
+        <SearchField text={text} lang={props.lang} query={props.query} onQuery={props.onQuery} onSearchMode={props.onSearchMode} />
         <div className="header-preferences">
           <ToggleGroup type="single" value={props.lang} onValueChange={(value) => { if (value) props.onLang(value as Lang) }} variant="outline" size="sm" aria-label={text.language}>
             <ToggleGroupItem value="fr" aria-label={text.french}>FR</ToggleGroupItem>
@@ -83,6 +84,35 @@ export function Shell(props: {
         <Button type="button" variant="outline" size="sm" className="toolbar-reset" aria-label={text.resetView} title={text.resetView} onClick={props.onReset}><RotateCcw aria-hidden="true" data-icon="inline-start" /><span>{text.resetView}</span></Button>
         <div className="toolbar-divider" aria-hidden="true" />
         <div className="desktop-actions">
+          {props.exportCount > 0 ? (
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger asChild>
+                <Button type="button" variant="outline" size="sm" aria-label={text.exportLabel} title={text.exportLabel}>
+                  <Download aria-hidden="true" data-icon="inline-start" />
+                  <span className="action-label">{text.exportShort}</span>
+                  <ChevronDown aria-hidden="true" data-icon="inline-end" />
+                </Button>
+              </DropdownMenu.Trigger>
+              <DropdownMenu.Portal>
+                <DropdownMenu.Content className="export-menu-content" align="end" sideOffset={6}>
+                  <DropdownMenu.Label className="export-menu-heading">
+                    {formatMessage(text.exportCount, { count: props.exportCount, context: props.exportContext })}
+                  </DropdownMenu.Label>
+                  <DropdownMenu.Separator className="export-menu-separator" />
+                  <DropdownMenu.Group>
+                    <DropdownMenu.Item className="export-menu-item" onSelect={props.onExportCsv}>
+                      <Download aria-hidden="true" data-icon="inline-start" />
+                      {text.exportCsv}
+                    </DropdownMenu.Item>
+                    <DropdownMenu.Item className="export-menu-item" onSelect={props.onExportJson}>
+                      <Download aria-hidden="true" data-icon="inline-start" />
+                      {text.exportJson}
+                    </DropdownMenu.Item>
+                  </DropdownMenu.Group>
+                </DropdownMenu.Content>
+              </DropdownMenu.Portal>
+            </DropdownMenu.Root>
+          ) : null}
           <Button type="button" variant={props.advancedOpen ? 'secondary' : 'outline'} size="sm" aria-label={text.advanced} title={text.advanced} aria-expanded={props.advancedOpen} onClick={props.onAdvanced}><SlidersHorizontal aria-hidden="true" data-icon="inline-start" /><span className="action-label">{text.advanced}</span><span className="mobile-action-label">{props.lang === 'fr' ? 'Outils' : 'Tools'}</span></Button>
           <Button type="button" variant="outline" size="sm" aria-label={text.about} title={text.about} onClick={props.onAbout}><Info aria-hidden="true" data-icon="inline-start" /><span className="action-label">{text.about}</span><span className="mobile-action-label">{props.lang === 'fr' ? 'À propos' : 'About'}</span></Button>
           <Button type="button" variant={props.collectionActive ? 'secondary' : 'outline'} size="sm" aria-label={text.collection} title={text.collection} aria-haspopup="dialog" aria-expanded={props.collectionActive} onClick={props.onCollection}><Bookmark aria-hidden="true" data-icon="inline-start" /><span className="action-label">{text.collection}</span><span className="mobile-action-label">{text.collection}</span></Button>

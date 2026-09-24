@@ -72,6 +72,8 @@ export class PointCloudRenderer {
   private mode: ViewMode = '2d'
   private transition: { start: number; from: CameraPose; to: CameraPose; fromMode: ViewMode; toMode: ViewMode } | null = null
   private cameraAnim: { start: number; fromPosition: THREE.Vector3; toPosition: THREE.Vector3; fromTarget: THREE.Vector3; toTarget: THREE.Vector3 } | null = null
+  private occludedRight = 0
+  private occludedBottom = 0
   private readonly scene = new THREE.Scene()
   private readonly camera: THREE.PerspectiveCamera
   private readonly renderer: THREE.WebGLRenderer
@@ -388,6 +390,16 @@ export class PointCloudRenderer {
     this.rebuildConnectionLines()
   }
 
+  setOcclusion(right: number, bottom: number): void {
+    this.occludedRight = right
+    this.occludedBottom = bottom
+    const width = this.container.clientWidth
+    const height = this.container.clientHeight
+    if (width < 2 || height < 2) return
+    this.camera.setViewOffset(width, height, Math.min(right, width * .6) / 2, Math.min(bottom, height * .65) / 2, width, height)
+    this.camera.updateProjectionMatrix()
+  }
+
   focus(ids: string[]): void {
     const indexes = ids.flatMap((id) => {
       const index = this.indexById.get(id)
@@ -487,6 +499,7 @@ export class PointCloudRenderer {
     const width = this.container.clientWidth
     const height = this.container.clientHeight
     if (width < 2 || height < 2) return
+    this.setOcclusion(this.occludedRight, this.occludedBottom)
     this.camera.aspect = width / height
     this.camera.updateProjectionMatrix()
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
