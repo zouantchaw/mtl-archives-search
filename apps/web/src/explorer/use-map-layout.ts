@@ -4,6 +4,7 @@ import type { ProjectionIndex } from './projection'
 import { buildProjection } from './projection'
 import type { MapLayoutSettings } from './MapSettings'
 import { canonicalLayout, layoutConfig, LAYOUT_VERSION, projectLayout, PUBLISHED_LAYOUT, readLayout } from './layout-state'
+import { layoutCacheKey, readLayoutCache, writeLayoutCache } from './layout-cache'
 
 type Coordinates = { ids: string[]; coordinates: Float32Array }
 type Progress = { phase: string; progress: number }
@@ -15,6 +16,7 @@ export function useMapLayout(snapshot: LoadedSnapshot | null, loadVectors: (snap
   const [progress,setProgress] = useState<Progress|null>(null)
   const [error,setError] = useState<string|null>(null)
   const [bootPending,setBootPending] = useState(true)
+  const [pendingRestore,setPendingRestore] = useState<MapLayoutSettings|null>(null)
   const generation = useRef(0)
   const job = useRef<Worker|null>(null)
   const rejectJob = useRef<(() => void)|null>(null)
@@ -28,21 +30,58 @@ export function useMapLayout(snapshot: LoadedSnapshot | null, loadVectors: (snap
     controller.current?.abort(); controller.current=null
     setBusy(false); setProgress(null); setBootPending(false)
   },[])
-  const apply = useCallback(async (requested:MapLayoutSettings) => {
+  const apply = useCallback(async (requested:MapLayoutSettings, options?: { initial?: boolean }) => {
     if (!snapshot) return
     cancel()
     const token = generation.current
-    setError(null)
-    setBusy(true); setProgress({phase:'loading',progress:0})
     try {
       const settings = canonicalLayout(requested)
       const base = buildProjection(snapshot.points)
+
+      // A shared custom URL is a request, not permission to start an expensive
+      // computation during boot. Let the parent present the choice while the
+      // published projection remains usable.
+      if (options?.initial && settings.preset === 'custom') {
+        setError(null)
+        setProjection(base)
+        setBusy(false); setProgress(null); setBootPending(true)
+        const config = layoutConfig(settings)
+        const expectedIds = snapshot.embeddingIds ?? [...base.byId.keys()]
+        let result = snapshot.vectorSha256 ? cache.current.get(layoutCacheKey(snapshot.vectorSha256, config)) : undefined
+        if (!result) {
+          try { result = await readLayoutCache(snapshot.vectorSha256, config, expectedIds) ?? undefined } catch { result = undefined }
+        }
+        if (token !== generation.current) return
+        setBootPending(false)
+        if (result) {
+          const key = snapshot.vectorSha256 ? layoutCacheKey(snapshot.vectorSha256, config) : ''
+          if (key) cache.current.set(key, result)
+          setProjection(projectLayout(base, result.ids, result.coordinates, settings))
+          setActive(settings)
+          setPendingRestore(null)
+        } else {
+          setPendingRestore(settings)
+        }
+        return
+      }
+
+      // Applying a setting is the user's choice to proceed, so it resolves any
+      // pending shared-view prompt immediately, including reset and presets.
+      setPendingRestore(null)
+      setError(null)
+      setBusy(true); setProgress({phase:'loading',progress:0})
       if (settings.preset === 'published' && settings.mode !== '3d') {
         setProjection(base); setActive(settings); return
       }
       const config = layoutConfig(settings)
-      const key = `${snapshot.vectorSha256}:${JSON.stringify(config)}:${settings.preset === 'published' ? 'published' : 'computed'}`
+      const key = settings.preset === 'custom' && snapshot.vectorSha256
+        ? layoutCacheKey(snapshot.vectorSha256, config)
+        : `${snapshot.vectorSha256}:${JSON.stringify(config)}:${settings.preset === 'published' ? 'published' : 'computed'}`
       let result = cache.current.get(key)
+      if (!result && settings.preset === 'custom') {
+        try { result = await readLayoutCache(snapshot.vectorSha256, config, snapshot.embeddingIds ?? [...base.byId.keys()]) ?? undefined } catch { result = undefined }
+        if (token !== generation.current) return
+      }
       if (!result && settings.preset !== 'custom') {
         const abort = new AbortController(); controller.current=abort
         const response = await fetch(`/layouts/${settings.preset}-${config.dimensions}d.json`,{signal:abort.signal})
@@ -74,6 +113,10 @@ export function useMapLayout(snapshot: LoadedSnapshot | null, loadVectors: (snap
       const next=projectLayout(base,result.ids,result.coordinates,settings)
       cache.current.set(key,result)
       if(cache.current.size>8)cache.current.delete(cache.current.keys().next().value!)
+      if (settings.preset === 'custom') {
+        try { await writeLayoutCache(snapshot.vectorSha256, config, result) } catch { /* persistence is optional */ }
+        if (token !== generation.current) return
+      }
       setProjection(next); setActive(settings)
     } catch(failure) {
       if(token===generation.current) setError(failure instanceof Error ? failure.message : 'layout-failed')
@@ -90,9 +133,21 @@ export function useMapLayout(snapshot: LoadedSnapshot | null, loadVectors: (snap
     if ((initial.current.snapshot && initial.current.snapshot!==snapshot.vectorSha256) || (initial.current.version && initial.current.version!==LAYOUT_VERSION)) {
       setError('shared-layout-mismatch');setBootPending(false);return
     }
-    void apply(initial.current.settings)
+    if (initial.current.settings.preset === 'custom') void apply(initial.current.settings, { initial: true })
+    else void apply(initial.current.settings)
     return cancel
   },[snapshot,apply,cancel])
   useEffect(()=>()=>{generation.current++;rejectJob.current?.();job.current?.terminate();controller.current?.abort()},[])
-  return {active,projection,busy,progress,error,apply,cancel,urlSettings:bootPending?initial.current.settings:active,reset:()=>apply({...PUBLISHED_LAYOUT})}
+  const restoreRequested = useCallback(() => pendingRestore ? apply(pendingRestore) : undefined, [apply, pendingRestore])
+  const dismissRestore = useCallback(() => {
+    cancel()
+    setPendingRestore(null)
+    setError(null)
+  }, [cancel])
+  return {
+    active, projection, busy, progress, error, apply, cancel,
+    pendingRestore, restoreRequested, dismissRestore,
+    urlSettings: pendingRestore ?? (bootPending ? initial.current.settings : active),
+    reset: () => apply({ ...PUBLISHED_LAYOUT }),
+  }
 }

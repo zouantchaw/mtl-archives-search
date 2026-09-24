@@ -329,7 +329,7 @@ export function EmbeddingExplorer() {
   }, [projection, decade, colorMode, snapshot?.legacyLayout, highlighted, selectedId, anomalies, theme, lines, graphEdges])
 
   useEffect(() => { rendererRef.current?.setPoints(cloudPoints) }, [cloudPoints, rendererReady])
-  useEffect(() => { rendererRef.current?.setSelected(selectedId ?? (neighbors ? graphAnchor?.id ?? null : null)) }, [selectedId, rendererReady, neighbors, graphAnchor])
+  useEffect(() => { rendererRef.current?.setSelected(selectedId) }, [selectedId, rendererReady])
   useEffect(() => { rendererRef.current?.setSelectionLabel(lang === 'fr' ? 'Sélection' : 'Selected') }, [lang, rendererReady])
   useEffect(() => {
     rendererRef.current?.setConnectionGraph(graphEdges, lines, theme)
@@ -399,8 +399,15 @@ export function EmbeddingExplorer() {
       ?? searchItems.find((item) => item.id === selectedId)
       ?? collectionItems.find((item) => item.id === selectedId)
       ?? (graphAnchor?.id === selectedId ? graphAnchor : null)
-      ?? itemFromId(selectedId, projection?.byId.get(selectedId))
+      ?? (projection?.byId.has(selectedId) ? itemFromId(selectedId, projection.byId.get(selectedId)) : null)
   }, [selectedId, listItems, searchItems, collectionItems, projection, graphAnchor])
+
+  useEffect(() => {
+    if (selectedId && snapshotStatus === 'ready' && projection && !shownBoard.searching && !selected) {
+      setSelectedId(null)
+      setToast(lang === 'fr' ? 'Cette photographie n’est pas disponible dans cette vue.' : 'This photograph is not available in this view.')
+    }
+  }, [selectedId, snapshotStatus, projection, shownBoard.searching, selected, lang])
 
   const decades = useMemo(() => decadeChoices([...(projection?.byId.values() ?? [])].map((point) => point.year)), [projection])
   const hoverTitle = hoverId ? displayTitle(sourceTitle(projection?.byId.get(hoverId)?.name), text.untitled) : null
@@ -639,7 +646,7 @@ export function EmbeddingExplorer() {
         onSearchMode={(mode) => { setNeighbors(null); setSelectedId(null); setSearchMode(mode) }}
         onLang={setLang}
         onTheme={() => setTheme((current) => current === 'dark' ? 'light' : 'dark')}
-        onReset={() => rendererRef.current?.reset()}
+        onReset={() => { setSelectedId(null); rendererRef.current?.reset() }}
         onAbout={() => { rememberOverlayFocus(); setAboutOpen(true); setAdvancedOpen(false) }}
         onAdvanced={() => { rememberOverlayFocus(); setAdvancedOpen((open) => !open); setAboutOpen(false) }}
         onCollection={() => { rememberOverlayFocus(); setCollectionOpen(true) }}
@@ -661,7 +668,7 @@ export function EmbeddingExplorer() {
           ) : null}
           {loadingSnapshot && !webglError ? <p className="map-status" role="status">{text.loadingSnapshot}</p> : null}
           <div className="map-controls" aria-label={text.view}>
-            {mobile ? <button type="button" className="btn icon-btn" title={text.resetView} aria-label={text.resetView} onClick={() => rendererRef.current?.reset()}>↺</button> : null}
+            {mobile ? <button type="button" className="btn icon-btn" title={text.resetView} aria-label={text.resetView} onClick={() => { setSelectedId(null); rendererRef.current?.reset() }}>↺</button> : null}
             <button type="button" className="btn icon-btn" title={text.zoomOut} aria-label={text.zoomOut} onClick={() => rendererRef.current?.zoomOut()}>−</button>
             <button type="button" className="btn icon-btn" title={text.zoomIn} aria-label={text.zoomIn} onClick={() => rendererRef.current?.zoomIn()}>+</button>
             <label className="map-decade-control">
@@ -696,13 +703,18 @@ export function EmbeddingExplorer() {
           sheetOpen ? <aside ref={resultsOverlayRef} className="results-overlay" aria-label={selected ? text.selectedPhoto : text.results}>
             <div className="results-overlay-heading">
               <span>{selected ? text.selectedPhoto : neighbors ? text.snapshotSimilar : query}</span>
-              <Button variant="ghost" size="icon-sm" aria-label={text.hideResults} onClick={() => { setSheetOpen(false); window.requestAnimationFrame(() => document.getElementById('show-explorer-results')?.focus()) }}><X aria-hidden="true" /></Button>
+              <Button variant="ghost" size="icon-sm" aria-label={selected ? (lang === 'fr' ? 'Fermer la photographie et effacer la sélection' : 'Close photograph and clear selection') : text.hideResults} onClick={() => { setSelectedId(null); setSheetOpen(false); window.requestAnimationFrame(() => (document.getElementById('show-explorer-results') ?? document.querySelector<HTMLInputElement>('.search-field input'))?.focus()) }}><X aria-hidden="true" /></Button>
             </div>
             {side}
           </aside> : <Button id="show-explorer-results" className="results-reopen" variant="outline" size="sm" aria-controls="explorer-results" aria-expanded={false} onClick={() => { setSheetOpen(true); window.requestAnimationFrame(() => document.getElementById('explorer-results')?.focus()) }}><PanelRightOpen aria-hidden="true" />{selected ? text.selectedPhoto : text.openResults}{!selected && activeReturnedCount != null ? ` · ${activeReturnedCount}` : ''}</Button>
         ) : null}
         </div>
       </div>
+      {layout.pendingRestore ? <section className="layout-restore-notice" aria-label={lang === 'fr' ? 'Restaurer la disposition' : 'Restore layout'}>
+        <strong>{lang === 'fr' ? 'Ce lien contient une disposition personnalisée' : 'This link includes a custom layout'}</strong>
+        <p>{lang === 'fr' ? 'La carte publiée est prête à explorer. Recréer la disposition du lien peut prendre une minute. Elle sera ensuite enregistrée sur cet appareil.' : 'The published map is ready to explore. Recreating the linked layout may take a minute. It will then be saved on this device.'}</p>
+        <div><Button size="sm" onClick={() => { setMapSettingsOpen(true); void layout.restoreRequested() }}>{lang === 'fr' ? 'Recréer la disposition' : 'Restore custom layout'}</Button><Button variant="ghost" size="sm" onClick={layout.dismissRestore}>{lang === 'fr' ? 'Garder la carte publiée' : 'Use published map'}</Button></div>
+      </section> : null}
       <MapSettings lang={lang} open={mapSettingsOpen} onOpenChange={setMapSettingsOpen} onCloseAutoFocus={restoreOverlayFocus} active={layout.active} busy={layout.busy} progress={layout.progress}
         error={layout.error ? (lang === 'fr' ? 'Impossible de charger cette disposition. La carte précédente est conservée. Réessayez ou revenez à la carte publiée.' : 'This layout could not be loaded. Your previous map is preserved. Try again or reset to the published map.') : null}
         onApply={(settings) => { void layout.apply(settings) }} onCancel={() => { layout.cancel(); if (!layout.busy) setMapSettingsOpen(false) }} onReset={() => { void layout.reset() }}
