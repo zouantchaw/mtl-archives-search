@@ -1,6 +1,7 @@
 import { Image, Search, Sparkles, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { Dictionary } from './locale'
 import type { Lang } from './links'
 import { SEARCH_EXAMPLES, type SearchExample } from './search-examples'
@@ -10,6 +11,7 @@ type SearchFieldProps = {
   text: Dictionary
   lang: Lang
   query: string
+  searchMode: SearchExample['mode']
   onQuery: (value: string) => void
   onSearchMode: (mode: SearchExample['mode']) => void
 }
@@ -84,27 +86,58 @@ export function SearchField(props: SearchFieldProps) {
 
   return (
     <div ref={rootRef} className="search-field search-field-enhanced">
-      <Search aria-hidden="true" />
-      <Input
-        ref={inputRef}
-        value={props.query}
-        placeholder={placeholder}
-        aria-label={props.text.searchLabel}
-        aria-describedby={open ? 'search-example-list-description' : undefined}
-        onFocus={() => { setFocused(true); if (empty) setOpen(true) }}
-        onBlur={() => setFocused(false)}
-        onChange={(event) => {
-          const value = event.target.value
-          props.onQuery(value)
-          if (value.trim()) setOpen(false)
-          else if (focused) setOpen(true)
-        }}
-      />
-      {props.query ? (
-        <button type="button" className="search-clear" aria-label={props.text.clearSearch} onClick={() => { props.onQuery(''); if (focused) setOpen(true) }}>
-          <X aria-hidden="true" />
-        </button>
-      ) : null}
+      <div className="search-field-control">
+        <Search aria-hidden="true" />
+        <Input
+          ref={inputRef}
+          className="search-field-input"
+          value={props.query}
+          placeholder={placeholder}
+          aria-label={props.text.searchLabel}
+          aria-describedby={open ? 'search-example-list-description' : undefined}
+          onFocus={() => { setFocused(true); if (empty) setOpen(true) }}
+          onBlur={() => setFocused(false)}
+          onChange={(event) => {
+            const value = event.target.value
+            props.onQuery(value)
+            if (value.trim()) setOpen(false)
+            else if (focused) setOpen(true)
+          }}
+        />
+        {props.query ? (
+          <button type="button" className="search-clear" aria-label={props.text.clearSearch} onClick={() => { props.onQuery(''); if (focused) setOpen(true) }}>
+            <X aria-hidden="true" />
+          </button>
+        ) : null}
+        <Select value={props.searchMode} onValueChange={(value) => props.onSearchMode(value as SearchExample['mode'])} onOpenChange={(nextOpen) => { if (nextOpen) setOpen(false) }}>
+          <SelectTrigger className="search-mode-select" size="sm" aria-label={props.text.searchMode}>
+            <SelectValue>
+              <span className="search-mode-trigger-label">
+                <span className="search-mode-label search-mode-label-full">{props.searchMode === 'visual' ? props.text.searchModeVisual : props.text.searchModeCombined}</span>
+                <span className="search-mode-label search-mode-label-compact">{props.searchMode === 'visual' ? props.text.searchModeVisualShort : props.text.searchModeCombinedShort}</span>
+              </span>
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent className="search-mode-content" position="popper" align="end">
+            <SelectGroup>
+              <SelectItem value="smart" textValue={props.text.searchModeCombined}>
+                <span className="search-mode-option">
+                  <span className="search-mode-label search-mode-label-full">{props.text.searchModeCombined}</span>
+                  <span className="search-mode-label search-mode-label-compact">{props.text.searchModeCombinedShort}</span>
+                  <span className="search-mode-description">{props.text.searchModeCombinedDescription}</span>
+                </span>
+              </SelectItem>
+              <SelectItem value="visual" textValue={props.text.searchModeVisual}>
+                <span className="search-mode-option">
+                  <span className="search-mode-label search-mode-label-full">{props.text.searchModeVisual}</span>
+                  <span className="search-mode-label search-mode-label-compact">{props.text.searchModeVisualShort}</span>
+                  <span className="search-mode-description">{props.text.searchModeVisualDescription}</span>
+                </span>
+              </SelectItem>
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+      </div>
       {open && empty ? (
         <div className="search-field-popover" role="region" aria-label={props.text.searchExamples}>
           <div className="search-field-popover-header">

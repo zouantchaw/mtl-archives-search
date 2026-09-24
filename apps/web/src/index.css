@@ -262,7 +262,7 @@ button, input, select, a { font: inherit; }
   .explorer-header .brand-lockup { min-height: 40px; margin-right: 2px; }
   .explorer-header .brand-mark { width: 24px; height: 24px; }
   .explorer-header .search-field { grid-column: 2; grid-row: 1; }
-  .explorer-header .action-row { grid-column: 1 / -1; grid-row: 2; min-height: 40px; width: 100%; flex-wrap: nowrap; }
+  .explorer-header .action-row { grid-column: 1 / -1; grid-row: 2; min-height: 40px; width: 100%; flex-wrap: wrap; }
   .explorer-header .desktop-actions { margin-left: auto; }
   .explorer-header .btn, .explorer-header .search-field input { min-height: 38px; }
   .explorer-header .btn, .explorer-header select { flex-shrink: 0; white-space: nowrap; }
@@ -444,13 +444,13 @@ button, input, select, a { font: inherit; }
 .search-field [data-slot="input"]:focus-visible { border-color: var(--action); box-shadow: 0 0 0 2px color-mix(in srgb, var(--action) 20%, transparent); }
 .search-clear { position: absolute; right: 7px; display: grid; place-items: center; width: 28px; height: 28px; border: 0; background: transparent; color: var(--ink-muted); cursor: pointer; }
 .search-clear svg { width: 15px; height: 15px; }
-.action-row { min-height: 46px; margin-top: 6px; padding-bottom: 7px; gap: 8px; overflow-x: auto; scrollbar-width: thin; }
+.action-row { min-height: 46px; min-width: 0; margin-top: 6px; padding-bottom: 7px; gap: 8px; flex-wrap: wrap; overflow: visible; }
 .action-row [data-slot="toggle-group"] { flex: 0 0 auto; }
 .action-row [data-slot="button"], .action-row [data-slot="select-trigger"] { border-radius: 6px; }
 .action-row [data-slot="toggle-group-item"][data-state="on"], .header-preferences [data-slot="toggle-group-item"][data-state="on"] { background: var(--secondary); border-color: var(--action); color: var(--ink); }
 .action-row [data-slot="button"] { min-height: 32px; }
 .toolbar-divider { width: 1px; height: 21px; flex: 0 0 auto; background: var(--line); margin: 0 2px; }
-.desktop-actions { display: flex; align-items: center; gap: 7px; min-height: 32px; }
+.desktop-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; min-height: 32px; min-width: 0; max-width: 100%; }
 .desktop-actions [data-slot="button"] { flex: 0 0 auto; }
 .color-select { width: 184px; min-width: 184px; }
 .select-option { display: inline-flex; align-items: center; gap: 8px; }
@@ -681,3 +681,10 @@ button, input, select, a { font: inherit; }
 .layout-status { color: var(--muted-foreground); text-decoration: underline; text-underline-offset: 3px; font-size: 12px; background: transparent; border: 0; cursor: pointer; padding: 0 6px; }
 .layout-status:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .layout-error-notice { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 10; padding: 10px 16px; background: var(--paper); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; }
+
+/* Search owns retrieval mode; this row contains only map and workspace actions. */
+@media (max-width: 767px) {
+  .explorer-header .action-row .layout-mode-select { width: 156px; min-width: 145px; }
+  .explorer-header .action-row .color-select { width: auto; min-width: 85px; flex: 1; }
+  .layout-mode-select [data-slot="select-value"] { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}

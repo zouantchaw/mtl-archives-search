@@ -55,7 +55,7 @@ export function Shell(props: {
           </svg>
           <span><strong>{text.product}</strong><small>{text.explorer}</small></span>
         </a>
-        <SearchField text={text} lang={props.lang} query={props.query} onQuery={props.onQuery} onSearchMode={props.onSearchMode} />
+        <SearchField text={text} lang={props.lang} query={props.query} searchMode={props.searchMode} onQuery={props.onQuery} onSearchMode={props.onSearchMode} />
         <div className="header-preferences">
           <ToggleGroup type="single" value={props.lang} onValueChange={(value) => { if (value) props.onLang(value as Lang) }} variant="outline" size="sm" aria-label={text.language}>
             <ToggleGroupItem value="fr" aria-label={text.french}>FR</ToggleGroupItem>
@@ -65,11 +65,6 @@ export function Shell(props: {
         </div>
       </div>
       <div className="action-row">
-        <ToggleGroup type="single" value={props.searchMode} onValueChange={(value) => { if (value) props.onSearchMode(value as ExplorerSearchMode) }} variant="outline" size="sm" aria-label={text.searchMode}>
-          <ToggleGroupItem value="smart">{text.searchSmartPrimary}</ToggleGroupItem>
-          <ToggleGroupItem value="visual">{text.searchVisualPrimary}</ToggleGroupItem>
-        </ToggleGroup>
-        <div className="toolbar-divider" aria-hidden="true" />
         <Select value={props.layoutMode} onValueChange={(value) => props.onLayoutMode(value as '2d'|'3d'|'time')} disabled={props.layoutBusy}>
           <SelectTrigger className="layout-mode-select" aria-label={props.lang === 'fr' ? 'Disposition' : 'Layout'}><SelectValue /></SelectTrigger>
           <SelectContent><SelectGroup>
