@@ -290,10 +290,6 @@ export function LandingHero({
             </Link>
           </div>
 
-          <Link href={appendLangParam('/research', lang)} className="inline-flex w-fit items-center gap-2 text-sm text-foreground underline decoration-foreground/25 underline-offset-4 hover:decoration-foreground">
-            {lang === 'fr' ? 'Nouveau : explorez les archives en conversation ↗' : 'New: explore the archive in conversation ↗'}
-          </Link>
-
           <div className="hidden items-center gap-2 overflow-x-auto pb-1 sm:flex sm:flex-wrap">
             {LANDING_PILLS.map((pill) => (
               <button
