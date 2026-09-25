@@ -159,53 +159,23 @@
     background: color-mix(in oklab, var(--primary) 24%, white);
     color: var(--foreground);
   }
-  .leaflet-container {
-    @apply !bg-card !font-[inherit];
+  .maplibregl-popup-content {
+    @apply bg-transparent! shadow-none! p-0! rounded-none!;
   }
-  .leaflet-container a {
-    @apply !text-inherit;
+  .maplibregl-popup-tip {
+    @apply hidden!;
   }
-  .leaflet-div-icon {
-    @apply !bg-transparent !border-none;
+  .maplibregl-ctrl-attrib {
+    @apply bg-background! text-muted-foreground! border-border! rounded-md! border! shadow-sm!;
   }
-  .leaflet-popup-content-wrapper, .leaflet-popup-content, .leaflet-popup-content p {
-    @apply ![all:unset];
+  .maplibregl-ctrl-attrib a {
+    @apply text-muted-foreground!;
   }
-  .leaflet-popup {
-    @apply !animate-none;
+  .maplibregl-ctrl-attrib a:hover {
+    @apply text-foreground!;
   }
-  .leaflet-popup-close-button {
-    @apply ring-offset-background focus:ring-ring bg-secondary rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:outline-hidden;
-  }
-  .leaflet-tooltip, .leaflet-draw-tooltip {
-    @apply !bg-foreground !text-background !animate-none !rounded-md !border-none !p-0 !px-3 !py-1.5 !shadow-none;
-  }
-  .leaflet-draw-tooltip:before {
-    @apply bg-foreground !top-1/2 !right-0.5 size-2.5 translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[2px] !border-none;
-  }
-  .leaflet-error-draw-tooltip {
-    @apply !bg-destructive !text-white;
-  }
-  .leaflet-error-draw-tooltip:before {
-    @apply bg-destructive;
-  }
-  .leaflet-draw-tooltip-subtext {
-    @apply !text-background;
-  }
-  .leaflet-popup-tip-container, .leaflet-tooltip-top:before, .leaflet-tooltip-bottom:before, .leaflet-tooltip-left:before, .leaflet-tooltip-right:before {
-    @apply hidden;
-  }
-  .leaflet-control-attribution {
-    @apply !bg-muted rounded-md !px-[4px] !py-[2px] text-[10px] !leading-none !text-inherit;
-  }
-  .leaflet-draw-guide-dash {
-    @apply rounded-full;
-  }
-  .leaflet-edit-marker-selected {
-    @apply !border-transparent !bg-transparent;
-  }
-  .marker-cluster div {
-    @apply font-[inherit];
+  .maplibregl-ctrl-attrib-button {
+    @apply bg-transparent! dark:invert;
   }
 }
 
@@ -323,81 +293,20 @@
   animation: fadeIn 0.3s ease-out forwards;
 }
 
-/* Game map - ensure full size and prettier styling */
+/* Game map - ensure full size */
 .game-map {
   width: 100%;
   height: 100%;
 }
 
-.game-map .leaflet-container {
+.game-map .maplibregl-canvas-container,
+.game-map .maplibregl-canvas {
   width: 100% !important;
   height: 100% !important;
-  background: #f1f3f5;
-  font-family: inherit;
 }
 
-/* Zoom controls - pill style at bottom right */
-.game-map .leaflet-control-zoom {
-  border: none !important;
-  border-radius: 999px !important;
-  overflow: hidden;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18) !important;
-  border: 1px solid rgba(0, 0, 0, 0.1) !important;
-  margin-bottom: 0 !important;
-  margin-right: 0 !important;
-}
-
-.game-map .leaflet-control-zoom a {
-  width: 40px !important;
-  height: 40px !important;
-  line-height: 40px !important;
-  font-size: 18px !important;
-  color: #171717 !important;
-  background: white !important;
-  border: none !important;
-  transition: background-color 0.15s ease, color 0.15s ease;
-}
-
-.game-map .leaflet-control-zoom a:hover {
-  background: #f5f5f5 !important;
-  color: #171717 !important;
-}
-
-.game-map .leaflet-control-zoom a:active {
-  background: #e6e7eb !important;
-}
-
-.game-map .leaflet-control-zoom-in {
-  border-bottom: 1px solid #e5e5e5 !important;
-  border-radius: 999px 999px 0 0 !important;
-}
-
-.game-map .leaflet-control-zoom-out {
-  border-radius: 0 0 999px 999px !important;
-}
-
-/* Hide attribution or make it subtle */
-.game-map .leaflet-control-attribution {
-  background: rgba(255, 255, 255, 0.75) !important;
-  backdrop-filter: blur(4px);
-  padding: 2px 8px !important;
-  font-size: 9px !important;
-  border-radius: 4px;
-  margin: 4px !important;
-}
-
-.game-map .leaflet-control-attribution a {
-  color: #737373 !important;
-}
-
-/* Make tiles crisper */
-.game-map .leaflet-tile {
-  filter: saturate(0.92) contrast(1.03) brightness(1.03);
-}
-
-/* Smooth tile loading */
-.game-map .leaflet-fade-anim .leaflet-tile {
-  transition: opacity 0.15s linear;
+.game-map .maplibregl-ctrl-attrib {
+  font-size: 9px;
 }
 
 /* Safe area handling for iOS notch/home indicator */

@@ -10,8 +10,14 @@ import { Share2, X, MapPin, Trophy, ChevronLeft, Maximize2, ShoppingBag, LogIn }
 import { appendLangParam, DEFAULT_LANG, getLangFromSearchParams } from '@/lib/i18n';
 import { events } from '@/lib/analytics';
 import { getAbVariant } from '@/lib/experiments';
-import { Map, MapMarker, MapPolyline, MapTileLayer, MapZoomControl } from '@/components/ui/map';
-import { useMap, useMapEvents } from 'react-leaflet';
+import {
+  Map,
+  MapControls,
+  MapMarker,
+  MapRoute,
+  MarkerContent,
+  useMap,
+} from '@/components/ui/map';
 import { normalizePhotoId } from '@/lib/photo-id';
 import { FlagQC, FlagEN } from '@/components/ui/lang-flags';
 
@@ -50,7 +56,7 @@ type LeaderboardEntry = {
   distanceMeters: number;
 };
 
-const MONTREAL_CENTER: [number, number] = [45.5019, -73.5674];
+const MONTREAL_CENTER: [number, number] = [-73.5674, 45.5019];
 
 const ANON_STORAGE_KEY = 'mtl-archives-game-anon';
 let inMemoryAnonId: string | null = null;
@@ -259,39 +265,92 @@ function MapClickHandler({
   disabled: boolean;
   onSelect: (lat: number, lng: number) => void;
 }) {
-  useMapEvents({
-    click: (event) => {
-      if (disabled) return;
-      onSelect(event.latlng.lat, event.latlng.lng);
-    },
-  });
+  const { map, isLoaded } = useMap();
+  const onSelectRef = useRef(onSelect);
+  const disabledRef = useRef(disabled);
+  onSelectRef.current = onSelect;
+  disabledRef.current = disabled;
+
+  useEffect(() => {
+    if (!map || !isLoaded) return;
+    const canvas = map.getCanvas();
+    const handleClick = (event: { lngLat: { lat: number; lng: number } }) => {
+      if (disabledRef.current) return;
+      onSelectRef.current(event.lngLat.lat, event.lngLat.lng);
+    };
+    canvas.style.cursor = disabledRef.current ? '' : 'crosshair';
+    map.on('click', handleClick);
+    return () => {
+      map.off('click', handleClick);
+      canvas.style.cursor = '';
+    };
+  }, [map, isLoaded]);
+
+  useEffect(() => {
+    if (!map || !isLoaded) return;
+    map.getCanvas().style.cursor = disabled ? '' : 'crosshair';
+  }, [map, isLoaded, disabled]);
 
   return null;
 }
 
 function MapZoomTracker({ onZoom }: { onZoom: () => void }) {
-  useMapEvents({
-    zoomend: () => onZoom(),
-  });
+  const { map, isLoaded } = useMap();
+  const onZoomRef = useRef(onZoom);
+  onZoomRef.current = onZoom;
+
+  useEffect(() => {
+    if (!map || !isLoaded) return;
+    const handleZoom = () => onZoomRef.current();
+    map.on('zoomend', handleZoom);
+    return () => {
+      map.off('zoomend', handleZoom);
+    };
+  }, [map, isLoaded]);
+
   return null;
 }
 
 function MapResizeHandler() {
-  const map = useMap();
+  const { map, isLoaded } = useMap();
 
   useEffect(() => {
+    if (!map || !isLoaded) return;
     const handleResize = () => {
-      map.invalidateSize();
+      map.resize();
     };
-
     const timer = window.setTimeout(handleResize, 0);
     window.addEventListener('resize', handleResize);
-
+    const observer = new ResizeObserver(handleResize);
+    observer.observe(map.getContainer());
     return () => {
       window.clearTimeout(timer);
       window.removeEventListener('resize', handleResize);
+      observer.disconnect();
     };
-  }, [map]);
+  }, [map, isLoaded]);
+
+  return null;
+}
+
+function MapResultBounds({
+  bounds,
+}: {
+  bounds: [[number, number], [number, number]] | null;
+}) {
+  const { map, isLoaded } = useMap();
+
+  useEffect(() => {
+    if (!map || !isLoaded || !bounds) return;
+    const [[lat1, lng1], [lat2, lng2]] = bounds;
+    map.fitBounds(
+      [
+        [lng1, lat1],
+        [lng2, lat2],
+      ],
+      { padding: 80, maxZoom: 14, duration: 800 },
+    );
+  }, [map, isLoaded, bounds]);
 
   return null;
 }
@@ -787,54 +846,51 @@ export function GameClient() {
             center={MONTREAL_CENTER}
             zoom={11}
             maxZoom={18}
-            bounds={resultBounds ?? undefined}
-            boundsOptions={{ padding: [80, 80], maxZoom: 14 }}
+            theme="light"
             className="game-map min-h-0 rounded-none z-0"
           >
-            <MapTileLayer
-              url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions" target="_blank">CARTO</a>'
-            />
-            <MapZoomControl className="bottom-4 right-3" />
+            <MapControls position="bottom-right" className="bottom-4 right-3" />
             <MapResizeHandler />
             <MapClickHandler disabled={!canPlacePin} onSelect={handleMapPick} />
             <MapZoomTracker onZoom={handleMapZoom} />
+            <MapResultBounds bounds={resultBounds} />
             {guess && (
-              <MapMarker
-                position={[guess.lat, guess.lng]}
-                iconAnchor={[16, 32]}
-                icon={
+              <MapMarker longitude={guess.lng} latitude={guess.lat} anchor="bottom">
+                <MarkerContent>
                   <div className="game-marker-guess w-8 h-8 bg-primary rounded-full flex items-center justify-center shadow-lg border-2 border-card">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
                       <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
                       <circle cx="12" cy="10" r="3" />
                     </svg>
                   </div>
-                }
-              />
+                </MarkerContent>
+              </MapMarker>
             )}
             {result && guess && currentPhoto?.latitude && currentPhoto?.longitude && (
               <>
                 <MapMarker
-                  position={[currentPhoto.latitude, currentPhoto.longitude]}
-                  iconAnchor={[16, 16]}
-                  icon={
+                  longitude={currentPhoto.longitude}
+                  latitude={currentPhoto.latitude}
+                  anchor="center"
+                >
+                  <MarkerContent>
                     <div className="game-marker-actual w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center shadow-lg border-2 border-card animate-bounce-in">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
                         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
                         <polyline points="22 4 12 14.01 9 11.01" />
                       </svg>
                     </div>
-                  }
-                />
-                <MapPolyline
-                  positions={[
-                    [guess.lat, guess.lng],
-                    [currentPhoto.latitude, currentPhoto.longitude],
+                  </MarkerContent>
+                </MapMarker>
+                <MapRoute
+                  coordinates={[
+                    [guess.lng, guess.lat],
+                    [currentPhoto.longitude, currentPhoto.latitude],
                   ]}
                   color="#ef4444"
-                  weight={2}
-                  dashArray="4 4"
+                  width={2}
+                  dashArray={[4, 4]}
+                  interactive={false}
                 />
               </>
             )}

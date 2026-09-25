@@ -15,7 +15,7 @@ import {
   type PrintSize,
   type ProductType,
 } from '@/components/WallPreview';
-import { Map, MapMarker, MapTileLayer, MapZoomControl } from '@/components/ui/map';
+import { Map, MapControls, MapMarker, MarkerContent } from '@/components/ui/map';
 import { events } from '@/lib/analytics';
 import { useCart } from '@/lib/cart-context';
 import { appendLangParam, DEFAULT_LANG, getLangFromSearchParams, type Lang } from '@/lib/i18n';
@@ -28,7 +28,7 @@ import {
 } from '@/lib/oriented-image';
 import type { PhotoRecord } from '@/lib/types';
 
-const MONTREAL_CENTER: [number, number] = [45.5019, -73.5674];
+const MONTREAL_CENTER: [number, number] = [-73.5674, 45.5019];
 
 const cleanText = (text: string | null | undefined): string => {
   if (!text) return '';
@@ -499,21 +499,26 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
                   <div className="surface-subtle overflow-hidden p-3">
                     <div className="relative h-40 overflow-hidden rounded-[1.25rem] bg-muted sm:h-56">
                       <Map
-                        center={[photo.latitude ?? MONTREAL_CENTER[0], photo.longitude ?? MONTREAL_CENTER[1]]}
+                        center={[
+                          photo.longitude ?? MONTREAL_CENTER[0],
+                          photo.latitude ?? MONTREAL_CENTER[1],
+                        ]}
                         zoom={13}
+                        theme="light"
                         className="h-full min-h-0 rounded-[1.25rem]"
                       >
-                        <MapTileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
-                        <MapZoomControl className="bottom-3 right-3" />
+                        <MapControls position="bottom-right" className="bottom-3 right-3" />
                         <MapMarker
-                          position={[photo.latitude ?? MONTREAL_CENTER[0], photo.longitude ?? MONTREAL_CENTER[1]]}
-                          iconAnchor={[12, 12]}
-                          icon={
+                          longitude={photo.longitude ?? MONTREAL_CENTER[0]}
+                          latitude={photo.latitude ?? MONTREAL_CENTER[1]}
+                          anchor="center"
+                        >
+                          <MarkerContent>
                             <div className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-primary shadow-lg">
                               <MapPin className="h-3.5 w-3.5 text-white" />
                             </div>
-                          }
-                        />
+                          </MarkerContent>
+                        </MapMarker>
                       </Map>
                     </div>
                   </div>
