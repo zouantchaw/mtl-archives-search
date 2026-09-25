@@ -847,6 +847,10 @@ export function GameClient() {
             zoom={11}
             maxZoom={18}
             theme="light"
+            styles={{
+              light: 'https://tiles.openfreemap.org/styles/positron',
+              dark: 'https://tiles.openfreemap.org/styles/dark',
+            }}
             className="game-map min-h-0 rounded-none z-0"
           >
             <MapControls position="bottom-right" className="bottom-4 right-3" />

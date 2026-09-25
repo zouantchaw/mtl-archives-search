@@ -29,8 +29,8 @@ if (typeof window !== "undefined" && !MapLibreGL.getWorkerUrl()) {
 }
 
 const defaultStyles = {
-  dark: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
-  light: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+  dark: "https://tiles.openfreemap.org/styles/dark",
+  light: "https://tiles.openfreemap.org/styles/positron",
 };
 
 // A tile-less, dependency-free style with a transparent background. Use it for

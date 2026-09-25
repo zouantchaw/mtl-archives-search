@@ -505,6 +505,10 @@ export function PhotoPageClient({ photo, photoId }: PhotoPageClientProps) {
                         ]}
                         zoom={13}
                         theme="light"
+                        styles={{
+                          light: 'https://tiles.openfreemap.org/styles/positron',
+                          dark: 'https://tiles.openfreemap.org/styles/dark',
+                        }}
                         className="h-full min-h-0 rounded-[1.25rem]"
                       >
                         <MapControls position="bottom-right" className="bottom-3 right-3" />
