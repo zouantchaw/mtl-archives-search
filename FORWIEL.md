@@ -15,6 +15,15 @@ transfer Worker writes only research resources. Progress and completion reports
 live under the run directory; copied upstream TIFFs/PDFs retain a separate decode
 status. This multi-hour run can continue independently of the chat.
 
+The [research study foundation](docs/research-platform-v1/README.md) now keeps a
+growing archive separate from each experiment's fixed inputs. A new study D1
+registry records source imports, frozen selections, review versions, exact code
+and results/failures. The current collection has an adapter; future sources need
+their own tested adapter. A descriptive coverage study validates the workflow.
+The bilingual retrieval question remains in preparation, with fresh OCR/caption
+recipes still drafts and no model generation or human benchmark labels created
+by this milestone. Live app resources remain unchanged.
+
 MTL Archives Search turns a large municipal photo archive into a product people can explore, play with, learn from, and eventually buy from. The public app is the visible part: search, maps, photo pages, the daily game, newsletter signup, print ordering, and `/research`. Under that, Cloudflare D1/R2/Vectorize hold truth; operator jobs live in D1; the Eve agent uses Cloudflare AI Gateway.
 
 ## The Product Direction Now

@@ -15,8 +15,27 @@
   frozen raw inputs and completion reconciliation. [Backfill runbook](docs/research-data-v1/backfill.md).
 - [ ] Verify full backfill completion from its live reports and review exclusions.
 - [ ] Complete source-resource conditions and upstream master decode coverage.
-- [ ] Review series groups, human-label a pilot, then choose a research thesis and
-  freeze an evaluation protocol. The engineering slice is not a benchmark.
+- [ ] Review series groups, human-label a pilot, refine the provisional bilingual
+  retrieval question and freeze its protocol. The engineering slice is not a benchmark.
+
+## Reusable research foundation (2026-10-02)
+
+- [x] Separate append-only `mtl-archives-research-studies` registry; preserve the
+  running acquisition schema, Worker deployment and production resources.
+- [x] Current collection release adapter, immutable import refresh/change report,
+  frozen selections, byte/family grouping and task-specific reviewer contracts.
+- [x] Durable code versions, run attempts, outputs/failures and private publication
+  with conflict checks, rollback/replay and fresh recovery.
+- [x] Use the same preserved engineering release for two study definitions;
+  execute descriptive coverage and leave bilingual retrieval in preparation.
+- [ ] Account for completed full backfill phases and resolve failed acquisitions
+  through new recorded attempts; do not overwrite original receipts.
+- [ ] Freeze a reviewed 100–200-image development pilot, independent query intents,
+  human-reference quality policy and protected heldout protocol.
+- [ ] Pin and implement fresh master/render/OCR/caption runners; compare small
+  candidates before broader generation or product adoption.
+
+Runbook and acceptance: [research-platform-v1](docs/research-platform-v1/README.md).
 
 Runbook: [research-data-v1](docs/research-data-v1/README.md). Existing ingest-v1,
 operator-v1 and app paths were not refactored for this milestone.

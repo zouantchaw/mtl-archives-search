@@ -1,0 +1,19 @@
+{
+  "key": "fresh-ocr-draft-v1",
+  "stage": "draft",
+  "task": "ocr",
+  "input_role": "source_original",
+  "render": {
+    "orientation": "Explicit EXIF/source orientation, then a recorded human override if needed.",
+    "resolution": null,
+    "color": null,
+    "frames": "Validate master type first. TIFF pages/PDF pages must be selected explicitly; no silent first-frame substitution.",
+    "tiles": null,
+    "implementation_sha256": null
+  },
+  "engine": {"name": "pending baseline selection", "revision": null, "parameters": {}, "runtime": null},
+  "context": ["pixels"],
+  "raw_output_contract": {"input_hash": true, "render_hash": true, "record_version": true, "raw_response": true, "timing": true, "usage": true, "outcome": true},
+  "failure_policy": "Retain every attempted item. Retry transient failures as new attempts; no destructive receipt updates or silent corpus filtering.",
+  "budget": {"model_calls": 0, "max_usd": 0, "max_seconds": 0}
+}

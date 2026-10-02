@@ -18,6 +18,12 @@ managed background job with an isolated authenticated transfer Worker, streaming
 hash checks, sequential large-image validation and explicit upstream outcomes.
 Its live reports determine completion; the first 30-record release remains frozen.
 
+[Research platform v1](docs/research-platform-v1/README.md) adds a separate study
+registry, the current collection's release adapter, immutable selections,
+task-specific review packets and recoverable run records. Two studies share the
+same preserved inputs: descriptive coverage executes now; bilingual retrieval
+remains in preparation. Fresh model runs follow pilot/protocol validation.
+
 ## Current product direction
 
 Live MTL Archives is search, `/research`, game, and print on Cloudflare + Vercel.

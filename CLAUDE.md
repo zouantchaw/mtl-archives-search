@@ -14,6 +14,15 @@ hashes and per-item checkpoints must not be edited during execution. Source
 masters are byte-preserved separately from delivery-image decode. Read live
 reports before claiming corpus completion; keep all app deployments independent.
 
+`pipelines/research_platform` adds the separate append-only
+`mtl-archives-research-studies` registry. Read [its runbook](docs/research-platform-v1/README.md).
+It imports immutable completed releases, freezes study inputs, versions review
+packets/labels and archives exact runner code and attempt events. Only descriptive
+coverage executes now; OCR/caption recipes and the retrieval protocol are still
+in preparation. Keep source growth separate from fixed study membership. Never
+convert practice/synthetic judgments into human gold or promote a study result
+through an app deployment without a separate owner decision.
+
 ## Current product direction
 
 Live product is MTL Archives search, `/research`, game, and print. Operator jobs

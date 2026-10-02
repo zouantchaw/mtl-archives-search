@@ -1,0 +1,8 @@
+{
+  "key": "mtl-current-collection",
+  "namespace": "mtl",
+  "adapter": "mtl-preserved-v1",
+  "identity": "exact_source_url_v1",
+  "scope": "The existing canonical MTL Archives collection; no new collection is selected.",
+  "conditions": "Retain each release's source conditions. Collection-level availability is not item-level permission; unresolved conditions remain unresolved."
+}

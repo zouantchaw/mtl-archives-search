@@ -1,0 +1,8 @@
+{
+  "key": "preserved-delivery-engineering-coverage-v1",
+  "purpose": "engineering",
+  "seed": 20261002,
+  "max_records": 30,
+  "required_roles": ["legacy_delivery", "research_thumbnail"],
+  "partitions": {"analysis": 1.0}
+}

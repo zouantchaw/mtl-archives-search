@@ -1,0 +1,19 @@
+{
+  "key": "bilingual-historical-retrieval-v1",
+  "question": "Do fresh OCR and image descriptions improve French/English historical-image retrieval, and does separating evidence channels reduce unsupported place/date matches?",
+  "hypotheses": [
+    {"id": "H1", "prediction": "Adding verified fresh enrichments improves paired-intent nDCG@10 over the frozen legacy search baseline.", "falsification": "No improvement or a material loss in either language or a declared image slice."},
+    {"id": "H2", "prediction": "Keeping source metadata, visible text and generated visual claims separate reduces unsupported place/date matches.", "falsification": "Unsupported matches do not decrease, or useful retrieval declines beyond the declared tolerance."}
+  ],
+  "stage": "preparation",
+  "unit": "query_intent",
+  "protocol": {
+    "analysis": "paired_bilingual_retrieval_pending",
+    "metrics": ["paired-intent nDCG@10", "unsupported place/date match rate", "language and image slice results", "uncertainty", "latency and attributable cost"],
+    "success_rule": null,
+    "label_policy": "Independent human query/image relevance judgments, OCR transcriptions and caption-claim support; versions and quality review must be frozen before evaluation.",
+    "pending": ["development intents", "protected new heldout intents", "family review", "exact corpus", "baseline and candidate recipes", "primary threshold and regression tolerances", "uncertainty method and sample adequacy"]
+  },
+  "budget": {"model_calls": 0, "max_usd": 0, "max_seconds": 0},
+  "limitations": ["Research direction, not a frozen evaluation protocol.", "No expensive generation is authorized by registering this definition.", "Engineering selections and practice labels cannot establish the hypothesis."]
+}

@@ -18,6 +18,16 @@ conditional writes and independent readback hashing. A managed local dispatcher
 performs large-image validation and bounded catalog commits; append-only phase
 manifests account for successes and exclusions before declaring completion.
 
+`pipelines/research_platform` consumes those immutable releases through a tested
+current-collection adapter. New `mtl-archives-research-studies` D1 rows index
+hash-addressed source imports, study/selection/review versions, runner code and
+attempt events in the shared private derived bucket. Shared archive bytes are
+referenced by hash rather than cloned per study. Local SQLite mirrors support
+fixture checks and recovered runs; conditional artifact writes, D1 readback and
+a final publication marker identify complete remote publications. This adds no
+app binding or Worker deployment. Future source adapters and fresh processing
+runners must satisfy the explicit contracts. See [the research study runbook](research-platform-v1/README.md).
+
 ## Product boundary
 
 Live MTL Archives is search, `/research`, game, and print. Operator job state is

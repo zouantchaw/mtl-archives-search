@@ -1,0 +1,15 @@
+{
+  "key": "archive-input-coverage-v1",
+  "question": "Which verified inputs and inherited evidence are available in this fixed selection, and which gaps must be resolved before fresh processing?",
+  "hypotheses": [],
+  "stage": "protocol_frozen",
+  "unit": "collection",
+  "protocol": {
+    "analysis": "descriptive_coverage_v1",
+    "metrics": ["record counts", "role availability", "byte uniqueness", "metadata presence", "declared lineage", "exclusions"],
+    "success_rule": "Report hash-verified inputs, actual counts and limitations. No causal or model-quality conclusion is permitted.",
+    "label_policy": "not_applicable"
+  },
+  "budget": {"model_calls": 0, "max_usd": 0, "max_seconds": 1800},
+  "limitations": ["Descriptive analysis only.", "The existing 30-record engineering slice is not representative.", "Storage/transport costs are unmeasured and separate from the zero model budget."]
+}
