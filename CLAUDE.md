@@ -8,6 +8,12 @@ running it. Do not apply its schema to app D1 or deploy an app Worker for a data
 release. Its metadata snapshot covers more records than its byte-verified slice.
 Legacy captions/OCR remain unreviewed assertions with unknown input hashes.
 
+The managed [bulk backfill](docs/research-data-v1/backfill.md) uses a separate
+transfer Worker with research-only bindings. Its frozen processing runner, selector, code
+hashes and per-item checkpoints must not be edited during execution. Source
+masters are byte-preserved separately from delivery-image decode. Read live
+reports before claiming corpus completion; keep all app deployments independent.
+
 ## Current product direction
 
 Live product is MTL Archives search, `/research`, game, and print. Operator jobs

@@ -9,6 +9,12 @@ builds recoverable dataset releases. The customer app and its Cloudflare binding
 are untouched. The first small release validates the data contract; choosing a
 thesis and benchmarking models comes after coverage and human-labeling work.
 
+The [full backfill](docs/research-data-v1/backfill.md) is running for all 13,499
+canonical images (about 106 GB) and their declared upstream URLs. A separate
+transfer Worker writes only research resources. Progress and completion reports
+live under the run directory; copied upstream TIFFs/PDFs retain a separate decode
+status. This multi-hour run can continue independently of the chat.
+
 MTL Archives Search turns a large municipal photo archive into a product people can explore, play with, learn from, and eventually buy from. The public app is the visible part: search, maps, photo pages, the daily game, newsletter signup, print ordering, and `/research`. Under that, Cloudflare D1/R2/Vectorize hold truth; operator jobs live in D1; the Eve agent uses Cloudflare AI Gateway.
 
 ## The Product Direction Now

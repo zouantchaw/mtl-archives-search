@@ -11,6 +11,13 @@ D1 versions identify privately verified releases; raw source assertions and
 legacy machine proposals remain separate. Recovery rebuilds from frozen cloud
 bytes. See [contract and runbook](research-data-v1/README.md).
 
+For the [full backfill](research-data-v1/backfill.md), a separate authenticated
+`mtl-archives-research-transfer` Worker has only research R2/D1 bindings. It streams
+allowlisted archive/delivery responses to content-addressed private storage with
+conditional writes and independent readback hashing. A managed local dispatcher
+performs large-image validation and bounded catalog commits; append-only phase
+manifests account for successes and exclusions before declaring completion.
+
 ## Product boundary
 
 Live MTL Archives is search, `/research`, game, and print. Operator job state is

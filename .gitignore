@@ -65,6 +65,7 @@ data/mtl_archives/related_datasets.json
 
 # Python
 __pycache__/
+.cloudflare/
 *.pyc
 *.pyo
 .pytest_cache/
@@ -72,6 +73,7 @@ __pycache__/
 # npm cache
 .npm-cache/
 .venv/
+.venv-bulk/
 
 # Browser/network captures
 *.har

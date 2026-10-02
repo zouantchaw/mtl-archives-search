@@ -1,5 +1,10 @@
 # Research dataset pipeline v1
 
+Follow-up: [full canonical backfill](backfill.md) is now running through an
+additional research-only transfer Worker and managed dispatcher. The resource
+description below records the initial bounded milestone; its "no additional
+Worker" statement applies to that initial release, not the subsequent bulk run.
+
 An isolated data plane for reproducible archive engineering and research. The CLI
 freezes the full live metadata, preserves a bounded slice of exact bytes, separates
 source payloads from inherited assertions, generates traced renditions, and

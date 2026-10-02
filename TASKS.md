@@ -10,7 +10,11 @@
   into a fresh directory and regenerate the same manifest offline. Confirm eight
   duplicate pairs by byte hash; preserve the known size discrepancy. See the
   [first release card](docs/research-data-v1/first-release.md).
-- [ ] Expand acquisition with explicit large-scan handling and source conditions.
+- [x] Implement and launch managed full canonical acquisition with streaming
+  conditional writes, large-scan validation, per-record failures, bounded queues,
+  frozen raw inputs and completion reconciliation. [Backfill runbook](docs/research-data-v1/backfill.md).
+- [ ] Verify full backfill completion from its live reports and review exclusions.
+- [ ] Complete source-resource conditions and upstream master decode coverage.
 - [ ] Review series groups, human-label a pilot, then choose a research thesis and
   freeze an evaluation protocol. The engineering slice is not a benchmark.
 

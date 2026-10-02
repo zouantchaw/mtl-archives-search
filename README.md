@@ -13,6 +13,11 @@ and verifies bounded byte-level releases in a separate D1 catalog and private R2
 buckets. Run `python3 pipelines/research_data/run.py --help`. Its private release
 workflow leaves app resources and bindings untouched.
 
+The [full canonical backfill](docs/research-data-v1/backfill.md) now runs as a
+managed background job with an isolated authenticated transfer Worker, streaming
+hash checks, sequential large-image validation and explicit upstream outcomes.
+Its live reports determine completion; the first 30-record release remains frozen.
+
 ## Current product direction
 
 Live MTL Archives is search, `/research`, game, and print on Cloudflare + Vercel.
