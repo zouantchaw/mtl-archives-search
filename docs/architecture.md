@@ -1,5 +1,16 @@
 # Architecture
 
+## Isolated research data plane
+
+`pipelines/research_data/run.py` reads a fixed production manifest snapshot and
+delivery images, then writes only `mtl-archives-research-catalog`, private
+`mtl-archives-research-sources`, and private `mtl-archives-research-derived`.
+The research D1 schema is module-local and is never an app migration. No Worker,
+index, scheduled job or app binding is added. R2 content hashes and append-only
+D1 versions identify privately verified releases; raw source assertions and
+legacy machine proposals remain separate. Recovery rebuilds from frozen cloud
+bytes. See [contract and runbook](research-data-v1/README.md).
+
 ## Product boundary
 
 Live MTL Archives is search, `/research`, game, and print. Operator job state is

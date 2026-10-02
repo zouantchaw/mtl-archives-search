@@ -1,0 +1,11 @@
+{
+  "schema": "mtl-research-data-v1",
+  "catalog_name": "mtl-archives-research-catalog",
+  "catalog_id": "36147ac0-44c6-43db-84bf-6a8d2bb41b8a",
+  "sources_bucket": "mtl-archives-research-sources",
+  "derived_bucket": "mtl-archives-research-derived",
+  "max_download_bytes": 33554432,
+  "max_pixels": 50000000,
+  "thumbnail_size": 1024,
+  "thumbnail_quality": 85
+}

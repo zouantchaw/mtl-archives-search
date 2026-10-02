@@ -1,5 +1,14 @@
 # MTL Archives Search, In Plain Language
 
+## Research dataset foundation (October 2026)
+
+The new [research pipeline](docs/research-data-v1/README.md) has a separate D1
+catalog and two private R2 buckets. It freezes archive metadata, verifies exact
+image bytes, keeps inherited captions/OCR separate from source evidence, and
+builds recoverable dataset releases. The customer app and its Cloudflare bindings
+are untouched. The first small release validates the data contract; choosing a
+thesis and benchmarking models comes after coverage and human-labeling work.
+
 MTL Archives Search turns a large municipal photo archive into a product people can explore, play with, learn from, and eventually buy from. The public app is the visible part: search, maps, photo pages, the daily game, newsletter signup, print ordering, and `/research`. Under that, Cloudflare D1/R2/Vectorize hold truth; operator jobs live in D1; the Eve agent uses Cloudflare AI Gateway.
 
 ## The Product Direction Now

@@ -6,6 +6,13 @@ Built on Cloudflare Workers, D1, Vectorize, R2, Workers AI, and a Next.js fronte
 
 [Live site](https://mtlarchives.com) · [Architecture](docs/architecture.md) · [Tasks](TASKS.md)
 
+## Reproducible research data
+
+[Research dataset pipeline v1](docs/research-data-v1/README.md) freezes metadata
+and verifies bounded byte-level releases in a separate D1 catalog and private R2
+buckets. Run `python3 pipelines/research_data/run.py --help`. Its private release
+workflow leaves app resources and bindings untouched.
+
 ## Current product direction
 
 Live MTL Archives is search, `/research`, game, and print on Cloudflare + Vercel.

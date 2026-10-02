@@ -1,5 +1,22 @@
 # Tasks
 
+## Dataset contract milestone (2026-10-02)
+
+- [x] Isolated research D1 and private source/derived R2 buckets; no serving writes.
+- [x] Frozen metadata, reconciliation export, source identities/aliases, versioned
+  assertions, byte/decode checks, traced thumbnails and recovery workflow.
+- [x] Failure/recovery tests and a live D1 transaction rollback probe.
+- [x] Publish the 30-record engineering slice; read back 85 artifacts, then restore
+  into a fresh directory and regenerate the same manifest offline. Confirm eight
+  duplicate pairs by byte hash; preserve the known size discrepancy. See the
+  [first release card](docs/research-data-v1/first-release.md).
+- [ ] Expand acquisition with explicit large-scan handling and source conditions.
+- [ ] Review series groups, human-label a pilot, then choose a research thesis and
+  freeze an evaluation protocol. The engineering slice is not a benchmark.
+
+Runbook: [research-data-v1](docs/research-data-v1/README.md). Existing ingest-v1,
+operator-v1 and app paths were not refactored for this milestone.
+
 ## Active product roadmap
 
 Archive Platform v2 (#135): live search, reading room, D1 operator jobs, Eve on

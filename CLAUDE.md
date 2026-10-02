@@ -1,5 +1,13 @@
 # CLAUDE.md
 
+## Research data boundary
+
+`pipelines/research_data` writes only the isolated research catalog/private R2
+buckets in its config. Read [the runbook](docs/research-data-v1/README.md) before
+running it. Do not apply its schema to app D1 or deploy an app Worker for a data
+release. Its metadata snapshot covers more records than its byte-verified slice.
+Legacy captions/OCR remain unreviewed assertions with unknown input hashes.
+
 ## Current product direction
 
 Live product is MTL Archives search, `/research`, game, and print. Operator jobs
