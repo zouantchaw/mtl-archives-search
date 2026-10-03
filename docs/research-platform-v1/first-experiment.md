@@ -250,8 +250,8 @@ abstention. Hard negatives and weak initial top-five results must be retained.
 
 | Gate | Deliverable | Current status |
 | --- | --- | --- |
-| 0: reconstruct the method | Versioned paper/code audit, kernel and analytical checks | Prepared here; PyTorch parity still pending |
-| 1: know the pilot | Verified completed-phase import, coverage inspection, reviewed family corpus and paired development intents | Pending |
+| 0: reconstruct the method | Versioned paper/code audit, kernel and analytical checks | 360 synthetic CPU author-parity comparisons passed October 3 |
+| 1: know the pilot | Verified completed-phase import, coverage inspection, reviewed family corpus and paired development intents | Import and 100-candidate byte verification complete; human review and queries pending |
 | 2: pin the fresh recipe | Render code, weights/processors, prompt assignment, generation settings and exact runtime | Candidate model revisions recorded; runtime/render unresolved |
 | 3: profile a tiny run | Five development images, at most ten generation steps; inspect actual render/output and measure throughput/cost | Pending; no inference started |
 | 4: freeze the evaluation | Human reference, new intents, analysis, sample adequacy, wall/spend ceilings and failure policy | Pending |
@@ -259,6 +259,8 @@ abstention. Hard negatives and weak initial top-five results must be retained.
 | 6: decide and retain | Results including failures, then a larger independent study or separate serving candidate | Pending |
 
 The registered preparation budget is **zero model calls and zero model spend**.
+See [pilot preparation](pilot-preparation.md) for receipts, the blind local review
+package, numerical-parity scope and the next human review sequence.
 This work has no GPU purchase, weight download or full-corpus generation. A future
 100-image recipe has a proposed ceiling of 200 generation steps, including its
 five-image profiling subset; retries must count against that ceiling. Dollar,

@@ -30,10 +30,16 @@ through an app deployment without a separate owner decision.
 
 The [first experiment](docs/research-platform-v1/first-experiment.md) is the
 preparation-stage caption-feedback child study. `pipelines/caption_feedback_pilot`
-contains only a standard-library numerical kernel and synthetic checks. It is
-not the archive inference/evaluation runner and does not establish a benchmark
+contains a standard-library numerical kernel, pinned-author CPU parity checks
+and a private candidate-preparation helper. Read [pilot preparation](docs/research-platform-v1/pilot-preparation.md).
+It is not the archive inference/evaluation runner and does not establish a benchmark
 gain. Preserve the pinned author-code interpretation and the separate native
 French results; zero preparation budget does not authorize model execution.
+
+The October 3 candidate snapshot is engineering-only: 100 verified images, no
+human family decisions or independent intents. Preserve its original membership
+and blank worksheets; reviewed responses create new versions. Full publication
+shards the upstream reference index with count/digest checks during recovery.
 
 ## Current product direction
 

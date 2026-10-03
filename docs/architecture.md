@@ -36,9 +36,17 @@ runners must satisfy the explicit contracts. See [the research study runbook](re
 The [first paper-based child study](research-platform-v1/first-experiment.md)
 specifies one caption-feedback vector update with no-feedback, image-feedback,
 legacy-caption and simple-fusion controls. `pipelines/caption_feedback_pilot`
-provides a synthetic numerical kernel only; archive inference, family corpus
+provides a synthetic numerical kernel, pinned-author CPU parity checks and a
+private 100-image candidate-preparation helper; archive inference, family corpus
 adaptation and human-reference evaluation remain pending. Preparation metadata
 uses the existing private study resources and adds no serving dependency.
+
+The [October 3 preparation](research-platform-v1/pilot-preparation.md) imports
+all completed delivery outcomes and freezes an unreviewed engineering selection.
+Its local blind review views link exact verified delivery/thumbnail bytes. Full
+import publications split upstream references into bounded metadata shards;
+count/digest verification precedes recovery ledger installation. Archive bytes
+remain shared, and earlier publication roots remain readable.
 
 ## Product boundary
 

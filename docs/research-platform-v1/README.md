@@ -59,6 +59,12 @@ flowchart LR
   is safe; conflicting immutable rows fail. Restore into a new local ledger and
   verify selected archive bytes independently.
 
+Full imports can reference more bytes of metadata than fit in a 4 MiB root.
+Publication shards the upstream reference index, preserving its count and ordered
+digest; recovery checks these before installing ledger rows. The root and each
+uploaded artifact remain bounded. Shared image bytes are not uploaded by this
+operation, and earlier unsharded publications remain readable.
+
 Only `descriptive_coverage_v1` executes in this milestone. Registering another
 study or recipe does not run a model. Future OCR/caption/retrieval runners must
 consume these fixed versions and satisfy their output contracts; they are not
@@ -81,6 +87,11 @@ one caption-feedback update over fixed images. It anchors the method to WACV 202
 paper equations and pinned author code, defines controls and independent human
 relevance, and adds a synthetic numerical kernel. The child study remains in
 preparation; the kernel is not an archive inference/evaluation runner.
+
+[October 3 preparation](pilot-preparation.md) completes the full delivery import,
+360 author-code arithmetic comparisons and a byte-verified 100-image candidate
+snapshot. Blind local views and blank worksheets support the next human review;
+they contain no human labels or independent queries.
 
 The protocol still needs independent development/heldout query intents, family
 review, a corpus, pinned baselines/candidates, thresholds, uncertainty methods

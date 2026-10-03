@@ -48,15 +48,21 @@ Runbook and acceptance: [research-platform-v1](docs/research-platform-v1/README.
   reference plan and proposed bilingual success/regression rules.
 - [x] Implement the attributed numerical kernel; pass ten analytical/contract
   checks and retain an explicitly synthetic trace with zero model calls.
-- [ ] Compare the kernel numerically with pinned author PyTorch execution.
-- [ ] Verify/import the completed delivery release, inspect a reviewed corpus,
-  select fixed family representatives and write independent paired intents.
+- [x] Compare the kernel with pinned author PyTorch execution: 360 synthetic CPU
+  comparisons passed; no paper benchmark or archive inference implied.
+- [x] Import all completed delivery outcomes and byte-verify a seeded 100-image
+  engineering candidate set; prepare blind local views and blank worksheets.
+- [x] Support full-corpus publication with bounded upstream-reference shards;
+  test accounting rejection, replay and recovery.
+- [ ] Review candidate usability and families, select fixed representatives and
+  write independent paired intents. The candidate snapshot remains unreviewed.
 - [ ] Pin rendering/runtime and profile five development images before setting
   dollar/wall-time ceilings and freezing the human reference/evaluation protocol.
 - [ ] Run the bounded fresh-caption comparison, then retain success, failure or
   inconclusive results. Broader OCR/evidence studies follow independently.
 
 Protocol and limitations: [first experiment](docs/research-platform-v1/first-experiment.md).
+Next review workflow: [pilot preparation](docs/research-platform-v1/pilot-preparation.md).
 
 Runbook: [research-data-v1](docs/research-data-v1/README.md). Existing ingest-v1,
 operator-v1 and app paths were not refactored for this milestone.

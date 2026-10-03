@@ -228,6 +228,43 @@ class PlatformTests(unittest.TestCase):
         self.store.publish(cloud)
         self.assertEqual(cloud.db.execute('SELECT count(*) FROM research_publication').fetchone()[0], 1)
 
+    def test_large_upstream_index_is_bounded_and_recoverable(self):
+        large = Store(Path(self.temp.name)/'large')
+        self.addCleanup(large.db.close)
+        refs = [reference(digest(str(i).encode()), 100, 'sources', 'image/jpeg') for i in range(500)]
+        for i in range(0, len(refs), 50):
+            large.add('packet', f'reference-accounting-{i}', {'references': refs[i:i+50]})
+        cloud = FakeCloud()
+        with patch('storage.MAX_METADATA', 32*1024):
+            original = large.publication()
+            self.assertGreater(len(encoded(original)), 32*1024)
+            receipt = large.publish(cloud)
+            manifest = large.json(receipt['manifest'])
+            index = manifest['upstream_index']
+            self.assertEqual(index['count'], 500)
+            self.assertEqual(index['sha256'], digest(original['upstream']))
+            self.assertLessEqual(receipt['manifest']['size_bytes'], 32*1024)
+            self.assertTrue(all(r['size_bytes'] <= 16*1024 for r in index['shards']))
+            self.assertTrue(all(area == 'derived' for area, sha in cloud.blobs))
+            restored = Store(Path(self.temp.name)/'large-restored')
+            self.addCleanup(restored.db.close)
+            restored.restore(cloud, receipt['id'])
+            self.assertEqual(restored.inventory(), large.inventory())
+            self.assertEqual(large.publish(cloud)['id'], receipt['id'])
+            # A validly hashed root with a wrong index count still cannot install
+            # its ledger. Metadata transport checks alone are not accounting.
+            bad = copy.deepcopy(manifest)
+            bad['upstream_index']['count'] += 1
+            bad_ref = large.put(bad)
+            cloud.put(bad_ref, large.path(bad_ref))
+            cloud.batch([{'sql': 'INSERT INTO research_publication VALUES(?,?,?,?)',
+                          'params': [bad_ref['sha256'], encoded(bad_ref).decode(), receipt['entity_count'], 0]}])
+            rejected = Store(Path(self.temp.name)/'bad-index')
+            self.addCleanup(rejected.db.close)
+            with self.assertRaisesRegex(ValueError, 'upstream index accounting'):
+                rejected.restore(cloud, bad_ref['sha256'])
+            self.assertEqual(rejected.inventory(), [])
+
     def test_conflicting_remote_row_rolls_back(self):
         cloud = FakeCloud()
         cloud.db.execute('INSERT INTO research_entity VALUES(?,?,?,?)', (self.source, 'source', 'incorrect', '{}'))

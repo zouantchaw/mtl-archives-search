@@ -35,6 +35,12 @@ now specifies caption feedback, pinned reference code, comparison arms and human
 relevance. Its numerical kernel passes synthetic checks; archive inference and
 the heldout evaluation are pending.
 
+The [October 3 pilot preparation](docs/research-platform-v1/pilot-preparation.md)
+imports the completed delivery phase, verifies a fixed 100-image candidate set,
+and prepares blind local review views and blank bilingual-query worksheets.
+Author-code arithmetic parity passes 360 synthetic CPU comparisons. Human family
+review and independent queries come next; no archive model inference has started.
+
 ## Current product direction
 
 Live MTL Archives is search, `/research`, game, and print on Cloudflare + Vercel.

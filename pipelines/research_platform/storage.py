@@ -326,6 +326,31 @@ class Store:
     def publish(self, cloud):
         cloud.guard()
         manifest = self.publication()
+        if len(encoded(manifest)) > MAX_METADATA:
+            # Full imports reference tens of thousands of existing archive blobs.
+            # Keep the root bounded without re-uploading those upstream bytes.
+            upstream, shards, batch = manifest['upstream'], [], []
+            empty_size = len(encoded(dict(schema=SCHEMA, kind='publication-upstream', references=[])))
+            batch_size = empty_size
+            def flush():
+                shards.append(self.put(dict(schema=SCHEMA, kind='publication-upstream', references=batch.copy())))
+                batch.clear()
+            for ref in upstream:
+                added_size = len(encoded(ref)) + (1 if batch else 0)
+                if batch_size + added_size > MAX_METADATA // 2:
+                    if not batch:
+                        raise ValueError('upstream reference exceeds shard bound')
+                    flush()
+                    batch_size = empty_size
+                    added_size = len(encoded(ref))
+                batch.append(ref)
+                batch_size += added_size
+            if batch:
+                flush()
+            manifest = {**manifest, 'upstream': [],
+                        'upstream_index': dict(schema='mtl-research-upstream-index-v1',
+                                               count=len(upstream), sha256=digest(upstream), shards=shards),
+                        'artifacts': [*manifest['artifacts'], *shards]}
         root = self.put(manifest)
         for ref in [*manifest['artifacts'], root]:
             cloud.put(ref, self.path(ref))
@@ -376,6 +401,22 @@ class Store:
             raise ValueError('unsupported publication schema')
         for artifact in manifest['artifacts']:
             cloud.get(artifact, self.blobs / artifact['sha256'])
+        if 'upstream_index' in manifest:
+            index = manifest['upstream_index']
+            if index.get('schema') != 'mtl-research-upstream-index-v1' or manifest['upstream']:
+                raise ValueError('unsupported upstream index')
+            upstream = []
+            for shard in index['shards']:
+                if shard not in manifest['artifacts']:
+                    raise ValueError('upstream shard absent from publication artifacts')
+                value = self.json(shard)
+                if value.get('schema') != SCHEMA or value.get('kind') != 'publication-upstream':
+                    raise ValueError('unsupported upstream shard')
+                upstream.extend(validate_ref(r) for r in value['references'])
+            keys = [(r['area'], r['sha256']) for r in upstream]
+            if (len(upstream) != index['count'] or digest(upstream) != index['sha256'] or
+                    len(keys) != len(set(keys))):
+                raise ValueError('upstream index accounting mismatch')
         if [len(manifest['rows'][t]) for t in ('research_entity', 'research_event')] != [marker['entity_count'], marker['event_count']]:
             raise ValueError('publication accounting mismatch')
         with self.db:

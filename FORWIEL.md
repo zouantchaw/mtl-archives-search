@@ -33,6 +33,13 @@ search, image feedback and inherited captions. Numerical checks pass; image
 selection, human judgments and the small fresh-caption run come next. This is
 preparation, with no model inference or claim of better archival search yet.
 
+The [pilot preparation](docs/research-platform-v1/pilot-preparation.md) now has
+100 numbered, verified candidates ready to review. First identify usable images
+and related families, then write independent French/English search intents.
+Captions and archive titles are hidden in the review page. The full delivery
+import and author-code numerical checks are complete; the candidates are still
+unreviewed and there are no benchmark labels or model results.
+
 MTL Archives Search turns a large municipal photo archive into a product people can explore, play with, learn from, and eventually buy from. The public app is the visible part: search, maps, photo pages, the daily game, newsletter signup, print ordering, and `/research`. Under that, Cloudflare D1/R2/Vectorize hold truth; operator jobs live in D1; the Eve agent uses Cloudflare AI Gateway.
 
 ## The Product Direction Now
