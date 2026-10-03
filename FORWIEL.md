@@ -40,6 +40,14 @@ Captions and archive titles are hidden in the review page. The full delivery
 import and author-code numerical checks are complete; the candidates are still
 unreviewed and there are no benchmark labels or model results.
 
+The [review app](docs/research-platform-v1/reviewer-app.md) is now live at
+https://mtl-archives-research-reviewer.wiel.workers.dev. Sign in with the same owner
+account as PortMind, read Guide, and save the first five image reviews so we can
+check the rules before continuing. It then guides you through photo families and
+12 paired search intents. Progress saves privately to a new database; drafts stay
+on the current device. Exports preserve earlier versions and remain pending
+quality review. The public site and its existing data are unchanged.
+
 MTL Archives Search turns a large municipal photo archive into a product people can explore, play with, learn from, and eventually buy from. The public app is the visible part: search, maps, photo pages, the daily game, newsletter signup, print ordering, and `/research`. Under that, Cloudflare D1/R2/Vectorize hold truth; operator jobs live in D1; the Eve agent uses Cloudflare AI Gateway.
 
 ## The Product Direction Now
@@ -51,6 +59,7 @@ Live work is Archive Platform v2: search, reading room, D1 operator jobs, then b
 - `apps/api` is the Cloudflare Worker: photos, search, game, newsletter, operator jobs.
 - `apps/next-app` is the customer-facing site including `/research`.
 - `apps/operator-agent` is the Eve control surface (Gateway completions).
+- `apps/research-reviewer` is the separate private pilot review app.
 - `packages/scripts` is ETL, vectorize, ingest-v1, and evals.
 - `pipelines/` holds OCR, VLM, and daily social packaging.
 - `docs/` explains live contracts (ingest, operator, reading room, vision evals).

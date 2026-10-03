@@ -1,0 +1,38 @@
+{
+  "name": "mtl-archives-research-reviewer",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-03",
+  "workers_dev": true,
+  "preview_urls": false,
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "run_worker_first": true,
+    "not_found_handling": "single-page-application"
+  },
+  "d1_databases": [
+    {
+      "binding": "REVIEW_DB",
+      "database_name": "mtl-archives-research-reviewer",
+      "database_id": "00e31f70-f4b9-43cb-8b52-05ca2d28404a",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "SOURCES",
+      "bucket_name": "mtl-archives-research-sources"
+    },
+    {
+      "binding": "DERIVED",
+      "bucket_name": "mtl-archives-research-derived"
+    }
+  ],
+  "vars": {
+    "ACCESS_ISSUER": "https://wiel-agent-first.cloudflareaccess.com",
+    "ACCESS_AUD": "17dc97c33e8c23f2ac92fe7e0d6f3fdf946079a4d83b6308376c23bcfbd044f7"
+  },
+  "observability": {
+    "enabled": true
+  }
+}

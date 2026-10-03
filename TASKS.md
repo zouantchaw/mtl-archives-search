@@ -54,6 +54,12 @@ Runbook and acceptance: [research-platform-v1](docs/research-platform-v1/README.
   engineering candidate set; prepare blind local views and blank worksheets.
 - [x] Support full-corpus publication with bounded upstream-reference shards;
   test accounting rejection, replay and recovery.
+- [x] Deploy a branded private Cloudflare review app with a new D1, owner-only
+  Access, exact frozen images, draft recovery, immutable saves and full-history
+  export. Backend, local desktop/mobile QA and production-boundary checks pass.
+  [Reviewer runbook](docs/research-platform-v1/reviewer-app.md).
+- [ ] Complete the owner first sign-in and five-image calibration; then finish
+  candidate reviews, family/representative decisions and 12 development intents.
 - [ ] Review candidate usability and families, select fixed representatives and
   write independent paired intents. The candidate snapshot remains unreviewed.
 - [ ] Pin rendering/runtime and profile five development images before setting

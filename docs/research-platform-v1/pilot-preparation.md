@@ -29,29 +29,34 @@ Durable local package:
 /Users/wiel/pkm/0xPKM_Lab/04_outputs/mtl-caption-feedback-pilot-preparation-2026-10-03
 ```
 
-Open `review/index.html` for numbered images and full-resolution links. Archive
-titles, dates, OCR and generated captions are hidden. The full-image links and
+Use the deployed [private review app](reviewer-app.md):
+https://mtl-archives-research-reviewer.wiel.workers.dev. Start with Guide and five
+saved image reviews for calibration. The preserved `review/index.html` remains
+an offline inspection artifact for numbered images and full-resolution links.
+Archive titles, dates, OCR and generated captions are hidden. The full-image links and
 previews are exact verified cached bytes; contact sheets are presentation copies.
 The folder also contains input/import receipts, coverage, parity evidence,
 blank CSV worksheets and cloud publication/recovery receipts.
 
 ## Review sequence
 
-1. Copy `review/family-review-template.csv` to a new response file. Supply the
-   reviewer, image type, usable visual detail, visible-text presence, uncertainty
-   and related photographic family. Inspect full images when thumbnails are
-   unclear. An image decoding successfully does not establish useful content.
-2. Record fixed representatives for related images. Decide whether the first
-   study covers aerial photographs only or includes map/document images as a
+1. In the app's **Images** step, record image type, usable visual detail,
+   visible-text presence and uncertainty; **Save & next** retains the reviewer
+   identity and exact input version. The blank CSV remains an offline alternative.
+   Inspect full images when thumbnails are unclear. An image decoding successfully does not establish useful content.
+2. In **Families**, group related photos and explicitly select a representative.
+   Decide whether the first study covers aerial photographs only or includes map/document images as a
    separately reported group. Record image orientation and darkness concerns;
    any rotation or enhancement belongs to a pinned render recipe.
 3. Freeze a new corpus from those reviewed decisions. Family review must cover
    its selected membership, with quality checks before research eligibility.
    Do not claim that unreviewed records elsewhere in the full import are reviewed.
-4. Copy `review/development-query-template.csv` and write the proposed 12
-   independent visual intents with paired French/English wording and an explicit
-   visible relevance criterion. Have a bilingual reviewer check equivalence and
+4. In **Queries**, write the proposed 12 independent visual intents with paired
+   French/English wording and an explicit visible relevance criterion. Have a bilingual reviewer check equivalence and
    related-intent groups. Queries must not be derived from generated captions.
+   The app opens query writing after a completed family check as preparation;
+   quality review and a research corpus freeze remain separate gates. Export the
+   decisions for immutable local registration as described in the reviewer runbook.
 5. Pin rendering, processors, weights, runtime and accounting; profile five
    development images. Use that evidence to set wall-time and dollar ceilings
    before the bounded caption experiment. Protected heldout intents, exhaustive

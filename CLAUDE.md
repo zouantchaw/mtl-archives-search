@@ -41,6 +41,14 @@ human family decisions or independent intents. Preserve its original membership
 and blank worksheets; reviewed responses create new versions. Full publication
 shards the upstream reference index with count/digest checks during recovery.
 
+`apps/research-reviewer` is the isolated private Cloudflare review app. Read
+[its runbook](docs/research-platform-v1/reviewer-app.md). It has a new reviewer D1
+and Access application; exact pilot images are read from the private research
+buckets. No serving, study-catalog or acquisition writes occur in the app. Retain
+revisions, account scope and pending-quality status. Synthetic local QA exports
+must never be imported as human references. Export ingestion is local immutable
+registration only, not corpus freeze, cloud publication or product promotion.
+
 ## Current product direction
 
 Live product is MTL Archives search, `/research`, game, and print. Operator jobs

@@ -37,9 +37,15 @@ the heldout evaluation are pending.
 
 The [October 3 pilot preparation](docs/research-platform-v1/pilot-preparation.md)
 imports the completed delivery phase, verifies a fixed 100-image candidate set,
-and prepares blind local review views and blank bilingual-query worksheets.
+and prepares blind review views and blank bilingual-query worksheets.
 Author-code arithmetic parity passes 360 synthetic CPU comparisons. Human family
 review and independent queries come next; no archive model inference has started.
+
+The private [Cloudflare research reviewer](docs/research-platform-v1/reviewer-app.md)
+is now deployed for that preparation: image decisions, related-photo families and
+independent bilingual development queries, with draft recovery, explicit saves
+and immutable history. It uses a new reviewer D1 and owner-only Access. Live app
+resources are unchanged; human quality review remains pending.
 
 ## Current product direction
 
@@ -56,6 +62,7 @@ Keep vs archive: [docs/archive-v1/KEEP-LIST.md](docs/archive-v1/KEEP-LIST.md).
 - `apps/next-app` — main site, game, prints, `/research`
 - `apps/operator-agent` — Eve control surface (Gateway completions)
 - `apps/web` — CLIP research explorer
+- `apps/research-reviewer` — private pilot review app; separate Worker and D1
 - `packages/scripts` — ETL, vectorize, ingest-v1, evals
 - `pipelines/` — OCR, VLM, social/story
 - `infrastructure/d1/` — schema and migrations

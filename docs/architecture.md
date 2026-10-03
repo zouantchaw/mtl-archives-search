@@ -48,6 +48,15 @@ import publications split upstream references into bounded metadata shards;
 count/digest verification precedes recovery ledger installation. Archive bytes
 remain shared, and earlier publication roots remain readable.
 
+The [private reviewer app](research-platform-v1/reviewer-app.md) adds a separate
+`mtl-archives-research-reviewer` Worker/D1 and owner-only Access application. The
+Worker verifies Access JWTs for assets, API and allowlisted image reads. A
+server-bundled pilot manifest links exact frozen research R2 blobs. Atomic
+expected-revision inserts and append-only triggers preserve each account's
+review history. Family completion and query saves retain corpus revision gates;
+exports remain pending quality checks. This app does not write the acquisition
+or study catalogs, start model jobs or bind any live serving resources.
+
 ## Product boundary
 
 Live MTL Archives is search, `/research`, game, and print. Operator job state is
