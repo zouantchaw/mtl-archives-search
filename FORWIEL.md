@@ -24,6 +24,13 @@ The bilingual retrieval question remains in preparation, with fresh OCR/caption
 recipes still drafts and no model generation or human benchmark labels created
 by this milestone. Live app resources remain unchanged.
 
+The [first experiment brief](docs/research-platform-v1/first-experiment.md) asks
+whether descriptions of the first five search results can improve the next
+ranking. It follows a WACV 2026 method and compares fresh captions with ordinary
+search, image feedback and inherited captions. Numerical checks pass; image
+selection, human judgments and the small fresh-caption run come next. This is
+preparation, with no model inference or claim of better archival search yet.
+
 MTL Archives Search turns a large municipal photo archive into a product people can explore, play with, learn from, and eventually buy from. The public app is the visible part: search, maps, photo pages, the daily game, newsletter signup, print ordering, and `/research`. Under that, Cloudflare D1/R2/Vectorize hold truth; operator jobs live in D1; the Eve agent uses Cloudflare AI Gateway.
 
 ## The Product Direction Now

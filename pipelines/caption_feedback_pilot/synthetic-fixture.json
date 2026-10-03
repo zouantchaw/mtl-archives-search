@@ -1,0 +1,22 @@
+{
+  "schema": "mtl-caption-feedback-synthetic-v1",
+  "synthetic": true,
+  "query": [1, 0, 0],
+  "k": 5,
+  "images": {
+    "synthetic:a": [1, 0, 0],
+    "synthetic:b": [0.8, 0.6, 0],
+    "synthetic:c": [0.6, 0.8, 0],
+    "synthetic:d": [0, 1, 0],
+    "synthetic:e": [0, 0, 1],
+    "synthetic:f": [-1, 0, 0]
+  },
+  "caption_vectors": {
+    "synthetic:a": [0.6, 0.8, 0],
+    "synthetic:b": [1, 0, 0],
+    "synthetic:c": [0.8, 0, 0.6],
+    "synthetic:d": [0, 0, 1],
+    "synthetic:e": [0, 1, 0],
+    "synthetic:f": [-1, 0, 0]
+  }
+}

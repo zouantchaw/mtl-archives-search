@@ -37,6 +37,24 @@
 
 Runbook and acceptance: [research-platform-v1](docs/research-platform-v1/README.md).
 
+## First paper-to-experiment study (2026-10-02)
+
+- [x] Select WACV 2026 caption-feedback method; pin and inspect author code, map
+  equations to functions and retain normalization/prompt/runtime discrepancies.
+- [x] Prepare a separate child study, baseline/control matrix, blind human
+  reference plan and proposed bilingual success/regression rules.
+- [x] Implement the attributed numerical kernel; pass ten analytical/contract
+  checks and retain an explicitly synthetic trace with zero model calls.
+- [ ] Compare the kernel numerically with pinned author PyTorch execution.
+- [ ] Verify/import the completed delivery release, inspect a reviewed corpus,
+  select fixed family representatives and write independent paired intents.
+- [ ] Pin rendering/runtime and profile five development images before setting
+  dollar/wall-time ceilings and freezing the human reference/evaluation protocol.
+- [ ] Run the bounded fresh-caption comparison, then retain success, failure or
+  inconclusive results. Broader OCR/evidence studies follow independently.
+
+Protocol and limitations: [first experiment](docs/research-platform-v1/first-experiment.md).
+
 Runbook: [research-data-v1](docs/research-data-v1/README.md). Existing ingest-v1,
 operator-v1 and app paths were not refactored for this milestone.
 

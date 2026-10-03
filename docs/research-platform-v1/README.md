@@ -76,6 +76,12 @@ retrieval improvement.
 > Do fresh OCR and image descriptions improve French/English historical-image
 > retrieval, and does separating evidence channels reduce unsupported place/date matches?
 
+The [first paper-based experiment](first-experiment.md) narrows that question to
+one caption-feedback update over fixed images. It anchors the method to WACV 2026
+paper equations and pinned author code, defines controls and independent human
+relevance, and adds a synthetic numerical kernel. The child study remains in
+preparation; the kernel is not an archive inference/evaluation runner.
+
 The protocol still needs independent development/heldout query intents, family
 review, a corpus, pinned baselines/candidates, thresholds, uncertainty methods
 and adequate human reference judgments. The 30-record engineering release tests

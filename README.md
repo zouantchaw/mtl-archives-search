@@ -24,6 +24,11 @@ task-specific review packets and recoverable run records. Two studies share the
 same preserved inputs: descriptive coverage executes now; bilingual retrieval
 remains in preparation. Fresh model runs follow pilot/protocol validation.
 
+The [first paper-based experiment](docs/research-platform-v1/first-experiment.md)
+now specifies caption feedback, pinned reference code, comparison arms and human
+relevance. Its numerical kernel passes synthetic checks; archive inference and
+the heldout evaluation are pending.
+
 ## Current product direction
 
 Live MTL Archives is search, `/research`, game, and print on Cloudflare + Vercel.

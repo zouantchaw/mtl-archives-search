@@ -28,6 +28,13 @@ a final publication marker identify complete remote publications. This adds no
 app binding or Worker deployment. Future source adapters and fresh processing
 runners must satisfy the explicit contracts. See [the research study runbook](research-platform-v1/README.md).
 
+The [first paper-based child study](research-platform-v1/first-experiment.md)
+specifies one caption-feedback vector update with no-feedback, image-feedback,
+legacy-caption and simple-fusion controls. `pipelines/caption_feedback_pilot`
+provides a synthetic numerical kernel only; archive inference, family corpus
+adaptation and human-reference evaluation remain pending. Preparation metadata
+uses the existing private study resources and adds no serving dependency.
+
 ## Product boundary
 
 Live MTL Archives is search, `/research`, game, and print. Operator job state is

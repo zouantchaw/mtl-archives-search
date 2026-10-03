@@ -23,6 +23,13 @@ in preparation. Keep source growth separate from fixed study membership. Never
 convert practice/synthetic judgments into human gold or promote a study result
 through an app deployment without a separate owner decision.
 
+The [first experiment](docs/research-platform-v1/first-experiment.md) is the
+preparation-stage caption-feedback child study. `pipelines/caption_feedback_pilot`
+contains only a standard-library numerical kernel and synthetic checks. It is
+not the archive inference/evaluation runner and does not establish a benchmark
+gain. Preserve the pinned author-code interpretation and the separate native
+French results; zero preparation budget does not authorize model execution.
+
 ## Current product direction
 
 Live product is MTL Archives search, `/research`, game, and print. Operator jobs
