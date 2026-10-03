@@ -18,6 +18,11 @@ conditional writes and independent readback hashing. A managed local dispatcher
 performs large-image validation and bounded catalog commits; append-only phase
 manifests account for successes and exclusions before declaring completion.
 
+The October 2 acquisition closed with complete phase accounting and a passing
+production comparison. Its 21 delivery and 26 original failures remain immutable;
+reviewed reacquisition needs new attempts. Successful original preservation is
+a byte-level outcome, distinct from master decoding and study eligibility.
+
 `pipelines/research_platform` consumes those immutable releases through a tested
 current-collection adapter. New `mtl-archives-research-studies` D1 rows index
 hash-addressed source imports, study/selection/review versions, runner code and

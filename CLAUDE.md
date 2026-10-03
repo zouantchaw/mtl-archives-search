@@ -14,6 +14,11 @@ hashes and per-item checkpoints must not be edited during execution. Source
 masters are byte-preserved separately from delivery-image decode. Read live
 reports before claiming corpus completion; keep all app deployments independent.
 
+The October 2 backfill ended with `complete_accounting` and a passing production
+comparison: 13,478 decoded deliveries, 13,473 byte-preserved originals, and 21/26
+retained failures. A retry of those failures must create separately recorded
+outcomes; complete accounting is not all-success or complete master decoding.
+
 `pipelines/research_platform` adds the separate append-only
 `mtl-archives-research-studies` registry. Read [its runbook](docs/research-platform-v1/README.md).
 It imports immutable completed releases, freezes study inputs, versions review

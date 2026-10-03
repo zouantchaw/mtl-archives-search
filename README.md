@@ -18,6 +18,12 @@ managed background job with an isolated authenticated transfer Worker, streaming
 hash checks, sequential large-image validation and explicit upstream outcomes.
 Its live reports determine completion; the first 30-record release remains frozen.
 
+The October 2 acquisition has now completed outcome accounting for both phases:
+13,478 decoded deliveries and 13,473 byte-preserved originals, with 21 and 26
+retained acquisition failures respectively. The final production comparison
+passed. Failed inputs need reviewed new attempts; byte preservation does not
+establish master decoding.
+
 [Research platform v1](docs/research-platform-v1/README.md) adds a separate study
 registry, the current collection's release adapter, immutable selections,
 task-specific review packets and recoverable run records. Two studies share the

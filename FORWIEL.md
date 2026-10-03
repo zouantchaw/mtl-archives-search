@@ -9,11 +9,13 @@ builds recoverable dataset releases. The customer app and its Cloudflare binding
 are untouched. The first small release validates the data contract; choosing a
 thesis and benchmarking models comes after coverage and human-labeling work.
 
-The [full backfill](docs/research-data-v1/backfill.md) is running for all 13,499
-canonical images (about 106 GB) and their declared upstream URLs. A separate
-transfer Worker writes only research resources. Progress and completion reports
-live under the run directory; copied upstream TIFFs/PDFs retain a separate decode
-status. This multi-hour run can continue independently of the chat.
+The [full backfill](docs/research-data-v1/backfill.md) completed outcome accounting
+for all 13,499 canonical records and declared upstream URLs. It retained 13,478
+decoded delivery images and 13,473 byte-preserved originals; 21 delivery and 26
+original acquisitions failed and need reviewed new attempts. A separate transfer
+Worker writes only research resources, and the final production comparison
+passed. Copied upstream TIFFs/PDFs retain a separate decode status. Completion
+receipts and prior failed-attempt evidence remain available under the run directory.
 
 The [research study foundation](docs/research-platform-v1/README.md) now keeps a
 growing archive separate from each experiment's fixed inputs. A new study D1

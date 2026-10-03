@@ -13,7 +13,10 @@
 - [x] Implement and launch managed full canonical acquisition with streaming
   conditional writes, large-scan validation, per-record failures, bounded queues,
   frozen raw inputs and completion reconciliation. [Backfill runbook](docs/research-data-v1/backfill.md).
-- [ ] Verify full backfill completion from its live reports and review exclusions.
+- [x] Verify complete full-backfill outcome accounting and final production
+  comparison after checkpointed recovery from a DNS outage.
+- [ ] Review the 21 delivery and 26 original acquisition failures; retain earlier
+  outcomes and record retries as new attempts, not edited successes.
 - [ ] Complete source-resource conditions and upstream master decode coverage.
 - [ ] Review series groups, human-label a pilot, refine the provisional bilingual
   retrieval question and freeze its protocol. The engineering slice is not a benchmark.
