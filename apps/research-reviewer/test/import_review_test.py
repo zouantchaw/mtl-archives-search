@@ -95,6 +95,45 @@ class Contracts(unittest.TestCase):
         value['history'].append(copy.deepcopy(query))
         self.rejected(value)
 
+    def test_assisted_preparation_is_retained_and_false_manual_claim_rejected(self):
+        value = response()
+        value['schema'] = 'mtl-research-review-export-v2'
+        value['aiAssistance'] = True
+        render = m.load(APP/'src/inspection.json')['items'][0]
+        run_id = '12345678-1234-1234-1234-123456789abc'
+        run = dict(id=run_id, imageId='001', kind='text', status='complete',
+                   sourceSha256=render['sourceSha256'], renderSha256=render['sha256'],
+                   answer='Synthetic test output', inputSha256='a'*64, outputSha256='b'*64,
+                   outputKey='runs/'+run_id+'/'+'b'*64+'.json')
+        value['assistance'] = dict(schema='mtl-reviewer-assistance-v1', purpose='preparation_only',
+                                   aiAssistance=True, runs=[run], events=[dict(id='delivered:'+run_id,
+                                   run_id=run_id, action='output_delivered')])
+        ledger = MemoryLedger()
+        result = m.retain(ledger, value)
+        self.assertTrue(result['ai_assistance'])
+        self.assertFalse(result['benchmark_eligible'])
+        self.assertTrue(ledger.writes[-1][1]['ai_assistance'])
+        invalid = copy.deepcopy(value)
+        invalid['aiAssistance'] = False
+        self.rejected(invalid)
+        invalid = copy.deepcopy(value)
+        invalid['assistance']['runs'][0]['sourceSha256'] = 'c'*64
+        self.rejected(invalid)
+
+    def test_external_conversation_guidance_is_explicit_preparation(self):
+        value = response()
+        value['schema'] = 'mtl-research-review-export-v2'
+        value['aiAssistance'] = True
+        external = dict(id='synthetic-guidance', kind='assistant_conversation_guidance', sampleIds=['001'],
+                        sourceReceiptSha256='a'*64, sourceReceiptKey='calibration/'+'a'*64+'.json')
+        value['assistance'] = dict(schema='mtl-reviewer-assistance-v1', purpose='preparation_only',
+                                   aiAssistance=True, runs=[], events=[], externalGuidance=[external])
+        result = m.retain(MemoryLedger(), value)
+        self.assertTrue(result['ai_assistance'])
+        self.assertFalse(result['benchmark_eligible'])
+        value['aiAssistance'] = False
+        self.rejected(value)
+
     def test_completed_subset_preserves_scope_and_provenance(self):
         value = response()
         value['latest'] = [dict(kind='image', key=i['sample_id'], revision=1, payload={}, savedAt='test')

@@ -96,6 +96,10 @@ export function Queries({
   if (!ready)
     return (
       <>
+        <p className="draft-note">
+          These are development intents. Prior image assistance is recorded
+          alongside your queries. Independent heldout intents come later.
+        </p>
         <div className="page-heading">
           <h1>Write bilingual queries</h1>
           <p>
@@ -231,8 +235,8 @@ export function Queries({
                 update({ ...draft, authorDeclaration: e.target.checked })
               }
             />
-            I wrote this intent from visible concepts, independently of
-            generated captions and archival titles.
+            I wrote this wording myself from visible concepts, without
+            model-written queries, archival titles or search rankings.
           </label>
           {error && (
             <p className="error" role="alert">

@@ -170,7 +170,7 @@ export function validate(
     };
     if (!q.authorDeclaration)
       throw Error(
-        "Confirm that you wrote this intent independently from captions.",
+        "Confirm that you wrote the query wording yourself from visible concepts.",
       );
     if (q.equivalence !== "pending" && !q.bilingualReviewer)
       throw Error("Identify who checked the bilingual wording.");

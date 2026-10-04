@@ -55,7 +55,18 @@ server-bundled pilot manifest links exact frozen research R2 blobs. Atomic
 expected-revision inserts and append-only triggers preserve each account's
 review history. Family completion and query saves retain corpus revision gates;
 exports remain pending quality checks. This app does not write the acquisition
-or study catalogs, start model jobs or bind any live serving resources.
+or study catalogs or bind any live serving resources. Reviewer help is a separate
+on-demand preparation path; it does not launch the caption-feedback experiment.
+
+October 4 reviewer assistance uses a separate R2 bucket, Queue/DLQ and AI
+Gateway plus Images/Workers AI bindings. Region selection, edge presets and
+independent detail rotation help inspect small text; Guide adds examples/practice
+and Families adds comparison. Suggestions are optional, never fill labels, and
+enter Notes only after acceptance. Runs, exact inputs/outputs, exposure and
+decisions are retained. Export v2 and local import preserve assisted preparation
+as pending quality review, never benchmark gold; prior exposure follows human
+development queries. Existing review revisions and the product boundary remain
+intact. Read the [reviewer runbook](research-platform-v1/reviewer-app.md).
 
 ## Product boundary
 

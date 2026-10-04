@@ -26,13 +26,42 @@
     {
       "binding": "DERIVED",
       "bucket_name": "mtl-archives-research-derived"
+    },
+    {
+      "binding": "HELP_ARTIFACTS",
+      "bucket_name": "mtl-archives-reviewer-assistance"
     }
   ],
   "vars": {
     "ACCESS_ISSUER": "https://wiel-agent-first.cloudflareaccess.com",
-    "ACCESS_AUD": "17dc97c33e8c23f2ac92fe7e0d6f3fdf946079a4d83b6308376c23bcfbd044f7"
+    "ACCESS_AUD": "17dc97c33e8c23f2ac92fe7e0d6f3fdf946079a4d83b6308376c23bcfbd044f7",
+    "AI_GATEWAY_ID": "mtl-archives-reviewer-help"
   },
   "observability": {
     "enabled": true
+  },
+  "ai": {
+    "binding": "AI"
+  },
+  "images": {
+    "binding": "IMAGES"
+  },
+  "queues": {
+    "producers": [
+      {
+        "binding": "HELP_QUEUE",
+        "queue": "mtl-archives-reviewer-help"
+      }
+    ],
+    "consumers": [
+      {
+        "queue": "mtl-archives-reviewer-help",
+        "max_batch_size": 1,
+        "max_concurrency": 2,
+        "max_retries": 2,
+        "retry_delay": 60,
+        "dead_letter_queue": "mtl-archives-reviewer-help-dlq"
+      }
+    ]
   }
 }

@@ -38,7 +38,7 @@ The [pilot preparation](docs/research-platform-v1/pilot-preparation.md) now has
 and related families, then write independent French/English search intents.
 Captions and archive titles are hidden in the review page. The full delivery
 import and author-code numerical checks are complete; the candidates are still
-unreviewed and there are no benchmark labels or model results.
+pending review and there are no benchmark labels or caption-feedback experiment results.
 
 The [review app](docs/research-platform-v1/reviewer-app.md) is now live at
 https://mtl-archives-research-reviewer.wiel.workers.dev. Sign in with the same owner
@@ -47,6 +47,16 @@ check the rules before continuing. It then guides you through photo families and
 12 paired search intents. Progress saves privately to a new database; drafts stay
 on the current device. Exports preserve earlier versions and remain pending
 quality review. The public site and its existing data are unchanged.
+
+October 4 reviewer assistance uses a separate R2 bucket, Queue/DLQ and AI
+Gateway plus Images/Workers AI bindings. Region selection, edge presets and
+independent detail rotation help inspect small text; Guide adds examples/practice
+and Families adds comparison. Suggestions are optional, never fill labels, and
+enter Notes only after acceptance. Runs, exact inputs/outputs, exposure and
+decisions are retained. Export v2 and local import preserve assisted preparation
+as pending quality review, never benchmark gold; prior exposure follows human
+development queries. Existing review revisions and the product boundary remain
+intact. Read the [reviewer runbook](docs/research-platform-v1/reviewer-app.md).
 
 MTL Archives Search turns a large municipal photo archive into a product people can explore, play with, learn from, and eventually buy from. The public app is the visible part: search, maps, photo pages, the daily game, newsletter signup, print ordering, and `/research`. Under that, Cloudflare D1/R2/Vectorize hold truth; operator jobs live in D1; the Eve agent uses Cloudflare AI Gateway.
 

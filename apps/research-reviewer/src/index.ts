@@ -1,7 +1,15 @@
 import pilot from "./pilot.json" with { type: "json" };
 import { authenticate, sha } from "./auth";
 import { validate, type Families } from "./validation";
-export type Env = {
+import {
+  handleHelp,
+  runHelp,
+  assistanceRefs,
+  exportAssistance,
+  externalGuidance,
+  type HelpEnv,
+} from "./assistance";
+export type Env = HelpEnv & {
   REVIEW_DB: D1Database;
   SOURCES: R2Bucket;
   DERIVED: R2Bucket;
@@ -108,10 +116,28 @@ async function save(request: Request, env: Env, actor: string) {
       { error: "Finish image and family review before writing queries." },
       409,
     );
+  const helpIds = ["image", "query"].includes(x.kind)
+    ? await assistanceRefs(env, actor, x.kind === "image" ? x.key : undefined)
+    : [];
   const savedPayload =
     x.kind === "query"
-      ? { ...payload, corpusReviewRevision: family!.revision }
-      : payload;
+      ? {
+          ...payload,
+          corpusReviewRevision: family!.revision,
+          imageAssistanceRunIds: helpIds,
+          priorExternalGuidanceIds: (await externalGuidance(env, actor)).map(
+            (e) => e.id,
+          ),
+        }
+      : helpIds.length
+        ? {
+            ...payload,
+            reviewerAssistance: {
+              purpose: "preparation_only",
+              runIds: helpIds,
+            },
+          }
+        : payload;
   // This single statement checks the expected revision and writes atomically.
   // Query saves also require the same completed family revision at insert time.
   const queryGuard =
@@ -203,6 +229,8 @@ async function routeAuthenticated(
 ) {
   const url = new URL(request.url),
     path = url.pathname;
+  const help = await handleHelp(request, env, actor.id);
+  if (help) return help;
   if (request.method === "GET" && path === "/api/state")
     return json({
       snapshot: scope,
@@ -212,6 +240,11 @@ async function routeAuthenticated(
       items: ids.map((id) => ({ id })),
       reviews: publicRows(await latest(env.REVIEW_DB, actor.id)),
       queryTarget: 12,
+      assistance: {
+        enabled: true,
+        model: "Moondream",
+        purpose: "preparation_only",
+      },
     });
   if (request.method === "POST" && path === "/api/save") {
     if (request.headers.get("origin") !== url.origin)
@@ -219,6 +252,7 @@ async function routeAuthenticated(
     return save(request, env, actor.id);
   }
   if (request.method === "GET" && path === "/api/export") {
+    const assistance = await exportAssistance(env, actor.id);
     const rows = await env.REVIEW_DB.prepare(
       "SELECT * FROM review_revision WHERE snapshot_id=? AND actor=? ORDER BY kind,entity_key,revision",
     )
@@ -227,7 +261,7 @@ async function routeAuthenticated(
     return new Response(
       JSON.stringify(
         {
-          schema: "mtl-research-review-export-v1",
+          schema: "mtl-research-review-export-v2",
           snapshot: scope,
           studyId: pilot.studyId,
           importId: pilot.importId,
@@ -237,7 +271,8 @@ async function routeAuthenticated(
           exportedAt: new Date().toISOString(),
           referenceStatus: "pending_quality_review",
           benchmarkEligible: false,
-          aiAssistance: false,
+          aiAssistance: assistance.aiAssistance,
+          assistance,
           items: pilot.items,
           latest: publicRows(await latest(env.REVIEW_DB, actor.id)),
           history: publicRows(rows.results),
@@ -290,6 +325,17 @@ export async function handleAuthenticated(
   }
 }
 export default {
+  async queue(batch: MessageBatch<{ runId: string }>, env: Env) {
+    for (const message of batch.messages) {
+      try {
+        await runHelp(env, message.body.runId);
+        message.ack();
+      } catch (error) {
+        console.error("reviewer_help_queue_failed", String(error));
+        message.retry({ delaySeconds: 60 });
+      }
+    }
+  },
   async fetch(request: Request, env: Env) {
     let actor;
     try {

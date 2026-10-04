@@ -7,10 +7,13 @@ import { Readable } from "node:stream";
 import path from "node:path";
 import os from "node:os";
 import { pathToFileURL } from "node:url";
+import { spawnSync } from "node:child_process";
 import { build } from "esbuild";
 const root = process.cwd(),
-  cache = process.argv[2];
-if (!cache) throw Error("Pass the verified local blob cache path.");
+  cache = process.argv[2],
+  inspectionCache = process.argv[3];
+if (!cache || !inspectionCache)
+  throw Error("Pass the verified local blob cache path.");
 const temp = await fsp.mkdtemp(path.join(os.tmpdir(), "mtl-reviewer-qa-"));
 await build({
   entryPoints: ["src/index.ts"],
@@ -20,11 +23,13 @@ await build({
   format: "esm",
   target: "node22",
 });
-const { handleAuthenticated } = await import(
+const { handleAuthenticated, default: worker } = await import(
   pathToFileURL(path.join(temp, "worker.mjs")).href
 );
 const db = new DatabaseSync(path.join(temp, "synthetic-qa.sqlite"));
 db.exec(fs.readFileSync("migrations/0001.sql", "utf8"));
+db.exec(fs.readFileSync("migrations/0002_assistance.sql", "utf8"));
+db.exec(fs.readFileSync("migrations/0003_external_guidance.sql", "utf8"));
 const database = {
   prepare(sql) {
     return {
@@ -35,6 +40,9 @@ const database = {
       },
       async first() {
         return db.prepare(sql).get(...this.values) ?? null;
+      },
+      async run() {
+        return { success: true, meta: db.prepare(sql).run(...this.values) };
       },
       async all() {
         return { results: db.prepare(sql).all(...this.values) };
@@ -64,10 +72,110 @@ const bucket = {
     }
   },
 };
+const artifacts = new Map();
+const helpBucket = {
+  async get(key) {
+    const saved = artifacts.get(key);
+    if (saved)
+      return {
+        size: saved.bytes.length,
+        customMetadata: saved.options?.customMetadata,
+        arrayBuffer: async () =>
+          saved.bytes.buffer.slice(
+            saved.bytes.byteOffset,
+            saved.bytes.byteOffset + saved.bytes.byteLength,
+          ),
+      };
+    const m = key.match(/^inspection\/v1\/([a-f0-9]{64})\.jpg$/);
+    if (!m) return null;
+    try {
+      const b = await fsp.readFile(path.join(inspectionCache, m[1]));
+      return {
+        size: b.length,
+        arrayBuffer: async () =>
+          b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength),
+      };
+    } catch {
+      return null;
+    }
+  },
+  async put(key, data, options) {
+    artifacts.set(key, { bytes: Buffer.from(data), options });
+  },
+};
+let modelFailure = false;
+const images = {
+  input(stream) {
+    const transforms = [];
+    const builder = {
+      transform(x) {
+        transforms.push(x);
+        return builder;
+      },
+      async output(options) {
+        const bytes = await new Response(stream).arrayBuffer();
+        const result = spawnSync(
+          path.resolve(root, "../../.venv-bulk/bin/python"),
+          [
+            "-c",
+            `import sys,io,json
+from PIL import Image
+im=Image.open(io.BytesIO(sys.stdin.buffer.read())).convert('RGB')
+for op in json.loads(sys.argv[1]):
+ if 'trim' in op:
+  r=op['trim'];im=im.crop((r['left'],r['top'],r['left']+r['width'],r['top']+r['height']))
+ if op.get('rotate'): im=im.rotate(-op['rotate'],expand=True)
+ if 'width' in op: im.thumbnail((op['width'],op['height']),Image.Resampling.LANCZOS)
+b=io.BytesIO();im.save(b,format='JPEG',quality=92);sys.stdout.buffer.write(b.getvalue())`,
+            JSON.stringify(transforms),
+          ],
+          { input: Buffer.from(bytes), maxBuffer: 20 * 1024 * 1024 },
+        );
+        if (result.status)
+          throw Error("Synthetic QA image render failed: " + result.stderr);
+        return {
+          response: () =>
+            new Response(result.stdout, {
+              headers: { "Content-Type": "image/jpeg" },
+            }),
+        };
+      },
+    };
+    return builder;
+  },
+};
 const env = {
   REVIEW_DB: database,
   SOURCES: bucket,
   DERIVED: bucket,
+  HELP_ARTIFACTS: helpBucket,
+  IMAGES: images,
+  AI_GATEWAY_ID: "synthetic-qa-only",
+  AI: {
+    async run() {
+      await new Promise((r) => setTimeout(r, 1200));
+      if (modelFailure) {
+        modelFailure = false;
+        throw Error("Simulated model outage");
+      }
+      return {
+        answer:
+          "SYNTHETIC QA suggestion — Numeric marks may be visible in this area. Verify them against the pixels; this is not a real model response.",
+        metrics: { input_tokens: 20, output_tokens: 30 },
+      };
+    },
+  },
+  HELP_QUEUE: {
+    async send(body) {
+      setTimeout(
+        () =>
+          worker
+            .queue({ messages: [{ body, ack() {}, retry() {} }] }, env)
+            .catch(console.error),
+        10,
+      );
+    },
+  },
   ASSETS: {
     async fetch(req) {
       let name = new URL(req.url).pathname;
@@ -99,6 +207,12 @@ const env = {
 };
 const server = createServer(async (req, res) => {
   try {
+    if (req.url === "/__qa/model-failure" && req.method === "POST") {
+      modelFailure = true;
+      res.writeHead(200);
+      res.end("Synthetic next-model failure enabled");
+      return;
+    }
     const chunks = [];
     for await (const data of req) chunks.push(data);
     const request = new Request("http://127.0.0.1:8796" + req.url, {

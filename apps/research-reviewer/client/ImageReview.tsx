@@ -13,6 +13,8 @@ import {
 } from "../src/validation";
 import { local, stash, type State, type Review } from "./api";
 import { Viewer } from "./Viewer";
+import { HelpPanel } from "./HelpPanel";
+import { whole, type Rect } from "./inspection";
 export function ChoiceField({
   label,
   value,
@@ -64,11 +66,13 @@ export function ImageReview({ state, save, onDirty }: Props) {
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [success, setSuccess] = useState("");
+  const [rect, setRect] = useState<Rect>(whole);
   const started = useRef(Date.now()),
     pending = useRef<Decision | null>(null),
     draftKey = prefix + ":image:" + id;
   useEffect(() => {
     window.scrollTo(0, 0);
+    setRect(whole);
     const d = local<{ payload: Decision; base: number } | null>(draftKey, null);
     setDraft(d?.payload ?? (saved?.payload as Decision) ?? initialImage());
     setBase(d?.base ?? saved?.revision ?? 0);
@@ -194,11 +198,23 @@ export function ImageReview({ state, save, onDirty }: Props) {
             </div>
           </div>
           <Viewer
+            key={"viewer:" + id}
             id={id}
+            rect={rect}
+            onSelect={setRect}
             rotation={draft.rotation}
             onRotate={() =>
               update({ ...draft, rotation: (draft.rotation + 90) % 360 })
             }
+          />
+          <HelpPanel
+            key={"help:" + id}
+            id={id}
+            state={state}
+            rect={rect}
+            rotation={draft.rotation}
+            note={draft.note}
+            onNote={(note) => update({ ...draft, note })}
           />
         </section>
         <section className="review-form panel">
@@ -219,16 +235,30 @@ export function ImageReview({ state, save, onDirty }: Props) {
               <option value="unclear">Cannot tell</option>
             </select>
           </label>
+          <p className="field-hint">
+            Choose the kind of image you can see; location knowledge is not
+            required.
+          </p>
           <ChoiceField
             label="Usable for visual search?"
             value={draft.usable}
             onChange={(usable) => update({ ...draft, usable })}
           />
+          <p className="field-hint">
+            <strong>Yes:</strong> you can describe clear visible features, such
+            as fields, water, roads or buildings. Knowing the exact place is not
+            required.
+          </p>
           <ChoiceField
             label="Readable text visible?"
             value={draft.text}
             onChange={(text) => update({ ...draft, text })}
           />
+          <p className="field-hint">
+            Words <strong>or numbers</strong> count, including a readable “28”,
+            margin marks and watermarks. Check the edges; note watermarks
+            separately from scene text.
+          </p>
           <fieldset>
             <legend>Needs attention</legend>
             <div className="checks">
@@ -255,6 +285,12 @@ export function ImageReview({ state, save, onDirty }: Props) {
               ))}
             </div>
           </fieldset>
+          <p className="field-hint">
+            Only flag defects that obscure useful detail.{" "}
+            <strong>Cropped:</strong> scan content appears accidentally cut off.
+            A normal camera edge, gray viewer space or scan notch alone does not
+            count.
+          </p>
           <label className="field">
             Notes (optional)
             <textarea
@@ -298,7 +334,8 @@ export function ImageReview({ state, save, onDirty }: Props) {
       </div>
       <p className="footnote">
         <Info size={18} />
-        Start with 5 images, then check the review rules together.
+        Unsure is a valid answer. Add a short note about the detail you cannot
+        resolve.
       </p>
     </>
   );

@@ -49,6 +49,16 @@ revisions, account scope and pending-quality status. Synthetic local QA exports
 must never be imported as human references. Export ingestion is local immutable
 registration only, not corpus freeze, cloud publication or product promotion.
 
+October 4 reviewer assistance uses a separate R2 bucket, Queue/DLQ and AI
+Gateway plus Images/Workers AI bindings. Region selection, edge presets and
+independent detail rotation help inspect small text; Guide adds examples/practice
+and Families adds comparison. Suggestions are optional, never fill labels, and
+enter Notes only after acceptance. Runs, exact inputs/outputs, exposure and
+decisions are retained. Export v2 and local import preserve assisted preparation
+as pending quality review, never benchmark gold; prior exposure follows human
+development queries. Existing review revisions and the product boundary remain
+intact. Read the [reviewer runbook](docs/research-platform-v1/reviewer-app.md).
+
 ## Current product direction
 
 Live product is MTL Archives search, `/research`, game, and print. Operator jobs

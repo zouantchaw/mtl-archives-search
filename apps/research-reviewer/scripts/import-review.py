@@ -16,7 +16,7 @@ import workflow as w
 
 def retain(store, export):
     pilot = load(APP/'src/pilot.json')
-    if (export.get('schema') != 'mtl-research-review-export-v1' or
+    if (export.get('schema') not in ('mtl-research-review-export-v1', 'mtl-research-review-export-v2') or
             export.get('snapshot') != pilot['snapshot'] or
             export.get('studyId') != pilot['studyId'] or
             export.get('importId') != pilot['importId'] or
@@ -25,8 +25,72 @@ def retain(store, export):
             export.get('reviewerType') != 'authenticated_human_declaration' or
             export.get('benchmarkEligible') is not False or
             export.get('referenceStatus') != 'pending_quality_review' or
-            export.get('aiAssistance') is not False):
+            type(export.get('aiAssistance')) is not bool):
         raise ValueError('Review export must match the exact pilot and retain human-declaration/pending-quality provenance')
+    assistance = export.get('assistance')
+    delivered = set()
+    if export['schema'].endswith('-v1'):
+        if export['aiAssistance'] is not False:
+            raise ValueError('Legacy exports cannot claim tracked assistance')
+    else:
+        if (not isinstance(assistance, dict) or assistance.get('schema') != 'mtl-reviewer-assistance-v1' or
+                assistance.get('purpose') != 'preparation_only' or
+                not isinstance(assistance.get('runs'), list) or not isinstance(assistance.get('events'), list)):
+            raise ValueError('Assistance provenance required for v2 preparation exports')
+        renders = {x['id']: x for x in load(APP/'src/inspection.json')['items']}
+        runs = {}
+        for run in assistance['runs']:
+            image = renders.get(run.get('imageId'))
+            run_id = run.get('id')
+            if (not image or not isinstance(run_id, str) or not re.fullmatch(r'[a-f0-9-]{36}', run_id) or run_id in runs or
+                    run.get('sourceSha256') != image['sourceSha256'] or run.get('renderSha256') != image['sha256'] or
+                    run.get('status') not in ('queued', 'running', 'complete', 'failed') or
+                    run.get('kind') not in ('inspect', 'text', 'explain')):
+                raise ValueError('Invalid assistance input association')
+            if run['status'] == 'complete':
+                if (not isinstance(run.get('answer'), str) or not run['answer'].strip() or
+                        not re.fullmatch(r'[a-f0-9]{64}', run.get('inputSha256') or '') or
+                        not re.fullmatch(r'[a-f0-9]{64}', run.get('outputSha256') or '') or
+                        not (run.get('outputKey') or '').endswith(run['outputSha256']+'.json')):
+                    raise ValueError('Completed help needs exact input/output provenance')
+            runs[run_id] = run
+        event_ids = set()
+        for event in assistance['events']:
+            run = runs.get(event.get('run_id'))
+            if (not run or run['status'] != 'complete' or not event.get('id') or event['id'] in event_ids or
+                    event.get('action') not in ('output_delivered', 'accepted_note', 'dismissed')):
+                raise ValueError('Invalid assistance event')
+            event_ids.add(event['id'])
+            if event['action'] == 'output_delivered':
+                delivered.add(event['run_id'])
+        external = assistance.get('externalGuidance', [])
+        if not isinstance(external, list):
+            raise ValueError('External guidance must be a list')
+        external_ids = set()
+        for event in external:
+            if (not event.get('id') or event['id'] in external_ids or
+                    event.get('kind') != 'assistant_conversation_guidance' or
+                    not re.fullmatch(r'[a-f0-9]{64}', event.get('sourceReceiptSha256') or '') or
+                    not (event.get('sourceReceiptKey') or '').endswith(event['sourceReceiptSha256']+'.json') or
+                    not isinstance(event.get('sampleIds'), list) or not event['sampleIds'] or
+                    set(event['sampleIds'])-set(renders)):
+                raise ValueError('Invalid external guidance provenance')
+            external_ids.add(event['id'])
+        if export['aiAssistance'] != bool(delivered or external) or assistance.get('aiAssistance') != bool(delivered or external):
+            raise ValueError('Assistance flag disagrees with delivered outputs')
+        for row in export.get('history', []):
+            prior_refs = row.get('payload', {}).get('priorExternalGuidanceIds', [])
+            if prior_refs and (row.get('kind') != 'query' or not isinstance(prior_refs, list) or set(prior_refs)-external_ids):
+                raise ValueError('Query external guidance references differ from recorded exposure')
+            query_refs = row.get('payload', {}).get('imageAssistanceRunIds', [])
+            if query_refs and (row.get('kind') != 'query' or not isinstance(query_refs, list) or set(query_refs)-delivered):
+                raise ValueError('Query exposure references differ from recorded assistance')
+            refs = row.get('payload', {}).get('reviewerAssistance')
+            if refs:
+                if (row.get('kind') != 'image' or refs.get('purpose') != 'preparation_only' or
+                        not isinstance(refs.get('runIds'), list) or len(set(refs['runIds'])) != len(refs['runIds']) or
+                        any(i not in delivered or runs[i]['imageId'] != row['key'] for i in refs['runIds'])):
+                    raise ValueError('Review assistance references differ from recorded exposure')
     snapshot = store.entity(pilot['snapshot'], 'snapshot')['data']
     if snapshot['import_id'] != pilot['importId'] or snapshot['study'] != pilot['studyId']:
         raise ValueError('Pilot ledger association mismatch')
@@ -92,7 +156,9 @@ def retain(store, export):
                 raise ValueError('Incomplete query or bilingual review')
             intents.append(dict(id=row['key'], fr=value['fr'], en=value['en'],
                                 visible_relevance_criterion=value['criterion'], related_intent_cluster=value['cluster'],
-                                bilingual_equivalence=value['equivalence'], bilingual_reviewer=value['bilingualReviewer']))
+                                bilingual_equivalence=value['equivalence'], bilingual_reviewer=value['bilingualReviewer'],
+                                prior_image_assistance_run_ids=value.get('imageAssistanceRunIds', []),
+                                prior_external_guidance_ids=value.get('priorExternalGuidanceIds', [])))
     if intents:
         if store.entity(pilot['studyId'], 'study')['data']['unit'] != 'query_intent':
             raise ValueError('Query intentions need a retrieval study')
@@ -117,7 +183,8 @@ def retain(store, export):
                        dict(task='pilot_preparation_review', packet=packet,
                             reviewer=export['reviewerId'], provenance='owner_downloaded_export; declaration not an independent signature',
                             reference_status='pending_quality_review', benchmark_eligible=False,
-                            decisions=latest, history_preserved_in=raw), [packet])
+                            decisions=latest, history_preserved_in=raw, ai_assistance=export['aiAssistance'],
+                            assistance_preserved_in=raw if assistance else None), [packet])
     family_id, queries_id = None, None
     if completed:
         family_id = w.register_families(store, pilot['importId'], dict(
@@ -131,7 +198,8 @@ def retain(store, export):
                 partition='development', intents=intents, evidence_packet=packet,
                 reference_status='pending_quality_review', benchmark_eligible=False))
     return dict(export_sha256=sha, packet=packet, labels=labels, families=family_id,
-                queries=queries_id, benchmark_eligible=False, reference_status='pending_quality_review')
+                queries=queries_id, benchmark_eligible=False, reference_status='pending_quality_review',
+                ai_assistance=export['aiAssistance'])
 
 
 def main():

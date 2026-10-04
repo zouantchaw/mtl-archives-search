@@ -8,6 +8,15 @@ import worker, {
   ids,
   type Env,
 } from "../src/index";
+import {
+  runHelp,
+  cropPixels,
+  MODEL,
+  PROMPT_VERSION,
+  unreliableAnswer,
+} from "../src/assistance";
+import { sha } from "../src/auth";
+import { pointInImage, rectBetween } from "../client/inspection";
 import { initialImage, validate } from "../src/validation";
 import { authenticate } from "../src/auth";
 import { generateKeyPair, exportJWK, SignJWT } from "jose";
@@ -15,6 +24,8 @@ const migration = readFileSync("migrations/0001.sql", "utf8");
 function setup() {
   const db = new DatabaseSync(":memory:");
   db.exec(migration);
+  db.exec(readFileSync("migrations/0002_assistance.sql", "utf8"));
+  db.exec(readFileSync("migrations/0003_external_guidance.sql", "utf8"));
   const binding = {
     prepare(sql: string) {
       return {
@@ -25,6 +36,12 @@ function setup() {
         },
         async first() {
           return db.prepare(sql).get(...(this.values as never[])) ?? null;
+        },
+        async run() {
+          return {
+            success: true,
+            meta: db.prepare(sql).run(...(this.values as never[])),
+          };
         },
         async all() {
           return { results: db.prepare(sql).all(...(this.values as never[])) };
@@ -43,6 +60,9 @@ function setup() {
     REVIEW_DB: binding,
     SOURCES: bucket,
     DERIVED: bucket,
+    HELP_ARTIFACTS: bucket,
+    HELP_QUEUE: { async send() {} },
+    AI_GATEWAY_ID: "synthetic-test-gateway",
     ASSETS: {
       async fetch() {
         return new Response("<main>review</main>");
@@ -428,5 +448,341 @@ test("export binds history to exact inputs and preserves pending quality status"
   assert.equal(out.history.length, 2);
   assert.equal(out.latest.length, 1);
   assert.equal(out.items.length, 100);
+  s.db.close();
+});
+
+function helpRequest(
+  x: Record<string, unknown> = {},
+  path = "/api/help",
+  origin = "https://review.example",
+) {
+  return new Request("https://review.example" + path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Origin: origin },
+    body: JSON.stringify({
+      snapshot: scope,
+      requestId: crypto.randomUUID(),
+      imageId: "003",
+      kind: "text",
+      rotation: 0,
+      rect: { x: 0, y: 8500, w: 1400, h: 1500 },
+      ...x,
+    }),
+  });
+}
+test("assistance rejects wrong origin, snapshot, region and outside images before queueing", async () => {
+  const s = setup();
+  let sent = 0;
+  s.env.HELP_QUEUE = {
+    async send() {
+      sent++;
+    },
+  } as any;
+  for (const req of [
+    helpRequest({}, "/api/help", "https://other.example"),
+    helpRequest({ snapshot: "other" }),
+    helpRequest({ imageId: "999" }),
+    helpRequest({ rect: { x: 9999, y: 0, w: 100, h: 100 } }),
+    helpRequest({ rotation: 45 }),
+    helpRequest({ kind: "query" }),
+  ])
+    assert.ok((await handleAuthenticated(req, s.env, actor)).status >= 400);
+  assert.equal(sent, 0);
+  s.db.close();
+});
+test("same help request is replayed without a second queue delivery; foreign results are private", async () => {
+  const s = setup();
+  let sent = 0;
+  s.env.HELP_QUEUE = {
+    async send() {
+      sent++;
+    },
+  } as any;
+  const requestId = crypto.randomUUID();
+  const a = await handleAuthenticated(helpRequest({ requestId }), s.env, actor);
+  assert.equal(a.status, 202);
+  const b = await handleAuthenticated(helpRequest({ requestId }), s.env, actor);
+  assert.equal(b.status, 200);
+  const c = await handleAuthenticated(helpRequest(), s.env, actor);
+  assert.equal(c.status, 200);
+  assert.equal(sent, 1);
+  for (const suffix of ["", "/input"]) {
+    const r = await handleAuthenticated(
+      new Request(`https://review.example/api/help/${requestId}${suffix}`),
+      s.env,
+      { ...actor, id: "foreign" },
+    );
+    assert.equal(r.status, 404);
+  }
+  assert.equal(
+    (
+      await handleAuthenticated(
+        helpRequest({ requestId, rotation: 90 }),
+        s.env,
+        actor,
+      )
+    ).status,
+    409,
+  );
+  s.db.close();
+});
+test("queue, model failure and quotas never change human reviews", async () => {
+  const s = setup();
+  await handleAuthenticated(request(body()), s.env, actor);
+  const before = s.db.prepare("SELECT * FROM review_revision").all();
+  s.env.HELP_QUEUE = {
+    async send() {
+      throw Error("network");
+    },
+  } as any;
+  assert.equal(
+    (await handleAuthenticated(helpRequest(), s.env, actor)).status,
+    503,
+  );
+  s.env.HELP_QUEUE = { async send() {} } as any;
+  for (let i = 1; i < 12; i++) {
+    const r = await handleAuthenticated(
+      helpRequest({
+        rotation: (i % 4) * 90,
+        rect: { x: i * 100, y: 8500, w: 1400, h: 1500 },
+      }),
+      s.env,
+      actor,
+    );
+    assert.equal(r.status, 202);
+    s.db.exec("UPDATE assistance_run SET status='failed'");
+  }
+  assert.equal(
+    (await handleAuthenticated(helpRequest({ rotation: 270 }), s.env, actor))
+      .status,
+    429,
+  );
+  assert.deepEqual(s.db.prepare("SELECT * FROM review_revision").all(), before);
+  s.db.close();
+});
+test("completed model output is retained, delivered exposure follows saving, and decisions are append-only", async () => {
+  const s = setup();
+  const bytes = new TextEncoder().encode("synthetic image input").buffer;
+  const digest = await sha(bytes);
+  let calls = 0,
+    puts = 0;
+  s.env.HELP_ARTIFACTS = {
+    async get(key: string) {
+      return key.startsWith("views/")
+        ? {
+            size: bytes.byteLength,
+            customMetadata: { sha256: digest },
+            arrayBuffer: async () => bytes,
+          }
+        : null;
+    },
+    async put() {
+      puts++;
+    },
+  } as any;
+  s.env.AI = {
+    async run(model: any, input: any, options: any) {
+      calls++;
+      assert.equal(model, MODEL);
+      assert.equal(input.max_tokens, 500);
+      assert.equal(input.reasoning, false);
+      assert.equal(options.gateway.collectLog, false);
+      return {
+        answer: "Synthetic: numeric mark is visible.",
+        metrics: { output_tokens: 7 },
+      };
+    },
+  } as any;
+  const reqId = crypto.randomUUID();
+  await handleAuthenticated(helpRequest({ requestId: reqId }), s.env, actor);
+  await runHelp(s.env, reqId);
+  await runHelp(s.env, reqId);
+  assert.equal(calls, 1);
+  assert.equal(puts, 2); // Exact input bytes plus the raw model output.
+  let out: any = await (
+    await handleAuthenticated(
+      new Request("https://review.example/api/export"),
+      s.env,
+      actor,
+    )
+  ).json();
+  assert.equal(out.aiAssistance, false);
+  const fetched = await handleAuthenticated(
+    new Request("https://review.example/api/help/" + reqId),
+    s.env,
+    actor,
+  );
+  assert.equal(fetched.status, 200);
+  await handleAuthenticated(request(body(image, 0, "003")), s.env, actor);
+  out = await (
+    await handleAuthenticated(
+      new Request("https://review.example/api/export"),
+      s.env,
+      actor,
+    )
+  ).json();
+  assert.equal(out.schema, "mtl-research-review-export-v2");
+  assert.equal(out.aiAssistance, true);
+  assert.match(
+    out.assistance.runs[0].inputKey,
+    /^inputs\/sha256\/[a-f0-9]{64}\.jpg$/,
+  );
+  assert.equal(out.benchmarkEligible, false);
+  assert.deepEqual(out.latest[0].payload.reviewerAssistance.runIds, [reqId]);
+  assert.equal(out.assistance.runs[0].promptVersion, PROMPT_VERSION);
+  const event = {
+    eventId: crypto.randomUUID(),
+    runId: reqId,
+    action: "dismissed",
+    reason: "Text seems incorrect",
+  };
+  assert.equal(
+    (
+      await handleAuthenticated(
+        helpRequest(event, "/api/help/events"),
+        s.env,
+        actor,
+      )
+    ).status,
+    200,
+  );
+  assert.equal(
+    (
+      await handleAuthenticated(
+        helpRequest(event, "/api/help/events"),
+        s.env,
+        actor,
+      )
+    ).status,
+    200,
+  );
+  assert.equal(
+    (
+      await handleAuthenticated(
+        helpRequest({ ...event, reason: "different" }, "/api/help/events"),
+        s.env,
+        actor,
+      )
+    ).status,
+    409,
+  );
+  assert.throws(
+    () => s.db.exec("UPDATE assistance_event SET action='accepted_note'"),
+    /immutable/,
+  );
+  assert.throws(
+    () => s.db.exec("UPDATE assistance_run SET model='different'"),
+    /immutable/,
+  );
+  s.db.close();
+});
+test("rotated selections map to source coordinates; crops include right/bottom edges", () => {
+  const p = pointInImage(50, -100, 200, 100, 270);
+  assert.ok(Math.abs(p.x - 1) < 1e-8);
+  assert.ok(Math.abs(p.y - 1) < 1e-8);
+  assert.deepEqual(rectBetween({ x: -1, y: 0.85 }, { x: 0.14, y: 2 }), {
+    x: 0,
+    y: 8500,
+    w: 1400,
+    h: 1500,
+  });
+  assert.deepEqual(
+    cropPixels({ x: 7500, y: 7500, w: 2500, h: 2500 }, 101, 103),
+    { left: 75, top: 77, width: 26, height: 26 },
+  );
+});
+
+test("truncated or repetitive model text is retained as failure, never adopted as a review", async () => {
+  assert.equal(unreliableAnswer("unclear " + "[?] ".repeat(9)), true);
+  assert.equal(unreliableAnswer("plausible but truncated", {}, "length"), true);
+  const s = setup();
+  const bytes = new TextEncoder().encode("synthetic input").buffer,
+    digest = await sha(bytes);
+  let outputs = 0;
+  s.env.HELP_ARTIFACTS = {
+    async get(key: string) {
+      return key.startsWith("views/")
+        ? { customMetadata: { sha256: digest }, arrayBuffer: async () => bytes }
+        : null;
+    },
+    async put() {
+      outputs++;
+    },
+  } as any;
+  s.env.AI = {
+    async run() {
+      return { answer: "[?] ".repeat(20), metrics: { output_tokens: 500 } };
+    },
+  } as any;
+  const id = crypto.randomUUID();
+  await handleAuthenticated(helpRequest({ requestId: id }), s.env, actor);
+  await runHelp(s.env, id);
+  const run: any = await (
+    await handleAuthenticated(
+      new Request("https://review.example/api/help/" + id),
+      s.env,
+      actor,
+    )
+  ).json();
+  assert.equal(run.run.status, "failed");
+  assert.match(run.run.error, /smaller area/);
+  assert.equal(outputs, 2); // Failed raw response and exact input both remain.
+  assert.equal(
+    s.db.prepare("SELECT count(*) n FROM review_revision").get()!.n,
+    0,
+  );
+  assert.equal(
+    s.db.prepare("SELECT count(*) n FROM assistance_event").get()!.n,
+    0,
+  );
+  s.db.close();
+});
+
+test("known conversation guidance is scoped and truthful without rewriting legacy reviews", async () => {
+  const s = setup();
+  await handleAuthenticated(request(body()), s.env, actor);
+  const original = s.db.prepare("SELECT * FROM review_revision").all();
+  const evidence = {
+    kind: "assistant_conversation_guidance",
+    sampleIds: ["001", "002", "003", "004", "005"],
+    sourceReceiptSha256: "a".repeat(64),
+    sourceReceiptKey: "calibration/" + "a".repeat(64) + ".json",
+  };
+  s.db
+    .prepare("INSERT INTO external_guidance VALUES(?,?,?,?,?)")
+    .run(
+      "synthetic-guidance-evidence",
+      scope,
+      actor.id,
+      JSON.stringify(evidence),
+      new Date().toISOString(),
+    );
+  const out: any = await (
+    await handleAuthenticated(
+      new Request("https://review.example/api/export"),
+      s.env,
+      actor,
+    )
+  ).json();
+  assert.equal(out.aiAssistance, true);
+  assert.equal(out.assistance.runs.length, 0);
+  assert.equal(out.assistance.externalGuidance.length, 1);
+  const other: any = await (
+    await handleAuthenticated(
+      new Request("https://review.example/api/export"),
+      s.env,
+      { ...actor, id: "foreign" },
+    )
+  ).json();
+  assert.equal(other.aiAssistance, false);
+  assert.equal(other.assistance.externalGuidance.length, 0);
+  assert.deepEqual(
+    s.db.prepare("SELECT * FROM review_revision").all(),
+    original,
+  );
+  assert.throws(
+    () => s.db.exec("UPDATE external_guidance SET actor='foreign'"),
+    /immutable/,
+  );
   s.db.close();
 });

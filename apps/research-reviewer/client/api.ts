@@ -14,6 +14,7 @@ export type State = {
   items: { id: string }[];
   reviews: Review[];
   queryTarget: number;
+  assistance?: { enabled: boolean; model: string; purpose: string };
 };
 export async function api<T>(path: string, body?: unknown): Promise<T> {
   const result = await fetch(path, {

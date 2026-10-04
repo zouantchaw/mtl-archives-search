@@ -5,6 +5,7 @@ import { Brand } from "./Brand";
 import { ImageReview } from "./ImageReview";
 import { Families } from "./Families";
 import { Queries } from "./Queries";
+import { Learn } from "./Learn";
 export function App() {
   const [state, setState] = useState<State | null>(null),
     [tab, setTab] = useState<"Images" | "Families" | "Queries">("Images"),
@@ -31,7 +32,9 @@ export function App() {
     if (!guide) return;
     const previous = document.activeElement as HTMLElement | null;
     const modal = document.querySelector(".guide");
-    const buttons = modal?.querySelectorAll<HTMLButtonElement>("button");
+    const buttons = modal?.querySelectorAll<HTMLElement>(
+      "button,select,input,a[href],summary,textarea",
+    );
     buttons?.[0]?.focus();
     const keydown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -220,6 +223,7 @@ export function App() {
               We are preparing a fair test of whether caption feedback improves
               French/English image search.
             </p>
+            <Learn />
             <h2>1. Look at the image</h2>
             <p>
               <strong>Usable</strong> means you can clearly describe visible
@@ -228,10 +232,11 @@ export function App() {
               preserves ambiguity; add a short note.
             </p>
             <p>
-              For text, answer Yes only when you can actually read words. Use
-              Full image, zoom, drag to pan and Rotate when needed. Rotation
-              records your preferred view and never changes the preserved
-              source.
+              For text, answer Yes when you can read words or numbers, including
+              margin annotations and watermarks. Note archive watermarks
+              separately from scene text. Use Full image, zoom, drag to pan and
+              Rotate when needed. Rotation records your preferred view and never
+              changes the preserved source.
             </p>
             <h2>2. Identify related families</h2>
             <p>
@@ -249,8 +254,10 @@ export function App() {
             </p>
             <p className="guide-note">
               <Info size={18} />
-              Your reviews stay pending quality checks. Saving here does not
-              launch models or change the public MTL Archives app.
+              Your reviews stay pending quality checks. Model help runs only
+              when you ask for it and is recorded as assistance. Independent
+              research queries are written without AI help. The public MTL
+              Archives app stays isolated.
             </p>
             <button className="primary" onClick={() => setGuide(false)}>
               Start reviewing

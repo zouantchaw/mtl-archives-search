@@ -58,8 +58,21 @@ Runbook and acceptance: [research-platform-v1](docs/research-platform-v1/README.
   Access, exact frozen images, draft recovery, immutable saves and full-history
   export. Backend, local desktop/mobile QA and production-boundary checks pass.
   [Reviewer runbook](docs/research-platform-v1/reviewer-app.md).
-- [ ] Complete the owner first sign-in and five-image calibration; then finish
-  candidate reviews, family/representative decisions and 12 development intents.
+- [x] Owner sign-in and first five saved image reviews; guided calibration recorded.
+- [x] Add isolated on-demand Moondream help, private native crops, edge inspection,
+  detail rotation, practice, comparison and assistance-aware history/export.
+- [ ] Finish candidate reviews, family/representative decisions and 12 development
+  intents; correct ambiguous text observations through pixel inspection.
+
+October 4 reviewer assistance uses a separate R2 bucket, Queue/DLQ and AI
+Gateway plus Images/Workers AI bindings. Region selection, edge presets and
+independent detail rotation help inspect small text; Guide adds examples/practice
+and Families adds comparison. Suggestions are optional, never fill labels, and
+enter Notes only after acceptance. Runs, exact inputs/outputs, exposure and
+decisions are retained. Export v2 and local import preserve assisted preparation
+as pending quality review, never benchmark gold; prior exposure follows human
+development queries. Existing review revisions and the product boundary remain
+intact. Read the [reviewer runbook](docs/research-platform-v1/reviewer-app.md).
 - [ ] Review candidate usability and families, select fixed representatives and
   write independent paired intents. The candidate snapshot remains unreviewed.
 - [ ] Pin rendering/runtime and profile five development images before setting

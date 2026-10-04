@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Check, ArrowRight } from "lucide-react";
+import { Check, ArrowRight, Columns2, X } from "lucide-react";
 import type { Family, Families as Decision } from "../src/validation";
 import { local, stash, type State, type Review } from "./api";
+import { Viewer } from "./Viewer";
 export function Families({
   state,
   save,
@@ -42,7 +43,9 @@ export function Families({
     [confirmed, setConfirmed] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
-    [filter, setFilter] = useState("all");
+    [filter, setFilter] = useState("all"),
+    [comparing, setComparing] = useState(false),
+    [rotations, setRotations] = useState<Record<string, number>>({});
   useEffect(() => {
     const dirty = !!(members.length || name || note);
     onDirty(dirty);
@@ -121,10 +124,56 @@ export function Families({
           representative per family.
         </p>
       </div>
+      {comparing && members.length >= 2 && (
+        <section className="compare panel">
+          <div className="compare-heading">
+            <h2>Compare selected images</h2>
+            <button onClick={() => setComparing(false)}>
+              <X size={17} />
+              Close comparison
+            </button>
+          </div>
+          <p className="muted">
+            Compare scene layout, distinctive structures and camera angle.
+            Similar subject matter alone does not make a family. Showing the
+            first two selected images.
+          </p>
+          <div className="compare-grid">
+            {members.slice(0, 2).map((id) => {
+              const r =
+                rotations[id] ??
+                (
+                  state.reviews.find((r) => r.kind === "image" && r.key === id)
+                    ?.payload as { rotation?: number }
+                )?.rotation ??
+                0;
+              return (
+                <section key={id}>
+                  <h3>Image {id}</h3>
+                  <Viewer
+                    id={id}
+                    rotation={r}
+                    onRotate={() =>
+                      setRotations({ ...rotations, [id]: (r + 90) % 360 })
+                    }
+                  />
+                </section>
+              );
+            })}
+          </div>
+        </section>
+      )}
       <div className="family-layout">
         <section>
           <div className="gallery-heading">
             <span>{members.length} selected</span>
+            <button
+              disabled={members.length < 2}
+              onClick={() => setComparing(!comparing)}
+            >
+              <Columns2 size={17} />
+              Compare selected
+            </button>
             <label>
               Show
               <select

@@ -39,13 +39,24 @@ The [October 3 pilot preparation](docs/research-platform-v1/pilot-preparation.md
 imports the completed delivery phase, verifies a fixed 100-image candidate set,
 and prepares blind review views and blank bilingual-query worksheets.
 Author-code arithmetic parity passes 360 synthetic CPU comparisons. Human family
-review and independent queries come next; no archive model inference has started.
+review and human-authored queries come next; no caption-feedback experiment
+inference has started. On-demand reviewer help is tracked separately.
 
 The private [Cloudflare research reviewer](docs/research-platform-v1/reviewer-app.md)
 is now deployed for that preparation: image decisions, related-photo families and
 independent bilingual development queries, with draft recovery, explicit saves
 and immutable history. It uses a new reviewer D1 and owner-only Access. Live app
 resources are unchanged; human quality review remains pending.
+
+October 4 reviewer assistance uses a separate R2 bucket, Queue/DLQ and AI
+Gateway plus Images/Workers AI bindings. Region selection, edge presets and
+independent detail rotation help inspect small text; Guide adds examples/practice
+and Families adds comparison. Suggestions are optional, never fill labels, and
+enter Notes only after acceptance. Runs, exact inputs/outputs, exposure and
+decisions are retained. Export v2 and local import preserve assisted preparation
+as pending quality review, never benchmark gold; prior exposure follows human
+development queries. Existing review revisions and the product boundary remain
+intact. Read the [reviewer runbook](docs/research-platform-v1/reviewer-app.md).
 
 ## Current product direction
 

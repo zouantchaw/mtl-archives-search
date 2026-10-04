@@ -35,6 +35,10 @@ const env = {
   SOURCES: { type: "r2", name: "mtl-archives-research-sources" },
   DERIVED: { type: "r2", name: "mtl-archives-research-derived" },
   ASSETS: { type: "assets" },
+  HELP_ARTIFACTS: { type: "r2", name: "mtl-archives-reviewer-assistance" },
+  AI: { type: "ai" },
+  IMAGES: { type: "images" },
+  HELP_QUEUE: { type: "queue", name: "mtl-archives-reviewer-help" },
 };
 for (const [name, value] of Object.entries(local.vars))
   env[name] = { type: "text", value };
@@ -46,6 +50,17 @@ const config = InputWorkerSchema.parse({
   assets: { runWorkerFirst: true, notFoundHandling: "single-page-application" },
   env,
   observability: { enabled: true },
+  triggers: [
+    {
+      type: "queue",
+      name: "mtl-archives-reviewer-help",
+      deadLetterQueue: "mtl-archives-reviewer-help-dlq",
+      maxBatchSize: 1,
+      maxConcurrency: 2,
+      maxRetries: 2,
+      retryDelay: 60,
+    },
+  ],
 });
 await utils.cleanBuildOutputDir(root);
 await utils.writeRootConfig(root, undefined, { isPreview: false });
