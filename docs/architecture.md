@@ -628,3 +628,16 @@ Degraded smart-search responses now bypass caching so temporary inference outage
 See [Reading room implementation and operations](reading-room.md) for deployment, quotas, failure modes and live evaluation commands.
 
 Offline #148 Gateway vision comparison (`openai/gpt-5.4`, `xai/grok-4.6`) is documented in [vision-gateway-v1/README.md](vision-gateway-v1/README.md). Frozen OCR/orientation eval is in [vision-eval-v1/README.md](vision-eval-v1/README.md). Image-kind and orientation provenance is in [orientation-eval-v1/README.md](orientation-eval-v1/README.md). OCR-as-separate-evidence is in [ocr-eval-v1/README.md](ocr-eval-v1/README.md). Versioned ingest and candidate indexes are in [ingest-v1/README.md](ingest-v1/README.md). Eve vs Cloudflare runtime split is in [runtime-v1/README.md](runtime-v1/README.md). Second-source onboarding is in [onboard-v1/README.md](onboard-v1/README.md). Operator D1 jobs and the Eve/Gateway agent are in [operator-v1/README.md](operator-v1/README.md). Selective frontier fallback (sideways/documents only) is in [fallback-v1/README.md](fallback-v1/README.md). Query-time `/research` inspect fallback is in [inspect-fallback-v1/README.md](inspect-fallback-v1/README.md). Candidate captions stay inactive.
+
+### October 4: text inspection specific to archival review
+
+The private reviewer now uses shadcn/Base UI and a dedicated **Text check**:
+nine overlapping source-backed regions, enlarged/rotatable pixels, human region
+check progress, Gemma text candidates and an optional Qwen second reader.
+Candidate wording needs explicit pixel verification before adding a note;
+empty detections never select No. New No decisions require human confirmation.
+Exact model inputs/outputs, versioned recipes and acceptance/exposure events
+remain private in the existing isolated R2/D1/Queue/Gateway resources. Historical
+reviews and Moondream outputs are preserved. This is assisted preparation, not
+OCR gold, a caption-feedback experiment or a product promotion. Details and
+Cloudflare capability choices: [reviewer runbook](research-platform-v1/reviewer-app.md).

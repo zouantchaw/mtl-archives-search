@@ -1,11 +1,22 @@
 import { useEffect, useState } from "react";
-import { BookOpen, Download, X, Info, LogOut } from "lucide-react";
+import { BookOpen, Download, Info, LogOut } from "lucide-react";
 import { api, download, local, stash, type State, type Review } from "./api";
 import { Brand } from "./Brand";
 import { ImageReview } from "./ImageReview";
 import { Families } from "./Families";
 import { Queries } from "./Queries";
 import { Learn } from "./Learn";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
 export function App() {
   const [state, setState] = useState<State | null>(null),
     [tab, setTab] = useState<"Images" | "Families" | "Queries">("Images"),
@@ -28,37 +39,6 @@ export function App() {
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
-  useEffect(() => {
-    if (!guide) return;
-    const previous = document.activeElement as HTMLElement | null;
-    const modal = document.querySelector(".guide");
-    const buttons = modal?.querySelectorAll<HTMLElement>(
-      "button,select,input,a[href],summary,textarea",
-    );
-    buttons?.[0]?.focus();
-    const keydown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setGuide(false);
-        return;
-      }
-      if (e.key === "Tab" && buttons?.length) {
-        const first = buttons[0],
-          last = buttons[buttons.length - 1];
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
-    };
-    document.addEventListener("keydown", keydown);
-    return () => {
-      document.removeEventListener("keydown", keydown);
-      previous?.focus();
-    };
-  }, [guide]);
   async function save(
     kind: Review["kind"],
     key: string,
@@ -123,36 +103,45 @@ export function App() {
   }
   const count = state?.reviews.filter((r) => r.kind === "image").length ?? 0;
   return (
-    <>
+    <Dialog open={guide} onOpenChange={setGuide}>
+      <a className="skip-link" href="#main-content">
+        Skip to review
+      </a>
       <header className="app-header">
         <Brand />
         <span className="header-title">Research review</span>
         <div className="header-actions">
-          <button onClick={() => setGuide(true)}>
+          <DialogTrigger render={<Button variant="ghost" />}>
             <BookOpen size={18} />
             Guide
-          </button>
-          <button onClick={exportReview} disabled={!state || exporting}>
+          </DialogTrigger>
+          <Button
+            variant="ghost"
+            onClick={exportReview}
+            disabled={!state || exporting}
+          >
             <Download size={18} />
             {exporting ? "Exporting…" : "Export"}
-          </button>
+          </Button>
         </div>
       </header>
-      <main>
+      <main id="main-content" tabIndex={-1}>
         <nav className="steps" aria-label="Review steps">
           {(["Images", "Families", "Queries"] as const).map((label, i) => (
-            <button
+            <Button
+              variant="ghost"
+              aria-pressed={tab === label}
               key={label}
               className={tab === label ? "active" : ""}
               onClick={() => change(label)}
             >
               <span>{i + 1}</span>
               {label}
-            </button>
+            </Button>
           ))}
           <div className="progress">
             <span>{count} / 100 reviewed</span>
-            <progress value={count} max={100} aria-label="Reviewed images" />
+            <Progress value={count} aria-label="Reviewed images" />
           </div>
         </nav>
         {!state ? (
@@ -202,23 +191,15 @@ export function App() {
           )}
         </footer>
       </main>
-      {guide && (
-        <div className="modal-backdrop" onClick={() => setGuide(false)}>
-          <section
-            className="guide panel"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="guide-title"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              className="close"
-              aria-label="Close guide"
-              onClick={() => setGuide(false)}
-            >
-              <X size={20} />
-            </button>
-            <h1 id="guide-title">A few review rules</h1>
+        <DialogContent className="review-guide">
+          <DialogHeader>
+            <DialogTitle>A few review rules</DialogTitle>
+            <DialogDescription>
+              Prepare the image, family and query reviews for the caption
+              feedback study.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="guide-content">
             <p>
               We are preparing a fair test of whether caption feedback improves
               French/English image search.
@@ -234,7 +215,9 @@ export function App() {
             <p>
               For text, answer Yes when you can read words or numbers, including
               margin annotations and watermarks. Note archive watermarks
-              separately from scene text. Use Full image, zoom, drag to pan and
+              separately from scene text. Use Text check to inspect nine
+              overlapping regions. Rotate the detail and compare text readers
+              when a character is unclear. Use Full image, zoom, drag to pan and
               Rotate when needed. Rotation records your preferred view and never
               changes the preserved source.
             </p>
@@ -259,12 +242,11 @@ export function App() {
               research queries are written without AI help. The public MTL
               Archives app stays isolated.
             </p>
-            <button className="primary" onClick={() => setGuide(false)}>
+            <DialogClose render={<Button />}>
               Start reviewing
-            </button>
-          </section>
-        </div>
-      )}
-    </>
+            </DialogClose>
+          </div>
+        </DialogContent>
+    </Dialog>
   );
 }

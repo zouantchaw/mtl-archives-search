@@ -152,12 +152,36 @@ const env = {
   IMAGES: images,
   AI_GATEWAY_ID: "synthetic-qa-only",
   AI: {
-    async run() {
+    async run(model) {
       await new Promise((r) => setTimeout(r, 1200));
       if (modelFailure) {
         modelFailure = false;
         throw Error("Simulated model outage");
       }
+      if (model.includes("gemma") || model.includes("qwen"))
+        return {
+          choices: [
+            {
+              finish_reason: "stop",
+              message: {
+                content: JSON.stringify({
+                  status: "text_candidates",
+                  candidates: [
+                    {
+                      text: model.includes("qwen")
+                        ? "SYNTHETIC QA 13-?1"
+                        : "SYNTHETIC QA 13-51",
+                      location: "lower left; synthetic model output",
+                      kind: "annotation",
+                      uncertain: true,
+                    },
+                  ],
+                }),
+              },
+            },
+          ],
+          usage: { prompt_tokens: 20, completion_tokens: 60 },
+        };
       return {
         answer:
           "SYNTHETIC QA suggestion — Numeric marks may be visible in this area. Verify them against the pixels; this is not a real model response.",

@@ -383,3 +383,18 @@ A non-MTL fixture (item_id/caption/license) is discovered with bounded paths, pl
 ## Operator cutover (#160, 2026-09-14)
 
 D1 holds operator jobs, receipts, candidates, and the index pointer. The Eve agent calls Worker tools and uses Cloudflare AI Gateway (`openai/gpt-5.4`) for completions. Publish does not write live captions. See [operator-v1](docs/operator-v1/README.md).
+
+### October 4: text inspection specific to archival review
+
+The private reviewer now uses shadcn/Base UI and a dedicated **Text check**:
+nine overlapping source-backed regions, enlarged/rotatable pixels, human region
+check progress, Gemma text candidates and an optional Qwen second reader.
+Candidate wording needs explicit pixel verification before adding a note;
+empty detections never select No. New No decisions require human confirmation.
+Exact model inputs/outputs, versioned recipes and acceptance/exposure events
+remain private in the existing isolated R2/D1/Queue/Gateway resources. Historical
+reviews and Moondream outputs are preserved. This is assisted preparation, not
+OCR gold, a caption-feedback experiment or a product promotion. Details and
+Cloudflare capability choices: [reviewer runbook](docs/research-platform-v1/reviewer-app.md).
+
+- [x] Replace generic whole-image help with source-region text inspection, explicit human checks, two text readers and responsive shadcn controls.

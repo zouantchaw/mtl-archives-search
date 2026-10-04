@@ -13,7 +13,30 @@ import {
 } from "../src/validation";
 import { local, stash, type State, type Review } from "./api";
 import { Viewer } from "./Viewer";
-import { HelpPanel } from "./HelpPanel";
+import { TextCheck } from "./TextCheck";
+import { Button } from "@/components/ui/button";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+} from "@/components/ui/select";
+import {
+  Field,
+  FieldLabel,
+  FieldDescription,
+  FieldGroup,
+  FieldSet,
+  FieldLegend,
+} from "@/components/ui/field";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { textRegions } from "../src/text-evidence";
 import { whole, type Rect } from "./inspection";
 export function ChoiceField({
   label,
@@ -25,21 +48,23 @@ export function ChoiceField({
   onChange: (v: Choice) => void;
 }) {
   return (
-    <fieldset>
-      <legend>{label}</legend>
-      <div className="choices">
+    <FieldSet>
+      <FieldLegend>{label}</FieldLegend>
+      <ToggleGroup
+        aria-label={label}
+        value={value ? [value] : []}
+        onValueChange={(values) => { if (values[0]) onChange(values[0] as Choice); }}
+        variant="outline"
+        spacing={0}
+        className="w-full"
+      >
         {(["yes", "no", "unsure"] as const).map((v) => (
-          <button
-            key={v}
-            type="button"
-            aria-pressed={value === v}
-            onClick={() => onChange(v)}
-          >
+          <ToggleGroupItem key={v} value={v} className="flex-1">
             {v === "yes" ? "Yes" : v === "no" ? "No" : "Unsure"}
-          </button>
+          </ToggleGroupItem>
         ))}
-      </div>
-    </fieldset>
+      </ToggleGroup>
+    </FieldSet>
   );
 }
 type Props = {
@@ -67,12 +92,24 @@ export function ImageReview({ state, save, onDirty }: Props) {
     [error, setError] = useState(""),
     [success, setSuccess] = useState("");
   const [rect, setRect] = useState<Rect>(whole);
+  const [view, setView] = useState("photo");
+  const [textOpened, setTextOpened] = useState(false);
+  useEffect(() => {
+    if (view === "text") setTextOpened(true);
+  }, [view]);
+  const inspection = draft.inspection ?? {
+    planVersion: "overlap-grid-v1" as const,
+    checkedRegions: [],
+    noTextConfirmed: false,
+  };
   const started = useRef(Date.now()),
     pending = useRef<Decision | null>(null),
     draftKey = prefix + ":image:" + id;
   useEffect(() => {
     window.scrollTo(0, 0);
     setRect(whole);
+    setView("photo");
+    setTextOpened(false);
     const d = local<{ payload: Decision; base: number } | null>(draftKey, null);
     setDraft(d?.payload ?? (saved?.payload as Decision) ?? initialImage());
     setBase(d?.base ?? saved?.revision ?? 0);
@@ -111,6 +148,7 @@ export function ImageReview({ state, save, onDirty }: Props) {
     try {
       pending.current ??= {
         ...draft,
+        inspection,
         seconds: Math.min(
           86400,
           draft.seconds + Math.round((Date.now() - started.current) / 1000),
@@ -147,9 +185,7 @@ export function ImageReview({ state, save, onDirty }: Props) {
     <>
       <div className="page-heading">
         <h1>Review images</h1>
-        <p>
-          Look at the pixels. Record what is clear and what needs attention.
-        </p>
+        <p>Check details, confirm any text, and add your notes.</p>
       </div>
       <div className="review-layout">
         <section className="viewer panel">
@@ -162,13 +198,15 @@ export function ImageReview({ state, save, onDirty }: Props) {
               </span>
             )}
             <div className="pager">
-              <button
+              <Button
+                variant="outline"
+                size="icon"
                 aria-label="Previous image"
                 disabled={current === 0 || busy}
                 onClick={() => move(current - 1)}
               >
                 <ChevronLeft size={20} />
-              </button>
+              </Button>
               <label>
                 <span className="sr-only">Image number</span>
                 <select
@@ -188,148 +226,279 @@ export function ImageReview({ state, save, onDirty }: Props) {
                   ))}
                 </select>
               </label>
-              <button
+              <Button
+                variant="outline"
+                size="icon"
                 aria-label="Next image"
                 disabled={current === 99 || busy}
                 onClick={() => move(current + 1)}
               >
                 <ChevronRight size={20} />
-              </button>
+              </Button>
             </div>
           </div>
-          <Viewer
-            key={"viewer:" + id}
-            id={id}
-            rect={rect}
-            onSelect={setRect}
-            rotation={draft.rotation}
-            onRotate={() =>
-              update({ ...draft, rotation: (draft.rotation + 90) % 360 })
-            }
-          />
-          <HelpPanel
-            key={"help:" + id}
-            id={id}
-            state={state}
-            rect={rect}
-            rotation={draft.rotation}
-            note={draft.note}
-            onNote={(note) => update({ ...draft, note })}
-          />
+          <Tabs value={view} onValueChange={(v) => setView(String(v))}>
+            <TabsList variant="line" className="workspace-tabs">
+              <TabsTrigger value="photo">Photograph</TabsTrigger>
+              <TabsTrigger value="text">Text check</TabsTrigger>
+            </TabsList>
+            <TabsContent value="photo" keepMounted>
+              <Viewer
+                key={"viewer:" + id}
+                id={id}
+                rect={rect}
+                onSelect={(r) => {
+                  setRect(r);
+                  if (r.w < 10000 || r.h < 10000) setView("text");
+                }}
+                rotation={draft.rotation}
+                onRotate={() =>
+                  update({ ...draft, rotation: (draft.rotation + 90) % 360 })
+                }
+              />
+              <div className="photo-guidance">
+                <Info size={18} />
+                <p>
+                  Check visible scene features first. Use Text check for
+                  enlarged regions, writing and watermarks. Normal scan notches
+                  do not mean the image is cropped.
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setRect(textRegions[0].rect);
+                    setView("text");
+                  }}
+                >
+                  Check small text
+                </Button>
+              </div>
+            </TabsContent>
+            <TabsContent value="text" keepMounted>
+              {textOpened && (
+                <TextCheck
+                  key={"text:" + id}
+                  id={id}
+                  state={state}
+                  rect={
+                    rect.w === 10000 && rect.h === 10000
+                      ? textRegions[0].rect
+                      : rect
+                  }
+                  onSelect={setRect}
+                  inspection={inspection}
+                  onInspection={(i) => update({ ...draft, inspection: i })}
+                  onNote={(note) => {
+                    if (draft.note.length + note.length + 2 > 2000) {
+                      setError(
+                        "Your notes are full. Edit them before adding this wording.",
+                      );
+                      return;
+                    }
+                    update({
+                      ...draft,
+                      note: [draft.note, note].filter(Boolean).join("\n\n"),
+                    });
+                  }}
+                />
+              )}
+            </TabsContent>
+          </Tabs>
         </section>
-        <section className="review-form panel">
-          <h2>Your review</h2>
-          <p className="muted">Choose an answer for each item.</p>
-          <label className="field">
-            Image type
-            <select
-              value={draft.type}
-              onChange={(e) => update({ ...draft, type: e.target.value })}
-            >
-              <option value="">Select image type</option>
-              <option value="aerial">Aerial photograph</option>
-              <option value="street">Street / ground photograph</option>
-              <option value="map">Map / plan</option>
-              <option value="document">Document / scanned page</option>
-              <option value="other">Other image</option>
-              <option value="unclear">Cannot tell</option>
-            </select>
-          </label>
-          <p className="field-hint">
-            Choose the kind of image you can see; location knowledge is not
-            required.
-          </p>
-          <ChoiceField
-            label="Usable for visual search?"
-            value={draft.usable}
-            onChange={(usable) => update({ ...draft, usable })}
-          />
-          <p className="field-hint">
-            <strong>Yes:</strong> you can describe clear visible features, such
-            as fields, water, roads or buildings. Knowing the exact place is not
-            required.
-          </p>
-          <ChoiceField
-            label="Readable text visible?"
-            value={draft.text}
-            onChange={(text) => update({ ...draft, text })}
-          />
-          <p className="field-hint">
-            Words <strong>or numbers</strong> count, including a readable “28”,
-            margin marks and watermarks. Check the edges; note watermarks
-            separately from scene text.
-          </p>
-          <fieldset>
-            <legend>Needs attention</legend>
-            <div className="checks">
-              {[
-                ["dark", "Too dark"],
-                ["blurred", "Blurred"],
-                ["cropped", "Cropped"],
-              ].map(([key, label]) => (
-                <label key={key}>
-                  <input
-                    type="checkbox"
-                    checked={draft.issues.includes(key)}
-                    onChange={(e) =>
+        <section className="review-form panel" aria-labelledby="review-heading">
+          <h2 id="review-heading">Your review</h2>
+          <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="image-type">Image type</FieldLabel>
+              <Select
+                value={draft.type || null}
+                onValueChange={(v) => update({ ...draft, type: v ?? "" })}
+              >
+                <SelectTrigger id="image-type" className="w-full">
+                  <SelectValue placeholder="Select image type">
+                    {
+                      (
+                        {
+                          aerial: "Aerial photograph",
+                          street: "Street / ground photograph",
+                          map: "Map / plan",
+                          document: "Document / scanned page",
+                          other: "Other image",
+                          unclear: "Cannot tell",
+                        } as Record<string, string>
+                      )[draft.type]
+                    }
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {[
+                      ["aerial", "Aerial photograph"],
+                      ["street", "Street / ground photograph"],
+                      ["map", "Map / plan"],
+                      ["document", "Document / scanned page"],
+                      ["other", "Other image"],
+                      ["unclear", "Cannot tell"],
+                    ].map(([v, label]) => (
+                      <SelectItem key={v} value={v}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field>
+              <ChoiceField
+                label="Usable for visual search?"
+                value={draft.usable}
+                onChange={(usable) => update({ ...draft, usable })}
+              />
+              <FieldDescription>
+                Clear fields, water, roads or buildings count. You do not need
+                to know the place.
+              </FieldDescription>
+            </Field>
+            <Field>
+              <ChoiceField
+                label="Readable text visible?"
+                value={draft.text}
+                onChange={(text) =>
+                  update({
+                    ...draft,
+                    text,
+                    inspection: { ...inspection, noTextConfirmed: false },
+                  })
+                }
+              />
+              <FieldDescription>
+                Numbers, handwriting and watermarks count. Check the edges and
+                small details.
+              </FieldDescription>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setRect(textRegions[0].rect);
+                  setView("text");
+                  document
+                    .querySelector(".workspace-tabs")
+                    ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+              >
+                Open text check
+              </Button>
+              {draft.text === "no" && (
+                <Field orientation="horizontal">
+                  <Checkbox
+                    id="no-text-confirm"
+                    checked={inspection.noTextConfirmed}
+                    onCheckedChange={(v) =>
                       update({
                         ...draft,
-                        issues: e.target.checked
-                          ? [...draft.issues, key]
-                          : draft.issues.filter((i) => i !== key),
+                        inspection: { ...inspection, noTextConfirmed: v },
                       })
                     }
                   />
-                  {label}
-                </label>
-              ))}
-            </div>
-          </fieldset>
-          <p className="field-hint">
-            Only flag defects that obscure useful detail.{" "}
-            <strong>Cropped:</strong> scan content appears accidentally cut off.
-            A normal camera edge, gray viewer space or scan notch alone does not
-            count.
-          </p>
-          <label className="field">
-            Notes (optional)
-            <textarea
-              value={draft.note}
-              placeholder="Add any details, observations, or questions…"
-              maxLength={2000}
-              onChange={(e) => update({ ...draft, note: e.target.value })}
-            />
-          </label>
-          <label className="check uncertain">
-            <input
-              type="checkbox"
-              checked={draft.uncertain}
-              onChange={(e) =>
-                update({ ...draft, uncertain: e.target.checked })
-              }
-            />
-            I'm uncertain about this review
-          </label>
+                  <FieldLabel htmlFor="no-text-confirm">
+                    I checked the pixels for writing, numbers and watermarks
+                  </FieldLabel>
+                </Field>
+              )}
+            </Field>
+            <FieldSet>
+              <FieldLegend>Needs attention</FieldLegend>
+              <div className="quality-checks">
+                {[
+                  ["dark", "Too dark"],
+                  ["blurred", "Blurred"],
+                  ["cropped", "Cropped"],
+                ].map(([key, label]) => (
+                  <Field key={key} orientation="horizontal">
+                    <Checkbox
+                      id={`issue-${key}`}
+                      checked={draft.issues.includes(key)}
+                      onCheckedChange={(v) =>
+                        update({
+                          ...draft,
+                          issues: v
+                            ? [...draft.issues, key]
+                            : draft.issues.filter((x) => x !== key),
+                        })
+                      }
+                    />
+                    <FieldLabel htmlFor={`issue-${key}`}>{label}</FieldLabel>
+                  </Field>
+                ))}
+              </div>
+              <FieldDescription>
+                Only flag defects that hide useful detail. Scan notches, normal
+                image boundaries and gray viewer space alone do not count as
+                cropped.
+              </FieldDescription>
+            </FieldSet>
+            <Field>
+              <FieldLabel htmlFor="review-notes">Notes (optional)</FieldLabel>
+              <Textarea
+                id="review-notes"
+                value={draft.note}
+                placeholder="What you can see; where any writing appears…"
+                maxLength={2000}
+                onChange={(e) => update({ ...draft, note: e.target.value })}
+              />
+            </Field>
+            <Field orientation="horizontal">
+              <Checkbox
+                id="review-uncertain"
+                checked={draft.uncertain}
+                onCheckedChange={(v) => update({ ...draft, uncertain: v })}
+              />
+              <FieldLabel htmlFor="review-uncertain">
+                I'm uncertain about this review
+              </FieldLabel>
+            </Field>
+          </FieldGroup>
           {restored && (
-            <p className="draft-note">Your unsaved draft was restored.</p>
+            <Alert>
+              <AlertDescription>
+                Your unsaved draft was restored.
+              </AlertDescription>
+            </Alert>
           )}
           {error && (
-            <p className="error" role="alert">
-              {error} <button onClick={reload}>Load saved version</button>
-            </p>
+            <Alert variant="destructive">
+              <AlertDescription>
+                {error}
+                {/another device|changed|newer revision/i.test(error) && (
+                  <Button variant="outline" onClick={reload}>
+                    Load saved version
+                  </Button>
+                )}
+              </AlertDescription>
+            </Alert>
           )}
           {success && <p role="status">{success}</p>}
-          <button className="primary" disabled={busy} onClick={submit}>
-            {busy ? "Saving…" : current === 99 ? "Save review" : "Save & next"}
-            <ArrowRight size={18} />
-          </button>
-          <p className="save-hint" aria-live="polite">
-            {dirty
-              ? "Draft on this device · save to sync"
-              : saved
-                ? "Saved to Cloudflare"
-                : "Saved progress follows you across devices."}
-          </p>
+          <div className="review-save">
+            <Button
+              className="w-full"
+              size="lg"
+              disabled={busy}
+              onClick={submit}
+            >
+              {busy
+                ? "Saving…"
+                : current === 99
+                  ? "Save review"
+                  : "Save & next"}
+              <ArrowRight data-icon="inline-end" />
+            </Button>
+            <p className="save-hint" aria-live="polite">
+              {dirty
+                ? "Draft on this device · save to sync"
+                : saved
+                  ? "Saved to Cloudflare"
+                  : "Saved progress follows you across devices."}
+            </p>
+          </div>
         </section>
       </div>
       <p className="footnote">

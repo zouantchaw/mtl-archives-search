@@ -16,6 +16,13 @@ import {
   unreliableAnswer,
 } from "../src/assistance";
 import { sha } from "../src/auth";
+import {
+  TEXT_MODEL,
+  TEXT_PROMPT_VERSION,
+  SECOND_READER,
+  textRegions,
+  parseTextEvidence,
+} from "../src/text-evidence";
 import { pointInImage, rectBetween } from "../client/inspection";
 import { initialImage, validate } from "../src/validation";
 import { authenticate } from "../src/auth";
@@ -464,6 +471,7 @@ function helpRequest(
       requestId: crypto.randomUUID(),
       imageId: "003",
       kind: "text",
+      reader: "primary",
       rotation: 0,
       rect: { x: 0, y: 8500, w: 1400, h: 1500 },
       ...x,
@@ -540,7 +548,7 @@ test("queue, model failure and quotas never change human reviews", async () => {
     503,
   );
   s.env.HELP_QUEUE = { async send() {} } as any;
-  for (let i = 1; i < 12; i++) {
+  for (let i = 1; i < 40; i++) {
     const r = await handleAuthenticated(
       helpRequest({
         rotation: (i % 4) * 90,
@@ -583,13 +591,30 @@ test("completed model output is retained, delivered exposure follows saving, and
   s.env.AI = {
     async run(model: any, input: any, options: any) {
       calls++;
-      assert.equal(model, MODEL);
+      assert.equal(model, TEXT_MODEL);
       assert.equal(input.max_tokens, 500);
-      assert.equal(input.reasoning, false);
+      assert.equal(input.messages[0].content[1].image_url.detail, "high");
       assert.equal(options.gateway.collectLog, false);
       return {
-        answer: "Synthetic: numeric mark is visible.",
-        metrics: { output_tokens: 7 },
+        choices: [
+          {
+            finish_reason: "stop",
+            message: {
+              content: JSON.stringify({
+                status: "text_candidates",
+                candidates: [
+                  {
+                    text: "13-?1",
+                    location: "left margin",
+                    kind: "annotation",
+                    uncertain: true,
+                  },
+                ],
+              }),
+            },
+          },
+        ],
+        usage: { prompt_tokens: 20, completion_tokens: 7 },
       };
     },
   } as any;
@@ -629,7 +654,7 @@ test("completed model output is retained, delivered exposure follows saving, and
   );
   assert.equal(out.benchmarkEligible, false);
   assert.deepEqual(out.latest[0].payload.reviewerAssistance.runIds, [reqId]);
-  assert.equal(out.assistance.runs[0].promptVersion, PROMPT_VERSION);
+  assert.equal(out.assistance.runs[0].promptVersion, TEXT_PROMPT_VERSION);
   const event = {
     eventId: crypto.randomUUID(),
     runId: reqId,
@@ -711,7 +736,12 @@ test("truncated or repetitive model text is retained as failure, never adopted a
   } as any;
   s.env.AI = {
     async run() {
-      return { answer: "[?] ".repeat(20), metrics: { output_tokens: 500 } };
+      return {
+        choices: [
+          { finish_reason: "length", message: { content: "[?] ".repeat(20) } },
+        ],
+        usage: { completion_tokens: 500 },
+      };
     },
   } as any;
   const id = crypto.randomUUID();
@@ -783,6 +813,101 @@ test("known conversation guidance is scoped and truthful without rewriting legac
   assert.throws(
     () => s.db.exec("UPDATE external_guidance SET actor='foreign'"),
     /immutable/,
+  );
+  s.db.close();
+});
+
+test("text coverage includes every source pixel and unknown writing cannot become absence", () => {
+  for (let y = 0; y <= 10000; y += 100)
+    for (let x = 0; x <= 10000; x += 100)
+      assert.ok(
+        textRegions.some(
+          (t) =>
+            x >= t.rect.x &&
+            x <= t.rect.x + t.rect.w &&
+            y >= t.rect.y &&
+            y <= t.rect.y + t.rect.h,
+        ),
+      );
+  assert.equal(
+    parseTextEvidence(
+      '```json\n{"status":"none_detected","candidates":[]}\n```',
+    ).status,
+    "none_detected",
+  );
+  assert.throws(() =>
+    parseTextEvidence(
+      '{"status":"none_detected","candidates":[{"text":"28","location":"left","kind":"scene","uncertain":false}]}',
+    ),
+  );
+  assert.throws(() =>
+    parseTextEvidence('{"status":"text_candidates","candidates":[]}'),
+  );
+  assert.throws(
+    () =>
+      validate(
+        "image",
+        "003",
+        {
+          ...image,
+          inspection: {
+            planVersion: "overlap-grid-v1",
+            checkedRegions: [],
+            noTextConfirmed: false,
+          },
+        },
+        ids,
+      ),
+    /Confirm/,
+  );
+  const reviewed = validate(
+    "image",
+    "003",
+    {
+      ...image,
+      inspection: {
+        planVersion: "overlap-grid-v1",
+        checkedRegions: ["Bottom left"],
+        noTextConfirmed: true,
+      },
+    },
+    ids,
+  ) as any;
+  assert.equal(reviewed.text, "no");
+  assert.deepEqual(reviewed.inspection.checkedRegions, ["Bottom left"]);
+});
+test("text readers keep separate provenance and the legacy caption recipe remains reproducible", async () => {
+  const s = setup();
+  const primary = crypto.randomUUID(),
+    second = crypto.randomUUID();
+  await handleAuthenticated(helpRequest({ requestId: primary }), s.env, actor);
+  await handleAuthenticated(
+    helpRequest({ requestId: second, reader: "second" }),
+    s.env,
+    actor,
+  );
+  const a = s.db
+    .prepare("SELECT model,request_hash FROM assistance_run WHERE id=?")
+    .get(primary) as any;
+  const b = s.db
+    .prepare("SELECT model,request_hash FROM assistance_run WHERE id=?")
+    .get(second) as any;
+  const legacy=crypto.randomUUID();
+  await handleAuthenticated(helpRequest({requestId:legacy,reader:undefined}),s.env,actor);
+  const old=s.db.prepare("SELECT model,prompt_version FROM assistance_run WHERE id=?").get(legacy) as any;
+  assert.equal(old.model,MODEL);assert.equal(old.prompt_version,PROMPT_VERSION);
+  assert.equal(a.model, TEXT_MODEL);
+  assert.equal(b.model, SECOND_READER);
+  assert.notEqual(a.request_hash, b.request_hash);
+  assert.equal(
+    (
+      await handleAuthenticated(
+        helpRequest({ reader: "unknown" }),
+        s.env,
+        actor,
+      )
+    ).status,
+    400,
   );
   s.db.close();
 });

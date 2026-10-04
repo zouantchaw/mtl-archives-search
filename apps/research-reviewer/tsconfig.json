@@ -11,7 +11,10 @@
     "esModuleInterop": true,
     "allowImportingTsExtensions": true,
     "noEmit": true,
-    "types": ["@cloudflare/workers-types", "node", "vite/client"]
+    "types": ["@cloudflare/workers-types", "node", "vite/client"],
+    "paths": {
+      "@/*": ["./client/*"]
+    }
   },
   "include": ["client", "src", "test", "vite.config.ts"]
 }

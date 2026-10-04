@@ -54,10 +54,12 @@ export function Learn() {
             notches alone do not count.
           </p>
           <p>
-            <strong>Optional model help:</strong> select an area, read the
-            suggestion and verify it yourself. “Use as draft note” never chooses
-            your answers. Saving records model exposure even when you dismiss
-            the suggestion.
+            <strong>Optional text help:</strong> open Text check, choose a
+            region and inspect the enlarged pixels. Read this region offers
+            candidate wording. Correct it and confirm that you checked it
+            against the pixels before using “Add verified note.” Your review
+            answers stay yours to choose. Saving records model exposure even
+            when you dismiss the suggestion.
           </p>
         </div>
       ) : tab === "Examples" ? (

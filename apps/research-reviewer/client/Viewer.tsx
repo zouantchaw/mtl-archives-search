@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   RotateCw,
   Maximize,
@@ -193,14 +194,16 @@ export function Viewer({
         )}
       </div>
       <div className="viewer-tools">
-        <button
+        <Button
+          variant="ghost"
           onClick={onRotate}
           title="Rotate view 90°. This records a recommended rotation; source bytes stay preserved."
         >
           <RotateCw size={18} />
           Rotate
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="ghost"
           onClick={() => {
             setFull(!full);
             setLoaded(false);
@@ -208,18 +211,20 @@ export function Viewer({
         >
           <ExternalLink size={16} />
           {full ? "Preview" : "Full image"}
-        </button>
+        </Button>
         {onSelect && (
-          <button
+          <Button
+            variant="ghost"
             aria-pressed={selecting}
             onClick={() => setSelecting(!selecting)}
           >
             <Scan size={17} />
             Select area
-          </button>
+          </Button>
         )}
         <span className="tools-spacer" />
-        <button
+        <Button
+          variant="ghost"
           onClick={() => {
             setZoom(1);
             setPan({ x: 0, y: 0 });
@@ -227,23 +232,25 @@ export function Viewer({
         >
           <Maximize size={18} />
           Fit
-        </button>
+        </Button>
         <div className="zoom-controls">
-          <button
+          <Button
+            variant="ghost"
             aria-label="Zoom out"
             disabled={zoom === 1}
             onClick={() => change(zoom - 0.5)}
           >
             <Minus size={18} />
-          </button>
+          </Button>
           <span className="zoom-label">{zoom.toFixed(1)}×</span>
-          <button
+          <Button
+            variant="ghost"
             aria-label="Zoom in"
             disabled={zoom === 8}
             onClick={() => change(zoom + 0.5)}
           >
             <Plus size={18} />
-          </button>
+          </Button>
         </div>
       </div>
       <div className="inspection-tools">
@@ -292,7 +299,8 @@ export function Viewer({
                 onChange={(e) => setContrast(Number(e.target.value))}
               />
             </label>
-            <button
+            <Button
+              variant="ghost"
               onClick={() => {
                 setBrightness(100);
                 setContrast(100);
@@ -300,7 +308,7 @@ export function Viewer({
               }}
             >
               Reset view
-            </button>
+            </Button>
             <small>
               Display only. Model help uses pixels without these adjustments.
             </small>

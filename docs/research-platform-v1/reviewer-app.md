@@ -14,20 +14,26 @@ retrieval relevance gold or change the customer app.
    Cloudflare Access protects the entire app, API and image routes.
 2. Read **Guide**. Review the first five images and use **Save & next**. Check those
    five decisions against the rules before continuing through all 100 candidates.
-3. For each image, record image type, usable visual detail, readable text, quality
-   issues and uncertainty. Use **Full image**, **Rotate**, **Fit**, zoom and drag to
-   pan. **Select area** draws a detail; **Check edges** offers keyboard-accessible
-   presets. Selected details are rendered up to 2,048 px by Cloudflare Images.
-   **Rotate detail** turns a crop without changing the review rotation. Brightness
-   and contrast change the displayed view only; model inputs use no enhancement.
-   Rotation records a recommended view; preserved bytes are unchanged.
-   Optional **Help review image**, **Read this area**, and **Explain detail** use
-   Moondream. Verify suggestions; **Use as draft note** only edits Notes, never
-   selects labels. Dismiss with a reason when unsuitable. Previous requests and
-   pending work can be reopened; network failures offer Reconnect.
-   Words or numbers count as text, including margins and watermarks. Note
-   watermarks separately. Normal camera boundaries, gray padding and scan notches
-   alone are not cropping defects. Guide now includes examples and practice.
+3. Use **Photograph** to judge image type, describable scene features and
+   serious defects. Use **Text check** before deciding whether writing is visible.
+   Nine overlapping regions cover the EXIF-normalized inspection scan. Their names
+   refer to the overview orientation, independently of your preferred photo view.
+   Open a region, use **Rotate detail** or **Actual pixels**, and **Mark checked**
+   after inspecting it. This is a human check, not an AI coverage claim.
+   Optional **Check all regions with AI** queues nine Gemma text reads. Results
+   attach to their exact region/orientation; candidate badges help you find regions
+   to inspect. **Ask a second reader** uses Qwen and displays both readings.
+   Nothing detected in a region does not prove absence of text. A new No answer
+   requires the reviewer to confirm checking pixels for writing/numbers/watermarks.
+   Candidate wording is editable; select its kind and explicitly check it against
+   pixels before **Add verified note**. Labels stay manual. Previous requests,
+   including legacy Moondream descriptions, remain readable without rewriting them.
+   **Full image**, photo rotation, zoom, pan and display-only adjustments remain.
+   Selecting a custom area or edge opens it in Text check. Detail rotation is separate
+   from the recorded photo rotation. Source bytes and model inputs are never enhanced.
+   Words or numbers count, including margins and watermarks. Note archive watermarks
+   separately. Normal camera edges, gray padding and scan notches alone are not crop
+   defects. The Guide provides rules, examples and practice.
 4. In **Families**, select related images, name the group and explicitly choose a
    representative. **Compare selected** opens two views with independent zoom
    and rotation. Edit or separate a saved family when needed. After all 100
@@ -127,16 +133,33 @@ on retrieval, then sent as private data URIs. Each model run retains the exact
 input hash, raw output hash/key, model ID, prompt version, tokens and latency.
 Exact model inputs are copied to separate byte-addressed R2 keys before inference,
 so later inspection-cache changes cannot replace an earlier input.
-Moondream `@cf/moondream/moondream3.1-9B-A2B` uses prompt
-`mtl-reviewer-help-v2`, temperature zero, reasoning disabled and at most 500 output
-tokens. Truncated, excessively long or repetitive uncertain outputs are retained
-as failed attempts and cannot be accepted as notes. This is a basic output gate,
-not an accuracy guarantee. Model errors remain visible; manual review stays
-available. Limits are atomically enforced: 4 pending, 12 requests per image and
-200 requests per actor per UTC day. Failed attempts count. Exact completed or
-pending requests are reused for the same actor/input/prompt; no cross-user cache
-of suggestions is served. AI failures require an explicit retry. Infrastructure
-retries use leases and at most two executions after a crash.
+Text reads use `@cf/google/gemma-4-26b-a4b-it`; a second reader uses
+`@cf/qwen/qwen3.8-27b`. Both use `mtl-text-regions-v1` with strict parsed status,
+bounded candidate text, location descriptions and writing kinds. A candidate
+is always unverified, regardless of the model's uncertainty declaration. No
+model coordinates or confidence percentages are shown as measured evidence.
+The new recipe/model/reader is included in the replay hash. Legacy Moondream
+`mtl-reviewer-help-v2` rows keep their original identities, output and processing
+recipe. Truncated, invalid or repetitive responses are retained privately and
+withheld as failed results. Small regression probes found image 003's marginal
+writing and image 002's 28; readings of handwritten digits differed, and one
+watermark crop was missed. These are engineering checks, not OCR accuracy estimates.
+
+Each run requests at most 500 output tokens. Atomic quotas allow 12 pending,
+40 lifetime requests per actor/image and 600 per UTC day; failed attempts count.
+This supports nine-region checks plus manual rotations and second readings.
+Queue concurrency remains 2, with a DLQ; inference is only started by reviewer
+requests. Gateway raw logging is disabled; per-call cache is skipped because
+R2/D1 replay binds the exact pixels and versioned recipe. Human checked regions
+and explicit No confirmation are persisted in new image revisions as optional
+`inspection` metadata, preserving compatibility with earlier reviews. An
+`accepted_note` event now records the reviewer's edited wording, writing kind,
+source rectangle and orientation. This is acceptance provenance, not gold.
+
+Shadcn/Base UI handles forms, choice groups, tabs, controls and the Guide dialog.
+The theme retains MTL brand assets and colors. The source viewer and text check
+have separate responsibilities; the long generic caption helper is no longer
+the primary image review tool.
 
 Migrations `0002_assistance.sql` and `0003_external_guidance.sql` add run,
 append-only event and external-guidance tables without
@@ -271,3 +294,54 @@ Architecture references: [Worker-first static assets](https://developers.cloudfl
 [D1 prepared statements](https://developers.cloudflare.com/d1/worker-api/prepared-statements/).
 
 Cloudflare implementation references: [Images binding and input limits](https://developers.cloudflare.com/images/optimization/binding/), [Queue consumers](https://developers.cloudflare.com/queues/configuration/javascript-apis/), [R2 conditional writes](https://developers.cloudflare.com/r2/api/workers/workers-api-reference/#conditional-operations).
+
+## Cloudflare capability choices for this review
+
+| Capability | Decision for this task |
+| --- | --- |
+| [Images binding](https://developers.cloudflare.com/images/optimization/binding/) | Private source-backed crops and rotations; exact input bytes retained. Nine regions cover the normalized inspection image, not all original-resolution pixels of originals exceeding 6,000 px. Full image remains available. |
+| [Workers AI catalog](https://developers.cloudflare.com/workers-ai/models/) | Evaluate text-specific Gemma and Qwen region reads. Generic whole-image captions are poor tiny-text absence checks. These are vision readers, not a validated specialized OCR pipeline. |
+| [Queues](https://developers.cloudflare.com/queues/) + D1 | Short independent jobs, bounded concurrency, retry state, replay identities, explicit exposure and decision history. Existing isolated resources suffice. |
+| [R2](https://developers.cloudflare.com/r2/) + [AI Gateway](https://developers.cloudflare.com/ai-gateway/) | Private input/output retention, byte hashes and inference rate control. No model inputs are made public. |
+| [Access](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/) + Worker static assets | Owner-only review and locally hosted shadcn UI/fonts. |
+| [Workflows](https://developers.cloudflare.com/workflows/) | Evaluated. Long ingestion/OCR experiments with dependent stages may benefit later. These independent bounded region reads already have queue/replay state; an extra orchestration service adds no current reviewer benefit. |
+| [Containers](https://developers.cloudflare.com/containers/) | Evaluated for specialized OCR engines. Useful if a measured OCR study justifies it; new runtime/model artifacts and cold starts would need comparison against marginal handwriting. No container is provisioned for an unvalidated OCR promise. |
+| [Vectorize](https://developers.cloudflare.com/vectorize/) | Future isolated similarity candidates for Families, after scene grouping/evaluation controls. Reusing serving embeddings or old captions during this preparation could bias grouping. Current side-by-side pixel comparison stays available. |
+| [AI Search](https://developers.cloudflare.com/ai-search/) / [toMarkdown](https://developers.cloudflare.com/workers-ai/markdown-conversion/) | Managed retrieval/description ingestion does not provide the tiny-text coverage or explicit reviewer provenance needed here. No new index or generated corpus is created. |
+| [Browser Rendering](https://developers.cloudflare.com/browser-rendering/), KV, Durable Objects, Workers analytics | Not required for these frozen image inputs. D1 gives atomic review history; R2 holds blobs. A browser renderer or agent conversation would not recover source pixels absent from a small model input. |
+
+This rollout uses the already isolated Cloudflare primitives. There is no new
+source ingestion, bulk OCR/caption experiment, serving index replacement or
+automatic promotion. The live application has no dependency on these changes.
+
+## October 4 text inspection rollout verification
+
+- Deployment `34eb0672-9bc1-42dc-b405-059655dd96bc` via `cf deploy --prebuilt`
+  from the isolated reviewer app directory.
+- Typecheck, 20 backend/contract tests and 8 import tests passed.
+- Playwright tested the production build and Worker handlers through a loopback
+  synthetic actor, at 1505 × 1045 and 390 × 844. Region selection, both readers,
+  verified note adoption, nine-job completion, No confirmation, save/next,
+  draft recovery, failure/retry and keyboard focus were exercised. Console was clean.
+- Axe found zero WCAG A/AA violations in tested desktop photograph/text,
+  phone text and phone Guide states. This is not certification across all users,
+  browser combinations or assistive technologies. Manual review confirmed Guide
+  focus trapping/return and its description contrast of 6.35:1.
+- Eleven native Queue → Images → Workers AI/Gateway → R2/D1 checks completed:
+  all nine image 003 regions, image 002 top-left and an independently rotated
+  Qwen reading. Exact raw output hashes and both margin input byte hashes were
+  verified from R2. All records used a distinct synthetic validation actor and
+  did not create human review revisions.
+- The writing was surfaced at image 003's lower-left margin and 28 was detected
+  in image 002. Gemma read one digit differently from Qwen. A top-right region
+  produced a questionable Archives candidate. These examples demonstrate the
+  need for pixel verification, not general OCR recall or accuracy.
+- All six prior human revisions, the seven prior model runs, the prior assistance
+  event and the external-guidance receipt remain unchanged. Public app/API/media/
+  inspection routes still redirect to Access. Serving resource metadata, Worker
+  deployment and Vectorize info passed the unchanged guard. Owner-authenticated
+  production UI sign-in was not automated; local handler/UI tests and native
+  Cloudflare inference tests cover separate layers.
+
+Durable receipts, screenshots, concept and limitations:
+`/Users/wiel/pkm/0xPKM_Lab/04_outputs/mtl-reviewer-text-inspection-2026-10-04`.

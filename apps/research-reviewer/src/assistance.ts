@@ -1,6 +1,13 @@
 import pilot from "./pilot.json" with { type: "json" };
 import manifest from "./inspection.json" with { type: "json" };
 import { sha } from "./auth";
+import {
+  TEXT_MODEL,
+  SECOND_READER,
+  TEXT_PROMPT,
+  TEXT_PROMPT_VERSION,
+  parseTextEvidence,
+} from "./text-evidence";
 
 export const MODEL = "@cf/moondream/moondream3.1-9B-A2B";
 export const PROMPT_VERSION = "mtl-reviewer-help-v2";
@@ -11,6 +18,7 @@ export type Spec = {
   kind: HelpKind;
   rect: Rect;
   rotation: number;
+  reader?: "primary" | "second";
 };
 export type HelpEnv = {
   REVIEW_DB: D1Database;
@@ -67,6 +75,10 @@ export function validateSpec(x: any): Spec {
     ![0, 90, 180, 270].includes(x.rotation)
   )
     throw Error("Choose an image, help type and valid rotation.");
+  if (x.reader !== undefined && !["primary", "second"].includes(x.reader))
+    throw Error("Choose a valid text reader.");
+  if (x.reader && x.kind !== "text")
+    throw Error("Text reader is only available for text inspection.");
   const r = x.rect;
   if (
     !r ||
@@ -84,6 +96,7 @@ export function validateSpec(x: any): Spec {
     kind: x.kind,
     rotation: x.rotation,
     rect: { x: r.x, y: r.y, w: r.w, h: r.h },
+    ...(x.kind === "text" && x.reader ? { reader: x.reader } : {}),
   };
 }
 export function cropPixels(rect: Rect, width: number, height: number) {
@@ -263,13 +276,21 @@ export async function handleHelp(
           400,
         );
       const render = manifest.items.find((i) => i.id === spec.imageId)!;
+      const model =
+        spec.kind === "text" && spec.reader
+          ? spec.reader === "second"
+            ? SECOND_READER
+            : TEXT_MODEL
+          : MODEL;
+      const promptVersion =
+        spec.kind === "text" && spec.reader ? TEXT_PROMPT_VERSION : PROMPT_VERSION;
       const hash = await sha(
         JSON.stringify({
           scope: pilot.snapshot,
           spec,
           render: render.sha256,
-          model: MODEL,
-          prompt: PROMPT_VERSION,
+          model,
+          prompt: promptVersion,
         }),
       );
       const sameId = await env.REVIEW_DB.prepare(
@@ -302,9 +323,9 @@ export async function handleHelp(
       const row = await env.REVIEW_DB.prepare(
         `INSERT INTO assistance_run(id,snapshot_id,actor,image_id,kind,request_hash,spec_json,model,prompt_version,status,created_at)
     SELECT ?,?,?,?,?,?,?,?,?,'queued',? WHERE
-    (SELECT count(*) FROM assistance_run WHERE snapshot_id=? AND actor=? AND created_at>=?)<200 AND
-    (SELECT count(*) FROM assistance_run WHERE snapshot_id=? AND actor=? AND image_id=?)<12 AND
-    (SELECT count(*) FROM assistance_run WHERE snapshot_id=? AND actor=? AND status IN ('queued','running') AND created_at>?)<4 RETURNING *`,
+    (SELECT count(*) FROM assistance_run WHERE snapshot_id=? AND actor=? AND created_at>=?)<600 AND
+    (SELECT count(*) FROM assistance_run WHERE snapshot_id=? AND actor=? AND image_id=?)<40 AND
+    (SELECT count(*) FROM assistance_run WHERE snapshot_id=? AND actor=? AND status IN ('queued','running') AND created_at>?)<12 RETURNING *`,
       )
         .bind(
           x.requestId,
@@ -314,8 +335,8 @@ export async function handleHelp(
           spec.kind,
           hash,
           JSON.stringify(spec),
-          MODEL,
-          PROMPT_VERSION,
+          model,
+          promptVersion,
           created,
           pilot.snapshot,
           actor,
@@ -332,7 +353,7 @@ export async function handleHelp(
         return reply(
           {
             error:
-              "Help limit reached (4 pending, 12 per image, 200 per day). You can continue reviewing manually.",
+              "Help limit reached (12 pending, 40 per image, 600 per day). You can continue reviewing manually.",
           },
           429,
         );
@@ -409,7 +430,7 @@ export async function handleHelp(
     if (!manifest.items.some((i) => i.id === id))
       return reply({ error: "Image not found." }, 404);
     const rows = await env.REVIEW_DB.prepare(
-      "SELECT id,kind,status,created_at FROM assistance_run WHERE snapshot_id=? AND actor=? AND image_id=? ORDER BY created_at DESC LIMIT 12",
+      "SELECT id,kind,status,created_at FROM assistance_run WHERE snapshot_id=? AND actor=? AND image_id=? ORDER BY created_at DESC LIMIT 40",
     )
       .bind(pilot.snapshot, actor, id)
       .all();
@@ -554,8 +575,12 @@ export async function runHelp(env: HelpEnv, runId: string) {
   const started = Date.now();
   try {
     const spec = validateSpec(JSON.parse(row.spec_json));
-    if (row.model !== MODEL || row.prompt_version !== PROMPT_VERSION)
-      throw Error("Unsupported help recipe.");
+    const typedText =
+      row.prompt_version === TEXT_PROMPT_VERSION &&
+      row.kind === "text" &&
+      [TEXT_MODEL, SECOND_READER].includes(row.model);
+    const legacy = row.model === MODEL && row.prompt_version === PROMPT_VERSION;
+    if (!typedText && !legacy) throw Error("Unsupported help recipe.");
     const input = await renderInput(env, spec);
     // Pin model bytes separately from the recipe-keyed inspection cache. A
     // future renderer/cache refill cannot replace an earlier model's input.
@@ -570,31 +595,61 @@ export async function runHelp(env: HelpEnv, runId: string) {
     )
       .bind(retainedInputKey, input.sha256, row.id, row.started_at)
       .run();
-    const question = prompt(spec.kind);
-    const raw: any = await env.AI.run(
-      MODEL as any,
-      {
-        task: "query",
-        image: "data:image/jpeg;base64," + base64(input.bytes),
-        question,
-        max_tokens: 500,
-        temperature: 0,
-        reasoning: false,
-        stream: false,
-      },
-      {
-        gateway: { id: env.AI_GATEWAY_ID, collectLog: false, skipCache: true },
-      },
-    );
+    const question = typedText ? TEXT_PROMPT : prompt(spec.kind);
+    const image = "data:image/jpeg;base64," + base64(input.bytes);
+    const parameters = typedText
+      ? {
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "text", text: question },
+                {
+                  type: "image_url",
+                  image_url: { url: image, detail: "high" },
+                },
+              ],
+            },
+          ],
+          max_tokens: 500,
+          temperature: 0,
+          enable_thinking: false,
+          chat_template_kwargs: { enable_thinking: false },
+          ...(row.model === SECOND_READER ? { reasoning_effort: "low" } : {}),
+          stream: false,
+        }
+      : {
+          task: "query",
+          image,
+          question,
+          max_tokens: 500,
+          temperature: 0,
+          reasoning: false,
+          stream: false,
+        };
+    const raw: any = await env.AI.run(row.model as any, parameters as any, {
+      gateway: { id: env.AI_GATEWAY_ID, collectLog: false, skipCache: true },
+    });
     const result = raw?.result ?? raw;
-    const answer = result?.answer ?? result?.response;
+    const answer = typedText
+      ? result?.choices?.[0]?.message?.content
+      : (result?.answer ?? result?.response);
+    const metrics = typedText
+      ? {
+          input_tokens: result.usage?.prompt_tokens,
+          output_tokens: result.usage?.completion_tokens,
+        }
+      : result.metrics;
+    const finishReason = typedText
+      ? result.choices?.[0]?.finish_reason
+      : result.finish_reason;
     const record = {
       schema: "mtl-help-output-v1",
       runId: row.id,
       sourceSha256: manifest.items.find((i) => i.id === row.image_id)!
         .sourceSha256,
-      model: MODEL,
-      promptVersion: PROMPT_VERSION,
+      model: row.model,
+      promptVersion: row.prompt_version,
       question,
       spec,
       inputSha256: input.sha256,
@@ -618,9 +673,9 @@ export async function runHelp(env: HelpEnv, runId: string) {
         key,
         digest,
         JSON.stringify({
-          ...(result.metrics ?? {}),
+          ...(metrics ?? {}),
           latency_ms: Date.now() - started,
-          finish_reason: result.finish_reason ?? null,
+          finish_reason: finishReason ?? null,
         }),
         row.id,
         row.started_at,
@@ -628,9 +683,10 @@ export async function runHelp(env: HelpEnv, runId: string) {
       .run();
     if (
       typeof answer !== "string" ||
-      unreliableAnswer(answer, result.metrics, result.finish_reason)
+      unreliableAnswer(answer, metrics, finishReason)
     )
       throw Error("MODEL_OUTPUT_UNRELIABLE");
+    if (typedText) parseTextEvidence(answer);
     await env.REVIEW_DB.prepare(
       `UPDATE assistance_run SET status='complete',answer=?,output_key=?,output_sha256=?,metrics_json=?,finished_at=? WHERE id=? AND status='running' AND started_at=?`,
     )
@@ -639,7 +695,7 @@ export async function runHelp(env: HelpEnv, runId: string) {
         key,
         digest,
         JSON.stringify({
-          ...(result.metrics ?? {}),
+          ...(metrics ?? {}),
           latency_ms: Date.now() - started,
         }),
         now(),

@@ -1,3 +1,4 @@
+import { textRegions } from "./text-evidence";
 export type Choice = "" | "yes" | "no" | "unsure";
 export type ImageReview = {
   type: string;
@@ -8,6 +9,11 @@ export type ImageReview = {
   note: string;
   uncertain: boolean;
   seconds: number;
+  inspection?: {
+    planVersion: "overlap-grid-v1";
+    checkedRegions: string[];
+    noTextConfirmed: boolean;
+  };
 };
 export type Family = {
   id: string;
@@ -88,6 +94,26 @@ export function validate(
       x.seconds > 86400
     )
       throw Error("Invalid view rotation or review time.");
+    let inspection: ImageReview["inspection"];
+    if (x.inspection !== undefined) {
+      const i = object(x.inspection);
+      if (
+        i.planVersion !== "overlap-grid-v1" ||
+        !Array.isArray(i.checkedRegions) ||
+        new Set(i.checkedRegions).size !== i.checkedRegions.length ||
+        i.checkedRegions.some((r) => !textRegions.some((t) => t.label === r))
+      )
+        throw Error("Invalid text inspection record.");
+      inspection = {
+        planVersion: "overlap-grid-v1",
+        checkedRegions: i.checkedRegions as string[],
+        noTextConfirmed: bool(i.noTextConfirmed),
+      };
+      if (x.text === "no" && !inspection.noTextConfirmed)
+        throw Error(
+          "Confirm that you checked the pixels for writing, numbers and watermarks before answering No.",
+        );
+    }
     const out = {
       type: String(x.type),
       usable: x.usable as Choice,
@@ -97,6 +123,7 @@ export function validate(
       note: text(x.note, 2000),
       uncertain: bool(x.uncertain),
       seconds: Math.round(x.seconds),
+      ...(inspection ? { inspection } : {}),
     };
     if ((out.uncertain || out.usable === "unsure") && !out.note)
       throw Error("Add a short note about what is uncertain.");
