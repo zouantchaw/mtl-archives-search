@@ -45,8 +45,12 @@ for (const [name, value] of Object.entries(local.vars))
 const config = InputWorkerSchema.parse({
   name: local.name,
   compatibilityDate: local.compatibility_date,
-  workersDev: true,
-  previewUrls: false,
+  workersDev: local.workers_dev,
+  previewUrls: local.preview_urls,
+  domains: local.routes.map(route => {
+    if (!route.custom_domain) throw Error("Reviewer requires an origin Custom Domain");
+    return route.pattern;
+  }),
   assets: { runWorkerFirst: true, notFoundHandling: "single-page-application" },
   env,
   observability: { enabled: true },

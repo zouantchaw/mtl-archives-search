@@ -23,7 +23,7 @@ RESOURCE_BOUNDARY = {
     'studies_id': '37d7c2de-2178-4050-902f-4b456e59916a',
     'sources_bucket': 'mtl-archives-research-sources',
     'derived_bucket': 'mtl-archives-research-derived',
-    'transfer_endpoint': 'https://mtl-archives-research-transfer.wiel.workers.dev',
+    'transfer_endpoint': 'https://transfer.mtlarchives.com',
     'token_file': '/Users/wiel/.config/mtl-research-transfer/secrets.json'
 }
 

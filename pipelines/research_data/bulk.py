@@ -24,7 +24,7 @@ import requests
 import run as core
 
 HERE=Path(__file__).resolve().parent
-ENDPOINT='https://mtl-archives-research-transfer.wiel.workers.dev'
+ENDPOINT='https://transfer.mtlarchives.com'
 TOKEN_FILE=Path('/Users/wiel/.config/mtl-research-transfer/secrets.json')
 MAX_PIXELS=1_000_000_000
 SCHEMA='mtl-research-backfill-v1'

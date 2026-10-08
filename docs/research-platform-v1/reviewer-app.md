@@ -1,6 +1,8 @@
 # MTL Archives research reviewer
 
-Production app: **https://mtl-archives-research-reviewer.wiel.workers.dev**
+Production app: **https://reviewer.mtlarchives.com**
+
+October 8 domain cutover retains the existing Access application/audience and owner-only allow policy. Both the Wrangler source and generated build configuration disable workers.dev and preview URLs, so future deployments preserve the protected project domain.
 
 This private Cloudflare app replaces the local HTML/CSV workflow for the October
 3 caption-feedback pilot. It is for preparing image decisions, related-photo

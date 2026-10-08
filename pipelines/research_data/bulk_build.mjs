@@ -8,7 +8,7 @@ const executable=execFileSync('which',['cf'],{encoding:'utf8'}).trim();
 const cfRoot=path.dirname(path.dirname(await fs.realpath(executable)));
 const utils=await import(path.join(cfRoot,'node_modules/@cloudflare/build-output-utils/dist/index.mjs'));
 const configuration=await import(path.join(cfRoot,'node_modules/@cloudflare/config/dist/index.mjs'));
-const config=configuration.InputWorkerSchema.parse({name:'mtl-archives-research-transfer',compatibilityDate:'2026-10-02',workersDev:true,previewUrls:false,
+const config=configuration.InputWorkerSchema.parse({name:'mtl-archives-research-transfer',compatibilityDate:'2026-10-02',workersDev:false,previewUrls:false,domains:['transfer.mtlarchives.com'],
  env:{SOURCES:{type:'r2',name:'mtl-archives-research-sources'},DERIVED:{type:'r2',name:'mtl-archives-research-derived'},CATALOG:{type:'d1',name:'mtl-archives-research-catalog',id:'36147ac0-44c6-43db-84bf-6a8d2bb41b8a'}},
  limits:{cpuMs:300000},observability:{enabled:false}});
 await utils.writeRootConfig(root,undefined,{isPreview:false});

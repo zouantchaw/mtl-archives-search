@@ -1,6 +1,6 @@
 # MTL Archives research reviewer
 
-Private production app: **https://mtl-archives-research-reviewer.wiel.workers.dev**
+Private production app: **https://reviewer.mtlarchives.com**
 
 Cloudflare Worker + React + new D1, with owner-only Access and selected images
 from the existing private research R2 buckets. Isolated Images, Workers AI,

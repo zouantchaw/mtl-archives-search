@@ -1,6 +1,8 @@
 # Full canonical backfill
 
-Status: launched 2026-10-02; multi-hour processing, not yet a completed corpus.
+Status: launched 2026-10-02; both phases finished with complete accounting on 2026-10-03. Frozen inputs and receipts remain preserved. This accounts for successes and explicit gaps, rather than claiming every source was acquired.
+
+Production transfer endpoint since October 8: **https://transfer.mtlarchives.com**. It serves the same Worker and research-only resources. The October 2 frozen runner remains historical evidence; a new execution revision must use the new endpoint rather than rewriting that runner. `bulk_build.mjs` persists the Custom Domain and disables workers.dev and preview URLs.
 
 The frozen selector contains 13,499 canonical public aliases, their exact source
 URLs, production image keys, inventory ETags and sizes. Selected delivery bytes
