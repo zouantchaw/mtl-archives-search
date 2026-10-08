@@ -1,7 +1,7 @@
 import { ImageResponse } from 'next/og';
 import { API_BASE } from '@/lib/runtime-config';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 export const alt = 'MTL Archives — Photos historiques de Montréal';
 

@@ -1,3 +1,4 @@
+import { deliverEmail, type EmailSender } from "@mtl-archives/core";
 import { researchInference } from './research-inference';
 import { handleOperator } from './operator';
 import { reserveResearchTurn } from './research-budget';
@@ -65,7 +66,8 @@ type Env = {
   CLOUDFLARE_R2_PUBLIC_DOMAIN?: string;
   IMAGE_TRANSFORM_ZONE?: string;
   CLERK_JWKS_URL?: string;
-  RESEND_SECRET_KEY?: string;
+  EMAIL?: EmailSender;
+  MAIL_DB?: D1Database;
   NEWSLETTER_TOKEN_SECRET?: string;
   SITE_URL?: string;
   API_ORIGIN?: string;
@@ -107,7 +109,6 @@ const SIGNED_URL_TTL_SECONDS = 3600;
 const SIGNED_URL_TTL_BUFFER_SECONDS = 60;
 const COTE_PATTERN = /^[A-Z]{1,4}[\d-]+/i;
 const CACHE_KEY_VERSION = '2026-09-13-canonical-gap-repair-v3';
-const NEWSLETTER_FROM_EMAIL = 'MTL Archives <support@support.mtlarchives.com>';
 const DEFAULT_SITE_URL = 'https://www.mtlarchives.com';
 const DEFAULT_NEWSLETTER_REPLY_TO = 'zouantchaw74@gmail.com';
 const NEWSLETTER_CONSENT_VERSION = '2026-03-13-v1';
@@ -923,50 +924,27 @@ async function recordNewsletterDelivery(
   issueDateKey: string | null,
   emailType: NewsletterDeliveryType,
   status: 'sent' | 'failed',
-  resendEmailId: string | null,
+  messageId: string | null,
   errorMessage: string | null,
 ): Promise<void> {
   await env.DB.prepare(
     `INSERT INTO newsletter_delivery (
       subscription_id, issue_date_key, email_type, resend_email_id, status, error_message
     ) VALUES (?, ?, ?, ?, ?, ?)`
-  ).bind(subscriptionId, issueDateKey, emailType, resendEmailId, status, errorMessage).run();
+  ).bind(subscriptionId, issueDateKey, emailType, messageId, status, errorMessage).run();
 }
 
-async function sendResendEmail(
+async function sendCloudflareEmail(
   env: Env,
-  payload: {
-    to: string;
-    subject: string;
-    html: string;
-    text: string;
-  },
+  key: string,
+  payload: { to: string; subject: string; html: string; text: string },
 ): Promise<string> {
-  if (!env.RESEND_SECRET_KEY) {
-    throw new Error('RESEND_SECRET_KEY is not configured');
-  }
-
-  const response = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${env.RESEND_SECRET_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from: NEWSLETTER_FROM_EMAIL,
-      reply_to: getNewsletterReplyTo(env),
-      to: [payload.to],
-      subject: payload.subject,
-      html: payload.html,
-      text: payload.text,
-    }),
+  if (!env.EMAIL || !env.MAIL_DB) throw new Error('Cloudflare email delivery is not configured');
+  return deliverEmail(env.MAIL_DB, env.EMAIL, key, {
+    from: { email: 'support@support.mtlarchives.com', name: 'MTL Archives' },
+    replyTo: getNewsletterReplyTo(env),
+    ...payload,
   });
-
-  const json = await response.json() as { id?: string; error?: { message?: string } };
-  if (!response.ok || !json.id) {
-    throw new Error(json.error?.message || `Resend send failed with ${response.status}`);
-  }
-  return json.id;
 }
 
 async function sendWelcomeNewsletterEmail(
@@ -994,18 +972,18 @@ async function sendWelcomeNewsletterEmail(
   });
 
   try {
-    const resendId = await sendResendEmail(env, {
+    const messageId = await sendCloudflareEmail(env, `newsletter:${subscription.id}:welcome:${subscription.resubscribed_at || subscription.subscribed_at}`, {
       to: subscription.email,
       subject: getWelcomeEmailSubject(lang),
       html,
       text,
     });
 
-    await recordNewsletterDelivery(env, subscription.id, null, NEWSLETTER_EMAIL_TYPES.WELCOME, 'sent', resendId, null);
+    await recordNewsletterDelivery(env, subscription.id, null, NEWSLETTER_EMAIL_TYPES.WELCOME, 'sent', messageId, null);
     await env.DB.prepare(
       'UPDATE newsletter_subscription SET welcome_sent_at = strftime(\'%Y-%m-%dT%H:%M:%fZ\', \'now\'), updated_at = strftime(\'%Y-%m-%dT%H:%M:%fZ\', \'now\') WHERE id = ?'
     ).bind(subscription.id).run();
-    await insertNewsletterEvent(env, subscription.id, subscription.email_normalized, 'welcome_send', source, null, null, { resendId });
+    await insertNewsletterEvent(env, subscription.id, subscription.email_normalized, 'welcome_send', source, null, null, { messageId });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Welcome email failed';
     await recordNewsletterDelivery(env, subscription.id, null, NEWSLETTER_EMAIL_TYPES.WELCOME, 'failed', null, message);
@@ -1033,17 +1011,17 @@ async function sendUnsubscribeConfirmationEmail(
   });
 
   try {
-    const resendId = await sendResendEmail(env, {
+    const messageId = await sendCloudflareEmail(env, `newsletter:${subscription.id}:unsubscribe:${subscription.resubscribed_at || subscription.subscribed_at}`, {
       to: subscription.email,
       subject: getUnsubscribeConfirmationSubject(lang),
       html,
       text,
     });
-    await recordNewsletterDelivery(env, subscription.id, null, NEWSLETTER_EMAIL_TYPES.UNSUBSCRIBE_CONFIRMATION, 'sent', resendId, null);
+    await recordNewsletterDelivery(env, subscription.id, null, NEWSLETTER_EMAIL_TYPES.UNSUBSCRIBE_CONFIRMATION, 'sent', messageId, null);
     await env.DB.prepare(
       'UPDATE newsletter_subscription SET unsubscribe_confirmation_sent_at = strftime(\'%Y-%m-%dT%H:%M:%fZ\', \'now\'), updated_at = strftime(\'%Y-%m-%dT%H:%M:%fZ\', \'now\') WHERE id = ?'
     ).bind(subscription.id).run();
-    await insertNewsletterEvent(env, subscription.id, subscription.email_normalized, 'unsubscribe_confirmation_send', source, null, null, { resendId });
+    await insertNewsletterEvent(env, subscription.id, subscription.email_normalized, 'unsubscribe_confirmation_send', source, null, null, { messageId });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unsubscribe confirmation email failed';
     await recordNewsletterDelivery(env, subscription.id, null, NEWSLETTER_EMAIL_TYPES.UNSUBSCRIBE_CONFIRMATION, 'failed', null, message);
@@ -1115,19 +1093,19 @@ async function sendDailyNewsletterIssue(
   });
 
   try {
-    const resendId = await sendResendEmail(env, {
+    const messageId = await sendCloudflareEmail(env, `newsletter:${subscription.id}:daily:${issue.dateKey}`, {
       to: subscription.email,
       subject: getDailyNewsletterSubject(lang, subjectDate),
       html,
       text,
     });
-    await recordNewsletterDelivery(env, subscription.id, issue.dateKey, NEWSLETTER_EMAIL_TYPES.DAILY, 'sent', resendId, null);
+    await recordNewsletterDelivery(env, subscription.id, issue.dateKey, NEWSLETTER_EMAIL_TYPES.DAILY, 'sent', messageId, null);
     await env.DB.prepare(
       'UPDATE newsletter_subscription SET last_daily_sent_at = strftime(\'%Y-%m-%dT%H:%M:%fZ\', \'now\'), updated_at = strftime(\'%Y-%m-%dT%H:%M:%fZ\', \'now\') WHERE id = ?'
     ).bind(subscription.id).run();
     await insertNewsletterEvent(env, subscription.id, subscription.email_normalized, 'daily_send', source, null, null, {
       dateKey: issue.dateKey,
-      resendId,
+      messageId,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Daily newsletter send failed';
@@ -1153,8 +1131,8 @@ async function runDailyNewsletter(
     source: NewsletterRunSource;
   },
 ): Promise<NewsletterRunSummary> {
-  if (!env.RESEND_SECRET_KEY) {
-    throw new Error('RESEND_SECRET_KEY is not configured');
+  if (!env.EMAIL || !env.MAIL_DB) {
+    throw new Error('Cloudflare email delivery is not configured');
   }
   if (!env.NEWSLETTER_TOKEN_SECRET) {
     throw new Error('NEWSLETTER_TOKEN_SECRET is not configured');
@@ -1524,7 +1502,7 @@ async function handleNewsletterAdminRun(
   const requestedDateKey = typeof payload.dateKey === 'string' && payload.dateKey.trim()
     ? payload.dateKey.trim()
     : getTorontoDateKey();
-  const requestedSource: NewsletterRunSource = payload.source === 'vercel_cron' ? 'vercel_cron' : 'admin';
+  const requestedSource: NewsletterRunSource = payload.source === 'cloudflare_cron' ? 'cloudflare_cron' : 'admin';
   const summary = await runDailyNewsletter(env, ctx, {
     dateKey: requestedDateKey,
     runDate: new Date(),

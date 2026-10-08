@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
       },
       body: JSON.stringify({
         dateKey,
-        source: 'vercel_cron',
+        source: 'cloudflare_cron',
       }),
       cache: 'no-store',
     });

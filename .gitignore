@@ -98,3 +98,9 @@ data/social/autoresearch_shortlist/
 data/social/cross-platform-content-analytics/
 .tmp_live_patch/
 .vercel
+
+# Cloudflare build artifacts and local secrets
+.open-next/
+.wrangler/
+.dev.vars*
+.env.production.local

@@ -3,7 +3,7 @@ import { API_BASE } from '@/lib/runtime-config';
 import { normalizePhotoId } from '@/lib/photo-id';
 import { buildOrientedImagePath } from '@/lib/oriented-image';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 export const alt = 'MTL Archives';
 

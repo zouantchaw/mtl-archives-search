@@ -5,7 +5,7 @@ import {
   RESEARCH_FALLBACK_MODEL,
 } from "./inspect-fallback";
 // Cheap inspect uses the existing Workers AI binding. Fallback GPT-5.4 is also
-// routed through that Worker so Vercel never receives a Cloudflare account token.
+// routed through that Worker; the site never needs a Cloudflare account token.
 function workersAi() {
   return createOpenAICompatible({
     name: "archive-workers-ai",
@@ -15,8 +15,6 @@ function workersAi() {
   });
 }
 export function researchModel() {
-  if (process.env.RESEARCH_PROVIDER === "gateway")
-    return process.env.RESEARCH_MODEL || "mistral/mistral-large-3";
   return workersAi()(RESEARCH_CHEAP_MODEL);
 }
 export function researchInspectFallbackModel() {

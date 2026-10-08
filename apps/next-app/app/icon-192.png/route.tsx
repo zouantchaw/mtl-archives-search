@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 // V4 brand mark — 2x2 colored dot cluster (192x192 PWA icon)
 export async function GET() {

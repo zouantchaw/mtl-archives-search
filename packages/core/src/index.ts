@@ -56,3 +56,5 @@ export function validateMetadataQuality(record: PhotoRecord): void {
     });
   }
 }
+
+export { deliverEmail, type EmailPayload, type EmailSender, type EmailDeliveryDb } from "./email-delivery";

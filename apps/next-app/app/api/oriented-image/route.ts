@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import sharp from 'sharp';
+import { getCloudflareContext } from '@opennextjs/cloudflare';
 
 export const runtime = 'nodejs';
 
@@ -71,18 +71,18 @@ export async function GET(request: NextRequest): Promise<Response> {
       type: upstream.headers.get('content-type') || 'image/jpeg',
     });
   } else {
-    const normalizedBuffer = await sharp(sourceBuffer, { failOn: 'none' })
-      .rotate(rotation)
-      .toBuffer();
-    body = new Blob([Uint8Array.from(normalizedBuffer)], {
-      type: upstream.headers.get('content-type') || 'image/jpeg',
-    });
+    const { env } = await getCloudflareContext({ async: true });
+    const stream = new Blob([Uint8Array.from(sourceBuffer)]).stream();
+    const image = await env.IMAGES!.input(stream as unknown as Parameters<NonNullable<CloudflareEnv["IMAGES"]>["input"]>[0])
+      .transform({ rotate: rotation as 0 | 90 | 180 | 270 })
+      .output({ format: 'image/jpeg', quality: 95 });
+    body = new Blob([await image.response().arrayBuffer()], { type: "image/jpeg" });
   }
 
   return new Response(body, {
     status: 200,
     headers: {
-      'content-type': upstream.headers.get('content-type') || 'image/jpeg',
+      'content-type': body.type,
       'cache-control': 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400',
       'x-image-orientation-normalized': 'true',
     },

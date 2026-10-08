@@ -14,7 +14,11 @@ export async function GET(request: Request) {
         "Cache-Control": "public, max-age=86400, s-maxage=604800",
       },
     });
-  } catch {
+  } catch (error) {
+    console.error('research_image_failed', {
+      recordId: parsed.data,
+      error: error instanceof Error ? error.message : 'Unknown image error',
+    });
     return new Response("Image unavailable", { status: 404 });
   }
 }

@@ -10,6 +10,7 @@ export function getStripe(): Stripe {
 
   if (!stripeClient) {
     stripeClient = new Stripe(secretKey, {
+      httpClient: Stripe.createFetchHttpClient(),
       appInfo: {
         name: 'MTL Archives',
       },
