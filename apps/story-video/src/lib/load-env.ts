@@ -58,7 +58,7 @@ export function resolveApiBase(): string {
         url.hostname === "127.0.0.1" ||
         url.hostname === "::1"
       ) {
-        return "https://mtl-archives-worker.wiel.workers.dev";
+        return "https://api.mtlarchives.com";
       }
     } catch {
       return candidate;
@@ -66,5 +66,5 @@ export function resolveApiBase(): string {
     return candidate;
   }
 
-  return "https://mtl-archives-worker.wiel.workers.dev";
+  return "https://api.mtlarchives.com";
 }

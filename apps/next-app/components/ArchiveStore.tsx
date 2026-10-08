@@ -1756,7 +1756,7 @@ function ArchiveStoreInner({ initialView = 'landing' }: ArchiveStoreProps) {
             </Link>
           </section>
 
-          <section className="px-5 pb-10 text-left sm:px-12 sm:pb-12 sm:text-center">
+          <section id="newsletter" className="scroll-mt-24 px-5 pb-10 text-left sm:px-12 sm:pb-12 sm:text-center">
             <h2 className="text-display text-[2.35rem] font-semibold leading-[0.98] tracking-[-0.03em] text-foreground sm:text-[3.5rem]">
               {t.newsletterTitle}
             </h2>

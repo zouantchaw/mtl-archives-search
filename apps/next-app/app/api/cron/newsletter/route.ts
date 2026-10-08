@@ -1,3 +1,4 @@
+import { archiveApiFetch } from "@/lib/archive-api-fetch";
 import { type NextRequest, NextResponse } from 'next/server';
 import { resolveRuntimeConfig } from '@/lib/runtime-env';
 
@@ -81,7 +82,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const response = await fetch(`${getWorkerApiBase()}/api/newsletter/admin/run`, {
+    const response = await archiveApiFetch(`${getWorkerApiBase()}/api/newsletter/admin/run`, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
@@ -89,7 +90,7 @@ export async function GET(request: NextRequest) {
       },
       body: JSON.stringify({
         dateKey,
-        source: 'vercel_cron',
+        source: 'cloudflare_cron',
       }),
       cache: 'no-store',
     });

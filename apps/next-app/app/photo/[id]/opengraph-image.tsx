@@ -1,9 +1,10 @@
+import { archiveApiFetch } from "@/lib/archive-api-fetch";
 import { ImageResponse } from 'next/og';
 import { API_BASE } from '@/lib/runtime-config';
 import { normalizePhotoId } from '@/lib/photo-id';
 import { buildOrientedImagePath } from '@/lib/oriented-image';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 export const alt = 'MTL Archives';
 
@@ -33,7 +34,7 @@ type PhotoData = {
 
 async function getPhoto(id: string): Promise<PhotoData | null> {
   try {
-    const res = await fetch(`${API_BASE}/api/photos?id=${encodeURIComponent(id)}&cv=${PHOTO_API_CACHE_VERSION}`, {
+    const res = await archiveApiFetch(`${API_BASE}/api/photos?id=${encodeURIComponent(id)}&cv=${PHOTO_API_CACHE_VERSION}`, {
       next: { revalidate: 300 },
     });
     if (!res.ok) return null;

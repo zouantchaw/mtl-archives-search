@@ -1,13 +1,14 @@
-import sharp from "sharp";
+import { archiveApiFetch } from "@/lib/archive-api-fetch";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import type { PhotoRecord } from "../types";
 import type { ArchivePhoto } from "./schema";
 export const archiveOrigin =
   process.env.API_BASE_URL ||
   process.env.NEXT_PUBLIC_API_URL ||
-  "https://mtl-archives-worker.wiel.workers.dev";
+  "https://api.mtlarchives.com";
 const imageOrigin = "https://pub-6a29793ea7664738880d1cc5afb21b87.r2.dev";
 export async function archiveFetch(path: string, signal?: AbortSignal) {
-  const response = await fetch(new URL(path, archiveOrigin), {
+  const response = await archiveApiFetch(new URL(path, archiveOrigin), {
     cache: "no-store",
     signal: signal
       ? AbortSignal.any([signal, AbortSignal.timeout(35000)])
@@ -68,7 +69,8 @@ export async function imageBytes(record: PhotoRecord, signal?: AbortSignal) {
   if (!/^mtl_archives_image_\d+\.(jpg|jpeg|png)$/i.test(key))
     throw new Error("Unsupported archive image");
   const response = await fetch(`${imageOrigin}/${encodeURIComponent(key)}`, {
-    redirect: "error",
+    // Workers supports manual/follow only. Non-2xx redirects fail the check below.
+    redirect: "manual",
     signal: signal
       ? AbortSignal.any([signal, AbortSignal.timeout(15000)])
       : AbortSignal.timeout(15000),
@@ -92,9 +94,11 @@ export async function imageBytes(record: PhotoRecord, signal?: AbortSignal) {
   } finally {
     await reader.cancel();
   }
-  return sharp(Buffer.concat(parts), { limitInputPixels: 100_000_000 })
-    .rotate(record.rotationDegrees ?? 0)
-    .resize(900, 900, { fit: "inside", withoutEnlargement: true })
-    .jpeg({ quality: 78 })
-    .toBuffer();
+  const { env } = await getCloudflareContext({ async: true });
+  const stream = new Blob(parts.map(part => new Uint8Array(part))).stream();
+  const image = await env.IMAGES!.input(stream as unknown as Parameters<NonNullable<CloudflareEnv["IMAGES"]>["input"]>[0])
+    .transform({ rotate: (record.rotationDegrees ?? 0) as 0 | 90 | 180 | 270 })
+    .transform({ width: 900, height: 900, fit: "scale-down" })
+    .output({ format: "image/jpeg", quality: 78 });
+  return Buffer.from(await image.response().arrayBuffer());
 }

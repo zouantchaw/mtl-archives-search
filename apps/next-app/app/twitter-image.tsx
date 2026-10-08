@@ -1,7 +1,8 @@
+import { archiveApiFetch } from "@/lib/archive-api-fetch";
 import { ImageResponse } from 'next/og';
 import { API_BASE } from '@/lib/runtime-config';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 export const alt = 'MTL Archives — Photos historiques de Montréal';
 
@@ -18,7 +19,7 @@ type PhotoData = {
 
 async function getPhotos(): Promise<PhotoData[]> {
   try {
-    const res = await fetch(`${API_BASE}/api/photos?limit=4&minTrust=0.65`, {
+    const res = await archiveApiFetch(`${API_BASE}/api/photos?limit=4&minTrust=0.65`, {
       next: { revalidate: 3600 },
     });
     if (!res.ok) return [];

@@ -1,7 +1,7 @@
 # Architecture
 
 ```
-Browser  →  Next.js (Vercel)  →  Cloudflare Worker
+Browser  →  Next.js (Cloudflare Workers / OpenNext)  →  Cloudflare Worker
                                   ├─ D1          canonical records, game, newsletter, operator jobs, provenance packages
                                   ├─ Vectorize   CLIP + BGE indexes
                                   ├─ R2          original JPEGs (never overwritten)
@@ -11,8 +11,10 @@ Browser  →  Next.js (Vercel)  →  Cloudflare Worker
 
 ## Product surfaces
 
+The public API uses `api.mtlarchives.com`. Site-to-API requests use the existing `ARCHIVE_API` service binding at runtime; browser clients and standalone pipelines use the project API domain. Private research HTTP surfaces use `reviewer.mtlarchives.com` (existing owner-only Access app) and `transfer.mtlarchives.com` (existing bearer protection). Worker resources and their data identities are retained. See [Cloudflare operations](cloudflare-operations.md) for candidate/production routing and the temporary old-email-link compatibility disposition.
+
 - **Search** (`/`): visual (CLIP), text (captions), hybrid. Worker `/api/search` and `/api/photos`.
-- **Photo + print**: Stripe checkout, Resend email, manual fulfillment.
+- **Photo + print**: Stripe checkout, native Cloudflare Email Sending with durable per-recipient delivery evidence, manual fulfillment.
 - **Stories** (`/stories`, `/stories/[slug]`, `/links`): archive-led editorial pages served from the Stories D1 database. They use the same public navigation, cart, typography, and visual tokens as Search, Game, and Prints.
 - **Game**: daily location guess; D1 `daily_challenge` / `daily_guess`.
 - **Reading room** (`/research`): one typed tool per turn. Search fills a wall of up to 12 photographs; inspect labels objects without emptying the grid. Taste questions curate city prints. Pins share via `?c=` and print via `/print?ids=`. **Save as package** writes a D1 provenance package and opens `/package/{id}` — sources, claims, unknowns, assembler review. `client-ok` is not City certification. Details: [reading-room.md](reading-room.md).
@@ -39,3 +41,13 @@ Browser  →  Next.js (Vercel)  →  Cloudflare Worker
 Schema lives in `infrastructure/d1/migrations/`. Do not delete applied migrations.
 
 Explorer layout presets are served as static, snapshot-bound coordinate artifacts. Custom cosine UMAP runs in a browser Web Worker; applying a layout changes display coordinates only. Shared links and exports include the configuration, engine version and vector snapshot hash. Validated custom coordinates are cached in IndexedDB; reload restores the cache or offers an explicit restore choice while showing the published map.
+
+## Site runtime
+
+The site runs on `mtl-archives-site`, with static assets, native Images transforms, R2 incremental caching and two SQLite Durable Object classes for ISR revalidation and cache tags. Analytics writes bounded, non-PII event dimensions to `mtl_archives_site_events`; it does not collect full URLs, package identifiers, email addresses or search text. The optional Explorer runs as its own static-assets Worker. Its snapshot proxy serves only the fixed published artifact names, preserving the vector checksum and supporting range requests.
+
+Print and newsletter sends share `mtl-archives-mail` D1 delivery evidence. A provider acceptance ID records acceptance, not inbox delivery. Customer and administrator order messages have separate keys; replay can finish a missing administrator message without resending an accepted customer receipt. Unknown outcomes and expired send leases require reconciliation. See [Cloudflare operations](cloudflare-operations.md).
+
+### Production routing after the October 8 Cloudflare cutover
+
+The public site and Explorer are now Cloudflare Custom Domains on their respective Workers, with their obsolete Vercel projects removed. The site preserves apex-to-www redirects and uses its ARCHIVE_API service binding for server requests. Cloudflare runs the hourly newsletter gate; the old Vercel scheduler is disabled/retired. Production phone emulation verifies search taps, game map/pin placement, print configuration, reading room and Explorer. [Cloudflare operations](cloudflare-operations.md) records the deployment commands and the pending historical newsletter-link disposition.

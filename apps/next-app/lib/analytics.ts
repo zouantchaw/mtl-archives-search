@@ -1,7 +1,6 @@
-// Vercel Analytics Custom Events
-// https://vercel.com/docs/analytics/custom-events
+// Cloudflare Analytics Engine events; the transport keeps only approved dimensions and metrics.
 
-import { track } from '@vercel/analytics';
+import { track } from './cloudflare-analytics';
 
 /**
  * Get referrer context from URL params (utm_source, utm_medium) or document.referrer.

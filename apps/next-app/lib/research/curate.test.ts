@@ -55,15 +55,15 @@ test("curate drops maps and damaged scans, keeps ordinary photographs", () => {
   const photo = {
     metadataFilename: "mtl_archives_metadata_1.json",
     searchMetadata: { primaryCategory: "photograph", themes: [], searchFacets: [], excludeFromDefaultVisualSearch: false, qualityAction: null },
-  } as PhotoRecord;
+  } as unknown as PhotoRecord;
   const map = {
     metadataFilename: "mtl_archives_metadata_2.json",
     searchMetadata: { primaryCategory: "map", themes: [], searchFacets: [], excludeFromDefaultVisualSearch: false, qualityAction: null },
-  } as PhotoRecord;
+  } as unknown as PhotoRecord;
   const excluded = {
     metadataFilename: "mtl_archives_metadata_3.json",
     searchMetadata: { primaryCategory: "photograph", themes: [], searchFacets: [], excludeFromDefaultVisualSearch: true, qualityAction: null },
-  } as PhotoRecord;
+  } as unknown as PhotoRecord;
   const picked = curateRecords([map, excluded, photo], 12);
   assert.deepEqual(
     picked.map((p) => p.metadataFilename),

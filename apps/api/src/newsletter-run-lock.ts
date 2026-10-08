@@ -7,7 +7,7 @@ type NewsletterRunDb = {
   };
 };
 
-export type NewsletterRunSource = 'cron' | 'admin' | 'vercel_cron';
+export type NewsletterRunSource = 'cron' | 'admin' | 'cloudflare_cron' | 'vercel_cron';
 export type NewsletterRunState = 'completed' | 'already_running' | 'already_completed';
 
 export type NewsletterRunSummary = {

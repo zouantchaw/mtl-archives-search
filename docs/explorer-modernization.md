@@ -113,7 +113,7 @@ Region colors and the geometric date check are tied to the legacy layout and are
 
 ## Deployment
 
-The production explorer is [https://explorer.mtlarchives.com/](https://explorer.mtlarchives.com/). `apps/web/vercel.json` only rewrites two kit PDFs. `https://www.mtlarchives.com/` is the Next.js site and does not serve `/explore`. The September 24 refresh publishes immutable snapshot artifacts in R2 and updates only the Explorer deployment; the live search indexes and Worker remain unchanged.
+The production explorer is [https://explorer.mtlarchives.com/](https://explorer.mtlarchives.com/). `apps/web/wrangler.jsonc` deploys its static-assets Worker; the Worker proxies the two kit PDFs and fixed published snapshot files from R2. `https://www.mtlarchives.com/` is the Next.js site and does not serve `/explore`. The September 24 refresh publishes immutable snapshot artifacts in R2 and updates only the Explorer deployment; the live search indexes and Worker remain unchanged.
 
 In development, Vite proxies `/snapshot` to the fixed R2 prefix `https://pub-6a29793ea7664738880d1cc5afb21b87.r2.dev/embeddings` and forwards Range headers. The proxy rewrites to the versioned path in `snapshot-proxy.ts`. The dev app requests `/snapshot` unless `VITE_R2_EMBEDDINGS_BASE_URL` is set. Production builds keep the direct R2 URL. The proxy is not an open proxy.
 
@@ -147,7 +147,7 @@ The web is enabled by default and can be hidden from the map toolbar. For search
 
 Smart search combines visual and semantic retrieval through the same Worker as the main application; exact archival references use its catalogue lookup. Visual search embeds a text description into the image index. Both search the live archive, while graph edges and snapshot-neighbor scores use the published visual matrix. The mode is visible in navigation and retained in the URL. Partial Smart results identify the unavailable branch; transport errors, timeouts, service unavailability, and empty responses are distinct. Only returned-count API values are trusted as result counts.
 
-Refreshes are explicit releases, not an automatic background sync: fetch, reconcile, generate, validate, upload into a new immutable prefix with manifest last, then update `PUBLISHED_SNAPSHOT_PATH` (and any configured Vercel override) and deploy. Never overwrite a published version. The old deployment/prefix remains the rollback path.
+Refreshes are explicit releases, not an automatic background sync: fetch, reconcile, generate, validate, upload into a new immutable prefix with manifest last, then update `PUBLISHED_SNAPSHOT_PATH` (and any configured build override) and deploy. Never overwrite a published version. The old deployment/prefix remains the rollback path.
 
 The [September 24 publication receipt](explorer-snapshot-20260924.json) records artifact hashes, coverage reconciliation, and the previous snapshot for rollback.
 

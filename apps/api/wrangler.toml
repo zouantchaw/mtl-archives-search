@@ -1,6 +1,10 @@
 name = "mtl-archives-worker"
 main = "src/worker.ts"
 compatibility_date = "2025-10-17"
+# Temporary compatibility for the old live frontend and previously sent action links.
+workers_dev = true
+preview_urls = false
+routes = [{ pattern = "api.mtlarchives.com", custom_domain = true }]
 
 [[d1_databases]]
 binding = "DB"
@@ -31,6 +35,19 @@ binding = "AI"
 [vars]
 CLOUDFLARE_R2_PUBLIC_DOMAIN = "pub-6a29793ea7664738880d1cc5afb21b87.r2.dev"
 SITE_URL = "https://www.mtlarchives.com"
-API_ORIGIN = "https://mtl-archives-worker.wiel.workers.dev"
+API_ORIGIN = "https://api.mtlarchives.com"
 NEWSLETTER_REPLY_TO = "zouantchaw74@gmail.com"
 RESEARCH_AI_GATEWAY_ID = "default"
+
+[[d1_databases]]
+binding = "MAIL_DB"
+database_name = "mtl-archives-mail"
+database_id = "c5bcdaa5-c797-4764-ae85-dd201dd91b78"
+
+[[send_email]]
+name = "EMAIL"
+allowed_sender_addresses = ["support@support.mtlarchives.com"]
+
+[observability]
+enabled = true
+head_sampling_rate = 0.1

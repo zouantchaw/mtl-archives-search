@@ -1,3 +1,4 @@
+import { archiveApiFetch } from "@/lib/archive-api-fetch";
 import { unstable_cache } from 'next/cache';
 import { API_BASE } from '@/lib/runtime-config';
 
@@ -41,7 +42,7 @@ const STORY_REVALIDATE_SECONDS = 60;
 async function fetchStoryJson<T>(path: string): Promise<T | null> {
   if (!API_BASE) return null;
   try {
-    const response = await fetch(`${API_BASE}${path}`, {
+    const response = await archiveApiFetch(`${API_BASE}${path}`, {
       headers: { accept: 'application/json' },
     });
     if (!response.ok) return null;

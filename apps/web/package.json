@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "generate-layout-presets": "tsx scripts/generate-layout-presets.ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "deploy:cloudflare": "npm run build:cloudflare && wrangler deploy",
+    "build:cloudflare": "VITE_R2_EMBEDDINGS_BASE_URL=/snapshot vite build"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",

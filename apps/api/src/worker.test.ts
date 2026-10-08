@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { DatabaseSync } from 'node:sqlite';
+import { readFileSync } from 'node:fs';
 import worker from './worker';
 import { createNewsletterToken } from './newsletter-utils';
 
@@ -339,15 +341,30 @@ function createPublicEnv(rows: MockRow[] = []) {
   } as const;
 }
 
+function createMailDb() {
+  const sqlite = new DatabaseSync(':memory:');
+  sqlite.exec(readFileSync(new URL('../../../infrastructure/d1/mail-schema.sql', import.meta.url), 'utf8'));
+  return { prepare(sql: string) { return { bind(...values: unknown[]) { return {
+    async first<T>() { return (sqlite.prepare(sql).get(...values as never[]) ?? null) as T | null; },
+    async run() { return { meta: { changes: Number(sqlite.prepare(sql).run(...values as never[]).changes) } }; },
+  }; } }; } };
+}
+
 function createNewsletterEnv(state: {
   subscriptions?: NewsletterSubscriptionState[];
   events?: NewsletterEventState[];
 } = {}) {
   return {
     DB: createNewsletterMockDb(state),
+    MAIL_DB: createMailDb(),
+    EMAIL: { async send(message: { from: { email: string }; to: string; html: string; text: string }) {
+      assert.equal(message.from.email, 'support@support.mtlarchives.com');
+      assert.ok(message.to); assert.ok(message.html); assert.ok(message.text);
+      return { messageId: 'cf_test_123' };
+    } },
     CLOUDFLARE_R2_PUBLIC_DOMAIN: 'example.r2.dev',
     SITE_URL: 'https://www.mtlarchives.com',
-    API_ORIGIN: 'https://mtl-archives-worker.wiel.workers.dev',
+    API_ORIGIN: 'https://api.mtlarchives.com',
     NEWSLETTER_TOKEN_SECRET: 'newsletter-secret',
   } as const;
 }
@@ -366,16 +383,10 @@ async function flushWaitUntil(): Promise<void> {
   }
 }
 
-async function withMockedResend<T>(run: () => Promise<T>): Promise<T> {
+async function withoutExternalFetch<T>(run: () => Promise<T>): Promise<T> {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (input: RequestInfo | URL) => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
-    if (url === 'https://api.resend.com/emails') {
-      return new Response(JSON.stringify({ id: 're_test_123' }), {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-      });
-    }
     throw new Error(`Unexpected fetch in test: ${url}`);
   };
 
@@ -748,14 +759,13 @@ test('/api/search retries a degraded response and caches the recovered result', 
 
 test('/api/newsletter/subscribe stores an active subscription', async () => {
   setupCacheMock();
-  await withMockedResend(async () => {
+  await withoutExternalFetch(async () => {
     const state = {
       subscriptions: [] as NewsletterSubscriptionState[],
       events: [] as NewsletterEventState[],
     };
     const env = {
       ...createNewsletterEnv(state),
-      RESEND_SECRET_KEY: 'test-resend-key',
     };
     const request = new Request('https://example.com/api/newsletter/subscribe', {
       method: 'POST',
@@ -789,7 +799,7 @@ test('/api/newsletter/subscribe stores an active subscription', async () => {
 
 test('/api/newsletter/subscribe returns already_subscribed for an existing active subscription', async () => {
   setupCacheMock();
-  await withMockedResend(async () => {
+  await withoutExternalFetch(async () => {
     const now = new Date().toISOString();
     const state = {
       subscriptions: [{
@@ -816,7 +826,6 @@ test('/api/newsletter/subscribe returns already_subscribed for an existing activ
     };
     const env = {
       ...createNewsletterEnv(state),
-      RESEND_SECRET_KEY: 'test-resend-key',
     };
     const request = new Request('https://example.com/api/newsletter/subscribe', {
       method: 'POST',
@@ -844,7 +853,7 @@ test('/api/newsletter/subscribe returns already_subscribed for an existing activ
 
 test('/api/newsletter/unsubscribe deactivates the subscription from a signed link', async () => {
   setupCacheMock();
-  await withMockedResend(async () => {
+  await withoutExternalFetch(async () => {
     const now = new Date().toISOString();
     const state = {
       subscriptions: [{
@@ -871,7 +880,6 @@ test('/api/newsletter/unsubscribe deactivates the subscription from a signed lin
     };
     const env = {
       ...createNewsletterEnv(state),
-      RESEND_SECRET_KEY: 'test-resend-key',
     };
     const token = await createNewsletterToken({
       action: 'unsubscribe',
@@ -903,7 +911,7 @@ test('/api/newsletter/unsubscribe deactivates the subscription from a signed lin
 
 test('/api/newsletter/resubscribe reactivates an unsubscribed subscription from a signed link', async () => {
   setupCacheMock();
-  await withMockedResend(async () => {
+  await withoutExternalFetch(async () => {
     const now = new Date().toISOString();
     const state = {
       subscriptions: [{
@@ -930,7 +938,6 @@ test('/api/newsletter/resubscribe reactivates an unsubscribed subscription from 
     };
     const env = {
       ...createNewsletterEnv(state),
-      RESEND_SECRET_KEY: 'test-resend-key',
     };
     const token = await createNewsletterToken({
       action: 'resubscribe',

@@ -4,7 +4,6 @@ import { AnalyticsProvider } from "@/components/AnalyticsProvider";
 import "./globals.css";
 import { CartProvider } from "@/lib/cart-context";
 import { CartDrawer } from "@/components/CartDrawer";
-import { FlagValues } from "@/components/FlagValues";
 import { API_ORIGIN, R2_ORIGIN } from "@/lib/runtime-config";
 
 const figtree = Figtree({
@@ -199,7 +198,6 @@ export default function RootLayout({
           {children}
           <CartDrawer />
         </CartProvider>
-        <FlagValues />
         <AnalyticsProvider />
       </body>
     </html>
