@@ -641,3 +641,7 @@ remain private in the existing isolated R2/D1/Queue/Gateway resources. Historica
 reviews and Moondream outputs are preserved. This is assisted preparation, not
 OCR gold, a caption-feedback experiment or a product promotion. Details and
 Cloudflare capability choices: [reviewer runbook](research-platform-v1/reviewer-app.md).
+
+## Research production domains — October 8, 2026
+
+The private reviewer is https://reviewer.mtlarchives.com, protected by the existing owner-only Access application and JWT audience. Transfer is https://transfer.mtlarchives.com with its existing bearer protection and research-only bindings. Both live services and generated deployment configurations disable workers.dev and preview URLs. The finished October 2 frozen backfill keeps its original code/receipts; future executions use a new revision with the project endpoint. Main-site/API migration authority is the separate codex/cloudflare-migration-20261008 branch; this research checkout does not deploy the main application. See docs/research-platform-v1/reviewer-app.md and docs/research-data-v1/backfill.md.
