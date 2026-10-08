@@ -10,10 +10,14 @@
   ],
   "assets": {
     "directory": ".open-next/assets",
-    "binding": "ASSETS"
+    "binding": "ASSETS",
+    "run_worker_first": true
   },
   "services": [
-    { "binding": "ARCHIVE_API", "service": "mtl-archives-worker" },
+    {
+      "binding": "ARCHIVE_API",
+      "service": "mtl-archives-worker"
+    },
     {
       "binding": "WORKER_SELF_REFERENCE",
       "service": "mtl-archives-site"
@@ -44,7 +48,9 @@
     "NEXT_PUBLIC_SITE_URL": "https://www.mtlarchives.com"
   },
   "triggers": {
-    "crons": ["5 * * * *"]
+    "crons": [
+      "5 * * * *"
+    ]
   },
   "d1_databases": [
     {
