@@ -24,10 +24,10 @@ npm run typecheck --workspace=apps/api
 npm run test --workspace=apps/web
 npm run build:cloudflare --workspace=apps/next-app
 # Deploy an already-built site from the repository root:
-node node_modules/wrangler/bin/wrangler.js deploy --config apps/next-app/wrangler.jsonc
+npm run deploy:cloudflare:built --workspace=apps/next-app
 ```
 
-The site `deploy:cloudflare` script builds and deploys in one command. Explorer `deploy:cloudflare` separately builds with the same-origin `/snapshot` base and deploys its own Worker. The root `deploy` command remains API-only. The root Wrangler is pinned to the same current version so the ordinary API and Explorer scripts support the native email binding. Do not put credentials in Git, shell command arguments, logs or ordinary notes.
+The site `deploy:cloudflare` script builds and deploys in one command. Use `deploy:cloudflare:built` after a separate build, including Cloudflare Builds: OpenNext populates the remote R2 cache before deploying the Worker. Direct Wrangler deployment skips that cache preparation. Explorer `deploy:cloudflare` separately builds with the same-origin `/snapshot` base and deploys its own Worker. The root `deploy` command remains API-only. The root Wrangler is pinned to the same current version so the ordinary API and Explorer scripts support the native email binding. Do not put credentials in Git, shell command arguments, logs or ordinary notes.
 
 Site secrets include Clerk, Stripe, research/admin and cron authentication values. Existing public API/R2 URLs are configured in Wrangler. Set secret values with Wrangler's secret store or a restricted temporary bulk JSON file; remove temporary files after rollback preparation. API secrets and private research surface credentials remain scoped to their existing Workers. `RESEND_SECRET_KEY` is obsolete once the migration's production acceptance and rollback steps finish.
 

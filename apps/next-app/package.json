@@ -17,6 +17,7 @@
     "build:cloudflare": "opennextjs-cloudflare build",
     "preview:cloudflare": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy:cloudflare": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "deploy:cloudflare:built": "opennextjs-cloudflare deploy",
     "cf-typegen": "wrangler types --include-runtime=false --env-interface GeneratedCloudflareEnv generated-cloudflare-env.d.ts"
   },
   "dependencies": {
