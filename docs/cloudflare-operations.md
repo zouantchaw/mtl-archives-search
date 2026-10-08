@@ -39,6 +39,10 @@ R2 stores the incremental cache; the queue Durable Object handles time-based rev
 
 Image rotation preserves original bytes for zero rotation and uses Images for other angles. Reading-room inspection fetches only canonical R2 keys, blocks redirects, caps originals at 12 MB and emits JPEG within 900×900. Archive originals are never rewritten. Non-2xx source responses fail closed. Generated Open Graph images run under the supported Node compatibility runtime.
 
+## Analytics
+
+The same-origin `/api/events` route records bounded event counters and approved dimensions in Analytics Engine. It omits search text, user identifiers, order IDs and cookies; package paths redact their identifier. Verify stored events through the Analytics SQL API using the dataset `events.analyticsEngine.mtl_archives_site_events`, an account scope and a lower time bound. For example, select `blob1 AS event, COUNT(*) AS samples`, group by `blob1` and limit the result. The migration acceptance query confirmed page views, search/photo interactions, print intent and game events in the dataset.
+
 ## Scheduled work
 
 The site scheduled handler calls its own authenticated newsletter route. The intended cron is `5 * * * *`; the route retains the Toronto 07:00 gate and the API's D1 run lock. Disable the scoped Vercel newsletter cron before enabling the Cloudflare trigger, then verify the actual schedules. The existing API `0 13,14 * * *` stories watchdog is independent and must remain unchanged. A non-2xx scheduled response is logged as a failure.
