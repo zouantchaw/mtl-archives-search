@@ -44,7 +44,7 @@
     "NEXT_PUBLIC_SITE_URL": "https://www.mtlarchives.com"
   },
   "triggers": {
-    "crons": []
+    "crons": ["5 * * * *"]
   },
   "d1_databases": [
     {
@@ -62,6 +62,14 @@
     }
   ],
   "routes": [
+    {
+      "pattern": "www.mtlarchives.com",
+      "custom_domain": true
+    },
+    {
+      "pattern": "mtlarchives.com",
+      "custom_domain": true
+    },
     {
       "pattern": "migration.mtlarchives.com",
       "custom_domain": true

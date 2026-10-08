@@ -31,7 +31,7 @@ async function clickDiscoveryFilter(page, index) {
   if (count === 0) return false;
   const targetButton = buttons.nth(index % count);
   try {
-    await targetButton.click({ timeout: 3000, force: true });
+    await targetButton.tap({ timeout: 3000 });
     return true;
   } catch {
     return false;
@@ -87,7 +87,9 @@ async function runScenario(scenario) {
       }
     }
 
-    const tileCount = await page.locator('button.aspect-square img').count();
+    const tileCount = await page.locator('button img').evaluateAll((images) =>
+      images.filter((image) => image.getBoundingClientRect().width > 0 && image.complete && image.naturalWidth > 0).length,
+    );
     if (tileCount < 1) {
       throw new Error(`Expected at least 1 photo tile in ${scenario.name}, got ${tileCount}`);
     }

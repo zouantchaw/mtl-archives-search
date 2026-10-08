@@ -57,3 +57,5 @@ Instagram/Facebook packaging lives in `pipelines/daily-reel` and `apps/story-vid
 Print fulfillment is still manual after Stripe payment. Newsletter is explicit opt-in.
 
 The snapshot Explorer includes researcher map settings: published/local/broad layouts, true 2D/3D similarity, date-depth views, and cancellable custom UMAP. Custom layouts persist on the device; uncached shared layouts ask before computing. Shared links and result exports record settings and snapshot identity; see [Explorer documentation](docs/explorer-modernization.md).
+
+Production hosting uses Cloudflare Custom Domains: www.mtlarchives.com (site), explorer.mtlarchives.com (snapshot Explorer), and api.mtlarchives.com (API). The previous site and Explorer Vercel projects are retired. See [Cloudflare operations](docs/cloudflare-operations.md) for manual deployment, mail evidence, cron, private domains and the historical email-link compatibility transition.
