@@ -12,6 +12,10 @@ The migration branch uses Node 24, Next 16.3.8, OpenNext 1.20.9 and Wrangler 4.1
 | Private camera reviewer | `mtl-archives-research-reviewer` | Existing Cloudflare Access owner policy, research catalog, private source/derived R2, assistance queue, Images and AI |
 | Private bulk camera transfer | `mtl-archives-research-transfer` | Existing bearer protection, catalog and private source/derived R2 |
 
+The API origin is `https://api.mtlarchives.com`. The site uses its `ARCHIVE_API` service binding for same-origin proxies and server-side archive/research/newsletter requests; browser clients, video scripts and the daily-reel pipeline use the public API domain. Static build generation can fetch that same public origin outside the Worker request context. New newsletter unsubscribe/resubscribe links use the API domain.
+
+The private reviewer uses `https://reviewer.mtlarchives.com`; transfer uses `https://transfer.mtlarchives.com`. These Custom Domains point to the existing Workers, retaining their bindings/state. The reviewer retains its Access application/audience and owner policy. Both private services have workers.dev and preview URLs disabled in live settings and generated deployment sources. Their deployment authority is the separate research-data checkout and runbooks; do not deploy them from this main site checkout or rewrite frozen execution evidence.
+
 Clerk provides game identity; Stripe processes payments. MapLibre uses OpenFreeMap. These external services retain their existing product roles. R2 archive originals and canonical index identities are preserved.
 
 ## Deploy
@@ -31,7 +35,9 @@ The site `deploy:cloudflare` script builds and deploys in one command. Use `depl
 
 Site secrets include Clerk, Stripe, research/admin and cron authentication values. Existing public API/R2 URLs are configured in Wrangler. Set secret values with Wrangler's secret store or a restricted temporary bulk JSON file; remove temporary files after rollback preparation. API secrets and private research surface credentials remain scoped to their existing Workers. `RESEND_SECRET_KEY` is obsolete once the migration's production acceptance and rollback steps finish.
 
-The candidate domain is `migration.mtlarchives.com`. Public `www.mtlarchives.com`, apex and Explorer routing, newsletter activation, deployment automation and scoped Vercel retirement are gated on migration acceptance; consult the dated migration ledger for their actual state. The apex wrapper preserves the existing 307 redirect to www, including path and query. Main Worker workers.dev and preview URLs are disabled so production Clerk keys are used only on the authenticated domain.
+The candidate domains are `migration.mtlarchives.com` and `explorer-migration.mtlarchives.com`. Public `www.mtlarchives.com`, apex and `explorer.mtlarchives.com` routing, newsletter activation, deployment automation and scoped Vercel retirement are gated on migration acceptance; consult the dated migration ledger for their actual state. The apex wrapper preserves the existing 307 redirect to www, including path and query. Main and Explorer workers.dev and preview URLs are explicitly disabled.
+
+The API's old workers.dev hostname is a documented compatibility transition, with previews disabled. The old live Vercel frontend still calls it until frontend retirement. Previously sent newsletter action links also use it, and their signed tokens have no expiry. Do not silently break those links: the dated ledger records the user's pending choice of limited legacy redirects versus a deliberate cutoff. After all callers and this disposition are resolved, persist `workers_dev = false` in the API's production configuration and verify old ingress is disabled. No normal new caller should use the old hostname.
 
 ## Caching and images
 

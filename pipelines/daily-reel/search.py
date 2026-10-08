@@ -1,59 +1,12 @@
 """Search the mtl-archives worker API for images."""
 import os
-import subprocess
 import requests
-from pathlib import Path
 from typing import Optional
 
-# Resolve worker URL from wrangler.toml in the monorepo
-REPO_ROOT = Path(__file__).resolve().parents[2]
-WRANGLER_TOML = REPO_ROOT / "apps" / "api" / "wrangler.toml"
-
-
 def _get_worker_url() -> str:
-    """Derive the worker URL from wrangler.toml + account subdomain."""
-    # Parse worker name from wrangler.toml
-    worker_name = None
-    with open(WRANGLER_TOML) as f:
-        for line in f:
-            if line.strip().startswith("name"):
-                worker_name = line.split("=")[1].strip().strip('"')
-                break
-
-    if not worker_name:
-        raise RuntimeError(f"Could not parse worker name from {WRANGLER_TOML}")
-
-    # Get account subdomain via wrangler whoami
-    subdomain = os.environ.get("WORKERS_SUBDOMAIN")
-    if not subdomain:
-        try:
-            result = subprocess.run(
-                ["wrangler", "whoami"],
-                capture_output=True, text=True, timeout=10,
-                cwd=REPO_ROOT / "apps" / "api",
-            )
-            # Parse subdomain from output (format: "...workers.dev subdomain: xxx")
-            for line in result.stdout.splitlines():
-                if "workers.dev" in line.lower() and "subdomain" in line.lower():
-                    subdomain = line.split(":")[-1].strip()
-                    break
-            # Fallback: look for account name pattern
-            if not subdomain:
-                for line in result.stdout.splitlines():
-                    if ".workers.dev" in line:
-                        # Extract subdomain from URL pattern
-                        parts = line.split(".workers.dev")[0].split(".")
-                        if len(parts) > 1:
-                            subdomain = parts[-1]
-                            break
-        except (subprocess.TimeoutExpired, FileNotFoundError):
-            pass
-
-    if not subdomain:
-        # Final fallback: use account subdomain from env or default
-        subdomain = "wiel"
-
-    return f"https://{worker_name}.{subdomain}.workers.dev"
+    """Use the project API domain, with explicit development overrides."""
+    return (os.environ.get("API_BASE") or os.environ.get("MTL_API_BASE")
+            or "https://api.mtlarchives.com").rstrip("/")
 
 
 # Cache the URL at module level

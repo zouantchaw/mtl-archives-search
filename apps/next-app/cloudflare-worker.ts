@@ -13,6 +13,12 @@ export default {
       url.hostname = 'www.mtlarchives.com';
       return Response.redirect(url.toString(), 307);
     }
+    // Public same-origin API proxies stay on the existing API Worker. Local Next
+    // handlers (payments, images and research orchestration) keep their routes.
+    if (["/api/photos", "/api/search", "/api/map", "/api/thumb", "/api/sitemap", "/api/newsletter/subscribe"].includes(url.pathname)) {
+      url.hostname = "api.mtlarchives.com";
+      return env.ARCHIVE_API.fetch(new Request(url, request));
+    }
     return handler.fetch(request, env, ctx);
   },
   async scheduled(_event: ScheduledController, env: CloudflareEnv, ctx: ExecutionContext) {

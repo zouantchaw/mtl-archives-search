@@ -38,7 +38,7 @@ npm run deploy:cloudflare --workspace=apps/web        # Explorer (separate deplo
 
 **Env (site):** `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_R2_PUBLIC_DOMAIN`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `CRON_SECRET`, `NEWSLETTER_ADMIN_SECRET`, `RESEARCH_API_SECRET`.
 
-**Site bindings:** Images, Analytics Engine, R2 incremental cache, Durable Object revalidation queue/tag cache, `MAIL_DB` and native `EMAIL`. Email templates and recipient rules are preserved; delivery evidence is durable and unknown outcomes require review. Clerk remains the game identity provider.
+**Site bindings:** `ARCHIVE_API` service binding to the existing API Worker, Images, Analytics Engine, R2 incremental cache, Durable Object revalidation queue/tag cache, `MAIL_DB` and native `EMAIL`. The public API is `https://api.mtlarchives.com`; new newsletter action links and standalone video/reel clients use that domain. Email templates and recipient rules are preserved; delivery evidence is durable and unknown outcomes require review. Clerk remains the game identity provider.
 
 **Secrets (Worker):** `RESEARCH_API_SECRET`, optional `LAMBDA_API_KEY` (GPU stays off until a named job is authorized).
 

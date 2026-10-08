@@ -1,7 +1,7 @@
 import type { ThemeName } from './url-state'
 import { resolveSnapshotBase, SNAPSHOT_PROXY_TARGET, PUBLISHED_SNAPSHOT_PATH } from './snapshot-proxy'
 
-export const WORKER_ORIGIN = 'https://mtl-archives-worker.wiel.workers.dev'
+export const WORKER_ORIGIN = 'https://api.mtlarchives.com'
 export const DEFAULT_SNAPSHOT_BASE = `${SNAPSHOT_PROXY_TARGET}${PUBLISHED_SNAPSHOT_PATH}`
 
 export function apiOrigin(): string {

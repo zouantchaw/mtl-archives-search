@@ -1,3 +1,4 @@
+import { archiveApiFetch } from "@/lib/archive-api-fetch";
 import { MetadataRoute } from 'next';
 import { API_BASE } from '@/lib/runtime-config';
 import { getAllPublishedStories } from '@/lib/stories';
@@ -18,7 +19,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let photos: SitemapPhoto[] = [];
 
   try {
-    const res = await fetch(`${API_URL}/api/sitemap`, {
+    const res = await archiveApiFetch(`${API_URL}/api/sitemap`, {
       next: { revalidate: 86400 }, // Revalidate daily
     });
 

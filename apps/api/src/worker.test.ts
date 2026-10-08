@@ -364,7 +364,7 @@ function createNewsletterEnv(state: {
     } },
     CLOUDFLARE_R2_PUBLIC_DOMAIN: 'example.r2.dev',
     SITE_URL: 'https://www.mtlarchives.com',
-    API_ORIGIN: 'https://mtl-archives-worker.wiel.workers.dev',
+    API_ORIGIN: 'https://api.mtlarchives.com',
     NEWSLETTER_TOKEN_SECRET: 'newsletter-secret',
   } as const;
 }

@@ -11,6 +11,8 @@ Browser  →  Next.js (Cloudflare Workers / OpenNext)  →  Cloudflare Worker
 
 ## Product surfaces
 
+The public API uses `api.mtlarchives.com`. Site-to-API requests use the existing `ARCHIVE_API` service binding at runtime; browser clients and standalone pipelines use the project API domain. Private research HTTP surfaces use `reviewer.mtlarchives.com` (existing owner-only Access app) and `transfer.mtlarchives.com` (existing bearer protection). Worker resources and their data identities are retained. See [Cloudflare operations](cloudflare-operations.md) for candidate/production routing and the temporary old-email-link compatibility disposition.
+
 - **Search** (`/`): visual (CLIP), text (captions), hybrid. Worker `/api/search` and `/api/photos`.
 - **Photo + print**: Stripe checkout, native Cloudflare Email Sending with durable per-recipient delivery evidence, manual fulfillment.
 - **Stories** (`/stories`, `/stories/[slug]`, `/links`): archive-led editorial pages served from the Stories D1 database. They use the same public navigation, cart, typography, and visual tokens as Search, Game, and Prints.

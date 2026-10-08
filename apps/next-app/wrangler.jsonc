@@ -13,6 +13,7 @@
     "binding": "ASSETS"
   },
   "services": [
+    { "binding": "ARCHIVE_API", "service": "mtl-archives-worker" },
     {
       "binding": "WORKER_SELF_REFERENCE",
       "service": "mtl-archives-site"
@@ -38,7 +39,7 @@
     "head_sampling_rate": 0.1
   },
   "vars": {
-    "NEXT_PUBLIC_API_URL": "https://mtl-archives-worker.wiel.workers.dev",
+    "NEXT_PUBLIC_API_URL": "https://api.mtlarchives.com",
     "NEXT_PUBLIC_R2_PUBLIC_DOMAIN": "pub-6a29793ea7664738880d1cc5afb21b87.r2.dev",
     "NEXT_PUBLIC_SITE_URL": "https://www.mtlarchives.com"
   },

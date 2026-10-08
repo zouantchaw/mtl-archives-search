@@ -1,3 +1,4 @@
+import { archiveApiFetch } from "@/lib/archive-api-fetch";
 import { createAgentUIStreamResponse } from "ai";
 import { createHmac } from "node:crypto";
 import { z } from "zod";
@@ -75,7 +76,7 @@ export async function POST(request: Request) {
       request.headers.get("x-forwarded-for")?.split(",")[0] ||
       "local";
     const key = createHmac("sha256", secret).update(ip.trim()).digest("hex");
-    const budget = await fetch(new URL("/api/research/budget", archiveOrigin), {
+    const budget = await archiveApiFetch(new URL("/api/research/budget", archiveOrigin), {
       method: "POST",
       headers: {
         Authorization: `Bearer ${secret}`,

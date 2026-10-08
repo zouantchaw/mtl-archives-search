@@ -13,7 +13,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://mtl-archives-worker.wiel.workers.dev',
+        target: 'https://api.mtlarchives.com',
         changeOrigin: true,
       },
       [SNAPSHOT_PROXY_PREFIX]: {

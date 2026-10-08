@@ -676,7 +676,7 @@ function getNewsletterSiteUrl(env: Env): string {
 }
 
 function getNewsletterApiOrigin(env: Env): string {
-  const base = (env.API_ORIGIN || 'https://mtl-archives-worker.wiel.workers.dev').trim();
+  const base = (env.API_ORIGIN || 'https://api.mtlarchives.com').trim();
   return base.replace(/\/+$/g, '');
 }
 

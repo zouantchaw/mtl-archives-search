@@ -1,3 +1,4 @@
+import { archiveApiFetch } from "@/lib/archive-api-fetch";
 import { Suspense } from 'react';
 import { PhotoPageClient } from './PhotoPageClient';
 import type { PhotoRecord } from '@/lib/types';
@@ -9,7 +10,7 @@ const PHOTO_API_CACHE_VERSION = '2026-02-20-rotation-v2';
 
 async function getPhoto(id: string): Promise<PhotoRecord | null> {
   try {
-    const res = await fetch(`${API_BASE}/api/photos?id=${encodeURIComponent(id)}&cv=${PHOTO_API_CACHE_VERSION}`, {
+    const res = await archiveApiFetch(`${API_BASE}/api/photos?id=${encodeURIComponent(id)}&cv=${PHOTO_API_CACHE_VERSION}`, {
       // Cache briefly to avoid stale metadata after worker-side cleanups.
       next: { revalidate: 300 },
     });

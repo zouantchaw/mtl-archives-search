@@ -1,13 +1,14 @@
+import { archiveApiFetch } from "@/lib/archive-api-fetch";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import type { PhotoRecord } from "../types";
 import type { ArchivePhoto } from "./schema";
 export const archiveOrigin =
   process.env.API_BASE_URL ||
   process.env.NEXT_PUBLIC_API_URL ||
-  "https://mtl-archives-worker.wiel.workers.dev";
+  "https://api.mtlarchives.com";
 const imageOrigin = "https://pub-6a29793ea7664738880d1cc5afb21b87.r2.dev";
 export async function archiveFetch(path: string, signal?: AbortSignal) {
-  const response = await fetch(new URL(path, archiveOrigin), {
+  const response = await archiveApiFetch(new URL(path, archiveOrigin), {
     cache: "no-store",
     signal: signal
       ? AbortSignal.any([signal, AbortSignal.timeout(35000)])

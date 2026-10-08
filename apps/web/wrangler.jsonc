@@ -3,6 +3,9 @@
   "account_id": "0bb05130da965c096b12cc1f0637f763",
   "main": "cloudflare-worker.ts",
   "compatibility_date": "2026-10-08",
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [ { "pattern": "explorer-migration.mtlarchives.com", "custom_domain": true } ],
   "assets": {
     "directory": "dist",
     "binding": "ASSETS",
