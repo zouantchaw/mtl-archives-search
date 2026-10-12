@@ -79,7 +79,7 @@ using it. Its generated secret remains outside the repo and release evidence.
 
 The current run directory is:
 
-`/Users/wiel/pkm/0xPKM_Lab/04_outputs/mtl-research-backfill-full-2026-10-02`
+`/Users/wiel/Development/mtl-archives-research-outputs/mtl-research-backfill-full-2026-10-02`
 
 Job ID: `26e244cbd2a871b94ca30b7b55e971ac9321e1673ebe61bddbb4aaac2b8b74c2`.
 Worker version: `063b0581-ff6a-4c53-89cc-d737c68d1c39`.
@@ -96,7 +96,7 @@ serving resources. There is no recurring completed-run schedule.
 ```sh
 # From the isolated research worktree:
 .venv-bulk/bin/python pipelines/research_data/bulk.py \
-  --out /Users/wiel/pkm/0xPKM_Lab/04_outputs/mtl-research-backfill-full-2026-10-02 status
+  --out /Users/wiel/Development/mtl-archives-research-outputs/mtl-research-backfill-full-2026-10-02 status
 
 launchctl print gui/$(id -u)/com.wiel.mtl-research-backfill.20261002
 

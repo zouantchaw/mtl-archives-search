@@ -54,4 +54,4 @@ The old indexes (`mtl-archives`, `mtl-archives-clip`) are retained, untouched. T
 
 ## Release result
 
-Shipped Worker `68ff633f-0640-4e41-b560-aec271488a77` and frontend `dpl_FDPGvewpYrnh3Ki92KiQA4pEwdJM`. Production matched all 68 preview evaluation orderings, with zero lost candidates. Both indexes passed full ID enumeration and 16 vector-value checks each. All 13,315 caption restores matched the prepared data. See [mtl-search-repair-2026-09-12](/Users/wiel/pkm/0xPKM_Lab/04_outputs/mtl-search-repair-2026-09-12/report.md) for the visual review and remaining limits.
+Shipped Worker `68ff633f-0640-4e41-b560-aec271488a77` and frontend `dpl_FDPGvewpYrnh3Ki92KiQA4pEwdJM`. Production matched all 68 preview evaluation orderings, with zero lost candidates. Both indexes passed full ID enumeration and 16 vector-value checks each. All 13,315 caption restores matched the prepared data. See [mtl-search-repair-2026-09-12](/Users/wiel/Development/mtl-archives-research-outputs/mtl-search-repair-2026-09-12/report.md) for the visual review and remaining limits.

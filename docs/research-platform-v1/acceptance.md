@@ -91,7 +91,7 @@ acceptance above uses the existing completed bounded release.
 
 Local evidence is under:
 
-`/Users/wiel/pkm/0xPKM_Lab/04_outputs/mtl-research-platform-v1-2026-10-02`
+`/Users/wiel/Development/mtl-archives-research-outputs/mtl-research-platform-v1-2026-10-02`
 
 - `final-cloud-acceptance.json`: final publication, current selections/code and
   exact regenerated report identity.

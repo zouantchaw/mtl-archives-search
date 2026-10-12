@@ -26,7 +26,7 @@ versioned corpus; do not edit this selection or silently replace weak images.
 Durable local package:
 
 ```text
-/Users/wiel/pkm/0xPKM_Lab/04_outputs/mtl-caption-feedback-pilot-preparation-2026-10-03
+/Users/wiel/Development/mtl-archives-research-outputs/mtl-caption-feedback-pilot-preparation-2026-10-03
 ```
 
 Use the deployed [private review app](reviewer-app.md):

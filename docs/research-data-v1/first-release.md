@@ -55,5 +55,5 @@ The other four records lack matching package conditions in this snapshot; their
 conditions are unknown. No universal image-license inference is made.
 
 Detailed local evidence, full card and frozen builder:
-`/Users/wiel/pkm/0xPKM_Lab/04_outputs/mtl-research-data-v1-2026-10-02/`.
+`/Users/wiel/Development/mtl-archives-research-outputs/mtl-research-data-v1-2026-10-02/`.
 The [runbook](README.md) describes recovery directly from private Cloudflare.

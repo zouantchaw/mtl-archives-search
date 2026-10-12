@@ -176,7 +176,7 @@ def prepare(root):
     root=Path(root);c=core.validate_config(core.load(HERE/'config.json'));core.cloud_guard(c)
     if (root/'plan.json').exists():return
     rows=core.load(root/'metadata.json');allowed=core.load(root/'allowed.json')
-    first=Path('/Users/wiel/pkm/0xPKM_Lab/04_outputs/mtl-research-data-v1-2026-10-02/release-run')
+    first=Path('/Users/wiel/Development/mtl-archives-research-outputs/mtl-research-data-v1-2026-10-02/release-run')
     old=core.load(first/'plan.json')
     if core.digest(rows)!=old['metadata_sha256']:raise ValueError('metadata_changed_create_new_snapshot_adapter')
     raw={}

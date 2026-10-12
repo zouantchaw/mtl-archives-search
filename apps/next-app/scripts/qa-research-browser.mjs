@@ -1,5 +1,5 @@
 import {execFileSync} from 'node:child_process';import fs from 'node:fs';
-const session=process.env.QA_SESSION||'mtl-quality';const root=process.env.QA_OUTPUT||'/Users/wiel/pkm/0xPKM_Lab/04_outputs/mtl-reading-room-quality-2026-09-13/baseline';fs.mkdirSync(root,{recursive:true});
+const session=process.env.QA_SESSION||'mtl-quality';const root=process.env.QA_OUTPUT||'/Users/wiel/Development/mtl-archives-research-outputs/mtl-reading-room-quality-2026-09-13/baseline';fs.mkdirSync(root,{recursive:true});
 const run=(args,input)=>execFileSync('agent-browser',['--session',session,...args],{encoding:'utf8',input,timeout:130000,env:{...process.env,AGENT_BROWSER_DEFAULT_TIMEOUT:'120000'}});
 function evaluate(code){const result=JSON.parse(run(['eval','--stdin','--json'],code));if(!result.success)throw new Error(JSON.stringify(result));return result.data.result;}
 function capture(name){

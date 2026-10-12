@@ -267,7 +267,7 @@ The original app, acquisition runners and frozen pilot inputs are unchanged.
   account-authorized CLI jobs. A human sign-in/save is not fabricated by QA.
 
 Update evidence:
-`/Users/wiel/pkm/0xPKM_Lab/04_outputs/mtl-reviewer-assistance-2026-10-04`.
+`/Users/wiel/Development/mtl-archives-research-outputs/mtl-reviewer-assistance-2026-10-04`.
 
 ## Original October 3 verification
 
@@ -286,7 +286,7 @@ October 3 deployment `845e3781-4ce7-4d44-828f-50ba2d6621d0`:
   check, distinct from the tested application flow.
 
 Evidence and design fidelity review:
-`/Users/wiel/pkm/0xPKM_Lab/04_outputs/mtl-research-reviewer-app-2026-10-03`.
+`/Users/wiel/Development/mtl-archives-research-outputs/mtl-research-reviewer-app-2026-10-03`.
 The app uses the existing MTL radial-dot logo, paper/ink/blue palette, Figtree UI
 and Spectral headings. Real frozen image bytes replace the illustrative concept
 photo. A mobile toolbar wrapping bug and next-image scroll issue were repaired.
@@ -346,4 +346,4 @@ automatic promotion. The live application has no dependency on these changes.
   Cloudflare inference tests cover separate layers.
 
 Durable receipts, screenshots, concept and limitations:
-`/Users/wiel/pkm/0xPKM_Lab/04_outputs/mtl-reviewer-text-inspection-2026-10-04`.
+`/Users/wiel/Development/mtl-archives-research-outputs/mtl-reviewer-text-inspection-2026-10-04`.

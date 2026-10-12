@@ -31,4 +31,4 @@ python3 packages/scripts/src/retrieval-pilot-v1/run.py \
   --budget-usd 8.5
 ```
 
-Candidate captions stay `generated_unreviewed`. Run artifacts live under `0xPKM_Lab/04_outputs/mtl-vision-gateway-openai-v1` and `.../mtl-vision-gateway-grok-v1`.
+Candidate captions stay `generated_unreviewed`. Run artifacts live under `/Users/wiel/Development/mtl-archives-research-outputs/mtl-vision-gateway-openai-v1` and `.../mtl-vision-gateway-grok-v1`.
