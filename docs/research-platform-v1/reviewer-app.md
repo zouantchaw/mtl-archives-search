@@ -92,6 +92,10 @@ browser checks (keyboard flow, sweep gating, No confirmation, Unsure note,
 draft restore, AI verified note provenance, export flags, resume at the first
 unreviewed image, phone layout) plus typecheck, 20 backend and 8 importer tests.
 Evidence: `/Users/wiel/Development/mtl-archives-research-outputs/mtl-reviewer-desk-2026-10-12`.
+Deployed with `cf deploy --prebuilt` as version `db982256-a9e2-41a0-a1af-5819e15c2cbd`
+(previous `34eb0672-9bc1-42dc-b405-059655dd96bc` for rollback). No migration was
+needed. Anonymous page, state and media requests still redirect to Access. The
+owner-authenticated production UI was not automated; reload open tabs to get it.
 
 ## Exact study inputs
 
