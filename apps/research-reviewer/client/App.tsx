@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { BookOpen, Download, Info, LogOut } from "lucide-react";
 import { api, download, local, stash, type State, type Review } from "./api";
 import { Brand } from "./Brand";
-import { ImageReview } from "./ImageReview";
+import { ReviewDesk } from "./ReviewDesk";
 import { Families } from "./Families";
 import { Queries } from "./Queries";
 import { Learn } from "./Learn";
@@ -102,6 +102,10 @@ export function App() {
     }
   }
   const count = state?.reviews.filter((r) => r.kind === "image").length ?? 0;
+  const desk = !!state && tab === "Images";
+  useEffect(() => {
+    document.documentElement.classList.toggle("desk-mode", desk);
+  }, [desk]);
   return (
     <Dialog open={guide} onOpenChange={setGuide}>
       <a className="skip-link" href="#main-content">
@@ -109,23 +113,6 @@ export function App() {
       </a>
       <header className="app-header">
         <Brand />
-        <span className="header-title">Research review</span>
-        <div className="header-actions">
-          <DialogTrigger render={<Button variant="ghost" />}>
-            <BookOpen size={18} />
-            Guide
-          </DialogTrigger>
-          <Button
-            variant="ghost"
-            onClick={exportReview}
-            disabled={!state || exporting}
-          >
-            <Download size={18} />
-            {exporting ? "Exporting…" : "Export"}
-          </Button>
-        </div>
-      </header>
-      <main id="main-content" tabIndex={-1}>
         <nav className="steps" aria-label="Review steps">
           {(["Images", "Families", "Queries"] as const).map((label, i) => (
             <Button
@@ -139,11 +126,41 @@ export function App() {
               {label}
             </Button>
           ))}
-          <div className="progress">
-            <span>{count} / 100 reviewed</span>
-            <Progress value={count} aria-label="Reviewed images" />
-          </div>
         </nav>
+        <div className="progress">
+          <span>
+            <strong>{count}</strong> / 100 images
+          </span>
+          <Progress value={count} aria-label="Reviewed images" />
+        </div>
+        <div className="header-actions">
+          <DialogTrigger render={<Button variant="ghost" />}>
+            <BookOpen size={18} />
+            <span className="action-label">Guide</span>
+          </DialogTrigger>
+          <Button
+            variant="ghost"
+            onClick={exportReview}
+            disabled={!state || exporting}
+          >
+            <Download size={18} />
+            <span className="action-label">
+              {exporting ? "Exporting…" : "Export"}
+            </span>
+          </Button>
+          {desk && (
+            <a
+              className="header-signout"
+              href="/cdn-cgi/access/logout"
+              title={`Signed in as ${state?.reviewerEmail ?? ""}`}
+            >
+              <LogOut size={16} />
+              <span className="sr-only">Sign out</span>
+            </a>
+          )}
+        </div>
+      </header>
+      <main id="main-content" tabIndex={-1} className={desk ? "desk-main" : ""}>
         {!state ? (
           <section className="empty-state">
             <h1>
@@ -168,7 +185,7 @@ export function App() {
               </p>
             )}
             {tab === "Images" ? (
-              <ImageReview state={state} save={save} onDirty={setDirty} />
+              <ReviewDesk state={state} save={save} onDirty={setDirty} />
             ) : tab === "Families" ? (
               <Families state={state} save={save} onDirty={setDirty} />
             ) : (
@@ -176,7 +193,7 @@ export function App() {
             )}
           </>
         )}
-        <footer>
+        {!desk && <footer>
           <span>MTL Archives · Research pilot</span>
           {state && (
             <>
@@ -189,7 +206,7 @@ export function App() {
               </a>
             </>
           )}
-        </footer>
+        </footer>}
       </main>
         <DialogContent className="review-guide">
           <DialogHeader>
@@ -215,11 +232,19 @@ export function App() {
             <p>
               For text, answer Yes when you can read words or numbers, including
               margin annotations and watermarks. Note archive watermarks
-              separately from scene text. Use Text check to inspect nine
-              overlapping regions. Rotate the detail and compare text readers
-              when a character is unclear. Use Full image, zoom, drag to pan and
-              Rotate when needed. Rotation records your preferred view and never
-              changes the preserved source.
+              separately from scene text. Press <strong>T</strong> for the text
+              sweep: it steps through nine overlapping close-ups, and Space
+              marks each one checked once you have looked. Rotate the close-up
+              and compare text readers when a character is unclear. Use Full
+              image, zoom, drag to pan and Rotate when needed. Rotation records
+              your preferred view and never changes the preserved source.
+            </p>
+            <p>
+              The fastest path: <strong>1–6</strong> for the image type,{" "}
+              <strong>Y / N / U</strong> for each question,{" "}
+              <strong>T</strong> to sweep for text, then{" "}
+              <strong>Enter</strong> to save and open the next image. Press{" "}
+              <strong>?</strong> for every shortcut.
             </p>
             <h2>2. Identify related families</h2>
             <p>

@@ -8,6 +8,7 @@ import "@fontsource/ibm-plex-mono/400.css";
 import "./ui.css";
 import "./styles.css";
 import "./workspace.css";
+import "./desk.css";
 import { App } from "./App";
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

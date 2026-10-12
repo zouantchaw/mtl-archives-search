@@ -8,9 +8,12 @@ Queues, AI Gateway and assistance R2 power private, on-demand text inspection. I
 related families → human-authored French/English development
 queries, with browser drafts, explicit saves and immutable revision history.
 
-Use **Photograph** for scene and quality review, and **Text check** for nine
-overlapping regions, enlarged pixels and independent detail rotation. Optional
-**Check all regions with AI** queues nine Gemma text checks; **Read this region**
+Each image is one screen: photo on the left, answers on the right, **Save & next**
+always visible, and a keyboard path for every answer (**?** lists shortcuts).
+Use **Photo** for scene and quality review, and the **Text sweep** (T) to step
+through nine overlapping enlarged regions, marking each checked with Space, with
+independent detail rotation. Optional
+**Pre-scan all 9** queues nine Gemma text checks; **Read this region**
 checks a chosen close-up. **Ask a second reader** uses Qwen. Candidate wording
 is always unverified; edit it and explicitly check it against pixels before
 **Add verified note**. Readable writing, numbers, marginal annotations and

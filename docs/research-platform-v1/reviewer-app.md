@@ -16,13 +16,21 @@ retrieval relevance gold or change the customer app.
    Cloudflare Access protects the entire app, API and image routes.
 2. Read **Guide**. Review the first five images and use **Save & next**. Check those
    five decisions against the rules before continuing through all 100 candidates.
-3. Use **Photograph** to judge image type, describable scene features and
-   serious defects. Use **Text check** before deciding whether writing is visible.
+   The app opens at your first unreviewed image.
+3. The image review is one screen: the photo fills the left, your answers sit on
+   the right and **Save & next** is always visible. The fastest path is keyboard
+   only: **1–6** image type, **Y / N / U** for the highlighted question, **T** for
+   the text sweep, **Enter** to save and open the next image (**?** lists every
+   shortcut). Use **Photo** to judge image type, describable scene features and
+   serious defects. Use the **Text sweep** before deciding whether writing is visible.
    Nine overlapping regions cover the EXIF-normalized inspection scan. Their names
    refer to the overview orientation, independently of your preferred photo view.
-   Open a region, use **Rotate detail** or **Actual pixels**, and **Mark checked**
-   after inspecting it. This is a human check, not an AI coverage claim.
-   Optional **Check all regions with AI** queues nine Gemma text reads. Results
+   The sweep shows one enlarged region at a time; **Space** marks it checked once
+   its pixels have loaded and moves to the next. **R** rotates the close-up, **A**
+   shows actual pixels, and the overview grid jumps to any region. After the ninth
+   region the photo returns with the text question highlighted.
+   This is a human check, not an AI coverage claim.
+   Optional **Pre-scan all 9** queues nine Gemma text reads. Results
    attach to their exact region/orientation; candidate badges help you find regions
    to inspect. **Ask a second reader** uses Qwen and displays both readings.
    Nothing detected in a region does not prove absence of text. A new No answer
@@ -31,7 +39,8 @@ retrieval relevance gold or change the customer app.
    pixels before **Add verified note**. Labels stay manual. Previous requests,
    including legacy Moondream descriptions, remain readable without rewriting them.
    **Full image**, photo rotation, zoom, pan and display-only adjustments remain.
-   Selecting a custom area or edge opens it in Text check. Detail rotation is separate
+   Pinch or ctrl/⌘ + scroll zooms at the pointer; scroll or drag pans; double-click
+   zooms in. **Inspect an area** opens a custom selection in the sweep. Detail rotation is separate
    from the recorded photo rotation. Source bytes and model inputs are never enhanced.
    Words or numbers count, including margins and watermarks. Note archive watermarks
    separately. Normal camera edges, gray padding and scan notches alone are not crop
@@ -56,6 +65,33 @@ are stored only in that browser, with a warning before leaving. If browser draft
 storage is unavailable, the app warns you to save before closing. If a different
 tab saved a newer version, the app rejects the overwrite; **Load saved version**
 lets you discard the local draft and reload the persisted review.
+
+## October 12 review desk
+
+The first five saved reviews took too much scrolling and clicking: at 1440 × 900
+the photo was cut off, **Save & next** sat about 1,000 px down the page, the image
+type was a dropdown and the text check was a separate three-column tab with nine
+small thumbnails. The client was rebuilt around the reviewer's loop; the data
+contract is unchanged.
+
+- One full-height screen on desktop (no page scroll); phones stack the photo over
+  the answers with a sticky save bar.
+- Image type is six one-key buttons; Yes / No / Unsure answer the highlighted
+  question and move to the next; Too dark / Blurred / Cropped toggle with D / B / C.
+- The text sweep replaces the photo in place and steps through the same nine
+  `overlap-grid-v1` regions. A region is recorded only after an explicit Space (or
+  button) once its pixels loaded. Answering No still requires the explicit
+  "I checked the pixels" confirmation (V), which also shows how many regions you swept.
+- Missing answers are listed before saving instead of failing the save.
+- The AI reader (Gemma / Qwen), verified-note flow, dismissals, previous requests
+  and exact model inputs moved to the sweep's side column unchanged.
+
+Saved payloads, validation, migrations, assistance events, export v2 and the
+importer are unchanged. Verification on the loopback synthetic QA server: 13
+browser checks (keyboard flow, sweep gating, No confirmation, Unsure note,
+draft restore, AI verified note provenance, export flags, resume at the first
+unreviewed image, phone layout) plus typecheck, 20 backend and 8 importer tests.
+Evidence: `/Users/wiel/Development/mtl-archives-research-outputs/mtl-reviewer-desk-2026-10-12`.
 
 ## Exact study inputs
 

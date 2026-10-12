@@ -54,9 +54,9 @@ export function Learn() {
             notches alone do not count.
           </p>
           <p>
-            <strong>Optional text help:</strong> open Text check, choose a
-            region and inspect the enlarged pixels. Read this region offers
-            candidate wording. Correct it and confirm that you checked it
+            <strong>Optional text help:</strong> in the text sweep, look at
+            the enlarged pixels first. Read this region offers candidate
+            wording. Correct it and confirm that you checked it
             against the pixels before using “Add verified note.” Your review
             answers stay yours to choose. Saving records model exposure even
             when you dismiss the suggestion.
@@ -71,8 +71,8 @@ export function Learn() {
           />
           <p>
             <strong>Check image margins.</strong> Numeric annotations can be
-            easy to miss at Fit. Choose an edge, select a smaller area, or load
-            Full image and zoom.
+            easy to miss at Fit. The text sweep enlarges every edge; you can
+            also inspect an area, or load Full image and zoom.
           </p>
           <img
             src="/api/media/002/preview"
