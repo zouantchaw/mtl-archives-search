@@ -120,6 +120,36 @@ off-screen or undersized controls at any size, and the desk QA runs 16 checks.
 Deployed as `9d71fb0a-d4e2-4e69-97a9-d89682f2ba05` (previous `db982256-a9e2-41a0-a1af-5819e15c2cbd`).
 Evidence: `responsive/` and `responsive-matrix.mjs` in the October 12 evidence folder.
 
+## October 13 candidate checklist
+
+The optional text reader now shows up to four lines in one editable checklist.
+Keep or drop each line and adjust its writing kind, compare the kept lines with
+the pixels, then confirm once and **Add N to notes**. Normal candidates start
+kept; model-uncertain lines start dropped. Lines already in the draft note cannot
+be kept again. Changing wording, kind, selection or detail rotation clears the
+confirmation. Notes use one combined line per writing kind; the success message
+counts the accepted candidates. The image type, usable and text answers remain
+human decisions and are never filled by the reader.
+
+Saved review payloads, assistance event shapes, export v2 and the importer are
+unchanged. Each kept candidate posts its own `accepted_note` with the edited
+wording and the existing verification, kind, region and rotation fields. Dropped
+non-duplicates get one `dismissed` event after the acceptances. The client checks
+the 2,000-character note limit before posting and freezes each pending submission
+with stable event IDs for sequential retries; notes append once after all its
+events succeed. During posting, notes and navigation wait for that append.
+Gemma/Qwen selection, comparison, pre-scan, exact inputs and previous requests
+remain available. Long wording wraps at rest and uses a native input when edited.
+
+Local verification: typecheck and production build passed, **20 backend tests**,
+**8 importer tests**, **16 desk QA checks**, **19 focused checklist QA checks**,
+and **87 responsive screenshot states at seven sizes**, with no layout issues
+or unexpected console/page errors. One deliberately injected lost event response
+returns a 503; retrying its identical event ID/content produces no duplicate
+acceptances. All QA uses a synthetic actor, local images and temporary SQLite.
+Evidence: `/Users/wiel/Development/mtl-archives-research-outputs/mtl-reviewer-candidates-2026-10-13`.
+This checklist change is committed locally; it has not been deployed or pushed.
+
 ## Exact study inputs
 
 | Input | Frozen identity |

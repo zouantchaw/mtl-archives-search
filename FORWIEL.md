@@ -58,6 +58,11 @@ as pending quality review, never benchmark gold; prior exposure follows human
 development queries. Existing review revisions and the product boundary remain
 intact. Read the [reviewer runbook](docs/research-platform-v1/reviewer-app.md).
 
+October 13 candidate checklist (local, not deployed): review several reader lines
+in one pass, confirm against pixels once, then append grouped notes. Per-line
+acceptance events, image decisions and export/import contracts stay unchanged.
+The reviewer runbook records the verification and evidence.
+
 MTL Archives Search turns a large municipal photo archive into a product people can explore, play with, learn from, and eventually buy from. The public app is the visible part: search, maps, photo pages, the daily game, newsletter signup, print ordering, and `/research`. Under that, Cloudflare D1/R2/Vectorize hold truth; operator jobs live in D1; the Eve agent uses Cloudflare AI Gateway.
 
 ## The Product Direction Now

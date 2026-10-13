@@ -15,9 +15,10 @@ through nine overlapping enlarged regions, marking each checked with Space, with
 independent detail rotation. Optional
 **Pre-scan all 9** queues nine Gemma text checks; **Read this region**
 checks a chosen close-up. **Ask a second reader** uses Qwen. Candidate wording
-is always unverified; edit it and explicitly check it against pixels before
-**Add verified note**. Readable writing, numbers, marginal annotations and
-watermarks count as text. Empty detections never fill the No answer.
+is always unverified; review the inline checklist, edit or drop lines, then
+confirm once against the pixels before **Add N to notes**. Notes group kept
+lines by writing kind; each kept line retains its own acceptance event. Readable
+writing, numbers, marginal annotations and watermarks count as text. Empty detections never fill the No answer.
 
 Shadcn/Base UI provides the form, segmented choices, tabs, controls and Guide
 dialog, with keyboard access and responsive desktop/phone layouts. Human region

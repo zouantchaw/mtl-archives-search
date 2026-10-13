@@ -68,6 +68,11 @@ as pending quality review, never benchmark gold; prior exposure follows human
 development queries. Existing review revisions and the product boundary remain
 intact. Read the [reviewer runbook](research-platform-v1/reviewer-app.md).
 
+October 13 candidate checklist (local, not deployed): review several reader lines
+in one pass, confirm against pixels once, then append grouped notes. Per-line
+acceptance events, image decisions and export/import contracts stay unchanged.
+The reviewer runbook records the verification and evidence.
+
 ## Product boundary
 
 Live MTL Archives is search, `/research`, game, and print. Operator job state is
