@@ -685,15 +685,22 @@ export function ReviewDesk({ state, save, onDirty }: Props) {
                     type="button"
                     className="sweep-status"
                     data-complete={checkedRegions === 9 || undefined}
+                    data-quiet={
+                      (draft.text === "yes" && checkedRegions < 9) || undefined
+                    }
                     onClick={() => openSweep()}
                   >
                     <ScanText size={16} aria-hidden="true" />
                     <span>
                       {checkedRegions === 9
                         ? "All 9 regions checked by you"
-                        : checkedRegions
-                          ? `${checkedRegions} of 9 regions checked`
-                          : "Sweep 9 regions for small text"}
+                        : draft.text === "yes"
+                          ? "Sweep not needed: it backs up a No."
+                          : checkedRegions
+                            ? `${checkedRegions} of 9 regions checked`
+                            : draft.text
+                              ? "Sweep the 9 regions for small text"
+                              : "Text obvious? Answer Yes. Not sure? Sweep the 9 regions."}
                     </span>
                     <Kbd>T</Kbd>
                   </button>
@@ -755,7 +762,11 @@ export function ReviewDesk({ state, save, onDirty }: Props) {
               ref={notes}
               value={draft.note}
               rows={2}
-              placeholder="What you can see; where any writing appears…"
+              placeholder={
+                draft.text === "yes"
+                  ? "What kind of text and where, e.g. lot numbers across the plan; '51 1949' upper left"
+                  : "What you can see; where any writing appears…"
+              }
               maxLength={2000}
               onChange={(e) => update({ ...draft, note: e.target.value })}
             />

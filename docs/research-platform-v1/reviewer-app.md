@@ -97,6 +97,29 @@ Deployed with `cf deploy --prebuilt` as version `db982256-a9e2-41a0-a1af-5819e15
 needed. Anonymous page, state and media requests still redirect to Access. The
 owner-authenticated production UI was not automated; reload open tabs to get it.
 
+## October 13 text guidance and responsive pass
+
+Image 016 (a survey plan covered in lot numbers) showed the text flow nudging
+toward transcription. The study records visible-text **presence**, not wording.
+The rail now changes with the answer: unanswered shows "Text obvious? Answer Yes.
+Not sure? Sweep the 9 regions."; Yes shows "Sweep not needed: it backs up a No."
+and the note asks what kind of text and where; No keeps the sweep count and the
+explicit pixel confirmation. The AI reader says it is for one hard-to-read mark,
+not transcription. The Guide says the same.
+
+Responsive checks at 1920, 1440, 1280 × 720, 1024 × 768, iPad Mini, iPhone 13 and
+a 360 px Android across Photo, Sweep (with an AI result), Guide, Shortcuts,
+Families (with a selection) and an unlocked Queries form found and fixed:
+the sweep's region map collapsing when an AI result was long; the sweep button
+clipped at 1024 px; Guide/Export losing their accessible names when labels hide;
+28 px touch targets; a 2 px phone overflow; and a pre-existing CSS specificity bug
+that left every `.primary` button in Families and Queries without its fill.
+Below 1201 px the AI reader starts collapsed; Families on phones gets a fixed
+selection bar (Compare / Name family). The audit now reports no overflow,
+off-screen or undersized controls at any size, and the desk QA runs 16 checks.
+Deployed as `9d71fb0a-d4e2-4e69-97a9-d89682f2ba05` (previous `db982256-a9e2-41a0-a1af-5819e15c2cbd`).
+Evidence: `responsive/` and `responsive-matrix.mjs` in the October 12 evidence folder.
+
 ## Exact study inputs
 
 | Input | Frozen identity |

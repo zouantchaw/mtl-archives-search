@@ -367,6 +367,7 @@ input[type="checkbox"] {
   margin-bottom: 14px;
   font-size: 13px;
 }
+button.primary,
 .primary {
   background: var(--blue);
   color: white;
@@ -376,10 +377,10 @@ input[type="checkbox"] {
   font-weight: 600;
   border-radius: 5px;
 }
-.primary:hover {
+button.primary:hover {
   background: #084d8c;
 }
-.primary:disabled:hover {
+button.primary:disabled:hover {
   background: var(--blue);
 }
 .save-hint {

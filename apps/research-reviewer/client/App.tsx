@@ -134,12 +134,15 @@ export function App() {
           <Progress value={count} aria-label="Reviewed images" />
         </div>
         <div className="header-actions">
-          <DialogTrigger render={<Button variant="ghost" />}>
+          <DialogTrigger
+            render={<Button variant="ghost" aria-label="Guide" />}
+          >
             <BookOpen size={18} />
             <span className="action-label">Guide</span>
           </DialogTrigger>
           <Button
             variant="ghost"
+            aria-label={exporting ? "Exporting" : "Export"}
             onClick={exportReview}
             disabled={!state || exporting}
           >
@@ -232,7 +235,9 @@ export function App() {
             <p>
               For text, answer Yes when you can read words or numbers, including
               margin annotations and watermarks. Note archive watermarks
-              separately from scene text. Press <strong>T</strong> for the text
+              separately from scene text. When text is obvious, answer Yes and
+              describe its kind; you never need to transcribe it. The sweep is
+              for confirming there is none. Press <strong>T</strong> for the text
               sweep: it steps through nine overlapping close-ups, and Space
               marks each one checked once you have looked. Rotate the close-up
               and compare text readers when a character is unclear. Use Full

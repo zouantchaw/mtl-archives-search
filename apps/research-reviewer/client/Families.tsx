@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, ArrowRight, Columns2, X } from "lucide-react";
 import type { Family, Families as Decision } from "../src/validation";
 import { local, stash, type State, type Review } from "./api";
@@ -46,6 +46,7 @@ export function Families({
     [filter, setFilter] = useState("all"),
     [comparing, setComparing] = useState(false),
     [rotations, setRotations] = useState<Record<string, number>>({});
+  const nameField = useRef<HTMLInputElement>(null);
   useEffect(() => {
     const dirty = !!(members.length || name || note);
     onDirty(dirty);
@@ -169,7 +170,10 @@ export function Families({
             <span>{members.length} selected</span>
             <button
               disabled={members.length < 2}
-              onClick={() => setComparing(!comparing)}
+              onClick={() => {
+                setComparing(!comparing);
+                if (!comparing) window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
             >
               <Columns2 size={17} />
               Compare selected
@@ -211,7 +215,7 @@ export function Families({
           </div>
         </section>
         <aside className="family-sidebar">
-          <section className="panel">
+          <section className="panel" id="family-form">
             <h2>{editing ? "Edit family" : "Create a family"}</h2>
             <p className="muted">
               Select at least two images that belong together. Leave unrelated
@@ -220,6 +224,7 @@ export function Families({
             <label className="field">
               Family name
               <input
+                ref={nameField}
                 value={name}
                 maxLength={100}
                 placeholder="A short name you will recognize"
@@ -361,6 +366,37 @@ export function Families({
           )}
         </aside>
       </div>
+      {members.length > 0 && <div className="family-selection-spacer" />}
+      {members.length > 0 && (
+        <div className="family-selection-bar" aria-label="Selected images">
+          <span>
+            <strong>{members.length}</strong> selected
+          </span>
+          <button
+            disabled={members.length < 2}
+            onClick={() => {
+              setComparing(true);
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+          >
+            <Columns2 size={17} />
+            Compare
+          </button>
+          <button
+            className="primary"
+            disabled={members.length < 2}
+            onClick={() => {
+              document
+                .getElementById("family-form")
+                ?.scrollIntoView({ behavior: "smooth", block: "start" });
+              nameField.current?.focus({ preventScroll: true });
+            }}
+          >
+            Name family
+            <ArrowRight size={17} />
+          </button>
+        </div>
+      )}
     </>
   );
 }

@@ -929,3 +929,142 @@ main.desk-main {
 .zoom-image:not([data-zoomed]):not([data-selecting]) {
   touch-action: pan-y;
 }
+.sweep-status[data-quiet] {
+  border-style: solid;
+  border-color: transparent;
+  background: transparent;
+  color: var(--ink-muted);
+}
+.ai-hint {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 7px;
+  background: #eef2f6;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink);
+}
+/* Touch screens: every control at least 40px tall. */
+@media (pointer: coarse) {
+  .stage-tools [data-slot="button"],
+  .ai-actions [data-slot="button"],
+  .sweep-side .result-choices [data-slot="button"],
+  .sweep-side .previous-text [data-slot="button"] {
+    height: 40px;
+  }
+  .stage-tools [aria-label^="Zoom"] {
+    width: 40px;
+  }
+}
+/* Side column items keep their size; the column scrolls instead. */
+.sweep-side > * {
+  flex-shrink: 0;
+}
+button.ai-heading {
+  justify-content: space-between;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: inherit;
+  text-align: left;
+}
+.ai-heading > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.ai-chevron {
+  transition: transform 0.15s;
+}
+.ai-heading[aria-expanded="true"] .ai-chevron {
+  transform: rotate(90deg);
+}
+/* 901–1200px: narrower columns; the sweep's main button gets its own row. */
+@media (min-width: 901px) and (max-width: 1200px) {
+  .desk {
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
+  .sweep {
+    grid-template-columns: minmax(0, 1fr) 232px;
+  }
+  .sweep-controls {
+    flex-wrap: wrap;
+  }
+  .sweep-controls .sweep-next {
+    flex: 1 1 100%;
+    order: 5;
+  }
+  .sweep-bar > div > span {
+    display: none;
+  }
+  .stage-tools .zoom-label {
+    display: none;
+  }
+  .type-grid .kbd {
+    display: none;
+  }
+  .type-grid button {
+    justify-content: center;
+    font-size: 13px;
+  }
+}
+/* Stacked layout on tablets: shorter answer grid. */
+@media (min-width: 560px) and (max-width: 900px) {
+  .type-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .rail-scroll,
+  .rail-save {
+    max-width: 760px;
+    width: 100%;
+    margin: 0 auto;
+  }
+}
+/* Families on phones: a selection bar that stays reachable. */
+.family-selection-bar,
+.family-selection-spacer {
+  display: none;
+}
+@media (max-width: 760px) {
+  .family-selection-bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 4;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+    background: var(--surface);
+    border-top: 1px solid var(--line);
+    box-shadow: 0 -6px 18px #1113181a;
+    font-size: 14px;
+  }
+  .family-selection-spacer {
+    display: block;
+    height: 76px;
+  }
+  .family-selection-bar > span {
+    margin-right: auto;
+  }
+  .family-selection-bar button {
+    height: 42px;
+  }
+  .family-selection-bar .primary {
+    width: auto;
+    padding: 0 14px;
+  }
+}
+.empty-state > svg {
+  display: block;
+  margin: 0 auto 12px;
+}
+@media (pointer: coarse) {
+  footer a {
+    min-height: 40px;
+    padding: 0 6px;
+  }
+}

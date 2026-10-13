@@ -105,7 +105,14 @@ export const TextSweep = forwardRef<
     [batch, setBatch] = useState(false),
     [wording, setWording] = useState(""),
     [category, setCategory] = useState("annotation"),
-    [verified, setVerified] = useState(false);
+    [verified, setVerified] = useState(false),
+    [aiOpen, setAiOpen] = useState(() => {
+      try {
+        return matchMedia("(min-width: 1201px)").matches;
+      } catch {
+        return true;
+      }
+    });
   const zoom = useRef<ZoomHandle>(null),
     focusedRun = useRef(""),
     pending = useRef<Run | null>(null),
@@ -478,14 +485,30 @@ export const TextSweep = forwardRef<
           to jump.
         </p>
         <section className="ai-reader" aria-label="AI text reader">
-          <div className="ai-heading">
+          <button
+            type="button"
+            className="ai-heading"
+            aria-expanded={aiOpen || !!run}
+            onClick={() => setAiOpen(!(aiOpen || !!run))}
+          >
             <h3>
               <Sparkles size={15} aria-hidden="true" /> AI text reader
             </h3>
-            <span>optional</span>
-          </div>
-          <p className="side-hint">
-            Suggestions to help you spot text. Always check the pixels yourself.
+            <span>
+              optional
+              <ChevronRight
+                size={15}
+                aria-hidden="true"
+                className="ai-chevron"
+              />
+            </span>
+          </button>
+          {(aiOpen || !!run) && (
+          <>
+          <p className="ai-hint">
+            <strong>Text clearly visible?</strong> Answer Yes and note what
+            kind. No need to transcribe. The reader is for one hard-to-read
+            mark; always check its wording against the pixels.
           </p>
           <div className="ai-actions">
             <Button
@@ -791,6 +814,8 @@ export const TextSweep = forwardRef<
                 </Button>
               ))}
             </details>
+          )}
+          </>
           )}
         </section>
         <p className="side-hint">
