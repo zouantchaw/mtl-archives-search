@@ -148,7 +148,7 @@ or unexpected console/page errors. One deliberately injected lost event response
 returns a 503; retrying its identical event ID/content produces no duplicate
 acceptances. All QA uses a synthetic actor, local images and temporary SQLite.
 Evidence: `/Users/wiel/Development/mtl-archives-research-outputs/mtl-reviewer-candidates-2026-10-13`.
-This checklist change is committed locally; it has not been deployed or pushed.
+Implemented by a Codex GPT-6.1 session from Claude's design handoff, then reviewed, polished and rerun by Claude (19 checklist checks, 16 desk checks, 87-state responsive audit with zero issues). Deployed with `cf deploy --prebuilt` as version `68733783-7751-4c81-8d7b-626a251696db` (previous `9d71fb0a-d4e2-4e69-97a9-d89682f2ba05`). Anonymous page, state and media requests still redirect to Access.
 
 ## Exact study inputs
 
