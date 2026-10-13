@@ -731,19 +731,165 @@ main.desk-main {
   margin: 0;
   font-size: 14px;
 }
-.sweep-side .candidate-row {
+/* Candidate wording gets the full row width, even in the 232px side column. */
+.candidate-checklist,
+.candidate-footer {
   display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 4px 8px;
-  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
-.sweep-side .candidate-row p,
-.sweep-side .candidate-row button {
-  grid-column: 1 / -1;
+.candidate-list {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
 }
-.sweep-side .candidate-row code {
-  font-size: 14px;
+.candidate-item {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  gap: 4px;
+  align-items: start;
+  padding: 8px;
+  background: #fffdf8;
+}
+.candidate-item + .candidate-item {
+  border-top: 1px solid var(--line);
+}
+.candidate-item[data-dropped] {
+  background: var(--surface);
+}
+.candidate-item[data-dropped] .candidate-literal {
+  opacity: .55;
+}
+.candidate-content {
+  display: contents;
+}
+.candidate-edit {
+  position: relative;
+  grid-column: 2 / -1;
+  min-width: 0;
+  min-height: 32px;
+}
+.candidate-literal {
+  display: block;
+  padding: 4px;
+  font: 400 14px/1.5 "IBM Plex Mono", monospace;
+  white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+.candidate-edit:focus-within:has(input:not([readonly])) .candidate-literal {
+  visibility: hidden;
+}
+.sweep-side .candidate-wording {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  padding: 4px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: transparent;
+  font: 400 14px "IBM Plex Mono", monospace;
+  outline: none;
+}
+.candidate-wording:hover {
+  border-color: var(--line);
+}
+.candidate-wording:focus:not([readonly]) {
+  color: var(--ink);
+  background: #fffdf8;
+}
+.candidate-wording:focus-visible {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 2px #0f5ea822;
+  opacity: 1;
+}
+.candidate-wording[readonly] {
+  border-color: transparent;
+  box-shadow: none;
+}
+.candidate-keep,
+.candidate-check {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  cursor: pointer;
+}
+.candidate-meta {
+  display: contents;
+}
+.candidate-location,
+.candidate-tag {
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 0;
+  padding: 0 4px;
+  color: var(--ink-muted);
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.candidate-tag {
+  grid-column: 2 / -1;
+  grid-row: 3;
+  font-size: 11px;
+  font-weight: 600;
+}
+.candidate-kind[data-slot="select-trigger"] {
+  grid-column: 3;
+  grid-row: 2;
+  min-width: 0;
+  max-width: 104px;
+  padding: 4px 6px;
+  height: 28px;
+  gap: 4px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+.candidate-add {
+  width: 100%;
+}
+.candidate-help {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-muted);
+}
+.candidate-success {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+  color: var(--blue);
+}
+.sweep-side .result-title {
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+.sweep-side .result-title h4 {
+  font-size: 13px;
+}
+.sweep-side .second-reader {
+  justify-self: start;
+  padding-inline: 0;
+}
+@media (pointer: coarse) {
+  .candidate-item {
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+  }
+  .candidate-keep,
+  .candidate-check,
+  .candidate-edit,
+  .candidate-wording,
+  .candidate-kind[data-slot="select-trigger"] {
+    min-height: 40px;
+  }
+  .candidate-footer .confirm-line {
+    min-height: 40px;
+  }
 }
 .sweep-side .reader-comparison {
   display: grid;
@@ -946,6 +1092,8 @@ main.desk-main {
 }
 /* Touch screens: every control at least 40px tall. */
 @media (pointer: coarse) {
+  .candidate-checklist [data-slot="button"],
+  .sweep-side .second-reader,
   .stage-tools [data-slot="button"],
   .ai-actions [data-slot="button"],
   .sweep-side .result-choices [data-slot="button"],

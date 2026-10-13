@@ -103,7 +103,9 @@ const helpBucket = {
     artifacts.set(key, { bytes: Buffer.from(data), options });
   },
 };
+let renderNumber = 0;
 let modelFailure = false;
+let failEventAfter = null;
 const images = {
   input(stream) {
     const transforms = [];
@@ -114,13 +116,16 @@ const images = {
       },
       async output(options) {
         const bytes = await new Response(stream).arrayBuffer();
+        // Local files avoid an intermittent spawnSync stdin EOF stall on macOS.
+        const imageFile = path.join(temp, `render-${++renderNumber}.jpg`);
+        await fsp.writeFile(imageFile, Buffer.from(bytes));
         const result = spawnSync(
           path.resolve(root, "../../.venv-bulk/bin/python"),
           [
             "-c",
             `import sys,io,json
 from PIL import Image
-im=Image.open(io.BytesIO(sys.stdin.buffer.read())).convert('RGB')
+im=Image.open(sys.argv[2]).convert('RGB')
 for op in json.loads(sys.argv[1]):
  if 'trim' in op:
   r=op['trim'];im=im.crop((r['left'],r['top'],r['left']+r['width'],r['top']+r['height']))
@@ -128,10 +133,12 @@ for op in json.loads(sys.argv[1]):
  if 'width' in op: im.thumbnail((op['width'],op['height']),Image.Resampling.LANCZOS)
 b=io.BytesIO();im.save(b,format='JPEG',quality=92);sys.stdout.buffer.write(b.getvalue())`,
             JSON.stringify(transforms),
+            imageFile,
           ],
-          { input: Buffer.from(bytes), maxBuffer: 20 * 1024 * 1024 },
+          { maxBuffer: 20 * 1024 * 1024, timeout: 15000 },
         );
-        if (result.status)
+        await fsp.unlink(imageFile);
+        if (result.error || result.status)
           throw Error("Synthetic QA image render failed: " + result.stderr);
         return {
           response: () =>
@@ -166,16 +173,41 @@ const env = {
               message: {
                 content: JSON.stringify({
                   status: "text_candidates",
-                  candidates: [
-                    {
-                      text: model.includes("qwen")
-                        ? "SYNTHETIC QA 13-?1"
-                        : "SYNTHETIC QA 13-51",
-                      location: "lower left; synthetic model output",
-                      kind: "annotation",
-                      uncertain: true,
-                    },
-                  ],
+                  candidates: model.includes("qwen")
+                    ? [
+                        {
+                          text: "SYNTHETIC QA 13-?1",
+                          location: "lower left",
+                          kind: "annotation",
+                          uncertain: true,
+                        },
+                      ]
+                    : [
+                        {
+                          text: "SYNTHETIC ST-MICHEL",
+                          location: "bottom left",
+                          kind: "scene",
+                          uncertain: false,
+                        },
+                        {
+                          text: "SYNTHETIC ST-LEONARD",
+                          location: "bottom center",
+                          kind: "scene",
+                          uncertain: false,
+                        },
+                        {
+                          text: "SYNTHETIC SHERBROOKE",
+                          location: "top right",
+                          kind: "scene",
+                          uncertain: false,
+                        },
+                        {
+                          text: "MAURICE - DUPLESSIS",
+                          location: "top center",
+                          kind: "scene",
+                          uncertain: true,
+                        },
+                      ],
                 }),
               },
             },
@@ -237,6 +269,14 @@ const server = createServer(async (req, res) => {
       res.end("Synthetic next-model failure enabled");
       return;
     }
+    if (req.url === "/__qa/event-failure" && req.method === "POST") {
+      // Acknowledge one event, then commit the next but lose its response.
+      // Retrying must use the same ID/content to avoid duplicate provenance.
+      failEventAfter = 1;
+      res.writeHead(200);
+      res.end("Synthetic event response loss enabled");
+      return;
+    }
     const chunks = [];
     for await (const data of req) chunks.push(data);
     const request = new Request("http://127.0.0.1:8796" + req.url, {
@@ -248,6 +288,19 @@ const server = createServer(async (req, res) => {
       id: "synthetic-qa-actor",
       email: "synthetic-qa@example.invalid",
     });
+    if (
+      req.url === "/api/help/events" &&
+      req.method === "POST" &&
+      failEventAfter !== null
+    ) {
+      if (failEventAfter-- === 0) {
+        failEventAfter = null;
+        out = Response.json(
+          { error: "Synthetic event response lost. Try again." },
+          { status: 503 },
+        );
+      }
+    }
     if (req.url === "/api/export") {
       const data = await out.json();
       data.reviewerType = "synthetic_qa_actor";

@@ -17,18 +17,11 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Field, FieldLabel, FieldDescription } from "@/components/ui/field";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-} from "@/components/ui/select";
+  CandidateChecklist,
+  type ChecklistSession,
+} from "./CandidateChecklist";
 import { api, local, stash, type State } from "./api";
 import { inspectionUrl, type Rect } from "./inspection";
 import { ZoomImage, type ZoomHandle } from "./ZoomImage";
@@ -81,11 +74,24 @@ export const TextSweep = forwardRef<
     onTarget: (t: SweepTarget) => void;
     inspection: Inspection;
     onInspection: (v: Inspection) => void;
+    note: string;
+    onNoteBusy: (busy: boolean) => void;
     onNote: (note: string) => void;
     onDone: () => void;
   }
 >(function TextSweep(
-  { id, state, target, onTarget, inspection, onInspection, onNote, onDone },
+  {
+    id,
+    state,
+    target,
+    onTarget,
+    inspection,
+    onInspection,
+    note,
+    onNoteBusy,
+    onNote,
+    onDone,
+  },
   ref,
 ) {
   const rect =
@@ -103,9 +109,7 @@ export const TextSweep = forwardRef<
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [batch, setBatch] = useState(false),
-    [wording, setWording] = useState(""),
-    [category, setCategory] = useState("annotation"),
-    [verified, setVerified] = useState(false),
+    [checklistVersion, setChecklistVersion] = useState(0),
     [aiOpen, setAiOpen] = useState(() => {
       try {
         return matchMedia("(min-width: 1201px)").matches;
@@ -113,6 +117,7 @@ export const TextSweep = forwardRef<
         return true;
       }
     });
+  const checklistSessions = useRef<Record<string, ChecklistSession>>({});
   const zoom = useRef<ZoomHandle>(null),
     focusedRun = useRef(""),
     pending = useRef<Run | null>(null),
@@ -142,8 +147,6 @@ export const TextSweep = forwardRef<
   useEffect(() => {
     const opened = pending.current;
     pending.current = null;
-    setWording("");
-    setVerified(false);
     if (opened && match(opened.spec.rect, rect)) {
       show(opened);
       return;
@@ -164,9 +167,6 @@ export const TextSweep = forwardRef<
         .slice(-12),
     );
   }, [current]);
-  useEffect(() => {
-    setVerified(false);
-  }, [angle]);
   function remember(r: Run) {
     setRuns((xs) => [...xs.filter((x) => x.id !== r.id), r]);
   }
@@ -183,13 +183,6 @@ export const TextSweep = forwardRef<
       remember(x.run);
       if (select && focusedRun.current === job) {
         setRun(x.run);
-        if (x.run.answer && x.run.promptVersion === TEXT_PROMPT_VERSION) {
-          try {
-            const c = parseTextEvidence(x.run.answer).candidates[0];
-            setWording(c?.text ?? "");
-            setCategory(c?.kind ?? "annotation");
-          } catch {}
-        }
       }
       if (["queued", "running"].includes(x.run.status)) {
         const t = setTimeout(() => {
@@ -223,9 +216,14 @@ export const TextSweep = forwardRef<
     stash(key, jobs.current);
     remember(x.run);
     if (select) {
+      // A deliberate reread may reuse the server's cached run. Show a fresh
+      // checklist against the current note, but never discard a pending retry.
+      if (checklistSessions.current[x.run.id]?.added !== undefined) {
+        delete checklistSessions.current[x.run.id];
+        setChecklistVersion((v) => v + 1);
+      }
       focusedRun.current = x.run.id;
       setRun(x.run);
-      setVerified(false);
     }
     void poll(x.run.id, select);
     return x.run;
@@ -273,6 +271,7 @@ export const TextSweep = forwardRef<
     });
   }
   function checkAndNext() {
+    if (busy) return;
     if (target.region < 0) {
       const first = textRegions.findIndex(
         (t) => !inspection.checkedRegions.includes(t.label),
@@ -293,6 +292,7 @@ export const TextSweep = forwardRef<
     onTarget({ region: after ?? 0 });
   }
   function move(step: number) {
+    if (busy) return;
     const from = target.region < 0 ? 0 : target.region;
     onTarget({
       region: (from + step + textRegions.length) % textRegions.length,
@@ -306,35 +306,6 @@ export const TextSweep = forwardRef<
     zoomBy: (f) => zoom.current?.zoomBy(f),
     fit: () => zoom.current?.fit(),
   }));
-  async function addNote() {
-    if (!run || !wording.trim() || !verified || !isCurrent) return;
-    setBusy(true);
-    setError("");
-    try {
-      const note = `${category === "annotation" ? "Margin annotation" : category === "watermark" ? "Archive watermark" : category === "scene" ? "Scene text" : "Text"} (${label.toLowerCase()}, detail rotated ${angle}°): ${wording.trim()}`;
-      await api("/api/help/events", {
-        snapshot: state.snapshot,
-        eventId: crypto.randomUUID(),
-        runId: run.id,
-        action: "accepted_note",
-        reason: JSON.stringify({
-          verifiedByReviewer: true,
-          text: wording.trim(),
-          kind: category,
-          rect,
-          rotation: angle,
-        }),
-      });
-      if (alive.current) {
-        onNote(note);
-        setVerified(false);
-      }
-    } catch (e) {
-      if (alive.current) setError((e as Error).message);
-    } finally {
-      if (alive.current) setBusy(false);
-    }
-  }
   async function dismiss() {
     if (!run) return;
     try {
@@ -348,7 +319,6 @@ export const TextSweep = forwardRef<
       });
       if (alive.current) {
         setRun(null);
-        setVerified(false);
       }
     } catch (e) {
       if (alive.current) setError((e as Error).message);
@@ -418,7 +388,10 @@ export const TextSweep = forwardRef<
           >
             <ChevronLeft />
           </Button>
-          <Button variant="outline" onClick={() => setAngle((a) => (a + 90) % 360)}>
+          <Button
+            variant="outline"
+            onClick={() => setAngle((a) => (a + 90) % 360)}
+          >
             <RotateCw data-icon="inline-start" />
             Rotate <Kbd>R</Kbd>
           </Button>
@@ -466,6 +439,7 @@ export const TextSweep = forwardRef<
               return (
                 <button
                   key={t.label}
+                  disabled={busy}
                   type="button"
                   className="region-cell"
                   aria-pressed={target.region === i}
@@ -504,318 +478,283 @@ export const TextSweep = forwardRef<
             </span>
           </button>
           {(aiOpen || !!run) && (
-          <>
-          <p className="ai-hint">
-            <strong>Text clearly visible?</strong> Answer Yes and note what
-            kind. No need to transcribe. The reader is for one hard-to-read
-            mark; always check its wording against the pixels.
-          </p>
-          <div className="ai-actions">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={busy || !ready}
-              onClick={() => read("primary")}
-            >
-              <ScanText data-icon="inline-start" />
-              Read this region
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={batch || hasJob}
-              onClick={scan}
-            >
-              {batch
-                ? "Queuing…"
-                : hasJob
-                  ? "Reading regions…"
-                  : "Pre-scan all 9"}
-            </Button>
-          </div>
-          {regionRuns.length > 0 && (
-            <div className="result-choices" aria-label="Results for this region">
-              {regionRuns.map((r) => (
-                <Button
-                  key={r.id}
-                  variant="ghost"
-                  size="sm"
-                  aria-pressed={run?.id === r.id}
-                  onClick={() => {
-                    focusedRun.current = r.id;
-                    setAngle(r.spec.rotation);
-                    void poll(r.id, true);
-                  }}
-                >
-                  {r.model.includes("qwen") ? "Second reader" : "Text reader"} ·{" "}
-                  {r.spec.rotation}° ·{" "}
-                  {r.status === "complete"
-                    ? candidates(r) > 0
-                      ? "text candidate"
-                      : "nothing detected"
-                    : r.status}
-                </Button>
-              ))}
-            </div>
-          )}
-          {regionRuns.filter((r) => r.status === "complete" && r.answer)
-            .length > 1 && (
-            <div className="reader-comparison" aria-label="Compare text readers">
-              <h4>Compare readings</h4>
-              {regionRuns
-                .filter((r) => r.status === "complete" && r.answer)
-                .map((r) => {
-                  let text = "Nothing detected";
-                  try {
-                    text =
-                      parseTextEvidence(r.answer!)
-                        .candidates.map((c) => c.text)
-                        .join(" · ") || "Nothing detected";
-                  } catch {}
-                  return (
-                    <p key={r.id}>
-                      <strong>
-                        {r.model.includes("qwen")
-                          ? "Second reader"
-                          : "Text reader"}{" "}
-                        ({r.spec.rotation}°):
-                      </strong>{" "}
-                      {text}
-                    </p>
-                  );
-                })}
-              <p>
-                Different wording means you need to check the pixels. Neither
-                reading is a final transcription.
+            <>
+              <p className="ai-hint">
+                <strong>Text clearly visible?</strong> Answer Yes and note what
+                kind. No need to transcribe. The reader is for one hard-to-read
+                mark; always check its wording against the pixels.
               </p>
-            </div>
-          )}
-          {error && (
-            <Alert variant="destructive">
-              <AlertCircle />
-              <AlertDescription>
-                {error}
+              <div className="ai-actions">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => {
-                    setError("");
-                    for (const job of Object.values(jobs.current))
-                      void poll(job, false);
-                  }}
+                  disabled={busy || !ready}
+                  onClick={() => read("primary")}
                 >
-                  Reconnect
+                  <ScanText data-icon="inline-start" />
+                  Read this region
                 </Button>
-              </AlertDescription>
-            </Alert>
-          )}
-          {run && (
-            <section className="text-result" aria-label="Text evidence">
-              <div className="result-title">
-                <h4>
-                  {run.status === "complete"
-                    ? evidence?.candidates.length
-                      ? "Text candidate"
-                      : evidence?.status === "unclear"
-                        ? "Writing unclear"
-                        : "Nothing detected here"
-                    : "Reading…"}
-                </h4>
-                <Badge variant="outline">
-                  {run.model.includes("qwen")
-                    ? "Qwen · second reader"
-                    : run.promptVersion === TEXT_PROMPT_VERSION
-                      ? "Gemma · text reader"
-                      : "Earlier model result"}
-                </Badge>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={batch || hasJob}
+                  onClick={scan}
+                >
+                  {batch
+                    ? "Queuing…"
+                    : hasJob
+                      ? "Reading regions…"
+                      : "Pre-scan all 9"}
+                </Button>
               </div>
-              {["queued", "running"].includes(run.status) && (
-                <p role="status">
-                  Reading this close-up. Keep sweeping; the result stays with
-                  this region.
-                </p>
+              {regionRuns.length > 0 && (
+                <div
+                  className="result-choices"
+                  aria-label="Results for this region"
+                >
+                  {regionRuns.map((r) => (
+                    <Button
+                      key={r.id}
+                      variant="ghost"
+                      size="sm"
+                      disabled={busy}
+                      aria-pressed={run?.id === r.id}
+                      onClick={() => {
+                        focusedRun.current = r.id;
+                        setAngle(r.spec.rotation);
+                        void poll(r.id, true);
+                      }}
+                    >
+                      {r.model.includes("qwen")
+                        ? "Second reader"
+                        : "Text reader"}{" "}
+                      · {r.spec.rotation}° ·{" "}
+                      {r.status === "complete"
+                        ? candidates(r) > 0
+                          ? "text candidate"
+                          : "nothing detected"
+                        : r.status}
+                    </Button>
+                  ))}
+                </div>
               )}
-              {run.status === "failed" && (
+              {regionRuns.filter((r) => r.status === "complete" && r.answer)
+                .length > 1 && (
+                <div
+                  className="reader-comparison"
+                  aria-label="Compare text readers"
+                >
+                  <h4>Compare readings</h4>
+                  {regionRuns
+                    .filter((r) => r.status === "complete" && r.answer)
+                    .map((r) => {
+                      let text = "Nothing detected";
+                      try {
+                        text =
+                          parseTextEvidence(r.answer!)
+                            .candidates.map((c) => c.text)
+                            .join(" · ") || "Nothing detected";
+                      } catch {}
+                      return (
+                        <p key={r.id}>
+                          <strong>
+                            {r.model.includes("qwen")
+                              ? "Second reader"
+                              : "Text reader"}{" "}
+                            ({r.spec.rotation}°):
+                          </strong>{" "}
+                          {text}
+                        </p>
+                      );
+                    })}
+                  <p>
+                    Different wording means you need to check the pixels.
+                    Neither reading is a final transcription.
+                  </p>
+                </div>
+              )}
+              {error && (
                 <Alert variant="destructive">
+                  <AlertCircle />
                   <AlertDescription>
-                    {run.error}
+                    {error}
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => {
-                        const spec = JSON.stringify({
-                          imageId: id,
-                          kind: "text",
-                          rect,
-                          rotation: angle,
-                          reader: "primary",
-                        });
-                        delete jobs.current[spec];
-                        stash(key, jobs.current);
-                        void read("primary");
+                        setError("");
+                        for (const job of Object.values(jobs.current))
+                          void poll(job, false);
                       }}
                     >
-                      Try this region again
+                      Reconnect
                     </Button>
                   </AlertDescription>
                 </Alert>
               )}
-              {run.status === "complete" && (
-                <>
-                  {!isCurrent && (
-                    <Alert>
-                      <AlertDescription>
-                        This result was read at {run.spec.rotation}°. Rotate the
-                        detail back to {run.spec.rotation}° before using it.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                  {evidence?.candidates.map((c, i) => (
-                    <div key={i} className="candidate-row">
-                      <code>{c.text}</code>
-                      <Badge variant="secondary">{c.kind}</Badge>
-                      <p>{c.location} · unverified</p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setWording(c.text);
-                          setCategory(c.kind);
-                          setVerified(false);
-                        }}
-                      >
-                        Review this wording
-                        <ChevronRight data-icon="inline-end" />
-                      </Button>
-                    </div>
-                  ))}
-                  {!evidence && <p>{run.answer}</p>}
-                  {!evidence?.candidates.length && (
-                    <p>
-                      A model can miss small or sideways writing. This is not
-                      evidence that the region has no text.
-                    </p>
-                  )}
-                  <div className="ai-actions">
+              {run && (
+                <section className="text-result" aria-label="Text evidence">
+                  <div className="result-title">
+                    <h4>
+                      {run.status === "complete"
+                        ? evidence?.candidates.length
+                          ? `${evidence.candidates.length} found · ${name(run.spec.rect)}`
+                          : evidence?.status === "unclear"
+                            ? "Writing unclear"
+                            : "Nothing detected here"
+                        : "Reading…"}
+                    </h4>
+                    <Badge variant="outline">
+                      {run.model.includes("qwen")
+                        ? "Qwen · second reader"
+                        : run.promptVersion === TEXT_PROMPT_VERSION
+                          ? "Gemma"
+                          : "Earlier model result"}
+                    </Badge>
+                  </div>
+                  {run.status === "complete" && (
                     <Button
-                      variant="outline"
+                      variant="ghost"
                       size="sm"
+                      className="second-reader"
                       disabled={busy}
                       onClick={() => read("second")}
                     >
                       Ask a second reader
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={dismiss}>
-                      Dismiss result
-                    </Button>
-                  </div>
-                  {evidence && evidence.candidates.length > 0 && (
-                    <Field>
-                      <FieldLabel htmlFor={`wording-${id}`}>
-                        Your verified wording
-                      </FieldLabel>
-                      <Input
-                        id={`wording-${id}`}
-                        value={wording}
-                        maxLength={300}
-                        onChange={(e) => {
-                          setWording(e.target.value);
-                          setVerified(false);
-                        }}
-                      />
-                      <FieldDescription>
-                        Correct any character. Use ? for what you cannot read.
-                        Agreement between readers does not prove correctness.
-                      </FieldDescription>
-                      <Select
-                        value={category}
-                        onValueChange={(v) => {
-                          setCategory(v ?? "unknown");
-                          setVerified(false);
-                        }}
-                      >
-                        <SelectTrigger aria-label="Kind of writing">
-                          <SelectValue>{kinds[category]}</SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectGroup>
-                            {Object.entries(kinds).map(([v, l]) => (
-                              <SelectItem key={v} value={v}>
-                                {l}
-                              </SelectItem>
-                            ))}
-                          </SelectGroup>
-                        </SelectContent>
-                      </Select>
-                      <label className="verify-wording">
-                        <Checkbox
-                          checked={verified}
-                          onCheckedChange={(v) => setVerified(v)}
-                          disabled={!isCurrent}
-                        />
-                        <span>I checked this wording against the pixels</span>
-                      </label>
-                      <Button
-                        size="sm"
-                        disabled={
-                          !verified || !wording.trim() || busy || !isCurrent
-                        }
-                        onClick={addNote}
-                      >
-                        Add verified note
-                      </Button>
-                    </Field>
                   )}
-                  <details>
-                    <summary>Exact model input and request</summary>
-                    <p>
-                      {name(run.spec.rect)} · {run.spec.rotation}° ·{" "}
-                      {run.promptVersion}
+                  {["queued", "running"].includes(run.status) && (
+                    <p role="status">
+                      Reading this close-up. Keep sweeping; the result stays
+                      with this region.
                     </p>
-                    {run.inputUrl && (
-                      <img
-                        src={run.inputUrl}
-                        alt="Exact pixels sent to this text reader"
-                      />
-                    )}
-                    <p>Run {run.id}</p>
-                  </details>
-                </>
+                  )}
+                  {run.status === "failed" && (
+                    <Alert variant="destructive">
+                      <AlertDescription>
+                        {run.error}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const spec = JSON.stringify({
+                              imageId: id,
+                              kind: "text",
+                              rect,
+                              rotation: angle,
+                              reader: "primary",
+                            });
+                            delete jobs.current[spec];
+                            stash(key, jobs.current);
+                            void read("primary");
+                          }}
+                        >
+                          Try this region again
+                        </Button>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  {run.status === "complete" && (
+                    <>
+                      {!isCurrent && (
+                        <Alert>
+                          <AlertDescription>
+                            This result was read at {run.spec.rotation}°. Rotate
+                            the detail back to {run.spec.rotation}° before using
+                            it.
+                          </AlertDescription>
+                        </Alert>
+                      )}
+                      {evidence && evidence.candidates.length > 0 ? (
+                        <CandidateChecklist
+                          key={`${run.id}:${checklistVersion}`}
+                          candidates={evidence.candidates}
+                          runId={run.id}
+                          snapshot={state.snapshot}
+                          rect={run.spec.rect}
+                          rotation={run.spec.rotation}
+                          detailRotation={angle}
+                          region={name(run.spec.rect)}
+                          note={note}
+                          kinds={kinds}
+                          isCurrent={isCurrent}
+                          session={(checklistSessions.current[run.id] ??= {})}
+                          onNote={onNote}
+                          onBusy={(v) => {
+                            setBusy(v);
+                            onNoteBusy(v);
+                          }}
+                          onReject={() => setRun(null)}
+                        />
+                      ) : (
+                        <>
+                          {!evidence && <p>{run.answer}</p>}
+                          <p>
+                            A model can miss small or sideways writing. This is
+                            not evidence that the region has no text.
+                          </p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={busy}
+                            onClick={dismiss}
+                          >
+                            Reject all
+                          </Button>
+                        </>
+                      )}
+                      <details>
+                        <summary>Exact model input and request</summary>
+                        <p>
+                          {name(run.spec.rect)} · {run.spec.rotation}° ·{" "}
+                          {run.promptVersion}
+                        </p>
+                        {run.inputUrl && (
+                          <img
+                            src={run.inputUrl}
+                            alt="Exact pixels sent to this text reader"
+                          />
+                        )}
+                        <p>Run {run.id}</p>
+                      </details>
+                    </>
+                  )}
+                </section>
               )}
-            </section>
-          )}
-          {old.length > 0 && (
-            <details className="previous-text">
-              <summary>Previous requests ({old.length})</summary>
-              {old.map((r) => (
-                <Button
-                  key={r.id}
-                  variant="ghost"
-                  size="sm"
-                  onClick={() =>
-                    void api<{ run: Run }>(`/api/help/${r.id}`)
-                      .then((x) => {
-                        if (!alive.current) return;
-                        if (match(x.run.spec.rect, rect)) return show(x.run);
-                        const i = textRegions.findIndex((t) =>
-                          match(t.rect, x.run.spec.rect),
-                        );
-                        pending.current = x.run;
-                        onTarget(
-                          i >= 0
-                            ? { region: i }
-                            : { region: -1, rect: x.run.spec.rect },
-                        );
-                      })
-                      .catch((e) => setError(e.message))
-                  }
-                >
-                  {r.kind} · {r.status}
-                </Button>
-              ))}
-            </details>
-          )}
-          </>
+              {old.length > 0 && (
+                <details className="previous-text">
+                  <summary>Previous requests ({old.length})</summary>
+                  {old.map((r) => (
+                    <Button
+                      key={r.id}
+                      variant="ghost"
+                      size="sm"
+                      disabled={busy}
+                      onClick={() =>
+                        void api<{ run: Run }>(`/api/help/${r.id}`)
+                          .then((x) => {
+                            if (!alive.current) return;
+                            if (match(x.run.spec.rect, rect))
+                              return show(x.run);
+                            const i = textRegions.findIndex((t) =>
+                              match(t.rect, x.run.spec.rect),
+                            );
+                            pending.current = x.run;
+                            onTarget(
+                              i >= 0
+                                ? { region: i }
+                                : { region: -1, rect: x.run.spec.rect },
+                            );
+                          })
+                          .catch((e) => setError(e.message))
+                      }
+                    >
+                      {r.kind} · {r.status}
+                    </Button>
+                  ))}
+                </details>
+              )}
+            </>
           )}
         </section>
         <p className="side-hint">

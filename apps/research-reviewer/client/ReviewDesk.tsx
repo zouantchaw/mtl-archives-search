@@ -104,6 +104,7 @@ export function ReviewDesk({ state, save, onDirty }: Props) {
     [dirty, setDirty] = useState(false),
     [restored, setRestored] = useState(false),
     [busy, setBusy] = useState(false),
+    [noteBusy, setNoteBusy] = useState(false),
     [error, setError] = useState(""),
     [toast, setToast] = useState(""),
     [attempted, setAttempted] = useState(false);
@@ -207,7 +208,13 @@ export function ReviewDesk({ state, save, onDirty }: Props) {
     setMode("text");
   }
   function move(index: number) {
-    if (busy || index < 0 || index >= state.items.length || index === current)
+    if (
+      busy ||
+      noteBusy ||
+      index < 0 ||
+      index >= state.items.length ||
+      index === current
+    )
       return;
     if (
       dirty &&
@@ -230,7 +237,7 @@ export function ReviewDesk({ state, save, onDirty }: Props) {
       "a short note",
   ].filter((x): x is string => !!x);
   async function submit() {
-    if (busy) return;
+    if (busy || noteBusy) return;
     setError("");
     if (missing.length) {
       setAttempted(true);
@@ -407,7 +414,7 @@ export function ReviewDesk({ state, save, onDirty }: Props) {
               variant="ghost"
               size="icon-sm"
               aria-label="Previous image"
-              disabled={current === 0 || busy}
+              disabled={current === 0 || busy || noteBusy}
               onClick={() => move(current - 1)}
             >
               <ChevronLeft />
@@ -417,7 +424,7 @@ export function ReviewDesk({ state, save, onDirty }: Props) {
               <select
                 value={current}
                 onChange={(e) => move(Number(e.target.value))}
-                disabled={busy}
+                disabled={busy || noteBusy}
               >
                 {state.items.map((x, i) => (
                   <option value={i} key={x.id}>
@@ -431,7 +438,7 @@ export function ReviewDesk({ state, save, onDirty }: Props) {
               variant="ghost"
               size="icon-sm"
               aria-label="Next image"
-              disabled={current === state.items.length - 1 || busy}
+              disabled={current === state.items.length - 1 || busy || noteBusy}
               onClick={() => move(current + 1)}
             >
               <ChevronRight />
@@ -489,6 +496,8 @@ export function ReviewDesk({ state, save, onDirty }: Props) {
                 onTarget={setTarget}
                 inspection={inspection}
                 onInspection={(i) => update({ ...draft, inspection: i })}
+                note={draft.note}
+                onNoteBusy={setNoteBusy}
                 onNote={(note) => {
                   if (draft.note.length + note.length + 2 > 2000) {
                     setError(
@@ -621,7 +630,10 @@ export function ReviewDesk({ state, save, onDirty }: Props) {
           <h2 id="review-heading" className="sr-only">
             Your review
           </h2>
-          <fieldset className="q" data-missing={need.has("image type") || undefined}>
+          <fieldset
+            className="q"
+            data-missing={need.has("image type") || undefined}
+          >
             <legend>
               Image type <Kbd>1–6</Kbd>
             </legend>
@@ -716,8 +728,7 @@ export function ReviewDesk({ state, save, onDirty }: Props) {
                         onCheckedChange={(v) => confirmNoText(v)}
                       />
                       <span>
-                        I checked the pixels for writing, numbers and
-                        watermarks
+                        I checked the pixels for writing, numbers and watermarks
                         {checkedRegions < 9 &&
                           ` (you have swept ${checkedRegions} of 9 regions)`}
                       </span>
@@ -743,11 +754,12 @@ export function ReviewDesk({ state, save, onDirty }: Props) {
                 </button>
               ))}
             </div>
-            <p className="q-help">
-              Only defects that hide useful detail.
-            </p>
+            <p className="q-help">Only defects that hide useful detail.</p>
           </fieldset>
-          <div className="q" data-missing={need.has("a short note") || undefined}>
+          <div
+            className="q"
+            data-missing={need.has("a short note") || undefined}
+          >
             <label className="q-label" htmlFor="review-notes">
               Notes{" "}
               <span className="optional">
@@ -759,6 +771,7 @@ export function ReviewDesk({ state, save, onDirty }: Props) {
             </label>
             <Textarea
               id="review-notes"
+              readOnly={noteBusy}
               ref={notes}
               value={draft.note}
               rows={2}
@@ -780,7 +793,9 @@ export function ReviewDesk({ state, save, onDirty }: Props) {
           </label>
           {restored && (
             <Alert>
-              <AlertDescription>Your unsaved draft was restored.</AlertDescription>
+              <AlertDescription>
+                Your unsaved draft was restored.
+              </AlertDescription>
             </Alert>
           )}
         </div>
@@ -802,7 +817,12 @@ export function ReviewDesk({ state, save, onDirty }: Props) {
               Still needed: {missing.join(", ")}.
             </p>
           )}
-          <Button className="save-button" size="lg" disabled={busy} onClick={submit}>
+          <Button
+            className="save-button"
+            size="lg"
+            disabled={busy || noteBusy}
+            onClick={submit}
+          >
             {busy
               ? "Saving…"
               : current === state.items.length - 1
