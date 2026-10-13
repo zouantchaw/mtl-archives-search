@@ -378,7 +378,7 @@ export function CandidateChecklist({
       {added !== undefined ? (
         <p className="candidate-success" role="status">
           <Check size={16} aria-hidden="true" />
-          Added {added} lines to your notes
+          Added {added} to your notes
         </p>
       ) : (
         <div className="candidate-footer">

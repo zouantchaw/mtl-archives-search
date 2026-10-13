@@ -875,6 +875,13 @@ main.desk-main {
 .sweep-side .second-reader {
   justify-self: start;
   padding-inline: 0;
+  color: var(--blue);
+  font-weight: 500;
+}
+.sweep-side .second-reader:hover {
+  background: transparent;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 @media (pointer: coarse) {
   .candidate-item {

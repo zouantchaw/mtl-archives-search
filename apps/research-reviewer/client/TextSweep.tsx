@@ -620,6 +620,7 @@ export const TextSweep = forwardRef<
                       disabled={busy}
                       onClick={() => read("second")}
                     >
+                      <ScanText data-icon="inline-start" />
                       Ask a second reader
                     </Button>
                   )}
